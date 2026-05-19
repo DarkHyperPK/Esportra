@@ -76,7 +76,7 @@ export function readTournamentConfig(node: SeasonBuilderNode): TournamentConfig 
   const meta = node.metadata as Record<string, unknown> | null | undefined;
   if (!meta) return {};
   return {
-    format: typeof meta.format === 'string' ? meta.format : undefined,
+    format: typeof meta.tournamentStructure === 'string' ? meta.tournamentStructure : typeof meta.format === 'string' ? meta.format : undefined,
     teamSize: typeof meta.teamSize === 'number' ? meta.teamSize : undefined,
     maxTeams: typeof meta.maxTeams === 'number' ? meta.maxTeams : undefined,
     registrationType: typeof meta.registrationType === 'string' ? meta.registrationType : undefined,
@@ -87,7 +87,7 @@ export function readTournamentConfig(node: SeasonBuilderNode): TournamentConfig 
 }
 
 export function isTournamentConfigComplete(config: TournamentConfig): boolean {
-  return !!(config.format && config.teamSize && config.maxTeams && config.registrationType);
+  return !!(config.format && config.maxTeams && config.registrationType);
 }
 
 // ── Advancement connections ─────────────────────────────────────────────────

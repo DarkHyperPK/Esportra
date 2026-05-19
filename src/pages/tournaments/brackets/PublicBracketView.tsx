@@ -7,13 +7,13 @@ import { useState } from 'react';
 import { BracketSidebarFilter, type FilterState } from '@/components/bracket/BracketSidebarFilter';
 import { BracketRenderer } from '@/components/bracket/BracketRenderer';
 import { BracketExporter } from '@/components/bracket/BracketExporter';
-import { Button } from '@/components/ui/button';
 import { Download, AlertCircle, Maximize2 } from 'lucide-react';
 import { SwissView } from '@/components/bracket/SwissView';
 import { GroupStageView } from '@/components/bracket/GroupStageView';
 import { MatchResultsDialog } from './dialogs/MatchResultsDialog';
 import { cn } from '@/lib/utils';
 import type { BracketMatch } from '@/types/bracketTypes';
+import { CommandButton, CommandSegmentedButton } from '@/components/management/CommandSurface';
 
 interface PublicBracketViewProps {
     versionId: string | null; // Allow null to show sidebar even if no bracket
@@ -25,6 +25,10 @@ interface PublicBracketViewProps {
     onStageSelect?: (stageId: string) => void;
     versionsMap?: Record<string, string>;
     onFullscreen?: () => void;
+    mode?: 'page' | 'embedded' | 'fullscreen';
+    disableMotion?: boolean;
+    height?: string;
+    className?: string;
 }
 
 export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
@@ -34,7 +38,11 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
     selectedStageId,
     onStageSelect,
     versionsMap,
-    onFullscreen
+    onFullscreen,
+    mode = 'page',
+    disableMotion,
+    height,
+    className,
 }) => {
     const [activeFilter, setActiveFilter] = useState<FilterState>({ type: 'all' });
     const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
@@ -154,6 +162,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
         if (matches.some(m => m.bracketType === 'swiss_round')) return 'swiss';
         return 'elimination';
     }, [matches]);
+    const shouldDisableMotion = disableMotion ?? (mode !== 'fullscreen' || matches.length > 12);
 
     // Derived stage object needed for config (e.g. max swiss rounds)
     const currentStage = useMemo(() => {
@@ -181,18 +190,17 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
 
         if (format === 'swiss') {
             return (
-                <div className="p-2 overflow-auto h-full">
+                <div className="relative h-full min-h-0 overflow-auto p-2 [touch-action:pan-x_pan-y] overscroll-contain">
                     <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
                         {onFullscreen && (
-                            <Button
-                                variant="outline"
+                            <CommandButton
+                                variant="secondary"
                                 size="sm"
                                 onClick={onFullscreen}
-                                className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-100"
                             >
                                 <Maximize2 className="w-4 h-4 mr-2" />
                                 Fullscreen
-                            </Button>
+                            </CommandButton>
                         )}
                     </div>
                     <SwissView
@@ -223,18 +231,17 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                 : undefined;
 
             return (
-                <div className="p-2 overflow-auto h-full">
+                <div className="relative h-full min-h-0 overflow-auto p-2 [touch-action:pan-x_pan-y] overscroll-contain">
                     <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
                         {onFullscreen && (
-                            <Button
-                                variant="outline"
+                            <CommandButton
+                                variant="secondary"
                                 size="sm"
                                 onClick={onFullscreen}
-                                className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-100"
                             >
                                 <Maximize2 className="w-4 h-4 mr-2" />
                                 Fullscreen
-                            </Button>
+                            </CommandButton>
                         )}
                     </div>
                     <GroupStageView
@@ -274,47 +281,42 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
         return (
             <>
                 {/* Round tabs */}
-                <div className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur border-b border-white/5 flex items-center gap-1 px-4 py-2 overflow-x-auto">
+                <div className="sticky top-0 z-40 flex shrink-0 items-center gap-1 overflow-x-auto border-b border-white/5 bg-zinc-950 px-4 py-2">
                     {roundTabs.map(tab => (
-                        <button
+                        <CommandSegmentedButton
                             key={tab.label}
                             onClick={() => setActiveFilter(tab.filter)}
-                            className={cn(
-                                'shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap',
-                                isTabActive(tab.filter)
-                                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                            )}
+                            active={isTabActive(tab.filter)}
+                            className="shrink-0 whitespace-nowrap"
                         >
                             {tab.label}
-                        </button>
+                        </CommandSegmentedButton>
                     ))}
 
                     <div className="ml-auto flex items-center gap-2 pl-4">
                         {onFullscreen && (
-                            <Button
-                                variant="outline"
+                            <CommandButton
+                                variant="secondary"
                                 size="sm"
                                 onClick={onFullscreen}
-                                className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-100"
                             >
                                 <Maximize2 className="w-4 h-4 mr-2" />
                                 Fullscreen
-                            </Button>
+                            </CommandButton>
                         )}
                         <BracketExporter
                             matches={matches}
                             triggerButton={
-                                <Button variant="outline" size="sm" className="bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-zinc-100">
+                                <CommandButton variant="secondary" size="sm">
                                     <Download className="w-4 h-4 mr-2" />
                                     Export
-                                </Button>
+                                </CommandButton>
                             }
                         />
                     </div>
                 </div>
 
-                <div className="overflow-auto h-[calc(100%-44px)]">
+                <div className="min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y]">
                     <BracketRenderer
                         matches={matches}
                         activeFilter={activeFilter}
@@ -325,6 +327,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                         hasResultsMap={automatedGames}
                         hasProofsMap={proofs}
                         isSingleElimination={currentStage?.format === 'single_elimination'}
+                        disableAnimations={shouldDisableMotion}
                     />
                 </div>
             </>
@@ -332,27 +335,36 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
     };
 
     return (
-        <div className="flex h-[calc(100vh-140px)]">
+        <div
+            className={cn(
+                'flex min-h-0 w-full overflow-hidden',
+                mode === 'embedded' ? 'h-full' : 'h-[calc(100vh-140px)]',
+                className,
+            )}
+            style={height ? { height } : undefined}
+        >
             {/* 
                Only show Side Filter primarily for Elimination (Round Highlighting).
                Swiss/Group views manage their own internal filtering/tabs.
                However, we keep the structure to allow stage switching if stages>1 
                (The sidebar handles stage switching props).
             */}
-            <BracketSidebarFilter
-                winnersRounds={Object.keys(winnersRounds).map(Number).sort((a, b) => a - b)}
-                losersRounds={Object.keys(losersRounds).map(Number).sort((a, b) => a - b)}
-                hasFinals={finalsMatches.length > 0}
-                activeFilter={activeFilter}
-                onFilterChange={setActiveFilter}
+            {mode !== 'embedded' ? (
+                <BracketSidebarFilter
+                    winnersRounds={Object.keys(winnersRounds).map(Number).sort((a, b) => a - b)}
+                    losersRounds={Object.keys(losersRounds).map(Number).sort((a, b) => a - b)}
+                    hasFinals={finalsMatches.length > 0}
+                    activeFilter={activeFilter}
+                    onFilterChange={setActiveFilter}
 
-                stages={stages}
-                selectedStageId={selectedStageId}
-                onStageSelect={onStageSelect}
-                versionsMap={versionsMap}
-            />
+                    stages={stages}
+                    selectedStageId={selectedStageId}
+                    onStageSelect={onStageSelect}
+                    versionsMap={versionsMap}
+                />
+            ) : null}
 
-            <div className="relative flex-1 overflow-hidden bg-zinc-950/30 flex flex-col">
+            <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-zinc-950/30">
                 {renderContent()}
             </div>
 

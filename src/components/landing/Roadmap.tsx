@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Zap } from "lucide-react";
+import { JackButton } from "@/components/ui/JackButton";
 
 const Roadmap = () => {
     const { user } = useAuth();
@@ -26,15 +26,9 @@ const Roadmap = () => {
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5, duration: 0.8 }}
                     >
-                        <Button
-                            asChild
-                            size="lg"
-                            className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg md:px-12 md:py-8 md:text-xl font-mono font-bold uppercase tracking-wider rounded-none transition-all duration-300"
-                        >
-                            <Link to="/auth/signin" className="flex items-center gap-3">
-                                Get Started <Zap className="w-6 h-6 fill-current" />
-                            </Link>
-                        </Button>
+                        <JackButton as={Link} to="/auth/signin" size="lg" className="px-8 py-6 text-lg md:px-12 md:py-8 md:text-xl">
+                            Get Started <Zap className="w-6 h-6 fill-current" />
+                        </JackButton>
                     </motion.div>
                 )}
 

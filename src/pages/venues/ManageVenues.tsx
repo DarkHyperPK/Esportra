@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import Footer from '@/components/Footer';
 import { VenueEditModal } from '@/components/admin/VenueEditModal';
 import { Venue, VenueStatus } from '@/types/venue';
+import { JackButton } from '@/components/ui/JackButton';
 
 const STATUS_CONFIG: Record<VenueStatus, { label: string; classes: string }> = {
     draft:          { label: 'Draft',          classes: 'bg-zinc-700 text-zinc-200' },
@@ -133,18 +134,18 @@ const ManageVenues = () => {
                         <h1 className="text-3xl font-bold">My Venues</h1>
                         <p className="text-gray-400">Manage your listed gaming centers</p>
                     </div>
-                    <Button onClick={() => navigate('/venues/list-venue')} className="bg-purple-600 hover:bg-purple-700">
+                    <JackButton onClick={() => navigate('/venues/list-venue')} size="sm">
                         <Plus className="w-4 h-4 mr-2" /> List New Venue
-                    </Button>
+                    </JackButton>
                 </div>
 
                 {venues.length === 0 ? (
                     <div className="text-center py-20 bg-[#0a0a0c] border border-white/5 rounded-2xl">
                         <h2 className="text-xl font-semibold mb-2">No Venues Listed</h2>
                         <p className="text-gray-500 mb-6">You haven't listed any venues yet.</p>
-                        <Button onClick={() => navigate('/venues/list-venue')} variant="outline">
+                        <JackButton onClick={() => navigate('/venues/list-venue')} variant="invert" size="sm">
                             List Your First Venue
-                        </Button>
+                        </JackButton>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

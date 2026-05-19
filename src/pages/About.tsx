@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import Footer from '@/components/Footer';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { Zap, Shield, ChevronRight, Cpu, Globe, BarChart3 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { Link } from 'react-router-dom';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 
@@ -157,18 +157,13 @@ const AboutPage: React.FC = () => {
             </h2>
 
             <div className="flex flex-col md:flex-row gap-6 justify-center items-center">
-              <Button className="h-16 px-12 bg-white text-black hover:bg-gray-200 text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden" asChild>
-                <Link to="/auth/signup">
-                  <span className="relative z-10 flex items-center gap-2">
-                    JACK IN <ChevronRight className="w-4 h-4" />
-                  </span>
-                  <div className={`absolute inset-0 ${theme.bg} translate-y-full group-hover:translate-y-0 transition-transform duration-300 z-0`} />
-                </Link>
-              </Button>
+              <JackButton as={Link} to="/auth/signup" size="lg" className="h-16 px-12 text-lg">
+                JACK IN <ChevronRight className="w-4 h-4" />
+              </JackButton>
 
-              <Button variant="outline" className="h-16 px-12 border-white/20 text-white hover:bg-white/5 text-lg font-mono tracking-wider rounded-none" asChild>
-                <Link to="/tournaments">OBSERVE DATA</Link>
-              </Button>
+              <JackButton as={Link} to="/tournaments" variant="ghost" size="lg" className="h-16 px-12 text-lg backdrop-blur-0">
+                OBSERVE DATA
+              </JackButton>
             </div>
           </div>
         </section>

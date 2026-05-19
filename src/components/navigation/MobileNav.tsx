@@ -51,10 +51,9 @@ const MobileNav = ({
     <Link
       to={to}
       onClick={onClose}
-      className="group relative block w-full overflow-hidden bg-white px-4 py-2.5 text-left font-mono text-[11px] font-bold uppercase tracking-wider text-black"
+      className="block w-full bg-white px-4 py-2.5 text-left font-mono text-[11px] font-bold uppercase tracking-wider text-black transition-colors hover:bg-rose-500 hover:text-white"
     >
-      <span className="relative z-10">{children}</span>
-      <span className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
+      {children}
     </Link>
   );
 

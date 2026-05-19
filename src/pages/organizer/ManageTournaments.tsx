@@ -14,6 +14,15 @@ import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal
 import { Trash2, RotateCcw, Clock } from 'lucide-react';
 
 import { TournamentCard } from '@/components/TournamentCard';
+import {
+  CommandButton,
+  CommandEmptyState,
+  CommandHeader,
+  CommandPanel,
+  CommandSection,
+  CommandShell,
+  CommandTabs,
+} from '@/components/management/CommandSurface';
 
 interface Tournament {
   id: string;
@@ -267,28 +276,46 @@ const TournamentList = () => {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <CommandShell>
+        <div className="mx-auto max-w-7xl px-4 py-10">
+          <CommandSection>
+            <div className="py-16 text-center text-zinc-500">Loading tournaments...</div>
+          </CommandSection>
+        </div>
+      </CommandShell>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">My Tournaments</h1>
-            <p className="text-gray-400">Manage every tournament hosted by your organization</p>
-          </div>
-          <Link to="/tournaments/create">
-            <Button>Create Tournament</Button>
-          </Link>
-        </div>
+    <CommandShell>
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
+        <CommandHeader
+          eyebrow="Tournament Ops"
+          title="Manage Tournaments"
+          description="Manage every tournament hosted by your organization, including recently deleted events."
+          actions={
+            <CommandButton asChild>
+              <Link to="/tournaments/create">Create Tournament</Link>
+            </CommandButton>
+          }
+        />
 
         <Tabs defaultValue="active" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="active">
+          <CommandTabs
+            active="active"
+            onChange={() => undefined}
+            tabs={[
+              { value: 'active', label: `Hosted (${tournaments.length})` },
+              { value: 'deleted', label: `Deleted (${deletedTournaments.length})` },
+            ]}
+            className="mb-6 hidden"
+          />
+          <TabsList className="mb-6 h-auto rounded-none border border-white/10 bg-[#0a0a0c]/92 p-2">
+            <TabsTrigger value="active" className="rounded-none data-[state=active]:bg-rose-500 data-[state=active]:text-white">
               Hosted Tournaments ({tournaments.length})
             </TabsTrigger>
-            <TabsTrigger value="deleted" className="text-red-400">
+            <TabsTrigger value="deleted" className="rounded-none text-red-300 data-[state=active]:bg-rose-500 data-[state=active]:text-white">
               <Trash2 className="w-4 h-4 mr-2" />
               Deleted ({deletedTournaments.length})
             </TabsTrigger>
@@ -296,12 +323,12 @@ const TournamentList = () => {
 
           <TabsContent value="active">
             {tournaments.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-400 mb-4">No hosted tournaments found</p>
-                <Link to="/tournaments/create">
-                  <Button>Create Your First Tournament</Button>
-                </Link>
-              </div>
+              <CommandEmptyState
+                title="No hosted tournaments found"
+                description="Create your first tournament and it will appear here."
+                icon={<Clock className="h-5 w-5" />}
+                action={<CommandButton asChild><Link to="/tournaments/create">Create Tournament</Link></CommandButton>}
+              />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {tournaments.map((tournament) => (
@@ -336,10 +363,7 @@ const TournamentList = () => {
 
           <TabsContent value="deleted">
             {deletedTournaments.length === 0 ? (
-              <div className="text-center py-12">
-                <Trash2 className="w-12 h-12 mx-auto text-gray-600 mb-4" />
-                <p className="text-gray-400">No deleted tournaments</p>
-              </div>
+              <CommandEmptyState title="No deleted tournaments" description="Deleted tournaments will appear here while they can still be restored." icon={<Trash2 className="h-5 w-5" />} />
             ) : (
               <div className="space-y-4">
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-none p-4 mb-6">
@@ -350,8 +374,7 @@ const TournamentList = () => {
                 </div>
 
                 {deletedTournaments.map((tournament) => (
-                  <Card key={tournament.id} className="bg-gray-800/50 border-gray-700">
-                    <CardContent className="flex items-center justify-between p-4">
+                  <CommandPanel key={tournament.id} className="flex items-center justify-between p-4">
                       <div>
                         <h3 className="font-semibold text-white">{tournament.name}</h3>
                         <p className="text-sm text-gray-400">{tournament.game}</p>
@@ -363,27 +386,26 @@ const TournamentList = () => {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button
+                        <CommandButton
                           size="sm"
+                          variant="success"
                           onClick={() => handleRestore(tournament.id, tournament.name)}
                           disabled={restoring === tournament.id}
-                          className="bg-emerald-600 hover:bg-emerald-700"
                         >
                           <RotateCcw className="w-4 h-4 mr-2" />
                           {restoring === tournament.id ? 'Restoring...' : 'Restore'}
-                        </Button>
-                        <Button
+                        </CommandButton>
+                        <CommandButton
                           size="sm"
-                          variant="destructive"
+                          variant="danger"
                           onClick={() => handlePermanentDelete(tournament.id, tournament.name)}
                           disabled={restoring === tournament.id}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete Forever
-                        </Button>
+                        </CommandButton>
                       </div>
-                    </CardContent>
-                  </Card>
+                  </CommandPanel>
                 ))}
               </div>
             )}
@@ -415,7 +437,7 @@ const TournamentList = () => {
           }
         />
       )}
-    </div>
+    </CommandShell>
   );
 };
 

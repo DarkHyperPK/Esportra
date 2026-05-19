@@ -1,7 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Loader2, Calendar, Users, Trophy, ChevronDown, ChevronUp, Search, Swords } from "lucide-react";
 import { apiClient } from '@/lib/apiClient';
@@ -12,6 +9,7 @@ import { useRawgGame } from "@/hooks/useRawgGame";
 import { Link } from "react-router-dom";
 import { usePublicBracketData } from "@/hooks/usePublicBracketData";
 import { PublicBracketView } from "@/pages/tournaments/brackets/PublicBracketView";
+import { CommandButton, CommandEmptyState, CommandPanel, CommandTabs, CommandTabButton, CommandToolbar } from "@/components/management/CommandSurface";
 
 type TournamentFilterStatus = 'active' | 'upcoming' | 'completed' | 'all';
 
@@ -68,28 +66,16 @@ export default function TournamentHistory() {
         }
     };
 
-    const loadTournamentDetails = async (tournamentId: string) => {
-        // If we're closing it, just clear the expansion
-        if (expandedId === tournamentId) {
-            setExpandedId(null);
-            return;
-        }
-
-        setExpandedId(tournamentId);
-
-        // If data already exists, don't refetch
+    const fetchTournamentDetails = useCallback(async (tournamentId: string) => {
         const tournament = tournaments.find(t => t.id === tournamentId);
-        if (tournament?.matchHistory && tournament?.participantList) return;
+        if (tournament?.detailsLoading || tournament?.participantList) return;
 
-        // Mark as loading details
         setTournaments(prev => prev.map(t => t.id === tournamentId ? { ...t, detailsLoading: true } : t));
 
         try {
-            // 1. Fetch Participants (up to 10 for preview)
             const rawParticipants = await apiClient.get<any>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
             const participantsData: any[] = Array.isArray(rawParticipants) ? rawParticipants : (rawParticipants?.items || rawParticipants?.data || []);
 
-            // Process participant names formatting
             const formattedParticipants = participantsData?.map(p => {
                 const teamObj = Array.isArray(p.team) ? p.team[0] : p.team as any;
                 const userObj = Array.isArray(p.user) ? p.user[0] : p.user as any;
@@ -103,27 +89,9 @@ export default function TournamentHistory() {
                 };
             }) || [];
 
-            // 2. Fetch Match History
-            // Since brkt_matches links through brkt_versions, we first need the active version for this tournament
-            const rawVersions = await apiClient.get<any>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
-            const versionsArr: any[] = Array.isArray(rawVersions) ? rawVersions : (rawVersions?.items || rawVersions?.data || []);
-            const versionData = versionsArr.find((v: any) => v.status === 'active') || null;
-
-            let matchData: any[] = [];
-            if (versionData?.id) {
-                const rawMatches = await apiClient.get<any>(`/api/brackets/${versionData.id}/graph`).catch(() => []);
-                const matchesArr: any[] = Array.isArray(rawMatches) ? rawMatches : (rawMatches?.items || rawMatches?.data || rawMatches?.matches || []);
-                matchData = matchesArr.slice(0, 5);
-            } else {
-                // Fallback for custom tournaments without brkt_versions
-                const rawFallback = await apiClient.get<any>(`/api/tournaments/${tournamentId}/match-games`).catch(() => []);
-                const fallbackArr: any[] = Array.isArray(rawFallback) ? rawFallback : (rawFallback?.items || rawFallback?.data || []);
-                if (fallbackArr.length > 0) matchData = fallbackArr.slice(0, 5);
-            }
-
             setTournaments(prev => prev.map(t =>
                 t.id === tournamentId
-                    ? { ...t, matchHistory: matchData, participantList: formattedParticipants, detailsLoading: false }
+                    ? { ...t, participantList: formattedParticipants, detailsLoading: false }
                     : t
             ));
 
@@ -131,7 +99,17 @@ export default function TournamentHistory() {
             console.error("Error fetching tournament nested details:", err);
             setTournaments(prev => prev.map(t => t.id === tournamentId ? { ...t, detailsLoading: false } : t));
         }
-    };
+    }, [tournaments]);
+
+    const toggleTournament = useCallback((tournamentId: string) => {
+        if (expandedId === tournamentId) {
+            setExpandedId(null);
+            return;
+        }
+
+        setExpandedId(tournamentId);
+        void fetchTournamentDetails(tournamentId);
+    }, [expandedId, fetchTournamentDetails]);
 
     const filteredTournaments = tournaments.filter(t => {
         if (filter !== 'all' && t.computedStatus !== filter) return false;
@@ -140,55 +118,45 @@ export default function TournamentHistory() {
     });
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 fade-in-0 h-full">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="space-y-4 h-full">
+            <CommandToolbar>
                 <div>
-                    <h2 className="text-2xl font-bold font-heading">Tournament History</h2>
-                    <p className="text-zinc-400">View past, active, and upcoming events</p>
+                    <p className="font-mono text-[10px] font-bold uppercase tracking-[0.35em] text-rose-400">Archive</p>
+                    <h2 className="mt-1 text-xl font-black uppercase text-white">Tournament History</h2>
                 </div>
-
-                <div className="flex w-full md:w-auto gap-2">
-                    <div className="relative flex-grow md:w-64">
+                <div className="relative w-full md:w-72">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                         <Input
                             placeholder="Search history..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 bg-zinc-900/50 border-white/5"
+                            className="h-11 rounded-none border-white/10 bg-black/40 pl-9 text-white placeholder:text-zinc-600 focus:border-rose-500"
                         />
-                    </div>
                 </div>
-            </div>
+            </CommandToolbar>
 
-            {/* Filters */}
-            <div className="flex gap-2 p-1 bg-zinc-900/50 p-1 w-max rounded-lg border border-white/5">
-                {(['all', 'active', 'upcoming', 'completed'] as const).map(f => (
-                    <button
-                        key={f}
-                        onClick={() => setFilter(f)}
-                        className={cn(
-                            "px-4 py-2 text-sm font-medium rounded-md capitalize transition-all",
-                            filter === f ? "bg-white/10 text-white" : "text-zinc-400 hover:text-white hover:bg-white/5"
-                        )}
-                    >
-                        {f}
-                    </button>
-                ))}
-            </div>
+            <CommandTabs
+                active={filter}
+                onChange={(value) => setFilter(value as TournamentFilterStatus)}
+                tabs={[
+                    { value: 'all', label: 'All' },
+                    { value: 'active', label: 'Active' },
+                    { value: 'upcoming', label: 'Upcoming' },
+                    { value: 'completed', label: 'Completed' },
+                ]}
+            />
 
             {/* List */}
             {loading ? (
-                <div className="flex justify-center py-20">
+                <CommandPanel className="flex justify-center py-20">
                     <Loader2 className="h-8 w-8 text-rose-500 animate-spin" />
-                </div>
+                </CommandPanel>
             ) : filteredTournaments.length === 0 ? (
-                <div className="text-center py-20 bg-zinc-900/30 rounded-xl border border-white/5 border-dashed">
-                    <Trophy className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-white mb-1">No tournaments found</h3>
-                    <p className="text-zinc-500">
-                        {searchQuery ? "Try adjusting your search or filters." : "You haven't organized any tournaments yet."}
-                    </p>
-                </div>
+                <CommandEmptyState
+                    title="No tournaments found"
+                    description={searchQuery ? "Try adjusting your search or filters." : "Hosted tournament history will appear here."}
+                    icon={<Trophy className="h-5 w-5" />}
+                />
             ) : (
                 <div className="space-y-4">
                     {filteredTournaments.map(tournament => (
@@ -196,7 +164,7 @@ export default function TournamentHistory() {
                             key={tournament.id}
                             tournament={tournament}
                             isExpanded={expandedId === tournament.id}
-                            onToggle={() => loadTournamentDetails(tournament.id)}
+                            onToggle={() => toggleTournament(tournament.id)}
                         />
                     ))}
                 </div>
@@ -230,14 +198,14 @@ function HistoryBracketView({ tournamentId }: { tournamentId: string }) {
 
     if (!stages || stages.length === 0) {
         return (
-            <div className="p-8 text-center bg-zinc-900/30 rounded-lg border border-white/5 border-dashed text-zinc-500 text-sm">
+            <div className="border border-dashed border-white/10 bg-white/[0.02] p-8 text-center text-sm text-zinc-500">
                 No bracket stages have been created yet.
             </div>
         );
     }
 
     return (
-        <div className="w-full h-[500px] border border-white/10 rounded-xl overflow-auto bg-[#121214]">
+        <div className="h-[420px] w-full overflow-hidden border border-white/10 bg-[#0a0a0c] md:h-[500px]">
             <PublicBracketView
                 versionId={selectedStageId ? activeVersionsMap[selectedStageId] : null}
                 tournamentId={tournamentId}
@@ -245,6 +213,9 @@ function HistoryBracketView({ tournamentId }: { tournamentId: string }) {
                 selectedStageId={selectedStageId}
                 onStageSelect={setSelectedStageId}
                 versionsMap={activeVersionsMap}
+                mode="embedded"
+                disableMotion
+                height="100%"
             />
         </div>
     );
@@ -255,7 +226,7 @@ function RawgThumbnail({ gameName }: { gameName: string }) {
     const displayLogo = rawgData.gameLogo || rawgData.gameBanner;
     return (
         <div
-            className="h-16 w-16 md:h-12 md:w-12 rounded-lg bg-zinc-900 border border-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center bg-cover bg-center"
+            className="h-16 w-16 md:h-12 md:w-12 bg-zinc-900 border border-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center bg-cover bg-center"
             style={displayLogo ? { backgroundImage: `url(${displayLogo})` } : {}}
         >
             {!displayLogo && <Trophy className="h-5 w-5 text-zinc-600" />}
@@ -268,7 +239,7 @@ function TournamentThumbnail({ tournament }: { tournament: any }) {
     if (displayLogo) {
         return (
             <div
-                className="h-16 w-16 md:h-12 md:w-12 rounded-lg bg-zinc-900 border border-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center bg-cover bg-center"
+                className="h-16 w-16 md:h-12 md:w-12 bg-zinc-900 border border-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center bg-cover bg-center"
                 style={{ backgroundImage: `url(${displayLogo})` }}
             />
         );
@@ -276,22 +247,22 @@ function TournamentThumbnail({ tournament }: { tournament: any }) {
     return <RawgThumbnail gameName={tournament.game} />;
 }
 
-function TournamentHistoryCard({ tournament, isExpanded, onToggle }: { tournament: any, isExpanded: boolean, onToggle: () => void }) {
-    const [activeTab, setActiveTab] = useState<'matches' | 'participants'>('matches');
+const TournamentHistoryCard = memo(function TournamentHistoryCard({ tournament, isExpanded, onToggle }: { tournament: any, isExpanded: boolean, onToggle: () => void }) {
+    const [activeTab, setActiveTab] = useState<'matches' | 'participants'>('participants');
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'active': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-            case 'upcoming': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
-            case 'completed': return 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20';
-            default: return 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20';
+            case 'active': return 'border-emerald-500/40 text-emerald-300';
+            case 'upcoming': return 'border-amber-500/40 text-amber-300';
+            case 'completed': return 'border-white/15 text-zinc-400';
+            default: return 'border-white/15 text-zinc-400';
         }
     };
 
     return (
-        <Card className={cn(
-            "border-white/5 bg-[#0a0a0c] transition-all duration-200 overflow-hidden",
-            isExpanded ? "border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.05)]" : "hover:border-white/10"
+        <CommandPanel className={cn(
+            "overflow-hidden p-0 transition-colors",
+            isExpanded ? "border-rose-500/35" : "hover:border-white/20"
         )}>
             <div
                 className="p-5 flex flex-col md:flex-row gap-4 items-start md:items-center cursor-pointer select-none group"
@@ -303,10 +274,10 @@ function TournamentHistoryCard({ tournament, isExpanded, onToggle }: { tournamen
                 {/* Info */}
                 <div className="flex-grow min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-white truncate text-lg">{tournament.name}</h3>
-                        <Badge variant="outline" className={cn("capitalize px-2 py-0.5 text-xs font-semibold", getStatusColor(tournament.computedStatus))}>
+                        <h3 className="font-bold text-white truncate text-lg uppercase">{tournament.name}</h3>
+                        <span className={cn("border px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider", getStatusColor(tournament.computedStatus))}>
                             {tournament.computedStatus}
-                        </Badge>
+                        </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-zinc-500">
                         <span className="flex items-center"><Calendar className="h-3.5 w-3.5 mr-1.5" /> {format(new Date(tournament.start_date), 'MMM d, yyyy')}</span>
@@ -316,51 +287,56 @@ function TournamentHistoryCard({ tournament, isExpanded, onToggle }: { tournamen
                 </div>
 
                 {/* Expand Icon */}
-                <div className="flex-shrink-0 self-center hidden md:flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-zinc-400 group-hover:bg-white/10 group-hover:text-white transition-colors">
+                <div className="flex-shrink-0 self-center hidden md:flex h-8 w-8 items-center justify-center border border-white/10 bg-white/[0.02] text-zinc-400 group-hover:bg-white group-hover:text-black transition-colors">
                     {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </div>
             </div>
 
             {/* Expanded Details */}
             {isExpanded && (
-                <div className="border-t border-white/5 bg-black/20 p-5 animate-in slide-in-from-top-2 fade-in duration-200">
+                <div className="border-t border-white/5 bg-black/20 p-5">
                     {tournament.detailsLoading ? (
-                        <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-5 w-5 text-zinc-500 animate-spin" />
+                        <div className="grid gap-3 py-2 md:grid-cols-3">
+                            {[0, 1, 2].map((item) => (
+                                <div key={item} className="h-14 animate-pulse border border-white/10 bg-white/[0.03]" />
+                            ))}
                         </div>
                     ) : (
                         <div>
                             {/* Tabs */}
                             <div className="flex justify-between items-center border-b border-white/5 pb-0 mb-5">
                                 <div className="flex gap-4">
-                                    <button
-                                        className={cn("text-sm font-medium pb-2 transition-colors", activeTab === 'matches' ? "text-rose-500 border-b-2 border-rose-500" : "text-zinc-500 hover:text-zinc-300")}
-                                        onClick={() => setActiveTab('matches')}
+                                    <CommandTabButton
+                                        active={activeTab === 'matches'}
+                                        className="px-3 py-2 text-[10px]"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            setActiveTab('matches');
+                                        }}
                                     >
                                         Brackets
-                                    </button>
-                                    <button
-                                        className={cn("text-sm font-medium pb-2 transition-colors", activeTab === 'participants' ? "text-rose-500 border-b-2 border-rose-500" : "text-zinc-500 hover:text-zinc-300")}
-                                        onClick={() => setActiveTab('participants')}
+                                    </CommandTabButton>
+                                    <CommandTabButton
+                                        active={activeTab === 'participants'}
+                                        className="px-3 py-2 text-[10px]"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            setActiveTab('participants');
+                                        }}
                                     >
                                         Teams
-                                    </button>
+                                    </CommandTabButton>
                                 </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="mb-2 h-8 text-xs border-white/10 hover:bg-white/5"
-                                    asChild
-                                >
-                                    <Link to={`/tournaments/${tournament.id}`}>
+                                <CommandButton size="sm" variant="secondary" asChild onClick={(event) => event.stopPropagation()}>
+                                    <Link to={`/tournaments/${tournament.slug || tournament.id}`}>
                                         View Full
                                     </Link>
-                                </Button>
+                                </CommandButton>
                             </div>
 
                             {/* Match Tab Content */}
                             {activeTab === 'matches' && (
-                                <div className="w-full max-h-[500px] overflow-y-auto overflow-x-auto rounded-lg scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                                <div className="w-full overflow-hidden">
                                     <HistoryBracketView tournamentId={tournament.id} />
                                 </div>
                             )}
@@ -371,9 +347,9 @@ function TournamentHistoryCard({ tournament, isExpanded, onToggle }: { tournamen
                                     {tournament.participantList?.length > 0 ? (
                                         <>
                                             {tournament.participantList.map((p: any) => (
-                                                <div key={p.id} className="flex items-center gap-3 p-2 bg-zinc-900/50 rounded-lg border border-white/5">
+                                                <div key={p.id} className="flex items-center gap-3 border border-white/10 bg-white/[0.02] p-2">
                                                     <div
-                                                        className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0 bg-cover bg-center overflow-hidden"
+                                                        className="h-8 w-8 bg-zinc-800 flex items-center justify-center flex-shrink-0 bg-cover bg-center overflow-hidden"
                                                         style={p.avatar ? { backgroundImage: `url(${p.avatar})` } : {}}
                                                     >
                                                         {!p.avatar && <Users className="h-4 w-4 text-zinc-500" />}
@@ -385,13 +361,13 @@ function TournamentHistoryCard({ tournament, isExpanded, onToggle }: { tournamen
                                                 </div>
                                             ))}
                                             {tournament.participantCount > 10 && (
-                                                <div className="flex items-center justify-center p-2 rounded-lg border border-white/5 border-dashed">
+                                                <div className="flex items-center justify-center border border-dashed border-white/10 p-2">
                                                     <span className="text-xs text-zinc-500">+{tournament.participantCount - 10} more</span>
                                                 </div>
                                             )}
                                         </>
                                     ) : (
-                                        <div className="col-span-full p-4 text-center bg-zinc-900/30 rounded-lg border border-white/5 border-dashed text-zinc-500 text-sm">
+                                        <div className="col-span-full border border-dashed border-white/10 bg-white/[0.02] p-4 text-center text-sm text-zinc-500">
                                             No participants registered yet.
                                         </div>
                                     )}
@@ -402,6 +378,6 @@ function TournamentHistoryCard({ tournament, isExpanded, onToggle }: { tournamen
                     )}
                 </div>
             )}
-        </Card>
+        </CommandPanel>
     );
-}
+});

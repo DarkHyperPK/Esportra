@@ -4,7 +4,7 @@ import { AlertTriangle, Calendar, Check, ChevronRight, Gamepad2, Settings, Targe
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ApiError } from '@/lib/apiClient';
+import { ApiError, apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 import { seasonApi } from '@/services/api';
 import { useCreateSeason } from '@/hooks/useSeasons';
@@ -28,12 +28,31 @@ type Blueprint = {
 type FormState = {
   name: string;
   game: string;
+  gameMode: string;
+  region: string;
   participantMode: SeasonParticipantMode;
   description: string;
   startDate: string;
   endDate: string;
   bannerUrl: string;
   logoUrl: string;
+};
+
+type CatalogMode = {
+  modeKey: string;
+  name: string;
+  teamSize: number;
+  participantMode: SeasonParticipantMode;
+  modeGroup?: string | null;
+  variantLabel?: string | null;
+};
+
+type CatalogGame = {
+  slug: string;
+  name: string;
+  category?: string | null;
+  defaultModeKey: string;
+  modes: CatalogMode[];
 };
 
 const CUSTOM_BLUEPRINT: Blueprint = { id: 'custom', name: 'Custom Blueprint', meta: 'Start blank', description: 'Create the season shell and design the tournament graph manually.', icon: Settings };
@@ -71,6 +90,8 @@ const logSeasonCreationError = (phase: string, error: unknown, context: Record<s
 const INITIAL_FORM: FormState = {
   name: '',
   game: '',
+  gameMode: '',
+  region: '',
   participantMode: 'team',
   description: '',
   startDate: '',
@@ -94,14 +115,43 @@ const SeasonWizard = () => {
   const [selectedBlueprintId, setSelectedBlueprintId] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [createdSeason, setCreatedSeason] = useState<CreateSeasonResponse | null>(null);
+  const [catalogGames, setCatalogGames] = useState<CatalogGame[]>([]);
 
-  const selectedGame = useMemo(() => esportsGames.games.find((game) => game.name === form.game), [form.game]);
+  const gameOptions = useMemo<CatalogGame[]>(() => {
+    if (catalogGames.length > 0) return catalogGames;
+    return esportsGames.games.map((game) => ({
+      slug: game.slug,
+      name: game.name,
+      category: game.category,
+      defaultModeKey: game.formats?.[0]?.value ?? 'default',
+      modes: (game.formats ?? []).map((format) => ({
+        modeKey: format.value,
+        name: format.name ?? format.value,
+        teamSize: format.teamSize,
+        participantMode: 'team' as SeasonParticipantMode,
+      })),
+    }));
+  }, [catalogGames]);
+  const selectedGame = useMemo(() => gameOptions.find((game) => game.name === form.game), [form.game, gameOptions]);
+  const selectedMode = useMemo(() => selectedGame?.modes.find((mode) => mode.modeKey === form.gameMode) ?? selectedGame?.modes[0], [selectedGame, form.gameMode]);
   const blueprints = useMemo<Blueprint[]>(() => {
     if (!form.game) return [CUSTOM_BLUEPRINT];
     const gameTemplates = getTemplatesForGame(form.game).map(templateToBlueprint);
-    return [...gameTemplates, CUSTOM_BLUEPRINT];
+    return gameTemplates.some((template) => template.id === 'custom') ? gameTemplates : [...gameTemplates, CUSTOM_BLUEPRINT];
   }, [form.game]);
   const selectedBlueprint = blueprints.find((blueprint) => blueprint.id === selectedBlueprintId);
+
+  useEffect(() => {
+    let alive = true;
+    apiClient.get<{ games: CatalogGame[] }>('/api/games/catalog')
+      .then((catalog) => {
+        if (alive) setCatalogGames(catalog.games ?? []);
+      })
+      .catch((error) => {
+        console.warn('[SeasonCreate] Catalog endpoint unavailable; falling back to packaged game list.', error);
+      });
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     if (!form.game) {
@@ -111,6 +161,19 @@ const SeasonWizard = () => {
     const gameTemplate = getTemplatesForGame(form.game)[0];
     setSelectedBlueprintId(gameTemplate?.id ?? 'custom');
   }, [form.game]);
+
+  useEffect(() => {
+    if (!selectedGame) return;
+    const currentMode = selectedGame.modes.find((mode) => mode.modeKey === form.gameMode);
+    const nextMode = currentMode ?? selectedGame.modes.find((mode) => mode.modeKey === selectedGame.defaultModeKey) ?? selectedGame.modes[0];
+    if (nextMode && nextMode.modeKey !== form.gameMode) {
+      setForm((current) => ({
+        ...current,
+        gameMode: nextMode.modeKey,
+        participantMode: nextMode.participantMode,
+      }));
+    }
+  }, [selectedGame, form.gameMode]);
 
   useEffect(() => {
     setForm(INITIAL_FORM);
@@ -160,7 +223,14 @@ const SeasonWizard = () => {
   };
 
   const handleGameSelect = (gameName: string) => {
-    updateForm('game', gameName);
+    const game = gameOptions.find((item) => item.name === gameName);
+    const mode = game?.modes.find((item) => item.modeKey === game.defaultModeKey) ?? game?.modes[0];
+    setForm((current) => ({
+      ...current,
+      game: gameName,
+      gameMode: mode?.modeKey ?? '',
+      participantMode: mode?.participantMode ?? 'team',
+    }));
     setErrors((current) => {
       const next = { ...current };
       delete next.blueprint;
@@ -190,6 +260,14 @@ const SeasonWizard = () => {
       nextErrors.game = 'Select the game this season is built for.';
     }
 
+    if (!form.gameMode) {
+      nextErrors.gameMode = 'Select the game mode for this season.';
+    }
+
+    if (!form.region.trim()) {
+      nextErrors.region = 'Select the season region.';
+    }
+
     if (!selectedBlueprintId) {
       nextErrors.blueprint = 'Select a blueprint or custom start.';
     }
@@ -215,7 +293,10 @@ const SeasonWizard = () => {
     const payload: CreateSeasonRequest = {
       name: form.name.trim(),
       game: form.game,
-      participant_mode: form.participantMode,
+      gameMode: form.gameMode,
+      region: form.region.trim(),
+      teamSize: selectedMode?.teamSize,
+      participant_mode: selectedMode?.participantMode ?? form.participantMode,
       description: form.description.trim() || undefined,
       start_date: form.startDate || undefined,
       end_date: form.endDate || undefined,
@@ -267,6 +348,8 @@ const SeasonWizard = () => {
         payload: {
           name: payload.name,
           game: payload.game,
+          gameMode: payload.gameMode,
+          region: payload.region,
           participant_mode: payload.participant_mode,
           hasStartDate: Boolean(payload.start_date),
           hasEndDate: Boolean(payload.end_date),
@@ -288,10 +371,7 @@ const SeasonWizard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      <div className="fixed inset-0 pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:80px_80px]" />
-      <div className="low-fx-gradient fixed -top-40 right-0 w-[60vw] h-[60vw] rounded-full bg-rose-600/10 blur-[150px] mix-blend-screen pointer-events-none" />
-
+    <div className="esportra-ambient-page min-h-screen text-white">
       {createdSeason && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-rose-500/10 backdrop-blur-md">
           <div className="border border-rose-400/40 bg-black px-10 py-8 text-center shadow-2xl shadow-rose-500/20">
@@ -305,7 +385,7 @@ const SeasonWizard = () => {
         </div>
       )}
 
-      <main className="relative mx-auto max-w-7xl px-5 py-10 lg:px-8 lg:py-14">
+      <main className="esportra-ambient-content mx-auto max-w-7xl px-5 py-10 lg:px-8 lg:py-14">
         <section className="mb-16 max-w-4xl">
           <p className="font-mono text-[10px] uppercase tracking-[0.5em] text-rose-400">Season Architect</p>
           <h1 className="mt-5 text-5xl font-black uppercase tracking-[-0.05em] text-white md:text-7xl">
@@ -331,27 +411,40 @@ const SeasonWizard = () => {
                   />
                 </Field>
 
-                <Field label="Participant format">
-                  <div className="grid grid-cols-2 border border-white/10">
-                    {(['team', 'solo'] as SeasonParticipantMode[]).map((mode) => (
+                <Field label="Region" error={errors.region}>
+                  <Input
+                    value={form.region}
+                    onChange={(event) => updateForm('region', event.target.value)}
+                    placeholder="MENA, EU West, Pakistan"
+                    className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  />
+                </Field>
+
+                {selectedGame && (
+                  <Field label="Game mode" error={errors.gameMode} className="lg:col-span-2">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {selectedGame.modes.map((mode) => (
                       <button
-                        key={mode}
-                        onClick={() => updateForm('participantMode', mode)}
+                        key={mode.modeKey}
+                        onClick={() => setForm((current) => ({ ...current, gameMode: mode.modeKey, participantMode: mode.participantMode }))}
                         className={cn(
-                          'h-12 font-mono text-[11px] uppercase tracking-[0.22em] transition-colors',
-                          form.participantMode === mode ? 'bg-rose-500 text-white' : 'bg-white/[0.03] text-zinc-500 hover:text-white',
+                          'border px-4 py-4 text-left transition-colors',
+                          form.gameMode === mode.modeKey ? 'border-rose-500/70 bg-rose-500/10 text-white' : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/20 hover:text-white',
                         )}
                       >
-                        {mode}
+                        <span className="block font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500">{mode.modeGroup ?? mode.participantMode}</span>
+                        <span className="mt-2 block text-sm font-bold text-white">{mode.variantLabel ?? mode.name}</span>
+                        <span className="mt-1 block text-xs text-zinc-500">{mode.teamSize} starter{mode.teamSize === 1 ? '' : 's'}</span>
                       </button>
-                    ))}
-                  </div>
-                </Field>
+                      ))}
+                    </div>
+                  </Field>
+                )}
 
                 <div className="lg:col-span-2">
                   <Field label="Game engine" error={errors.game}>
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      {esportsGames.games.slice(0, 8).map((game) => (
+                      {gameOptions.slice(0, 12).map((game) => (
                         <button
                           key={game.slug}
                           onClick={() => handleGameSelect(game.name)}
@@ -469,7 +562,8 @@ const SeasonWizard = () => {
                   <h2 className="mt-4 text-3xl font-black uppercase tracking-tight text-white">{form.name || 'Untitled season'}</h2>
                   <div className="mt-6 grid gap-3 text-sm">
                     <SummaryRow label="Game" value={form.game || 'Not selected'} />
-                    <SummaryRow label="Format" value={form.participantMode.toUpperCase()} />
+                    <SummaryRow label="Mode" value={selectedMode ? `${selectedMode.modeGroup ? `${selectedMode.modeGroup} ` : ''}${selectedMode.variantLabel ?? selectedMode.name} (${selectedMode.teamSize})` : 'Not selected'} />
+                    <SummaryRow label="Region" value={form.region || 'Not selected'} />
                     <SummaryRow label="Blueprint" value={selectedBlueprint?.name ?? 'Not selected'} />
                     <SummaryRow label="Window" value={form.startDate || form.endDate ? `${form.startDate || 'Open'} → ${form.endDate || 'Open'}` : 'No schedule set'} />
                     <SummaryRow label="Public setup" value="Draft command center" />
@@ -506,7 +600,7 @@ const SeasonWizard = () => {
 
               <div className="mt-6 border-t border-white/10 pt-5">
                 <p className="text-xs leading-5 text-zinc-500">
-                  {selectedGame ? `${selectedGame.name} selected. ${selectedGame.category}` : 'Select a game to unlock the blueprint decision.'}
+                  {selectedGame ? `${selectedGame.name} selected. ${selectedGame.category ?? 'Catalog-backed game'}` : 'Select a game to unlock the blueprint decision.'}
                 </p>
               </div>
             </div>

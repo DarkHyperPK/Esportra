@@ -1,1169 +1,797 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  Building2,
+  Calendar,
+  CheckCircle,
+  ExternalLink,
+  ImageIcon,
+  Loader2,
+  Plus,
+  Save,
+  Trash2,
+  Trophy,
+  Upload,
+  Users,
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Building2, Upload, Save, Loader2, ExternalLink, Globe, Twitter, Instagram, Youtube, Link2, CheckCircle, Trophy, Users, Calendar } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { motion } from 'framer-motion';
-import { Trash2, ImageIcon, Folder, Plus, ArrowLeft, MoreVertical, Edit2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import OrganizationStaffManager from '@/components/organizer/OrganizationStaffManager';
-import { CommandTabs } from '@/components/management/CommandSurface';
+import {
+  CommandActionBar,
+  CommandButton,
+  CommandEmptyState,
+  CommandPanel,
+  CommandSection,
+  CommandTabs,
+} from '@/components/management/CommandSurface';
+import { cn } from '@/lib/utils';
 
 interface Organization {
-    id: string;
-    owner_id: string;
-    name: string;
-    slug: string;
-    logo_url: string | null;
-    banner_url: string | null;
-    description: string | null;
-    social_links: {
-        website?: string;
-        twitter?: string;
-        instagram?: string;
-        youtube?: string;
-        discord?: string;
-    };
-    is_verified: boolean;
-    created_at: string;
+  id: string;
+  owner_id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  banner_url: string | null;
+  description: string | null;
+  social_links: {
+    website?: string;
+    twitter?: string;
+    instagram?: string;
+    youtube?: string;
+    discord?: string;
+  };
+  is_verified: boolean;
+  created_at: string;
 }
 
 interface Album {
-    id: string;
-    organization_id: string;
-    title: string;
-    description: string | null;
-    created_at: string;
-    cover_url?: string | null;
+  id: string;
+  organization_id: string;
+  title: string;
+  description: string | null;
+  created_at: string;
+  cover_url?: string | null;
 }
 
 interface OrgStats {
-    totalTournaments: number;
-    totalParticipants: number;
-    activeTournaments: number;
+  totalTournaments: number;
+  totalParticipants: number;
+  activeTournaments: number;
 }
 
 interface Season {
-    id: string;
-    name: string;
-    slug: string;
-    game: string;
-    status: string;
-    participant_mode: string;
-    is_public: boolean;
-    start_date: string | null;
-    end_date: string | null;
-    created_at: string;
+  id: string;
+  name: string;
+  slug: string;
+  game: string;
+  status: string;
+  participant_mode: string;
+  is_public: boolean;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
 }
 
+const tabs = [
+  { value: 'profile', label: 'Profile' },
+  { value: 'branding', label: 'Branding' },
+  { value: 'staff', label: 'Staff' },
+  { value: 'seasons', label: 'Seasons' },
+  { value: 'media', label: 'Media' },
+  { value: 'advanced', label: 'Advanced' },
+];
+
+const textInput = 'rounded-none border-white/10 bg-black/35 text-white placeholder:text-zinc-600 focus:border-rose-500';
+
 const OrganizationSettings: React.FC = () => {
-    const { user } = useAuth();
-    const { toast } = useToast();
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [organization, setOrganization] = useState<Organization | null>(null);
-    const [stats, setStats] = useState<OrgStats>({ totalTournaments: 0, totalParticipants: 0, activeTournaments: 0 });
-    const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, profile } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [stats, setStats] = useState<OrgStats>({ totalTournaments: 0, totalParticipants: 0, activeTournaments: 0 });
+  const mediaInputRef = useRef<HTMLInputElement>(null);
 
-    // Form state
-    const [name, setName] = useState('');
-    const [slug, setSlug] = useState('');
-    const [description, setDescription] = useState('');
-    const [logoUrl, setLogoUrl] = useState('');
-    const [bannerUrl, setBannerUrl] = useState('');
-    const [socialLinks, setSocialLinks] = useState({
-        website: '',
-        twitter: '',
-        instagram: '',
-        youtube: '',
-        discord: '',
-    });
-    const [mediaItems, setMediaItems] = useState<any[]>([]);
-    const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [activeSection, setActiveSection] = useState('profile');
+  const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [description, setDescription] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [bannerUrl, setBannerUrl] = useState('');
+  const [socialLinks, setSocialLinks] = useState({ website: '', twitter: '', instagram: '', youtube: '', discord: '' });
+  const [mediaItems, setMediaItems] = useState<any[]>([]);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [activeAlbum, setActiveAlbum] = useState<Album | null>(null);
+  const [isCreateAlbumOpen, setIsCreateAlbumOpen] = useState(false);
+  const [newAlbumTitle, setNewAlbumTitle] = useState('');
+  const [newAlbumDesc, setNewAlbumDesc] = useState('');
+  const [creatingAlbum, setCreatingAlbum] = useState(false);
+  const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
+  const [pendingLogoPreview, setPendingLogoPreview] = useState<string | null>(null);
+  const [pendingBannerFile, setPendingBannerFile] = useState<File | null>(null);
+  const [pendingBannerPreview, setPendingBannerPreview] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [seasons, setSeasons] = useState<Season[]>([]);
 
-    // Album State
-    const [albums, setAlbums] = useState<Album[]>([]);
-    const [activeAlbum, setActiveAlbum] = useState<Album | null>(null);
-    const [isCreateAlbumOpen, setIsCreateAlbumOpen] = useState(false);
-    const [newAlbumTitle, setNewAlbumTitle] = useState('');
-    const [newAlbumDesc, setNewAlbumDesc] = useState('');
-    const [creatingAlbum, setCreatingAlbum] = useState(false);
+  const hasUnsavedChanges = organization
+    ? name !== organization.name ||
+      slug !== organization.slug ||
+      (description || '') !== (organization.description || '') ||
+      (logoUrl || '') !== (organization.logo_url || '') ||
+      (bannerUrl || '') !== (organization.banner_url || '') ||
+      JSON.stringify(socialLinks) !== JSON.stringify(organization.social_links || {})
+    : name.trim() !== '' || description.trim() !== '';
 
-    // Branding confirmation state
-    const [pendingLogoFile, setPendingLogoFile] = useState<File | null>(null);
-    const [pendingLogoPreview, setPendingLogoPreview] = useState<string | null>(null);
-    const [pendingBannerFile, setPendingBannerFile] = useState<File | null>(null);
-    const [pendingBannerPreview, setPendingBannerPreview] = useState<string | null>(null);
-    const [uploadingLogo, setUploadingLogo] = useState(false);
-    const [uploadingBanner, setUploadingBanner] = useState(false);
+  useEffect(() => {
+    if (user?.id) void fetchOrganization();
+  }, [user?.id]);
 
-    // Seasons state
-    const [seasons, setSeasons] = useState<Season[]>([]);
-    const [activeManagementSection, setActiveManagementSection] = useState('profile');
+  const fetchOrganization = async () => {
+    try {
+      const data = await apiClient.get<Organization | null>('/api/organizations/mine');
+      if (!data) return;
+      setOrganization(data);
+      setName(data.name);
+      setSlug(data.slug);
+      setDescription(data.description || '');
+      setLogoUrl(data.logo_url || '');
+      setBannerUrl(data.banner_url || '');
+      setSocialLinks({ website: '', twitter: '', instagram: '', youtube: '', discord: '', ...(data.social_links || {}) });
+      void fetchAlbums(data.id);
+      void fetchMedia(data.id, null);
+      void fetchStats(data.id);
+      void fetchSeasons(data.id);
+    } catch (error) {
+      console.error('Error fetching organization:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Track whether form fields differ from saved organization data
-    const hasUnsavedChanges = organization ? (
-        name !== organization.name ||
-        slug !== organization.slug ||
-        (description || '') !== (organization.description || '') ||
-        (logoUrl || '') !== (organization.logo_url || '') ||
-        (bannerUrl || '') !== (organization.banner_url || '') ||
-        JSON.stringify(socialLinks) !== JSON.stringify(organization.social_links || {})
-    ) : (name.trim() !== '' || description.trim() !== '');
+  const fetchAlbums = async (orgId: string) => {
+    try {
+      const data = await apiClient.get<any[]>(`/api/organizations/${orgId}/albums`);
+      setAlbums((data || []).map((album: any) => ({ ...album, cover_url: album.cover_url || album.media?.[0]?.url || null })));
+    } catch (error) {
+      console.error('Error fetching albums:', error);
+    }
+  };
 
-    useEffect(() => {
-        if (user?.id) {
-            fetchOrganization();
-        }
-    }, [user?.id]);
+  const fetchStats = async (orgId: string) => {
+    try {
+      setStats((await apiClient.get<OrgStats>(`/api/organizations/${orgId}/stats`)) || { totalTournaments: 0, totalParticipants: 0, activeTournaments: 0 });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
-    const managementTabs = [
-        { value: 'profile', label: 'Profile' },
-        { value: 'branding', label: 'Branding' },
-        { value: 'staff', label: 'Staff' },
-        { value: 'seasons', label: 'Seasons' },
-        { value: 'media', label: 'Media' },
-        { value: 'advanced', label: 'Advanced' },
-    ];
+  const fetchSeasons = async (orgId: string) => {
+    try {
+      setSeasons((await apiClient.get<Season[]>(`/api/seasons?organizationId=${orgId}`)) || []);
+    } catch (error) {
+      console.error('Error fetching seasons:', error);
+      setSeasons([]);
+    }
+  };
 
-    const handleManagementTabChange = (value: string) => {
-        setActiveManagementSection(value);
-        requestAnimationFrame(() => {
-            document.getElementById(`org-section-${value}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-    };
+  const fetchMedia = async (orgId: string, albumId: string | null = null) => {
+    try {
+      const data = await apiClient.get<any[]>(`/api/organizations/${orgId}/media${albumId ? `?albumId=${albumId}` : ''}`);
+      setMediaItems(data || []);
+    } catch (error) {
+      console.error('Error fetching media:', error);
+    }
+  };
 
-    const fetchOrganization = async () => {
-        try {
-            // The API returns the org the current user owns or is staff of
-            const data = await apiClient.get<Organization | null>('/api/organizations/mine');
+  const generateSlug = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim();
 
-            if (data) {
-                setOrganization(data);
-                setName(data.name);
-                setSlug(data.slug);
-                setDescription(data.description || '');
-                setLogoUrl(data.logo_url || '');
-                setBannerUrl(data.banner_url || '');
-                setSocialLinks(data.social_links || {});
-                fetchAlbums(data.id);
-                fetchMedia(data.id, null); // Fetch root media initially
-                fetchStats(data.id); // Fetch stats using org ID
-                fetchSeasons(data.id); // Fetch seasons
-            }
-        } catch (error: any) {
-            console.error('Error fetching organization:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleNameChange = (value: string) => {
+    setName(value);
+    if (!organization) setSlug(generateSlug(value));
+  };
 
-    const fetchAlbums = async (orgId: string) => {
-        try {
-            const data = await apiClient.get<any[]>(`/api/organizations/${orgId}/albums`);
-            const albumsWithCovers = (data || []).map((album: any) => ({
-                ...album,
-                cover_url: album.cover_url || album.media?.[0]?.url || null,
-            }));
-            setAlbums(albumsWithCovers);
-        } catch (error) {
-            console.error('Error fetching albums:', error);
-        }
-    };
-
-    const fetchStats = async (orgId?: string) => {
-        if (!orgId) return;
-        try {
-            const data = await apiClient.get<OrgStats>(`/api/organizations/${orgId}/stats`);
-            setStats(data || { totalTournaments: 0, totalParticipants: 0, activeTournaments: 0 });
-        } catch (error) {
-            console.error('Error fetching stats:', error);
-        }
-    };
-
-    const fetchSeasons = async (orgId?: string) => {
-        if (!orgId) return;
-        try {
-            const data = await apiClient.get<Season[]>(`/api/seasons?organizationId=${orgId}`);
-            setSeasons(data || []);
-        } catch (error) {
-            console.error('Error fetching seasons:', error);
-            setSeasons([]);
-        }
-    };
-
-    const fetchMedia = async (orgId: string, albumId: string | null = null) => {
-        try {
-            const params = albumId ? `?albumId=${albumId}` : '';
-            const data = await apiClient.get<any[]>(`/api/organizations/${orgId}/media${params}`);
-            if (data) setMediaItems(data);
-        } catch (error) {
-            console.error('Error fetching media:', error);
-        }
-    };
-
-    const generateSlug = (name: string) => {
-        return name
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .trim();
-    };
-
-    const handleNameChange = (value: string) => {
-        setName(value);
-        if (!organization) {
-            setSlug(generateSlug(value));
-        }
-    };
-
-    const handleSave = async () => {
-        if (!name.trim() || !slug.trim()) {
-            toast({ title: 'Error', description: 'Name and slug are required.', variant: 'destructive' });
-            return;
-        }
-
-        setSaving(true);
-        try {
-            const orgData = {
-                name: name.trim(),
-                slug: slug.trim(),
-                description: description.trim() || null,
-                logoUrl: logoUrl.trim() || null,
-                bannerUrl: bannerUrl.trim() || null,
-                socialLinks: socialLinks,
-            };
-
-            if (organization) {
-                await apiClient.put(`/api/organizations/${organization.id}`, orgData);
-                toast({ title: 'Success', description: 'Organization updated successfully!' });
-            } else {
-                const data = await apiClient.post<Organization>('/api/organizations', orgData);
-                setOrganization(data);
-                toast({ title: 'Success', description: 'Organization created successfully!' });
-            }
-
-            fetchOrganization();
-        } catch (error: any) {
-            console.error('Error saving organization:', error, 'Response body:', error?.body);
-            const detail = error?.body?.error || error?.body?.detail || error?.body?.title
-                || (typeof error?.body === 'string' ? error.body : null)
-                || error.message;
-            toast({ title: 'Error', description: String(detail), variant: 'destructive' });
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setPendingLogoFile(file);
-        setPendingLogoPreview(URL.createObjectURL(file));
-        // Reset input so the same file can be re-selected
-        e.target.value = '';
-    };
-
-    const confirmLogoUpload = async () => {
-        if (!pendingLogoFile) return;
-        setUploadingLogo(true);
-        try {
-            const fileExt = pendingLogoFile.name.split('.').pop();
-            const fileName = `${user?.id}/org-logo.${fileExt}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('organizer-media')
-                .upload(fileName, pendingLogoFile, { upsert: true });
-            if (uploadError) throw uploadError;
-
-            const { data: urlData } = supabase.storage
-                .from('organizer-media')
-                .getPublicUrl(fileName);
-
-            const publicUrl = urlData.publicUrl;
-            setLogoUrl(publicUrl);
-
-            if (organization?.id) {
-                await apiClient.put(`/api/organizations/${organization.id}/logo`, { url: publicUrl });
-            }
-
-            toast({ title: 'Logo saved!' });
-        } catch (error: any) {
-            toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
-        } finally {
-            setUploadingLogo(false);
-            cancelLogoPreview();
-        }
-    };
-
-    const cancelLogoPreview = () => {
-        if (pendingLogoPreview) URL.revokeObjectURL(pendingLogoPreview);
-        setPendingLogoFile(null);
-        setPendingLogoPreview(null);
-    };
-
-    const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setPendingBannerFile(file);
-        setPendingBannerPreview(URL.createObjectURL(file));
-        e.target.value = '';
-    };
-
-    const confirmBannerUpload = async () => {
-        if (!pendingBannerFile) return;
-        setUploadingBanner(true);
-        try {
-            const fileExt = pendingBannerFile.name.split('.').pop();
-            const fileName = `${user?.id}/org-banner.${fileExt}`;
-
-            const { error: uploadError } = await supabase.storage
-                .from('organizer-media')
-                .upload(fileName, pendingBannerFile, { upsert: true });
-            if (uploadError) throw uploadError;
-
-            const { data: urlData } = supabase.storage
-                .from('organizer-media')
-                .getPublicUrl(fileName);
-
-            const publicUrl = urlData.publicUrl;
-            setBannerUrl(publicUrl);
-
-            if (organization?.id) {
-                await apiClient.put(`/api/organizations/${organization.id}/banner`, { url: publicUrl });
-            }
-
-            toast({ title: 'Banner saved!' });
-        } catch (error: any) {
-            toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
-        } finally {
-            setUploadingBanner(false);
-            cancelBannerPreview();
-        }
-    };
-
-    const cancelBannerPreview = () => {
-        if (pendingBannerPreview) URL.revokeObjectURL(pendingBannerPreview);
-        setPendingBannerFile(null);
-        setPendingBannerPreview(null);
-    };
-
-    const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0 || !organization) return;
-
-        setUploadingMedia(true);
-        try {
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${organization.id}/media_${Date.now()}_${i}.${fileExt}`;
-
-                // Upload to storage
-                const { error: uploadError } = await supabase.storage
-                    .from('organizer-media')
-                    .upload(fileName, file); // Standard upload
-
-                if (uploadError) throw uploadError;
-
-                const { data: { publicUrl } } = supabase.storage
-                    .from('organizer-media')
-                    .getPublicUrl(fileName);
-
-                // Insert to DB
-                await apiClient.post(`/api/organizations/${organization.id}/media`, {
-                    url: publicUrl,
-                    type: file.type.startsWith('video') ? 'video' : 'image',
-                    caption: file.name,
-                    albumId: activeAlbum?.id || null
-                });
-            }
-            toast({ title: 'Success', description: 'Media uploaded successfully' });
-            fetchMedia(organization.id, activeAlbum?.id || null);
-        } catch (error: any) {
-            console.error(error);
-            toast({ title: 'Error', description: 'Failed to upload media', variant: 'destructive' });
-        } finally {
-            setUploadingMedia(false);
-        }
-    };
-
-    const handleDeleteMedia = async (id: string, url: string) => {
-        try {
-            // Extract path and delete from storage could be added here if needed
-            // For now just delete record
-            await apiClient.delete(`/api/organizations/${organization!.id}/media/${id}`);
-            if (organization) fetchMedia(organization.id, activeAlbum?.id || null);
-            toast({ title: 'Deleted', description: 'Media removed.' });
-        } catch (e) {
-            toast({ title: 'Error', description: 'Failed to delete.', variant: 'destructive' });
-        }
-    };
-
-    const handleCreateAlbum = async () => {
-        if (!newAlbumTitle.trim() || !organization) return;
-
-        setCreatingAlbum(true);
-        try {
-            const data = await apiClient.post<Album>(`/api/organizations/${organization.id}/albums`, {
-                title: newAlbumTitle.trim(),
-                description: newAlbumDesc.trim() || null,
-            });
-
-            setAlbums([data, ...albums]);
-            setNewAlbumTitle('');
-            setNewAlbumDesc('');
-            setIsCreateAlbumOpen(false);
-            toast({ title: 'Success', description: 'Album created.' });
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        } finally {
-            setCreatingAlbum(false);
-        }
-    };
-
-    const handleDeleteAlbum = async (albumId: string) => {
-        // Rely on CASCADE delete for media
-        try {
-            await apiClient.delete(`/api/organizations/${organization!.id}/albums/${albumId}`);
-            setAlbums(albums.filter(a => a.id !== albumId));
-            if (activeAlbum?.id === albumId) setActiveAlbum(null);
-            toast({ title: 'Deleted', description: 'Album removed.' });
-        } catch (error) {
-            toast({ title: 'Error', description: 'Failed to delete album.', variant: 'destructive' });
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-20">
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col items-center gap-4"
-                >
-                    <Loader2 className="h-10 w-10 animate-spin text-rose-400" />
-                    <span className="text-gray-400">Loading organization...</span>
-                </motion.div>
-            </div>
-        );
+  const handleSave = async () => {
+    if (!name.trim() || !slug.trim()) {
+      toast({ title: 'Error', description: 'Name and slug are required.', variant: 'destructive' });
+      return;
     }
 
+    setSaving(true);
+    try {
+      const orgData = {
+        name: name.trim(),
+        slug: slug.trim(),
+        description: description.trim() || null,
+        logoUrl: logoUrl.trim() || null,
+        bannerUrl: bannerUrl.trim() || null,
+        socialLinks,
+      };
+
+      if (organization) {
+        await apiClient.put(`/api/organizations/${organization.id}`, orgData);
+        toast({ title: 'Saved', description: 'Organization updated successfully.' });
+      } else {
+        setOrganization(await apiClient.post<Organization>('/api/organizations', orgData));
+        toast({ title: 'Created', description: 'Organization created successfully.' });
+      }
+      void fetchOrganization();
+    } catch (error: any) {
+      const detail = error?.body?.error || error?.body?.detail || error?.body?.title || error.message;
+      toast({ title: 'Error', description: String(detail), variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setPendingLogoFile(file);
+    setPendingLogoPreview(URL.createObjectURL(file));
+    event.target.value = '';
+  };
+
+  const handleBannerUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setPendingBannerFile(file);
+    setPendingBannerPreview(URL.createObjectURL(file));
+    event.target.value = '';
+  };
+
+  const cancelLogoPreview = () => {
+    if (pendingLogoPreview) URL.revokeObjectURL(pendingLogoPreview);
+    setPendingLogoFile(null);
+    setPendingLogoPreview(null);
+  };
+
+  const cancelBannerPreview = () => {
+    if (pendingBannerPreview) URL.revokeObjectURL(pendingBannerPreview);
+    setPendingBannerFile(null);
+    setPendingBannerPreview(null);
+  };
+
+  const confirmLogoUpload = async () => {
+    if (!pendingLogoFile) return;
+    setUploadingLogo(true);
+    try {
+      const fileExt = pendingLogoFile.name.split('.').pop();
+      const fileName = `${user?.id}/org-logo.${fileExt}`;
+      const { error } = await supabase.storage.from('organizer-media').upload(fileName, pendingLogoFile, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from('organizer-media').getPublicUrl(fileName);
+      setLogoUrl(data.publicUrl);
+      if (organization?.id) await apiClient.put(`/api/organizations/${organization.id}/logo`, { url: data.publicUrl });
+      toast({ title: 'Logo saved' });
+    } catch (error: any) {
+      toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setUploadingLogo(false);
+      cancelLogoPreview();
+    }
+  };
+
+  const confirmBannerUpload = async () => {
+    if (!pendingBannerFile) return;
+    setUploadingBanner(true);
+    try {
+      const fileExt = pendingBannerFile.name.split('.').pop();
+      const fileName = `${user?.id}/org-banner.${fileExt}`;
+      const { error } = await supabase.storage.from('organizer-media').upload(fileName, pendingBannerFile, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from('organizer-media').getPublicUrl(fileName);
+      setBannerUrl(data.publicUrl);
+      if (organization?.id) await apiClient.put(`/api/organizations/${organization.id}/banner`, { url: data.publicUrl });
+      toast({ title: 'Banner saved' });
+    } catch (error: any) {
+      toast({ title: 'Upload failed', description: error.message, variant: 'destructive' });
+    } finally {
+      setUploadingBanner(false);
+      cancelBannerPreview();
+    }
+  };
+
+  const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files?.length || !organization) return;
+
+    setUploadingMedia(true);
+    try {
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${organization.id}/media_${Date.now()}_${index}.${fileExt}`;
+        const { error } = await supabase.storage.from('organizer-media').upload(fileName, file);
+        if (error) throw error;
+        const { data } = supabase.storage.from('organizer-media').getPublicUrl(fileName);
+        await apiClient.post(`/api/organizations/${organization.id}/media`, {
+          url: data.publicUrl,
+          type: file.type.startsWith('video') ? 'video' : 'image',
+          caption: file.name,
+          albumId: activeAlbum?.id || null,
+        });
+      }
+      toast({ title: 'Uploaded', description: 'Media uploaded successfully.' });
+      await fetchMedia(organization.id, activeAlbum?.id || null);
+    } catch (error) {
+      console.error(error);
+      toast({ title: 'Error', description: 'Failed to upload media.', variant: 'destructive' });
+    } finally {
+      setUploadingMedia(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleDeleteMedia = async (id: string) => {
+    if (!organization) return;
+    try {
+      await apiClient.delete(`/api/organizations/${organization.id}/media/${id}`);
+      await fetchMedia(organization.id, activeAlbum?.id || null);
+      toast({ title: 'Deleted', description: 'Media removed.' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to delete media.', variant: 'destructive' });
+    }
+  };
+
+  const handleCreateAlbum = async () => {
+    if (!newAlbumTitle.trim() || !organization) return;
+    setCreatingAlbum(true);
+    try {
+      const data = await apiClient.post<Album>(`/api/organizations/${organization.id}/albums`, {
+        title: newAlbumTitle.trim(),
+        description: newAlbumDesc.trim() || null,
+      });
+      setAlbums([data, ...albums]);
+      setNewAlbumTitle('');
+      setNewAlbumDesc('');
+      setIsCreateAlbumOpen(false);
+      toast({ title: 'Created', description: 'Album created.' });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } finally {
+      setCreatingAlbum(false);
+    }
+  };
+
+  const handleDeleteAlbum = async (albumId: string) => {
+    if (!organization) return;
+    try {
+      await apiClient.delete(`/api/organizations/${organization.id}/albums/${albumId}`);
+      setAlbums(albums.filter((album) => album.id !== albumId));
+      if (activeAlbum?.id === albumId) setActiveAlbum(null);
+      toast({ title: 'Deleted', description: 'Album removed.' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to delete album.', variant: 'destructive' });
+    }
+  };
+
+  if (loading) {
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="space-y-6"
-        >
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold flex items-center gap-3 font-heading">
-                        <div className="p-2 rounded-none bg-rose-500/10 border border-white/10">
-                            <Building2 className="h-6 w-6 text-rose-400" />
-                        </div>
-                        <span className="text-white">
-                            Organization Settings
-                        </span>
-                    </h2>
-                    <p className="text-gray-400 mt-2">
-                        {organization
-                            ? 'Manage your organization profile displayed on tournaments.'
-                            : 'Create your organization to display your brand on tournaments.'}
-                    </p>
-                </div>
-                {organization && (
-                    <Button
-                        variant="outline"
-                        onClick={() => window.open(`/org/${organization.slug}`, '_blank')}
-                        className="gap-2 border-white/10 hover:bg-white/5 hover:border-rose-500/50 transition-all"
-                    >
-                        <ExternalLink className="h-4 w-4" />
-                        View Public Profile
-                    </Button>
-                )}
-            </div>
-
-            <CommandTabs tabs={managementTabs} active={activeManagementSection} onChange={handleManagementTabChange} />
-
-            {/* Stats Cards */}
-            <div id="org-section-profile" className="grid grid-cols-1 md:grid-cols-3 gap-4 scroll-mt-24">
-                <motion.div
-                    whileHover={{ y: -4, scale: 1.02 }}
-                    className="relative overflow-hidden rounded-none p-6 border border-white/5 bg-[#09090b] backdrop-blur-sm"
-                >
-                    <Trophy className="h-8 w-8 text-rose-400 mb-3" />
-                    <div className="text-3xl font-bold font-heading">{stats.totalTournaments}</div>
-                    <div className="text-gray-400 text-sm">Total Tournaments</div>
-                </motion.div>
-
-                <motion.div
-                    whileHover={{ y: -4, scale: 1.02 }}
-                    className="relative overflow-hidden rounded-none p-6 border border-white/5 bg-[#09090b] backdrop-blur-sm"
-                >
-                    <Users className="h-8 w-8 text-rose-400 mb-3" />
-                    <div className="text-3xl font-bold font-heading">{stats.totalParticipants}</div>
-                    <div className="text-gray-400 text-sm">Total Participants</div>
-                </motion.div>
-
-                <motion.div
-                    whileHover={{ y: -4, scale: 1.02 }}
-                    className="relative overflow-hidden rounded-none p-6 border border-white/5 bg-[#09090b] backdrop-blur-sm"
-                >
-                    <Calendar className="h-8 w-8 text-emerald-400 mb-3" />
-                    <div className="text-3xl font-bold font-heading">{stats.activeTournaments}</div>
-                    <div className="text-gray-400 text-sm">Active Tournaments</div>
-                </motion.div>
-            </div>
-
-            {/* Banner & Logo Preview */}
-            <Card className="overflow-hidden border-white/5 bg-[#09090b]">
-                <div
-                    className="h-36 bg-gradient-to-r from-rose-500/30 via-white/10 to-black relative group"
-                    style={bannerUrl ? { backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-                >
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-transparent to-transparent" />
-
-                    {/* Preview only — no interactive upload here */}
-
-                    <div className="absolute bottom-0 left-6 translate-y-1/2">
-                        <Avatar className="h-24 w-24 border-4 border-[#050507] shadow-xl ring-2 ring-rose-500/30">
-                            <AvatarImage src={logoUrl} />
-                            <AvatarFallback className="bg-rose-500 text-2xl font-bold">
-                                {name ? name[0].toUpperCase() : 'O'}
-                            </AvatarFallback>
-                        </Avatar>
-                    </div>
-                    {organization?.is_verified && (
-                        <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-500/20 border border-rose-500/50 text-rose-400 text-sm z-20">
-                            <CheckCircle className="h-4 w-4" />
-                            Verified
-                        </div>
-                    )}
-                </div>
-                <CardContent className="pt-16 pb-6">
-                    <h3 className="text-xl font-bold font-heading">{name || 'Your Organization'}</h3>
-                    <p className="text-gray-500 text-sm">@{slug || 'your-slug'}</p>
-                </CardContent>
-            </Card>
-
-            {/* Basic Info */}
-            <Card className="border-white/5 bg-[#09090b]">
-                <CardHeader>
-                    <CardTitle className="font-heading">Basic Information</CardTitle>
-                    <CardDescription>This is how your organization will appear on tournaments.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="name" className="text-gray-300">Organization Name *</Label>
-                            <Input
-                                id="name"
-                                value={name}
-                                onChange={(e) => handleNameChange(e.target.value)}
-                                placeholder="Esportra Gaming"
-                                className="bg-white/5 border-white/10 focus:border-rose-500 focus:ring-rose-500/20"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="slug" className="text-gray-300">URL Slug *</Label>
-                            <div className="flex items-center gap-2">
-                                <span className="text-gray-500 text-sm">/org/</span>
-                                <Input
-                                    id="slug"
-                                    value={slug}
-                                    onChange={(e) => setSlug(generateSlug(e.target.value))}
-                                    placeholder="esportra-gaming"
-                                    className="bg-white/5 border-white/10 focus:border-rose-500 focus:ring-rose-500/20"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="description" className="text-gray-300">Description</Label>
-                        <Textarea
-                            id="description"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Tell players about your organization..."
-                            className="bg-white/5 border-white/10 focus:border-rose-500 focus:ring-rose-500/20 min-h-[120px]"
-                        />
-                    </div>
-                </CardContent>
-            </Card>
-
-            <div id="org-section-seasons" className="scroll-mt-24" />
-            {/* Seasons */}
-            <Card className="border-white/5 bg-[#09090b]">
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle className="font-heading flex items-center gap-2">
-                                <Trophy className="h-5 w-5 text-rose-400" />
-                                Seasons
-                            </CardTitle>
-                            <CardDescription>Manage your organization's competitive seasons.</CardDescription>
-                        </div>
-                        <Button variant="outline" size="sm" asChild className="border-white/10 hover:bg-white/5 hover:border-rose-500/50">
-                            <Link to="/tournaments/create?mode=season">
-                                <Plus className="h-4 w-4 mr-2" />
-                                Create Season
-                            </Link>
-                        </Button>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {seasons.length === 0 ? (
-                        <div className="text-center py-12 border border-dashed border-white/10 rounded-none bg-white/5">
-                            <Trophy className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                            <p className="text-gray-500">No seasons created yet.</p>
-                            <Button variant="outline" size="sm" asChild className="mt-4 border-white/10 hover:bg-white/5">
-                                <Link to="/tournaments/create?mode=season">Create your first season</Link>
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="space-y-3">
-                            {seasons.map((season) => (
-                                <div
-                                    key={season.id}
-                                    className="flex items-center justify-between p-4 rounded-none border border-white/10 bg-white/5 hover:bg-white/10 transition-colors"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-10 w-10 rounded-none bg-gradient-to-br from-rose-500/20 to-rose-600/20 border border-rose-500/30 flex items-center justify-center">
-                                            <Trophy className="h-5 w-5 text-rose-400" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-semibold text-white">{season.name}</h4>
-                                            <p className="text-sm text-gray-400">{season.game} • {season.participant_mode}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                            season.status === 'active' ? 'bg-emerald-500/20 text-emerald-300' :
-                                            season.status === 'draft' ? 'bg-gray-500/20 text-gray-300' :
-                                            season.status === 'completed' ? 'bg-emerald-500/20 text-emerald-300' :
-                                            'bg-amber-500/20 text-amber-300'
-                                        }`}>
-                                            {season.status}
-                                        </span>
-                                        <Button variant="ghost" size="sm" asChild className="text-gray-400 hover:text-white hover:bg-white/10">
-                                            <Link to={`/organizer/seasons/${season.id}`}>
-                                                <ExternalLink className="h-4 w-4" />
-                                            </Link>
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            <div id="org-section-branding" className="scroll-mt-24" />
-            {/* Branding */}
-            <Card className="border-white/5 bg-[#09090b]">
-                <CardHeader>
-                    <CardTitle className="font-heading">Branding</CardTitle>
-                    <CardDescription>Upload your organization logo and banner.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                            <Label className="text-gray-300">Logo</Label>
-                            <div className="flex items-center gap-6">
-                                <Avatar className="h-20 w-20 border-2 border-white/10">
-                                    <AvatarImage src={logoUrl} />
-                                    <AvatarFallback className="bg-rose-500 text-xl">
-                                        {name ? name[0].toUpperCase() : 'O'}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <label className="cursor-pointer">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleLogoUpload}
-                                        className="hidden"
-                                    />
-                                    <Button variant="outline" size="sm" asChild className="border-white/10 hover:bg-white/5 hover:border-rose-500/50">
-                                        <span>
-                                            <Upload className="h-4 w-4 mr-2" />
-                                            Upload Logo
-                                        </span>
-                                    </Button>
-                                </label>
-                            </div>
-                            <p className="text-xs text-gray-500">Recommended: 200x200px, PNG or JPG</p>
-                        </div>
-                        <div className="space-y-4">
-                            <Label className="text-gray-300">Banner</Label>
-                            <label className="cursor-pointer block">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleBannerUpload}
-                                    className="hidden"
-                                />
-                                <div
-                                    className="h-24 rounded-none bg-rose-500/10 border border-white/10 flex items-center justify-center overflow-hidden relative group hover:border-rose-500/50 transition-all"
-                                    style={bannerUrl ? { backgroundImage: `url(${bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-                                >
-                                    {/* Hover Overlay */}
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <div className="flex items-center gap-2 text-white text-sm font-medium">
-                                            <Edit2 className="h-4 w-4" />
-                                            {bannerUrl ? 'Change Banner' : 'Upload Banner'}
-                                        </div>
-                                    </div>
-                                    {!bannerUrl && <span className="text-gray-500 text-sm group-hover:opacity-0 transition-opacity">1200 x 300 recommended</span>}
-                                </div>
-                            </label>
-                            <p className="text-xs text-gray-500">Click to upload or change banner</p>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Logo Confirmation Dialog */}
-            <Dialog open={!!pendingLogoPreview} onOpenChange={(open) => { if (!open) cancelLogoPreview(); }}>
-                <DialogContent className="sm:max-w-md bg-[#0a0a0c] border-zinc-800">
-                    <DialogHeader>
-                        <DialogTitle>Confirm Logo</DialogTitle>
-                        <DialogDescription>Preview your new logo before saving.</DialogDescription>
-                    </DialogHeader>
-                    <div className="flex justify-center py-6">
-                        <Avatar className="h-32 w-32 border-2 border-white/10">
-                            <AvatarImage src={pendingLogoPreview || ''} />
-                            <AvatarFallback className="bg-rose-500 text-3xl">
-                                {name ? name[0].toUpperCase() : 'O'}
-                            </AvatarFallback>
-                        </Avatar>
-                    </div>
-                    <DialogFooter className="flex gap-2 sm:justify-end">
-                        <Button variant="outline" onClick={cancelLogoPreview} className="border-white/10 hover:bg-white/5">
-                            Cancel
-                        </Button>
-                        <Button onClick={confirmLogoUpload} disabled={uploadingLogo} className="bg-rose-500 hover:bg-rose-500/80">
-                            {uploadingLogo ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : 'Confirm & Save'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Banner Confirmation Dialog */}
-            <Dialog open={!!pendingBannerPreview} onOpenChange={(open) => { if (!open) cancelBannerPreview(); }}>
-                <DialogContent className="sm:max-w-2xl bg-[#0a0a0c] border-zinc-800">
-                    <DialogHeader>
-                        <DialogTitle>Confirm Banner</DialogTitle>
-                        <DialogDescription>Preview your new banner before saving.</DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <div
-                            className="h-36 rounded-none bg-rose-500/10 border border-white/10 overflow-hidden"
-                            style={pendingBannerPreview ? { backgroundImage: `url(${pendingBannerPreview})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-                        />
-                    </div>
-                    <DialogFooter className="flex gap-2 sm:justify-end">
-                        <Button variant="outline" onClick={cancelBannerPreview} className="border-white/10 hover:bg-white/5">
-                            Cancel
-                        </Button>
-                        <Button onClick={confirmBannerUpload} disabled={uploadingBanner} className="bg-rose-500 hover:bg-rose-500/80">
-                            {uploadingBanner ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : 'Confirm & Save'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-            <Card className="border-white/5 bg-[#09090b]">
-                <CardHeader>
-                    <CardTitle className="font-heading">Social Links</CardTitle>
-                    <CardDescription>Connect your organization's social media accounts.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-2 text-gray-300">
-                                <Globe className="h-4 w-4 text-rose-400" /> Website
-                            </Label>
-                            <Input
-                                value={socialLinks.website || ''}
-                                onChange={(e) => setSocialLinks({ ...socialLinks, website: e.target.value })}
-                                placeholder="https://your-website.com"
-                                className="bg-white/5 border-white/10 focus:border-rose-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-2 text-gray-300">
-                                <Twitter className="h-4 w-4 text-rose-400" /> Twitter/X
-                            </Label>
-                            <Input
-                                value={socialLinks.twitter || ''}
-                                onChange={(e) => setSocialLinks({ ...socialLinks, twitter: e.target.value })}
-                                placeholder="@username"
-                                className="bg-white/5 border-white/10 focus:border-rose-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-2 text-gray-300">
-                                <Instagram className="h-4 w-4 text-pink-400" /> Instagram
-                            </Label>
-                            <Input
-                                value={socialLinks.instagram || ''}
-                                onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
-                                placeholder="@username"
-                                className="bg-white/5 border-white/10 focus:border-rose-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-2 text-gray-300">
-                                <Youtube className="h-4 w-4 text-red-500" /> YouTube
-                            </Label>
-                            <Input
-                                value={socialLinks.youtube || ''}
-                                onChange={(e) => setSocialLinks({ ...socialLinks, youtube: e.target.value })}
-                                placeholder="Channel URL"
-                                className="bg-white/5 border-white/10 focus:border-rose-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="flex items-center gap-2 text-gray-300">
-                                <Link2 className="h-4 w-4 text-indigo-400" /> Discord
-                            </Label>
-                            <Input
-                                value={socialLinks.discord || ''}
-                                onChange={(e) => setSocialLinks({ ...socialLinks, discord: e.target.value })}
-                                placeholder="Discord invite link"
-                                className="bg-white/5 border-white/10 focus:border-rose-500"
-                            />
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <div id="org-section-media" className="scroll-mt-24" />
-            {/* Media Gallery */}
-            {/* Media Gallery */}
-            <Card className="border-white/5 bg-[#09090b]">
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            {activeAlbum && (
-                                <Button variant="ghost" size="icon" onClick={() => { setActiveAlbum(null); fetchMedia(organization?.id || '', null); }} className="h-8 w-8 -ml-2">
-                                    <ArrowLeft className="h-4 w-4" />
-                                </Button>
-                            )}
-                            <CardTitle className="font-heading">
-                                {activeAlbum ? activeAlbum.title : 'Media Library'}
-                            </CardTitle>
-                        </div>
-                        <CardDescription>
-                            {activeAlbum ? activeAlbum.description : 'Manage your albums and photos.'}
-                        </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {!activeAlbum && (
-                            <Dialog open={isCreateAlbumOpen} onOpenChange={setIsCreateAlbumOpen}>
-                                <DialogTrigger asChild>
-                                    <Button variant="outline" className="border-white/10 hover:bg-white/5 gap-2">
-                                        <Plus className="w-4 h-4" /> New Album
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="bg-[#0a0a0c] border-white/10 text-white">
-                                    <DialogHeader>
-                                        <DialogTitle>Create New Album</DialogTitle>
-                                        <DialogDescription className="text-gray-400">Group your photos and videos.</DialogDescription>
-                                    </DialogHeader>
-                                    <div className="space-y-4 py-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-gray-300">Title</Label>
-                                            <Input
-                                                placeholder="e.g. Summer Championship 2024"
-                                                value={newAlbumTitle}
-                                                onChange={e => setNewAlbumTitle(e.target.value)}
-                                                className="bg-white/5 border-white/10 text-white"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-gray-300">Description</Label>
-                                            <Textarea
-                                                placeholder="Optional description"
-                                                value={newAlbumDesc}
-                                                onChange={e => setNewAlbumDesc(e.target.value)}
-                                                className="bg-white/5 border-white/10 text-white"
-                                            />
-                                        </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button variant="ghost" onClick={() => setIsCreateAlbumOpen(false)} className="hover:bg-white/10 hover:text-white">Cancel</Button>
-                                        <Button onClick={handleCreateAlbum} disabled={creatingAlbum} className="bg-rose-500 hover:bg-rose-500/90">
-                                            {creatingAlbum ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create'}
-                                        </Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-                        )}
-
-                        <div>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                onChange={handleMediaUpload}
-                                className="hidden"
-                            />
-                            <Button
-                                disabled={uploadingMedia}
-                                onClick={() => fileInputRef.current?.click()}
-                                variant="default"
-                                className="bg-rose-500 hover:bg-rose-500/90 gap-2"
-                            >
-                                {uploadingMedia ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                                {activeAlbum ? 'Upload to Album' : 'Upload Uncategorized'}
-                            </Button>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {!activeAlbum && (
-                        <div className="mb-8">
-                            <h4 className="text-sm font-medium text-gray-400 mb-4 flex items-center gap-2">
-                                <Folder className="w-4 h-4" /> Albums
-                            </h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {albums.map(album => {
-                                    // We need to find a cover. ideally fetched. 
-                                    // For now, let's assume we can fetch it or just show a nice placeholder.
-                                    // To do it properly, I'll update the fetch logic below separately.
-                                    // For this replace block, I will set up the UI assuming `album.cover_url` exists or is passed.
-                                    // But wait, I can't inject props.
-                                    // I'll stick to the UI change here and rely on the existing 'album' object.
-                                    // Since I haven't updated the fetch yet, I will use a placeholder for now, then update fetch.
-                                    return (
-                                        <div
-                                            key={album.id}
-                                            onClick={() => { setActiveAlbum(album); fetchMedia(organization?.id || '', album.id); }}
-                                            className="group cursor-pointer relative aspect-square"
-                                        >
-                                            {/* Stack Effect */}
-                                            <div className="absolute top-0 right-0 w-full h-full bg-white/5 rounded-none rotate-3 scale-90 transition-transform group-hover:rotate-6 border border-white/5" />
-                                            <div className="absolute top-0 right-0 w-full h-full bg-white/5 rounded-none -rotate-3 scale-95 transition-transform group-hover:-rotate-6 border border-white/5" />
-
-                                            {/* Main Card */}
-                                            <div className="relative w-full h-full bg-[#0a0a0c] border border-white/10 rounded-none overflow-hidden shadow-xl transition-transform group-hover:scale-[1.02]">
-                                                {/* Cover Image */}
-                                                {(album as any).cover_url ? (
-                                                    <img
-                                                        src={(album as any).cover_url}
-                                                        alt={album.title}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex flex-col items-center justify-center bg-white/5">
-                                                        <Folder className="w-12 h-12 text-white/20 mb-2" />
-                                                    </div>
-                                                )}
-
-                                                {/* Overlay Gradient */}
-                                                <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-4">
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <div className="min-w-0">
-                                                            <h3 className="font-bold text-white text-lg truncate leading-tight shadow-sm drop-shadow-md">{album.title}</h3>
-                                                            <p className="text-xs text-gray-300 mt-1 truncate font-medium drop-shadow-sm">
-                                                                {new Date(album.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Delete Button (Hover) */}
-                                                <Button
-                                                    size="icon"
-                                                    variant="destructive"
-                                                    className="absolute top-2 right-2 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity rounded-full shadow-lg"
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteAlbum(album.id); }}
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
-
-                                                {/* Type Icon */}
-                                                <div className="absolute top-2 left-2 p-1.5 bg-black/50 backdrop-blur-md rounded-none border border-white/10">
-                                                    <ImageIcon className="w-3 h-3 text-white" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Media Grid */}
-                    {mediaItems.length === 0 && !activeAlbum ? (
-                        <div className="text-center py-12 border border-dashed border-white/10 rounded-none bg-white/5">
-                            <ImageIcon className="w-12 h-12 text-gray-700 mx-auto mb-4" />
-                            <p className="text-gray-500">No media uploaded yet.</p>
-                        </div>
-                    ) : (
-                        <div className="mt-8">
-                            <h4 className="text-sm font-medium text-gray-400 mb-4 flex items-center gap-2">
-                                <ImageIcon className="w-4 h-4" /> {activeAlbum ? 'Album Photos' : 'Uncategorized Photos'}
-                            </h4>
-                            <div className="columns-1 md:columns-3 gap-4 space-y-4">
-                                {mediaItems.map((item) => (
-                                    <div key={item.id} className="break-inside-avoid relative group rounded-none overflow-hidden bg-black/20">
-                                        <img src={item.url} loading="lazy" alt={item.caption} className="w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                            <Button
-                                                size="icon"
-                                                variant="destructive"
-                                                onClick={() => handleDeleteMedia(item.id, item.url)}
-                                                className="h-8 w-8"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            <div id="org-section-staff" className="scroll-mt-24" />
-            {/* Organization Staff */}
-            {organization && user?.id && (
-                <OrganizationStaffManager
-                    organizationId={organization.id}
-                    ownerId={user.id}
-                />
-            )}
-
-            <div id="org-section-advanced" className="scroll-mt-24" />
-            {/* Danger Zone */}
-            {organization && organization.owner_id === user?.id && (
-                <Card className="border-red-900/30 bg-red-950/10 mt-12">
-                    <CardHeader>
-                        <CardTitle className="text-red-500 font-heading">Danger Zone</CardTitle>
-                        <CardDescription className="text-red-400/60">
-                            Irreversible actions for your organization.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center justify-between p-4 border border-red-900/30 rounded-none bg-red-950/20">
-                            <div>
-                                <h4 className="font-semibold text-red-100">Delete Organization</h4>
-                                <p className="text-sm text-red-400/60 mt-1">
-                                    This will delete your organization profile, settings, and media.
-                                    <br />Active tournaments must be completed or cancelled first.
-                                </p>
-                            </div>
-                            <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button variant="destructive" className="bg-red-900/50 hover:bg-red-900 text-red-100 border border-red-800">
-                                        Delete Organization
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="bg-zinc-950 border-red-900 text-white">
-                                    <DialogHeader>
-                                        <DialogTitle className="text-red-500">Delete Organization?</DialogTitle>
-                                        <DialogDescription className="text-zinc-400">
-                                            Are you sure you want to delete <strong>{organization.name}</strong>?
-                                            This action cannot be undone.
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <DialogFooter>
-                                        <Button
-                                            variant="ghost"
-                                            className="text-zinc-400 hover:text-white"
-                                            onClick={(e) => {
-                                                const closeButton = e.currentTarget.closest('[role="dialog"]')?.querySelector('button[aria-label="Close"]');
-                                                if (closeButton) (closeButton as HTMLButtonElement).click();
-                                            }}
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            variant="destructive"
-                                            onClick={async () => {
-                                                try {
-                                                    setLoading(true);
-                                                    const data = await apiClient.delete<any>(`/api/organizations/${organization.id}`);
-
-                                                    if (data && !data.success) {
-                                                        toast({ title: "Cannot Delete", description: data.message, variant: "destructive" });
-                                                    } else {
-                                                        toast({ title: "Deleted", description: "Organization deleted successfully." });
-                                                        setOrganization(null);
-                                                        navigate('/');
-                                                    }
-                                                } catch (err: any) {
-                                                    toast({ title: "Error", description: err.message, variant: "destructive" });
-                                                } finally {
-                                                    setLoading(false);
-                                                }
-                                            }}
-                                        >
-                                            Yes, Delete Forever
-                                        </Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Unsaved changes bar — fixed at bottom */}
-            {hasUnsavedChanges && (
-                <motion.div
-                    initial={{ y: 80, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: 80, opacity: 0 }}
-                    className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-zinc-950/95 backdrop-blur-lg px-6 py-3"
-                >
-                    <div className="max-w-5xl mx-auto flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-amber-400">
-                            <Save className="w-4 h-4" />
-                            <span>You have unsaved changes</span>
-                        </div>
-                        <Button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="bg-rose-500 hover:bg-rose-500/90 text-white min-w-[130px] shadow-lg shadow-rose-500/20"
-                        >
-                            {saving ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Saving...
-                                </>
-                            ) : (
-                                <>
-                                    <Save className="mr-2 h-4 w-4" />
-                                    Save Changes
-                                </>
-                            )}
-                        </Button>
-                    </div>
-                </motion.div>
-            )}
-        </motion.div>
+      <CommandSection>
+        <div className="flex items-center justify-center gap-3 py-16 text-zinc-500">
+          <Loader2 className="h-5 w-5 animate-spin text-rose-400" />
+          Loading organization
+        </div>
+      </CommandSection>
     );
+  }
+
+  const ownerName = profile?.full_name || profile?.username || 'Organizer';
+  const visibleSocialLinks = Object.entries(socialLinks).filter(([, value]) => value?.trim()).slice(0, 4);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-4">
+      <CommandPanel className="overflow-hidden p-0">
+        <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="min-w-0 p-4 sm:p-5">
+            <div
+              className="relative aspect-[5/1] min-h-[128px] overflow-hidden border border-white/10 bg-black/40 bg-cover bg-center"
+              style={bannerUrl ? { backgroundImage: `linear-gradient(to top, rgba(5,5,5,0.82), rgba(5,5,5,0.1)), url(${bannerUrl})` } : undefined}
+            >
+              {!bannerUrl ? (
+                <div className="absolute inset-0 flex items-center justify-center px-6 text-center">
+                  <span className="font-heading text-2xl font-black uppercase tracking-tight text-zinc-800 sm:text-4xl">{name || 'Organization banner'}</span>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-[104px_minmax(0,1fr)]">
+              <div className="flex lg:block">
+                <Avatar className="h-24 w-24 shrink-0 rounded-none border border-white/10 bg-black">
+                  <AvatarImage src={logoUrl} />
+                  <AvatarFallback className="rounded-none bg-rose-500 text-xl font-black text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
+                </Avatar>
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="min-w-0 break-words font-heading text-2xl font-black uppercase leading-none tracking-tight text-white md:text-3xl">{name || 'Your Organization'}</h2>
+                      {organization?.is_verified ? (
+                        <span className="inline-flex items-center gap-1 border border-emerald-500/35 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-emerald-300">
+                          <CheckCircle className="h-3 w-3" />
+                          Verified
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-sm text-zinc-500">@{slug || 'your-slug'} / {ownerName}</p>
+                  </div>
+                  {visibleSocialLinks.length ? (
+                    <div className="flex flex-wrap gap-2 xl:justify-end">
+                      {visibleSocialLinks.map(([key, value]) => (
+                        <a
+                          key={key}
+                          href={value.startsWith('http') ? value : `https://${value}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 border border-white/10 bg-black px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-300 hover:border-rose-500/50 hover:text-white"
+                        >
+                          {key}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="mt-4 border border-white/10 bg-black/35 p-3">
+                  <div className="mb-2 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-400">Bio</div>
+                  {description ? (
+                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-300">{description}</p>
+                  ) : (
+                    <p className="text-sm leading-relaxed text-zinc-600">No organization bio has been added yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 border-t border-white/10 xl:grid-cols-1 xl:border-l xl:border-t-0">
+            <div className="border-r border-white/10 p-4 xl:border-b xl:border-r-0">
+              <Trophy className="mb-3 h-4 w-4 text-rose-400" />
+              <div className="text-2xl font-black text-white">{stats.totalTournaments}</div>
+              <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-widest text-zinc-500">Tournaments</div>
+            </div>
+            <div className="border-r border-white/10 p-4 xl:border-b xl:border-r-0">
+              <Users className="mb-3 h-4 w-4 text-rose-400" />
+              <div className="text-2xl font-black text-white">{stats.totalParticipants}</div>
+              <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-widest text-zinc-500">Participants</div>
+            </div>
+            <div className="p-4">
+              <Calendar className="mb-3 h-4 w-4 text-rose-400" />
+              <div className="text-2xl font-black text-white">{stats.activeTournaments}</div>
+              <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-widest text-zinc-500">Active</div>
+            </div>
+          </div>
+        </div>
+      </CommandPanel>
+
+      <CommandTabs tabs={tabs} active={activeSection} onChange={setActiveSection} />
+
+      {activeSection === 'profile' && (
+        <CommandSection>
+          <SectionTitle title="Profile" description="Control the identity shown on tournament and organization pages." />
+          <div className="mt-6 grid gap-5 md:grid-cols-2">
+            <Field label="Organization Name" htmlFor="name">
+              <Input id="name" value={name} onChange={(event) => handleNameChange(event.target.value)} className={textInput} placeholder="Esportra Gaming" />
+            </Field>
+            <Field label="URL Slug" htmlFor="slug">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-zinc-600">/org/</span>
+                <Input id="slug" value={slug} onChange={(event) => setSlug(generateSlug(event.target.value))} className={textInput} placeholder="esportra-gaming" />
+              </div>
+            </Field>
+            <Field label="Description" htmlFor="description" className="md:col-span-2">
+              <Textarea id="description" value={description} onChange={(event) => setDescription(event.target.value)} className={cn(textInput, 'min-h-[130px]')} placeholder="Tell players about your organization..." />
+            </Field>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            {(['website', 'twitter', 'instagram', 'youtube', 'discord'] as const).map((key) => (
+              <Field key={key} label={key} htmlFor={`social-${key}`}>
+                <Input
+                  id={`social-${key}`}
+                  value={socialLinks[key] || ''}
+                  onChange={(event) => setSocialLinks((current) => ({ ...current, [key]: event.target.value }))}
+                  className={textInput}
+                  placeholder={key === 'website' ? 'https://example.com' : key}
+                />
+              </Field>
+            ))}
+          </div>
+        </CommandSection>
+      )}
+
+      {activeSection === 'branding' && (
+        <CommandSection>
+          <SectionTitle title="Branding" description="Upload the logo and banner used across organization and tournament surfaces." />
+          <div className="mt-6 grid gap-5 lg:grid-cols-2">
+            <CommandPanel>
+              <div className="flex items-center gap-5">
+                <Avatar className="h-24 w-24 rounded-none border border-white/10">
+                  <AvatarImage src={logoUrl} />
+                  <AvatarFallback className="rounded-none bg-rose-500 text-xl text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="font-semibold text-white">Logo</h3>
+                  <p className="mt-1 text-sm text-zinc-500">Recommended 200x200 PNG or JPG.</p>
+                  <label className="mt-4 inline-flex cursor-pointer">
+                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                    <span className="inline-flex h-10 items-center justify-center border border-white/15 bg-[#0a0a0c] px-4 font-mono text-[11px] font-bold uppercase tracking-wider text-white transition-colors hover:border-white/30 hover:bg-white/[0.06]">
+                      <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Upload Logo</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </CommandPanel>
+
+            <CommandPanel>
+              <div
+                className="flex h-32 items-center justify-center border border-white/10 bg-black/40 bg-cover bg-center"
+                style={bannerUrl ? { backgroundImage: `linear-gradient(to top, rgba(5,5,5,0.72), rgba(5,5,5,0.08)), url(${bannerUrl})` } : undefined}
+              >
+                {!bannerUrl ? <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">1200 x 300 recommended</span> : null}
+              </div>
+              <label className="mt-4 inline-flex cursor-pointer">
+                <input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" />
+                <span className="inline-flex h-10 items-center justify-center border border-white/15 bg-[#0a0a0c] px-4 font-mono text-[11px] font-bold uppercase tracking-wider text-white transition-colors hover:border-white/30 hover:bg-white/[0.06]">
+                  <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Upload Banner</span>
+                </span>
+              </label>
+            </CommandPanel>
+          </div>
+        </CommandSection>
+      )}
+
+      {activeSection === 'staff' && organization && user?.id && (
+        <CommandSection>
+          <OrganizationStaffManager organizationId={organization.id} ownerId={user.id} />
+        </CommandSection>
+      )}
+
+      {activeSection === 'seasons' && (
+        <CommandSection>
+          <SectionTitle title="Seasons" description="Competitive seasons linked to this organization." />
+          <div className="mt-6">
+            {seasons.length === 0 ? (
+              <CommandEmptyState
+                title="No seasons created yet"
+                description="When season management resumes, created seasons will appear here."
+                icon={<Trophy className="h-5 w-5" />}
+                action={<CommandButton asChild><Link to="/seasons/create"><Plus className="h-4 w-4" />Create Season</Link></CommandButton>}
+              />
+            ) : (
+              <div className="grid gap-3">
+                {seasons.map((season) => (
+                  <CommandPanel key={season.id} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="font-semibold text-white">{season.name}</h3>
+                      <p className="mt-1 text-sm text-zinc-500">{season.game} / {season.participant_mode}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="border border-white/10 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-zinc-400">{season.status}</span>
+                      <CommandButton asChild size="sm" variant="secondary"><Link to={`/season/manage/${season.id}`}><ExternalLink className="h-4 w-4" />Open</Link></CommandButton>
+                    </div>
+                  </CommandPanel>
+                ))}
+              </div>
+            )}
+          </div>
+        </CommandSection>
+      )}
+
+      {activeSection === 'media' && (
+        <CommandSection>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <SectionTitle title="Media" description="Manage organization albums and public media assets." />
+            <div className="flex flex-wrap gap-2">
+              <input ref={mediaInputRef} type="file" multiple accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" />
+              <CommandButton variant="secondary" onClick={() => mediaInputRef.current?.click()} disabled={uploadingMedia || !organization}>
+                {uploadingMedia ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Upload Media
+              </CommandButton>
+              <Dialog open={isCreateAlbumOpen} onOpenChange={setIsCreateAlbumOpen}>
+                <DialogTrigger asChild>
+                  <CommandButton><Plus className="h-4 w-4" />Album</CommandButton>
+                </DialogTrigger>
+                <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+                  <DialogHeader>
+                    <DialogTitle>Create Album</DialogTitle>
+                    <DialogDescription className="text-zinc-400">Group your photos and videos.</DialogDescription>
+                  </DialogHeader>
+                  <Input value={newAlbumTitle} onChange={(event) => setNewAlbumTitle(event.target.value)} placeholder="Album title" className={textInput} />
+                  <Textarea value={newAlbumDesc} onChange={(event) => setNewAlbumDesc(event.target.value)} placeholder="Description" className={textInput} />
+                  <DialogFooter>
+                    <CommandButton variant="secondary" onClick={() => setIsCreateAlbumOpen(false)}>Cancel</CommandButton>
+                    <CommandButton onClick={handleCreateAlbum} disabled={creatingAlbum}>{creatingAlbum ? 'Creating...' : 'Create'}</CommandButton>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            <button type="button" onClick={() => { setActiveAlbum(null); organization && void fetchMedia(organization.id, null); }} className={cn('border px-3 py-2 font-mono text-[10px] uppercase tracking-wider', !activeAlbum ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>
+              All Media
+            </button>
+            {albums.map((album) => (
+              <button key={album.id} type="button" onClick={() => { setActiveAlbum(album); organization && void fetchMedia(organization.id, album.id); }} className={cn('border px-3 py-2 font-mono text-[10px] uppercase tracking-wider', activeAlbum?.id === album.id ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>
+                {album.title}
+              </button>
+            ))}
+          </div>
+
+          {albums.length > 0 && (
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              {albums.map((album) => (
+                <CommandPanel key={album.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-semibold text-white">{album.title}</h3>
+                    <p className="text-xs text-zinc-500">{new Date(album.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <CommandButton size="sm" variant="danger" onClick={() => handleDeleteAlbum(album.id)} aria-label={`Delete ${album.title}`}>
+                    <Trash2 className="h-4 w-4" />
+                  </CommandButton>
+                </CommandPanel>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-6">
+            {mediaItems.length === 0 ? (
+              <CommandEmptyState title="No media uploaded yet" description="Upload media assets for your organization gallery." icon={<ImageIcon className="h-5 w-5" />} />
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {mediaItems.map((item) => (
+                  <div key={item.id} className="group relative overflow-hidden border border-white/10 bg-black">
+                    <img src={item.url} loading="lazy" alt={item.caption || ''} className="h-52 w-full object-cover" />
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/82 p-3">
+                      <span className="truncate text-xs text-zinc-400">{item.caption || 'Media asset'}</span>
+                      <CommandButton size="sm" variant="danger" onClick={() => handleDeleteMedia(item.id)} aria-label="Delete media">
+                        <Trash2 className="h-4 w-4" />
+                      </CommandButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </CommandSection>
+      )}
+
+      {activeSection === 'advanced' && organization && (
+        <CommandSection className="border-red-500/25 bg-red-950/10">
+          <SectionTitle title="Advanced" description="Irreversible controls for this organization." />
+          <CommandPanel className="mt-6 border-red-500/25 bg-red-950/10">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="font-semibold text-red-100">Delete Organization</h3>
+                <p className="mt-1 text-sm text-red-200/60">Active tournaments must be completed or cancelled first.</p>
+              </div>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <CommandButton variant="danger"><Trash2 className="h-4 w-4" />Delete</CommandButton>
+                </DialogTrigger>
+                <DialogContent className="rounded-none border-red-900 bg-zinc-950 text-white">
+                  <DialogHeader>
+                    <DialogTitle className="text-red-400">Delete Organization?</DialogTitle>
+                    <DialogDescription className="text-zinc-400">This action cannot be undone.</DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <CommandButton variant="secondary">Cancel</CommandButton>
+                    <CommandButton
+                      variant="danger"
+                      onClick={async () => {
+                        try {
+                          setLoading(true);
+                          const data = await apiClient.delete<any>(`/api/organizations/${organization.id}`);
+                          if (data && !data.success) {
+                            toast({ title: 'Cannot delete', description: data.message, variant: 'destructive' });
+                          } else {
+                            toast({ title: 'Deleted', description: 'Organization deleted successfully.' });
+                            setOrganization(null);
+                            navigate('/');
+                          }
+                        } catch (error: any) {
+                          toast({ title: 'Error', description: error.message, variant: 'destructive' });
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                    >
+                      Delete Forever
+                    </CommandButton>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CommandPanel>
+        </CommandSection>
+      )}
+
+      <Dialog open={!!pendingLogoPreview} onOpenChange={(open) => { if (!open) cancelLogoPreview(); }}>
+        <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+          <DialogHeader>
+            <DialogTitle>Confirm Logo</DialogTitle>
+            <DialogDescription className="text-zinc-400">Preview your new logo before saving.</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center py-6">
+            <Avatar className="h-32 w-32 rounded-none border border-white/10">
+              <AvatarImage src={pendingLogoPreview || ''} />
+              <AvatarFallback className="rounded-none bg-rose-500 text-3xl text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
+            </Avatar>
+          </div>
+          <DialogFooter>
+            <CommandButton variant="secondary" onClick={cancelLogoPreview}>Cancel</CommandButton>
+            <CommandButton onClick={confirmLogoUpload} disabled={uploadingLogo}>{uploadingLogo ? 'Saving...' : 'Confirm'}</CommandButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!pendingBannerPreview} onOpenChange={(open) => { if (!open) cancelBannerPreview(); }}>
+        <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Confirm Banner</DialogTitle>
+            <DialogDescription className="text-zinc-400">Preview your new banner before saving.</DialogDescription>
+          </DialogHeader>
+          <div className="h-40 border border-white/10 bg-cover bg-center" style={pendingBannerPreview ? { backgroundImage: `url(${pendingBannerPreview})` } : undefined} />
+          <DialogFooter>
+            <CommandButton variant="secondary" onClick={cancelBannerPreview}>Cancel</CommandButton>
+            <CommandButton onClick={confirmBannerUpload} disabled={uploadingBanner}>{uploadingBanner ? 'Saving...' : 'Confirm'}</CommandButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {hasUnsavedChanges && (
+        <CommandActionBar className="sticky bottom-4 z-40">
+          <div className="flex items-center gap-2 text-sm text-amber-300">
+            <Save className="h-4 w-4" />
+            You have unsaved organization changes
+          </div>
+          <CommandButton onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save Changes
+          </CommandButton>
+        </CommandActionBar>
+      )}
+    </motion.div>
+  );
 };
 
+function SectionTitle({ title, description }: { title: string; description: string }) {
+  return (
+    <div>
+      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.35em] text-rose-400">{title}</p>
+      <h3 className="mt-1 text-xl font-black uppercase text-white">{title}</h3>
+      <p className="mt-2 text-sm text-zinc-500">{description}</p>
+    </div>
+  );
+}
+
+function Field({ label, htmlFor, children, className }: { label: string; htmlFor: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn('space-y-2', className)}>
+      <Label htmlFor={htmlFor} className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-400">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
 export default OrganizationSettings;
-
-

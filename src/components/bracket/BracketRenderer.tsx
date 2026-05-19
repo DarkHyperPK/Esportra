@@ -223,6 +223,49 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
         return false;
     };
 
+    const renderMatchCards = () => matches.map(match => {
+        if (!match) return null;
+        if (!isMatchVisible(match)) return null;
+
+        const pos = filteredListPositions
+            ? filteredListPositions.positions[match.id]
+            : matchPositions[match.id];
+        if (!pos) return null;
+        const left = filteredListPositions ? pos.x : pos.x - filterXOffset;
+        const top = filteredListPositions ? pos.y : pos.y - filterYOffset;
+        const card = (
+            <ReadOnlyMatchCard
+                match={match}
+                x={0}
+                y={0}
+                onClick={() => onMatchClick?.(match)}
+                hasAutomatedResults={hasResultsMap[getRawId(String(match.id))]?.length > 0}
+                hasProofs={hasProofsMap[getRawId(String(match.id))]?.length > 0}
+            />
+        );
+
+        if (disableAnimations) {
+            return (
+                <div key={match.id} style={{ position: 'absolute', left, top }}>
+                    {card}
+                </div>
+            );
+        }
+
+        return (
+            <motion.div
+                key={match.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+                style={{ position: 'absolute', left, top }}
+            >
+                {card}
+            </motion.div>
+        );
+    });
+
     return (
         <div
             className="relative"
@@ -292,38 +335,7 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
             )}
 
             {/* Match Cards */}
-            <AnimatePresence mode='popLayout'>
-                {matches.map(match => {
-                    if (!match) return null;
-                    if (!isMatchVisible(match)) return null;
-
-                    const pos = filteredListPositions
-                        ? filteredListPositions.positions[match.id]
-                        : matchPositions[match.id];
-                    if (!pos) return null;
-                    const left = filteredListPositions ? pos.x : pos.x - filterXOffset;
-                    const top = filteredListPositions ? pos.y : pos.y - filterYOffset;
-                    return (
-                        <motion.div
-                            key={match.id}
-                            initial={disableAnimations ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={disableAnimations ? undefined : { opacity: 0, scale: 0.9 }}
-                            transition={disableAnimations ? { duration: 0 } : { duration: 0.2 }}
-                            style={{ position: 'absolute', left, top }}
-                        >
-                            <ReadOnlyMatchCard
-                                match={match}
-                                x={0} // Position handled by motion.div
-                                y={0}
-                                onClick={() => onMatchClick?.(match)}
-                                hasAutomatedResults={hasResultsMap[getRawId(String(match.id))]?.length > 0}
-                                hasProofs={hasProofsMap[getRawId(String(match.id))]?.length > 0}
-                            />
-                        </motion.div>
-                    );
-                })}
-            </AnimatePresence>
+            {disableAnimations ? renderMatchCards() : <AnimatePresence mode='popLayout'>{renderMatchCards()}</AnimatePresence>}
         </div>
     );
 };

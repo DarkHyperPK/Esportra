@@ -33,6 +33,7 @@ const Navbar = () => {
 
   return (
     <nav
+      data-app-navbar
       data-mounted
       className={cn(
         "z-[999] px-3 sm:px-6",

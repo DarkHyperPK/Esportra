@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import Footer from '@/components/Footer';
 import { useState } from 'react';
+import { JackButton } from '@/components/ui/JackButton';
 
 // Valorant rank icons from the public API
 const RANK_ICONS = {
@@ -190,12 +191,9 @@ const BeAPartner = () => {
               Reach thousands of competitive gamers and esports enthusiasts. Our partnership tiers
               give you the visibility, analytics, and placement zones to maximize your brand's impact.
             </p>
-            <Link
-              to="/partners#apply"
-              className="group relative inline-flex items-center gap-2 overflow-hidden border border-white bg-white px-8 py-3 font-mono text-xs font-bold uppercase tracking-wider text-black transition-colors"
-            >
+            <JackButton as={Link} to="/partners#apply" size="md">
               Apply Now <ArrowRight className="w-4 h-4" />
-            </Link>
+            </JackButton>
           </motion.div>
 
           {/* Tier Cards */}
@@ -239,12 +237,9 @@ const BeAPartner = () => {
                       ))}
                     </div>
 
-                    <Link
-                      to="/partners#apply"
-                      className={`mt-8 w-full py-3 text-center text-sm font-mono font-bold uppercase tracking-wider transition-colors border bg-white/5 border-white/10 text-white hover:bg-white/10`}
-                    >
+                    <JackButton as={Link} to="/partners#apply" variant="invert" size="md" className="mt-8 w-full">
                       Get Started
-                    </Link>
+                    </JackButton>
                   </motion.div>
                 );
               })}
@@ -314,12 +309,9 @@ const BeAPartner = () => {
                 <span className="text-rose-400 font-medium">partners.esportra.com</span>{' '}
                 to manage their profile, upload assets, track analytics, and view campaign placements.
               </p>
-              <Link
-                to="/partners#apply"
-                className="group relative inline-flex items-center gap-2 overflow-hidden border border-white bg-white px-8 py-3 font-mono text-xs font-bold uppercase tracking-wider text-black transition-colors"
-              >
+              <JackButton as={Link} to="/partners#apply" size="md">
                 Become a Partner <ArrowRight className="w-4 h-4" />
-              </Link>
+              </JackButton>
             </div>
           </section>
 

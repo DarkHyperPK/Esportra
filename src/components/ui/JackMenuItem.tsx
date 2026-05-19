@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 import { useFramerDropdown } from "@/components/ui/FramerDropdown";
 
 /**
- * JACK IN-style menu item used inside `FramerDropdownContent`.
- * White tile, mono uppercase text, rose-pink slide-up on hover.
+ * Sharp menu item used inside `FramerDropdownContent`.
+ * CTA slide-up behavior is intentionally reserved for JackButton.
  *
  * Must be rendered within a `FramerDropdownRoot` so it can close the
  * dropdown when invoked.
@@ -41,16 +41,15 @@ export function JackMenuItem({
       type="button"
       onClick={handleClick}
       className={cn(
-        "group relative block w-full overflow-hidden bg-white px-4 py-3 text-left font-mono text-[12px] font-bold uppercase tracking-wider text-black",
+        "block w-full bg-white px-4 py-3 text-left font-mono text-[12px] font-bold uppercase tracking-wider text-black transition-colors hover:bg-rose-500 hover:text-white",
         className,
       )}
     >
-      <span className="relative z-10 flex w-full items-center gap-2">
+      <span className="flex w-full items-center gap-2">
         {icon}
         <span className="flex-1 truncate">{children}</span>
         {trailing}
       </span>
-      <span className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
     </button>
   );
 }

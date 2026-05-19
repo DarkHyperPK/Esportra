@@ -128,6 +128,9 @@ const advancementRuleAliases: Array<[string, string]> = [
 const createSeasonPayload = (season: CreateSeasonRequest) => ({
   name: season.name,
   game: season.game,
+  gameMode: season.gameMode,
+  region: season.region,
+  teamSize: season.teamSize,
   description: season.description,
   participantMode: season.participant_mode,
   startDate: season.start_date,
@@ -139,6 +142,10 @@ const createSeasonPayload = (season: CreateSeasonRequest) => ({
 
 const updateSeasonPayload = (season: UpdateSeasonRequest) => ({
   name: season.name,
+  game: season.game,
+  gameMode: season.gameMode,
+  region: season.region,
+  teamSize: season.teamSize,
   description: season.description,
   startDate: season.start_date,
   endDate: season.end_date,
@@ -424,8 +431,11 @@ export const seasonApi = {
     return await apiClient.delete(`/api/tournaments/${id}/season`);
   },
 
-  registerForSeason: async (id: string) => {
-    return await apiClient.post(`/api/seasons/${id}/register`);
+  registerForSeason: async (id: string, payload?: { nodeId?: string; teamId?: string; rosterId?: string; notes?: string }) => {
+    if (payload?.nodeId) {
+      return await apiClient.post(`/api/seasons/${id}/registrations`, payload);
+    }
+    return await apiClient.post(`/api/seasons/${id}/register`, payload ?? {});
   },
 
   getSeasonParticipants: async (id: string, page = 1, limit = 50) => {

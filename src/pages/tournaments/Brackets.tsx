@@ -8,9 +8,7 @@ import { useAdmin } from '@/contexts/AdminContext';
 import { apiClient } from '@/lib/apiClient';
 import { useQuery } from '@tanstack/react-query';
 import Footer from '@/components/Footer';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Maximize2, Layers } from 'lucide-react';
+import { CommandButton } from '@/components/management/CommandSurface';
 import { PublicBracketView } from './brackets/PublicBracketView';
 import { useBracketRealtime } from '@/hooks/useBracketRealtime';
 import { isBattleRoyale } from '@/utils/gameFeatures';
@@ -95,7 +93,7 @@ const TournamentBrackets = () => {
     return (
       <div className="min-h-screen bg-transparent text-white relative">
         <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="p-8 rounded-2xl bg-black/80 backdrop-blur-xl border border-white/10 shadow-2xl">
+          <div className="border border-white/10 bg-[#0a0a0c] p-8">
             <LoadingSpinner size={80} text="Loading Brackets..." />
           </div>
         </div>
@@ -112,19 +110,18 @@ const TournamentBrackets = () => {
       <div className="min-h-screen bg-transparent text-white relative font-sans">
         <main className="w-full px-4 py-8 relative z-10">
           <div className="max-w-4xl mx-auto">
-            <div className="p-8 rounded-2xl bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl text-center">
+            <div className="border border-white/10 bg-[#0a0a0c] p-8 text-center">
               <Trophy className="h-12 w-12 text-rose-500 mx-auto mb-4" />
               <h2 className="text-2xl font-heading text-white mb-2">Points Leaderboard</h2>
               <p className="text-gray-400 mb-6">
                 This is a Battle Royale tournament. Standings are determined by cumulative points across all games.
               </p>
-              <Button
-                variant="outline"
+              <CommandButton
+                variant="secondary"
                 onClick={() => navigate(`/tournaments/${slug}`)}
-                className="border-white/10 hover:bg-white/5"
               >
                 View Tournament Details
-              </Button>
+              </CommandButton>
             </div>
           </div>
         </main>
@@ -138,7 +135,7 @@ const TournamentBrackets = () => {
       <main className="w-full px-4 py-8 relative z-10">
         {/* Bracket Content - Glassmorphism Container */}
         <div className="w-full px-6">
-          <div className="p-6 rounded-2xl bg-black/20 backdrop-blur-xl border border-white/10 shadow-2xl">
+          <div className="border border-white/10 bg-[#0a0a0c]/95 p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
                 Tournament Brackets
@@ -154,7 +151,7 @@ const TournamentBrackets = () => {
               We always render PublicBracketView now, so it can show the sidebar with stage selection,
               even if activeVersionId is null (the view handles empty state internally in content area).
             */}
-            <div className="w-full overflow-auto bg-zinc-950/50 rounded-xl border border-zinc-800/50 p-6">
+            <div className="min-h-0 w-full overflow-hidden border border-zinc-800/50 bg-zinc-950/50">
               <PublicBracketView
                 versionId={activeVersionId}
                 tournamentId={tournament.id}
@@ -163,6 +160,7 @@ const TournamentBrackets = () => {
                 onStageSelect={setSelectedStageId}
                 versionsMap={versionsMap}
                 onFullscreen={() => window.open(`/tournaments/${slug}/brackets/fullscreen`, '_blank')}
+                mode="page"
               />
             </div>
           </div>

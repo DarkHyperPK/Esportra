@@ -1,14 +1,21 @@
-// OrganizerDashboard.tsx
-// This file is the main dashboard for the organizer (stats, quick links, etc.)
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  BarChart3,
+  Building2,
+  Calendar,
+  ChevronRight,
+  Plus,
+  ShieldCheck,
+  Trophy,
+  Users,
+  Workflow,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import Footer from "@/components/Footer";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Users, Calendar, BarChart3, Plus, Building2, ChevronRight, ShieldCheck, Workflow } from "lucide-react";
-import { apiClient } from '@/lib/apiClient';
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/lib/apiClient";
+import { useOrganizerStats } from "@/hooks/useOrganizerStats";
 import TournamentsList from "@/components/organizer/TournamentsList";
 import ParticipantsList from "@/components/organizer/ParticipantsList";
 import TournamentSchedule from "@/components/organizer/TournamentSchedule";
@@ -16,318 +23,238 @@ import TournamentAnalytics from "@/components/organizer/TournamentAnalytics";
 import TournamentHistory from "@/components/organizer/TournamentHistory";
 import OrganizationSettings from "@/pages/organizer/OrganizationSettings";
 import OrganizationStaffManager from "@/components/organizer/OrganizationStaffManager";
-import { Button } from "@/components/ui/button";
+import {
+  CommandButton,
+  CommandEmptyState,
+  CommandHeader,
+  CommandMetric,
+  CommandPageGrid,
+  CommandRail,
+  CommandSection,
+  CommandShell,
+} from "@/components/management/CommandSurface";
 
-import { useOrganizerStats } from "@/hooks/useOrganizerStats";
+const managementTabs = [
+  { value: "tournaments", label: "Tournaments", icon: Trophy },
+  { value: "participants", label: "Participants", icon: Users },
+  { value: "schedule", label: "Schedule", icon: Calendar },
+  { value: "analytics", label: "Analytics", icon: BarChart3 },
+  { value: "history", label: "History", icon: Trophy },
+  { value: "organization", label: "Organization", icon: Building2 },
+  { value: "staff", label: "Staff", icon: ShieldCheck },
+];
+
+const tabTitles: Record<string, { eyebrow: string; title: string; description: string }> = {
+  tournaments: {
+    eyebrow: "Tournament Ops",
+    title: "Hosted Tournaments",
+    description: "Operate every event your organization owns from one command surface.",
+  },
+  participants: {
+    eyebrow: "Roster Ops",
+    title: "Participants",
+    description: "Review teams, captains, registrations, reminders, and eligibility signals.",
+  },
+  schedule: {
+    eyebrow: "Match Ops",
+    title: "Schedule",
+    description: "Track upcoming match windows and tournament activity by date.",
+  },
+  analytics: {
+    eyebrow: "Performance",
+    title: "Analytics",
+    description: "Monitor participation, prize pools, game mix, and event momentum.",
+  },
+  history: {
+    eyebrow: "Archive",
+    title: "History",
+    description: "Inspect past, active, and upcoming tournaments with operational context.",
+  },
+  organization: {
+    eyebrow: "Organization",
+    title: "Manage Organization",
+    description: "Edit profile, branding, media, seasons, staff, and advanced organization controls.",
+  },
+  staff: {
+    eyebrow: "Access",
+    title: "Staff",
+    description: "Manage organization staff access and operational permissions.",
+  },
+};
 
 const OrganizerDashboard = () => {
   const { profile, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
-  const tabFromUrl = searchParams.get('tab');
-  const defaultTab = location.pathname.includes('/settings') || location.pathname.includes('/organization')
-    ? (tabFromUrl || 'organization')
-    : (tabFromUrl || 'tournaments');
-  const [activeTab, setActiveTabState] = useState(defaultTab);
   const navigate = useNavigate();
+  const tabFromUrl = searchParams.get("tab");
+  const defaultTab = location.pathname.includes("/settings") || location.pathname.includes("/organization")
+    ? tabFromUrl || "organization"
+    : tabFromUrl || "tournaments";
+  const [activeTab, setActiveTabState] = useState(defaultTab);
+  const { data: stats, isLoading: statsLoading } = useOrganizerStats();
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [orgName, setOrgName] = useState("");
+  const [orgLogo, setOrgLogo] = useState<string | null>(null);
 
-  // Sync tab changes to the URL so refresh preserves the active section
   const setActiveTab = (tab: string) => {
     setActiveTabState(tab);
     setSearchParams({ tab }, { replace: true });
   };
-  const { data: stats, isLoading: statsLoading } = useOrganizerStats();
-  const [orgId, setOrgId] = useState<string | null>(null);
-  const [orgName, setOrgName] = useState<string>("");
-  const [orgLogo, setOrgLogo] = useState<string | null>(null);
 
-  // Fetch organization for staff management
+  useEffect(() => {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
+      setActiveTabState(tabFromUrl);
+    }
+  }, [activeTab, tabFromUrl]);
+
   useEffect(() => {
     if (!user?.id) return;
 
+    let mounted = true;
     const fetchOrg = async () => {
-      // 1. Try to find an org where user is owner
-      const ownerData = await apiClient.get<any>(`/api/organizations/me`).catch(() => null);
+      const mine = await apiClient.get<any>("/api/organizations/mine").catch(() => null);
+      const fallback = mine?.id ? mine : await apiClient.get<any>("/api/organizations/me").catch(() => null);
+      const staffData = fallback?.id ? null : await apiClient.get<any>("/api/organizations/my-staff").catch(() => null);
+      const staffOrg = Array.isArray(staffData?.organizations) ? staffData.organizations[0] : staffData?.organizations;
+      const org = fallback?.id ? fallback : staffOrg;
 
-      if (ownerData) {
-        setOrgId(ownerData.id);
-        setOrgName(ownerData.name || "");
-        setOrgLogo(ownerData.logo_url || null);
-        return;
-      }
-
-      // 2. If not owner, check if they are active staff
-      const staffData = await apiClient.get<any>(`/api/organizations/my-staff`).catch(() => null);
-
-      if (staffData && staffData.organizations) {
-        const org = Array.isArray(staffData.organizations) ? staffData.organizations[0] : staffData.organizations;
-        setOrgId(org.id);
-        setOrgName(org.name || "");
-        setOrgLogo(org.logo_url || null);
-      }
+      if (!mounted || !org?.id) return;
+      setOrgId(org.id);
+      setOrgName(org.name || "");
+      setOrgLogo(org.logo_url || null);
     };
 
-    fetchOrg();
+    void fetchOrg();
+    return () => {
+      mounted = false;
+    };
   }, [user?.id]);
 
-  // Update activeTab when URL query changes
-  useEffect(() => {
-    if (tabFromUrl) {
-      setActiveTab(tabFromUrl);
-    }
-  }, [tabFromUrl]);
+  const activeMeta = tabTitles[activeTab] || tabTitles.tournaments;
+  const ownerName = profile?.full_name || profile?.username || "Organizer";
 
-  const handleCreateTournament = () => {
-    navigate('/tournaments/create');
-  };
-
+  const metrics = useMemo(
+    () => [
+      {
+        label: "Active",
+        value: statsLoading ? "..." : stats?.activeTournaments || 0,
+        icon: <Trophy className="h-4 w-4" />,
+      },
+      {
+        label: "Upcoming",
+        value: statsLoading ? "..." : stats?.upcomingTournaments || 0,
+        icon: <Calendar className="h-4 w-4" />,
+      },
+      {
+        label: "Participants",
+        value: statsLoading ? "..." : stats?.totalParticipants || 0,
+        icon: <Users className="h-4 w-4" />,
+      },
+    ],
+    [stats, statsLoading],
+  );
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col selection:bg-rose-500/30">
-      {/* Background grid */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]" />
-        {/* Noise Texture */}
-        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay"></div>
-      </div>
-
-      <div className="relative z-10 flex-grow container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-8 h-[1px] bg-rose-500" />
-              <span className="text-rose-500 font-mono text-xs tracking-widest uppercase">ORGANIZATION_COMMAND</span>
+    <CommandShell>
+      <CommandPageGrid
+        rail={
+          <CommandRail className="lg:sticky lg:top-24">
+            <div className="relative z-20 flex items-center gap-3 pb-4">
+              <div className="flex h-10 w-10 items-center justify-center border border-white/10 bg-black">
+                {orgLogo ? <img src={orgLogo} alt="" className="h-full w-full object-cover" /> : <Building2 className="h-5 w-5 text-rose-400" />}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">{orgName || "Organization"}</p>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">{ownerName}</p>
+              </div>
             </div>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight">Manage Organization</h1>
-            <p className="text-zinc-500 mt-1">{orgName ? orgName : `Welcome back, ${profile?.full_name || profile?.username || 'Organizer'}`}</p>
-          </div>
-          <div className="flex gap-3">
-            <Button
-              onClick={() => navigate('/organizer/seasons')}
-              variant="outline"
-              className="border-zinc-800 bg-black hover:bg-white hover:text-black hover:border-zinc-700 text-white"
-            >
-              <Workflow className="mr-2 h-4 w-4" />
-              Manage Seasons
-            </Button>
-            <Button
-              onClick={() => navigate('/organizer/tournaments')}
-              variant="outline"
-              className="border-zinc-800 bg-black hover:bg-white hover:text-black hover:border-zinc-700 text-white"
-            >
-              <Trophy className="mr-2 h-4 w-4" />
-              Manage Tournaments
-            </Button>
-            <Button
-              onClick={() => navigate('/tournaments/create')}
-              className="bg-white text-black hover:bg-rose-500 hover:text-white"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Create Tournament
-            </Button>
-          </div>
+
+            <div className="relative z-20 border-t border-white/10 pt-4">
+              <p className="mb-3 px-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">Manage</p>
+              <div role="navigation" aria-label="Organizer management" className="grid gap-2">
+                {managementTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const active = activeTab === tab.value;
+                  return (
+                    <button
+                      key={tab.value}
+                      type="button"
+                      onClick={() => setActiveTab(tab.value)}
+                      className={cn(
+                        "relative z-20 flex h-10 w-full items-center gap-3 border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70",
+                        active
+                          ? "border-rose-500 bg-rose-500 text-white"
+                          : "border-white/15 bg-black text-zinc-200 hover:border-rose-500/45 hover:bg-white/[0.06] hover:text-white",
+                      )}
+                    >
+                      <Icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-zinc-400")} />
+                      <span className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wide">{tab.label}</span>
+                      <ChevronRight className={cn("h-4 w-4 shrink-0 transition-opacity", active ? "text-white opacity-100" : "text-zinc-500 opacity-0")} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </CommandRail>
+        }
+      >
+        <CommandHeader
+          eyebrow={activeMeta.eyebrow}
+          title={activeMeta.title}
+          description={activeMeta.description}
+          actions={
+            <>
+              <CommandButton variant="secondary" onClick={() => navigate("/organizer/seasons")}>
+                <Workflow className="h-4 w-4" />
+                Seasons
+              </CommandButton>
+              <CommandButton variant="secondary" onClick={() => navigate("/organizer/tournaments")}>
+                <Trophy className="h-4 w-4" />
+                Tournaments
+              </CommandButton>
+              <CommandButton slide onClick={() => navigate("/tournaments/create")}>
+                <Plus className="h-4 w-4" />
+                Create Tournament
+              </CommandButton>
+            </>
+          }
+        />
+
+        <div className="grid grid-cols-3 gap-3">
+          {metrics.map((metric) => (
+            <CommandMetric key={metric.label} label={metric.label} value={metric.value} icon={metric.icon} />
+          ))}
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Left sidebar */}
-          <div className="lg:col-span-1">
-            <div className="rounded-none bg-[#0a0a0c] border border-zinc-800/50 p-5">
-              <h2 className="text-sm font-bold tracking-widest text-zinc-400 uppercase mb-4">Management</h2>
-              <div className="space-y-1">
-
-                <button
-                  onClick={() => setActiveTab("tournaments")}
-                  className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
-                    activeTab === "tournaments"
-                      ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
-                  )}
-                >
-                  <Trophy className={cn("mr-3 h-4 w-4", activeTab === "tournaments" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
-                  <span className="text-sm font-medium">My Tournaments</span>
-                  <ChevronRight className={cn("ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity", activeTab === "tournaments" && "opacity-100 text-rose-500")} />
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("participants")}
-                  className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
-                    activeTab === "participants"
-                      ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
-                  )}
-                >
-                  <Users className={cn("mr-3 h-4 w-4", activeTab === "participants" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
-                  <span className="text-sm font-medium">Participants</span>
-                  <ChevronRight className={cn("ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity", activeTab === "participants" && "opacity-100 text-rose-500")} />
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("schedule")}
-                  className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
-                    activeTab === "schedule"
-                      ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
-                  )}
-                >
-                  <Calendar className={cn("mr-3 h-4 w-4", activeTab === "schedule" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
-                  <span className="text-sm font-medium">Schedule</span>
-                  <ChevronRight className={cn("ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity", activeTab === "schedule" && "opacity-100 text-rose-500")} />
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("analytics")}
-                  className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
-                    activeTab === "analytics"
-                      ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
-                  )}
-                >
-                  <BarChart3 className={cn("mr-3 h-4 w-4", activeTab === "analytics" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
-                  <span className="text-sm font-medium">Analytics</span>
-                  <ChevronRight className={cn("ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity", activeTab === "analytics" && "opacity-100 text-rose-500")} />
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("history")}
-                  className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
-                    activeTab === "history"
-                      ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
-                  )}
-                >
-                  <Trophy className={cn("mr-3 h-4 w-4", activeTab === "history" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
-                  <span className="text-sm font-medium">Tournament History</span>
-                  <ChevronRight className={cn("ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity", activeTab === "history" && "opacity-100 text-rose-500")} />
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("organization")}
-                  className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
-                    activeTab === "organization"
-                      ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
-                  )}
-                >
-                  <Building2 className={cn("mr-3 h-4 w-4", activeTab === "organization" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
-                  <span className="text-sm font-medium">My Organization</span>
-                  <ChevronRight className={cn("ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity", activeTab === "organization" && "opacity-100 text-rose-500")} />
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("staff")}
-                  className={cn(
-                    "flex items-center w-full px-4 py-3 text-left rounded-none transition-all duration-200 group",
-                    activeTab === "staff"
-                      ? "bg-rose-500/10 text-white border border-rose-500/30"
-                      : "text-zinc-400 hover:bg-white hover:text-black border border-transparent"
-                  )}
-                >
-                  <ShieldCheck className={cn("mr-3 h-4 w-4", activeTab === "staff" ? "text-rose-500" : "text-zinc-500 group-hover:text-rose-500")} />
-                  <span className="text-sm font-medium">Staff</span>
-                  <ChevronRight className={cn("ml-auto h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity", activeTab === "staff" && "opacity-100 text-rose-500")} />
-                </button>
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* Main content area */}
-          <div className="lg:col-span-4">
-            <TabsContent value="tournaments" className="m-0">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                <div className="p-6 rounded-none bg-[#0a0a0c] border border-zinc-800/50 hover:border-rose-500/30 transition-all group">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-mono text-zinc-500 tracking-widest uppercase">Active</span>
-                    <div className="p-2 rounded-none bg-black group-hover:bg-rose-500/10 transition-colors">
-                      <Trophy className="w-4 h-4 text-rose-500" />
-                    </div>
-                  </div>
-                  <div className="text-4xl font-black text-white">
-                    {statsLoading ? "..." : (stats?.activeTournaments || 0)}
-                  </div>
-                  <p className="text-zinc-500 text-sm mt-1">Currently running</p>
-                </div>
-
-                <div className="p-6 rounded-none bg-[#0a0a0c] border border-zinc-800/50 hover:border-rose-500/30 transition-all group">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-mono text-zinc-500 tracking-widest uppercase">Upcoming</span>
-                    <div className="p-2 rounded-none bg-black group-hover:bg-rose-500/10 transition-colors">
-                      <Calendar className="w-4 h-4 text-rose-500" />
-                    </div>
-                  </div>
-                  <div className="text-4xl font-black text-white">
-                    {statsLoading ? "..." : (stats?.upcomingTournaments || 0)}
-                  </div>
-                  <p className="text-zinc-500 text-sm mt-1">Next 30 days</p>
-                </div>
-
-                <div className="p-6 rounded-none bg-[#0a0a0c] border border-zinc-800/50 hover:border-rose-500/30 transition-all group">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-mono text-zinc-500 tracking-widest uppercase">Participants</span>
-                    <div className="p-2 rounded-none bg-black group-hover:bg-rose-500/10 transition-colors">
-                      <Users className="w-4 h-4 text-rose-500" />
-                    </div>
-                  </div>
-                  <div className="text-4xl font-black text-white">
-                    {statsLoading ? "..." : (stats?.totalParticipants || 0)}
-                  </div>
-                  <p className="text-zinc-500 text-sm mt-1">Across all tournaments</p>
-                </div>
-              </div>
-
-              <TournamentsList />
-            </TabsContent>
-
-            <TabsContent value="participants" className="m-0">
-              <ParticipantsList />
-            </TabsContent>
-
-            <TabsContent value="schedule" className="m-0">
-              <TournamentSchedule />
-            </TabsContent>
-
-            <TabsContent value="analytics" className="m-0">
-              <TournamentAnalytics />
-            </TabsContent>
-
-            <TabsContent value="history" className="m-0">
-              <TournamentHistory />
-            </TabsContent>
-
-            <TabsContent value="organization" className="m-0">
-              <OrganizationSettings />
-            </TabsContent>
-
-            <TabsContent value="staff" className="m-0">
-              {orgId && user?.id ? (
-                <OrganizationStaffManager
-                  organizationId={orgId}
-                  ownerId={user.id}
-                  orgName={orgName}
-                  orgLogo={orgLogo}
-                  ownerName={profile?.full_name || profile?.username || "An Organizer"}
-                />
-              ) : (
-                <div className="text-center py-12 text-zinc-500">
-                  <ShieldCheck className="w-12 h-12 mx-auto mb-4 text-zinc-700" />
-                  <p>Create an organization first to manage staff.</p>
-                </div>
-              )}
-            </TabsContent>
-          </div>
-        </Tabs>
-      </div>
+        {activeTab === "tournaments" && <TournamentsList />}
+        {activeTab === "participants" && <ParticipantsList />}
+        {activeTab === "schedule" && <TournamentSchedule />}
+        {activeTab === "analytics" && <TournamentAnalytics />}
+        {activeTab === "history" && <TournamentHistory />}
+        {activeTab === "organization" && <OrganizationSettings />}
+        {activeTab === "staff" && (
+          <CommandSection>
+            {orgId && user?.id ? (
+              <OrganizationStaffManager
+                organizationId={orgId}
+                ownerId={user.id}
+                orgName={orgName}
+                orgLogo={orgLogo}
+                ownerName={ownerName}
+              />
+            ) : (
+              <CommandEmptyState
+                title="Organization required"
+                description="Create or connect an organization before assigning staff access."
+                icon={<ShieldCheck className="h-5 w-5" />}
+              />
+            )}
+          </CommandSection>
+        )}
+      </CommandPageGrid>
       <Footer />
-    </div>
+    </CommandShell>
   );
 };
 

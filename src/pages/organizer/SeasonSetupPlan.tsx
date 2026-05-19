@@ -59,8 +59,7 @@ const createDraftNode = (seasonId: string, parentNodeId: string | null, displayO
     startsAt: null,
     endsAt: null,
     metadata: {
-      format: 'single_elimination',
-      teamSize: 5,
+      tournamentStructure: 'single_elimination',
       maxTeams: 16,
       registrationType: 'open',
       reservedInviteSlots: 0,
@@ -135,7 +134,7 @@ const SeasonSetupPlan = () => {
             registrationType: 'open',
             reservedInviteSlots: (next.metadata as Record<string, unknown> | null | undefined)?.reservedInviteSlots ?? 0,
             inviteExpiryDays: (next.metadata as Record<string, unknown> | null | undefined)?.inviteExpiryDays ?? 7,
-            registrationPolicy: 'direct_entry',
+            registrationPolicy: 'single_intake',
             qualificationSource: 'registration',
           },
         };
@@ -162,8 +161,24 @@ const SeasonSetupPlan = () => {
     setNodeRows((current) => current.map((node) => {
       if (node.id !== nodeId) return node;
       const currentConnections = readOutgoingConnections(node);
-      const existing = currentConnections[0] ?? { sourceNodeId: node.id, targetNodeId: '', placementStart: 1, placementEnd: 1, advancementCount: 1 };
-      return { ...node, metadata: { ...(node.metadata ?? {}), connections: [{ ...existing, ...patch, sourceNodeId: node.id }] } };
+      const incomingAdvance = (patch.advanceTeams ?? patch.advancementCount ?? patch.placementEnd) as number | undefined;
+      const existing = currentConnections[0] ?? { sourceNodeId: node.id, targetNodeId: '', placementStart: 1, placementEnd: 1, advancementCount: 1, advanceTeams: 1 };
+      const advanceTeams = Math.max(1, Number(incomingAdvance ?? existing.advanceTeams ?? existing.advancementCount ?? 1));
+      return {
+        ...node,
+        metadata: {
+          ...(node.metadata ?? {}),
+          connections: [{
+            ...existing,
+            ...patch,
+            sourceNodeId: node.id,
+            placementStart: 1,
+            placementEnd: advanceTeams,
+            advancementCount: advanceTeams,
+            advanceTeams,
+          }],
+        },
+      };
     }));
   };
 
@@ -185,7 +200,7 @@ const SeasonSetupPlan = () => {
       ...node,
       id: node.id?.startsWith('draft-') ? undefined : node.id,
       slug: toNullable(node.slug),
-      region: toNullable(node.region),
+      region: null,
       city: toNullable(node.city),
       country: toNullable(node.country),
       linkedTournamentId: node.linkedTournamentId ?? null,
@@ -311,12 +326,8 @@ const SeasonSetupPlan = () => {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label>Region</Label>
-                          <Input value={node.region ?? ''} onChange={(event) => updateNode(node.id, { region: event.target.value })} className="rounded-none border-white/10 bg-black/20 text-white" />
-                        </div>
-                        <div className="space-y-2">
                           <Label>Format</Label>
-                          <Select value={config.format ?? ''} onValueChange={(value) => updateMetadata(node.id, { format: value })}>
+                          <Select value={config.format ?? ''} onValueChange={(value) => updateMetadata(node.id, { tournamentStructure: value })}>
                             <SelectTrigger className="rounded-none border-white/10 bg-black/20 text-white"><SelectValue placeholder="Format" /></SelectTrigger>
                             <SelectContent>{FORMAT_OPTIONS.map((format) => <SelectItem key={format} value={format}>{format.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
                           </Select>
@@ -361,10 +372,6 @@ const SeasonSetupPlan = () => {
                           <Input type="number" min={2} value={config.maxTeams ?? ''} onChange={(event) => updateMetadata(node.id, { maxTeams: Number(event.target.value) })} className="rounded-none border-white/10 bg-black/20 text-white" />
                         </div>
                         <div className="space-y-2">
-                          <Label>Team size</Label>
-                          <Input type="number" min={1} value={config.teamSize ?? ''} onChange={(event) => updateMetadata(node.id, { teamSize: Number(event.target.value) })} className="rounded-none border-white/10 bg-black/20 text-white" />
-                        </div>
-                        <div className="space-y-2">
                           <Label>Registration deadline</Label>
                           <Input type="date" value={formatDateInput(node.registrationDeadline)} onChange={(event) => updateNode(node.id, { registrationDeadline: event.target.value })} disabled={!nodeRequiresRegistrationDeadline(node)} className="rounded-none border-white/10 bg-black/20 text-white" />
                           {!nodeRequiresRegistrationDeadline(node) && <p className="text-xs text-zinc-600">No direct registration for finals/stages.</p>}
@@ -387,19 +394,15 @@ const SeasonSetupPlan = () => {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 xl:col-span-3">
-                          <div className="space-y-2">
-                            <Label>From place</Label>
-                            <Input type="number" min={1} value={connection?.placementStart ?? 1} onChange={(event) => updateConnection(node.id, { placementStart: Number(event.target.value) })} className="rounded-none border-white/10 bg-black/20 text-white" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>To place</Label>
-                            <Input type="number" min={1} value={connection?.placementEnd ?? 1} onChange={(event) => updateConnection(node.id, { placementEnd: Number(event.target.value) })} className="rounded-none border-white/10 bg-black/20 text-white" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Advance count</Label>
-                            <Input type="number" min={1} value={connection?.advancementCount ?? 1} onChange={(event) => updateConnection(node.id, { advancementCount: Number(event.target.value) })} className="rounded-none border-white/10 bg-black/20 text-white" />
-                          </div>
+                        <div className="space-y-2">
+                          <Label>Advance teams</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={connection?.advanceTeams ?? connection?.advancementCount ?? connection?.placementEnd ?? 1}
+                            onChange={(event) => updateConnection(node.id, { advanceTeams: Number(event.target.value), advancementCount: Number(event.target.value), placementStart: 1, placementEnd: Number(event.target.value) })}
+                            className="rounded-none border-white/10 bg-black/20 text-white"
+                          />
                         </div>
                       </div>
                     </div>

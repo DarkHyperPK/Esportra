@@ -1,31 +1,36 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from 'recharts';
-import { useAuth } from "@/contexts/AuthContext";
+import { BarChart3, Trophy, Users, Wallet } from "lucide-react";
+import { CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useOrganizerStats } from "@/hooks/useOrganizerStats";
+import { CommandEmptyState, CommandMetric, CommandPanel, CommandToolbar } from "@/components/management/CommandSurface";
+
+const CHART_COLORS = ["#f43f5e", "#ffffff", "#9f1239", "#71717a", "#fecdd3"];
+
+const tooltipStyle = {
+  backgroundColor: "#0a0a0c",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: 0,
+  color: "white",
+};
 
 const TournamentAnalytics = () => {
-  const { user } = useAuth();
-
   const { data, isLoading } = useOrganizerStats();
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-zinc-800/10 rounded-lg animate-pulse"></div>
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          {[1, 2, 3, 4].map((item) => (
+            <CommandPanel key={item} className="h-28 animate-pulse bg-white/[0.035]" />
           ))}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="h-80 bg-zinc-800/10 rounded-lg animate-pulse"></div>
-          <div className="h-80 bg-zinc-800/10 rounded-lg animate-pulse"></div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <CommandPanel className="h-80 animate-pulse bg-white/[0.035]" />
+          <CommandPanel className="h-80 animate-pulse bg-white/[0.035]" />
         </div>
       </div>
     );
   }
 
-  // Fallback if data is undefined (should involve error handling, but hook handles most)
   const analyticsData = data || {
     totalTournaments: 0,
     totalParticipants: 0,
@@ -33,138 +38,77 @@ const TournamentAnalytics = () => {
     upcomingTournaments: 0,
     totalPrizePool: 0,
     monthlyParticipation: [],
-    gameDistribution: []
+    gameDistribution: [],
   };
 
-  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#a4de6c'];
-
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-[#0a0a0c] border-white/10/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">Total Tournaments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.totalTournaments}</div>
-            <p className="text-xs text-gray-400 mt-1">
-              {(analyticsData.activeTournaments || 0) + (analyticsData.upcomingTournaments || 0)} active/upcoming
-            </p>
-          </CardContent>
-        </Card>
+    <div className="space-y-4">
+      <CommandToolbar>
+        <div>
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.35em] text-rose-400">Signal</p>
+          <h2 className="mt-1 text-xl font-black uppercase text-white">Organization Analytics</h2>
+        </div>
+        <span className="border border-white/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+          Live operational snapshot
+        </span>
+      </CommandToolbar>
 
-        <Card className="bg-[#0a0a0c] border-white/10/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">Total Participants</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.totalParticipants}</div>
-            <p className="text-xs text-green-500 mt-1 flex items-center">
-              Lifetime total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#0a0a0c] border-white/10/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">Total Prize Pool</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${analyticsData.totalPrizePool.toLocaleString()}</div>
-            <p className="text-xs text-gray-400 mt-1">Across all tournaments</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#0a0a0c] border-white/10/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">Active Tournaments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.activeTournaments}</div>
-            <p className="text-xs text-gray-400 mt-1">Currently running</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <CommandMetric label="Total Tournaments" value={analyticsData.totalTournaments} icon={<Trophy className="h-4 w-4" />} />
+        <CommandMetric label="Participants" value={analyticsData.totalParticipants} icon={<Users className="h-4 w-4" />} />
+        <CommandMetric label="Prize Pool" value={`$${analyticsData.totalPrizePool.toLocaleString()}`} icon={<Wallet className="h-4 w-4" />} />
+        <CommandMetric label="Active Events" value={analyticsData.activeTournaments} icon={<BarChart3 className="h-4 w-4" />} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-[#0a0a0c] border-white/10/30">
-          <CardHeader>
-            <CardTitle>Monthly Participation</CardTitle>
-            <CardDescription>Participants over the last 6 months</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              {analyticsData.monthlyParticipation.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-500">Not enough data yet</div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={analyticsData.monthlyParticipation}
-                    margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                    <XAxis dataKey="month" stroke="#999" />
-                    <YAxis stroke="#999" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0a0a0c',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '8px',
-                        color: 'white'
-                      }}
-                    />
-                    <Line type="monotone" dataKey="participants" stroke="#8884d8" activeDot={{ r: 8 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <CommandPanel>
+          <div className="mb-5">
+            <h3 className="text-lg font-black uppercase text-white">Monthly Participation</h3>
+            <p className="text-sm text-zinc-500">Participants over the last six months</p>
+          </div>
+          <div className="h-72">
+            {analyticsData.monthlyParticipation.length === 0 ? (
+              <CommandEmptyState title="Not enough data yet" description="Participation trends will appear after more registrations are recorded." />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={analyticsData.monthlyParticipation} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <XAxis dataKey="month" stroke="#71717a" />
+                  <YAxis stroke="#71717a" />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Line type="monotone" dataKey="participants" stroke="#f43f5e" strokeWidth={2} activeDot={{ r: 6, fill: "#fff" }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </CommandPanel>
 
-        <Card className="bg-[#0a0a0c] border-white/10/30">
-          <CardHeader>
-            <CardTitle>Tournaments by Game</CardTitle>
-            <CardDescription>Which games are you hosting most?</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              {analyticsData.gameDistribution.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-gray-500">Not enough data yet</div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={analyticsData.gameDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {analyticsData.gameDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Legend verticalAlign="middle" align="right" layout="vertical" iconType="circle" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#0a0a0c',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '8px',
-                        color: 'white'
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <CommandPanel>
+          <div className="mb-5">
+            <h3 className="text-lg font-black uppercase text-white">Tournaments By Game</h3>
+            <p className="text-sm text-zinc-500">Which games your organization hosts most</p>
+          </div>
+          <div className="h-72">
+            {analyticsData.gameDistribution.length === 0 ? (
+              <CommandEmptyState title="Not enough data yet" description="Game distribution appears after hosted tournaments are recorded." />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={analyticsData.gameDistribution} cx="45%" cy="50%" innerRadius={58} outerRadius={82} paddingAngle={4} dataKey="value">
+                    {analyticsData.gameDistribution.map((entry, index) => (
+                      <Cell key={`cell-${entry.name || index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Legend verticalAlign="middle" align="right" layout="vertical" iconType="square" />
+                  <Tooltip contentStyle={tooltipStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </CommandPanel>
       </div>
     </div>
   );
 };
 
 export default TournamentAnalytics;
-

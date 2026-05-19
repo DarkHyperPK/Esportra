@@ -12,6 +12,9 @@ export interface Season {
   name: string;
   slug: string;
   game: string;
+  gameMode?: string | null;
+  catalogGameSlug?: string | null;
+  region?: string | null;
   description: string | null;
   banner_url: string | null;
   logo_url: string | null;
@@ -97,6 +100,9 @@ export interface AdvancementRule {
 export interface CreateSeasonRequest {
   name: string;
   game: string;
+  gameMode?: string;
+  region?: string;
+  teamSize?: number;
   description?: string;
   participant_mode?: SeasonParticipantMode;
   start_date?: string;
@@ -116,6 +122,10 @@ export interface CreateSeasonResponse {
 
 export interface UpdateSeasonRequest {
   name: string;
+  game?: string;
+  gameMode?: string;
+  region?: string;
+  teamSize?: number;
   description?: string;
   start_date?: string;
   end_date?: string;
@@ -164,6 +174,8 @@ export interface UpdateAdvancementRuleRequest {
 export interface SeasonWizardData {
   name: string;
   game: string;
+  gameMode?: string;
+  region?: string;
   description?: string;
   start_date?: string;
   end_date?: string;
@@ -206,6 +218,7 @@ export interface AddSeasonTournamentRequest {
   role: string;
   region?: string;
   displayName?: string;
+  tournamentStructure?: string;
   format?: string;
   maxTeams?: number;
   teamSize?: number;
@@ -342,6 +355,7 @@ export interface AdvancementConnection {
   placementStart: number;
   placementEnd: number;
   advancementCount: number;
+  advanceTeams?: number;
 }
 
 // ── Qualification record ────────────────────────────────────────────────────
@@ -442,6 +456,9 @@ export interface SeasonDetail {
   slug: string;
   description: string | null;
   game: string;
+  gameMode?: string | null;
+  catalogGameSlug?: string | null;
+  region?: string | null;
   participantMode: SeasonParticipantMode;
   status: SeasonStatus;
   ownerUserId: string;

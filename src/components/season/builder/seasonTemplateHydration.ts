@@ -1,7 +1,6 @@
 import { generateSlotDates, getTemplateById, type TournamentSlot } from '@/data/seasonTemplates';
 import type { AdvancementConnection, SeasonBuilderNode, SeasonNodeDraft, SeasonNodeType, SeasonRuleDraft } from '@/types/season';
 
-const DEFAULT_TEAM_SIZE = 5;
 const DEFAULT_MAX_TEAMS = 16;
 
 const addDays = (value: string, days: number) => {
@@ -17,13 +16,13 @@ const toNodeType = (slot: TournamentSlot): Exclude<SeasonNodeType, 'root'> => {
 };
 
 const buildNodeMetadata = (slot: TournamentSlot, connections: AdvancementConnection[] = [], qualificationSource?: string) => ({
-  format: slot.suggestedFormat,
-  teamSize: DEFAULT_TEAM_SIZE,
+  tournamentStructure: slot.suggestedFormat,
   maxTeams: slot.type === 'finals' ? DEFAULT_MAX_TEAMS : 32,
   registrationType: slot.type === 'finals' ? 'closed' : 'open',
   bestOf: slot.defaultBestOf,
-  registrationPolicy: slot.type === 'finals' ? 'inbound_only' : 'direct_entry',
+  registrationPolicy: slot.type === 'finals' ? 'inbound_only' : 'single_intake',
   qualificationSource: qualificationSource ?? (slot.type === 'finals' ? 'upstream_results' : 'registration'),
+  generatedBySeason: true,
   templateSlotType: slot.type,
   templateDescription: slot.description ?? null,
   connections,
@@ -59,6 +58,7 @@ export function buildSeasonTemplatePlan(params: {
         placementStart: connectionRange?.placement_start ?? 1,
         placementEnd: connectionRange?.placement_end ?? 4,
         advancementCount: connectionRange?.advancement_count ?? Math.min(4, connectionRange?.placement_end ?? 4),
+        advanceTeams: connectionRange?.advancement_count ?? Math.min(4, connectionRange?.placement_end ?? 4),
       }]
       : [];
 

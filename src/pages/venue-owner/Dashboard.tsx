@@ -9,6 +9,7 @@ import {
   Trash2, Loader2, LayoutDashboard, Copy, Check, AlertCircle, ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { JackButton } from "@/components/ui/JackButton";
 import VenueAnalytics from "@/components/venue-owner/VenueAnalytics";
 import Footer from "@/components/Footer";
 import { Venue, VenueStatus } from "@/types/venue";
@@ -180,9 +181,9 @@ const VenueOwnerDashboard = () => {
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-zinc-200">My Venues</h2>
-              <Button size="sm" onClick={() => navigate('/venues/list-venue')} className="bg-rose-600 hover:bg-rose-700">
+              <JackButton size="sm" onClick={() => navigate('/venues/list-venue')}>
                 <Plus className="w-4 h-4 mr-1" /> List New Venue
-              </Button>
+              </JackButton>
             </div>
 
             {loading ? (
@@ -196,9 +197,9 @@ const VenueOwnerDashboard = () => {
                 <MapPin className="w-10 h-10 mx-auto mb-3 text-zinc-600" />
                 <p className="text-zinc-400 font-medium">No venues yet</p>
                 <p className="text-sm text-zinc-600 mt-1">List your first gaming venue to start receiving bookings.</p>
-                <Button size="sm" onClick={() => navigate('/venues/list-venue')} className="bg-rose-600 hover:bg-rose-700 mt-4">
+                <JackButton size="sm" onClick={() => navigate('/venues/list-venue')} className="mt-4">
                   <Plus className="w-4 h-4 mr-1" /> List Your First Venue
-                </Button>
+                </JackButton>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

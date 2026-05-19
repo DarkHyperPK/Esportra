@@ -28,9 +28,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Tournament as TournamentType } from '@/hooks/useTournaments';
 import { TournamentStatus } from '@/types/tournament';
 import { apiClient } from '@/lib/apiClient';
-import { TypewriterEffect } from '@/components/effects/TypewriterEffect';
-import { FluidButton } from '@/components/effects/FluidButton';
-import { MotionTiles } from '@/components/effects/MotionTiles';
 import {
   AlertTriangle,
   ArrowDown,
@@ -104,6 +101,7 @@ import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTo
 import { MockModePanel } from '@/components/tournament/MockModePanel';
 import { useMockTournament } from '@/hooks/useMockTournament';
 import { useTournamentInvitations } from '@/hooks/useTournamentInvitations';
+import { CommandButton, CommandTabButton } from '@/components/management/CommandSurface';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 const PARTICIPANTS_PAGE_SIZE = 24;
@@ -1511,14 +1509,7 @@ const TournamentDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-transparent text-white relative overflow-hidden font-sans">
-      {/* Background grid */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]" />
-        {/* Noise Texture */}
-        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay"></div>
-      </div>
-
+    <div className="esportra-ambient-page relative min-h-screen overflow-hidden font-sans text-white">
       <main className="container mx-auto px-4 py-8 relative z-10 font-heading">
         {hasStaffAccess && (
           <motion.div
@@ -1537,11 +1528,6 @@ const TournamentDashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6"
         >
-          {/* Motion Background Grid */}
-          <MotionTiles />
-          {/* Decorative Gradient */}
-          <div className="absolute inset-0 bg-rose-500/10 opacity-0 transition-opacity duration-1000 pointer-events-none mix-blend-overlay" />
-
           <div className="relative flex flex-col lg:flex-row gap-8 justify-between z-10">
             {/* Left: Identity */}
             <div className="flex gap-6 items-start">
@@ -1574,9 +1560,8 @@ const TournamentDashboard = () => {
                     </span>
                   )}
                 </div>
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight mb-2 drop-shadow-sm min-h-[1.2em]">
-                  {/* Typewriter Effect for Title */}
-                  <TypewriterEffect words={[tournament.name, "Tournament Dashboard", "Manage Event"]} />
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight mb-2 min-h-[1.2em]">
+                  {tournament.name}
                 </h1>
                 <div className="flex items-center gap-6 text-sm font-medium text-gray-400">
                   <div className="flex items-center gap-2 hover:text-white transition-colors">
@@ -1602,7 +1587,7 @@ const TournamentDashboard = () => {
               <div className="flex flex-wrap items-center justify-end gap-3 mt-auto">
                 {isOrganizer && (tournament.status === 'draft' || !tournament.is_public) && (
                   <>
-                    <Button
+                    <CommandButton
                       onClick={() => {
                         if (mockCount > 0) {
                           setPublishMockGuardOpen(true);
@@ -1618,11 +1603,12 @@ const TournamentDashboard = () => {
                           })();
                         }
                       }}
-                      className="bg-white text-black hover:bg-rose-500 hover:text-white text-white font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-none transition-all  shadow-[0_0_20px_rgba(16,185,129,0.3)] group"
+                      variant="primary"
+                      size="sm"
                     >
                       <Globe className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
                       Publish Tournament
-                    </Button>
+                    </CommandButton>
 
                     {/* Mock-participants-exist guard before publish */}
                     <AlertDialog open={publishMockGuardOpen} onOpenChange={setPublishMockGuardOpen}>
@@ -1639,24 +1625,27 @@ const TournamentDashboard = () => {
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel className="bg-transparent border-white/10 hover:bg-white/5">
-                            Cancel
+                          <AlertDialogCancel asChild>
+                            <CommandButton variant="secondary" size="sm">Cancel</CommandButton>
                           </AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-white text-black hover:bg-rose-500 hover:text-white text-white"
-                            onClick={async () => {
-                              try {
-                                await clearMockForPublish.mutateAsync();
-                                await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open', isPublic: true });
-                                refetchDashboard();
-                                toast({ title: 'Tournament Published!', description: 'Mock data cleared and tournament is now live.' });
-                              } catch (err: any) {
-                                toast({ title: 'Publish failed', description: err.message, variant: 'destructive' });
-                              }
-                              setPublishMockGuardOpen(false);
-                            }}
-                          >
-                            Clear & Publish
+                          <AlertDialogAction asChild>
+                            <CommandButton
+                              variant="primary"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  await clearMockForPublish.mutateAsync();
+                                  await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open', isPublic: true });
+                                  refetchDashboard();
+                                  toast({ title: 'Tournament Published!', description: 'Mock data cleared and tournament is now live.' });
+                                } catch (err: any) {
+                                  toast({ title: 'Publish failed', description: err.message, variant: 'destructive' });
+                                }
+                                setPublishMockGuardOpen(false);
+                              }}
+                            >
+                              Clear & Publish
+                            </CommandButton>
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -1665,42 +1654,46 @@ const TournamentDashboard = () => {
                 )}
 
                 {isOrganizer && tournament.status !== 'completed' && tournament.status !== 'draft' && (
-                  <Button
+                  <CommandButton
                     onClick={handleCompleteTournament}
-                    className="bg-white/[0.03] text-rose-300 border border-rose-500/30 hover:bg-rose-500 hover:text-white font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-none transition-all  shadow-[0_0_20px_rgba(16,185,129,0.1)] group"
+                    variant="secondary"
+                    size="sm"
                   >
                     <CheckCircle className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
                     Mark as Finished
-                  </Button>
+                  </CommandButton>
                 )}
 
                 {isOrganizer && tournament.status === 'completed' && (
-                  <Button
+                  <CommandButton
                     onClick={() => handleStatusChange('published')}
-                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-none transition-all  shadow-[0_0_20px_rgba(245,158,11,0.1)] group"
+                    variant="warning"
+                    size="sm"
                   >
                     <RefreshCw className="w-4 h-4 mr-2 transition-transform group-hover:rotate-180" />
                     Reopen Tournament
-                  </Button>
+                  </CommandButton>
                 )}
 
                 {isOrganizer && (
-                  <Button
+                  <CommandButton
                     onClick={handleEditTournament}
-                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-none transition-all  shadow-[0_0_20px_rgba(245,158,11,0.1)] group"
+                    variant="warning"
+                    size="sm"
                   >
                     <Edit2 className="w-4 h-4 mr-2 transition-transform group-hover:-rotate-12" />
                     Edit Tournament
-                  </Button>
+                  </CommandButton>
                 )}
 
-                <Button
+                <CommandButton
                   onClick={() => navigate(`/tournaments/${slug}`)}
-                  className="bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold uppercase tracking-tight text-xs py-2 px-4 h-10 rounded-none transition-all  group"
+                  variant="secondary"
+                  size="sm"
                 >
                   <Eye className="w-4 h-4 mr-2 transition-transform group-hover:scale-110" />
                   View Public Page
-                </Button>
+                </CommandButton>
               </div>
             </div>
           </div>
@@ -1796,14 +1789,14 @@ const TournamentDashboard = () => {
                   return tabs.map((tab) => {
                   if (tab === 'brackets') {
                     return (
-                      <button
+                      <CommandTabButton
                         key="brackets"
                         onClick={() => navigate(`/tournaments/${slug}/brackets`)}
                         disabled={!canEditBracket}
-                        className="px-6 py-2.5 rounded-none text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 disabled:opacity-50 transition-all flex items-center justify-center h-full"
+                        className="flex h-full items-center justify-center px-6 py-2.5 text-sm capitalize disabled:opacity-50"
                       >
                         Brackets
-                      </button>
+                      </CommandTabButton>
                     );
                   }
 
@@ -1816,7 +1809,7 @@ const TournamentDashboard = () => {
                     <TabsTrigger
                       key={tab}
                       value={tab}
-                      className="px-6 py-2.5 rounded-none text-sm font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow-lg relative overflow-hidden capitalize h-auto"
+                      className="h-auto rounded-none border border-transparent px-6 py-2.5 text-sm font-medium capitalize text-gray-400 transition-colors hover:border-white/10 hover:bg-white/5 hover:text-white data-[state=active]:border-rose-500 data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow-lg"
                     >
                       <span className="relative z-10">{tab}</span>
                     </TabsTrigger>
@@ -2036,7 +2029,6 @@ const TournamentDashboard = () => {
                     )}
                     {canManageTeams && (
                       <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
-                        <MotionTiles />
                         <CardHeader className="p-0 border-b border-white/5 pb-4 mb-6 relative z-10">
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                             <div>
@@ -2270,7 +2262,6 @@ const TournamentDashboard = () => {
                       />
                     )}
                     <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
-                      <MotionTiles />
                       <CardHeader className="p-0 border-b border-white/5 pb-4 mb-6 relative z-10">
                         <CardTitle className="text-lg font-bold text-white tracking-wide">
                           {tournament.team_size === 1 ? 'Registered Participants' : 'Registered Teams'}

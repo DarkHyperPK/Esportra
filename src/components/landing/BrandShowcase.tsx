@@ -7,6 +7,7 @@ import {
   Layers,
   ArrowRight,
 } from "lucide-react";
+import { JackButton } from "@/components/ui/JackButton";
 
 const pillars = [
   {
@@ -125,13 +126,10 @@ const BrandShowcase = () => {
 
           {/* CTA */}
           <div className="pt-2 text-center">
-            <Link
-              to="/partners"
-              className="group relative inline-flex items-center gap-2 overflow-hidden border border-white bg-white px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-black transition-colors"
-            >
+            <JackButton as={Link} to="/partners" size="md">
               Become a Partner
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </JackButton>
           </div>
         </div>
       </div>

@@ -8,12 +8,13 @@ export function useRegisterForSeason() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (seasonId: string) => seasonApi.registerForSeason(seasonId),
-    onSuccess: (_, seasonId) => {
+    mutationFn: ({ seasonId, payload }: { seasonId: string; payload?: { nodeId?: string; teamId?: string; rosterId?: string; notes?: string } }) =>
+      seasonApi.registerForSeason(seasonId, payload),
+    onSuccess: (_, { seasonId }) => {
       queryClient.invalidateQueries({ queryKey: ['season-participants', seasonId] });
       toast({
         title: 'Registration submitted',
-        description: 'Your team registration is pending organizer approval.',
+        description: 'Your season registration has been submitted.',
       });
     },
     onError: (error) => {

@@ -5,6 +5,7 @@ import { useSponsors, trackImpression, trackClick, Sponsor } from '@/hooks/useSp
 import PartnerApplicationForm from '@/components/PartnerApplicationForm';
 import Footer from '@/components/Footer';
 import { getStorageUrl } from '@/lib/storage';
+import { JackButton } from '@/components/ui/JackButton';
 
 /* ──────────────────────────────────────────────────────────────
    Interfaces & Config
@@ -189,16 +190,18 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
 
                 {/* CTA */}
                 <div className="flex items-center gap-6 mt-auto pt-6 border-t border-white/5">
-                    <a
+                    <JackButton
+                        as="a"
                         href={sponsor.website_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={() => trackClick(sponsor.id)}
-                        className="group/btn inline-flex items-center gap-3 text-white font-mono text-sm tracking-wider hover:text-rose-500 transition-colors"
+                        variant="invert"
+                        size="sm"
                     >
                         {sponsor.cta_text || 'INITIATE_LINK'}
-                        <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-2" />
-                    </a>
+                        <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-2" />
+                    </JackButton>
 
                     {sponsor.discount_text && (
                         <div

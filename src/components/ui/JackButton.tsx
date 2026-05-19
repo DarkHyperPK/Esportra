@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
  * The component is polymorphic: pass `as` to render as a `Link`, `a`, etc.
  */
 const jackButtonVariants = cva(
-  "group relative inline-flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap font-mono font-bold uppercase tracking-wider outline-none transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-rose-500/70",
+  "group relative isolate inline-flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap font-mono font-bold uppercase tracking-wider outline-none transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-rose-500/70",
   {
     variants: {
       variant: {
@@ -75,7 +75,7 @@ export function JackButton<C extends React.ElementType = "button">({
       {...(Component === "button" ? { type: "button" } : {})}
       {...rest}
     >
-      <span className="relative z-10 inline-flex items-center gap-2">{children}</span>
+      <span className="relative z-10 inline-flex items-center gap-2 transition-colors duration-300 group-hover:text-white">{children}</span>
       <span className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
     </Component>
   );

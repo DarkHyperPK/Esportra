@@ -1,32 +1,52 @@
-import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Calendar, CheckCircle2, Clock, Plus, Trophy, Users } from "lucide-react";
+import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiClient } from '@/lib/apiClient';
-import { CheckCircle2 } from "lucide-react";
+import { fetchMeRoles, getOrganizationId } from "@/lib/meRoles";
+import { CommandButton, CommandEmptyState, CommandPanel, CommandToolbar } from "@/components/management/CommandSurface";
+import { cn } from "@/lib/utils";
 
 interface Tournament {
   id: string;
   name: string;
   game: string;
   date: string;
-  time: string;
   venue: string;
   max_participants: number | null;
-  description: string;
-  entry_fee: string | null;
-  prize_pool: string;
-  is_online: boolean;
-  image_url: string | null;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-  status: 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled';
+  status: "draft" | "published" | "open" | "closed" | "ongoing" | "completed" | "cancelled";
   current_participants?: number;
+  slug?: string | null;
   isRegistered: boolean;
 }
+
+const normalizeRows = (value: any): any[] => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.items)) return value.items;
+  return [];
+};
+
+const getCurrentOrganization = async () => {
+  const roles = await fetchMeRoles().catch(() => null);
+  const roleOrgId = getOrganizationId(roles);
+  const mine = await apiClient.get<any>("/api/organizations/mine").catch(() => null);
+  if (mine?.id) return mine;
+  const me = await apiClient.get<any>("/api/organizations/me").catch(() => null);
+  if (me?.id) return me;
+  if (roleOrgId) return { id: roleOrgId };
+  return null;
+};
+
+const statusStyles: Record<string, string> = {
+  draft: "border-white/15 text-zinc-300",
+  published: "border-amber-500/40 text-amber-300",
+  open: "border-emerald-500/40 text-emerald-300",
+  closed: "border-amber-500/40 text-amber-300",
+  ongoing: "border-rose-500/50 text-rose-300",
+  completed: "border-white/15 text-zinc-400",
+  cancelled: "border-red-500/40 text-red-300",
+};
 
 const TournamentsList = () => {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -35,166 +55,149 @@ const TournamentsList = () => {
   const { user } = useAuth();
 
   useEffect(() => {
+    let mounted = true;
+
     const fetchTournaments = async () => {
-      if (!user) return;
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
 
       try {
-        console.log('[TournamentsList] Fetching tournaments for user:', user.id);
+        const org = await getCurrentOrganization();
+        if (!org?.id) {
+          if (mounted) setTournaments([]);
+          return;
+        }
 
-        const raw = await apiClient.get<any>(`/api/tournaments?organizer_id=${user.id}`);
-        const tournamentsData: any[] = Array.isArray(raw) ? raw : (raw?.items || raw?.data || []);
-
-        console.log('[TournamentsList] Found tournaments:', tournamentsData.length, tournamentsData);
-
-        const tournamentsWithStatus = await Promise.all(tournamentsData.map(async (tournament: any) => {
-
-          // Check if user is registered
-          let isRegistered = false;
-          if (user?.id) {
-            try {
-              const rawP = await apiClient.get<any>(`/api/tournaments/${tournament.id}/participants`);
-              const participants: any[] = Array.isArray(rawP) ? rawP : (rawP?.items || rawP?.data || []);
-              isRegistered = participants.some((p: any) => p.user_id === user.id);
-            } catch {
-              isRegistered = false;
-            }
-          }
-
-          // Use DB status, but infer 'ongoing' if start_date has passed and status is still pre-start
-          let displayStatus = tournament.status || 'draft';
-          if (['open', 'closed'].includes(displayStatus)) {
+        const raw = await apiClient.get<any>(`/api/organizations/${org.id}/tournaments`);
+        const tournamentsData = normalizeRows(raw);
+        const mapped = tournamentsData.map((tournament: any) => {
+          let displayStatus = tournament.status || "draft";
+          if (["open", "closed"].includes(displayStatus) && tournament.start_date) {
             const startDate = new Date(tournament.start_date);
-            if (startDate <= new Date()) {
-              displayStatus = 'ongoing';
-            }
+            if (startDate <= new Date()) displayStatus = "ongoing";
           }
 
           return {
             id: tournament.id,
             name: tournament.name,
-            game: tournament.game || 'Unknown',
+            game: tournament.game || "Unknown",
             date: tournament.start_date,
-            time: new Date(tournament.start_date).toLocaleTimeString(),
-            venue: tournament.venue_id ? 'Venue' : 'Online',
+            venue: tournament.venue_id ? "Venue" : "Online",
             max_participants: tournament.max_teams || tournament.max_participants || null,
-            description: tournament.description,
-            entry_fee: tournament.entry_fee,
-            prize_pool: tournament.prize_pool,
-            is_online: !tournament.venue_id,
-            image_url: tournament.banner_url || undefined,
-            user_id: tournament.organizer_id,
-            created_at: tournament.created_at,
-            updated_at: tournament.updated_at,
             status: displayStatus,
             current_participants: tournament.registration_count ?? tournament.current_participants ?? tournament.participant_count ?? 0,
-            isRegistered
+            slug: tournament.slug,
+            isRegistered: false,
           };
-        }));
+        });
 
-        setTournaments(tournamentsWithStatus);
+        if (mounted) setTournaments(mapped);
       } catch (error) {
-        console.error('Error fetching tournaments:', error);
+        console.error("Error fetching tournaments:", error);
+        if (mounted) setTournaments([]);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
 
-    fetchTournaments();
-  }, [user]);
+    void fetchTournaments();
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
 
-  const handleCreateTournament = () => {
-    navigate('/tournaments/create');
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'draft':
-        return 'bg-zinc-600';
-      case 'published':
-        return 'bg-blue-500';
-      case 'open':
-        return 'bg-emerald-500';
-      case 'closed':
-        return 'bg-amber-500';
-      case 'ongoing':
-        return 'bg-red-500';
-      case 'completed':
-        return 'bg-zinc-600';
-      case 'cancelled':
-        return 'bg-zinc-700';
-      default:
-        return 'bg-zinc-600';
-    }
-  };
+  const counts = useMemo(
+    () => ({
+      live: tournaments.filter((t) => t.status === "ongoing" || t.status === "open").length,
+      draft: tournaments.filter((t) => t.status === "draft").length,
+      completed: tournaments.filter((t) => t.status === "completed").length,
+    }),
+    [tournaments],
+  );
 
   return (
-    <Card className="bg-[#0a0a0c] border-white/10/30">
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle>My Tournaments</CardTitle>
-          <Button
-            onClick={handleCreateTournament}
-            className="bg-gaming-purple hover:bg-gaming-purple/80"
-          >
-            Create Tournament
-          </Button>
+    <div className="space-y-4">
+      <CommandToolbar>
+        <div>
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.35em] text-rose-400">Inventory</p>
+          <h2 className="mt-1 text-xl font-black uppercase text-white">Tournament Control</h2>
         </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="space-y-4">
-            {Array(3).fill(0).map((_, i) => (
-              <div key={i} className="animate-pulse bg-zinc-800/20 p-4 rounded-lg">
-                <div className="h-6 w-1/3 bg-zinc-800/30 rounded mb-2"></div>
-                <div className="h-4 w-1/4 bg-zinc-800/30 rounded"></div>
-              </div>
-            ))}
-          </div>
-        ) : tournaments.length > 0 ? (
-          <div className="space-y-4">
-            {tournaments.map((tournament) => (
-              <div
-                key={tournament.id}
-                className={`bg-zinc-800/10 p-4 rounded-lg border border-white/10/30 hover:border-gaming-purple/50 transition-colors cursor-pointer ${tournament.isRegistered ? 'border-gaming-purple' : ''}`}
-                onClick={() => navigate(`/tournaments/${tournament.id}`)}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="text-lg font-semibold">{tournament.name}</h3>
-                    <p className="text-gray-400">{tournament.game}</p>
-                  </div>
-                  <Badge className={getStatusColor(tournament.status)}>
+        <div className="flex flex-wrap gap-2">
+          <span className="border border-white/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-zinc-400">{counts.live} live/open</span>
+          <span className="border border-white/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-zinc-400">{counts.draft} draft</span>
+          <span className="border border-white/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-zinc-400">{counts.completed} completed</span>
+          <CommandButton size="sm" onClick={() => navigate("/tournaments/create")}>
+            <Plus className="h-4 w-4" />
+            Create
+          </CommandButton>
+        </div>
+      </CommandToolbar>
+
+      {loading ? (
+        <div className="grid gap-3">
+          {[0, 1, 2].map((item) => (
+            <CommandPanel key={item} className="h-28 animate-pulse bg-white/[0.035]" />
+          ))}
+        </div>
+      ) : tournaments.length > 0 ? (
+        <div className="grid gap-3">
+          {tournaments.map((tournament) => (
+            <button
+              key={tournament.id}
+              type="button"
+              className="group grid gap-4 border border-white/10 bg-[#0a0a0c]/92 p-4 text-left transition-colors hover:border-rose-500/45 sm:grid-cols-[1fr_auto]"
+              onClick={() => navigate(`/organizer/tournament/${tournament.slug || tournament.id}`)}
+            >
+              <div className="min-w-0">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className={cn("border px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider", statusStyles[tournament.status] || statusStyles.draft)}>
                     {tournament.status}
-                  </Badge>
+                  </span>
+                  {tournament.isRegistered ? (
+                    <span className="inline-flex items-center gap-1 border border-emerald-500/35 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-emerald-300">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Registered
+                    </span>
+                  ) : null}
                 </div>
-                <div className="flex justify-between text-sm text-gray-400">
-                  <div>
-                    <p>Date: {new Date(tournament.date).toLocaleDateString()}</p>
-                    <p>Time: {tournament.time}</p>
-                    <p>Venue: {tournament.venue}</p>
-                  </div>
-                  <div className="text-right">
-                    <p>Participants: {tournament.current_participants} / {tournament.max_participants || '∞'}</p>
-                    {tournament.isRegistered && (
-                      <span className="inline-flex items-center gap-1 text-gaming-green font-semibold ml-2">
-                        <CheckCircle2 className="h-4 w-4" /> Registered
-                      </span>
-                    )}
-                  </div>
+                <h3 className="truncate text-lg font-black uppercase text-white group-hover:text-rose-100">{tournament.name}</h3>
+                <p className="mt-1 text-sm text-zinc-500">{tournament.game}</p>
+              </div>
+
+              <div className="grid min-w-[260px] grid-cols-3 gap-2 text-xs text-zinc-400">
+                <div className="border border-white/10 bg-white/[0.02] p-3">
+                  <Calendar className="mb-2 h-4 w-4 text-rose-400" />
+                  {tournament.date ? new Date(tournament.date).toLocaleDateString() : "TBA"}
+                </div>
+                <div className="border border-white/10 bg-white/[0.02] p-3">
+                  <Users className="mb-2 h-4 w-4 text-rose-400" />
+                  {tournament.current_participants} / {tournament.max_participants || "∞"}
+                </div>
+                <div className="border border-white/10 bg-white/[0.02] p-3">
+                  <Clock className="mb-2 h-4 w-4 text-rose-400" />
+                  {tournament.venue}
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-gray-400">
-            <p>You haven't created any tournaments yet.</p>
-            <p className="mt-2">Click the "Create Tournament" button to get started.</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <CommandEmptyState
+          title="No hosted tournaments yet"
+          description="Create the first event for this organization and it will appear here as operational inventory."
+          icon={<Trophy className="h-5 w-5" />}
+          action={
+            <CommandButton onClick={() => navigate("/tournaments/create")}>
+              <Plus className="h-4 w-4" />
+              Create Tournament
+            </CommandButton>
+          }
+        />
+      )}
+    </div>
   );
 };
 
 export default TournamentsList;
-

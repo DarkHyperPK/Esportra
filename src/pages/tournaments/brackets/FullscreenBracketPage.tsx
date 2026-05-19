@@ -5,7 +5,7 @@ import { apiClient } from '@/lib/apiClient';
 import { PublicBracketView } from './PublicBracketView';
 import { DraggableContainer } from '@/components/DraggableContainer';
 import { useBracketRealtime } from '@/hooks/useBracketRealtime';
-import { Button } from '@/components/ui/button';
+import { CommandButton } from '@/components/management/CommandSurface';
 import { ArrowLeft } from 'lucide-react';
 
 const FullscreenBracketPage = () => {
@@ -58,7 +58,7 @@ const FullscreenBracketPage = () => {
     if (loading) {
         return (
             <div className="min-h-screen bg-transparent flex items-center justify-center text-white">
-                <div className="p-8 rounded-2xl bg-black/80 backdrop-blur-xl border border-white/10 shadow-2xl">
+                <div className="border border-white/10 bg-[#0a0a0c] p-8">
                     <LoadingSpinner size={80} text="Loading Bracket..." />
                 </div>
             </div>
@@ -68,7 +68,7 @@ const FullscreenBracketPage = () => {
     if (!tournament || !activeVersionId) {
         return (
             <div className="min-h-screen bg-transparent flex items-center justify-center text-white">
-                <div className="p-8 rounded-2xl bg-black/80 backdrop-blur-xl border border-white/10 text-center">
+                <div className="border border-white/10 bg-[#0a0a0c] p-8 text-center">
                     <div className="text-6xl mb-4">🏆</div>
                     <h3 className="text-xl font-semibold text-zinc-300 mb-2">Bracket Not Found</h3>
                     <p className="text-zinc-500">The tournament bracket is not available yet.</p>
@@ -94,21 +94,21 @@ const FullscreenBracketPage = () => {
         <div className="fixed inset-0 z-[9999] bg-[#050505] overflow-hidden font-sans">
             {/* Back Navigation */}
             <div className="absolute top-6 left-6 z-50">
-                <Button
+                <CommandButton
                     onClick={handleBack}
-                    variant="outline"
-                    className="bg-black/60 border-white/10 text-white hover:bg-black/80 hover:border-white/30 backdrop-blur-md gap-2"
+                    variant="secondary"
                 >
                     <ArrowLeft className="w-4 h-4" />
                     Back to Stages
-                </Button>
+                </CommandButton>
             </div>
 
-            <DraggableContainer className="w-full h-full bg-black/30 backdrop-blur-sm border border-white/5">
+            <DraggableContainer className="h-full w-full border border-white/5 bg-black/30">
                 <div className="min-w-[2000px] min-h-[1500px] p-20">
                     <PublicBracketView
                         versionId={activeVersionId}
                         tournamentId={tournament.id}
+                        mode="fullscreen"
                     />
                 </div>
             </DraggableContainer>

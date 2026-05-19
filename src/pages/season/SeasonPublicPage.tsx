@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ export default function SeasonPublicPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const registerMutation = useRegisterForSeason();
+  const [selectedNodeId, setSelectedNodeId] = useState<string>('');
 
   const seasonQuery = useSeason(slug ?? '');
   const seasonId = seasonQuery.data?.id ?? '';
@@ -29,6 +31,11 @@ export default function SeasonPublicPage() {
   const standings = standingsQuery.data ?? [];
   const participants = participantsQuery.data ?? [];
   const advancementConnections = advancementQuery.data ?? [];
+  const intakeTournaments = useMemo(() => tournaments.filter((t) => {
+    const role = (t.role ?? t.season_role ?? '').toLowerCase();
+    const status = (t.tournamentStatus ?? t.status ?? '').toLowerCase();
+    return ['qualifier', 'event', 'custom'].includes(role) && ['open', 'published'].includes(status);
+  }), [tournaments]);
 
   const isLoading =
     seasonQuery.isLoading ||
@@ -48,7 +55,12 @@ export default function SeasonPublicPage() {
       toast({ title: 'Sign in required', description: 'Please sign in to register your team.' });
       return;
     }
-    registerMutation.mutate(season.id);
+    const targetNodeId = selectedNodeId || intakeTournaments[0]?.id;
+    if (!targetNodeId) {
+      toast({ title: 'No qualifier open', description: 'This season does not have an open qualifier or event yet.' });
+      return;
+    }
+    registerMutation.mutate({ seasonId: season.id, payload: { nodeId: targetNodeId } });
   };
 
   const getStatusColor = (status: string) => {
@@ -102,13 +114,8 @@ export default function SeasonPublicPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
-      {/* Subtle dot grid */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
-      </div>
-
-      <div className="relative z-10">
+    <div className="esportra-ambient-page min-h-screen text-white">
+      <div className="esportra-ambient-content">
         {/* HERO */}
         <div className="relative overflow-hidden border-b border-[#1a1a1a]">
           {season.banner_url && (
@@ -169,7 +176,25 @@ export default function SeasonPublicPage() {
             <div className="max-w-6xl mx-auto border border-rose-500/20 bg-rose-500/5 p-8 flex flex-col md:flex-row items-center justify-between gap-6">
               <div>
                 <h3 className="text-xl font-bold text-white uppercase tracking-wider mb-1">REGISTER YOUR TEAM</h3>
-                <p className="text-[#808080] text-sm">Join this season and compete against {participants.length} other team{participants.length !== 1 ? 's' : ''}.</p>
+                <p className="text-[#808080] text-sm">Choose one eligible qualifier or event. Finals and stages are advancement-only.</p>
+                {intakeTournaments.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {intakeTournaments.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setSelectedNodeId(t.id)}
+                        className={`border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] ${
+                          (selectedNodeId || intakeTournaments[0]?.id) === t.id
+                            ? 'border-rose-400 bg-rose-500 text-white'
+                            : 'border-white/10 bg-black text-[#808080] hover:border-white/30 hover:text-white'
+                        }`}
+                      >
+                        {t.displayName ?? t.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <Button
                 onClick={handleRegister}

@@ -32,65 +32,57 @@ export interface SeasonTemplate {
 
 export const SEASON_TEMPLATES: SeasonTemplate[] = [
   {
-    id: 'team-bracket-safe',
-    name: 'Team Championship',
-    description: 'A safe two-step bracket season: one open qualifier feeds one closed final using winner-only tournament rules.',
+    id: 'qualifier-to-final',
+    name: 'Qualifier to Final',
+    description: 'Open qualifier intake feeds a closed final. Best for clear regional or community qualification paths.',
     icon: 'Trophy',
-    gameTags: ['fps', 'moba'],
+    gameTags: ['fps', 'moba', 'sports', 'fighter'],
     tournamentCount: 2,
     slots: [
       { name: 'Open Qualifier', type: 'qualifier', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
-      { name: 'Championship Final', type: 'finals', suggestedFormat: 'double_elimination', defaultBestOf: 3, description: 'Qualifier winner advances into the closed final' },
+      { name: 'Championship Final', type: 'finals', suggestedFormat: 'double_elimination', defaultBestOf: 3, description: 'Closed final populated only by qualified teams' },
     ],
     intervalDays: 7,
     pointRules: [
       { placement_start: 1, placement_end: 1, points: 100 },
     ],
     advancementRules: [
-      { source_tournament_id: '', target_tournament_id: '', placement_start: 1, placement_end: 1, advancement_count: 1, seed_mode: 'top_seeded' },
+      { source_tournament_id: '', target_tournament_id: '', placement_start: 1, placement_end: 4, advancement_count: 4, seed_mode: 'top_seeded' },
     ],
   },
   {
-    id: 'sports-bracket-safe',
-    name: 'Sports Cup',
-    description: 'A safe single-event bracket season for sports titles with winner-only tournament rules.',
-    icon: 'Crown',
-    gameTags: ['sports'],
-    tournamentCount: 1,
-    slots: [
-      { name: 'Main Cup', type: 'major', suggestedFormat: 'single_elimination', defaultBestOf: 3 },
-    ],
-    intervalDays: 0,
-    pointRules: [
-      { placement_start: 1, placement_end: 1, points: 100 },
-    ],
-  },
-  {
-    id: 'br-safe',
-    name: 'Battle Royale Lobby',
-    description: 'A safe single-lobby season starter for Battle Royale games with no unsupported placement-range rules.',
+    id: 'points-events-to-final',
+    name: 'Points Events to Final',
+    description: 'Multiple season events build standings, then top teams qualify into a closed final.',
     icon: 'Target',
-    gameTags: ['br'],
-    tournamentCount: 1,
+    gameTags: ['fps', 'moba', 'sports', 'fighter', 'br'],
+    tournamentCount: 4,
     slots: [
-      { name: 'Main Lobby', type: 'match_day', suggestedFormat: 'battle_royale', defaultBestOf: 1 },
+      { name: 'Season Event 1', type: 'match_day', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
+      { name: 'Season Event 2', type: 'match_day', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
+      { name: 'Season Event 3', type: 'match_day', suggestedFormat: 'single_elimination', defaultBestOf: 1 },
+      { name: 'Season Final', type: 'finals', suggestedFormat: 'double_elimination', defaultBestOf: 3, description: 'Closed final populated from standings rank' },
     ],
-    intervalDays: 0,
-    pointRules: [],
-  },
-  {
-    id: 'fighter-safe',
-    name: 'Fighting Championship',
-    description: 'A safe double-elimination fighting game bracket with winner-only tournament rules.',
-    icon: 'Swords',
-    gameTags: ['fighter'],
-    tournamentCount: 1,
-    slots: [
-      { name: 'Main Bracket', type: 'major', suggestedFormat: 'double_elimination', defaultBestOf: 3 },
-    ],
-    intervalDays: 0,
+    intervalDays: 7,
     pointRules: [
       { placement_start: 1, placement_end: 1, points: 100 },
+      { placement_start: 2, placement_end: 2, points: 75 },
+      { placement_start: 3, placement_end: 4, points: 50 },
+    ],
+    advancementRules: [
+      { source_tournament_id: '', target_tournament_id: '', placement_start: 1, placement_end: 8, advancement_count: 8, seed_mode: 'top_seeded' },
+    ],
+  },
+  {
+    id: 'custom',
+    name: 'Custom',
+    description: 'Start with a clean season shell and manually add qualifiers, points events, and finals.',
+    icon: 'Settings',
+    gameTags: ['fps', 'moba', 'sports', 'fighter', 'br'],
+    tournamentCount: 0,
+    slots: [],
+    intervalDays: 0,
+    pointRules: [
     ],
   },
 ];
@@ -111,10 +103,9 @@ export function getTemplatesForGame(gameName: string): SeasonTemplate[] {
     ? 'moba'
     : null;
 
-  if (!genre) return SEASON_TEMPLATES.filter((t) => t.id === 'sports-bracket-safe');
+  if (!genre) return SEASON_TEMPLATES;
 
-  const template = SEASON_TEMPLATES.find((t) => t.gameTags.includes(genre));
-  return template ? [template] : SEASON_TEMPLATES.filter((t) => t.id === 'sports-bracket-safe');
+  return SEASON_TEMPLATES.filter((t) => t.gameTags.includes(genre));
 }
 
 /** Get template by ID */
