@@ -104,7 +104,7 @@ const HeroSection = () => {
 
       {/* Video Credits - Bottom Left */}
       <div className="absolute bottom-12 left-8 z-30 opacity-40 hover:opacity-100 transition-opacity duration-500 text-[10px] uppercase tracking-[0.3em] text-white/60 font-medium">
-        Credits: ViderGG
+        Credits: VALORANT Champions Tour
       </div>
 
       {/* Audio Controls - Bottom Right */}
