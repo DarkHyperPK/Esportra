@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
+import { JackButton } from "@/components/ui/JackButton";
 import {
   Building2,
   CalendarCheck,
@@ -209,12 +210,13 @@ const VenueShowcase = () => {
 
             {/* CTA */}
             <div className="pt-2 text-center lg:text-left">
-              <button
+              <JackButton
                 onClick={() => setShowLicenseDialog(true)}
-                className="group relative inline-flex items-center gap-2 overflow-hidden border border-white bg-white px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-black transition-colors"
+                variant="primary"
+                size="md"
               >
                 List Your Venue
-              </button>
+              </JackButton>
             </div>
           </motion.div>
 
@@ -252,12 +254,9 @@ const VenueShowcase = () => {
 
             {/* CTA */}
             <div className="pt-2 text-center lg:text-left">
-              <Link
-                to="/venues"
-                className="group relative inline-flex items-center gap-2 overflow-hidden border border-white/15 bg-[#0a0a0c] px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white transition-colors hover:border-white/40"
-              >
+              <JackButton as={Link} to="/venues" variant="invert" size="md">
                 Explore Venues
-              </Link>
+              </JackButton>
             </div>
           </motion.div>
         </div>

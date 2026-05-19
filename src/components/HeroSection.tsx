@@ -99,11 +99,8 @@ const HeroSection = () => {
         </motion.video>
       </motion.div>
 
-      {/* Heavy darken stack so the video reads as a dull texture, not a focal point */}
-      <div className="absolute inset-0 z-10 bg-black/85" />
-      <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/50 via-black/75 to-black" />
-      <div className="absolute inset-0 z-10 bg-black/30 mix-blend-multiply" />
-      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0f1115] to-transparent z-10"></div>
+      <div className="absolute inset-0 z-10 bg-black/45" />
+      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/80 to-transparent z-10" />
 
       {/* Video Credits - Bottom Left */}
       <div className="absolute bottom-12 left-8 z-30 opacity-40 hover:opacity-100 transition-opacity duration-500 text-[10px] uppercase tracking-[0.3em] text-white/60 font-medium">
@@ -162,16 +159,6 @@ const HeroSection = () => {
             </span>
           </motion.h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: isLogoMoved ? 1 : 0, y: isLogoMoved ? 0 : 20 }}
-            transition={{ duration: 1, delay: isLogoMoved ? 0.55 : 0, ease: [0.22, 1, 0.36, 1] }}
-            className="mx-auto mt-6 max-w-2xl text-base font-light leading-relaxed text-white/75 md:text-lg"
-          >
-            Run tournaments, build seasons, book venues, manage teams.
-            <br className="hidden md:block" />
-            One platform engineered for organizers, players, and operators.
-          </motion.p>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
