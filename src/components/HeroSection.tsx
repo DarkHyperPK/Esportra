@@ -101,7 +101,7 @@ const HeroSection = () => {
 
       {/* Heavy darken stack so the video reads as a dull texture, not a focal point */}
       <div className="absolute inset-0 z-10 bg-black/85" />
-      <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/60 via-black/75 to-black" />
+      <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/50 via-black/75 to-black" />
       <div className="absolute inset-0 z-10 bg-black/30 mix-blend-multiply" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0f1115] to-transparent z-10"></div>
 
