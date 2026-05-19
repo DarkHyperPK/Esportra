@@ -1,19 +1,48 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ChevronDown, MapPin, Trophy, Medal, Info, Handshake, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
 import { useAdmin } from "@/contexts/AdminContext";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import UserMenu from "./UserMenu";
-import { cn } from "@/lib/utils";
 import { getWebsiteAssetUrl } from "@/lib/storage";
 
 import {
   FramerDropdownRoot,
   FramerDropdownTrigger,
   FramerDropdownContent,
-  FramerDropdownItem,
 } from "@/components/ui/FramerDropdown";
+
+/* ── JackIn button style ── */
+const JackIn = ({
+  children,
+  className = "",
+  onClick,
+  as: Tag = "button",
+  to,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+  as?: "button" | "a";
+  to?: string;
+}) => {
+  const navigate = useNavigate();
+  const props =
+    Tag === "a"
+      ? { href: to, onClick: (e: React.MouseEvent) => { e.preventDefault(); if (to) navigate(to); if (onClick) onClick(); } }
+      : { onClick };
+
+  return (
+    <Tag
+      {...(props as any)}
+      className={`relative inline-flex items-center justify-center gap-2 overflow-hidden bg-white px-5 py-2.5 text-sm font-semibold text-black outline-none transition-colors focus-visible:ring-2 focus-visible:ring-rose-500/70 ${className}`}
+    >
+      <span className="relative z-10 flex items-center gap-2">{children}</span>
+      <div className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
+    </Tag>
+  );
+};
 
 const DesktopNav = ({
   handleSignOut,
@@ -38,15 +67,9 @@ const DesktopNav = ({
     );
 
   const linkClass = (active: boolean) =>
-    cn(
-      "relative inline-flex items-center gap-1.5 px-1 py-2 text-sm font-medium text-zinc-400 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70",
-      active && "text-white"
-    );
-
-  const activeBar = (active: boolean) =>
-    active ? (
-      <span className="absolute bottom-0 left-0 h-[2px] w-full bg-rose-500" />
-    ) : null;
+    `group relative inline-flex items-center gap-2 overflow-hidden bg-white px-5 py-2.5 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-rose-500/70 ${
+      active ? "text-white" : "text-black hover:text-white"
+    }`;
 
   return (
     <div className="hidden w-full items-center justify-between lg:flex">
@@ -60,31 +83,39 @@ const DesktopNav = ({
       </Link>
 
       {/* Center: Navigation */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-3">
         {/* Venues */}
-        <FramerDropdownRoot borderRadius={4} accentColor="#f43f5e">
+        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e">
           <FramerDropdownTrigger asChild>
-            <button type="button" className={linkClass(isActive(["/venues"]))}>
-              <MapPin className="h-4 w-4" />
-              Venues
-              <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+            <button
+              type="button"
+              className={linkClass(isActive(["/venues"]))}
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Venues
+                <ChevronDown className="h-4 w-4 opacity-60" />
+              </span>
+              <div className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
             </button>
           </FramerDropdownTrigger>
           <FramerDropdownContent className="min-w-[200px] border border-white/10 bg-[#0d0d10]">
-            <FramerDropdownItem to="/venues/search">Find Venues</FramerDropdownItem>
-            <FramerDropdownItem to="/venues/featured">Featured Venues</FramerDropdownItem>
-            {canManageVenues && (
-              <>
-                <div className="my-1 h-px bg-white/10 mx-2" />
-                <FramerDropdownItem to="/venues/list-venue">List Your Venue</FramerDropdownItem>
-                <FramerDropdownItem to="/venues/dashboard">Venue Dashboard</FramerDropdownItem>
-              </>
-            )}
+            <div className="p-1.5 space-y-0.5">
+              <JackIn as="a" to="/venues/search">Find Venues</JackIn>
+              <JackIn as="a" to="/venues/featured">Featured Venues</JackIn>
+              {canManageVenues && (
+                <>
+                  <div className="my-1 h-px bg-white/10" />
+                  <JackIn as="a" to="/venues/list-venue">List Your Venue</JackIn>
+                  <JackIn as="a" to="/venues/dashboard">Venue Dashboard</JackIn>
+                </>
+              )}
+            </div>
           </FramerDropdownContent>
         </FramerDropdownRoot>
 
         {/* Tournaments */}
-        <FramerDropdownRoot borderRadius={4} accentColor="#f43f5e">
+        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e">
           <FramerDropdownTrigger asChild>
             <button
               type="button"
@@ -97,62 +128,90 @@ const DesktopNav = ({
                 ])
               )}
             >
-              <Trophy className="h-4 w-4" />
-              Tournaments
-              <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+              <span className="relative z-10 flex items-center gap-2">
+                <Trophy className="h-4 w-4" />
+                Tournaments
+                <ChevronDown className="h-4 w-4 opacity-60" />
+              </span>
+              <div className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
             </button>
           </FramerDropdownTrigger>
           <FramerDropdownContent className="min-w-[220px] border border-white/10 bg-[#0d0d10]">
-            <FramerDropdownItem to="/tournaments">Browse Tournaments</FramerDropdownItem>
-            {canManageTournaments && (
-              <>
-                <div className="my-1 h-px bg-white/10 mx-2" />
-                <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
-                <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
-                <div className="my-1 h-px bg-white/10 mx-2" />
-                <FramerDropdownItem to="/organizer/seasons">Manage Seasons</FramerDropdownItem>
-                <FramerDropdownItem to="/tournaments/create?mode=season">Create Season</FramerDropdownItem>
-              </>
-            )}
+            <div className="p-1.5 space-y-0.5">
+              <JackIn as="a" to="/tournaments">Browse Tournaments</JackIn>
+              {canManageTournaments && (
+                <>
+                  <div className="my-1 h-px bg-white/10" />
+                  <JackIn as="a" to="/organizer/tournaments">Manage Tournaments</JackIn>
+                  <JackIn as="a" to="/tournaments/create">Create Tournament</JackIn>
+                  <div className="my-1 h-px bg-white/10" />
+                  <JackIn as="a" to="/organizer/seasons">Manage Seasons</JackIn>
+                  <JackIn as="a" to="/tournaments/create?mode=season">Create Season</JackIn>
+                </>
+              )}
+            </div>
           </FramerDropdownContent>
         </FramerDropdownRoot>
 
         {/* Leaderboards */}
-        <Link to="/leaderboards" className={linkClass(isActive(["/leaderboards"]))}>
-          <Medal className="h-4 w-4" />
-          Leaderboards
-          {activeBar(isActive(["/leaderboards"]))}
+        <Link
+          to="/leaderboards"
+          className={linkClass(isActive(["/leaderboards"]))}
+        >
+          <span className="relative z-10 flex items-center gap-2">
+            <Medal className="h-4 w-4" />
+            Leaderboards
+          </span>
+          <div className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
         </Link>
 
         {/* About */}
-        <FramerDropdownRoot borderRadius={4} accentColor="#f43f5e">
+        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e">
           <FramerDropdownTrigger asChild>
-            <button type="button" className={linkClass(isActive(["/about"]))}>
-              <Info className="h-4 w-4" />
-              About
-              <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+            <button
+              type="button"
+              className={linkClass(isActive(["/about"]))}
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                <Info className="h-4 w-4" />
+                About
+                <ChevronDown className="h-4 w-4 opacity-60" />
+              </span>
+              <div className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
             </button>
           </FramerDropdownTrigger>
           <FramerDropdownContent className="min-w-[180px] border border-white/10 bg-[#0d0d10]">
-            <FramerDropdownItem to="/about/company">About Us</FramerDropdownItem>
-            <FramerDropdownItem to="/about/contact">Contact</FramerDropdownItem>
-            <FramerDropdownItem to="/about/faq">FAQ</FramerDropdownItem>
+            <div className="p-1.5 space-y-0.5">
+              <JackIn as="a" to="/about/company">About Us</JackIn>
+              <JackIn as="a" to="/about/contact">Contact</JackIn>
+              <JackIn as="a" to="/about/faq">FAQ</JackIn>
+            </div>
           </FramerDropdownContent>
         </FramerDropdownRoot>
 
         {/* Partners */}
-        <Link to="/partners" className={linkClass(isActive(["/partners"]))}>
-          <Handshake className="h-4 w-4" />
-          Partners
-          {activeBar(isActive(["/partners"]))}
+        <Link
+          to="/partners"
+          className={linkClass(isActive(["/partners"]))}
+        >
+          <span className="relative z-10 flex items-center gap-2">
+            <Handshake className="h-4 w-4" />
+            Partners
+          </span>
+          <div className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
         </Link>
 
         {/* Admin */}
         {admin.isAdmin && (
-          <Link to="/admin/dashboard" className={linkClass(isActive(["/admin"]))}>
-            <Shield className="h-4 w-4" />
-            Admin
-            {activeBar(isActive(["/admin"]))}
+          <Link
+            to="/admin/dashboard"
+            className={linkClass(isActive(["/admin"]))}
+          >
+            <span className="relative z-10 flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Admin
+            </span>
+            <div className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
           </Link>
         )}
       </div>
@@ -168,15 +227,16 @@ const DesktopNav = ({
           <>
             <Link
               to="/auth/signin"
-              className="text-sm font-medium text-zinc-400 transition-colors hover:text-white"
+              className="text-sm font-medium text-white transition-colors hover:text-rose-400"
             >
               Log in
             </Link>
             <Link
               to="/auth/signup"
-              className="rounded-md bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-rose-600"
+              className="group relative inline-flex items-center justify-center overflow-hidden bg-white px-5 py-2.5 text-sm font-semibold text-black outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70"
             >
-              Sign up
+              <span className="relative z-10">Sign up</span>
+              <div className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
             </Link>
           </>
         )}
