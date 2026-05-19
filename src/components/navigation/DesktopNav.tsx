@@ -7,6 +7,7 @@ import { NotificationDropdown } from "@/components/notifications/NotificationDro
 import UserMenu from "./UserMenu";
 import { cn } from "@/lib/utils";
 import { getWebsiteAssetUrl } from "@/lib/storage";
+import { JackButton } from "@/components/ui/JackButton";
 
 import {
   FramerDropdownRoot,
@@ -199,13 +200,9 @@ const DesktopNav = ({
             >
               Log in
             </Link>
-            <Link
-              to="/auth/signup"
-              className="group relative inline-flex items-center gap-2 overflow-hidden bg-white px-5 py-2.5 font-mono text-[12px] font-bold uppercase tracking-wider text-black"
-            >
-              <span className="relative z-10">Sign up</span>
-              <span className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
-            </Link>
+            <JackButton as={Link} to="/auth/signup" size="sm" className="px-5">
+              Sign up
+            </JackButton>
           </>
         )}
       </div>

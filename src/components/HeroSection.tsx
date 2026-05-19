@@ -11,6 +11,7 @@ import {
   fetchMeRoles,
   meRolesQueryKey,
 } from "@/lib/meRoles";
+import { JackButton } from "@/components/ui/JackButton";
 
 // LCP-optimized: Use direct URL
 const HERO_VIDEO_URL = getWebsiteAssetUrl('hero-section-video/video3.mp4');
@@ -98,9 +99,10 @@ const HeroSection = () => {
         </motion.video>
       </motion.div>
 
-      {/* Heavy darken layer so the headline + CTAs read clearly over the video */}
-      <div className="absolute inset-0 z-10 bg-black/70" />
-      <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/40 via-black/55 to-black/85" />
+      {/* Heavy darken stack so the video reads as a dull texture, not a focal point */}
+      <div className="absolute inset-0 z-10 bg-black/85" />
+      <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/60 via-black/75 to-black" />
+      <div className="absolute inset-0 z-10 bg-black/30 mix-blend-multiply" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#0f1115] to-transparent z-10"></div>
 
       {/* Video Credits - Bottom Left */}
@@ -177,24 +179,15 @@ const HeroSection = () => {
             transition={{ duration: 1, delay: isLogoMoved ? 0.55 : 0, ease: [0.22, 1, 0.36, 1] }}
             className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
           >
-            <Link
-              to={user ? "/tournaments" : "/auth/signup"}
-              className="group relative inline-flex h-14 items-center gap-2 overflow-hidden bg-white px-10 font-mono text-sm font-bold uppercase tracking-wider text-black"
-            >
-              <span className="relative z-10 flex items-center gap-2">
-                {user ? "Browse Tournaments" : "Jack In"}
-                <ChevronRight className="h-4 w-4" />
-              </span>
-              <span className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
-            </Link>
+            <JackButton as={Link} to={user ? "/tournaments" : "/auth/signup"} size="lg" variant="primary">
+              {user ? "Browse Tournaments" : "Jack In"}
+              <ChevronRight className="h-4 w-4" />
+            </JackButton>
 
-            <Link
-              to={hostTournamentHref}
-              className="group relative inline-flex h-14 items-center gap-2 overflow-hidden border border-white/25 bg-white/5 px-10 font-mono text-sm font-bold uppercase tracking-wider text-white backdrop-blur-md transition-colors hover:border-white/50 hover:bg-white/10"
-            >
+            <JackButton as={Link} to={hostTournamentHref} size="lg" variant="ghost">
               <Trophy className="h-4 w-4" />
               Host Tournament
-            </Link>
+            </JackButton>
           </motion.div>
         </div>
       </motion.div>

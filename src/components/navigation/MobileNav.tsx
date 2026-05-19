@@ -9,6 +9,7 @@ import RoleSwitcher from "@/components/RoleSwitcher";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { JackButton } from "@/components/ui/JackButton";
 
 const MobileNav = ({
   isOpen,
@@ -304,14 +305,15 @@ const MobileNav = ({
                 >
                   Log in
                 </Link>
-                <Link
+                <JackButton
+                  as={Link}
                   to="/auth/signup"
-                  className="group relative flex-1 overflow-hidden bg-white px-4 py-2.5 text-center font-mono text-[11px] font-bold uppercase tracking-wider text-black"
+                  size="sm"
+                  className="flex-1"
                   onClick={onClose}
                 >
-                  <span className="relative z-10">Sign up</span>
-                  <span className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
-                </Link>
+                  Sign up
+                </JackButton>
               </div>
             )}
           </div>
