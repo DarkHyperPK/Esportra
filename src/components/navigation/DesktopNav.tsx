@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ChevronDown, MapPin, Trophy, Medal, Info, Handshake, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
@@ -13,29 +13,8 @@ import {
   FramerDropdownRoot,
   FramerDropdownTrigger,
   FramerDropdownContent,
-  useFramerDropdown,
 } from "@/components/ui/FramerDropdown";
-
-// JACK IN-style menu item: white tile with rose-pink slide-up hover
-const JackItem = ({ to, children }: { to: string; children: React.ReactNode }) => {
-  const { close } = useFramerDropdown();
-  const navigate = useNavigate();
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        navigate(to);
-        close();
-      }}
-      className="group relative block w-full overflow-hidden bg-white px-4 py-3 text-left font-mono text-[12px] font-bold uppercase tracking-wider text-black"
-    >
-      <span className="relative z-10 flex items-center gap-2">{children}</span>
-      <span className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
-    </button>
-  );
-};
-
-const JackDivider = () => <div className="h-px bg-black/10" />;
+import { JackMenuItem as JackItem, JackMenuDivider as JackDivider } from "@/components/ui/JackMenuItem";
 
 const DesktopNav = ({
   handleSignOut,

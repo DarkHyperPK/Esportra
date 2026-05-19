@@ -1,14 +1,12 @@
-import { User, Users, MessageSquare, ArrowRightLeft, Building2, Award, Settings, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { ArrowRightLeft, ChevronDown, LogOut, User } from "lucide-react";
 import {
   FramerDropdownRoot,
   FramerDropdownContent,
-  FramerDropdownItem,
   FramerDropdownTrigger,
-  FramerDropdownSeparator,
-  useFramerDropdown
+  useFramerDropdown,
 } from "@/components/ui/FramerDropdown";
+import { JackMenuItem, JackMenuDivider } from "@/components/ui/JackMenuItem";
+import { JackButton } from "@/components/ui/JackButton";
 import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRole } from "@/contexts/RoleContext";
@@ -17,40 +15,38 @@ import { apiClient } from "@/lib/apiClient";
 import { deriveHasApprovedLicense, deriveHasOrganization, fetchMeRoles } from "@/lib/meRoles";
 import { RoleSwitcherDialog } from "@/components/RoleSwitcher";
 
-// Specialized button component for inside the menu
+// Pill row showing current role + a JACK IN-style switch button
 const RoleSwitcherMenuButton: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   const { currentRole } = useRole();
   const { close } = useFramerDropdown();
 
   const getRoleLabel = (role: string) => {
-    if (role === 'casual') return 'Player';
-    if (role === 'organizer') return 'Organizer';
-    if (role === 'venue_owner') return 'Venue Owner';
-    if (role === 'admin') return 'Admin';
+    if (role === "casual") return "Player";
+    if (role === "organizer") return "Organizer";
+    if (role === "venue_owner") return "Venue Owner";
+    if (role === "admin") return "Admin";
     return String(role);
   };
 
   return (
-    <div className="flex items-center gap-3">
-      <Badge
-        variant="secondary"
-        className={`bg-gradient-to-r from-cyan-500/70 to-sky-500/70 border border-cyan-400/30 text-white flex items-center gap-2`}
-      >
-        {getRoleLabel(currentRole)}
-      </Badge>
-
-      <Button
-        variant="outline"
+    <div className="flex items-center justify-between gap-3 border border-white/10 bg-white/[0.02] px-3 py-2">
+      <div className="flex flex-col">
+        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+          Active role
+        </span>
+        <span className="mt-0.5 text-sm font-semibold text-white">{getRoleLabel(currentRole)}</span>
+      </div>
+      <JackButton
         size="sm"
+        className="px-4"
         onClick={() => {
           onClick();
           close();
         }}
-        className="rounded-xl border-white/20 bg-white/5 text-white hover:bg-white/10"
       >
-        <ArrowRightLeft className="w-4 h-4 mr-2" />
-        Switch Role
-      </Button>
+        <ArrowRightLeft className="h-3.5 w-3.5" />
+        Switch
+      </JackButton>
     </div>
   );
 };
@@ -197,162 +193,165 @@ const UserMenu = ({
         : 'Admin'
     : userRole.charAt(0).toUpperCase() + userRole.slice(1);
 
+  const dot = (color: "rose" | "cyan" | "amber" | "emerald") => {
+    const cls =
+      color === "rose"
+        ? "bg-rose-500"
+        : color === "cyan"
+          ? "bg-cyan-400"
+          : color === "amber"
+            ? "bg-amber-400"
+            : "bg-emerald-400";
+    return <span className={`h-2 w-2 rounded-full ${cls} flex-shrink-0`} />;
+  };
+
   return (
     <>
-      <FramerDropdownRoot borderRadius={6} accentColor="#f43f5e">
+      <FramerDropdownRoot
+        borderRadius={0}
+        accentColor="#f43f5e"
+        backgroundColor="#000000"
+        borderColor="rgba(244,63,94,0.4)"
+      >
         <FramerDropdownTrigger>
           <button
             type="button"
-            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-zinc-400 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70"
+            className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium text-white/85 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
+            <span className="flex h-8 w-8 items-center justify-center border border-white/10 bg-black">
               <User className="h-4 w-4" />
             </span>
-            <span className="hidden max-w-[100px] truncate sm:inline">{profile?.username || 'Account'}</span>
-            <ChevronDown className="h-4 w-4 opacity-50" />
-            {!isEmailVerified && user && (
-              <span className="h-2 w-2 rounded-full bg-amber-400" />
-            )}
+            <span className="hidden max-w-[100px] truncate sm:inline">
+              {profile?.username || "Account"}
+            </span>
+            <ChevronDown className="h-4 w-4 opacity-60" />
+            {!isEmailVerified && user && dot("amber")}
           </button>
         </FramerDropdownTrigger>
-        <FramerDropdownContent align="end" width={260} className="border border-white/10 bg-[#0d0d10]">
-          <div className="border-b border-white/10 px-4 py-3">
+
+        <FramerDropdownContent
+          align="end"
+          width={280}
+          className="!rounded-none !border-rose-500/40 !bg-black !p-0 !backdrop-blur-0"
+        >
+          {/* Identity header */}
+          <div className="border-b border-white/10 bg-black px-4 py-4">
             <p className="text-sm font-semibold text-white">
-              {profile?.full_name || profile?.username || 'User'}
+              {profile?.full_name || profile?.username || "User"}
             </p>
             <div className="mt-1 flex items-center gap-2">
-              <p className="text-xs text-zinc-500">{roleLabel}</p>
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-500">
+                {roleLabel}
+              </p>
               {!isEmailVerified && user && (
-                <Badge variant="outline" className="border-amber-500/40 px-1.5 py-0 text-[10px] text-amber-400">
+                <span className="border border-amber-500/40 px-1.5 py-0 font-mono text-[9px] font-bold uppercase tracking-wider text-amber-400">
                   Unverified
-                </Badge>
+                </span>
               )}
             </div>
           </div>
 
           {!admin.isAdmin && hasApprovedLicense && (
-            <div className="space-y-2 border-b border-white/10 px-3 py-2">
-              <div className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2">
-                <RoleSwitcherMenuButton onClick={() => setIsRoleSwitcherOpen(true)} />
-              </div>
+            <div className="border-b border-white/10 bg-black p-3">
+              <RoleSwitcherMenuButton onClick={() => setIsRoleSwitcherOpen(true)} />
             </div>
           )}
 
-          <div className="px-1 py-1 space-y-0.5">
-            <FramerDropdownItem to="/user/profile">My Profile</FramerDropdownItem>
-            <FramerDropdownItem to="/account/settings" icon={<Settings className="h-4 w-4" />}>
-              Account Settings
-            </FramerDropdownItem>
+          <div className="space-y-px bg-black p-2">
+            <JackMenuItem to="/user/profile">My Profile</JackMenuItem>
+            <JackMenuItem to="/account/settings">Account Settings</JackMenuItem>
             {!admin.isAdmin && (
-              <FramerDropdownItem to="/verification" icon={<Award className="h-4 w-4" />}>
-                Apply for License
-              </FramerDropdownItem>
+              <JackMenuItem to="/verification">Apply for License</JackMenuItem>
             )}
+
             {hasTeam ? (
-              <FramerDropdownItem to="/player/teams" icon={<Users className="h-4 w-4" />}>
-                My Team
-              </FramerDropdownItem>
+              <JackMenuItem to="/player/teams">My Team</JackMenuItem>
             ) : (
-              <FramerDropdownItem to="/player/teams">
-                <div className="flex w-full items-center justify-between">
-                  <span>Create Your Team</span>
-                  {hasPendingInvite && (
-                    <span aria-label="pending invites" className="h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />
-                  )}
-                </div>
-              </FramerDropdownItem>
+              <JackMenuItem
+                to="/player/teams"
+                trailing={hasPendingInvite ? dot("rose") : undefined}
+              >
+                Create Your Team
+              </JackMenuItem>
             )}
+
             {hasStaffInvites && (
-              <FramerDropdownItem to="/user/staff-invites">
-                <div className="flex w-full items-center justify-between">
-                  <span>Staff Invites</span>
-                  <span aria-label="pending staff invites" className="h-2 w-2 rounded-full bg-cyan-400 flex-shrink-0" />
-                </div>
-              </FramerDropdownItem>
+              <JackMenuItem to="/user/staff-invites" trailing={dot("cyan")}>
+                Staff Invites
+              </JackMenuItem>
             )}
             {hasStaffAssignments && (
-              <FramerDropdownItem to="/staff/dashboard">
-                <div className="flex w-full items-center justify-between">
-                  <span>Staff Console</span>
-                  <span aria-label="active staff role" className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
-                </div>
-              </FramerDropdownItem>
+              <JackMenuItem to="/staff/dashboard" trailing={dot("emerald")}>
+                Staff Console
+              </JackMenuItem>
             )}
-            <FramerDropdownItem to="/user/raise-dispute" icon={<MessageSquare className="h-4 w-4" />}>
-              Raise a Dispute / Support
-            </FramerDropdownItem>
-            <FramerDropdownItem to="/user/my-disputes" icon={<MessageSquare className="h-4 w-4" />}>
-              My Disputes
-            </FramerDropdownItem>
-          </div>
 
-          <FramerDropdownSeparator />
+            <JackMenuItem to="/user/raise-dispute">Raise a Dispute</JackMenuItem>
+            <JackMenuItem to="/user/my-disputes">My Disputes</JackMenuItem>
 
-          <div className="px-1 py-1 space-y-0.5">
             {admin.isAdmin && (
               <>
-                <FramerDropdownItem to="/admin/dashboard">
-                  Admin Dashboard
-                </FramerDropdownItem>
-              </>
-            )}
-
-            {admin.isAdmin && admin.hasPermission('tournaments:create') && (
-              <>
-                <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
-                <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
-              </>
-            )}
-
-            {admin.isAdmin && admin.hasPermission('venues:view') && (
-              <>
-                <FramerDropdownItem to="/venues/dashboard">Venue Dashboard</FramerDropdownItem>
-                <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
-              </>
-            )}
-
-            {!admin.isAdmin && userRole === 'venue_owner' && (
-              <>
-                <FramerDropdownItem to="/venues/dashboard">Venue Dashboard</FramerDropdownItem>
-                <FramerDropdownItem to="/venues/list-venue">List New Venue</FramerDropdownItem>
-              </>
-            )}
-            {!admin.isAdmin && userRole === 'organizer' && (
-              <>
-                {hasOrganization ? (
+                <JackMenuDivider />
+                <JackMenuItem to="/admin/dashboard">Admin Dashboard</JackMenuItem>
+                {admin.hasPermission("tournaments:create") && (
                   <>
-                    <FramerDropdownItem to="/organizer/tournaments">Manage Tournaments</FramerDropdownItem>
-                    <FramerDropdownItem to="/organizer/dashboard?tab=organization" icon={<Building2 className="h-4 w-4" />}>
-                      Manage Organization
-                    </FramerDropdownItem>
-                    <FramerDropdownItem to="/tournaments/create">Create Tournament</FramerDropdownItem>
-                    <FramerDropdownItem to="/seasons/create">Create Season</FramerDropdownItem>
+                    <JackMenuItem to="/organizer/tournaments">Manage Tournaments</JackMenuItem>
+                    <JackMenuItem to="/tournaments/create">Create Tournament</JackMenuItem>
                   </>
-                ) : (
-                  <FramerDropdownItem to="/organizer/setup-organization" icon={<Building2 className="h-4 w-4" />}>
-                    <div className="flex w-full items-center justify-between">
-                      <span>Setup Organization</span>
-                      <span className="h-2 w-2 rounded-full bg-amber-400 flex-shrink-0" />
-                    </div>
-                  </FramerDropdownItem>
+                )}
+                {admin.hasPermission("venues:view") && (
+                  <>
+                    <JackMenuItem to="/venues/dashboard">Venue Dashboard</JackMenuItem>
+                    <JackMenuItem to="/venues/list-venue">List New Venue</JackMenuItem>
+                  </>
                 )}
               </>
             )}
 
+            {!admin.isAdmin && userRole === "venue_owner" && (
+              <>
+                <JackMenuDivider />
+                <JackMenuItem to="/venues/dashboard">Venue Dashboard</JackMenuItem>
+                <JackMenuItem to="/venues/list-venue">List New Venue</JackMenuItem>
+              </>
+            )}
+
+            {!admin.isAdmin && userRole === "organizer" && (
+              <>
+                <JackMenuDivider />
+                {hasOrganization ? (
+                  <>
+                    <JackMenuItem to="/organizer/tournaments">Manage Tournaments</JackMenuItem>
+                    <JackMenuItem to="/organizer/dashboard?tab=organization">
+                      Manage Organization
+                    </JackMenuItem>
+                    <JackMenuItem to="/tournaments/create">Create Tournament</JackMenuItem>
+                    <JackMenuItem to="/seasons/create">Create Season</JackMenuItem>
+                  </>
+                ) : (
+                  <JackMenuItem to="/organizer/setup-organization" trailing={dot("amber")}>
+                    Setup Organization
+                  </JackMenuItem>
+                )}
+              </>
+            )}
           </div>
 
-          <div className="border-t border-white/10 px-3 py-3">
-            <button
+          <div className="border-t border-white/10 bg-black p-3">
+            <JackButton
+              variant="invert"
+              size="sm"
+              className="w-full"
               onClick={handleSignOut}
-              className="flex w-full items-center justify-center rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-200 transition hover:bg-red-500/20"
             >
+              <LogOut className="h-4 w-4" />
               Sign Out
-            </button>
+            </JackButton>
           </div>
         </FramerDropdownContent>
       </FramerDropdownRoot>
 
-      {/* Role Switcher Dialog - Rendered here to survive menu close */}
+      {/* Role Switcher Dialog - rendered here to survive menu close */}
       <RoleSwitcherDialog open={isRoleSwitcherOpen} onOpenChange={setIsRoleSwitcherOpen} />
     </>
   );
