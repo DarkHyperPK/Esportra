@@ -37,7 +37,7 @@ const PlatformPromise = () => {
                         className="text-4xl md:text-6xl font-light text-white font-heading"
                     >
                         We're not hosting just games. <br />
-                        <span className="font-medium italic text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">We're building an ecosystem.</span>
+                        <span className="font-medium italic text-rose-500">We're building an ecosystem.</span>
                     </motion.h2>
                 </div>
 
@@ -49,7 +49,7 @@ const PlatformPromise = () => {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ delay: index * 0.1 }}
-                            className="p-8 bg-white/[0.02] border border-white/5 rounded-2xl hover:border-white/10 transition-all duration-500"
+                            className="p-8 bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all duration-500"
                         >
                             <div className="mb-6">{p.icon}</div>
                             <h3 className="text-2xl text-white font-medium mb-4 font-heading">{p.title}</h3>

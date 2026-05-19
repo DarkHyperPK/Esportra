@@ -463,7 +463,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl shadow-lg">
+                <div className="p-3 bg-rose-500/10 border border-rose-500/20">
                   <Users className="h-8 w-8 text-white" />
                 </div>
                 <div>
@@ -502,7 +502,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
             <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+                <div className="p-3 bg-rose-500/10 border border-rose-500/20">
                   <Trophy className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -513,7 +513,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
             </div>
             <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl">
+                <div className="p-3 bg-white/5 border border-white/10">
                   <Users className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -524,7 +524,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
             </div>
             <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl">
+                <div className="p-3 bg-white/5 border border-white/10">
                   <Star className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -565,7 +565,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
               <div className="flex-1">
                 <h2 className="text-3xl font-bold text-white mb-2">{userTeam.name}</h2>
                 <div className="flex items-center gap-3 mb-3">
-                  <Badge className="bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm">
+                  <Badge className="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-sm">
                     [{userTeam.tag}]
                   </Badge>
                   <Badge variant="outline" className="border-green-500/50 text-green-400 bg-green-500/10 text-sm">
@@ -655,7 +655,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                     console.error('Update team error', err);
                     toast({ title: 'Update failed', description: err.message || 'Could not update team', variant: 'destructive' });
                   }
-                }} className="bg-gradient-to-r from-cyan-600 to-fuchsia-600 text-white">Save Changes</Button>
+                }} className="bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider">Save Changes</Button>
               </div>
             </div>
           </DialogContent>

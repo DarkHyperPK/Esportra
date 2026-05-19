@@ -130,7 +130,7 @@ const TournamentHistoryPage = () => {
                                         variants={itemVariants}
                                         whileHover={{ y: -8, scale: 1.01 }}
                                         transition={{ duration: 0.3 }}
-                                        className="group relative h-[420px] rounded-3xl overflow-hidden bg-[#0a0a0c] border border-white/5 shadow-2xl cursor-pointer"
+                                        className="group relative h-[420px] overflow-hidden bg-[#0a0a0c] border border-white/5 cursor-pointer"
                                         onClick={() => navigate(`/tournaments/${t.slug || t.id}`)}
                                     >
                                         {/* Background Image */}
@@ -172,10 +172,10 @@ const TournamentHistoryPage = () => {
                                         <div className="absolute bottom-0 inset-x-0 p-6 z-20 flex flex-col gap-4">
                                             {/* Game Label */}
                                             <div className="flex items-center gap-2">
-                                                <span className="text-xs font-bold tracking-widest text-cyan-400 uppercase font-heading">
+                                                <span className="text-xs font-bold tracking-widest text-rose-400 uppercase font-heading">
                                                     {t.game || 'Tournament'}
                                                 </span>
-                                                <div className="h-[1px] flex-grow bg-gradient-to-r from-cyan-400/50 to-transparent" />
+                                                <div className="h-[1px] flex-grow bg-gradient-to-r from-rose-500/50 to-transparent" />
                                             </div>
 
                                             {/* Title */}
@@ -220,15 +220,14 @@ const TournamentHistoryPage = () => {
                                         </div>
 
                                         {/* Decorative Glow Border */}
-                                        <div className="absolute inset-0 rounded-3xl border border-white/5 group-hover:border-white/20 transition-colors duration-300 pointer-events-none" />
-                                        <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-[inset_0_0_20px_rgba(139,92,246,0.1)]" />
+                                        <div className="absolute inset-0 border border-white/5 group-hover:border-white/20 transition-colors duration-300 pointer-events-none" />
                                     </motion.div>
                                 ))
                             ) : (
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
-                                    className="col-span-full flex flex-col items-center justify-center py-20 text-center bg-white/5 rounded-3xl border border-white/5 backdrop-blur-sm"
+                                    className="col-span-full flex flex-col items-center justify-center py-20 text-center bg-white/5 border border-white/5"
                                 >
                                     <Trophy className="w-16 h-16 text-gray-600 mb-4" />
                                     <h3 className="text-2xl font-bold text-white mb-2">No Tournaments Found</h3>

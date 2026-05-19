@@ -59,7 +59,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle, vari
                     <div className="relative z-10 flex flex-col justify-between p-12 w-full">
                         {/* Logo */}
                         <Link to="/" className="flex items-center gap-3 group">
-                            <span className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-rose-400 font-mono tracking-widest uppercase">
+                            <span className="border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-xs uppercase tracking-widest text-rose-400">
                                 ESPORTRA_SYSTEM
                             </span>
                         </Link>
@@ -72,7 +72,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle, vari
                                     : <>JOIN<br /><span className="text-rose-500">THE ARENA</span></>
                                 }
                             </h1>
-                            <p className="text-lg text-gray-400 font-light leading-relaxed mt-6">
+                            <p className="mt-6 text-lg leading-relaxed text-zinc-400">
                                 {variant === 'signin'
                                     ? 'Your tournaments await. Sign in to continue your competitive journey and dominate the leaderboards.'
                                     : 'Create your account and step into the world of competitive esports. Organize, compete, and rise to glory.'}
@@ -91,9 +91,9 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle, vari
                                 ]).map((feature, i) => (
                                     <div
                                         key={i}
-                                        className="flex items-center gap-3 text-gray-500 group"
+                                        className="group flex items-center gap-3 text-zinc-500"
                                     >
-                                        <div className="p-2 rounded-lg bg-zinc-900/50 group-hover:bg-rose-500/10 transition-colors">
+                                        <div className="border border-white/10 bg-[#0a0a0c]/90 p-2 transition-colors group-hover:border-rose-500/40 group-hover:bg-rose-500/10">
                                             <feature.icon className="w-4 h-4 text-rose-500" />
                                         </div>
                                         <span className="text-sm font-light">{feature.text}</span>
@@ -116,20 +116,20 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle, vari
                         {/* Mobile Logo */}
                         <div className="lg:hidden mb-8 text-center">
                             <Link to="/" className="inline-flex">
-                                <span className="px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-rose-400 font-mono tracking-widest uppercase">
+                                <span className="border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-xs uppercase tracking-widest text-rose-400">
                                     ESPORTRA
                                 </span>
                             </Link>
                         </div>
 
                         {/* Header */}
-                        <div className="text-center lg:text-left mb-8">
-                            <h1 className="text-3xl font-black text-white tracking-tight mb-2">{title}</h1>
-                            <p className="text-gray-500 font-light">{subtitle}</p>
+                        <div className="mb-8 text-left">
+                            <h1 className="font-heading text-3xl font-black uppercase tracking-tight text-white mb-2">{title}</h1>
+                            <p className="text-zinc-500">{subtitle}</p>
                         </div>
 
                         {/* Form Card */}
-                        <div className="p-8 rounded-2xl bg-[#121214] border border-zinc-800/50 hover:border-rose-500/30 transition-all duration-500">
+                        <div className="border border-white/10 bg-[#0a0a0c]/90 p-8">
                             {children}
                         </div>
                     </div>

@@ -25,12 +25,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center p-8 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50"
+          className="border border-white/10 bg-[#0a0a0c]/90 p-8 text-center"
         >
-          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center border border-red-500/30 bg-red-950/20">
             <Shield className="w-8 h-8 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Access Denied</h1>
+          <h1 className="mb-2 font-heading text-2xl font-black uppercase tracking-tight text-white">Access Denied</h1>
           <p className="text-zinc-500">You don't have admin privileges.</p>
         </motion.div>
       </div>

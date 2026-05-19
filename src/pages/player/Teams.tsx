@@ -1176,7 +1176,7 @@ const TeamsPage = () => {
     return (
       <div className="min-h-screen bg-esports-dark flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-purple-600 to-purple-800 rounded-xl flex items-center justify-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
             <Trophy className="h-8 w-8 text-white" />
           </div>
           <div className="text-esports-primary text-xl font-semibold mb-2">
@@ -1301,8 +1301,8 @@ const TeamsPage = () => {
           {/* CTA Card */}
           <div className="mx-auto max-w-4xl">
             <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-              <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-12 text-center overflow-hidden">
+              <div className="absolute inset-0 bg-rose-500/10 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+              <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-none p-8 md:p-12 text-center overflow-hidden">
 
                 <div className="relative z-10 flex flex-col items-center">
                   <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
@@ -1351,7 +1351,7 @@ const TeamsPage = () => {
         {/* Team Creation Wizard Modal */}
         {showTeamCreationWizard && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex-center p-4">
-            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-[#0F1115] border border-white/10 rounded-3xl shadow-2xl">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-[#0F1115] border border-white/10 rounded-none shadow-2xl">
               <TeamCreationWizard onClose={() => {
                 setShowTeamCreationWizard(false);
                 fetchUserTeams();
@@ -1635,7 +1635,7 @@ const TeamsPage = () => {
                   }}
                   className="group flex items-center justify-between p-6 bg-black/40 backdrop-blur-md border border-white/10 hover:border-indigo-500/50 hover:bg-black/60 rounded-2xl transition-all duration-500 cursor-pointer relative overflow-hidden"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-rose-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
                   <div className="flex items-center gap-6 relative z-10">
                     <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/5 group-hover:scale-110 group-hover:bg-indigo-500/10 group-hover:border-indigo-500/20 transition-all duration-500">
@@ -1963,7 +1963,7 @@ const TeamsPage = () => {
       </Dialog>
       {/* Create Roster Modal */}
       <Dialog open={rosterModalOpen} onOpenChange={setRosterModalOpen}>
-        <DialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-xl shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-3xl z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar p-0">
+        <DialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-xl shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-none z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar p-0">
           <div className="pointer-events-none absolute inset-0 opacity-[0.05] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2163,7 +2163,7 @@ const TeamsPage = () => {
                       || { username: 'Captain', avatar_url: undefined };
                     return (
                     <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.06] border border-white/10 relative overflow-hidden group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent" />
+                      <div className="absolute inset-0 bg-rose-500/5" />
                       <div className="flex items-center gap-4 relative z-10">
                         <div className="relative">
                           <Avatar className="w-10 h-10 border-2 border-indigo-500/50 shadow-xl">
@@ -2200,7 +2200,7 @@ const TeamsPage = () => {
                             key={uid}
                             className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.08] hover:border-white/10 transition-all group relative overflow-hidden"
                           >
-                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute inset-0 bg-rose-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="flex items-center gap-4 relative z-10">
                               <div className="relative">
                                 <Avatar className="w-10 h-10 border-2 border-white/10 shadow-xl group-hover:border-indigo-500/50 transition-colors">
@@ -2424,7 +2424,7 @@ const TeamsPage = () => {
 
       {/* Remove Member Confirmation */}
       <AlertDialog open={showRemoveMember} onOpenChange={setShowRemoveMember}>
-        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2448,7 +2448,7 @@ const TeamsPage = () => {
 
       {/* Transfer Captaincy Confirmation */}
       <AlertDialog open={showTransferCaptaincy} onOpenChange={setShowTransferCaptaincy}>
-        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2472,7 +2472,7 @@ const TeamsPage = () => {
 
       {/* Disband Team Confirmation */}
       <AlertDialog open={showDisbandTeam} onOpenChange={setShowDisbandTeam}>
-        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-3xl p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2503,7 +2503,7 @@ const TeamsPage = () => {
       />
       {/* Tournament Details Modal */}
       <Dialog open={isTournamentModalOpen} onOpenChange={setIsTournamentModalOpen}>
-        <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-3xl border border-white/10 text-white max-w-2xl shadow-[0_0_80px_rgba(0,0,0,0.8)] rounded-3xl p-0 overflow-hidden z-[1100]">
+        <DialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-3xl border border-white/10 text-white max-w-2xl shadow-[0_0_80px_rgba(0,0,0,0.8)] rounded-none p-0 overflow-hidden z-[1100]">
           <div className="pointer-events-none absolute inset-0 opacity-[0.05] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />

@@ -280,13 +280,13 @@ const GuideSectionCard = ({ section }: { section: GuideSection }) => {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.4 }}
-      className="border border-white/5 rounded-2xl bg-[#0a0a0c] overflow-hidden"
+      className="border border-white/5 bg-[#0a0a0c] overflow-hidden"
     >
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center gap-4 p-6 text-left hover:bg-white/[0.02] transition-colors"
       >
-        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400">
+        <div className="flex-shrink-0 w-10 h-10 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
           {section.icon}
         </div>
         <div className="flex-grow min-w-0">
@@ -324,23 +324,23 @@ const GuideSectionCard = ({ section }: { section: GuideSection }) => {
                     <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">{step.content}</p>
 
                     {step.navigation && (
-                      <div className="flex items-start gap-2 rounded-lg bg-rose-500/5 border border-rose-500/10 p-3">
+                      <div className="flex items-start gap-2 bg-rose-500/5 border border-rose-500/10 p-3">
                         <ArrowRight className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
                         <p className="text-xs text-rose-300 font-mono">{step.navigation}</p>
                       </div>
                     )}
 
                     {step.tip && (
-                      <div className="flex items-start gap-2 rounded-lg bg-emerald-500/5 border border-emerald-500/10 p-3">
-                        <Info className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-emerald-300">{step.tip}</p>
+                      <div className="flex items-start gap-2 bg-white/[0.03] border border-white/10 p-3">
+                        <Info className="w-4 h-4 text-zinc-400 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-zinc-300">{step.tip}</p>
                       </div>
                     )}
 
                     {step.warning && (
-                      <div className="flex items-start gap-2 rounded-lg bg-amber-500/5 border border-amber-500/10 p-3">
-                        <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-300">{step.warning}</p>
+                      <div className="flex items-start gap-2 bg-rose-500/5 border border-rose-500/10 p-3">
+                        <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-rose-300">{step.warning}</p>
                       </div>
                     )}
                   </div>
@@ -392,7 +392,7 @@ const OrganizerGuide = () => {
                 <BookOpen className="w-4 h-4" />
                 Organizer Guide
               </div>
-              <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-transparent mb-4">
+              <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight text-white mb-4">
                 Host Your First Tournament
               </h1>
               <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
@@ -407,7 +407,7 @@ const OrganizerGuide = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="mb-12 p-6 rounded-2xl bg-[#0a0a0c] border border-white/5"
+            className="mb-12 p-6 bg-[#0a0a0c] border border-white/5"
           >
             <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
               In this guide
@@ -417,7 +417,7 @@ const OrganizerGuide = () => {
                 <a
                   key={section.id}
                   href={`#${section.id}`}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/[0.03] transition-colors group"
+                  className="flex items-center gap-3 px-3 py-2 hover:bg-white/[0.03] transition-colors group"
                 >
                   <div className="text-zinc-500 group-hover:text-rose-400 transition-colors">
                     {section.icon}
@@ -446,7 +446,7 @@ const OrganizerGuide = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="mt-16 text-center p-8 rounded-2xl bg-gradient-to-b from-rose-500/5 to-transparent border border-rose-500/10"
+            className="mt-16 text-center p-8 bg-rose-500/5 border border-rose-500/10"
           >
             <Trophy className="w-10 h-10 text-rose-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-white mb-2">Ready to get started?</h2>

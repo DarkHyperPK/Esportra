@@ -142,7 +142,7 @@ const StaffInvitesPage = () => {
                         Decline
                       </Button>
                       <Button
-                        className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400"
+                        className="bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider"
                         onClick={() => handleRespond(invite.id, true)}
                       >
                         <Check className="w-4 h-4 mr-2" />

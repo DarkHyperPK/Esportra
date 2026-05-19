@@ -24,13 +24,13 @@ const SuspendedPage = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 className="max-w-md w-full"
             >
-                <div className="relative p-8 rounded-3xl bg-zinc-900/50 border border-red-500/20 backdrop-blur-xl overflow-hidden shadow-2xl shadow-red-500/10">
+                <div className="relative p-8 bg-[#0a0a0c]/90 border border-red-500/20 overflow-hidden">
                     {/* Decorative Background Glow */}
                     <div className="absolute -top-24 -right-24 w-48 h-48 bg-red-500/20 rounded-full blur-[100px]" />
                     <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-red-500/10 rounded-full blur-[100px]" />
 
                     <div className="relative text-center">
-                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-red-500/10 mb-6 group">
+                        <div className="inline-flex items-center justify-center w-20 h-20 bg-red-500/10 border border-red-500/20 mb-6 group">
                             <ShieldAlert className="w-10 h-10 text-red-500 group-hover:scale-110 transition-transform duration-300" />
                         </div>
 
@@ -40,17 +40,17 @@ const SuspendedPage = () => {
                         </p>
 
                         <div className="space-y-4 text-left mb-8">
-                            <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800">
+                            <div className="p-4 bg-[#0a0a0c] border border-white/10">
                                 <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-1">Reason</p>
                                 <p className="text-zinc-200 text-sm leading-relaxed">{reason}</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800">
+                                <div className="p-4 bg-[#0a0a0c] border border-white/10">
                                     <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-1">Type</p>
                                     <p className="text-red-400 text-sm font-medium">{type}</p>
                                 </div>
-                                <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex flex-col justify-center">
+                                <div className="p-4 bg-[#0a0a0c] border border-white/10 flex flex-col justify-center">
                                     <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-1 flex items-center gap-1">
                                         <Clock className="w-3 h-3" /> Duration
                                     </p>
@@ -64,7 +64,7 @@ const SuspendedPage = () => {
                         <div className="flex flex-col gap-3">
                             <a
                                 href="mailto:operations@esportra.com"
-                                className="inline-flex items-center justify-center gap-2 w-full p-4 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white transition-all duration-200 group"
+                                className="inline-flex items-center justify-center gap-2 w-full p-4 border border-white/10 bg-[#0a0a0c] hover:bg-white/5 text-white transition-all duration-200 group"
                             >
                                 <Mail className="w-4 h-4 text-zinc-400 group-hover:text-white" />
                                 <span>Contact operations@esportra.com</span>
@@ -73,7 +73,7 @@ const SuspendedPage = () => {
                             <Button
                                 variant="ghost"
                                 onClick={signOut}
-                                className="text-zinc-500 hover:text-red-400 hover:bg-red-500/5 h-12 rounded-2xl"
+                                className="text-zinc-500 hover:text-red-400 hover:bg-red-500/5 h-12"
                             >
                                 <LogOut className="w-4 h-4 mr-2" />
                                 Sign Out

@@ -140,7 +140,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="group relative h-[380px] w-full rounded-3xl overflow-hidden bg-[#0a0a0c] border border-white/5 shadow-2xl cursor-pointer transition-transform duration-300 hover:-translate-y-2"
+      className="group relative h-[380px] w-full overflow-hidden bg-[#0a0a0c] border border-white/5 cursor-pointer transition-transform duration-300 hover:-translate-y-1"
       onClick={() => navigate(`/tournaments/${slug || id}`)}
     >
       {/* 1. Background Image Layer */}
@@ -195,7 +195,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
             </Badge>
           )}
           {entry_fee && entry_fee !== 'Free' && entry_fee !== '0' && entry_fee !== '$0' && (
-            <Badge variant="outline" className="bg-amber-500/20 border-amber-500/40 text-amber-300">
+            <Badge variant="outline" className="bg-rose-500/10 border-rose-500/30 text-rose-300">
               💳 Paid
             </Badge>
           )}
@@ -221,18 +221,18 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
         {/* Main Info */}
         <div className="transform transition-transform duration-300 group-hover:-translate-y-2">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-bold tracking-widest text-cyan-400 uppercase font-heading">
+            <span className="text-xs font-bold tracking-widest text-rose-400 uppercase font-heading">
               {game}
             </span>
             {region && REGION_LABELS[region] && (
-              <span className="text-[10px] font-bold tracking-wider text-amber-400/80 uppercase px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+              <span className="text-[10px] font-bold tracking-wider text-white/60 uppercase px-1.5 py-0.5 bg-white/5 border border-white/10">
                 {REGION_LABELS[region]}
               </span>
             )}
-            <div className="h-[1px] flex-grow bg-gradient-to-r from-cyan-400/50 to-transparent" />
+            <div className="h-[1px] flex-grow bg-gradient-to-r from-rose-500/50 to-transparent" />
           </div>
 
-          <h3 className="text-2xl font-bold text-white font-heading leading-tight mb-3 line-clamp-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-gray-300 transition-all">
+          <h3 className="text-2xl font-bold text-white font-heading leading-tight mb-3 line-clamp-2 transition-all">
             {name}
           </h3>
 
@@ -255,9 +255,9 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
 
           {/* Winner Display */}
           {isCompleted && winner_name && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-              <Trophy className="w-3.5 h-3.5 text-yellow-400" />
-              <span className="text-xs font-bold text-yellow-300 uppercase tracking-wider truncate">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20">
+              <Trophy className="w-3.5 h-3.5 text-rose-400" />
+              <span className="text-xs font-bold text-rose-300 uppercase tracking-wider truncate">
                 Winner: {winner_name}
               </span>
             </div>
@@ -332,8 +332,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
       </div>
 
       {/* Decorative Glow Border */}
-      <div className="absolute inset-0 rounded-3xl border border-white/5 group-hover:border-white/20 transition-colors duration-300 pointer-events-none" />
-      <div className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none shadow-[inset_0_0_20px_rgba(139,92,246,0.1)]" />
+      <div className="absolute inset-0 border border-white/5 group-hover:border-white/20 transition-colors duration-300 pointer-events-none" />
 
     </div>
   );

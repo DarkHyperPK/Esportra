@@ -1,35 +1,30 @@
 
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
 import Footer from "@/components/Footer";
-import { Button } from "@/components/ui/button";
+import { JackButton } from "@/components/ui/JackButton";
 import { ShieldAlert } from "lucide-react";
 
 const Unauthorized = () => {
   const navigate = useNavigate();
-  const { profile } = useAuth();
 
   const handleRedirect = () => {
     navigate("/");  // Default to home page
   };
 
   return (
-    <div className="min-h-screen bg-esports-dark text-white flex flex-col">
-      <main className="flex-grow container mx-auto px-4 py-16 flex flex-col items-center justify-center">
-        <div className="bg-[#0a0a0c] p-8 rounded-lg border border-white/10/30 max-w-lg w-full text-center">
+    <div className="flex min-h-screen flex-col bg-[#050505] text-white">
+      <main className="container mx-auto flex flex-grow flex-col items-center justify-center px-4 py-16">
+        <div className="w-full max-w-lg border border-white/10 bg-[#0a0a0c]/90 p-8">
           <ShieldAlert className="w-16 h-16 mx-auto text-red-500 mb-4" />
-          <h1 className="text-3xl font-bold mb-2">Access Denied</h1>
-          <p className="text-gray-400 mb-6">
+          <h1 className="mb-2 font-heading text-3xl font-black uppercase tracking-tight text-white">Access Denied</h1>
+          <p className="mb-6 text-zinc-400">
             You don't have permission to access this page. Please contact an administrator
             if you believe this is a mistake.
           </p>
           
-          <Button 
-            onClick={handleRedirect} 
-            className="bg-gaming-purple hover:bg-gaming-purple/80"
-          >
+          <JackButton onClick={handleRedirect}>
             Go to Home
-          </Button>
+          </JackButton>
         </div>
       </main>
       <Footer />

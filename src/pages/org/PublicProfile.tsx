@@ -107,7 +107,7 @@ const OrganizationPublicProfile = () => {
                             animate={{ y: 0, opacity: 1 }}
                             className="relative"
                         >
-                            <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl bg-[#0a0a0c] border-4 border-[#050507] overflow-hidden shadow-2xl flex items-center justify-center">
+                            <div className="w-32 h-32 md:w-40 md:h-40 bg-[#0a0a0c] border-4 border-[#050507] overflow-hidden flex items-center justify-center">
                                 {org.logo_url ? (
                                     <img src={org.logo_url} loading="lazy" alt={org.name} className="w-full h-full object-cover" />
                                 ) : (
@@ -244,7 +244,7 @@ const OrganizationPublicProfile = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="p-12 rounded-3xl border border-white/5 bg-[#0a0a0c] text-center">
+                                <div className="p-12 border border-white/5 bg-[#0a0a0c] text-center">
                                     <p className="text-gray-500">No active tournaments right now.</p>
                                 </div>
                             )}
@@ -330,7 +330,7 @@ const OrganizationPublicProfile = () => {
                                                 <div
                                                     key={album.id}
                                                     onClick={() => setActiveAlbum(album)}
-                                                    className="group cursor-pointer relative aspect-square rounded-2xl overflow-hidden border border-white/5 bg-[#0a0a0c] hover:border-esports-accent/50 transition-all hover:scale-[1.02]"
+                                                    className="group cursor-pointer relative aspect-square overflow-hidden border border-white/5 bg-[#0a0a0c] hover:border-rose-500/50 transition-all hover:scale-[1.02]"
                                                 >
                                                     {/* Stack Icon */}
                                                     <div className="absolute top-3 right-3 z-20">
@@ -375,7 +375,7 @@ const OrganizationPublicProfile = () => {
                                                 .map((item: any) => (
                                                     <div
                                                         key={item.id}
-                                                        className="break-inside-avoid relative group rounded-2xl overflow-hidden cursor-zoom-in border border-white/5 bg-[#0a0a0c]"
+                                                        className="break-inside-avoid relative group overflow-hidden cursor-zoom-in border border-white/5 bg-[#0a0a0c]"
                                                         onClick={() => setSelectedMediaItem(item)}
                                                     >
                                                         <img src={item.url} loading="lazy" alt={item.caption} className="w-full h-auto hover:scale-105 transition-transform duration-500" />
@@ -394,7 +394,7 @@ const OrganizationPublicProfile = () => {
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="p-20 text-center border border-white/5 rounded-3xl bg-[#0a0a0c]">
+                                        <div className="p-20 text-center border border-white/5 bg-[#0a0a0c]">
                                             <ImageIcon className="w-12 h-12 text-gray-700 mx-auto mb-4" />
                                             <p className="text-gray-500">No media uploaded yet.</p>
                                         </div>
@@ -407,7 +407,7 @@ const OrganizationPublicProfile = () => {
                     {/* About Tab */}
                     <TabsContent value="about" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="lg:col-span-2 p-8 rounded-3xl bg-[#0a0a0c] border border-white/5">
+                            <div className="lg:col-span-2 p-8 bg-[#0a0a0c] border border-white/5">
                                 <h3 className="text-xl font-bold font-heading mb-4">About {org.name}</h3>
                                 <div className="prose prose-invert max-w-none text-gray-400 leading-relaxed">
                                     {org.description ? (
@@ -419,7 +419,7 @@ const OrganizationPublicProfile = () => {
                             </div>
 
                             <div className="space-y-6">
-                                <div className="p-6 rounded-3xl bg-[#0a0a0c] border border-white/5">
+                                <div className="p-6 bg-[#0a0a0c] border border-white/5">
                                     <h3 className="text-lg font-bold font-heading mb-4">Connect</h3>
                                     <div className="space-y-4">
                                         {org.social_links?.website && (

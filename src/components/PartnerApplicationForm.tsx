@@ -47,7 +47,7 @@ const HOW_HEARD = [
     'Press / Media', 'Existing Partner', 'Other',
 ];
 
-const inputClass = 'w-full bg-[#0a0a0c] border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/20 transition-all font-body';
+const inputClass = 'w-full bg-[#0a0a0c] border border-white/10 px-4 py-3 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-rose-500/50 focus:ring-1 focus:ring-rose-500/20 transition-all font-body';
 const labelClass = 'block text-xs text-zinc-500 uppercase tracking-wider mb-1.5 font-medium';
 
 const PartnerApplicationForm: React.FC = () => {
@@ -161,7 +161,7 @@ const PartnerApplicationForm: React.FC = () => {
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                     {INDUSTRIES.map(ind => (
                                         <button key={ind} onClick={() => set('industry', ind)}
-                                            className={`px-3 py-2 rounded-xl text-xs font-medium transition-all border ${form.industry === ind
+                                            className={`px-3 py-2 text-xs font-medium transition-all border ${form.industry === ind
                                                 ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
                                                 : 'bg-[#0a0a0c] text-zinc-500 border-white/5 hover:border-white/15'
                                                 }`}
@@ -175,7 +175,7 @@ const PartnerApplicationForm: React.FC = () => {
                                 <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                                     {COMPANY_SIZES.map(cs => (
                                         <button key={cs.value} onClick={() => set('company_size', cs.value)}
-                                            className={`p-3 rounded-xl text-center transition-all border ${form.company_size === cs.value
+                                            className={`p-3 text-center transition-all border ${form.company_size === cs.value
                                                 ? 'bg-rose-500/10 border-rose-500/30'
                                                 : 'bg-[#0a0a0c] border-white/5 hover:border-white/15'
                                                 }`}
@@ -227,7 +227,7 @@ const PartnerApplicationForm: React.FC = () => {
                                         { value: 'partner', label: 'Partner', desc: 'Logo ticker placement, 1 tournament sponsorship', color: '#3b82f6', icon: 'https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/17/largeicon.png' },
                                     ].map(t => (
                                         <button key={t.value} onClick={() => set('partnership_tier', t.value)}
-                                            className={`p-4 rounded-xl text-center transition-all border ${form.partnership_tier === t.value
+                                            className={`p-4 text-center transition-all border ${form.partnership_tier === t.value
                                                 ? 'border-opacity-40'
                                                 : 'bg-[#0a0a0c] border-white/5 hover:border-white/15'
                                                 }`}
@@ -253,7 +253,7 @@ const PartnerApplicationForm: React.FC = () => {
                                         const selected = (form.partnership_goals || []).includes(g.value);
                                         return (
                                             <button key={g.value} onClick={() => toggleGoal(g.value)}
-                                                className={`p-3 rounded-xl text-left transition-all border ${selected
+                                                className={`p-3 text-left transition-all border ${selected
                                                     ? 'bg-rose-500/10 border-rose-500/30'
                                                     : 'bg-[#0a0a0c] border-white/5 hover:border-white/15'
                                                     }`}
@@ -278,7 +278,7 @@ const PartnerApplicationForm: React.FC = () => {
                                 <div className="flex flex-wrap gap-2">
                                     {HOW_HEARD.map(h => (
                                         <button key={h} onClick={() => set('how_heard', h)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${form.how_heard === h
+                                            className={`px-3 py-1.5 text-xs font-medium transition-all border ${form.how_heard === h
                                                 ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
                                                 : 'bg-[#0a0a0c] text-zinc-500 border-white/5 hover:border-white/15'
                                                 }`}
@@ -298,7 +298,7 @@ const PartnerApplicationForm: React.FC = () => {
                             </div>
 
                             {/* Summary */}
-                            <div className="rounded-xl border border-white/5 bg-[#0a0a0c] p-4 space-y-2">
+                            <div className="border border-white/5 bg-[#0a0a0c] p-4 space-y-2">
                                 <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium mb-3">Application Summary</p>
                                 <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                                     <div><span className="text-zinc-500">Company:</span> <span className="text-white">{form.company_name}</span></div>
@@ -318,7 +318,7 @@ const PartnerApplicationForm: React.FC = () => {
                 {step > 0 ? (
                     <button
                         onClick={() => setStep(step - 1)}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-zinc-400 hover:text-white transition-colors"
+                        className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-zinc-400 hover:text-white transition-colors"
                     >
                         <ChevronLeft className="w-4 h-4" />
                         Back
@@ -329,9 +329,9 @@ const PartnerApplicationForm: React.FC = () => {
                     <button
                         onClick={() => canNext() && setStep(step + 1)}
                         disabled={!canNext()}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${canNext()
-                            ? 'bg-gradient-to-r from-rose-500 to-rose-600 text-white hover:-translate-y-0.5 shadow-lg shadow-rose-500/20'
-                            : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                        className={`flex items-center gap-2 px-6 py-2.5 text-sm font-mono font-bold uppercase tracking-wider transition-all ${canNext()
+                            ? 'bg-white text-black border border-white'
+                            : 'bg-zinc-800 text-zinc-600 border border-zinc-700 cursor-not-allowed'
                             }`}
                     >
                         Continue
@@ -341,7 +341,7 @@ const PartnerApplicationForm: React.FC = () => {
                     <button
                         onClick={handleSubmit}
                         disabled={submitApplication.isPending}
-                        className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-rose-500 to-rose-600 text-white hover:-translate-y-0.5 shadow-lg shadow-rose-500/20 transition-all disabled:opacity-50"
+                        className="flex items-center gap-2 px-8 py-3 text-sm font-mono font-bold uppercase tracking-wider bg-white text-black border border-white transition-all disabled:opacity-50"
                     >
                         {submitApplication.isPending ? (
                             <>

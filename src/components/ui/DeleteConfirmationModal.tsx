@@ -74,7 +74,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
                 <DialogHeader className="p-6 pb-2">
                     <div className="flex items-center justify-between">
                         <DialogTitle className="flex items-center gap-3 text-xl font-bold text-white tracking-tight">
-                            <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+                            <div className="p-2 bg-red-500/10 border border-red-500/20">
                                 <Trash2 className="h-5 w-5 text-red-500" />
                             </div>
                             Delete {entityType.charAt(0).toUpperCase() + entityType.slice(1)}
@@ -90,22 +90,22 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
 
                 <div className="p-6 space-y-5">
                     {/* Entity Name Display - Glass Card */}
-                    <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-4 flex flex-col items-center text-center">
+                    <div className="bg-[#0a0a0c] border border-white/5 p-4 flex flex-col items-center text-center">
                         <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">You are deleting</p>
                         <p className="text-lg font-bold text-white">{entityName}</p>
                     </div>
 
                     {/* Custom Warning */}
                     {customWarning && (
-                        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 flex gap-3 items-start">
-                            <AlertTriangle className="h-5 w-5 text-yellow-500 shrink-0 mt-0.5" />
-                            <p className="text-yellow-200/90 text-sm leading-relaxed">{customWarning}</p>
+                        <div className="bg-rose-500/10 border border-rose-500/20 p-3 flex gap-3 items-start">
+                            <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
+                            <p className="text-rose-200/90 text-sm leading-relaxed">{customWarning}</p>
                         </div>
                     )}
 
                     {/* Cascade Warnings */}
                     {hasCascadeWarnings && (
-                        <div className="bg-red-500/5 border border-red-500/10 rounded-lg p-4">
+                        <div className="bg-red-500/5 border border-red-500/10 p-4">
                             <div className="flex items-center gap-2 mb-3 text-red-400 text-sm font-semibold">
                                 <AlertCircle className="h-4 w-4" />
                                 <span>This will also affect:</span>

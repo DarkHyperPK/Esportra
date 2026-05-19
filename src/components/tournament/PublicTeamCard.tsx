@@ -80,7 +80,7 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
                                     name={participant.team_name}
                                     entityId={participant.team_id || participant.id}
                                     size="w-24 h-24"
-                                    className="rounded-3xl border border-white/10 bg-white/[0.03] p-1.5"
+                                    className="border border-white/10 bg-white/[0.03] p-1.5"
                                     imgClassName="object-contain filter drop-shadow-md"
                                     fallbackClassName="text-xl tracking-wider"
                                 />
@@ -133,7 +133,7 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
                             </div>
 
                             {/* Purple Bottom Border Accent */}
-                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 to-indigo-600" />
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-rose-500" />
                         </motion.div>
                     )}
                 </AnimatePresence>

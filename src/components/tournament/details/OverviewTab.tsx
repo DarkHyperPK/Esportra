@@ -211,7 +211,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                                                 href={tournament.settings.discordUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-2 px-4 py-2.5 bg-[#5865F2]/10 border border-[#5865F2]/30 rounded-lg text-sm text-[#5865F2] hover:bg-[#5865F2]/20 transition-colors font-mono"
+                                                className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 text-sm text-white hover:bg-white/10 transition-colors font-mono"
                                             >
                                                 <MessageCircle className="w-4 h-4" />
                                                 Discord
@@ -223,7 +223,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                                                 href={tournament.settings.twitterUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-sm text-white hover:bg-white/10 transition-colors font-mono"
+                                                className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 text-sm text-white hover:bg-white/10 transition-colors font-mono"
                                             >
                                                 𝕏
                                                 Twitter/X
@@ -235,7 +235,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                                                 href={tournament.stream_url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 border border-purple-500/30 rounded-lg text-sm text-purple-400 hover:bg-purple-500/20 transition-colors font-mono"
+                                                className="flex items-center gap-2 px-4 py-2.5 bg-rose-500/10 border border-rose-500/30 text-sm text-rose-400 hover:bg-rose-500/20 transition-colors font-mono"
                                             >
                                                 📺
                                                 Stream
@@ -251,10 +251,10 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
 
                     {/* 3. Self-Play Mode Info (Conditionally Rendered) */}
                     {isSelfPlayEnabled && (
-                        <div className="p-8 bg-gradient-to-br from-purple-500/10 via-transparent to-blue-500/5 border border-purple-500/20 rounded-3xl">
+                        <div className="p-8 bg-rose-500/5 border border-rose-500/20">
                             <div className="flex items-center gap-4 mb-6">
-                                <div className="p-3 bg-purple-500/20 rounded-2xl">
-                                    <Zap className="w-8 h-8 text-purple-400" />
+                                <div className="p-3 bg-rose-500/10 border border-rose-500/20">
+                                    <Zap className="w-8 h-8 text-rose-400" />
                                 </div>
                                 <div>
                                     <h3 className="text-2xl font-bold text-white tracking-tight">Self-Play Mode</h3>
@@ -269,8 +269,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                                     { step: '3', title: 'Check-In', desc: 'Both teams check in when ready to play' },
                                     { step: '4', title: 'Start Match', desc: 'Team 1 generates party code to start the match' },
                                 ].map((item) => (
-                                    <div key={item.step} className="flex flex-col items-center text-center p-4 bg-white/5 rounded-2xl border border-white/5">
-                                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-bold text-lg mb-3">
+                                    <div key={item.step} className="flex flex-col items-center text-center p-4 bg-white/[0.03] border border-white/5">
+                                        <div className="w-10 h-10 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 font-bold text-lg mb-3">
                                             {item.step}
                                         </div>
                                         <h4 className="text-white font-semibold text-sm mb-1">{item.title}</h4>

@@ -37,7 +37,7 @@ const GameCard = ({ game, assets }: { game: Game; assets: GameAssets | undefined
   return (
     <Link
       to={`/tournaments?game=${game.slug}`}
-      className="group relative block h-[340px] md:h-[400px] rounded-2xl overflow-hidden"
+      className="group relative block h-[340px] md:h-[400px] overflow-hidden"
       aria-label={`Browse ${game.name} tournaments`}
     >
       {/* IGDB banner with Ken Burns zoom on hover */}
@@ -62,10 +62,10 @@ const GameCard = ({ game, assets }: { game: Game; assets: GameAssets | undefined
           <img
             src={cover}
             alt={`${game.name} cover`}
-            className="h-20 md:h-24 w-auto rounded-lg shadow-2xl object-cover flex-shrink-0 border border-white/10"
+            className="h-20 md:h-24 w-auto object-cover flex-shrink-0 border border-white/10"
           />
         ) : (
-          <div className="h-20 md:h-24 w-14 md:w-16 rounded-lg bg-white/5 animate-pulse flex-shrink-0" />
+          <div className="h-20 md:h-24 w-14 md:w-16 bg-white/5 animate-pulse flex-shrink-0" />
         )}
         <div className="min-w-0">
           <p className="text-base md:text-lg font-semibold text-white leading-tight truncate">

@@ -70,7 +70,7 @@ const BrandShowcase = () => {
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-[0.15em] text-white uppercase font-heading mb-6">
             Power the{" "}
-            <span className="font-medium italic text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-500">
+            <span className="font-medium italic text-rose-500">
               Competition
             </span>
           </h2>
@@ -83,11 +83,11 @@ const BrandShowcase = () => {
         {/* Why Esportra — centered */}
         <div className="max-w-xl mx-auto space-y-6">
           <div className="flex items-center gap-3 mb-2">
-            <div className="h-px flex-1 bg-gradient-to-r from-amber-500/30 to-transparent" />
-            <span className="text-amber-400 text-xs tracking-[0.3em] uppercase font-semibold whitespace-nowrap">
+            <div className="h-px flex-1 bg-gradient-to-r from-rose-500/30 to-transparent" />
+            <span className="text-rose-400 text-xs tracking-[0.3em] uppercase font-semibold whitespace-nowrap">
               Why Esportra
             </span>
-            <div className="h-px flex-1 bg-gradient-to-l from-amber-500/30 to-transparent" />
+            <div className="h-px flex-1 bg-gradient-to-l from-rose-500/30 to-transparent" />
           </div>
 
           <h3 className="text-2xl md:text-3xl font-light text-white font-heading text-center">
@@ -104,10 +104,10 @@ const BrandShowcase = () => {
               <motion.div
                 key={pillar.title}
                 variants={cardVariants}
-                className="group p-5 bg-white/[0.02] border border-white/5 rounded-2xl hover:border-amber-500/20 transition-all duration-500 hover:bg-white/[0.04]"
+                className="group p-5 bg-white/[0.02] border border-white/5 hover:border-rose-500/20 transition-all duration-500 hover:bg-white/[0.04]"
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 flex-shrink-0">
+                  <div className="w-10 h-10 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
                     {pillar.icon}
                   </div>
                   <div className="min-w-0">
@@ -127,7 +127,7 @@ const BrandShowcase = () => {
           <div className="pt-2 text-center">
             <Link
               to="/partners"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-medium tracking-wide hover:from-amber-400 hover:to-amber-500 transition-all duration-300 hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] hover:-translate-y-0.5"
+              className="group relative inline-flex items-center gap-2 overflow-hidden border border-white bg-white px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-black transition-colors"
             >
               Become a Partner
               <ArrowRight className="w-4 h-4" />

@@ -13,8 +13,8 @@ const TeamInvites = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl">
-            <Bell className="h-5 w-5 text-white" />
+          <div className="p-2 bg-rose-500/10 border border-rose-500/20">
+            <Bell className="h-5 w-5 text-rose-400" />
           </div>
           <h3 className="text-2xl font-bold text-white">Team Invites</h3>
         </div>
@@ -34,13 +34,13 @@ const TeamInvites = () => {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl">
-            <Bell className="h-5 w-5 text-white" />
+          <div className="p-2 bg-rose-500/10 border border-rose-500/20">
+            <Bell className="h-5 w-5 text-rose-400" />
           </div>
           <h3 className="text-2xl font-bold text-white">Team Invites</h3>
         </div>
-        <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-12 text-center">
-          <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center">
+        <div className="bg-[#0a0a0c] border border-white/10 p-12 text-center">
+          <div className="w-20 h-20 mx-auto mb-6 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
             <Users className="h-10 w-10 text-white" />
           </div>
           <h4 className="text-xl font-bold text-white mb-2">No Pending Invites</h4>
@@ -56,8 +56,8 @@ const TeamInvites = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl">
-          <Bell className="h-5 w-5 text-white" />
+        <div className="p-2 bg-rose-500/10 border border-rose-500/20">
+          <Bell className="h-5 w-5 text-rose-400" />
         </div>
         <div>
           <h3 className="text-2xl font-bold text-white">Team Invites</h3>
@@ -85,7 +85,7 @@ const TeamInvites = () => {
               <div className="flex-1">
                 <h4 className="text-xl font-bold text-white mb-1">{invite.team.name}</h4>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs">
+                  <Badge className="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-xs">
                     {invite.team.game}
                   </Badge>
                   <Badge variant="outline" className="border-yellow-500/50 text-yellow-400 bg-yellow-500/10 text-xs">
@@ -119,7 +119,7 @@ const TeamInvites = () => {
             <div className="flex gap-3">
               <Button
                 onClick={() => acceptTeamInvite(invite.id)}
-                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                className="flex-1 bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider transition-all"
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
                 Accept

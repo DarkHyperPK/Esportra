@@ -128,7 +128,7 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Button className="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/20">
+                  <Button className="w-full bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider">
                     Apply as Venue Owner
                   </Button>
                 </div>

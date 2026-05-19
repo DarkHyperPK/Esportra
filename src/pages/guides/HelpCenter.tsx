@@ -108,7 +108,7 @@ const HelpCenter = () => {
               <BookOpen className="w-4 h-4" />
               Help Center
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-transparent mb-4">
+            <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight text-white mb-4">
               How can we help?
             </h1>
             <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
@@ -128,13 +128,13 @@ const HelpCenter = () => {
               >
                 {guide.available ? (
                   <Link to={guide.href} className="block h-full group">
-                    <div className="relative h-full p-6 rounded-2xl bg-[#0a0a0c] border border-white/5 hover:border-rose-500/20 transition-all duration-300 hover:-translate-y-1">
+                    <div className="relative h-full p-6 bg-[#0a0a0c] border border-white/5 hover:border-rose-500/20 transition-all duration-300 hover:-translate-y-1">
                       {guide.tag && (
-                        <span className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                        <span className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-rose-500/10 text-rose-400 border border-rose-500/20">
                           {guide.tag}
                         </span>
                       )}
-                      <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 mb-4 group-hover:bg-rose-500/20 transition-colors">
+                      <div className="w-12 h-12 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mb-4 group-hover:bg-rose-500/20 transition-colors">
                         {guide.icon}
                       </div>
                       <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-rose-400 transition-colors">
@@ -150,11 +150,11 @@ const HelpCenter = () => {
                     </div>
                   </Link>
                 ) : (
-                  <div className="relative h-full p-6 rounded-2xl bg-[#0a0a0c]/60 border border-white/5 opacity-60">
-                    <span className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-500/10 text-zinc-500 border border-zinc-500/20">
+                  <div className="relative h-full p-6 bg-[#0a0a0c]/60 border border-white/5 opacity-60">
+                    <span className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-zinc-500/10 text-zinc-500 border border-zinc-500/20">
                       Coming Soon
                     </span>
-                    <div className="w-12 h-12 rounded-xl bg-zinc-500/10 flex items-center justify-center text-zinc-500 mb-4">
+                    <div className="w-12 h-12 bg-zinc-500/10 border border-zinc-500/20 flex items-center justify-center text-zinc-500 mb-4">
                       {guide.icon}
                     </div>
                     <h3 className="text-lg font-semibold text-zinc-400 mb-2">
@@ -182,9 +182,9 @@ const HelpCenter = () => {
                 <Link
                   key={link.title}
                   to={link.href}
-                  className="flex items-center gap-4 p-4 rounded-xl bg-[#0a0a0c] border border-white/5 hover:border-rose-500/20 transition-all group"
+                  className="flex items-center gap-4 p-4 bg-[#0a0a0c] border border-white/5 hover:border-rose-500/20 transition-all group"
                 >
-                  <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-zinc-400 group-hover:text-rose-400 transition-colors">
+                  <div className="w-10 h-10 bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 group-hover:text-rose-400 transition-colors">
                     {link.icon}
                   </div>
                   <div className="flex-grow min-w-0">
@@ -203,7 +203,7 @@ const HelpCenter = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="mt-16 text-center p-8 rounded-2xl bg-gradient-to-b from-rose-500/5 to-transparent border border-rose-500/10"
+            className="mt-16 text-center p-8 bg-rose-500/5 border border-rose-500/10"
           >
             <Sparkles className="w-8 h-8 text-rose-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-white mb-2">Can't find what you need?</h2>

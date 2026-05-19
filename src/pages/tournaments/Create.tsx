@@ -62,7 +62,7 @@ const CreateTournament = () => {
       <div className="min-h-screen bg-transparent text-white flex flex-col">
         <main className="flex-grow container mx-auto px-4 py-8">
           <div className="text-center max-w-md mx-auto p-6">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
               <Trophy className="h-8 w-8 text-white" />
             </div>
             <div className="text-esports-primary text-xl font-semibold mb-2">Player Mode</div>

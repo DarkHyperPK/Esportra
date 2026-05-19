@@ -162,7 +162,7 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
                             </div>
 
                             {/* Purple Bottom Border Accent */}
-                            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-600 to-indigo-600" />
+                            <div className="absolute bottom-0 left-0 w-full h-1 bg-rose-500" />
                         </motion.div>
                     )}
                 </AnimatePresence>

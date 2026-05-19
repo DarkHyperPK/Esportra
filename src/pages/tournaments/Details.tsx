@@ -839,7 +839,7 @@ const TournamentDetails = () => {
                   type="button"
                   onClick={handleRedeemInviteCode}
                   disabled={redeemCode.isPending}
-                  className="bg-purple-600 hover:bg-purple-500 text-white"
+                  className="bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider"
                 >
                   {redeemCode.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Join with Code
@@ -855,7 +855,7 @@ const TournamentDetails = () => {
       <div className="relative z-30 -mt-20">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="container mx-auto px-4">
-            <div className="sticky top-4 z-40 bg-[#050505]/80 backdrop-blur-xl border border-white/10 p-2 rounded-2xl mb-12 shadow-2xl shadow-black/50 mx-auto max-w-3xl">
+            <div className="sticky top-4 z-40 bg-[#0a0a0c]/90 border border-white/10 p-2 mb-12 mx-auto max-w-3xl">
               <TabsList className="bg-transparent h-auto p-0 w-full flex justify-between">
                 {(isBR
                   ? ['Overview', terminology.competitorLabelPlural, 'Leaderboard', 'Rules']
@@ -864,7 +864,7 @@ const TournamentDetails = () => {
                   <TabsTrigger
                     key={tab}
                     value={tab.toLowerCase()}
-                    className="data-[state=active]:bg-white/10 data-[state=active]:text-white flex-1 rounded-xl py-4 text-gray-500 font-mono tracking-widest text-xs md:text-sm uppercase transition-all duration-300 hover:text-white"
+                    className="data-[state=active]:bg-white/10 data-[state=active]:text-white flex-1 py-4 text-gray-500 font-mono tracking-widest text-xs md:text-sm uppercase transition-all duration-300 hover:text-white"
                   >
                     {tab}
                   </TabsTrigger>
@@ -899,7 +899,7 @@ const TournamentDetails = () => {
                             type="button"
                             onClick={() => setSelectedStageId(stage.id)}
                             className={cn(
-                              'px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap border',
+                              'px-4 py-2 text-sm font-medium transition-all whitespace-nowrap border',
                               selectedStageId === stage.id
                                 ? 'bg-white/10 border-white/20 text-white'
                                 : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white hover:bg-white/[0.06]'
@@ -925,8 +925,8 @@ const TournamentDetails = () => {
                   <>
                     {/* Legacy single-lobby leaderboard */}
                     {brResults.activeGameNumber && (
-                  <div className="flex items-center gap-4 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 animate-pulse-slow">
-                    <div className="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="flex items-center gap-4 p-4 bg-rose-500/10 border border-rose-500/30 animate-pulse-slow">
+                    <div className="w-10 h-10 bg-rose-500/20 border border-rose-500/30 flex items-center justify-center flex-shrink-0">
                       <Swords className="w-5 h-5 text-rose-400" />
                     </div>
                     <div className="flex-1">
@@ -958,12 +958,12 @@ const TournamentDetails = () => {
 
                 {/* Champion Banner */}
                 {brResults.winner && (
-                  <div className="relative rounded-2xl overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-r from-amber-500/[0.12] via-amber-400/[0.06] to-amber-500/[0.12]" />
+                  <div className="relative overflow-hidden">
+                    <div className="absolute inset-0 bg-rose-500/[0.06]" />
                     <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjAgMEwyNSAxMEwzNSAxMEwyNyAxN0wzMCAyN0wyMCAyMkwxMCAyN0wxMyAxN0w1IDEwTDE1IDEwWiIgZmlsbD0icmdiYSgyNTEsMTkxLDM2LDAuMDMpIi8+PC9zdmc+')] opacity-40" />
-                    <div className="relative flex items-center gap-5 p-6 sm:p-8 border border-amber-500/30 rounded-2xl">
-                      <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center flex-shrink-0">
-                        <Trophy className="w-9 h-9 text-amber-400" />
+                    <div className="relative flex items-center gap-5 p-6 sm:p-8 border border-rose-500/30">
+                      <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
+                        <Trophy className="w-9 h-9 text-rose-400" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-500/60 mb-1">Tournament Champion</p>
@@ -1097,7 +1097,7 @@ const TournamentDetails = () => {
           <div className="flex gap-2 mt-2">
             <button
               onClick={() => setBannerMode('upload')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
                 bannerMode === 'upload'
                   ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                   : 'bg-white/5 text-zinc-400 border border-white/5 hover:bg-white/10'
@@ -1107,7 +1107,7 @@ const TournamentDetails = () => {
             </button>
             <button
               onClick={() => setBannerMode('artwork')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
                 bannerMode === 'artwork'
                   ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                   : 'bg-white/5 text-zinc-400 border border-white/5 hover:bg-white/10'

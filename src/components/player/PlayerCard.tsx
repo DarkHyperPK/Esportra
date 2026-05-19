@@ -72,9 +72,9 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser,
                 <div className="absolute top-3 left-3 z-20 flex flex-col items-start gap-1.5">
                     {/* Role Indicator - Flatter Premium Look (Gold) */}
                     {isOwner && (
-                        <div className="relative group/badge flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)] transition-opacity duration-300 group-hover:opacity-0 overflow-hidden">
+                        <div className="relative group/badge flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-rose-500/50 transition-opacity duration-300 group-hover:opacity-0 overflow-hidden">
                             {/* Inner Glow Polish */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent opacity-50" />
+                            <div className="absolute inset-0 bg-rose-500/5" />
 
                             {/* Moving Shine Effect */}
                             <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
@@ -87,8 +87,8 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser,
                     )}
 
                     {member.role === 'coach' && (
-                        <div className="relative group/badge flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.2)] transition-opacity duration-300 group-hover:opacity-0 overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-400/5 to-transparent opacity-50" />
+                        <div className="relative group/badge flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-white/20 transition-opacity duration-300 group-hover:opacity-0 overflow-hidden">
+                            <div className="absolute inset-0 bg-white/5" />
                             <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                             <ClipboardList className="w-3.5 h-3.5 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
                             <span className="relative text-[10px] uppercase tracking-[0.25em] font-extrabold text-cyan-100 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]">

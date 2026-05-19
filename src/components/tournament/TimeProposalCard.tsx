@@ -76,7 +76,7 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
         return (
             <Card className="bg-zinc-900/50 border-zinc-800 overflow-hidden">
                 <CardContent className="p-0">
-                    <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 p-4 border-b border-zinc-800">
+                    <div className="bg-rose-500/5 p-4 border-b border-white/10">
                         <h3 className="font-semibold text-white flex items-center gap-2">
                             <Check className="w-4 h-4 text-emerald-400" />
                             Match Scheduled

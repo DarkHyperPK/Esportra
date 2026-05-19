@@ -17,7 +17,7 @@ const Roadmap = () => {
                     className="text-4xl md:text-7xl lg:text-8xl font-light text-white font-heading tracking-tight mb-12"
                 >
                     The journey <br />
-                    <span className="font-medium italic text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-emerald-400">has just begun.</span>
+                    <span className="font-medium italic text-rose-500">has just begun.</span>
                 </motion.h2>
 
                 {!user && (
@@ -29,7 +29,7 @@ const Roadmap = () => {
                         <Button
                             asChild
                             size="lg"
-                            className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg md:px-12 md:py-8 md:text-xl font-medium rounded-full transition-all duration-500 shadow-[0_0_40px_rgba(255,255,255,0.1)] hover:shadow-[0_0_60px_rgba(255,255,255,0.2)] hover:scale-105"
+                            className="bg-white text-black hover:bg-white/90 px-8 py-6 text-lg md:px-12 md:py-8 md:text-xl font-mono font-bold uppercase tracking-wider rounded-none transition-all duration-300"
                         >
                             <Link to="/auth/signin" className="flex items-center gap-3">
                                 Get Started <Zap className="w-6 h-6 fill-current" />
@@ -39,7 +39,7 @@ const Roadmap = () => {
                 )}
 
                 {/* Subtle decorative glow */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-500/5 blur-[120px] rounded-full -z-10" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-rose-500/5 blur-[120px] rounded-full -z-10" />
             </div>
         </section>
     );

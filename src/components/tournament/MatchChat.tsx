@@ -119,7 +119,7 @@ const MatchChat: React.FC<MatchChatProps> = ({
     return (
         <Card className="bg-zinc-950/95 border-zinc-800/90 overflow-hidden flex flex-col h-[440px] shadow-2xl shadow-black/30 backdrop-blur-xl">
             {/* Header */}
-            <div className="p-4 bg-gradient-to-r from-cyan-500/10 via-blue-500/5 to-zinc-950 border-b border-zinc-800 flex items-center justify-between flex-shrink-0">
+            <div className="p-4 bg-rose-500/5 border-b border-white/10 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shadow-inner">
                         <MessageCircle className="w-5 h-5 text-cyan-400" />

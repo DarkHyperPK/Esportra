@@ -172,7 +172,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   // Show login prompt if not authenticated
   if (!user) {
     return (
-      <Alert className="rounded-lg shadow-md border-0 bg-gradient-to-r from-gray-800 to-gray-900 text-white">
+      <Alert className="border border-white/10 bg-[#0a0a0c] text-white">
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
           Please log in to register for this tournament.
@@ -185,7 +185,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   if (banned) {
     return (
       <div
-        className="w-full bg-gradient-to-r from-red-600 to-red-400 text-white font-bold py-4 rounded-xl shadow-lg flex flex-col items-center justify-center text-2xl mb-4 border-2 border-red-700 opacity-90 cursor-not-allowed"
+        className="w-full bg-red-500/10 text-red-400 font-bold py-4 flex flex-col items-center justify-center text-2xl mb-4 border border-red-500/30 opacity-90 cursor-not-allowed"
       >
         <BanIcon className="w-10 h-10 mb-2 text-white drop-shadow-lg" />
         BANNED
@@ -211,7 +211,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
         </div>
 
         {paymentInstructions && (
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4">
+          <div className="bg-[#0a0a0c] border border-white/10 p-4">
             <div className="flex items-center gap-2 mb-2">
               <FileText className="w-4 h-4 text-zinc-400" />
               <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Payment Instructions</span>
@@ -224,7 +224,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
           <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Upload Payment Receipt</label>
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-zinc-700 hover:border-rose-500/50 rounded-xl p-6 text-center cursor-pointer transition-colors"
+            className="border-2 border-dashed border-zinc-700 hover:border-rose-500/50 p-6 text-center cursor-pointer transition-colors"
           >
             <input
               ref={fileInputRef}
@@ -235,7 +235,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
             />
             {receiptPreview ? (
               <div className="space-y-3">
-                <img src={receiptPreview} alt="Receipt" className="max-h-48 mx-auto rounded-lg" />
+                <img src={receiptPreview} alt="Receipt" className="max-h-48 mx-auto" />
                 <p className="text-xs text-zinc-400">{receiptFile?.name}</p>
               </div>
             ) : receiptFile ? (

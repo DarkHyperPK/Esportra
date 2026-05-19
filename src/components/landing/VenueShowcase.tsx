@@ -97,10 +97,10 @@ const BenefitCardItem = ({
       hoverBorder: "hover:border-rose-500/20",
     },
     cyan: {
-      iconBg: "bg-cyan-500/10",
-      iconBorder: "border-cyan-500/20",
-      iconText: "text-cyan-400",
-      hoverBorder: "hover:border-cyan-500/20",
+      iconBg: "bg-white/[0.05]",
+      iconBorder: "border-white/10",
+      iconText: "text-white",
+      hoverBorder: "hover:border-white/20",
     },
   };
 
@@ -109,11 +109,11 @@ const BenefitCardItem = ({
   return (
     <motion.div
       variants={cardVariants}
-      className={`group p-5 bg-white/[0.02] border border-white/5 rounded-2xl ${colors.hoverBorder} transition-all duration-500 hover:bg-white/[0.04]`}
+      className={`group p-5 bg-white/[0.02] border border-white/5 ${colors.hoverBorder} transition-all duration-500 hover:bg-white/[0.04]`}
     >
       <div className="flex items-start gap-4">
         <div
-          className={`w-10 h-10 rounded-xl ${colors.iconBg} border ${colors.iconBorder} flex items-center justify-center ${colors.iconText} flex-shrink-0`}
+          className={`w-10 h-10 ${colors.iconBg} border ${colors.iconBorder} flex items-center justify-center ${colors.iconText} flex-shrink-0`}
         >
           {card.icon}
         </div>
@@ -138,7 +138,7 @@ const VenueShowcase = () => {
   return (
     <section
       ref={sectionRef}
-      className="py-24 md:py-32 bg-[#0a0a0a] relative overflow-hidden"
+      className="py-24 md:py-32 bg-[#0a0a0c] relative overflow-hidden"
     >
       {/* Background ambience */}
       <div
@@ -146,7 +146,7 @@ const VenueShowcase = () => {
         aria-hidden
       />
       <div
-        className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,rgba(6,182,212,0.04)_0%,transparent_60%)] pointer-events-none"
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,rgba(244,63,94,0.03)_0%,transparent_60%)] pointer-events-none"
         aria-hidden
       />
 
@@ -163,7 +163,7 @@ const VenueShowcase = () => {
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-[0.15em] text-white uppercase font-heading mb-6">
             Where Competitors{" "}
-            <span className="font-medium italic text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-cyan-400">
+            <span className="font-medium italic text-rose-500">
               Gather
             </span>
           </h2>
@@ -211,7 +211,7 @@ const VenueShowcase = () => {
             <div className="pt-2 text-center lg:text-left">
               <button
                 onClick={() => setShowLicenseDialog(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 text-white text-sm font-medium tracking-wide hover:from-rose-400 hover:to-rose-500 transition-all duration-300 hover:shadow-[0_0_30px_rgba(244,63,94,0.3)] hover:-translate-y-0.5"
+                className="group relative inline-flex items-center gap-2 overflow-hidden border border-white bg-white px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-black transition-colors"
               >
                 List Your Venue
               </button>
@@ -227,11 +227,11 @@ const VenueShowcase = () => {
           >
             {/* Column header */}
             <div className="flex items-center gap-3 mb-2">
-              <div className="h-px flex-1 bg-gradient-to-r from-cyan-500/30 to-transparent" />
-              <span className="text-cyan-400 text-xs tracking-[0.3em] uppercase font-semibold whitespace-nowrap">
+              <div className="h-px flex-1 bg-gradient-to-r from-white/20 to-transparent" />
+              <span className="text-white text-xs tracking-[0.3em] uppercase font-semibold whitespace-nowrap">
                 For Players
               </span>
-              <div className="h-px flex-1 bg-gradient-to-l from-cyan-500/30 to-transparent" />
+              <div className="h-px flex-1 bg-gradient-to-l from-white/20 to-transparent" />
             </div>
 
             <h3 className="text-2xl md:text-3xl font-light text-white font-heading text-center lg:text-left">
@@ -254,7 +254,7 @@ const VenueShowcase = () => {
             <div className="pt-2 text-center lg:text-left">
               <Link
                 to="/venues"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 text-white text-sm font-medium tracking-wide hover:from-cyan-400 hover:to-cyan-500 transition-all duration-300 hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] hover:-translate-y-0.5"
+                className="group relative inline-flex items-center gap-2 overflow-hidden border border-white/15 bg-[#0a0a0c] px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white transition-colors hover:border-white/40"
               >
                 Explore Venues
               </Link>
@@ -267,7 +267,7 @@ const VenueShowcase = () => {
       <Dialog open={showLicenseDialog} onOpenChange={setShowLicenseDialog}>
         <DialogContent className="max-w-md bg-[#121214] border-white/10">
           <DialogHeader>
-            <div className="mx-auto mb-3 w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+            <div className="mx-auto mb-3 w-12 h-12 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
               <ShieldCheck className="w-6 h-6 text-rose-400" />
             </div>
             <DialogTitle className="text-center text-white text-xl font-heading">
@@ -280,14 +280,14 @@ const VenueShowcase = () => {
           <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-4">
             <button
               onClick={() => setShowLicenseDialog(false)}
-              className="px-5 py-2.5 rounded-xl border border-white/10 text-white/60 text-sm hover:bg-white/5 transition-colors"
+              className="px-5 py-2.5 border border-white/10 text-white/60 text-sm font-mono uppercase tracking-wider hover:bg-white/5 transition-colors"
             >
               Maybe Later
             </button>
             <Link
               to="/verification"
               onClick={() => setShowLicenseDialog(false)}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 text-white text-sm font-medium hover:from-rose-400 hover:to-rose-500 transition-all duration-300"
+              className="group relative inline-flex items-center justify-center gap-2 overflow-hidden border border-white bg-white px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-wider text-black transition-colors"
             >
               Apply for License
             </Link>

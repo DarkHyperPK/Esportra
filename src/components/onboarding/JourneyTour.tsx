@@ -45,8 +45,8 @@ const ACCENTS: Record<Accent, {
     iconBg: 'bg-rose-500/10',
     dotActive: 'bg-rose-500',
     dotDone: 'bg-rose-500/40',
-    cta: 'bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400',
-    ctaShadow: 'shadow-[0_0_20px_rgba(244,63,94,0.3)] hover:shadow-[0_0_30px_rgba(244,63,94,0.4)]',
+    cta: 'bg-white text-black hover:bg-white/90 font-mono font-bold uppercase tracking-wider',
+    ctaShadow: '',
   },
   cyan: {
     icon: 'text-cyan-400',
@@ -54,8 +54,8 @@ const ACCENTS: Record<Accent, {
     iconBg: 'bg-cyan-500/10',
     dotActive: 'bg-cyan-500',
     dotDone: 'bg-cyan-500/40',
-    cta: 'bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400',
-    ctaShadow: 'shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)]',
+    cta: 'bg-white text-black hover:bg-white/90 font-mono font-bold uppercase tracking-wider',
+    ctaShadow: '',
   },
   violet: {
     icon: 'text-violet-400',
@@ -63,8 +63,8 @@ const ACCENTS: Record<Accent, {
     iconBg: 'bg-violet-500/10',
     dotActive: 'bg-violet-500',
     dotDone: 'bg-violet-500/40',
-    cta: 'bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-400',
-    ctaShadow: 'shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(139,92,246,0.4)]',
+    cta: 'bg-white text-black hover:bg-white/90 font-mono font-bold uppercase tracking-wider',
+    ctaShadow: '',
   },
 };
 

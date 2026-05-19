@@ -1,5 +1,6 @@
 import { useLocation, Link } from "react-router-dom";
 import { useEffect } from "react";
+import { JackButton } from "@/components/ui/JackButton";
 
 const NotFound = () => {
   const location = useLocation();
@@ -12,13 +13,13 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-        <Link to="/" className="text-blue-500 hover:text-blue-700 underline">
+    <div className="flex min-h-screen items-center justify-center bg-[#050505] px-4 text-white">
+      <div className="w-full max-w-lg border border-white/10 bg-[#0a0a0c]/90 p-8">
+        <h1 className="mb-4 font-heading text-5xl font-black uppercase tracking-tight text-white">404</h1>
+        <p className="mb-6 text-xl text-zinc-400">Oops! Page not found</p>
+        <JackButton as={Link} to="/">
           Return to Home
-        </Link>
+        </JackButton>
       </div>
     </div>
   );

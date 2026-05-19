@@ -275,7 +275,7 @@ const ListVenue = () => {
           {/* Connecting Line */}
           <div className="absolute top-1/2 left-0 w-full h-[2px] bg-white/5 -z-10 -translate-y-1/2 rounded-full" />
           <div
-            className="absolute top-1/2 left-0 h-[2px] bg-gradient-to-r from-purple-500 to-cyan-500 -z-10 -translate-y-1/2 rounded-full transition-all duration-500 ease-in-out"
+            className="absolute top-1/2 left-0 h-[2px] bg-rose-500 -z-10 -translate-y-1/2 transition-all duration-500 ease-in-out"
             style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }}
           />
 
@@ -306,7 +306,7 @@ const ListVenue = () => {
 
         {/* Form Container */}
         <div className="w-full max-w-3xl">
-          <div className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/5 rounded-3xl p-6 md:p-10 shadow-2xl relative overflow-visible">
+          <div className="bg-[#0a0a0c]/80 border border-white/5 p-6 md:p-10 relative overflow-visible">
 
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
 
@@ -336,7 +336,7 @@ const ListVenue = () => {
                           value={formData.name}
                           onChange={handleChange}
                           placeholder="e.g. Nexus Gaming Lounge"
-                          className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl text-lg backdrop-blur-sm"
+                          className="h-12 text-lg"
                           autoFocus
                         />
                       </div>
@@ -346,7 +346,7 @@ const ListVenue = () => {
                           name="description"
                           value={formData.description}
                           onChange={handleChange}
-                          className="min-h-[120px] bg-black/20 border-white/10 focus:border-cyan-500/50 rounded-xl resize-none p-4 backdrop-blur-sm"
+                          className="min-h-[120px] resize-none p-4"
                           placeholder="Describe your vibe..."
                         />
                       </div>
@@ -379,7 +379,7 @@ const ListVenue = () => {
                           value={formData.zip}
                           onChange={handleChange}
                           placeholder="10001"
-                          className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl backdrop-blur-sm"
+                          className="h-12"
                         />
                       </div>
                       <div>
@@ -389,7 +389,7 @@ const ListVenue = () => {
                           value={formData.address}
                           onChange={handleChange}
                           placeholder="Street address..."
-                          className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl px-4 backdrop-blur-sm"
+                          className="h-12 px-4"
                         />
                       </div>
 
@@ -397,7 +397,7 @@ const ListVenue = () => {
                       <div>
                         <label className="text-sm font-medium text-gray-300 mb-1.5 block">Pin Location on Map</label>
                         <p className="text-xs text-zinc-500 mb-2">Click the map or use "Use my location" to set your venue's exact coordinates. This helps players find you.</p>
-                        <React.Suspense fallback={<div className="h-[280px] bg-zinc-900 rounded-xl animate-pulse" />}>
+                        <React.Suspense fallback={<div className="h-[280px] bg-zinc-900 animate-pulse" />}>
                           <MapPicker
                             latitude={formData.latitude}
                             longitude={formData.longitude}
@@ -428,7 +428,7 @@ const ListVenue = () => {
                           value={formData.stations}
                           onChange={handleChange}
                           placeholder="20"
-                          className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl backdrop-blur-sm"
+                          className="h-12"
                         />
                       </div>
                       <div>
@@ -438,13 +438,13 @@ const ListVenue = () => {
                           value={formData.hours}
                           onChange={handleChange}
                           placeholder="24/7"
-                          className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl backdrop-blur-sm"
+                          className="h-12"
                         />
                       </div>
                     </div>
 
                     {/* PC Specs Detail Section */}
-                    <div className="bg-white/5 rounded-2xl p-4 border border-white/5 mb-4">
+                    <div className="bg-white/5 p-4 border border-white/5 mb-4">
                       <h3 className="text-sm font-bold text-cyan-400 mb-3 uppercase tracking-wider flex items-center gap-2">
                         <Cpu className="w-4 h-4" /> PC Specifications
                       </h3>
@@ -480,9 +480,9 @@ const ListVenue = () => {
                           key={amenity.id}
                           onClick={() => toggleAmenity(amenity.id)}
                           className={cn(
-                            "flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-200 gap-2",
+                            "flex flex-col items-center justify-center p-4 border transition-all duration-200 gap-2",
                             formData.amenities.includes(amenity.id)
-                              ? "bg-cyan-500/10 border-cyan-500/50 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+                              ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
                               : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10 hover:border-white/10"
                           )}
                         >
@@ -503,9 +503,9 @@ const ListVenue = () => {
                     </div>
 
                     {/* Card Banner Upload */}
-                    <div className="p-6 rounded-2xl bg-[#0a0a0c] border border-white/5 mb-6">
+                    <div className="p-6 bg-[#0a0a0c] border border-white/5 mb-6">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                        <div className="w-9 h-9 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
                           <ImageIcon className="w-4 h-4 text-rose-400" />
                         </div>
                         <div>
@@ -524,10 +524,10 @@ const ListVenue = () => {
                     </div>
 
                     {/* Gallery Images */}
-                    <div className="p-6 rounded-2xl bg-[#0a0a0c] border border-white/5">
+                    <div className="p-6 bg-[#0a0a0c] border border-white/5">
                       <div className="flex items-center gap-3 mb-5">
-                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                          <ImageIcon className="w-4 h-4 text-emerald-400" />
+                        <div className="w-9 h-9 bg-white/5 border border-white/10 flex items-center justify-center">
+                          <ImageIcon className="w-4 h-4 text-white/60" />
                         </div>
                         <div>
                           <h3 className="text-sm font-bold text-white">Showcase Gallery</h3>
@@ -576,7 +576,7 @@ const ListVenue = () => {
                           value={formData.contactEmail}
                           onChange={handleChange}
                           placeholder="venue@example.com"
-                          className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl backdrop-blur-sm"
+                          className="h-12"
                         />
                       </div>
                       <div>
@@ -586,7 +586,7 @@ const ListVenue = () => {
                           value={formData.contactPhone}
                           onChange={handleChange}
                           placeholder="+1 (555) 000-0000"
-                          className="bg-black/20 border-white/10 focus:border-cyan-500/50 h-12 rounded-xl backdrop-blur-sm"
+                          className="h-12"
                         />
                       </div>
                       <div>
@@ -595,7 +595,7 @@ const ListVenue = () => {
                           <select
                             value={formData.currency}
                             onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
-                            className="bg-black/20 border border-white/10 focus:border-rose-500/50 h-12 rounded-xl backdrop-blur-sm text-white text-sm px-3 w-28 outline-none appearance-none cursor-pointer"
+                            className="bg-[#0a0a0c] border border-white/10 focus:border-rose-500/50 h-12 text-white text-sm px-3 w-28 outline-none appearance-none cursor-pointer"
                           >
                             {CURRENCIES.map(c => (
                               <option key={c.code} value={c.code} className="bg-zinc-900 text-white">
@@ -611,7 +611,7 @@ const ListVenue = () => {
                             value={formData.pricePerHour}
                             onChange={handleChange}
                             placeholder="e.g. 5.00"
-                            className="bg-black/20 border-white/10 focus:border-rose-500/50 h-12 rounded-xl backdrop-blur-sm flex-1"
+                            className="h-12 flex-1"
                           />
                         </div>
                       </div>
@@ -628,7 +628,7 @@ const ListVenue = () => {
               </Button>
 
               {currentStep < 6 ? (
-                <Button onClick={handleNext} className="bg-rose-500 hover:bg-rose-600 transition-all text-white px-8 rounded-xl font-semibold">
+                <Button onClick={handleNext} className="bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider px-8">
                   Next Step <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (
@@ -644,7 +644,7 @@ const ListVenue = () => {
                   <Button
                     onClick={() => handleSubmit('pending_review')}
                     disabled={loading}
-                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-8 rounded-xl"
+                    className="bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider px-8"
                   >
                     {loading ? 'Submitting...' : 'Submit for Review'}
                   </Button>

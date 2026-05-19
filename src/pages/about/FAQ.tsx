@@ -157,7 +157,7 @@ const FAQPage = () => {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 w-5 h-5" />
                 <Input
                   placeholder="Search for answers..."
-                  className="bg-white/5 border-white/10 focus:border-cyan-500/50 pl-12 h-14 rounded-2xl text-lg backdrop-blur-sm transition-all focus:bg-white/10"
+                  className="bg-white/5 border-white/10 focus:border-rose-500/50 pl-12 h-14 text-lg transition-all focus:bg-white/10"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -209,7 +209,7 @@ const FAQPage = () => {
 
           {/* Support CTA */}
           <div className="mt-20 text-center">
-            <div className="inline-flex flex-col items-center p-8 rounded-3xl bg-gradient-to-br from-white/5 to-transparent border border-white/10">
+            <div className="inline-flex flex-col items-center p-8 bg-[#0a0a0c] border border-white/10">
               <h2 className="text-xl font-bold font-heading mb-2">Still need help?</h2>
               <p className="text-gray-400 mb-6">Join our Discord community or reach out to our support team.</p>
               <div className="flex flex-col sm:flex-row gap-3">

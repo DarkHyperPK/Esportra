@@ -102,7 +102,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
         <Card className="bg-zinc-900/50 border-zinc-800 overflow-hidden">
             <CardContent className="p-0">
                 {/* Header */}
-                <div className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 p-4 border-b border-zinc-800">
+                <div className="bg-rose-500/5 p-4 border-b border-white/10">
                     <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-white flex items-center gap-2">
                             <Zap className="w-4 h-4 text-emerald-400" />
@@ -231,7 +231,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                                     <Button
                                         onClick={handleCheckIn}
                                         disabled={checkIn.isPending}
-                                        className="w-full h-12 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-700 hover:to-cyan-700 text-lg font-semibold shadow-lg shadow-emerald-500/20"
+                                        className="w-full h-12 bg-white text-black hover:bg-white/90 text-lg font-mono font-bold uppercase tracking-wider"
                                     >
                                         {checkIn.isPending ? (
                                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

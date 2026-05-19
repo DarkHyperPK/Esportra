@@ -104,7 +104,7 @@ export const GroupSetupPanel: React.FC<GroupSetupPanelProps> = ({
         <Button
           onClick={() => hasRounds ? setConfirmRecreate(true) : handleCreate()}
           disabled={isCreating}
-          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500"
+          className="w-full bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider"
         >
           {isCreating ? 'Creating...' : hasExistingGroups ? 'Recreate Groups' : 'Create Groups'}
         </Button>

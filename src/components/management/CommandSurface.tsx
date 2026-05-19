@@ -6,12 +6,12 @@ type CommandButtonSize = 'sm' | 'md' | 'lg';
 
 const variantClasses: Record<CommandButtonVariant, { base: string; fill: string; text: string }> = {
   primary: {
-    base: 'border-white bg-white text-black shadow-[0_20px_50px_rgba(255,255,255,0.12)]',
+    base: 'border-white bg-white text-black',
     fill: 'bg-rose-500',
     text: 'group-hover:text-white',
   },
   secondary: {
-    base: 'border-white/15 bg-black text-white',
+    base: 'border-white/15 bg-[#0a0a0c] text-white',
     fill: 'bg-white',
     text: 'group-hover:text-black',
   },
@@ -26,13 +26,13 @@ const variantClasses: Record<CommandButtonVariant, { base: string; fill: string;
     text: 'group-hover:text-white',
   },
   success: {
-    base: 'border-emerald-500/40 bg-emerald-950/20 text-emerald-200',
-    fill: 'bg-emerald-600',
+    base: 'border-rose-500/40 bg-rose-500/10 text-rose-200',
+    fill: 'bg-rose-500',
     text: 'group-hover:text-white',
   },
   warning: {
-    base: 'border-amber-500/40 bg-amber-950/20 text-amber-200',
-    fill: 'bg-amber-500',
+    base: 'border-white/20 bg-white/[0.03] text-zinc-200',
+    fill: 'bg-white',
     text: 'group-hover:text-black',
   },
 };
@@ -94,7 +94,7 @@ export function CommandHeader({
   className?: string;
 }) {
   return (
-    <header className={cn('border border-white/10 bg-black/70 p-5 md:p-7', className)}>
+    <header className={cn('border border-white/10 bg-[#0a0a0c]/90 p-5 md:p-7', className)}>
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           {eyebrow && <div className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.45em] text-rose-400">{eyebrow}</div>}
@@ -109,7 +109,7 @@ export function CommandHeader({
 
 export function CommandSection({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <section className={cn('border border-white/10 bg-[#09090b] p-5 md:p-7', className)}>
+    <section className={cn('border border-white/10 bg-[#0a0a0c]/90 p-5 md:p-7', className)}>
       {children}
     </section>
   );
@@ -127,7 +127,7 @@ export function CommandTabs({
   className?: string;
 }) {
   return (
-    <div className={cn('flex flex-wrap gap-2 border border-white/10 bg-black/70 p-2', className)}>
+    <div className={cn('flex flex-wrap gap-2 border border-white/10 bg-[#0a0a0c]/90 p-2', className)}>
       {tabs.map((tab) => (
         <button
           key={tab.value}
@@ -160,8 +160,8 @@ export function CommandMetric({
 }) {
   const tones = {
     neutral: 'text-white',
-    success: 'text-emerald-300',
-    warning: 'text-amber-300',
+    success: 'text-rose-300',
+    warning: 'text-zinc-300',
     danger: 'text-red-300',
   };
 

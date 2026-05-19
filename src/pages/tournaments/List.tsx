@@ -197,7 +197,7 @@ const TournamentList = () => {
             placeholder="Search tournaments by name, game, or organizer..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 placeholder:text-zinc-600"
+            className="w-full bg-[#0a0a0c] border border-white/10 text-sm text-white pl-10 pr-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 placeholder:text-zinc-600"
           />
         </div>
 
@@ -209,7 +209,7 @@ const TournamentList = () => {
               <select
                 value={selectedGame}
                 onChange={(e) => setSelectedGame(e.target.value)}
-                className="appearance-none bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg px-4 py-2.5 pr-9 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 cursor-pointer hover:border-zinc-700 transition-colors"
+                className="appearance-none bg-[#0a0a0c] border border-white/10 text-sm text-white px-4 py-2.5 pr-9 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 cursor-pointer hover:border-white/20 transition-colors"
               >
                 <option value="">All Games</option>
                 {filterOptions.games.map(g => (
@@ -221,7 +221,7 @@ const TournamentList = () => {
           )}
 
           {/* Format Toggle */}
-          <div className="flex rounded-lg border border-zinc-800 overflow-hidden">
+          <div className="flex border border-white/10 overflow-hidden">
             <button
               onClick={() => setSelectedFormat('')}
               className={`px-3 py-2 text-sm transition-colors ${
@@ -253,7 +253,7 @@ const TournamentList = () => {
             <select
               value={selectedRegion}
               onChange={(e) => setSelectedRegion(e.target.value)}
-              className="appearance-none bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg px-4 py-2.5 pr-9 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 cursor-pointer hover:border-zinc-700 transition-colors"
+              className="appearance-none bg-[#0a0a0c] border border-white/10 text-sm text-white px-4 py-2.5 pr-9 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 cursor-pointer hover:border-white/20 transition-colors"
             >
               <option value="">All Regions</option>
               {REGIONS.map(r => (
@@ -269,7 +269,7 @@ const TournamentList = () => {
               <select
                 value={selectedCountry}
                 onChange={(e) => { setSelectedCountry(e.target.value); setSelectedCity(''); }}
-                className="appearance-none bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg px-4 py-2.5 pr-9 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 cursor-pointer hover:border-zinc-700 transition-colors"
+                className="appearance-none bg-[#0a0a0c] border border-white/10 text-sm text-white px-4 py-2.5 pr-9 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 cursor-pointer hover:border-white/20 transition-colors"
               >
                 <option value="">All Countries</option>
                 {filterOptions.countries.map(c => (
@@ -286,7 +286,7 @@ const TournamentList = () => {
               <select
                 value={selectedCity}
                 onChange={(e) => setSelectedCity(e.target.value)}
-                className="appearance-none bg-zinc-900 border border-zinc-800 text-sm text-white rounded-lg px-4 py-2.5 pr-9 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 cursor-pointer hover:border-zinc-700 transition-colors"
+                className="appearance-none bg-[#0a0a0c] border border-white/10 text-sm text-white px-4 py-2.5 pr-9 focus:outline-none focus:ring-1 focus:ring-rose-500/50 focus:border-rose-500/50 cursor-pointer hover:border-white/20 transition-colors"
               >
                 <option value="">All Cities</option>
                 {filterOptions.cities.map(c => (
@@ -361,7 +361,7 @@ const TournamentList = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 bg-[#0a0a0c] border border-white/10/30 rounded-lg">
+          <div className="text-center py-12 bg-[#0a0a0c] border border-white/10">
             <p className="text-gray-400 mb-2">No {activeTab ? (STATUS_TABS.find(t => t.key === activeTab)?.label.toLowerCase() ?? '') : ''} tournaments found</p>
             <p className="text-sm text-gray-500">
               {activeTab === 'ongoing'

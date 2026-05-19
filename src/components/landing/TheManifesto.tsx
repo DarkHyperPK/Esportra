@@ -96,7 +96,7 @@ const TheManifesto = () => {
                     >
                         <p className="text-white/50 text-base md:text-lg tracking-widest uppercase mb-6">We exist to clear the fog.</p>
                         <h2 className="text-4xl md:text-6xl lg:text-7xl font-medium text-white leading-tight tracking-wide font-heading">
-                            We are the <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-emerald-400 animate-gradient-x">Ladder.</span>
+                            We are the <span className="text-rose-500">Ladder.</span>
                         </h2>
                     </motion.div>
 
@@ -110,7 +110,7 @@ const TheManifesto = () => {
                         >
                             <span className="text-white/30 text-xs md:text-sm tracking-[0.4em] uppercase font-medium block mb-4">Your Path</span>
                             <h3 className="text-3xl md:text-5xl font-light text-white tracking-wide font-heading">
-                                From Sign-Up to <span className="font-medium italic text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-rose-500">Champion</span>
+                                From Sign-Up to <span className="font-medium italic text-rose-500">Champion</span>
                             </h3>
                             <p className="mt-4 text-white/30 text-sm md:text-base font-light font-heading max-w-md mx-auto">
                                 Everything you need to go from casual to competitive, in six steps.
@@ -143,7 +143,7 @@ const TheManifesto = () => {
                                         {/* Content */}
                                         <div className={`ml-12 md:ml-0 md:w-1/2 ${isLeft ? 'md:pr-12 md:text-right' : 'md:pl-12 md:text-left'}`}>
                                             <div className={`inline-flex items-center gap-2 mb-2 ${isLeft ? 'md:flex-row-reverse' : ''}`}>
-                                                <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+                                                <div className="w-8 h-8 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
                                                     {step.icon}
                                                 </div>
                                                 <span className="text-[10px] font-bold tracking-[0.3em] text-white/20 uppercase">

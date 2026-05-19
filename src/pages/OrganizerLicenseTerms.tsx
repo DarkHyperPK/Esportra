@@ -25,7 +25,7 @@ const OrganizerLicenseTerms: React.FC = () => {
             </div>
           </div>
 
-          <h1 className="text-4xl md:text-5xl font-extrabold mb-3 bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight text-white mb-3">
             Organizer License Terms &amp; Sponsorship Policy
           </h1>
           <p className="text-gray-400 text-sm">
@@ -55,7 +55,7 @@ const OrganizerLicenseTerms: React.FC = () => {
               sponsors, and partners on the Platform.
             </p>
 
-            <div className="bg-rose-500/10 border border-rose-500/20 rounded-lg p-4 mt-6">
+            <div className="bg-rose-500/10 border border-rose-500/20 p-4 mt-6">
               <p className="text-rose-300 text-sm font-medium flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>
@@ -99,7 +99,7 @@ const OrganizerLicenseTerms: React.FC = () => {
               <Ban className="w-5 h-5 text-rose-400" />
               2.1 Prohibition on Unauthorized Third-Party Advertising
             </h3>
-            <div className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 space-y-3 text-gray-400 text-sm">
+            <div className="bg-[#0a0a0c] border border-white/5 p-5 space-y-3 text-gray-400 text-sm">
               <p>
                 Licensed Organizers <strong className="text-gray-200">do not have the right</strong> to independently
                 advertise, promote, display, or otherwise feature any Third-Party Sponsor's branding, logos,
@@ -120,7 +120,7 @@ const OrganizerLicenseTerms: React.FC = () => {
               <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               2.2 Permitted Third-Party Sponsorship (With Prior Written Approval)
             </h3>
-            <div className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 space-y-3 text-gray-400 text-sm">
+            <div className="bg-[#0a0a0c] border border-white/5 p-5 space-y-3 text-gray-400 text-sm">
               <p>
                 A Licensed Organizer <strong className="text-gray-200">may</strong> seek to feature a Third-Party
                 Sponsor in connection with their tournament, subject to the following conditions:
@@ -143,7 +143,7 @@ const OrganizerLicenseTerms: React.FC = () => {
             <h3 className="text-lg font-semibold text-white mb-3 mt-6">
               2.3 Esportra's Rights on Tournament Pages
             </h3>
-            <div className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 space-y-3 text-gray-400 text-sm">
+            <div className="bg-[#0a0a0c] border border-white/5 p-5 space-y-3 text-gray-400 text-sm">
               <p>
                 In exchange for being granted the Organizer License and the privilege of hosting tournaments on the
                 Esportra Platform, the Licensed Organizer expressly acknowledges and agrees that:
@@ -166,7 +166,7 @@ const OrganizerLicenseTerms: React.FC = () => {
             <h3 className="text-lg font-semibold text-white mb-3 mt-6">
               2.4 Organizer Stream Partnership Program (Opt-In)
             </h3>
-            <div className="bg-zinc-900/60 border border-white/5 rounded-xl p-5 space-y-3 text-gray-400 text-sm">
+            <div className="bg-[#0a0a0c] border border-white/5 p-5 space-y-3 text-gray-400 text-sm">
               <p>
                 Esportra operates a voluntary <strong className="text-gray-200">Organizer Stream Partnership Program</strong>{' '}
                 through which Licensed Organizers may choose to feature Esportra's official partner assets —
@@ -283,7 +283,7 @@ const OrganizerLicenseTerms: React.FC = () => {
               <span className="text-rose-500 font-mono text-lg">07.</span> Violations & Enforcement
             </h2>
 
-            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-5 mb-6">
+            <div className="bg-rose-500/5 border border-rose-500/20 p-5 mb-6">
               <p className="text-amber-400 font-semibold text-sm mb-1 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4" />
                 Important Notice on Violations
@@ -404,7 +404,7 @@ const OrganizerLicenseTerms: React.FC = () => {
             <p className="text-gray-400 mb-4">
               For questions relating to the Organizer License or these License Terms, please contact:
             </p>
-            <div className="bg-white/5 border border-white/10 rounded-lg p-6 space-y-3">
+            <div className="bg-white/5 border border-white/10 p-6 space-y-3">
               <p className="text-gray-300"><strong className="text-white">Esportra Operations</strong></p>
               <p className="text-gray-400">
                 Email:{' '}
@@ -423,7 +423,7 @@ const OrganizerLicenseTerms: React.FC = () => {
 
           {/* Acceptance */}
           <section className="border-t border-white/10 pt-8">
-            <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-6 text-center">
+            <div className="bg-rose-500/10 border border-rose-500/20 p-6 text-center">
               <Scale className="w-8 h-8 text-rose-400 mx-auto mb-3" />
               <p className="text-gray-300 font-semibold mb-2">Mandatory Acceptance</p>
               <p className="text-gray-400 text-sm leading-relaxed max-w-2xl mx-auto">

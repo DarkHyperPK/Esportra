@@ -1999,7 +1999,7 @@ const TournamentDashboard = () => {
                             </div>
                             <div className="h-4 bg-white/5 rounded-full overflow-hidden border border-white/5">
                               <motion.div
-                                className="h-full bg-gradient-to-r from-emerald-500 to-green-400 relative"
+                                className="h-full bg-rose-500 relative"
                                 initial={{ width: 0 }}
                                 animate={{ width: `${Math.min(100, checkInProgress)}%` }}
                                 transition={{ duration: 1, ease: "easeOut" }}

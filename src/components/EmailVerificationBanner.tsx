@@ -32,9 +32,9 @@ const EmailVerificationBanner = () => {
   };
 
   return (
-    <div className="relative z-50 bg-amber-500/10 border-b border-amber-500/20 px-4 py-2.5">
+    <div className="relative z-50 border-b border-rose-500/20 bg-rose-500/5 px-4 py-2.5">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-amber-400 text-sm">
+        <div className="flex items-center gap-2 text-rose-400 text-sm">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>
             Account not verified. Check your email or spam folder to verify your account.
@@ -44,14 +44,14 @@ const EmailVerificationBanner = () => {
           <button
             onClick={handleResend}
             disabled={resending}
-            className="flex items-center gap-1.5 text-xs font-medium text-amber-300 hover:text-amber-200 bg-amber-500/15 hover:bg-amber-500/25 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider text-rose-300 hover:text-white border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1.5 transition-colors disabled:opacity-50"
           >
             <Mail className="w-3.5 h-3.5" />
             {resending ? "Sending..." : "Resend email"}
           </button>
           <button
             onClick={() => navigate("/auth/verify-email")}
-            className="text-xs font-medium text-amber-300 hover:text-amber-200 px-2 py-1.5 rounded-lg transition-colors"
+            className="text-xs font-mono font-bold uppercase tracking-wider text-rose-300 hover:text-white px-2 py-1.5 transition-colors"
           >
             Verify now
           </button>

@@ -137,7 +137,7 @@ const InfoTip = ({ tip }: { tip: string }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: -4 }}
             transition={{ duration: 0.12 }}
-            className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 bg-[#181820] border border-white/10 rounded-xl p-3 shadow-2xl shadow-black/60 pointer-events-none"
+            className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-60 bg-[#0a0a0c] border border-white/10 p-3 shadow-2xl shadow-black/60 pointer-events-none"
           >
             <p className="text-xs text-zinc-300 leading-relaxed">{tip}</p>
           </motion.div>
@@ -157,9 +157,9 @@ const zones = [
 ];
 
 const colorMap: Record<string, { border: string; bg: string; text: string; badge: string }> = {
-  blue: { border: 'border-blue-500/30', bg: 'bg-blue-500/10', text: 'text-blue-400', badge: 'bg-blue-500' },
-  emerald: { border: 'border-emerald-500/30', bg: 'bg-emerald-500/10', text: 'text-emerald-400', badge: 'bg-emerald-500' },
-  amber: { border: 'border-amber-500/30', bg: 'bg-amber-500/10', text: 'text-amber-400', badge: 'bg-amber-500' },
+  blue: { border: 'border-rose-500/30', bg: 'bg-rose-500/10', text: 'text-rose-400', badge: 'bg-rose-500' },
+  emerald: { border: 'border-white/20', bg: 'bg-white/[0.05]', text: 'text-white', badge: 'bg-white' },
+  amber: { border: 'border-white/10', bg: 'bg-white/[0.03]', text: 'text-zinc-300', badge: 'bg-zinc-400' },
 };
 
 const BeAPartner = () => {
@@ -183,7 +183,7 @@ const BeAPartner = () => {
               <Handshake className="w-4 h-4" />
               Partnership Program
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-b from-white to-zinc-400 bg-clip-text text-transparent mb-6">
+            <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tight text-white mb-6">
               Grow your brand with Esportra
             </h1>
             <p className="text-lg text-zinc-400 max-w-2xl mx-auto mb-8">
@@ -192,7 +192,7 @@ const BeAPartner = () => {
             </p>
             <Link
               to="/partners#apply"
-              className="inline-flex items-center gap-2 px-8 py-3 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl transition-colors"
+              className="group relative inline-flex items-center gap-2 overflow-hidden border border-white bg-white px-8 py-3 font-mono text-xs font-bold uppercase tracking-wider text-black transition-colors"
             >
               Apply Now <ArrowRight className="w-4 h-4" />
             </Link>
@@ -210,7 +210,7 @@ const BeAPartner = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className={`relative p-8 rounded-2xl bg-[#0a0a0c] border border-white/5 flex flex-col`}
+                    className={`relative p-8 bg-[#0a0a0c] border border-white/5 flex flex-col`}
                   >
                     <div className="w-16 h-16 mb-6">
                       <img src={tier.rankIcon} alt={tier.name} className="w-full h-full object-contain drop-shadow-lg" />
@@ -241,7 +241,7 @@ const BeAPartner = () => {
 
                     <Link
                       to="/partners#apply"
-                      className={`mt-8 w-full py-3 rounded-xl text-center text-sm font-bold transition-colors border bg-white/5 border-white/10 text-white hover:bg-white/10`}
+                      className={`mt-8 w-full py-3 text-center text-sm font-mono font-bold uppercase tracking-wider transition-colors border bg-white/5 border-white/10 text-white hover:bg-white/10`}
                     >
                       Get Started
                     </Link>
@@ -259,7 +259,7 @@ const BeAPartner = () => {
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {zones.map((zone) => (
-                <div key={zone.name} className="p-6 rounded-xl bg-[#0a0a0c] border border-white/5">
+                <div key={zone.name} className="p-6 bg-[#0a0a0c] border border-white/5">
                   <h4 className="text-white font-bold mb-1">{zone.name}</h4>
                   <p className="text-zinc-500 text-sm mb-4">{zone.desc}</p>
                   <div className="flex gap-2">
@@ -294,7 +294,7 @@ const BeAPartner = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className="p-6 rounded-xl bg-[#0a0a0c] border border-white/5"
+                  className="p-6 bg-[#0a0a0c] border border-white/5"
                 >
                   <item.icon className="w-8 h-8 text-rose-500 mb-4" />
                   <h4 className="text-white font-bold mb-2">{item.title}</h4>
@@ -306,7 +306,7 @@ const BeAPartner = () => {
 
           {/* Partner Portal */}
           <section className="mb-24">
-            <div className="p-12 rounded-2xl bg-gradient-to-br from-rose-500/10 to-transparent border border-rose-500/20 text-center">
+            <div className="p-12 bg-rose-500/5 border border-rose-500/20 text-center">
               <FileText className="w-10 h-10 text-rose-500 mx-auto mb-6" />
               <h2 className="text-2xl font-bold mb-4">Dedicated Partner Portal</h2>
               <p className="text-zinc-400 max-w-xl mx-auto mb-8">
@@ -316,7 +316,7 @@ const BeAPartner = () => {
               </p>
               <Link
                 to="/partners#apply"
-                className="inline-flex items-center gap-2 px-8 py-3 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl transition-colors"
+                className="group relative inline-flex items-center gap-2 overflow-hidden border border-white bg-white px-8 py-3 font-mono text-xs font-bold uppercase tracking-wider text-black transition-colors"
               >
                 Become a Partner <ArrowRight className="w-4 h-4" />
               </Link>
@@ -334,7 +334,7 @@ const BeAPartner = () => {
                 { q: 'Do I get analytics on my placements?', a: 'Ascendant and Radiant partners get full analytics including impressions, clicks, CTR, and audience demographics.' },
                 { q: 'What file formats are supported for assets?', a: 'PNG, SVG, and JPEG for images. PDF and PPTX for detail decks. Max 3MB for images, 10MB for documents.' },
               ].map((faq) => (
-                <div key={faq.q} className="p-6 rounded-xl bg-[#0a0a0c] border border-white/5">
+                <div key={faq.q} className="p-6 bg-[#0a0a0c] border border-white/5">
                   <h4 className="text-white font-bold mb-2">{faq.q}</h4>
                   <p className="text-zinc-400 text-sm">{faq.a}</p>
                 </div>
