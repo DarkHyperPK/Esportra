@@ -1,18 +1,21 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import MobileNav from "./navigation/MobileNav";
 import DesktopNav from "./navigation/DesktopNav";
 import { BurgerMenu } from "./ui/BurgerMenu";
 import { AnimatePresence } from "framer-motion";
 import { getWebsiteAssetUrl } from "@/lib/storage";
+import { cn } from "@/lib/utils";
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isLandingPage = location.pathname === "/";
 
   const handleSignOut = async () => {
     try {
@@ -29,7 +32,13 @@ const Navbar = () => {
   };
 
   return (
-    <nav data-mounted className="sticky top-4 z-[999] px-3 sm:px-6">
+    <nav
+      data-mounted
+      className={cn(
+        "z-[999] px-3 sm:px-6",
+        isLandingPage ? "fixed inset-x-0 top-4" : "sticky top-4"
+      )}
+    >
       <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between rounded-full border border-white/10 bg-black/80 px-3 pl-5 pr-3 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:px-4 sm:pl-6 sm:pr-4">
         <DesktopNav handleSignOut={handleSignOut} />
 
