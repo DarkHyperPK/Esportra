@@ -29,15 +29,15 @@ const Navbar = () => {
   };
 
   return (
-    <nav data-mounted className="sticky top-0 z-[999] border-b border-rose-500/20 bg-black">
-      <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-4 sm:px-6 lg:px-8">
+    <nav data-mounted className="sticky top-4 z-[999] px-3 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between rounded-full border border-white/10 bg-black/80 px-3 pl-5 pr-3 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:px-4 sm:pl-6 sm:pr-4">
         <DesktopNav handleSignOut={handleSignOut} />
 
         <Link to="/" className="flex items-center lg:hidden">
           <img
             src={getWebsiteAssetUrl("eSportra-Logo/eSPORTRA-white-transparent.png")}
             alt="Esportra"
-            className="h-7 w-auto"
+            className="h-6 w-auto"
           />
         </Link>
 
@@ -45,6 +45,7 @@ const Navbar = () => {
           <BurgerMenu
             isOpen={mobileMenuOpen}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="!h-10 !w-10"
           />
         </div>
       </div>

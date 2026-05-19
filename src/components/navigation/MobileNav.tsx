@@ -72,7 +72,7 @@ const MobileNav = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-x-0 top-16 z-[998] border-b border-rose-500/20 bg-black lg:hidden"
+          className="fixed inset-x-3 top-[5.25rem] z-[998] rounded-3xl border border-white/10 bg-black/95 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl lg:hidden"
         >
           <div className="max-h-[calc(100vh-4rem)] overflow-y-auto px-4 py-3">
             {/* Main nav */}

@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Gamepad2, Calendar, Volume2, VolumeX } from "lucide-react";
+import { ChevronRight, Volume2, VolumeX, Trophy, Users, MapPin, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
@@ -23,14 +22,13 @@ const HeroSection = () => {
   // Parallax Effect Hooks
   const { scrollY } = useScroll();
   const backgroundY = useTransform(scrollY, [0, 500], [0, 200]);
-  const contentY = useTransform(scrollY, [0, 500], [0, 150]);
   const contentOpacity = useTransform(scrollY, [0, 300], [1, 0]);
 
-  // Trigger logo animation after 6 seconds
+  // Trigger reveal of hero content after the intro pause
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLogoMoved(true);
-    }, 4000);
+    }, 1800);
     return () => clearTimeout(timer);
   }, []);
 
@@ -124,61 +122,135 @@ const HeroSection = () => {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="container mx-auto px-4 relative z-20 flex justify-center items-center h-full min-h-[100vh]">
+      {/* Logo intro (animates up after 4s) */}
+      <div className="container mx-auto px-4 relative z-20 flex justify-center items-start h-full min-h-[100vh] pt-[28vh]">
         <motion.div
           layout
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{
             opacity: 1,
-            scale: isLogoMoved ? (typeof window !== 'undefined' && window.innerWidth < 768 ? 0.85 : 0.7) : 1,
-            y: isLogoMoved ? (typeof window !== 'undefined' && window.innerWidth < 768 ? -280 : -350) : 0 // Responsive vertical move
+            scale: isLogoMoved ? 0.55 : 1,
+            y: isLogoMoved ? (typeof window !== 'undefined' && window.innerWidth < 768 ? -110 : -120) : 0,
           }}
           transition={{
-            duration: 1.5,
+            duration: 1.4,
             delay: isLogoMoved ? 0 : 0.4,
-            ease: [0.22, 1, 0.36, 1]
+            ease: [0.22, 1, 0.36, 1],
           }}
           style={{ opacity: contentOpacity }}
-          className="flex flex-col items-center justify-center pt-20"
+          className="flex flex-col items-center justify-center"
         >
           <img
             src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
             alt="Esportra Logo"
-            className="h-24 md:h-32 w-auto opacity-90 drop-shadow-[0_0_25px_rgba(255,255,255,0.1)] transition-all duration-1000"
+            className="h-24 md:h-32 w-auto opacity-95 drop-shadow-[0_0_30px_rgba(255,255,255,0.15)]"
           />
-          <motion.h2
-            animate={{ opacity: isLogoMoved ? 0.6 : 1 }} // Restored visibility 
-            className="text-white text-xl md:text-2xl font-light tracking-[0.2em] mt-6 uppercase font-heading text-center"
-          >
-            Esports. Elevated.
-          </motion.h2>
         </motion.div>
       </div>
+
+      {/* Hero content (revealed after logo intro) */}
+      <motion.div
+        className="absolute inset-x-0 top-1/2 z-20 -translate-y-1/2 px-6"
+        style={{ opacity: contentOpacity }}
+      >
+        <div className="mx-auto max-w-5xl text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: isLogoMoved ? 1 : 0, y: isLogoMoved ? 0 : 20 }}
+            transition={{ duration: 0.8, delay: isLogoMoved ? 0.2 : 0, ease: [0.22, 1, 0.36, 1] }}
+            className="mb-5 inline-flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-500/10 px-4 py-1.5 backdrop-blur-md"
+          >
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.9)]" />
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-rose-100">
+              Live tournaments running now
+            </span>
+          </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: isLogoMoved ? 1 : 0, y: isLogoMoved ? 0 : 30 }}
+            transition={{ duration: 1, delay: isLogoMoved ? 0.35 : 0, ease: [0.22, 1, 0.36, 1] }}
+            className="font-heading text-5xl font-black uppercase tracking-tight text-white drop-shadow-[0_4px_20px_rgba(0,0,0,0.8)] md:text-7xl lg:text-8xl"
+          >
+            Where competition <br className="hidden sm:block" />
+            <span className="bg-gradient-to-r from-rose-400 via-rose-300 to-rose-500 bg-clip-text text-transparent">
+              actually lives.
+            </span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: isLogoMoved ? 1 : 0, y: isLogoMoved ? 0 : 20 }}
+            transition={{ duration: 1, delay: isLogoMoved ? 0.55 : 0, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto mt-6 max-w-2xl text-base font-light leading-relaxed text-white/75 md:text-lg"
+          >
+            Run tournaments, build seasons, book venues, manage teams.
+            <br className="hidden md:block" />
+            One platform engineered for organizers, players, and operators.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: isLogoMoved ? 1 : 0, y: isLogoMoved ? 0 : 20 }}
+            transition={{ duration: 1, delay: isLogoMoved ? 0.75 : 0, ease: [0.22, 1, 0.36, 1] }}
+            className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
+          >
+            <Link
+              to={user ? "/tournaments" : "/auth/signup"}
+              className="group relative inline-flex h-14 items-center gap-2 overflow-hidden bg-white px-10 font-mono text-sm font-bold uppercase tracking-wider text-black"
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                {user ? "Browse Tournaments" : "Jack In"}
+                <ChevronRight className="h-4 w-4" />
+              </span>
+              <span className="absolute inset-0 z-0 translate-y-full bg-rose-500 transition-transform duration-300 group-hover:translate-y-0" />
+            </Link>
+
+            <Link
+              to="/tournaments"
+              className="group relative inline-flex h-14 items-center gap-2 overflow-hidden border border-white/25 bg-white/5 px-10 font-mono text-sm font-bold uppercase tracking-wider text-white backdrop-blur-md transition-colors hover:border-white/50 hover:bg-white/10"
+            >
+              Observe Data
+            </Link>
+          </motion.div>
+
+          {/* Stats strip */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: isLogoMoved ? 1 : 0, y: isLogoMoved ? 0 : 20 }}
+            transition={{ duration: 1, delay: isLogoMoved ? 0.95 : 0, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto mt-16 grid max-w-3xl grid-cols-3 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md"
+          >
+            {[
+              { icon: Trophy, label: "Tournaments", value: "1,200+" },
+              { icon: Users, label: "Active players", value: "48K+" },
+              { icon: MapPin, label: "Partner venues", value: "320+" },
+            ].map(({ icon: Icon, label, value }) => (
+              <div key={label} className="flex flex-col items-center justify-center gap-2 bg-black/40 px-4 py-5">
+                <Icon className="h-4 w-4 text-rose-300" />
+                <span className="font-heading text-2xl font-black text-white md:text-3xl">{value}</span>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">{label}</span>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Scroll indicator */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isLogoMoved ? 1 : 0 }}
+        transition={{ duration: 1, delay: isLogoMoved ? 1.2 : 0 }}
+        style={{ opacity: contentOpacity }}
+        className="absolute bottom-6 left-1/2 z-30 -translate-x-1/2"
+      >
+        <div className="flex flex-col items-center gap-2">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.4em] text-white/40">Scroll</span>
+          <ChevronDown className="h-4 w-4 animate-bounce text-white/40" />
+        </div>
+      </motion.div>
     </div>
   );
 };
-
-const Trophy = ({ size = 24, className = "" }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-    <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-    <path d="M4 22h16" />
-    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-    <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-  </svg>
-);
 
 export default HeroSection;
