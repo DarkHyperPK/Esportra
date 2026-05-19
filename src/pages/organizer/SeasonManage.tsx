@@ -124,7 +124,6 @@ const STATUS_STYLES: Record<SeasonStatus, string> = {
 };
 
 const SEASON_STATUSES: SeasonStatus[] = ['draft', 'published', 'active', 'completed', 'archived'];
-const PARTICIPANT_MODES: SeasonParticipantMode[] = ['team', 'solo'];
 const NODE_TYPES: SeasonNodeType[] = ['root', 'qualifier', 'event', 'stage', 'final', 'custom'];
 const NODE_STATUSES: SeasonNodeStatus[] = ['draft', 'scheduled', 'live', 'completed', 'archived'];
 const STAFF_ROLES: SeasonStaffMember['role'][] = ['co_organizer', 'admin'];
@@ -704,12 +703,12 @@ const SeasonManage = () => {
   };
 
   if (!seasonId) {
-    return <div className="min-h-screen bg-[#050505]" />;
+    return <div className="min-h-screen bg-transparent" />;
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#050505] text-white">
+      <div className="min-h-screen bg-transparent text-white">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="rounded-3xl border border-white/10 bg-black/20 p-10 text-center text-zinc-400">
             Loading season workspace...
@@ -722,7 +721,7 @@ const SeasonManage = () => {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#050505] text-white">
+      <div className="min-h-screen bg-transparent text-white">
         <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-8">
             <p className="font-semibold text-red-100">Could not load this season.</p>
@@ -1070,11 +1069,15 @@ const SeasonManage = () => {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Participant mode</Label>
-                    <Select value={overview.participantMode} onValueChange={(value: SeasonParticipantMode) => setOverview((current) => ({ ...current, participantMode: value }))}>
-                      <SelectTrigger className="h-12 rounded-none border-white/10 bg-white/[0.03] text-white"><SelectValue /></SelectTrigger>
-                      <SelectContent>{PARTICIPANT_MODES.map((mode) => <SelectItem key={mode} value={mode}>{mode}</SelectItem>)}</SelectContent>
-                    </Select>
+                    <Label>Participant format</Label>
+                    <div className="flex min-h-12 items-center justify-between gap-3 border border-white/10 bg-white/[0.03] px-4 py-3">
+                      <span className="font-mono text-xs font-bold uppercase tracking-[0.22em] text-white">
+                        {overview.participantMode}
+                      </span>
+                      <span className="text-xs text-zinc-500">
+                        Derived from the selected game mode
+                      </span>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>Status</Label>

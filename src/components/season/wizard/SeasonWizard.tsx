@@ -30,7 +30,6 @@ type FormState = {
   game: string;
   gameMode: string;
   region: string;
-  participantMode: SeasonParticipantMode;
   description: string;
   startDate: string;
   endDate: string;
@@ -93,7 +92,6 @@ const INITIAL_FORM: FormState = {
   game: '',
   gameMode: '',
   region: '',
-  participantMode: 'team',
   description: '',
   startDate: '',
   endDate: '',
@@ -178,7 +176,6 @@ const SeasonWizard = () => {
       setForm((current) => ({
         ...current,
         gameMode: nextMode.modeKey,
-        participantMode: nextMode.participantMode,
       }));
     }
   }, [selectedGame, form.gameMode]);
@@ -237,7 +234,6 @@ const SeasonWizard = () => {
       ...current,
       game: gameName,
       gameMode: mode?.modeKey ?? '',
-      participantMode: mode?.participantMode ?? 'team',
     }));
     setErrors((current) => {
       const next = { ...current };
@@ -304,7 +300,7 @@ const SeasonWizard = () => {
       gameMode: form.gameMode,
       region: form.region.trim(),
       teamSize: selectedMode?.teamSize,
-      participant_mode: selectedMode?.participantMode ?? form.participantMode,
+      participant_mode: selectedMode?.participantMode ?? 'team',
       description: form.description.trim() || undefined,
       start_date: form.startDate || undefined,
       end_date: form.endDate || undefined,
@@ -434,15 +430,17 @@ const SeasonWizard = () => {
                       {selectedGame.modes.map((mode) => (
                       <button
                         key={mode.modeKey}
-                        onClick={() => setForm((current) => ({ ...current, gameMode: mode.modeKey, participantMode: mode.participantMode }))}
+                        onClick={() => setForm((current) => ({ ...current, gameMode: mode.modeKey }))}
                         className={cn(
                           'border px-4 py-4 text-left transition-colors',
                           form.gameMode === mode.modeKey ? 'border-rose-500/70 bg-rose-500/10 text-white' : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/20 hover:text-white',
                         )}
                       >
-                        <span className="block font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500">{mode.modeGroup ?? mode.participantMode}</span>
+                        <span className="block font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500">{mode.modeGroup ?? 'Game mode'}</span>
                         <span className="mt-2 block text-sm font-bold text-white">{mode.variantLabel ?? mode.name}</span>
-                        <span className="mt-1 block text-xs text-zinc-500">{mode.teamSize} starter{mode.teamSize === 1 ? '' : 's'}</span>
+                        <span className="mt-1 block text-xs text-zinc-500">
+                          {mode.participantMode === 'solo' ? 'Solo' : 'Team'} · {mode.teamSize} starter{mode.teamSize === 1 ? '' : 's'}
+                        </span>
                       </button>
                       ))}
                     </div>
