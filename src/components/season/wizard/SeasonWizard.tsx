@@ -51,6 +51,7 @@ type CatalogGame = {
   slug: string;
   name: string;
   category?: string | null;
+  logo?: string | null;
   defaultModeKey: string;
   modes: CatalogMode[];
 };
@@ -118,11 +119,18 @@ const SeasonWizard = () => {
   const [catalogGames, setCatalogGames] = useState<CatalogGame[]>([]);
 
   const gameOptions = useMemo<CatalogGame[]>(() => {
-    if (catalogGames.length > 0) return catalogGames;
+    const localLogoBySlug = new Map(esportsGames.games.map((game) => [game.slug, game.logo ?? null]));
+    if (catalogGames.length > 0) {
+      return catalogGames.map((game) => ({
+        ...game,
+        logo: game.logo ?? localLogoBySlug.get(game.slug) ?? null,
+      }));
+    }
     return esportsGames.games.map((game) => ({
       slug: game.slug,
       name: game.name,
       category: game.category,
+      logo: game.logo,
       defaultModeKey: game.formats?.[0]?.value ?? 'default',
       modes: (game.formats ?? []).map((format) => ({
         modeKey: format.value,
@@ -454,8 +462,20 @@ const SeasonWizard = () => {
                           )}
                         >
                           <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center border border-white/10 bg-black">
-                              <Gamepad2 className="h-5 w-5 text-rose-400" />
+                            <div className="flex h-12 w-12 items-center justify-center border border-white/10 bg-black p-2">
+                              {game.logo ? (
+                                <img
+                                  src={game.logo}
+                                  alt={`${game.name} logo`}
+                                  className="h-full w-full object-contain"
+                                  loading="lazy"
+                                  onError={(event) => {
+                                    event.currentTarget.style.display = 'none';
+                                    event.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                  }}
+                                />
+                              ) : null}
+                              <Gamepad2 className={cn('h-5 w-5 text-rose-400', game.logo ? 'hidden' : '')} />
                             </div>
                             <div>
                               <p className="text-sm font-bold text-white">{game.name}</p>
