@@ -35,7 +35,7 @@ const FloatingIcon = ({ icon: Icon, delay, x, y }: { icon: any; delay: number; x
 
 const AuthLayout: React.FC<AuthLayoutProps> = ({ children, title, subtitle, variant = 'signin' }) => {
     return (
-        <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden font-sans selection:bg-rose-500/30">
+        <div className="min-h-screen bg-transparent text-white overflow-x-hidden font-sans selection:bg-rose-500/30">
             {/* Dynamic Background - Matching About Page */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 {/* Grid Pattern */}

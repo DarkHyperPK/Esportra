@@ -39,15 +39,15 @@ const SeasonSetupReview = () => {
   const review = useMemo(() => getReviewIssues(nodes, rules), [nodes, rules]);
   const treePreview = useMemo(() => (seasonId ? buildSeasonTreeFromDrafts(seasonId, nodes) : []), [nodes, seasonId]);
 
-  if (!seasonId) return <div className="min-h-screen bg-[#050505]" />;
+  if (!seasonId) return <div className="min-h-screen bg-transparent" />;
 
   if (isLoading) {
-    return <div className="min-h-screen bg-[#050505] px-6 py-24 text-center text-zinc-500">Loading season review...</div>;
+    return <div className="min-h-screen bg-transparent px-6 py-24 text-center text-zinc-500">Loading season review...</div>;
   }
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#050505] px-6 py-24 text-white">
+      <div className="min-h-screen bg-transparent px-6 py-24 text-white">
         <div className="mx-auto max-w-2xl border border-red-500/20 bg-red-500/10 p-8">
           <p className="font-semibold text-red-100">Could not load this season.</p>
           <p className="mt-2 text-sm text-red-200/80">{error instanceof Error ? error.message : 'Season not found.'}</p>
@@ -60,7 +60,7 @@ const SeasonSetupReview = () => {
   const readyForManagement = review.blockers.length === 0;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="min-h-screen bg-transparent text-white">
       <main className="mx-auto max-w-7xl px-5 py-10 lg:px-8">
         <div className="mb-8 flex flex-col gap-4 border border-white/10 bg-[#08080a] p-5 lg:flex-row lg:items-center lg:justify-between">
           <div>

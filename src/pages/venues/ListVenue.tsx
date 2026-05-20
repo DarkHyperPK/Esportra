@@ -252,7 +252,7 @@ const ListVenue = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col relative">
+    <div className="min-h-screen bg-transparent text-white flex flex-col relative">
       {/* Background Decor */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px]" />

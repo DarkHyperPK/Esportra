@@ -886,7 +886,7 @@ const SeasonManage = () => {
   );
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#050505] text-white">
+    <div className="relative min-h-screen overflow-x-hidden bg-transparent text-white">
       {/* Fixed sidebar (desktop) */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 flex-col overflow-hidden border-r border-white/[0.08] bg-[#070707] lg:flex">
         {renderSidebarContent()}
@@ -916,7 +916,7 @@ const SeasonManage = () => {
       )}
 
       {/* Sticky top bar */}
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-white/[0.06] bg-[#050505] px-4 lg:hidden">
+      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-white/[0.06] bg-[#050505]/85 px-4 backdrop-blur-xl lg:hidden">
         <button
           className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg border border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0"
           onClick={() => setIsMobileNavOpen(true)}

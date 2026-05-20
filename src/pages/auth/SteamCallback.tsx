@@ -24,7 +24,7 @@ export default function SteamCallback() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#050505]">
+    <div className="min-h-screen flex items-center justify-center bg-transparent">
       <div className="text-center space-y-3">
         <div className="w-8 h-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-zinc-400 text-sm">Linking your Steam account...</p>

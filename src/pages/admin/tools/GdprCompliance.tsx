@@ -622,7 +622,7 @@ const ConsentRecordsTab = () => {
 
 const GdprCompliance = () => {
   return (
-    <div className="min-h-screen bg-[#050505] px-4 py-8 md:px-8">
+    <div className="min-h-screen bg-transparent px-4 py-8 md:px-8">
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <motion.div

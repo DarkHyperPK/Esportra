@@ -1,214 +1,155 @@
-
-import { useState } from 'react';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { AlertCircle, Award, Trophy } from "lucide-react";
+import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { Trophy, Medal, Award, Star, Target } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
-interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  progress: number;
-  unlocked: boolean;
-  game: string;
-  rarity: 'common' | 'uncommon' | 'rare' | 'legendary';
-  date?: string;
-}
-
-const mockAchievements: Achievement[] = [
-  {
-    id: 'a1',
-    name: 'First Blood',
-    description: 'Win your first tournament',
-    icon: <Trophy className="h-8 w-8 text-yellow-500" />,
-    progress: 100,
-    unlocked: true,
-    game: 'Valorant',
-    rarity: 'common',
-    date: '2023-03-15',
-  },
-  {
-    id: 'a2',
-    name: 'Sharpshooter',
-    description: 'Achieve a headshot accuracy of over 40% in a tournament',
-    icon: <Target className="h-8 w-8 text-green-500" />,
-    progress: 100,
-    unlocked: true,
-    game: 'Valorant',
-    rarity: 'uncommon',
-    date: '2023-04-02',
-  },
-  {
-    id: 'a3',
-    name: 'Tournament Champion',
-    description: 'Win 5 tournaments',
-    icon: <Trophy className="h-8 w-8 text-yellow-500" />,
-    progress: 60,
-    unlocked: false,
-    game: 'Valorant',
-    rarity: 'rare',
-  },
-  {
-    id: 'a4',
-    name: 'Team Leader',
-    description: 'Create and lead a team to victory',
-    icon: <Award className="h-8 w-8 text-blue-500" />,
-    progress: 100,
-    unlocked: true,
-    game: 'League of Legends',
-    rarity: 'uncommon',
-    date: '2023-03-28',
-  },
-  {
-    id: 'a5',
-    name: 'Venue Regular',
-    description: 'Book 10 different gaming venues',
-    icon: <Medal className="h-8 w-8 text-purple-500" />,
-    progress: 40,
-    unlocked: false,
-    game: 'All Games',
-    rarity: 'uncommon',
-  },
-  {
-    id: 'a6',
-    name: 'Legendary Status',
-    description: 'Win 3 tournaments in a row',
-    icon: <Star className="h-8 w-8 text-yellow-500" />,
-    progress: 0,
-    unlocked: false,
-    game: 'All Games',
-    rarity: 'legendary',
-  },
-];
-
-const rarityColors = {
-  common: 'border-gray-500',
-  uncommon: 'border-green-500',
-  rare: 'border-blue-500',
-  legendary: 'border-purple-500',
+type AchievementLike = {
+  id?: string;
+  achievement_id?: string;
+  name?: string;
+  title?: string;
+  description?: string | null;
+  category?: string | null;
+  points?: number | null;
+  progress?: number | null;
+  earned_at?: string | null;
+  date?: string | null;
 };
 
-const PlayerAchievements = () => {
-  const [filter, setFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
-  
-  const filteredAchievements = mockAchievements.filter(achievement => {
-    if (filter === 'all') return true;
-    if (filter === 'unlocked') return achievement.unlocked;
-    if (filter === 'locked') return !achievement.unlocked;
-    return true;
+type ProfileStatsResponse = {
+  achievements?: AchievementLike[];
+};
+
+type PlayerAchievementsProps = {
+  profileId?: string;
+  profileAchievements?: unknown;
+};
+
+const normalizeAchievements = (value: unknown): AchievementLike[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean) as AchievementLike[];
+  if (typeof value === 'object') {
+    const objectValue = value as { items?: unknown; achievements?: unknown; unlocked?: unknown };
+    if (Array.isArray(objectValue.achievements)) return objectValue.achievements as AchievementLike[];
+    if (Array.isArray(objectValue.items)) return objectValue.items as AchievementLike[];
+    if (Array.isArray(objectValue.unlocked)) return objectValue.unlocked as AchievementLike[];
+  }
+  return [];
+};
+
+const formatEarnedDate = (value?: string | null) => {
+  if (!value) return null;
+  return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const PlayerAchievements = ({ profileId, profileAchievements }: PlayerAchievementsProps) => {
+  const profileAchievementRows = useMemo(() => normalizeAchievements(profileAchievements), [profileAchievements]);
+
+  const statsQuery = useQuery({
+    queryKey: ['profile', profileId, 'stats'],
+    queryFn: () => apiClient.get<ProfileStatsResponse>(`/api/profiles/${profileId}/stats`),
+    enabled: Boolean(profileId),
+    staleTime: 5 * 60_000,
   });
-  
+
+  const achievements = useMemo(() => {
+    const statsAchievements = normalizeAchievements(statsQuery.data?.achievements);
+    return statsAchievements.length > 0 ? statsAchievements : profileAchievementRows;
+  }, [profileAchievementRows, statsQuery.data?.achievements]);
+
   return (
     <div className="space-y-6">
-      <Card className="bg-[#0a0a0c] border-white/10/30">
-        <CardHeader>
-          <CardTitle>Your Gaming Achievements</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="all" onValueChange={(v) => setFilter(v as any)}>
-            <div className="flex items-center justify-between mb-6">
-              <TabsList className="bg-zinc-800/10">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="unlocked">Unlocked</TabsTrigger>
-                <TabsTrigger value="locked">In Progress</TabsTrigger>
-              </TabsList>
-              <div className="text-sm text-gray-400">
-                <span className="font-bold text-white">
-                  {mockAchievements.filter(a => a.unlocked).length}
-                </span>
-                /{mockAchievements.length} Achievements Unlocked
-              </div>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Achievements</h2>
+      </div>
+
+      {statsQuery.isLoading && profileAchievementRows.length === 0 && (
+        <Card className="bg-[#0a0a0c] border-white/10">
+          <CardContent className="space-y-4 p-6">
+            {[0, 1, 2].map((item) => (
+              <div key={item} className="h-20 animate-pulse border border-white/10 bg-white/[0.03]" />
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {statsQuery.isError && profileAchievementRows.length === 0 && (
+        <Card className="bg-[#0a0a0c] border-red-500/20">
+          <CardContent className="flex items-start gap-4 p-6">
+            <AlertCircle className="mt-1 h-5 w-5 text-red-400" />
+            <div>
+              <h3 className="font-bold text-white">Could not load achievements</h3>
+              <p className="mt-1 text-sm text-gray-400">
+                Achievement data could not be loaded. This is not being shown as an empty profile.
+              </p>
             </div>
-            
-            <TabsContent value="all" className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredAchievements.map(achievement => (
-                  <div 
-                    key={achievement.id} 
-                    className={`p-4 border-2 rounded-lg ${rarityColors[achievement.rarity]} ${
-                      achievement.unlocked ? 'bg-zinc-800/10' : 'bg-zinc-800/5'
-                    }`}
-                  >
-                    <div className="flex items-center mb-3">
-                      {achievement.icon}
-                      <div className="ml-3">
-                        <div className="font-bold">{achievement.name}</div>
-                        <div className="text-xs text-gray-400">{achievement.game} • {achievement.rarity}</div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-300 mb-3">
-                      {achievement.description}
-                    </p>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span>{achievement.unlocked ? 'Completed' : `${achievement.progress}% Complete`}</span>
-                      {achievement.date && <span>{achievement.date}</span>}
-                    </div>
-                    <Progress value={achievement.progress} className="h-1" />
-                  </div>
-                ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {!statsQuery.isLoading && !statsQuery.isError && achievements.length === 0 && (
+        <Card className="bg-[#0a0a0c] border-white/10">
+          <CardHeader>
+            <CardTitle>Gaming Achievements</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-20 h-20 mb-6 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+                <Trophy className="h-10 w-10 text-rose-400" />
               </div>
-            </TabsContent>
-            
-            <TabsContent value="unlocked" className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredAchievements.map(achievement => (
-                  <div 
-                    key={achievement.id} 
-                    className={`p-4 border-2 rounded-lg ${rarityColors[achievement.rarity]} bg-zinc-800/10`}
-                  >
-                    <div className="flex items-center mb-3">
-                      {achievement.icon}
-                      <div className="ml-3">
-                        <div className="font-bold">{achievement.name}</div>
-                        <div className="text-xs text-gray-400">{achievement.game} • {achievement.rarity}</div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-300 mb-3">
-                      {achievement.description}
-                    </p>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span>Completed</span>
-                      <span>{achievement.date}</span>
-                    </div>
-                    <Progress value={100} className="h-1" />
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="locked" className="mt-0">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredAchievements.map(achievement => (
-                  <div 
-                    key={achievement.id} 
-                    className={`p-4 border-2 rounded-lg ${rarityColors[achievement.rarity]} bg-zinc-800/5`}
-                  >
-                    <div className="flex items-center mb-3">
-                      {achievement.icon}
-                      <div className="ml-3">
-                        <div className="font-bold">{achievement.name}</div>
-                        <div className="text-xs text-gray-400">{achievement.game} • {achievement.rarity}</div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-300 mb-3">
-                      {achievement.description}
-                    </p>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span>{achievement.progress}% Complete</span>
-                    </div>
-                    <Progress value={achievement.progress} className="h-1" />
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+              <h3 className="text-xl font-bold text-white mb-2">No Achievements Yet</h3>
+              <p className="text-gray-400 max-w-md">
+                Compete in tournaments, win matches, and complete milestones to earn achievements.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {achievements.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {achievements.map((achievement, index) => (
+            <AchievementCard key={achievement.id ?? achievement.achievement_id ?? `${achievement.name}-${index}`} achievement={achievement} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
-export default PlayerAchievements;
+const AchievementCard = ({ achievement }: { achievement: AchievementLike }) => {
+  const title = achievement.name ?? achievement.title ?? 'Achievement';
+  const earnedDate = formatEarnedDate(achievement.earned_at ?? achievement.date);
 
+  return (
+    <Card className="bg-[#0a0a0c] border-white/10">
+      <CardContent className="p-5">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-rose-500/20 bg-rose-500/10">
+            <Award className="h-6 w-6 text-rose-400" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-bold text-white">{title}</h3>
+              {achievement.category && (
+                <Badge className="border border-white/10 bg-white/[0.03] text-zinc-300">{achievement.category}</Badge>
+              )}
+            </div>
+            {achievement.description && (
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{achievement.description}</p>
+            )}
+            <div className="mt-4 flex flex-wrap gap-3 text-xs text-zinc-500">
+              {achievement.points != null && <span>{achievement.points} points</span>}
+              {achievement.progress != null && <span>{achievement.progress}% progress</span>}
+              {earnedDate && <span>Earned {earnedDate}</span>}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default PlayerAchievements;

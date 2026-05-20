@@ -773,7 +773,7 @@ const CaptainMatchPage = () => {
 
 
     return (
-        <div className="min-h-screen bg-esports-dark text-white p-4 md:p-8 font-body">
+        <div className="min-h-screen bg-transparent text-white p-4 md:p-8 font-body">
             <div className="max-w-7xl mx-auto space-y-8">
                 {/* Header */}
                 <div className="flex items-center justify-between">

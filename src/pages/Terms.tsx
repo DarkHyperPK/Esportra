@@ -5,7 +5,7 @@ import { getWebsiteAssetUrl } from '@/lib/storage';
 
 const TermsPage: React.FC = () => {
     return (
-        <div className="min-h-screen bg-esports-dark text-white">
+        <div className="min-h-screen bg-transparent text-white">
             <main className="container mx-auto px-4 py-16 max-w-4xl">
                 {/* Header */}
                 <div className="mb-12">

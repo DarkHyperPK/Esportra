@@ -103,7 +103,7 @@ const PlayerHistory = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white selection:bg-rose-500/30 font-sans">
+        <div className="min-h-screen bg-transparent text-white selection:bg-rose-500/30 font-sans">
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay"></div>
             </div>

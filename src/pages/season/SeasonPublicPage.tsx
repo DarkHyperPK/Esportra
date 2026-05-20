@@ -94,7 +94,7 @@ export default function SeasonPublicPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-transparent text-white flex items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-rose-500" />
       </div>
     );
@@ -102,7 +102,7 @@ export default function SeasonPublicPage() {
 
   if (error || !season) {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-transparent text-white flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-400 mb-4">{error || 'Season not found'}</p>
           <Link to="/">

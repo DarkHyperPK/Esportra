@@ -768,7 +768,7 @@ const TournamentDetails = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-esports-primary/30 font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-transparent text-white selection:bg-esports-primary/30 font-sans overflow-x-hidden">
       <SEO
         title={tournament.name}
         description={tournament.description || `Join ${tournament.name} on Esportra`}
@@ -811,7 +811,7 @@ const TournamentDetails = () => {
 
       {shouldShowInviteCode && (
         <div className="container mx-auto px-4 relative z-30 -mt-6 mb-10">
-          <Card className="mx-auto max-w-3xl border border-purple-500/20 bg-[#0d0d10]/95 shadow-2xl shadow-purple-950/20 backdrop-blur">
+          <Card className="mx-auto max-w-3xl border border-purple-500/20 bg-[#0d0d10] shadow-2xl shadow-purple-950/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">
                 <Mail className="h-5 w-5 text-purple-300" />

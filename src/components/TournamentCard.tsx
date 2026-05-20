@@ -83,6 +83,9 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   // Use the custom hook for game images and carousel
   const { gameLogo, gameBanner, rawgScreenshots, carouselIndex } = useRawgGame(game);
 
+  const isCustomVideo = image_url?.includes('youtube.com/embed/');
+  const hasCustomImage = image_url && !isCustomVideo && !bannerFailed;
+
   // Date-Driven Status Logic
   const now = new Date();
   const startDate = start_date ? new Date(start_date) : new Date(`${date}T${time}`);
@@ -148,41 +151,44 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
         <div
           className="w-full h-full relative"
         >
-          {/* Banner: custom image → RAWG screenshots → game banner fallback */}
-          {image_url && !bannerFailed ? (
+          {/* Banner priority: custom image → RAWG screenshots → gameBanner → placeholder */}
+          {hasCustomImage ? (
             <img
               src={image_url}
-              className="w-full h-full object-cover object-center opacity-40 group-hover:opacity-50 transition-opacity"
+              className="w-full h-full object-cover object-center opacity-50 group-hover:opacity-60 transition-opacity"
               alt={name}
               onError={() => setBannerFailed(true)}
             />
-          ) : (
-            /* RAWG Screenshots (Carousel or Static) - Fallback */
+          ) : (rawgScreenshots?.length || 0) > 0 ? (
             <AnimatePresence mode="wait">
-              {(rawgScreenshots?.length || 0) > 0 ? (
-                <motion.img
-                  key={rawgScreenshots[carouselIndex % rawgScreenshots.length]}
-                  src={rawgScreenshots[carouselIndex % rawgScreenshots.length]}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 1.5, ease: "easeInOut" }}
-                  className="absolute inset-0 w-full h-full object-cover object-center opacity-30"
-                  alt={`${game} screenshot`}
-                />
-              ) : (
-                <img
-                  src={gameBanner || '/placeholder.svg'}
-                  className="w-full h-full object-cover object-center opacity-30"
-                  alt={game}
-                />
-              )}
+              <motion.img
+                key={rawgScreenshots[carouselIndex % rawgScreenshots.length]}
+                src={rawgScreenshots[carouselIndex % rawgScreenshots.length]}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.5, ease: "easeInOut" }}
+                className="absolute inset-0 w-full h-full object-cover object-center opacity-50"
+                alt={`${game} screenshot`}
+              />
             </AnimatePresence>
+          ) : gameBanner ? (
+            <img
+              src={gameBanner}
+              className="w-full h-full object-cover object-center opacity-50"
+              alt={game}
+            />
+          ) : (
+            <img
+              src="/placeholder.svg"
+              className="w-full h-full object-cover object-center opacity-50"
+              alt={name}
+            />
           )}
         </div>
 
-        {/* Gradient Overlay for Text Readability - Intensified */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050507] via-[#050507]/80 to-[#050507]/30 opacity-100" />
+        {/* Gradient Overlay for Text Readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/50 to-transparent" />
       </div>
 
       {/* 2. Top Bar (Floating) */}

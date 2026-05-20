@@ -647,7 +647,7 @@ function SessionAuditTab() {
 
 export default function SessionManagement() {
   return (
-    <div className="min-h-screen bg-[#050505] p-4 lg:p-8">
+    <div className="min-h-screen bg-transparent p-4 lg:p-8">
       <div className="max-w-[1400px] mx-auto space-y-8">
         {/* Header */}
         <motion.header

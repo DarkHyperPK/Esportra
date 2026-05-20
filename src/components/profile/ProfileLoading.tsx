@@ -14,7 +14,7 @@ export const ProfileLoading: React.FC<ProfileLoadingProps> = ({ error, onRetry }
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-esports-dark text-white flex flex-col">
+    <div className="min-h-screen bg-transparent text-white flex flex-col">
       <Navbar />
       <main className="flex-grow container mx-auto px-4 py-8 flex justify-center items-center">
         <div className="text-center">

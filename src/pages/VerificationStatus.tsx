@@ -142,7 +142,7 @@ const VerificationStatus: React.FC = () => {
   // Show admin message if they somehow reach this page
   if (profile?.role === 'admin' || currentRole === 'admin') {
     return (
-      <div className="min-h-screen bg-esports-dark text-white flex items-center justify-center">
+      <div className="min-h-screen bg-transparent text-white flex items-center justify-center">
         <div className="max-w-md mx-auto text-center">
           <Settings className="w-16 h-16 text-rose-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-white mb-2">Admin Access</h1>
@@ -162,14 +162,14 @@ const VerificationStatus: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-esports-dark text-white flex items-center justify-center">
+      <div className="min-h-screen bg-transparent text-white flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="min-h-screen bg-transparent text-white">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8 rounded-none border border-white/10 bg-[#0a0a0c] p-6 md:p-8 relative overflow-hidden">

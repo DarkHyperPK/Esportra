@@ -973,7 +973,7 @@ export default function ScheduledReports() {
   }, [runMutation]);
 
   return (
-    <div className="min-h-screen bg-[#050505] p-4 sm:p-6 lg:p-8 font-[Inter]">
+    <div className="min-h-screen bg-transparent p-4 sm:p-6 lg:p-8 font-[Inter]">
       <div className="mx-auto max-w-5xl space-y-6">
 
         {/* Breadcrumb */}

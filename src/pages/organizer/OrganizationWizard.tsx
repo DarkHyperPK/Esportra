@@ -236,11 +236,7 @@ const OrganizationWizard: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-esports-dark text-white">
-            {/* Background Effects */}
-            <div className="fixed inset-0 overflow-hidden pointer-events-none">
-            </div>
-
+        <div className="min-h-screen bg-transparent text-white">
             <div className="relative z-10 container mx-auto px-4 py-12 max-w-4xl">
                 {/* Header */}
                 <motion.div
@@ -316,7 +312,7 @@ const OrganizationWizard: React.FC = () => {
                         exit={{ opacity: 0, x: -20 }}
                         transition={{ duration: 0.3 }}
                     >
-                        <Card className="border-white/5 bg-gradient-to-br from-[#0a0a0c]/95 to-[#050507]/95 backdrop-blur-xl p-8 md:p-12 rounded-3xl">
+                        <Card className="border-white/5 bg-gradient-to-br from-[#0a0a0c] to-[#050507] p-8 md:p-12 rounded-3xl">
                             {renderStep()}
                         </Card>
                     </motion.div>

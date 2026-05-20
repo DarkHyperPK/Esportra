@@ -120,14 +120,14 @@ const ManageVenues = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+            <div className="min-h-screen bg-transparent flex items-center justify-center">
                 <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white">
+        <div className="min-h-screen bg-transparent text-white">
             <div className="container mx-auto px-4 py-8">
                 <div className="flex items-center justify-between mb-8">
                     <div>

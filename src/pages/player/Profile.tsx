@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRole } from "@/contexts/RoleContext";
 import Footer from "@/components/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { Trophy, Gamepad2, Calendar, User, Medal } from "lucide-react";
 import PlayerProfile from "@/components/player/PlayerProfile";
 import PlayerTournaments from "@/components/player/PlayerTournaments";
@@ -12,13 +14,12 @@ import PlayerAchievements from "@/components/player/PlayerAchievements";
 import { Link, useParams } from 'react-router-dom';
 import { apiClient } from "@/lib/apiClient";
 import { useQuery } from '@tanstack/react-query';
-import { useLowFx } from '@/hooks/useLowFx';
-
 const PlayerProfilePage = () => {
   const { profile: authProfile } = useAuth();
   const { username } = useParams();
   const [activeTab, setActiveTab] = useState("profile");
-  const isLowFx = useLowFx();
+  const [showTeamWizard, setShowTeamWizard] = useState(true);
+  const { currentRole } = useRole();
 
   const profileQuery = useQuery({
     queryKey: ['profile', 'by-username', username],
@@ -33,7 +34,7 @@ const PlayerProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center text-white">
+      <div className="min-h-screen bg-transparent flex items-center justify-center text-white">
         <div className="w-10 h-10 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -41,7 +42,7 @@ const PlayerProfilePage = () => {
 
   if (!displayedProfile) {
     return (
-      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-white gap-4">
+      <div className="min-h-screen bg-transparent flex flex-col items-center justify-center text-white gap-4">
         <h1 className="text-4xl font-bold">User Not Found</h1>
         <p className="text-gray-400">The user @{username} does not exist.</p>
         <Link to="/">
@@ -52,43 +53,18 @@ const PlayerProfilePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-rose-500/30 overflow-x-hidden font-sans">
-      {/* Dynamic Background Noise & Grid */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100px_100px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_70%)]" />
-        {!isLowFx && (
-          <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay"></div>
-        )}
-        {!isLowFx && (
-          <>
-            <div className={`absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-rose-600/10 blur-[150px] rounded-full mix-blend-screen`} />
-            <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-600/10 blur-[150px] rounded-full mix-blend-screen" />
-          </>
-        )}
-      </div>
-
-      <div className="relative z-10 flex-grow container mx-auto px-4 py-12">
+    <div className="min-h-screen bg-transparent text-white selection:bg-rose-500/30 overflow-x-hidden font-sans">
+      <div className="flex-grow container mx-auto px-4 py-12">
         {/* Header Section */}
         <div className="mb-16">
           <div className="flex flex-col md:flex-row justify-between items-end gap-6 border-b border-white/5 pb-8">
             <div>
-              <div className={`mb-4 inline-flex items-center gap-2 text-rose-500 font-mono text-xs tracking-[0.5em] uppercase`}>
-                <span className={`w-2 h-2 bg-rose-500 animate-pulse rounded-full`} />
-                System_Online
-              </div>
               <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-none mb-2">
-                PLAYER <span className="text-rose-500">PROFILE</span>
+                {isOwnProfile ? 'MY' : ''} <span className="text-rose-500">PROFILE</span>
               </h1>
               <p className="text-gray-500 font-mono text-sm tracking-widest uppercase">
                 /user/{displayedProfile.username || 'UNKNOWN'}
               </p>
-            </div>
-
-            <div className="hidden md:flex gap-8">
-              <div className="flex flex-col items-end">
-                <span className="text-xs text-gray-500 font-mono uppercase tracking-wider">Status</span>
-                <span className="text-emerald-500 font-bold tracking-tight">ACTIVE</span>
-              </div>
             </div>
           </div>
         </div>
@@ -161,13 +137,30 @@ const PlayerProfilePage = () => {
 
                       <TabsContent value="teams" className="m-0 mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="space-y-8">
-                          <TeamCreationWizard onClose={() => { }} />
+                          {currentRole !== 'organizer' && showTeamWizard && (
+                            <TeamCreationWizard onClose={() => setShowTeamWizard(false)} />
+                          )}
+                          {currentRole !== 'organizer' && !showTeamWizard && (
+                            <div className="flex justify-center">
+                              <Button onClick={() => setShowTeamWizard(true)} variant="outline" className="border-white/10 hover:bg-white/5">
+                                Open Team Panel
+                              </Button>
+                            </div>
+                          )}
+                          {currentRole === 'organizer' && (
+                            <div className="text-center py-12 text-gray-400">
+                              Organizers manage teams through their organization dashboard.
+                            </div>
+                          )}
                           <TeamInvites />
                         </div>
                       </TabsContent>
 
                       <TabsContent value="achievements" className="m-0 mt-0 focus-visible:outline-none animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <PlayerAchievements />
+                        <PlayerAchievements
+                          profileId={displayedProfile.id}
+                          profileAchievements={(displayedProfile as any).achievements}
+                        />
                       </TabsContent>
                     </>
                   )}

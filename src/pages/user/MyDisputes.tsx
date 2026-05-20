@@ -318,7 +318,7 @@ const MyDisputes = () => {
   if (loading) {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <div className="min-h-screen bg-transparent flex items-center justify-center">
           <div className="text-center">
             <RefreshCw className="h-8 w-8 animate-spin text-rose-500 mx-auto mb-4" />
             <p className="text-white/70">Loading your disputes...</p>
@@ -330,7 +330,7 @@ const MyDisputes = () => {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-[#050505] py-8 px-4">
+      <div className="min-h-screen bg-transparent py-8 px-4">
         <div className="max-w-5xl mx-auto">
           {/* Page Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -538,7 +538,7 @@ const MyDisputes = () => {
               setCommentAttachment(null);
             }
           }}>
-            <DialogContent className="bg-[#0a0a0c] backdrop-blur-xl border border-white/[0.06] max-w-3xl h-[92vh] max-h-[92vh] flex flex-col overflow-hidden p-0">
+            <DialogContent className="bg-[#0a0a0c] border border-white/[0.06] max-w-3xl h-[92vh] max-h-[92vh] flex flex-col overflow-hidden p-0">
               {selectedDispute && (() => {
                 const meta = statusMeta[selectedDispute.status] || defaultStatusMeta;
                 const Icon = meta.icon;

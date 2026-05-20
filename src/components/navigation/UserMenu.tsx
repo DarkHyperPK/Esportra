@@ -64,6 +64,7 @@ const UserMenu = ({
   const [hasStaffInvites, setHasStaffInvites] = useState(false);
   const [hasStaffAssignments, setHasStaffAssignments] = useState(false);
   const [hasOrganization, setHasOrganization] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   // Track if user has any approved license (for role switcher visibility)
   const [hasApprovedLicense, setHasApprovedLicense] = useState(false);
@@ -92,6 +93,10 @@ const UserMenu = ({
     window.addEventListener('organizationCreated', handleOrgCreated);
     return () => window.removeEventListener('organizationCreated', handleOrgCreated);
   }, [checkOrganization]);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [profile?.avatar_url]);
 
   // Check if user has any approved licenses (organizer or venue_owner)
   useEffect(() => {
@@ -192,6 +197,9 @@ const UserMenu = ({
         ? admin.roles.map(r => r.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())).join(', ')
         : 'Admin'
     : userRole.charAt(0).toUpperCase() + userRole.slice(1);
+  const avatarUrl = profile?.avatar_url?.trim() || "";
+  const showAvatarImage = avatarUrl && !avatarFailed;
+  const initials = (profile?.username || profile?.full_name || "User").slice(0, 2).toUpperCase();
 
   const dot = (color: "rose" | "cyan" | "amber" | "emerald") => {
     const cls =
@@ -218,8 +226,23 @@ const UserMenu = ({
             type="button"
             className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium text-white/85 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70"
           >
-            <span className="flex h-8 w-8 items-center justify-center border border-white/10 bg-[#0a0a0c]">
-              <User className="h-4 w-4" />
+            <span className="flex h-8 w-8 items-center justify-center overflow-hidden border border-white/10 bg-[#0a0a0c]">
+              {showAvatarImage ? (
+                <img
+                  src={avatarUrl}
+                  alt={profile?.username || "Profile"}
+                  className="h-full w-full object-cover"
+                  loading="eager"
+                  decoding="async"
+                  onError={() => setAvatarFailed(true)}
+                />
+              ) : profile?.username ? (
+                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-white">
+                  {initials}
+                </span>
+              ) : (
+                <User className="h-4 w-4" />
+              )}
             </span>
             <span className="hidden max-w-[100px] truncate sm:inline">
               {profile?.username || "Account"}

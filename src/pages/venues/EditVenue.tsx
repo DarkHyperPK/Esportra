@@ -165,7 +165,7 @@ const EditVenue = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+    <div className="min-h-screen bg-transparent flex items-center justify-center">
       <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
     </div>
   );
@@ -173,7 +173,7 @@ const EditVenue = () => {
   if (!venue) return null;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="min-h-screen bg-transparent text-white">
       <div className="container mx-auto px-4 md:px-6 max-w-4xl py-8">
 
         {/* Header */}

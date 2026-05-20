@@ -268,7 +268,7 @@ const OrganizerDisputesPage: React.FC = () => {
     status === 'open' ? 'bg-yellow-500' : status === 'resolved' ? 'bg-green-500' : status === 'rejected' ? 'bg-red-500' : 'bg-zinc-500';
 
   return (
-    <div className="min-h-screen bg-[#050505] py-8 px-6">
+    <div className="min-h-screen bg-transparent py-8 px-6">
       <div className="max-w-[1800px] mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-2">

@@ -6,7 +6,7 @@ import { ShieldCheck, AlertTriangle, Scale, FileText, Ban, CheckCircle2 } from '
 
 const OrganizerLicenseTerms: React.FC = () => {
   return (
-    <div className="min-h-screen bg-esports-dark text-white pt-8">
+    <div className="min-h-screen bg-transparent text-white pt-8">
       <main className="container mx-auto px-4 pb-14 max-w-4xl">
         {/* Header */}
         <div className="mb-12">

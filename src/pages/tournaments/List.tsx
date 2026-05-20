@@ -155,7 +155,7 @@ const TournamentList = () => {
   const showCityFilter = selectedFormat === 'lan';
 
   return (
-    <div className="min-h-screen bg-esports-dark text-white">
+    <div className="min-h-screen bg-transparent text-white">
       <SEO
         title="Browse Tournaments"
         description="Find and join esports tournaments for Valorant, CS2, League of Legends, Fortnite, and more. Free and paid competitions."

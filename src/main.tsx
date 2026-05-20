@@ -63,7 +63,7 @@ const root = createRoot(rootElement)
 
 root.render(
   <React.StrictMode>
-    <Sentry.ErrorBoundary fallback={<div className="min-h-screen flex items-center justify-center bg-[#050505] text-white">
+    <Sentry.ErrorBoundary fallback={<div className="min-h-screen flex items-center justify-center bg-transparent text-white">
       <div className="text-center">
         <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
         <p className="text-zinc-400 mb-4">An unexpected error occurred. Our team has been notified.</p>

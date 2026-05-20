@@ -26,7 +26,7 @@ const ContactPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-white selection:bg-rose-500/30 font-sans">
+    <div className="min-h-screen bg-transparent text-white selection:bg-rose-500/30 font-sans">
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-rose-900/10 blur-[130px] rounded-full mix-blend-screen" />
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-rose-900/5 blur-[130px] rounded-full mix-blend-screen" />

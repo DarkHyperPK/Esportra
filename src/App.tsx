@@ -192,11 +192,15 @@ const AppContent = React.memo(() => {
       {/* Global Background */}
       {!location.pathname.endsWith('/brackets/fullscreen') && (
         <div
-          className="fixed inset-0 w-full h-full z-0 bg-[#050505]"
+          className="fixed inset-0 w-full h-full z-0 bg-[#0a0a0c]"
           aria-hidden="true"
         >
-          {/* Subtle dot grid — pure CSS gradient, zero repaint cost */}
-          <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:32px_32px]" />
+          <div className="absolute inset-0 opacity-60">
+            <div className="absolute -left-[10%] top-[-15%] h-[145%] w-[20%] rotate-[-17deg] bg-white/[0.075] [clip-path:polygon(44%_0,69%_0,53%_24%,76%_42%,49%_64%,67%_100%,23%_100%,35%_78%,12%_53%,38%_29%)]" />
+            <div className="absolute left-[18%] top-[-9%] h-[132%] w-[13%] rotate-[-4deg] bg-white/[0.065] [clip-path:polygon(30%_0,84%_0,52%_19%,74%_46%,45%_69%,62%_100%,15%_100%,35%_76%,10%_51%,44%_26%)]" />
+            <div className="absolute left-[38%] top-[-18%] h-[150%] w-[18%] rotate-[5deg] bg-white/[0.08] [clip-path:polygon(36%_0,75%_0,62%_18%,85%_35%,57%_58%,72%_100%,30%_100%,34%_80%,8%_56%,39%_31%)]" />
+            <div className="absolute left-[68%] top-[-12%] h-[138%] w-[17%] rotate-[19deg] bg-white/[0.07] [clip-path:polygon(39%_0,88%_0,64%_21%,80%_46%,54%_67%,72%_100%,27%_100%,37%_78%,10%_54%,41%_28%)]" />
+          </div>
         </div>
       )}
 

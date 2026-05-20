@@ -148,7 +148,7 @@ const NotificationsPage = () => {
   }, [notifications, filter, optimisticIds]);
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="min-h-screen bg-transparent text-white">
       <div className="container mx-auto px-4 py-8 max-w-3xl">
 
         {/* Header */}

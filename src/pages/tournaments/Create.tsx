@@ -81,7 +81,7 @@ const CreateTournament = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-esports-dark text-white flex items-center justify-center">
+      <div className="min-h-screen bg-transparent text-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-esports-accent" />
           <span className="text-gray-400">Loading...</span>
@@ -92,7 +92,7 @@ const CreateTournament = () => {
 
   if (!hasOrganization && !admin.hasPermission('tournaments:create')) {
     return (
-      <div className="min-h-screen bg-esports-dark text-white flex flex-col">
+      <div className="min-h-screen bg-transparent text-white flex flex-col">
         <main className="flex-grow container mx-auto px-4 py-20 relative z-10">
           <div className="max-w-lg mx-auto text-center">
             <div className="inline-flex p-4 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/30 mb-8">

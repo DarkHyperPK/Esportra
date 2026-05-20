@@ -191,36 +191,10 @@ nav {
   background:
     radial-gradient(ellipse at 12% -8%, rgba(244, 63, 94, 0.22) 0%, rgba(244, 63, 94, 0.08) 24%, transparent 48%),
     radial-gradient(ellipse at 92% 4%, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0.035) 22%, transparent 42%),
-    radial-gradient(ellipse at 50% 105%, rgba(244, 63, 94, 0.10) 0%, transparent 46%),
-    linear-gradient(180deg, #08080a 0%, #030304 44%, #070707 100%);
+    radial-gradient(ellipse at 50% 105%, rgba(244, 63, 94, 0.10) 0%, transparent 46%);
 }
 
-.esportra-ambient-page::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.035) 50%, transparent 100%),
-    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.04) 0%, transparent 52%);
-  opacity: 0.42;
-  mask-image: linear-gradient(to bottom, black 0%, black 54%, transparent 100%);
-}
-
-.esportra-ambient-page::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.06;
-  background-image:
-    linear-gradient(115deg, transparent 0%, rgba(255, 255, 255, 0.7) 48%, transparent 52%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.5), transparent);
-  background-size: 560px 560px, 100% 100%;
-  background-position: -160px -220px, 0 0;
-}
+/* Ambient pseudo-elements removed — global streak texture now handles page background */
 
 .esportra-ambient-content {
   position: relative;

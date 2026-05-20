@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Upload, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Countdown } from '@/components/ui/Countdown';
@@ -47,12 +48,6 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
 
     return (
         <>
-            {/* --- DYNAMIC BACKGROUND (Noise & Grid) --- */}
-            <div className="fixed inset-0 pointer-events-none z-0">
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100px_100px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_70%)]" />
-                <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay"></div>
-            </div>
-
             <div className="relative z-10 pb-20">
 
                 {/* --- HERO SECTION --- */}
@@ -61,12 +56,13 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                     {/* Background Image Parallax */}
                     <motion.div
                         initial={{ scale: 1.1, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 0.4 }}
+                        animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 1.5 }}
                         className="absolute inset-0 z-0"
                     >
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent z-10" />
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#050505] via-transparent to-transparent z-10" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/40 to-transparent z-10" />
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0c]/30 via-transparent to-transparent z-10" />
+                        <div className="absolute inset-0 bg-black/60 z-[5]" />
                         {isVideoBanner ? (
                             <div className="absolute inset-0 overflow-hidden">
                                 <iframe
@@ -75,8 +71,8 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                     className="absolute top-1/2 left-1/2 pointer-events-none"
                                     style={{
                                         border: 'none',
-                                        width: '177.78vh',   // 16:9 width relative to viewport height
-                                        height: '56.25vw',   // 16:9 height relative to viewport width
+                                        width: '177.78vh',
+                                        height: '56.25vw',
                                         minWidth: '100%',
                                         minHeight: '100%',
                                         transform: 'translate(-50%, -50%)',
@@ -185,9 +181,13 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                 {isLoading ? (
                                     <div className="h-14 md:h-16 w-64 bg-white/5 animate-pulse rounded-none border border-white/10" />
                                 ) : isOrganizer ? (
-                                    <Button onClick={() => navigate(`/organizer/tournament/${tournament.slug || tournament.id}`)} className="h-14 md:h-16 px-8 md:px-12 bg-white text-black hover:bg-gray-200 text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden">
-                                        <span className="relative z-10 flex items-center gap-2">MANAGE EVENT</span>
-                                    </Button>
+                                    <JackButton
+                                        onClick={() => navigate(`/organizer/tournament/${tournament.slug || tournament.id}`)}
+                                        size="lg"
+                                        className="h-14 px-8 text-base md:h-16 md:px-12 md:text-lg"
+                                    >
+                                        MANAGE EVENT
+                                    </JackButton>
                                 ) : (
                                     <>
                                         {!isRegistered && !hasMissedCheckIn && (tournament.status === 'published' || tournament.status === 'open') && (

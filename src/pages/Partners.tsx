@@ -279,7 +279,7 @@ const Partners = () => {
     // (inside PartnerSection component)
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white selection:bg-rose-500/30">
+        <div className="min-h-screen bg-transparent text-white selection:bg-rose-500/30">
             {/* Background Noise (Subtle) */}
             <div className="fixed inset-0 pointer-events-none z-0 opacity-20 bg-[url('/noise.svg')] mix-blend-overlay" />
 

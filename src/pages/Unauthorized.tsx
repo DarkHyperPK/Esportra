@@ -12,7 +12,7 @@ const Unauthorized = () => {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#050505] text-white">
+    <div className="flex min-h-screen flex-col bg-transparent text-white">
       <main className="container mx-auto flex flex-grow flex-col items-center justify-center px-4 py-16">
         <div className="w-full max-w-lg border border-white/10 bg-[#0a0a0c]/90 p-8">
           <ShieldAlert className="w-16 h-16 mx-auto text-red-500 mb-4" />

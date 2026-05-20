@@ -1,238 +1,224 @@
-
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { AlertCircle, Calendar, Clock, MapPin } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Calendar, Clock, MapPin, X, Check, AlertCircle } from "lucide-react";
 
-interface Booking {
+type PlayerBooking = {
   id: string;
-  venue: string;
-  location: string;
-  date: string;
-  time: string;
-  duration: number;
-  status: 'confirmed' | 'pending' | 'cancelled';
-  amount: string;
-}
+  venue_id: string;
+  booking_date?: string | null;
+  date?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  booking_time?: string | null;
+  duration_hours?: number | null;
+  hours?: number | null;
+  stations_booked?: number | null;
+  total_amount?: number | null;
+  amount?: number | null;
+  status?: string | null;
+  booking_code?: string | null;
+  venues?: { name?: string | null; address?: string | null; city?: string | null } | Array<{ name?: string | null; address?: string | null; city?: string | null }> | null;
+};
 
-const mockBookings: Booking[] = [
-  {
-    id: '1',
-    venue: 'GameHub Central',
-    location: 'New York, NY',
-    date: '2025-05-15',
-    time: '14:00',
-    duration: 2,
-    status: 'confirmed',
-    amount: '$30.00'
-  },
-  {
-    id: '2',
-    venue: 'Esports Arena',
-    location: 'Los Angeles, CA',
-    date: '2025-05-18',
-    time: '16:00',
-    duration: 3,
-    status: 'pending',
-    amount: '$60.00'
-  },
-  {
-    id: '3',
-    venue: 'Victory Point Cafe',
-    location: 'San Francisco, CA',
-    date: '2025-04-25',
-    time: '18:00',
-    duration: 2,
-    status: 'cancelled',
-    amount: '$24.00'
-  }
-];
+const getVenue = (booking: PlayerBooking) => Array.isArray(booking.venues) ? booking.venues[0] : booking.venues;
+const getBookingDate = (booking: PlayerBooking) => booking.booking_date ?? booking.date ?? null;
+const getStartTime = (booking: PlayerBooking) => booking.start_time ?? booking.booking_time ?? null;
+const getDuration = (booking: PlayerBooking) => booking.duration_hours ?? booking.hours ?? null;
+const getAmount = (booking: PlayerBooking) => booking.total_amount ?? booking.amount ?? null;
+
+const isUpcomingBooking = (booking: PlayerBooking) => {
+  const status = (booking.status ?? '').toLowerCase();
+  if (status === 'cancelled' || status === 'completed') return false;
+
+  const date = getBookingDate(booking);
+  if (!date) return true;
+
+  const bookingDay = new Date(date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  bookingDay.setHours(0, 0, 0, 0);
+  return bookingDay >= today;
+};
+
+const formatDate = (value: string | null) => {
+  if (!value) return 'Date pending';
+  return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const formatAmount = (amount: number | null) => {
+  if (amount == null) return null;
+  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(amount);
+};
+
+const fetchPlayerBookings = async (userId: string): Promise<PlayerBooking[]> => {
+  const { data, error } = await supabase
+    .from('venue_bookings')
+    .select(`
+      id,
+      venue_id,
+      user_id,
+      booking_date,
+      start_time,
+      end_time,
+      duration_hours,
+      stations_booked,
+      total_amount,
+      status,
+      booking_code,
+      created_at,
+      venues(name, address, city)
+    `)
+    .eq('user_id', userId)
+    .order('booking_date', { ascending: false })
+    .order('start_time', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as unknown as PlayerBooking[];
+};
 
 const PlayerBookings = () => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const { user } = useAuth();
   const navigate = useNavigate();
-  
-  useEffect(() => {
-    // In a real implementation, this would fetch from your API
-    setBookings(mockBookings);
-  }, []);
 
-  const upcomingBookings = bookings.filter(b => b.status === 'confirmed' || b.status === 'pending');
-  const pastBookings = bookings.filter(b => b.status === 'cancelled');
-  
+  const bookingsQuery = useQuery({
+    queryKey: ['player', 'venue-bookings', user?.id],
+    queryFn: () => fetchPlayerBookings(user!.id),
+    enabled: Boolean(user?.id),
+    staleTime: 60_000,
+  });
+
+  const bookings = bookingsQuery.data ?? [];
+  const upcomingBookings = useMemo(() => bookings.filter(isUpcomingBooking), [bookings]);
+  const pastBookings = useMemo(() => bookings.filter((booking) => !isUpcomingBooking(booking)), [bookings]);
+
   const handleFindVenues = () => {
     navigate('/venues/search');
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return <Badge className="bg-green-500">Confirmed</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-500">Pending</Badge>;
-      case 'cancelled':
-        return <Badge className="bg-red-500">Cancelled</Badge>;
-      default:
-        return null;
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return <Check className="h-5 w-5 text-green-500" />;
-      case 'pending':
-        return <AlertCircle className="h-5 w-5 text-yellow-500" />;
-      case 'cancelled':
-        return <X className="h-5 w-5 text-red-500" />;
-      default:
-        return null;
-    }
-  };
-
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold">My Venue Bookings</h2>
-        <Button 
-          className="bg-gaming-purple hover:bg-gaming-purple/80"
-          onClick={handleFindVenues}
-        >
+        <Button className="bg-rose-500 hover:bg-rose-500/80" onClick={handleFindVenues}>
           Find Venues
         </Button>
       </div>
-      
-      <Tabs defaultValue="upcoming">
-        <TabsList>
-          <TabsTrigger value="upcoming">
-            Upcoming ({upcomingBookings.length})
-          </TabsTrigger>
-          <TabsTrigger value="past">
-            Past ({pastBookings.length})
-          </TabsTrigger>
-        </TabsList>
 
-        <TabsContent value="upcoming" className="mt-6">
-          {upcomingBookings.length === 0 ? (
-            <Card className="bg-[#0a0a0c] border-white/10/30">
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <div className="text-gray-400 mb-4">You don't have any upcoming bookings</div>
-                <Button onClick={handleFindVenues}>Find Gaming Venues</Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-              {upcomingBookings.map((booking) => (
-                <Card key={booking.id} className="bg-[#0a0a0c] border-white/10/30">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col md:flex-row justify-between mb-4">
-                      <div>
-                        <div className="flex items-center">
-                          <h3 className="text-xl font-semibold">{booking.venue}</h3>
-                          <div className="ml-3">{getStatusBadge(booking.status)}</div>
-                        </div>
-                        <p className="text-sm text-gray-400">{booking.location}</p>
-                      </div>
-                      <div className="text-lg font-bold mt-2 md:mt-0">{booking.amount}</div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div className="flex items-center">
-                        <Calendar className="h-5 w-5 mr-2 text-gray-400" />
-                        <div>
-                          <div className="text-sm text-gray-400">Date</div>
-                          <div>{new Date(booking.date).toLocaleDateString()}</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center">
-                        <Clock className="h-5 w-5 mr-2 text-gray-400" />
-                        <div>
-                          <div className="text-sm text-gray-400">Time</div>
-                          <div>{booking.time} ({booking.duration} hours)</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="h-5 w-5 mr-2 flex items-center justify-center">
-                          {getStatusIcon(booking.status)}
-                        </div>
-                        <div>
-                          <div className="text-sm text-gray-400">Status</div>
-                          <div>{booking.status}</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button variant="outline" className="flex-1">View Details</Button>
-                      {booking.status !== 'cancelled' && (
-                        <Button variant="outline" className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white">
-                          Cancel Booking
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+      {bookingsQuery.isLoading && (
+        <Card className="bg-[#0a0a0c] border-white/10">
+          <CardContent className="space-y-4 p-6">
+            {[0, 1].map((item) => (
+              <div key={item} className="h-24 animate-pulse border border-white/10 bg-white/[0.03]" />
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {bookingsQuery.isError && (
+        <Card className="bg-[#0a0a0c] border-red-500/20">
+          <CardContent className="flex items-start gap-4 p-6">
+            <AlertCircle className="mt-1 h-5 w-5 text-red-400" />
+            <div>
+              <h3 className="font-bold text-white">Could not load bookings</h3>
+              <p className="mt-1 text-sm text-gray-400">
+                Your bookings are not being hidden as empty; the booking data source returned an error. Please try again.
+              </p>
             </div>
-          )}
-        </TabsContent>
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="past" className="mt-6">
-          <Card className="bg-[#0a0a0c] border-white/10/30">
-            <CardContent className="p-6">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-zinc-800/10">
-                    <TableHead>Venue</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pastBookings.length > 0 ? (
-                    pastBookings.map((booking) => (
-                      <TableRow key={booking.id} className="hover:bg-zinc-800/5">
-                        <TableCell>
-                          <div className="font-medium">{booking.venue}</div>
-                          <div className="text-sm text-gray-400">{booking.location}</div>
-                        </TableCell>
-                        <TableCell>{new Date(booking.date).toLocaleDateString()}</TableCell>
-                        <TableCell>{booking.time}</TableCell>
-                        <TableCell>{booking.duration} hours</TableCell>
-                        <TableCell>{booking.amount}</TableCell>
-                        <TableCell>{getStatusBadge(booking.status)}</TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-400">
-                        No past bookings found
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {!bookingsQuery.isLoading && !bookingsQuery.isError && bookings.length === 0 && (
+        <Card className="bg-[#0a0a0c] border-white/10">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-20 h-20 mb-6 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+              <Calendar className="h-10 w-10 text-rose-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">No Bookings Yet</h3>
+            <p className="text-gray-400 max-w-md mb-6">
+              You haven't booked any gaming venues yet. Discover and book esports arenas, LAN centers, and gaming cafes near you.
+            </p>
+            <Button onClick={handleFindVenues}>Find Gaming Venues</Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {upcomingBookings.length > 0 && (
+        <BookingSection title={`Upcoming (${upcomingBookings.length})`} bookings={upcomingBookings} />
+      )}
+
+      {pastBookings.length > 0 && (
+        <BookingSection title={`Past (${pastBookings.length})`} bookings={pastBookings} muted />
+      )}
     </div>
   );
 };
 
-export default PlayerBookings;
+const BookingSection = ({ title, bookings, muted = false }: { title: string; bookings: PlayerBooking[]; muted?: boolean }) => (
+  <section className="space-y-3">
+    <h3 className="font-mono text-xs font-bold uppercase tracking-[0.25em] text-zinc-500">{title}</h3>
+    <div className="grid gap-4">
+      {bookings.map((booking) => (
+        <BookingCard key={booking.id} booking={booking} muted={muted} />
+      ))}
+    </div>
+  </section>
+);
 
+const BookingCard = ({ booking, muted }: { booking: PlayerBooking; muted: boolean }) => {
+  const venue = getVenue(booking);
+  const date = getBookingDate(booking);
+  const start = getStartTime(booking);
+  const amount = formatAmount(getAmount(booking));
+  const status = booking.status ?? 'pending';
+
+  return (
+    <Card className="bg-[#0a0a0c] border-white/10">
+      <CardContent className="p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <h4 className="text-lg font-bold text-white">{venue?.name ?? 'Gaming venue'}</h4>
+              <Badge className={muted ? 'bg-zinc-700 text-zinc-200' : 'bg-rose-500/15 text-rose-300 border border-rose-500/20'}>
+                {status}
+              </Badge>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm text-zinc-400">
+              <span className="inline-flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-zinc-500" />
+                {formatDate(date)}
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Clock className="h-4 w-4 text-zinc-500" />
+                {start ?? 'Time pending'}{booking.end_time ? ` - ${booking.end_time}` : ''}
+              </span>
+              {venue?.city || venue?.address ? (
+                <span className="inline-flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-zinc-500" />
+                  {[venue.address, venue.city].filter(Boolean).join(', ')}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div className="text-left md:text-right">
+            {amount && <p className="text-lg font-black text-white">{amount}</p>}
+            {getDuration(booking) != null && (
+              <p className="mt-1 text-xs uppercase tracking-[0.2em] text-zinc-500">{getDuration(booking)} hour booking</p>
+            )}
+            {booking.booking_code && (
+              <p className="mt-2 font-mono text-xs text-rose-300">Code {booking.booking_code}</p>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default PlayerBookings;

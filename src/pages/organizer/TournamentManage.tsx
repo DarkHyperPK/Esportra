@@ -228,7 +228,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-esports-dark text-white flex flex-col items-center justify-center">
+        <div className="min-h-screen bg-transparent text-white flex flex-col items-center justify-center">
           <h1 className="text-2xl font-bold mb-4 text-red-400">Something went wrong</h1>
           <div className="mb-2 text-gray-300">{this.state.error?.message || 'An unexpected error occurred.'}</div>
           <button

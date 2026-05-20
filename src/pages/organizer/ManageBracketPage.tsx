@@ -442,7 +442,7 @@ const ManageBracketPage = () => {
 
     if (loading || authLoading) {
         return (
-            <div className="min-h-screen bg-esports-dark flex items-center justify-center">
+            <div className="min-h-screen bg-transparent flex items-center justify-center">
                 <div className="text-white">Loading...</div>
             </div>
         );
@@ -450,7 +450,7 @@ const ManageBracketPage = () => {
 
     if (!tournament || !versionId) {
         return (
-            <div className="min-h-screen bg-esports-dark flex flex-col items-center justify-center text-white">
+            <div className="min-h-screen bg-transparent flex flex-col items-center justify-center text-white">
                 <p className="text-gray-400 mb-4">Bracket not found</p>
                 <Button onClick={() => navigate(-1)} variant="outline">
                     Go Back

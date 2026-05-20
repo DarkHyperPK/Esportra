@@ -104,7 +104,7 @@ const VenueSearchV2 = () => {
   const hasActiveFilters = !!selectedCountry || !!selectedCity || nearMeActive || selectedAmenities.length > 0;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col">
+    <div className="min-h-screen bg-transparent text-white flex flex-col">
       <SEO
         title="Find Gaming Venues"
         description="Discover gaming venues, LAN centers, and esports arenas near you. Book stations and join local tournaments."

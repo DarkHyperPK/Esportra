@@ -103,7 +103,7 @@ const Callback = () => {
   }, [navigate, toast]);
 
   return (
-    <div className="min-h-screen bg-esports-dark text-white flex flex-col justify-center items-center">
+    <div className="min-h-screen bg-transparent text-white flex flex-col justify-center items-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gaming-purple mb-4"></div>
         <h2 className="text-xl font-semibold">Completing authentication...</h2>

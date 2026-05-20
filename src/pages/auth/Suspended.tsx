@@ -18,7 +18,7 @@ const SuspendedPage = () => {
     const type = state.type || profile?.suspension_type || "Standard Suspension";
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-[#050505]">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-transparent">
             <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}

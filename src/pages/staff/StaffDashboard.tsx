@@ -125,7 +125,7 @@ const StaffDashboard = () => {
 
   if (staffOrgs.length === 0) {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center">
+      <div className="min-h-screen bg-transparent text-white flex items-center justify-center">
         <div className="text-center max-w-md px-6">
           <Shield className="h-16 w-16 mx-auto mb-4 text-zinc-700" />
           <h2 className="text-2xl font-bold mb-2">No Active Staff Roles</h2>
@@ -147,7 +147,7 @@ const StaffDashboard = () => {
   const roleBadge = ROLE_BADGES[selectedOrg?.role || ""] || { label: selectedOrg?.role, color: "text-zinc-400 bg-zinc-500/10 border-zinc-500/30" };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex flex-col selection:bg-amber-500/30">
+    <div className="min-h-screen bg-transparent text-white flex flex-col selection:bg-amber-500/30">
       {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]" />

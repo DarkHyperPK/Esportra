@@ -81,7 +81,7 @@ const CreationModeHub = ({ onSelect }: CreationModeHubProps) => {
   const media = useHubMedia();
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#050505]">
+    <div className="flex min-h-screen flex-col bg-transparent">
       {/* Top strip */}
       <div className="flex items-center justify-center border-b border-white/[0.05] px-8 py-4">
         <p className="font-body text-[11px] font-medium uppercase tracking-[0.3em] text-zinc-400">

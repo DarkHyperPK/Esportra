@@ -145,13 +145,13 @@ const VenueDetailsV2 = () => {
 
   // ── Loading skeleton ──────────────────────────────────────────────
   if (loading) return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+    <div className="min-h-screen bg-transparent flex items-center justify-center">
       <div className="w-12 h-12 border-3 border-rose-500/30 border-t-rose-500 rounded-full animate-spin" />
     </div>
   );
 
   if (!venue) return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+    <div className="min-h-screen bg-transparent flex items-center justify-center">
       <div className="text-center">
         <h2 className="text-xl font-semibold text-white mb-2">Venue not found</h2>
         <p className="text-zinc-400 mb-4">This venue may have been removed.</p>
@@ -167,7 +167,7 @@ const VenueDetailsV2 = () => {
   const isOwner = user?.id === venue.owner_id;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="min-h-screen bg-transparent text-white">
       <SEO
         title={venue.name}
         description={venue.description || `${venue.name} — Gaming venue on Esportra`}

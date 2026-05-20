@@ -510,7 +510,7 @@ const RaiseDispute = () => {
   if (loading && disputeType === 'tournament') {
     return (
       <PageTransition>
-        <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+        <div className="min-h-screen bg-transparent flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin text-red-400 mx-auto mb-4" />
             <p className="text-white/70">Loading tournaments...</p>
@@ -522,7 +522,7 @@ const RaiseDispute = () => {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-[#0a0a0f] py-8 px-4">
+      <div className="min-h-screen bg-transparent py-8 px-4">
         <div className="max-w-4xl mx-auto">
           <Card className="bg-[#12121a] border border-white/10 shadow-2xl">
             <CardHeader className="space-y-3">

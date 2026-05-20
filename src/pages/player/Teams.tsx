@@ -1174,7 +1174,7 @@ const TeamsPage = () => {
   // Check if user can access teams (only players can create/manage teams)
   if (!canCreateTeams) {
     return (
-      <div className="min-h-screen bg-esports-dark flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
           <div className="w-16 h-16 mx-auto mb-4 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
             <Trophy className="h-8 w-8 text-white" />
@@ -1239,7 +1239,7 @@ const TeamsPage = () => {
   if (!currentTeam) {
     if (refreshingAfterAccept) {
       return (
-        <div className="min-h-screen bg-esports-dark flex items-center justify-center text-white">
+        <div className="min-h-screen bg-transparent flex items-center justify-center text-white">
           <div className="text-center">
             <div className="w-16 h-16 mx-auto mb-4 border-2 border-esports-accent border-t-transparent rounded-full animate-spin" />
             <div className="text-esports-secondary">Updating your team…</div>

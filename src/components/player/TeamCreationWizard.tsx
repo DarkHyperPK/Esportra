@@ -82,7 +82,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState(2);
-  const [showWizard, setShowWizard] = useState(false);
+  const [showWizard, setShowWizard] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editName, setEditName] = useState('');
   const [editTag, setEditTag] = useState('');
@@ -183,8 +183,8 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
             role: m.role,
             verified: m.is_verified || m.profiles?.is_verified,
           })),
-          tournament_wins: 0,
-          total_matches: 0,
+          tournament_wins: ownedTeam.tournament_wins ?? 0,
+          total_matches: ownedTeam.total_matches ?? 0,
         });
       } else {
         setUserTeam(null);
@@ -451,13 +451,6 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   if (userTeam) {
     return (
       <div className="bg-esports-dark rounded-lg p-6">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-          <div className="absolute top-40 left-40 w-80 h-80 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
-        </div>
-
         {/* Glassy Header */}
         <div className="relative z-10 backdrop-blur-xl bg-white/10 border border-white/20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -467,11 +460,11 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                   <Users className="h-8 w-8 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+                  <h1 className="text-4xl lg:text-5xl font-bold text-white">
                     My Team
                   </h1>
                   <p className="text-lg text-gray-300 mt-2 max-w-2xl">
-                    Manage your esports team and dominate across multiple games
+                    Manage your team members and game rosters
                   </p>
                 </div>
               </div>
@@ -567,9 +560,6 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                 <div className="flex items-center gap-3 mb-3">
                   <Badge className="bg-rose-500/10 text-rose-400 border border-rose-500/20 text-sm">
                     [{userTeam.tag}]
-                  </Badge>
-                  <Badge variant="outline" className="border-green-500/50 text-green-400 bg-green-500/10 text-sm">
-                    Active
                   </Badge>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -669,7 +659,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
     <div className="w-full">
 
       {/* Team Creation Wizard (basic info only; games are managed via rosters) */}
-      <Dialog open={true} onOpenChange={onClose}>
+      <Dialog open={showWizard} onOpenChange={(open) => { if (!open) { setShowWizard(false); onClose(); } }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-esports-dark border border-gray-600/30">
           <DialogHeader>
             <DialogTitle className="text-3xl font-bold text-esports-primary">

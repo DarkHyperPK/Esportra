@@ -166,7 +166,7 @@ const EditTournament = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-esports-dark flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-gaming-purple animate-spin" />
       </div>
     );

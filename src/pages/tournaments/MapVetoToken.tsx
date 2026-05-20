@@ -57,7 +57,7 @@ const MapVetoToken: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <Card className="bg-gray-900 border-gray-800">
           <CardContent className="p-8">
             <div className="flex items-center gap-3">
@@ -72,7 +72,7 @@ const MapVetoToken: React.FC = () => {
 
   if (error || !vetoData) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
         <Card className="bg-gray-900 border-gray-800 max-w-md w-full">
           <CardContent className="p-8 text-center">
             <h2 className="text-xl font-bold text-white mb-2">Error</h2>
@@ -92,7 +92,7 @@ const MapVetoToken: React.FC = () => {
   const { veto, match, tournament, teamId, isTeam1 } = vetoData;
 
   return (
-    <div className="min-h-screen bg-gray-950 p-4">
+    <div className="min-h-screen bg-transparent p-4">
       <div className="max-w-6xl mx-auto">
         <MapVeto
           matchId={veto.match_id}

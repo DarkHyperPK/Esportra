@@ -93,7 +93,7 @@ const tabs = [
   { value: 'advanced', label: 'Advanced' },
 ];
 
-const textInput = 'rounded-none border-white/10 bg-black/35 text-white placeholder:text-zinc-600 focus:border-rose-500';
+const textInput = 'rounded-none border-white/10 bg-[#0a0a0c] text-white placeholder:text-zinc-600 focus:border-rose-500';
 
 const OrganizationSettings: React.FC = () => {
   const { user, profile } = useAuth();
@@ -393,7 +393,6 @@ const OrganizationSettings: React.FC = () => {
   }
 
   const ownerName = profile?.full_name || profile?.username || 'Organizer';
-  const visibleSocialLinks = Object.entries(socialLinks).filter(([, value]) => value?.trim()).slice(0, 4);
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-4">
@@ -401,7 +400,7 @@ const OrganizationSettings: React.FC = () => {
         <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_220px]">
           <div className="min-w-0 p-4 sm:p-5">
             <div
-              className="relative aspect-[5/1] min-h-[128px] overflow-hidden border border-white/10 bg-black/40 bg-cover bg-center"
+              className="relative aspect-[5/1] min-h-[128px] overflow-hidden border border-white/10 bg-[#0a0a0c] bg-cover bg-center"
               style={bannerUrl ? { backgroundImage: `linear-gradient(to top, rgba(5,5,5,0.82), rgba(5,5,5,0.1)), url(${bannerUrl})` } : undefined}
             >
               {!bannerUrl ? (
@@ -433,25 +432,9 @@ const OrganizationSettings: React.FC = () => {
                     </div>
                     <p className="mt-2 text-sm text-zinc-500">@{slug || 'your-slug'} / {ownerName}</p>
                   </div>
-                  {visibleSocialLinks.length ? (
-                    <div className="flex flex-wrap gap-2 xl:justify-end">
-                      {visibleSocialLinks.map(([key, value]) => (
-                        <a
-                          key={key}
-                          href={value.startsWith('http') ? value : `https://${value}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 border border-white/10 bg-black px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-300 hover:border-rose-500/50 hover:text-white"
-                        >
-                          {key}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
 
-                <div className="mt-4 border border-white/10 bg-black/35 p-3">
+                <div className="mt-4 border border-white/10 bg-[#0a0a0c] p-3">
                   <div className="mb-2 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-400">Bio</div>
                   {description ? (
                     <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-300">{description}</p>
@@ -544,7 +527,7 @@ const OrganizationSettings: React.FC = () => {
 
             <CommandPanel>
               <div
-                className="flex h-32 items-center justify-center border border-white/10 bg-black/40 bg-cover bg-center"
+                className="flex h-32 items-center justify-center border border-white/10 bg-[#0a0a0c] bg-cover bg-center"
                 style={bannerUrl ? { backgroundImage: `linear-gradient(to top, rgba(5,5,5,0.72), rgba(5,5,5,0.08)), url(${bannerUrl})` } : undefined}
               >
                 {!bannerUrl ? <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">1200 x 300 recommended</span> : null}

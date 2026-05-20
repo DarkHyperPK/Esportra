@@ -88,6 +88,7 @@ interface FetchGameDataOptions {
 
 interface UseRawgGameOptions extends FetchGameDataOptions {
     enabled?: boolean;
+    enableCarousel?: boolean;
 }
 
 export async function fetchGameData(
@@ -190,6 +191,7 @@ export async function fetchGameData(
 export const useRawgGame = (gameName: string, options?: UseRawgGameOptions) => {
     const enabled = options?.enabled ?? true;
     const skipRawg = options?.skipRawg ?? false;
+    const enableCarousel = options?.enableCarousel ?? true;
     // Synchronous cache hit — no loading flash on revisit
     const cacheKey = gameName.trim().toLowerCase();
     const cached = enabled ? gameCache.get(cacheKey) : undefined;
@@ -243,6 +245,7 @@ export const useRawgGame = (gameName: string, options?: UseRawgGameOptions) => {
     const maxLen = Math.max(data.screenshots?.length || 0, data.rawgScreenshots?.length || 0);
 
     useEffect(() => {
+        if (!enableCarousel) return;
         if (maxLen <= 1) return;
 
         if (carouselTimeout.current) clearTimeout(carouselTimeout.current);
@@ -257,7 +260,7 @@ export const useRawgGame = (gameName: string, options?: UseRawgGameOptions) => {
         return () => {
             if (carouselTimeout.current) clearTimeout(carouselTimeout.current);
         };
-    }, [data.carouselIndex, maxLen]);
+    }, [data.carouselIndex, enableCarousel, maxLen]);
 
     return data;
 };

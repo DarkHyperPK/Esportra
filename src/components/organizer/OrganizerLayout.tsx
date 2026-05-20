@@ -51,7 +51,7 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
   const pageTitle = PAGE_TITLES[location.pathname] || 'Organizer';
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex">
+    <div className="min-h-screen bg-transparent text-white flex">
       {/* Left Sidebar */}
       <aside className="w-64 flex-shrink-0 bg-[#0a0a0a] border-r border-[#2a2a2a] flex flex-col z-50">
         {/* Logo / Brand */}
@@ -107,7 +107,7 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
-        <header className="h-14 flex items-center justify-between px-8 border-b border-[#2a2a2a] bg-[#050505] flex-shrink-0">
+        <header className="h-14 flex items-center justify-between px-8 border-b border-[#2a2a2a] bg-[#050505]/85 backdrop-blur-xl flex-shrink-0">
           <h1 className="text-sm font-semibold text-white tracking-wide">{pageTitle}</h1>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
