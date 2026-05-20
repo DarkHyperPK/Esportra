@@ -7,16 +7,6 @@ import React from 'react'
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './lib/queryClient';
-import { applyLowFxAttribute } from './hooks/useLowFx';
-
-// ── Low-FX detection (runs BEFORE React mounts) ─────────────────────────────
-// Detects software rendering / low-end hardware and sets html[data-low-fx]
-// so the first paint already has expensive effects degraded.
-try {
-  applyLowFxAttribute();
-} catch {
-  // Detection must never block boot.
-}
 
 // ── Sentry Error Tracking ────────────────────────────────────────────────────
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;

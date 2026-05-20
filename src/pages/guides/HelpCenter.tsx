@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { useLowFx } from '@/hooks/useLowFx';
 
 /* ─── Guide Card Data ────────────────────────────────────────── */
 interface GuideCard {
@@ -81,18 +80,12 @@ const quickLinks: QuickLink[] = [
 
 /* ─── Page Component ─────────────────────────────────────────── */
 const HelpCenter = () => {
-  const isLowFx = useLowFx();
-
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col font-sans selection:bg-rose-500/30">
       {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none">
-        {!isLowFx && (
-          <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-rose-900/10 blur-[150px] rounded-full mix-blend-screen" />
-        )}
-        {!isLowFx && (
-          <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20 brightness-100 contrast-150" />
-        )}
+        <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-rose-900/10 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20 brightness-100 contrast-150" />
       </div>
 
       <main className="relative z-10 flex-grow pt-32 pb-20 px-4">
