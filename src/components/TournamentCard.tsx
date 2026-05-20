@@ -284,7 +284,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
             <div className="flex gap-2 w-full pt-2">
               <Button
                 onClick={(e) => { e.stopPropagation(); navigate(`/organizer/tournament/${slug || id}`); }}
-                className="flex-1 bg-white text-black hover:bg-gray-200 font-bold"
+                className="flex-1 bg-white text-black hover:bg-rose-500 hover:text-white transition-colors duration-300 font-bold"
               >
                 Manage
               </Button>
