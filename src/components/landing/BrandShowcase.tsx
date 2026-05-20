@@ -126,8 +126,8 @@ const BrandShowcase = () => {
 
           {/* CTA */}
           <div className="pt-2 text-center">
-            <JackButton as={Link} to="/partners" size="md">
-              Become a Partner
+            <JackButton as={Link} to="/brand" size="md">
+              Explore Brand Solutions
               <ArrowRight className="w-4 h-4" />
             </JackButton>
           </div>
