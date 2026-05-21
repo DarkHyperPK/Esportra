@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Mail, Search, Users, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Eye, Loader2, Search, Users } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { sendEmail } from "@/hooks/useEmail";
 import { fetchMeRoles, getOrganizationId } from "@/lib/meRoles";
 import { Input } from "@/components/ui/input";
 import { CommandButton, CommandEmptyState, CommandPanel, CommandToolbar } from "@/components/management/CommandSurface";
@@ -11,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 interface Participant {
   id: string;
+  tournamentId: string;
   username: string;
   captainName: string;
   tournament: string;
@@ -56,7 +56,7 @@ const statusClass = (status: string) => {
 
 const ParticipantsList = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
+  const navigate = useNavigate();
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -81,12 +81,19 @@ const ParticipantsList = () => {
         const tournamentMap = Object.fromEntries(tournaments.map((t: any) => [t.id, t.name]));
         const tournamentSlugMap = Object.fromEntries(tournaments.map((t: any) => [t.id, t.slug]));
         const tournamentFormatMap = Object.fromEntries(tournaments.map((t: any) => [t.id, (t.team_size || 1) > 1]));
-        const allRegistrations: any[] = [];
+        const registrationGroups = await Promise.all(
+          tournaments.map(async (tournament: any) => {
+            const registrations = normalizeRows(
+              await apiClient.get<any>(`/api/tournaments/${tournament.id}/participants`).catch(() => []),
+            );
 
-        for (const tournament of tournaments) {
-          const registrations = normalizeRows(await apiClient.get<any>(`/api/tournaments/${tournament.id}/participants`).catch(() => []));
-          allRegistrations.push(...registrations);
-        }
+            return registrations.map((registration: any) => ({
+              ...registration,
+              tournament_id: registration.tournament_id || tournament.id,
+            }));
+          }),
+        );
+        const allRegistrations = registrationGroups.flat();
 
         const teamIds = [...new Set(allRegistrations.map((r) => r.team_id).filter(Boolean))];
         const userIds = [...new Set(allRegistrations.map((r) => r.user_id).filter(Boolean))];
@@ -115,6 +122,7 @@ const ParticipantsList = () => {
 
           return {
             id: reg.id,
+            tournamentId: reg.tournament_id,
             username: isTeamReg ? team.name || reg.team_name || "Unknown Team" : profile.username || profile.full_name || "Unknown",
             captainName: isTeamReg ? team.owner?.username || team.owner?.full_name || "Unknown Captain" : profile.username || profile.full_name || "Unknown",
             email: isTeamReg ? team.owner?.email || "" : profile.email || "",
@@ -151,28 +159,10 @@ const ParticipantsList = () => {
     [participants, searchTerm],
   );
 
-  const handleSendReminder = async (participant: Participant) => {
-    if (!participant.email) {
-      toast({ title: "No email found", description: "Cannot send reminder to this participant.", variant: "destructive" });
-      return;
-    }
+  const openParticipantDetails = (participant: Participant) => {
+    if (!participant.tournamentSlug) return;
 
-    try {
-      const { success, error } = await sendEmail({
-        type: "CheckinReminder",
-        email: participant.email,
-        data: {
-          tournamentName: participant.tournament,
-          username: participant.username,
-          tournamentUrl: `${window.location.origin}/tournaments/${participant.tournamentSlug || ""}`,
-        },
-      });
-
-      if (!success) throw new Error(error);
-      toast({ title: "Reminder sent", description: `Email sent to ${participant.username}.` });
-    } catch (err: any) {
-      toast({ title: "Failed to send", description: err.message || "Error sending email reminder.", variant: "destructive" });
-    }
+    navigate(`/organizer/tournament/${participant.tournamentSlug}?tab=participants&participant=${participant.id}`);
   };
 
   return (
@@ -226,11 +216,15 @@ const ParticipantsList = () => {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex justify-end gap-2">
-                        <CommandButton size="sm" variant="ghost" onClick={() => handleSendReminder(participant)} aria-label={`Send reminder to ${participant.username}`}>
-                          <Mail className="h-4 w-4" />
-                        </CommandButton>
-                        <CommandButton size="sm" variant="danger" aria-label={`Remove ${participant.username}`}>
-                          <X className="h-4 w-4" />
+                        <CommandButton
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => openParticipantDetails(participant)}
+                          disabled={!participant.tournamentSlug}
+                          aria-label={`View ${participant.username} in ${participant.tournament}`}
+                        >
+                          <Eye className="h-4 w-4" />
+                          View details
                         </CommandButton>
                       </div>
                     </td>

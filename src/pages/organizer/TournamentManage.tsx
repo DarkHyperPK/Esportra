@@ -372,6 +372,7 @@ const TournamentDashboard = () => {
   const [draftInviteEmails, setDraftInviteEmails] = useState<string[]>([]);
   const [csvImportText, setCsvImportText] = useState('');
   const [showCsvImport, setShowCsvImport] = useState(false);
+  const openedParticipantParamRef = React.useRef<string | null>(null);
 
   const {
     invitations: invitationQuery,
@@ -1509,6 +1510,19 @@ const TournamentDashboard = () => {
     if (!slug) return;
     navigate(`/tournaments/edit/${slug}`);
   };
+
+  useEffect(() => {
+    const participantId = searchParams.get('participant');
+    if (activeTab !== 'participants' || !participantId || openedParticipantParamRef.current === participantId || participants.length === 0) {
+      return;
+    }
+
+    const participant = participants.find((item) => item.id === participantId);
+    if (!participant) return;
+
+    openedParticipantParamRef.current = participantId;
+    void handleTeamClick(participant);
+  }, [activeTab, participants, searchParams]);
 
   return (
     <div className="esportra-ambient-page relative min-h-screen overflow-hidden font-sans text-white">
