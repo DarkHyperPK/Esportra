@@ -77,62 +77,20 @@ const ParticipantsList = () => {
           return;
         }
 
-        const tournaments = normalizeRows(await apiClient.get<any>(`/api/organizations/${org.id}/tournaments`));
-        const tournamentMap = Object.fromEntries(tournaments.map((t: any) => [t.id, t.name]));
-        const tournamentSlugMap = Object.fromEntries(tournaments.map((t: any) => [t.id, t.slug]));
-        const tournamentFormatMap = Object.fromEntries(tournaments.map((t: any) => [t.id, (t.team_size || 1) > 1]));
-        const registrationGroups = await Promise.all(
-          tournaments.map(async (tournament: any) => {
-            const registrations = normalizeRows(
-              await apiClient.get<any>(`/api/tournaments/${tournament.id}/participants`).catch(() => []),
-            );
+        const response = await apiClient.get<any>(`/api/organizations/${org.id}/participants?limit=500`);
+        const allRegistrations = normalizeRows(response);
 
-            return registrations.map((registration: any) => ({
-              ...registration,
-              tournament_id: registration.tournament_id || tournament.id,
-            }));
-          }),
-        );
-        const allRegistrations = registrationGroups.flat();
-
-        const teamIds = [...new Set(allRegistrations.map((r) => r.team_id).filter(Boolean))];
-        const userIds = [...new Set(allRegistrations.map((r) => r.user_id).filter(Boolean))];
-        let teamsMap: Record<string, any> = {};
-        let profilesMap: Record<string, any> = {};
-
-        if (teamIds.length > 0) {
-          const teams = normalizeRows(await apiClient.get<any>(`/api/teams?ids=${teamIds.join(",")}`).catch(() => []));
-          const ownerIds = [...new Set(teams.map((t: any) => t.owner_id).filter(Boolean))];
-          const ownerProfiles = ownerIds.length > 0
-            ? normalizeRows(await apiClient.get<any>(`/api/profiles/search?ids=${ownerIds.join(",")}`).catch(() => []))
-            : [];
-          const ownerMap = Object.fromEntries(ownerProfiles.map((p: any) => [p.id, p]));
-          teamsMap = Object.fromEntries(teams.map((t: any) => [t.id, { ...t, owner: ownerMap[t.owner_id] || {} }]));
-        }
-
-        if (userIds.length > 0) {
-          const profiles = normalizeRows(await apiClient.get<any>(`/api/profiles/search?ids=${userIds.join(",")}`).catch(() => []));
-          profilesMap = Object.fromEntries(profiles.map((p: any) => [p.id, p]));
-        }
-
-        const mapped = allRegistrations.map((reg: any) => {
-          const team = teamsMap[reg.team_id] || {};
-          const profile = profilesMap[reg.user_id] || {};
-          const isTeamReg = !!reg.team_id;
-
-          return {
-            id: reg.id,
-            tournamentId: reg.tournament_id,
-            username: isTeamReg ? team.name || reg.team_name || "Unknown Team" : profile.username || profile.full_name || "Unknown",
-            captainName: isTeamReg ? team.owner?.username || team.owner?.full_name || "Unknown Captain" : profile.username || profile.full_name || "Unknown",
-            email: isTeamReg ? team.owner?.email || "" : profile.email || "",
-            tournament: tournamentMap[reg.tournament_id] || "Unknown",
-            registeredAt: reg.created_at,
-            status: reg.status === "approved" ? "confirmed" : reg.status || "pending",
-            isTeamFormat: tournamentFormatMap[reg.tournament_id] || false,
-            tournamentSlug: tournamentSlugMap[reg.tournament_id],
-          };
-        });
+        const mapped = allRegistrations.map((reg: any) => ({
+          id: reg.id,
+          tournamentId: reg.tournament_id,
+          username: reg.display_name || reg.team_name || reg.solo_username || reg.solo_full_name || "Unknown Participant",
+          captainName: reg.captain_name || reg.solo_username || reg.solo_full_name || "Unknown Captain",
+          tournament: reg.tournament_name || "Unknown",
+          registeredAt: reg.registered_at || reg.created_at,
+          status: reg.status === "approved" ? "confirmed" : reg.status || "pending",
+          isTeamFormat: (reg.tournament_team_size || 1) > 1 || reg.participant_type === "team",
+          tournamentSlug: reg.tournament_slug,
+        }));
 
         if (mounted) setParticipants(mapped);
       } catch (err) {

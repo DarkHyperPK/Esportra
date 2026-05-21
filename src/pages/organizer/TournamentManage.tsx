@@ -1435,6 +1435,19 @@ const TournamentDashboard = () => {
     }
   }, [tournament?.game]);
 
+  useEffect(() => {
+    const participantId = searchParams.get('participant');
+    if (activeTab !== 'participants' || !participantId || openedParticipantParamRef.current === participantId || participants.length === 0) {
+      return;
+    }
+
+    const participant = participants.find((item) => item.id === participantId);
+    if (!participant) return;
+
+    openedParticipantParamRef.current = participantId;
+    void handleTeamClick(participant);
+  }, [activeTab, participants, searchParams]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-transparent text-white">
@@ -1510,19 +1523,6 @@ const TournamentDashboard = () => {
     if (!slug) return;
     navigate(`/tournaments/edit/${slug}`);
   };
-
-  useEffect(() => {
-    const participantId = searchParams.get('participant');
-    if (activeTab !== 'participants' || !participantId || openedParticipantParamRef.current === participantId || participants.length === 0) {
-      return;
-    }
-
-    const participant = participants.find((item) => item.id === participantId);
-    if (!participant) return;
-
-    openedParticipantParamRef.current = participantId;
-    void handleTeamClick(participant);
-  }, [activeTab, participants, searchParams]);
 
   return (
     <div className="esportra-ambient-page relative min-h-screen overflow-hidden font-sans text-white">
