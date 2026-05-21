@@ -79,6 +79,26 @@ interface EsportsGamesData {
 
 const esportsGames = esportsGamesData as EsportsGamesData;
 
+const getPublicGroupCount = (stage: any): number => {
+  const config = typeof stage?.config === 'string'
+    ? (() => {
+        try { return JSON.parse(stage.config); } catch { return {}; }
+      })()
+    : (stage?.config ?? {});
+  const count = Number(config.group_count ?? config.swiss_groups ?? 0);
+  return Number.isFinite(count) && count > 1 ? count : 0;
+};
+
+const groupName = (index: number) => {
+  let name = '';
+  let n = index;
+  do {
+    name = String.fromCharCode(65 + (n % 26)) + name;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return `Group ${name}`;
+};
+
 interface DatabaseTournament {
   id: string;
   name: string;
@@ -218,8 +238,13 @@ const TournamentDetails = () => {
   const [selectedStageId, setSelectedStageId] = useState<string | null>(requestedBRStageId);
 
   // Multi-group stage detection — check first stage for groups
-  const firstBRStageId = isBR && activeTab === 'leaderboard' && stages.length > 0 ? stages[0].id : null;
+  const firstBRStageId = isBR && (activeTab === 'leaderboard' || activeTab === 'groups') && stages.length > 0 ? stages[0].id : null;
   const { hasGroups: brHasGroups, isLoading: brGroupsLoading } = useBRGroupStage(firstBRStageId);
+  const publicGroupStages = useMemo(
+    () => stages.filter((stage: any) => isBR || getPublicGroupCount(stage) > 0),
+    [stages, isBR],
+  );
+  const hasPublicGroups = (isBR && brHasGroups) || (!isBR && publicGroupStages.length > 0);
 
   // Auto-select first stage when stages load
   useEffect(() => {
@@ -857,10 +882,12 @@ const TournamentDetails = () => {
           <div className="container mx-auto px-4">
             <div className="sticky top-4 z-40 bg-[#0a0a0c]/90 border border-white/10 p-2 mb-12 mx-auto max-w-3xl">
               <TabsList className="bg-transparent h-auto p-0 w-full flex justify-between">
-                {(isBR
-                  ? ['Overview', terminology.competitorLabelPlural, 'Leaderboard', 'Rules']
-                  : ['Overview', terminology.competitorLabelPlural, 'Brackets', 'Stages', 'Rules']
-                ).map((tab) => (
+                {(() => {
+                  const tabs = isBR
+                    ? ['Overview', terminology.competitorLabelPlural, ...(hasPublicGroups ? ['Groups'] : []), 'Leaderboard', 'Rules']
+                    : ['Overview', terminology.competitorLabelPlural, ...(hasPublicGroups ? ['Groups'] : []), 'Brackets', 'Stages', 'Rules'];
+                  return tabs;
+                })().map((tab) => (
                   <TabsTrigger
                     key={tab}
                     value={tab.toLowerCase()}
@@ -886,6 +913,41 @@ const TournamentDetails = () => {
           </TabsContent>
 
           {isBR ? (
+            <>
+            {hasPublicGroups && (
+              <TabsContent value="groups">
+                <div className="container mx-auto px-4 space-y-6">
+                  {stages.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {stages.map((stage: any) => (
+                        <button
+                          key={stage.id}
+                          type="button"
+                          onClick={() => setSelectedStageId(stage.id)}
+                          className={cn(
+                            'px-4 py-2 text-sm font-medium transition-all whitespace-nowrap border',
+                            selectedStageId === stage.id
+                              ? 'bg-white/10 border-white/20 text-white'
+                              : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white hover:bg-white/[0.06]'
+                          )}
+                        >
+                          {stage.name || `Stage ${stage.stage_order + 1}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedStageId && (
+                    <BRGroupStageView
+                      stageId={selectedStageId}
+                      qualificationCount={(stages.find((s: any) => s.id === selectedStageId) as any)?.advancement_count}
+                      tournamentSlug={slug}
+                    />
+                  )}
+                </div>
+              </TabsContent>
+            )}
+
             <TabsContent value="leaderboard">
               <div className="container mx-auto px-4 space-y-6">
                 {brHasGroups ? (
@@ -990,8 +1052,57 @@ const TournamentDetails = () => {
                 )}
               </div>
             </TabsContent>
+            </>
           ) : (
             <>
+              {hasPublicGroups && (
+                <TabsContent value="groups">
+                  <div className="container mx-auto px-4">
+                    <div className="border border-white/10 bg-black/70 p-6 md:p-8">
+                      <div className="mb-6 flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-rose-500/40 bg-rose-500/10">
+                          <Layers className="h-5 w-5 text-rose-400" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-rose-400">Public Groups</p>
+                          <h2 className="mt-1 text-2xl font-black uppercase text-white">Group Stage Listing</h2>
+                          <p className="mt-2 max-w-2xl text-sm text-zinc-400">
+                            Group assignments and standings appear here when the organizer publishes bracket data for grouped stages.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-5">
+                        {publicGroupStages.map((stage: any) => {
+                          const count = getPublicGroupCount(stage);
+                          return (
+                            <section key={stage.id} className="border border-white/10 bg-white/[0.03] p-5">
+                              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                  <h3 className="text-lg font-bold uppercase text-white">{stage.name || `Stage ${stage.stage_order + 1}`}</h3>
+                                  <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">{String(stage.format || 'group').replace(/_/g, ' ')}</p>
+                                </div>
+                                <span className="border border-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-zinc-300">
+                                  {count} groups
+                                </span>
+                              </div>
+                              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                {Array.from({ length: count }).map((_, index) => (
+                                  <div key={index} className="border border-white/10 bg-black/40 p-4">
+                                    <p className="text-sm font-bold uppercase text-white">{groupName(index)}</p>
+                                    <p className="mt-1 text-xs text-zinc-500">Assignments pending public bracket data</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </section>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+              )}
+
               <TabsContent value="brackets">
                 <div className="w-full px-4 md:px-8">
                   <BracketsTab

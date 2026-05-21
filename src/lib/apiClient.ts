@@ -38,6 +38,41 @@ export class ApiError extends Error {
   }
 }
 
+type ApiErrorBody = {
+  error?: string;
+  message?: string;
+  detail?: string;
+  title?: string;
+  traceId?: string;
+  trace_id?: string;
+};
+
+function readApiErrorBody(body: unknown): ApiErrorBody {
+  if (body && typeof body === 'object') return body as ApiErrorBody;
+  if (typeof body === 'string') return { message: body };
+  return {};
+}
+
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = 'Something went wrong. Please try again.',
+): string {
+  if (error instanceof ApiError) {
+    const body = readApiErrorBody(error.body);
+    const message = body.message || body.error || body.detail || body.title || fallback;
+    const traceId = body.traceId || body.trace_id;
+    return traceId
+      ? `${message} If this keeps happening, report it with reference ${traceId}.`
+      : message;
+  }
+
+  if (error instanceof Error && !/^API \d+:/.test(error.message)) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 // ── GET request deduplication ─────────────────────────────────────────────────
 
 // Cache parsed JSON results (not Response objects — Response.body can only be read once)

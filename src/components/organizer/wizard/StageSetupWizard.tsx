@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Check, ChevronRight, ArrowLeft, Trophy, Users, Shield, Map as MapIcon, AlertCircle, Plus, Trash2, Pencil, X, ChevronsUpDown, Book, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 
 import { RECOMMENDED_TEMPLATES } from '@/data/recommended_templates';
 import { StageGuidelineModal } from './StageGuidelineModal';
@@ -472,23 +472,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             console.log('[StageWizard] Batch sync stages:', stageDtos);
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
 
-            // 3. Update tournament max_teams from first stage capacity
-            if (stagesConfig.length > 0) {
-                const firstStageCapacity = stagesConfig[0].capacity;
-                if (Number(firstStageCapacity) > 0) {
-                    const maxTeams = Number(firstStageCapacity);
-                    if (maxTeams > 0) {
-                        console.log('[StageWizard] Updating tournament max_teams to:', maxTeams);
-                        try {
-                            await apiClient.put(`/api/tournaments/${tournamentId}`, { maxTeams: maxTeams });
-                        } catch (tournamentError: any) {
-                            console.error('Error updating tournament max_teams:', tournamentError);
-                            // Don't throw - stage save succeeded, this is secondary
-                        }
-                    }
-                }
-            }
-
             toast({
                 title: 'Stages Saved',
                 description: 'Tournament stages have been successfully updated.',
@@ -498,8 +481,11 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
         } catch (error: any) {
             console.error('Error saving stages:', error);
             toast({
-                title: 'Error',
-                description: error.message || 'Failed to save stages',
+                title: 'Could not save stages',
+                description: getApiErrorMessage(
+                    error,
+                    'We could not save the stage setup. Check stage advancement and capacity rules, then try again.',
+                ),
                 variant: 'destructive',
             });
         } finally {
@@ -691,35 +677,44 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-gray-300 flex items-center justify-between">
-                            Capacity (Teams)
-                            {currentStageIndex === 0 && (
-                                <span className="text-xs text-gray-400">
-                                    {participantsCount} Registered
-                                    {tournamentMaxParticipants && ` / ${tournamentMaxParticipants} Max`}
-                                </span>
-                            )}
-                            {isCapacityLinked && (
-                                <span className="text-xs text-emerald-400 flex items-center gap-1">
-                                    <Check className="h-3 w-3" /> Linked to Prev. Stage
-                                </span>
-                            )}
-                        </Label>
-                        <Input
-                            type="number"
-                            value={stage.capacity}
-                            onChange={(e) => updateStageConfig(currentStageIndex, 'capacity', e.target.value === '' ? '' : Number(e.target.value))}
-                            placeholder="Unlimited"
-                            disabled={isCapacityLinked}
-                            className={cn(
-                                "bg-black/20 border-white/10 focus:border-emerald-500/50",
-                                isCapacityLinked && "border-emerald-500/30 bg-emerald-500/5 text-gray-400 cursor-not-allowed"
-                            )}
-                        />
-                        {isCapacityLinked && (
-                            <p className="text-xs text-gray-500">
-                                Recommended: {prevStage.advancement_count} teams (from Stage {currentStageIndex})
-                            </p>
+                        {currentStageIndex === 0 ? (
+                            <div className="border border-white/10 bg-white/[0.03] p-4">
+                                <Label className="text-gray-300">Stage 1 Capacity</Label>
+                                <p className="mt-2 text-sm text-gray-400">
+                                    Stage 1 uses tournament max capacity:
+                                    <span className="ml-1 font-bold text-white">{tournamentMaxParticipants ?? 'Unlimited'}</span>
+                                </p>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Change this from tournament details. Stage management keeps the opening field locked so brackets and registrations stay aligned.
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                <Label className="text-gray-300 flex items-center justify-between">
+                                    Capacity (Teams)
+                                    {isCapacityLinked && (
+                                        <span className="text-xs text-emerald-400 flex items-center gap-1">
+                                            <Check className="h-3 w-3" /> Linked to Prev. Stage
+                                        </span>
+                                    )}
+                                </Label>
+                                <Input
+                                    type="number"
+                                    value={stage.capacity}
+                                    onChange={(e) => updateStageConfig(currentStageIndex, 'capacity', e.target.value === '' ? '' : Number(e.target.value))}
+                                    placeholder="Unlimited"
+                                    disabled={!!isCapacityLinked}
+                                    className={cn(
+                                        "bg-black/20 border-white/10 focus:border-emerald-500/50",
+                                        isCapacityLinked && "border-emerald-500/30 bg-emerald-500/5 text-gray-400 cursor-not-allowed"
+                                    )}
+                                />
+                                {isCapacityLinked && (
+                                    <p className="text-xs text-gray-500">
+                                        Recommended: {prevStage.advancement_count} teams (from Stage {currentStageIndex})
+                                    </p>
+                                )}
+                            </>
                         )}
                         {/* Check-in option for first stage only */}
                         {currentStageIndex === 0 && checkInEnabled && (
@@ -1086,40 +1081,49 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
                                     return (
                                         <>
-                                            <Label className="flex items-center justify-between">
-                                                <span>Capacity</span>
-                                                {isFirstStage && (
-                                                    <span className="text-xs text-gray-400">
-                                                        {participantsCount} Registered
-                                                        {tournamentMaxParticipants && ` / ${tournamentMaxParticipants} Max`}
-                                                    </span>
-                                                )}
-                                                {isLinkedToPrev && (
-                                                    <span className="text-xs text-emerald-400">← From Stage {prevStageIdx + 1} Advancement</span>
-                                                )}
-                                            </Label>
-                                            <Input
-                                                type="number"
-                                                value={isLinkedToPrev ? prevStage.advancement_count : manualFormState.capacity}
-                                                onChange={(e) => {
-                                                    const val = e.target.value === '' ? '' : Number(e.target.value);
-                                                    let newSettings = { ...manualFormState.settings };
+                                            {isFirstStage ? (
+                                                <div className="border border-white/10 bg-white/[0.03] p-4">
+                                                    <Label>Stage 1 Capacity</Label>
+                                                    <p className="mt-2 text-sm text-gray-400">
+                                                        Stage 1 uses tournament max capacity:
+                                                        <span className="ml-1 font-bold text-white">{tournamentMaxParticipants ?? 'Unlimited'}</span>
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        Change this from tournament details. Stage management keeps this locked to protect registration and bracket integrity.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <Label className="flex items-center justify-between">
+                                                        <span>Capacity</span>
+                                                        {isLinkedToPrev && (
+                                                            <span className="text-xs text-emerald-400">← From Stage {prevStageIdx + 1} Advancement</span>
+                                                        )}
+                                                    </Label>
+                                                    <Input
+                                                        type="number"
+                                                        value={isLinkedToPrev ? prevStage.advancement_count : manualFormState.capacity}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value === '' ? '' : Number(e.target.value);
+                                                            let newSettings = { ...manualFormState.settings };
 
-                                                    if (manualFormState.format === 'swiss' && typeof val === 'number' && val > 0) {
-                                                        const groups = calculateSwissConfig(val, Number(manualFormState.advancement_count) || 0);
-                                                        const groupSize = val / groups;
-                                                        const rounds = Math.ceil(Math.log2(groupSize)) + 2;
-                                                        newSettings = { ...newSettings, swiss_groups: groups, swiss_rounds: rounds };
-                                                    }
+                                                            if (manualFormState.format === 'swiss' && typeof val === 'number' && val > 0) {
+                                                                const groups = calculateSwissConfig(val, Number(manualFormState.advancement_count) || 0);
+                                                                const groupSize = val / groups;
+                                                                const rounds = Math.ceil(Math.log2(groupSize)) + 2;
+                                                                newSettings = { ...newSettings, swiss_groups: groups, swiss_rounds: rounds };
+                                                            }
 
-                                                    setManualFormState({ ...manualFormState, capacity: val, settings: newSettings });
-                                                }}
-                                                placeholder={isFirstStage ? "Set by Tournament" : "Unlimited"}
-                                                disabled={isFirstStage || !!isLinkedToPrev}
-                                                className={cn(
-                                                    (isFirstStage || isLinkedToPrev) && "bg-gray-800/50 text-gray-400 cursor-not-allowed"
-                                                )}
-                                            />
+                                                            setManualFormState({ ...manualFormState, capacity: val, settings: newSettings });
+                                                        }}
+                                                        placeholder="Unlimited"
+                                                        disabled={!!isLinkedToPrev}
+                                                        className={cn(
+                                                            isLinkedToPrev && "bg-gray-800/50 text-gray-400 cursor-not-allowed"
+                                                        )}
+                                                    />
+                                                </>
+                                            )}
                                             {isFirstStage && checkInEnabled && (
                                                 <div className="space-y-2 mt-2">
                                                     <p className="text-xs text-gray-500">Capacity is determined by tournament's max teams setting</p>

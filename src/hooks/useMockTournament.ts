@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
 interface GenerateMockOptions {
@@ -28,10 +28,13 @@ export function useMockTournament({ tournamentId, slug, userId }: GenerateMockOp
             });
             invalidate();
         },
-        onError: (error: Error) => {
+        onError: (error: unknown) => {
             toast({
                 title: 'Failed to generate mock teams',
-                description: error.message,
+                description: getApiErrorMessage(
+                    error,
+                    'We could not generate mock teams. Check that the tournament only contains mock participants and no completed results, then try again.',
+                ),
                 variant: 'destructive',
             });
         },
@@ -47,10 +50,13 @@ export function useMockTournament({ tournamentId, slug, userId }: GenerateMockOp
             });
             invalidate();
         },
-        onError: (error: Error) => {
+        onError: (error: unknown) => {
             toast({
                 title: 'Failed to clear mock data',
-                description: error.message,
+                description: getApiErrorMessage(
+                    error,
+                    'We could not clear mock data. Try again, and report this if the problem continues.',
+                ),
                 variant: 'destructive',
             });
         },

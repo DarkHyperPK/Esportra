@@ -27,7 +27,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Tournament as TournamentType } from '@/hooks/useTournaments';
 import { TournamentStatus } from '@/types/tournament';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import {
   AlertTriangle,
   ArrowDown,
@@ -101,6 +101,7 @@ import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTo
 import { MockModePanel } from '@/components/tournament/MockModePanel';
 import { useMockTournament } from '@/hooks/useMockTournament';
 import { useTournamentInvitations } from '@/hooks/useTournamentInvitations';
+import { StageGuidelineModal } from '@/components/organizer/wizard/StageGuidelineModal';
 import { CommandButton, CommandTabButton } from '@/components/management/CommandSurface';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
@@ -366,6 +367,7 @@ const TournamentDashboard = () => {
   const [now, setNow] = useState(Date.now());
   const [participantsPage, setParticipantsPage] = useState(1);
   const [publishMockGuardOpen, setPublishMockGuardOpen] = useState(false);
+  const [showGuidelines, setShowGuidelines] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [draftInviteEmails, setDraftInviteEmails] = useState<string[]>([]);
   const [csvImportText, setCsvImportText] = useState('');
@@ -1597,8 +1599,12 @@ const TournamentDashboard = () => {
                               await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open', isPublic: true });
                               refetchDashboard();
                               toast({ title: 'Tournament Published!', description: 'Your tournament is now live and public.' });
-                            } catch (err: any) {
-                              toast({ title: 'Error', description: err.message, variant: 'destructive' });
+                            } catch (err: unknown) {
+                              toast({
+                                title: 'Publish failed',
+                                description: getApiErrorMessage(err, 'We could not publish this tournament. Check required settings and try again.'),
+                                variant: 'destructive'
+                              });
                             }
                           })();
                         }
@@ -1638,8 +1644,12 @@ const TournamentDashboard = () => {
                                   await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open', isPublic: true });
                                   refetchDashboard();
                                   toast({ title: 'Tournament Published!', description: 'Mock data cleared and tournament is now live.' });
-                                } catch (err: any) {
-                                  toast({ title: 'Publish failed', description: err.message, variant: 'destructive' });
+                                } catch (err: unknown) {
+                                  toast({
+                                    title: 'Publish failed',
+                                    description: getApiErrorMessage(err, 'We could not clear mock data and publish. Try clearing mocks from Mock Mode first, then publish again.'),
+                                    variant: 'destructive'
+                                  });
                                 }
                                 setPublishMockGuardOpen(false);
                               }}
@@ -1672,6 +1682,17 @@ const TournamentDashboard = () => {
                   >
                     <RefreshCw className="w-4 h-4 mr-2 transition-transform group-hover:rotate-180" />
                     Reopen Tournament
+                  </CommandButton>
+                )}
+
+                {isOrganizer && (
+                  <CommandButton
+                    onClick={() => setShowGuidelines(true)}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    <Layers className="w-4 h-4 mr-2" />
+                    Guidelines
                   </CommandButton>
                 )}
 
@@ -2588,6 +2609,8 @@ const TournamentDashboard = () => {
         </Tabs >
       </main >
       <Footer />
+
+      <StageGuidelineModal open={showGuidelines} onOpenChange={setShowGuidelines} />
       {
         banDialogOpen && (
           <AlertDialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
