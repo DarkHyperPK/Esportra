@@ -146,9 +146,9 @@ textarea {
   }
 }
 
-/* Smooth scroll */
+/* Font smoothing — Lenis owns scroll-behavior */
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

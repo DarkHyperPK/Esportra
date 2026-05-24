@@ -7,11 +7,14 @@ let frameId = 0;
 
 function startLenis() {
   if (lenisInstance) return;
+
   lenisInstance = new Lenis({
     duration: 1.2,
     easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
     smoothWheel: true,
   });
+
+  document.documentElement.dataset.lenis = 'active';
 
   const raf = (time: number) => {
     lenisInstance?.raf(time);
@@ -25,6 +28,7 @@ function stopLenis() {
   frameId = 0;
   lenisInstance?.destroy();
   lenisInstance = null;
+  delete document.documentElement.dataset.lenis;
 }
 
 export function scrollToSmooth(
