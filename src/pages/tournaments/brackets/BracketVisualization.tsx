@@ -30,6 +30,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
+import { useBracketWheelScroll } from '@/hooks/useBracketWheelScroll';
 
 // =============================================================================
 // LAYOUT CONSTANTS - THESE MUST MATCH ACTUAL RENDERED CARD SIZE
@@ -241,6 +242,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
   const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
   const [resultsDialogMatch, setResultsDialogMatch] = useState<BracketMatch | null>(null);
+  const bracketScroll = useBracketWheelScroll<HTMLDivElement>();
 
 
 
@@ -726,7 +728,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
         </div>
 
         {/* Bracket - Container Free (Like Battlefy) */}
-        <div className="relative flex-1 overflow-auto bg-zinc-950/30">
+        <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-zinc-950/30">
           {/* Round Tabs */}
           {(() => {
             const isDoubleElim = Object.keys(losersRounds).length > 0;
@@ -762,11 +764,18 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
               </div>
             );
           })()}
-          <div style={{
-            width: totalWidth,
-            height: filteredListPositions ? filteredListPositions.height : totalHeight,
-            position: 'relative'
-          }}>
+          <div
+            ref={bracketScroll.scrollRef}
+            onWheel={bracketScroll.onWheel}
+            tabIndex={0}
+            aria-label="Scrollable bracket management canvas"
+            className="min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+          >
+            <div style={{
+              width: totalWidth,
+              height: filteredListPositions ? filteredListPositions.height : totalHeight,
+              position: 'relative'
+            }}>
             {/* Winners Bracket Heading */}
             {(activeFilter.type === 'all' || activeFilter.type === 'winners') &&
               matches.some(m => m.bracketSide === 'winners') &&
@@ -842,6 +851,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
                 );
               })}
             </AnimatePresence>
+            </div>
           </div>
         </div>
       </div>

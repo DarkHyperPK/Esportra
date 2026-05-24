@@ -461,7 +461,7 @@ const ManageBracketPage = () => {
 
     return (
         <div className="min-h-screen text-white">
-            <main className="relative w-full px-4 py-8">
+            <main className="relative flex min-h-[calc(100vh-5rem)] w-full flex-col px-4 py-8">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                     <div className="flex items-center gap-4">
                         <Button
@@ -515,7 +515,7 @@ const ManageBracketPage = () => {
 
                 {/* Tabs for Bracket vs Scheduling */}
                 {isOrganizer && (
-                    <Tabs defaultValue="bracket" className="w-full">
+                    <Tabs defaultValue="bracket" className="flex min-h-0 w-full flex-1 flex-col">
                         <div className="flex items-center justify-between mb-6">
                             <TabsList className="bg-[#0d0d10] border border-white/10 p-1 h-auto rounded-xl">
                                 <TabsTrigger value="bracket" className="data-[state=active]:bg-white/10 data-[state=active]:text-white py-2 px-4 rounded-lg capitalize">
@@ -533,7 +533,7 @@ const ManageBracketPage = () => {
                             </TabsList>
                         </div>
 
-                        <TabsContent value="bracket" className="mt-4">
+                        <TabsContent value="bracket" className="mt-4 min-h-0 flex-1">
                             <BracketVisualization
                                 versionId={versionId}
                                 tournamentId={tournament.id}
@@ -573,7 +573,7 @@ const ManageBracketPage = () => {
 
                 {/* Non-organizer view - just the bracket */}
                 {!isOrganizer && (
-                    <div className="w-full">
+                    <div className="min-h-0 w-full flex-1">
                         <BracketVisualization
                             versionId={versionId}
                             tournamentId={tournament.id}

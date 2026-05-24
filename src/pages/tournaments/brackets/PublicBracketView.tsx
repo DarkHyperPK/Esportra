@@ -14,6 +14,7 @@ import { MatchResultsDialog } from './dialogs/MatchResultsDialog';
 import { cn } from '@/lib/utils';
 import type { BracketMatch } from '@/types/bracketTypes';
 import { CommandButton, CommandSegmentedButton } from '@/components/management/CommandSurface';
+import { useBracketWheelScroll } from '@/hooks/useBracketWheelScroll';
 
 interface PublicBracketViewProps {
     versionId: string | null; // Allow null to show sidebar even if no bracket
@@ -47,6 +48,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
     const [activeFilter, setActiveFilter] = useState<FilterState>({ type: 'all' });
     const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
     const [resultsDialogMatch, setResultsDialogMatch] = useState<BracketMatch | null>(null);
+    const bracketScroll = useBracketWheelScroll<HTMLDivElement>();
 
     const { data: graphData } = useGraphBracket(versionId || '');
 
@@ -316,7 +318,13 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                     </div>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y]">
+                <div
+                    ref={bracketScroll.scrollRef}
+                    onWheel={bracketScroll.onWheel}
+                    tabIndex={0}
+                    aria-label="Scrollable tournament bracket canvas"
+                    className="min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                >
                     <BracketRenderer
                         matches={matches}
                         activeFilter={activeFilter}

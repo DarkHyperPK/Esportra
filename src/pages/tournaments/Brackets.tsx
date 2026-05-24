@@ -131,11 +131,11 @@ const TournamentBrackets = () => {
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-white relative overflow-hidden font-sans">
-      <main className="w-full px-4 py-8 relative z-10">
+    <div className="min-h-screen bg-transparent text-white relative font-sans">
+      <main className="relative z-10 flex min-h-[calc(100vh-5rem)] w-full flex-col px-4 py-8">
         {/* Bracket Content - Glassmorphism Container */}
-        <div className="w-full px-6">
-          <div className="border border-white/10 bg-[#0a0a0c]/95 p-6">
+        <div className="flex min-h-0 w-full flex-1 px-6">
+          <div className="flex min-h-0 w-full flex-1 flex-col border border-white/10 bg-[#0a0a0c]/95 p-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-zinc-100 flex items-center gap-2">
                 Tournament Brackets
@@ -151,7 +151,7 @@ const TournamentBrackets = () => {
               We always render PublicBracketView now, so it can show the sidebar with stage selection,
               even if activeVersionId is null (the view handles empty state internally in content area).
             */}
-            <div className="min-h-0 w-full overflow-hidden border border-zinc-800/50 bg-zinc-950/50">
+            <div className="min-h-0 w-full flex-1 overflow-hidden border border-zinc-800/50 bg-zinc-950/50">
               <PublicBracketView
                 versionId={activeVersionId}
                 tournamentId={tournament.id}
