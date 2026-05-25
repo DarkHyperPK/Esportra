@@ -1,16 +1,10 @@
 import { useRef, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import esportsData from "@/data/esportsGames.json";
-import { fetchGameData, type CachedGame } from "@/hooks/useRawgGame";
+import { apiClient } from "@/lib/apiClient";
 import { getWebsiteAssetUrl } from "@/lib/storage";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
-} from "@/components/ui/carousel";
 
 interface Game {
   name: string;
@@ -22,6 +16,11 @@ interface Game {
 interface GameAssets {
   banner: string | null;
   cover: string | null;
+}
+
+interface IgdbBatchItem {
+  banners?: string[];
+  cover?: string | null;
 }
 
 // Use a different IGDB artwork index for games where the default looks bad
@@ -80,33 +79,58 @@ const GameCard = ({ game, assets }: { game: Game; assets: GameAssets | undefined
 
 const SupportedGames = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(sectionRef, { once: true, margin: "300px" });
   const games = esportsData.games as Game[];
 
   const [gameAssets, setGameAssets] = useState<Record<string, GameAssets>>({});
+  const [assetsRequested, setAssetsRequested] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    games.forEach((game) => {
-      fetchGameData(game.name, { skipRawg: true }).then((data: CachedGame) => {
-        if (!cancelled) {
-          const idx = BANNER_INDEX_OVERRIDES[game.slug] ?? 0;
-          const banner = data.screenshots?.[idx] || data.gameBanner;
-          setGameAssets((prev) => ({
-            ...prev,
-            [game.slug]: {
-              banner,
-              cover: data.cover,
-            },
-          }));
-        }
-      });
-    });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!isInView || assetsRequested) return;
 
-  const navClass = "bg-white/5 border-white/10 hover:bg-white/10 text-white disabled:opacity-30";
+    let cancelled = false;
+
+    setAssetsRequested(true);
+    apiClient
+      .post<Record<string, IgdbBatchItem>>("/api/games/igdb-assets/batch", {
+        games: games.map((game) => game.name),
+      })
+      .then((response) => {
+        if (cancelled) return;
+
+        const nextAssets: Record<string, GameAssets> = {};
+        games.forEach((game) => {
+          const data = response?.[game.name];
+          const idx = BANNER_INDEX_OVERRIDES[game.slug] ?? 0;
+          nextAssets[game.slug] = {
+            banner: data?.banners?.[idx] || data?.banners?.[0] || game.logo,
+            cover: data?.cover || game.logo,
+          };
+        });
+
+        setGameAssets(nextAssets);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setGameAssets(Object.fromEntries(
+          games.map((game) => [game.slug, { banner: game.logo, cover: game.logo }]),
+        ));
+      });
+
+    return () => { cancelled = true; };
+  }, [assetsRequested, games, isInView]);
+
+  const scrollGames = (direction: -1 | 1) => {
+    const node = scrollRef.current;
+    if (!node) return;
+    node.scrollBy({
+      left: direction * Math.min(node.clientWidth * 0.85, 520),
+      behavior: "smooth",
+    });
+  };
+
+  const navClass = "border border-white/10 bg-white/5 p-3 text-white transition-colors hover:border-rose-500/60 hover:bg-rose-500 disabled:opacity-30";
 
   return (
     <section ref={sectionRef} className="py-32 bg-[#0a0a0a] relative overflow-hidden">
@@ -146,20 +170,38 @@ const SupportedGames = () => {
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, delay: 0.2 }}
         >
-          <Carousel opts={{ align: "start", loop: true }} className="mx-auto max-w-[1400px]">
-            <CarouselContent className="-ml-4">
+          <div className="relative mx-auto max-w-[1400px]">
+            <div
+              ref={scrollRef}
+              className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              aria-label="Supported games"
+            >
               {games.map((game) => (
-                <CarouselItem
+                <div
                   key={game.slug}
-                  className="pl-4 basis-full sm:basis-1/2 md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
+                  className="min-w-full snap-start sm:min-w-[calc(50%-0.5rem)] lg:min-w-[calc(33.333%-0.75rem)] xl:min-w-[calc(25%-0.75rem)]"
                 >
                   <GameCard game={game} assets={gameAssets[game.slug]} />
-                </CarouselItem>
+                </div>
               ))}
-            </CarouselContent>
-            <CarouselPrevious className={navClass} />
-            <CarouselNext className={navClass} />
-          </Carousel>
+            </div>
+            <button
+              type="button"
+              onClick={() => scrollGames(-1)}
+              className={`${navClass} absolute -left-3 top-1/2 hidden -translate-y-1/2 md:block`}
+              aria-label="Previous games"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollGames(1)}
+              className={`${navClass} absolute -right-3 top-1/2 hidden -translate-y-1/2 md:block`}
+              aria-label="Next games"
+            >
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
         </motion.div>
 
         {/* Footer */}
