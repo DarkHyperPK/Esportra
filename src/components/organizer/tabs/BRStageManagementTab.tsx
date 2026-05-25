@@ -548,13 +548,16 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                     deleteIds: stages.map(s => s.id),
                 });
             }
+            const isSingleLobbyTemplate = selectedTemplate.stages.length === 1;
             const stageDtos = selectedTemplate.stages.map((ts, i) => ({
                 id: null as any,
-                name: ts.name,
+                name: isSingleLobbyTemplate ? 'Main Event' : ts.name,
                 format: 'battle_royale',
                 stageOrder: i + 1,
                 bestOf: 1,
-                capacity: i < selectedTemplate.stages.length - 1 ? templateConfig[i]?.capacity || null : null,
+                capacity: isSingleLobbyTemplate || i < selectedTemplate.stages.length - 1
+                    ? templateConfig[i]?.capacity || maxLobbySize || registeredTeamCount || null
+                    : templateConfig[i]?.capacity || maxLobbySize || null,
                 advancementCount: i < selectedTemplate.stages.length - 1 ? templateConfig[i]?.advancement ?? null : null,
                 startsAt: null,
                 endsAt: null,
@@ -566,7 +569,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             try {
                 const freshStages = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/stages`);
                 // Match by stage_order (1-based) not array index — immune to concurrent inserts
-                const nonFinalCount = selectedTemplate.stages.length - 1;
+                const nonFinalCount = isSingleLobbyTemplate ? 0 : selectedTemplate.stages.length - 1;
                 await Promise.all(
                     Array.from({ length: nonFinalCount }, (_, i) => {
                         const cfg = templateConfig[i];
@@ -582,7 +585,12 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 // Non-critical — groups can be created later from Groups & Rounds section
             }
 
-            toast({ title: 'Template Applied', description: `"${selectedTemplate.name}" — ${selectedTemplate.stages.length} stages with groups created.` });
+            toast({
+                title: 'Template Applied',
+                description: isSingleLobbyTemplate
+                    ? '"Single Lobby" is ready with one main lobby.'
+                    : `"${selectedTemplate.name}" — ${selectedTemplate.stages.length} stages with groups created.`,
+            });
             setTemplateDialogOpen(false);
             setSelectedTemplate(null);
             onUpdate();

@@ -34,6 +34,18 @@ export const useBRGroupsMutations = (stageId: string | null) => {
     },
   });
 
+  const bootstrapLobby = useMutation({
+    mutationFn: () =>
+      apiClient.post<{ bootstrapped: boolean }>(`/api/stages/${stageId}/br/bootstrap`, {}),
+    onSuccess: () => {
+      invalidateBRGroups(queryClient, stageId);
+      toast({ title: 'Lobby initialized' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to initialize lobby', description: error.message, variant: 'destructive' });
+    },
+  });
+
   const assignTeams = useMutation({
     mutationFn: (params: { method: BRDistributionMethod }) =>
       apiClient.post<{ assigned: number; groups: number }>(
@@ -76,7 +88,7 @@ export const useBRGroupsMutations = (stageId: string | null) => {
     },
   });
 
-  return { createGroups, assignTeams, deleteGroup, updateGroupTeams };
+  return { createGroups, bootstrapLobby, assignTeams, deleteGroup, updateGroupTeams };
 };
 
 // ── useBRGroups ──────────────────────────────────────────────────────────────

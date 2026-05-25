@@ -75,8 +75,8 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
             icon: <Trophy className="w-5 h-5" />,
             items: isBR ? [
                 { label: 'Tournament Type', value: 'Points-Based (Battle Royale)' },
-                { label: 'Structure', value: data.brMultiStage ? 'Multi-Stage (Groups → Finals)' : 'Single Stage' },
-                { label: 'Group Stage Games', value: `${data.brGameCount} games` },
+                { label: 'Structure', value: data.brMultiStage ? 'Multi-Stage (Groups to Finals)' : 'Single Lobby' },
+                { label: data.brMultiStage ? 'Group Stage Games' : 'Lobby Games', value: `${data.brGameCount} games` },
                 { label: 'Scoring', value: data.brScoringPreset === 'custom' ? 'Custom' : (brConfig?.scoringPresets?.[data.brScoringPreset]?.name || data.brScoringPreset) },
                 { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
                 { label: 'Max Participants', value: data.maxTeams ? `${data.maxTeams} ${data.teamSize === 1 ? 'Players' : data.teamSize === 2 ? 'Duos' : data.teamSize === 3 ? 'Trios' : 'Squads'}` : 'Unlimited' },

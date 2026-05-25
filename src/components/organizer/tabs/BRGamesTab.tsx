@@ -43,6 +43,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
         isLoading: groupsLoading,
         error: groupsError,
         refetch: refetchGroups,
+        bootstrapLobby,
     } = useBRGroups(selectedStageId || null);
 
     // Auto-select first group when groups load
@@ -62,6 +63,8 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
     };
 
     const selectedGroup = groups.find(g => g.id === selectedGroupId);
+    const isSingleLobby = groups.length === 1;
+    const selectedGroupName = isSingleLobby ? 'Main Lobby' : selectedGroup?.name;
 
     const {
         data: groupTeams = [],
@@ -128,17 +131,30 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
                             </Select>
                         </div>
 
-                        <ChevronRight className="w-4 h-4 text-gray-600 hidden sm:block mt-4" />
+                        {groups.length !== 1 && (
+                            <ChevronRight className="w-4 h-4 text-gray-600 hidden sm:block mt-4" />
+                        )}
 
                         {/* Group Selector */}
                         <div className="space-y-0.5">
-                            <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">Group</label>
+                            <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">
+                                {isSingleLobby ? 'Lobby' : 'Group'}
+                            </label>
                             {groupsLoading ? (
                                 <div className="h-8 w-[180px] bg-white/5 rounded-md animate-pulse" />
                             ) : groups.length === 0 ? (
-                                <p className="text-xs text-amber-400/80 mt-1.5">
-                                    No groups in this stage. Create groups in the Stages tab.
-                                </p>
+                                <Button
+                                    size="sm"
+                                    onClick={() => bootstrapLobby.mutate()}
+                                    disabled={bootstrapLobby.isPending}
+                                    className="h-8 bg-white text-black hover:bg-white/90 font-mono text-[11px] font-bold uppercase tracking-wider"
+                                >
+                                    {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Lobby'}
+                                </Button>
+                            ) : isSingleLobby ? (
+                                <div className="h-8 flex items-center border border-white/10 bg-white/[0.03] px-3 text-xs font-medium text-white">
+                                    Main Lobby
+                                </div>
                             ) : (
                                 <Select value={selectedGroupId} onValueChange={setSelectedGroupId}>
                                     <SelectTrigger className="w-[180px] h-8 text-xs bg-white/5 border-white/10">
@@ -201,7 +217,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                                 <Trophy className="w-4 h-4 text-amber-400" />
-                                {selectedGroup.name} — Leaderboard
+                                {selectedGroupName} — Leaderboard
                             </h3>
                             {selectedStage && (
                                 <span className={`text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded font-semibold ${
@@ -252,7 +268,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
                             <RoundManagementPanel
                                 stageId={selectedStageId}
                                 groupId={selectedGroupId}
-                                groupName={selectedGroup.name}
+                                groupName={selectedGroupName || selectedGroup.name}
                                 teams={groupTeams}
                                 scoringPreset={scoringPreset}
                             />
@@ -262,6 +278,10 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
             ) : selectedStageId && groups.length > 0 && !selectedGroupId ? (
                 <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-8 text-center">
                     <p className="text-gray-400 text-sm">Select a group above to manage rounds and results.</p>
+                </Card>
+            ) : selectedStageId && groups.length === 0 && !groupsLoading && !groupsError ? (
+                <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-8 text-center">
+                    <p className="text-gray-400 text-sm">Initialize the lobby to manage rounds and results.</p>
                 </Card>
             ) : null}
         </div>

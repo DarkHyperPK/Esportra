@@ -24,6 +24,7 @@ interface GroupCardProps {
   isLocked: boolean;
   isSelected?: boolean;
   onSelect?: () => void;
+  displayName?: string;
 }
 
 export const GroupCard: React.FC<GroupCardProps> = ({
@@ -36,6 +37,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
   isLocked,
   isSelected = false,
   onSelect,
+  displayName,
 }) => {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const fillPercent = group.lobby_size > 0
@@ -53,7 +55,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
     >{/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-white">{group.name}</h3>
+          <h3 className="text-sm font-semibold text-white">{displayName || group.name}</h3>
           <Badge
             variant="outline"
             className={`text-[10px] px-1.5 py-0 ${

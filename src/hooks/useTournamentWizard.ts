@@ -227,6 +227,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
 
                 // Stage sync — single PUT replaces 3 sequential Supabase calls (delete/upsert/insert)
                 const stagesToSync = (() => {
+                    const defaultBrLobbySize = data.brLobbySize || data.maxTeams;
                     if (data.tournamentType === 'battle_royale' && data.brMultiStage) {
                         return [
                             {
@@ -244,12 +245,24 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                                 format: 'battle_royale',
                                 stageOrder: 2,
                                 bestOf: 1,
-                                capacity: data.brLobbySize,
+                                capacity: defaultBrLobbySize,
                                 advancementCount: null,
                             },
                         ];
                     }
-                    if (data.tournamentType === 'battle_royale') return [];
+                    if (data.tournamentType === 'battle_royale') {
+                        return [
+                            {
+                                id: null,
+                                name: 'Main Event',
+                                format: 'battle_royale',
+                                stageOrder: 1,
+                                bestOf: 1,
+                                capacity: defaultBrLobbySize,
+                                advancementCount: null,
+                            },
+                        ];
+                    }
                     return data.stages.map(s => ({
                         id:               s.id || null,
                         name:             s.name,
@@ -332,6 +345,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     },
                     // Backend handles stages + map pool in one transaction
                     stages: (() => {
+                        const defaultBrLobbySize = data.brLobbySize || data.maxTeams;
                         if (data.tournamentType === 'battle_royale' && data.brMultiStage) {
                             return [
                                 {
@@ -347,12 +361,23 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                                     format: 'battle_royale',
                                     stageOrder: 2,
                                     bestOf: 1,
-                                    capacity: data.brLobbySize,
+                                    capacity: defaultBrLobbySize,
                                     advancementCount: null,
                                 },
                             ];
                         }
-                        if (data.tournamentType === 'battle_royale') return [];
+                        if (data.tournamentType === 'battle_royale') {
+                            return [
+                                {
+                                    name: 'Main Event',
+                                    format: 'battle_royale',
+                                    stageOrder: 1,
+                                    bestOf: 1,
+                                    capacity: defaultBrLobbySize,
+                                    advancementCount: null,
+                                },
+                            ];
+                        }
                         return data.stages.map((s, i) => ({
                             name:             s.name,
                             format:           s.format,

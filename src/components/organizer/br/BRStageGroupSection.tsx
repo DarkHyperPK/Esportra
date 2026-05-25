@@ -45,7 +45,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   const groups = data?.groups ?? [];
   const hasRounds = data?.has_rounds === true;
 
-  const { assignTeams, deleteGroup } = useBRGroupsMutations(stageId);
+  const { assignTeams, bootstrapLobby, deleteGroup } = useBRGroupsMutations(stageId);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [method, setMethod] = useState<BRDistributionMethod>('random');
@@ -64,6 +64,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   } = useBRGroupTeams(stageId, selectedGroup?.id ?? null);
 
   const totalAssigned = groups.reduce((sum, g) => sum + g.team_count, 0);
+  const isSingleLobby = groups.length === 1;
 
   const handleDistribute = async () => {
     try {
@@ -103,7 +104,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-medium text-zinc-400">
-              {groups.length} {groups.length === 1 ? 'Group' : 'Groups'}
+              {isSingleLobby ? 'Main Lobby' : `${groups.length} Groups`}
               <span className="text-zinc-600 ml-2">·</span>
               <span className="text-zinc-500 ml-2">{totalAssigned}/{registeredTeamCount} teams assigned</span>
             </h3>
@@ -141,6 +142,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
                 isLocked={hasRounds}
                 isSelected={selectedGroupId === group.id}
                 onSelect={() => setSelectedGroupId(selectedGroupId === group.id ? null : group.id)}
+                displayName={isSingleLobby ? 'Main Lobby' : undefined}
               />
             ))}
           </div>
@@ -173,8 +175,16 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
           <LayoutGrid className="w-8 h-8 text-zinc-600 mb-2" />
           <p className="text-zinc-400 text-sm">No groups created yet</p>
           <p className="text-zinc-600 text-xs mt-1">
-            Apply a stage template to auto-create groups, or use Reset Stages to reconfigure.
+            Initialize the lobby to manage BR rounds and results.
           </p>
+          <Button
+            size="sm"
+            onClick={() => bootstrapLobby.mutate()}
+            disabled={bootstrapLobby.isPending}
+            className="mt-4 bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider"
+          >
+            {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Lobby'}
+          </Button>
         </div>
       )}
 
