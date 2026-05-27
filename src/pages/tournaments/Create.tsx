@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
@@ -20,7 +20,6 @@ const CreateTournament = () => {
   const [hasOrganization, setHasOrganization] = useState(false);
 
   const canCreate = canCreateTournaments || admin.hasPermission('tournaments:create');
-  const requestedMode = searchParams.get('mode');
 
   // Check if user has an organization
   useEffect(() => {
@@ -134,7 +133,7 @@ const CreateTournament = () => {
     );
   }
 
-  if (requestedMode === 'season') {
+  if (searchParams.get('mode') === 'season') {
     return <Navigate to="/organizer/seasons/create" replace />;
   }
 

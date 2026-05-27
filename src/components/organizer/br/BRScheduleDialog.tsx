@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +56,8 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [rounds, setRounds] = useState<BRRound[]>([]);
   const [roundSchedules, setRoundSchedules] = useState<Record<string, string>>({});
+  const [hasRoundsConfigured, setHasRoundsConfigured] = useState(false);
+  const [loadingScheduleContext, setLoadingScheduleContext] = useState(false);
   const [loadingRounds, setLoadingRounds] = useState(false);
   const [savingRounds, setSavingRounds] = useState(false);
 
@@ -69,20 +71,32 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
       setSelectedGroupId(null);
       setRounds([]);
       setRoundSchedules({});
+      setHasRoundsConfigured(false);
     }
   }, [open, stage.id]);
 
-  // Load groups when moving to rounds step
+  // Load stage scheduling context as soon as the dialog opens so the stepper
+  // reflects whether round-level scheduling is actually available.
   useEffect(() => {
-    if (step === 'rounds') {
-      apiClient.get<BRGroup[]>(`/api/stages/${stage.id}/br/groups`)
-        .then(g => {
-          setGroups(g);
-          if (g.length > 0) setSelectedGroupId(g[0].id);
-        })
-        .catch(() => setGroups([]));
-    }
-  }, [step, stage.id]);
+    if (!open) return;
+
+    setLoadingScheduleContext(true);
+    apiClient
+      .get<{ groups: BRGroup[]; has_rounds?: boolean }>(`/api/stages/${stage.id}/br/groups/detail?includeTeams=false`)
+      .then((data) => {
+        const nextGroups = Array.isArray(data?.groups) ? data.groups : [];
+        setGroups(nextGroups);
+        setHasRoundsConfigured(Boolean(data?.has_rounds));
+        if (nextGroups.length > 0) {
+          setSelectedGroupId((current) => current && nextGroups.some((group) => group.id === current) ? current : nextGroups[0].id);
+        }
+      })
+      .catch(() => {
+        setGroups([]);
+        setHasRoundsConfigured(false);
+      })
+      .finally(() => setLoadingScheduleContext(false));
+  }, [open, stage.id]);
 
   // Load rounds when group changes
   useEffect(() => {
@@ -118,11 +132,17 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
       await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
       toast({ title: 'Stage schedule saved' });
       onUpdate();
-      setStep('rounds');
     } catch (error: any) {
       toast({ title: 'Error', description: error.message || 'Failed to save schedule', variant: 'destructive' });
     } finally {
       setSavingStage(false);
+    }
+  };
+
+  const handleSaveAndContinue = async () => {
+    await handleSaveStageSchedule();
+    if (hasRoundsConfigured) {
+      setStep('rounds');
     }
   };
 
@@ -162,16 +182,6 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
     }
   };
 
-  // Duration display
-  const durationText = useMemo(() => {
-    if (!startsAt || !endsAt) return null;
-    const ms = new Date(endsAt).getTime() - new Date(startsAt).getTime();
-    if (ms <= 0) return 'Invalid range';
-    const hours = Math.floor(ms / 3600000);
-    const mins = Math.floor((ms % 3600000) / 60000);
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-  }, [startsAt, endsAt]);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-[#0a0a0c] border-white/10 max-w-xl p-0 overflow-hidden">
@@ -185,7 +195,9 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
             <DialogDescription className="text-gray-500 text-sm mt-1">
               {step === 'stage'
                 ? 'Set the date range for this stage.'
-                : 'Set individual round times within the stage window.'}
+                : hasRoundsConfigured
+                  ? 'Set individual round times within the stage window.'
+                  : 'Round timing unlocks after you create rounds in Lobbies & Rounds.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -203,11 +215,11 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
             </button>
             <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
             <button
-              onClick={() => { if (startsAt && endsAt) setStep('rounds'); }}
+              onClick={() => { if (startsAt && endsAt && hasRoundsConfigured) setStep('rounds'); }}
               className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
                 step === 'rounds'
                   ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
-                  : startsAt && endsAt ? 'text-gray-500 hover:text-gray-300' : 'text-gray-700 cursor-not-allowed'
+                  : startsAt && endsAt && hasRoundsConfigured ? 'text-gray-500 hover:text-gray-300' : 'text-gray-700 cursor-not-allowed'
               }`}
             >
               2. Round Schedule
@@ -244,12 +256,17 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
               </div>
             </div>
 
-            {durationText && (
-              <div className="flex items-center gap-2 p-3 bg-white/[0.02] border border-white/5 rounded-lg">
-                <Clock className="w-4 h-4 text-gray-500" />
-                <span className="text-sm text-gray-300">Stage duration: <span className="text-white font-medium">{durationText}</span></span>
-              </div>
-            )}
+            <div className={`rounded-lg border px-3 py-3 text-xs ${
+              hasRoundsConfigured
+                ? 'border-emerald-500/20 bg-emerald-500/[0.05] text-emerald-200'
+                : 'border-white/8 bg-white/[0.02] text-zinc-400'
+            }`}>
+              {loadingScheduleContext
+                ? 'Checking whether round scheduling is available for this stage...'
+                : hasRoundsConfigured
+                  ? 'Round scheduling is available after you save the stage window.'
+                  : 'Create at least one round in Lobbies & Rounds before using round-level scheduling here.'}
+            </div>
           </div>
         )}
 
@@ -262,7 +279,6 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
                 <Calendar className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
                 <span>
                   {formatShort(new Date(startsAt).toISOString())} &rarr; {formatShort(new Date(endsAt).toISOString())}
-                  {durationText && <span className="text-gray-600 ml-1">({durationText})</span>}
                 </span>
               </div>
             )}
@@ -296,7 +312,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
                 className="border-white/10 text-gray-300 hover:text-white text-xs"
               >
                 <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-                Auto-distribute evenly ({rounds.length} rounds across {durationText})
+                Auto-distribute evenly across {rounds.length} rounds
               </Button>
             )}
 
@@ -356,13 +372,24 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
               <Button variant="ghost" className="text-gray-400" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
+              {hasRoundsConfigured && (
+                <Button
+                  variant="outline"
+                  className="border-white/10 text-gray-300 hover:text-white"
+                  onClick={handleSaveAndContinue}
+                  disabled={savingStage || !startsAt || !endsAt}
+                >
+                  <ChevronRight className="w-3.5 h-3.5 mr-1.5" />
+                  {savingStage ? 'Saving...' : 'Save & Continue'}
+                </Button>
+              )}
               <Button
                 className="flex-1 bg-rose-600 hover:bg-rose-500 text-white"
                 onClick={handleSaveStageSchedule}
                 disabled={savingStage || !startsAt || !endsAt}
               >
                 <Save className="w-3.5 h-3.5 mr-1.5" />
-                {savingStage ? 'Saving...' : 'Save & Continue to Rounds'}
+                {savingStage ? 'Saving...' : 'Save Stage Dates'}
               </Button>
             </>
           ) : (

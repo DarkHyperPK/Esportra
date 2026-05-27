@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import type { BRGroup, BRGroupTeam, BRDistributionMethod } from '@/types/brGroups';
 
@@ -26,7 +26,7 @@ export const useBRGroupsMutations = (stageId: string | null) => {
       toast({ title: 'Groups created' });
     },
     onError: (error: unknown) => {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = getApiErrorMessage(error, 'We could not create the groups for this stage.');
       const msg = message.toLowerCase().includes('force') || message.toLowerCase().includes('existing round')
         ? 'Groups have existing rounds. Delete all rounds first, or enable "Force recreate" to override.'
         : message;
@@ -41,8 +41,12 @@ export const useBRGroupsMutations = (stageId: string | null) => {
       invalidateBRGroups(queryClient, stageId);
       toast({ title: 'Lobby initialized' });
     },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to initialize lobby', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({
+        title: 'Failed to initialize lobby',
+        description: getApiErrorMessage(error, 'We could not initialize the lobby for this stage.'),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -56,8 +60,12 @@ export const useBRGroupsMutations = (stageId: string | null) => {
       invalidateBRGroups(queryClient, stageId);
       toast({ title: `${data.assigned} teams distributed across ${data.groups} groups` });
     },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to distribute teams', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({
+        title: 'Failed to distribute teams',
+        description: getApiErrorMessage(error, 'We could not seed participants into the current BR lobbies.'),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -68,8 +76,12 @@ export const useBRGroupsMutations = (stageId: string | null) => {
       invalidateBRGroups(queryClient, stageId);
       toast({ title: 'Group deleted' });
     },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to delete group', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({
+        title: 'Failed to delete group',
+        description: getApiErrorMessage(error, 'We could not delete this group right now.'),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -83,8 +95,12 @@ export const useBRGroupsMutations = (stageId: string | null) => {
       invalidateBRGroups(queryClient, stageId);
       toast({ title: 'Group teams updated' });
     },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to update teams', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({
+        title: 'Failed to update teams',
+        description: getApiErrorMessage(error, 'We could not update the lobby assignments for this group.'),
+        variant: 'destructive',
+      });
     },
   });
 

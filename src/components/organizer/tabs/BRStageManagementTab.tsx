@@ -138,6 +138,12 @@ interface StageFlowInfo {
     isConfigured: boolean;
 }
 
+interface StageReadiness {
+    canReviewAdvancement: boolean;
+    lockedLabel: string;
+    helperText: string;
+}
+
 interface BRStageManagementTabProps {
     tournamentId: string;
     stages: TournamentStage[];
@@ -661,6 +667,46 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         };
     }, [sortedStages, stageFlows, registeredTeamCount]);
 
+    const getStageReadiness = useCallback((stage: TournamentStage, flow: StageFlowInfo | undefined, isLast: boolean): StageReadiness => {
+        if (isLast) {
+            return {
+                canReviewAdvancement: false,
+                lockedLabel: 'Final stage',
+                helperText: 'This stage decides the winner and does not advance into another lobby.',
+            };
+        }
+
+        if (!flow?.isConfigured || !stage.advancement_count) {
+            return {
+                canReviewAdvancement: false,
+                lockedLabel: 'Set advancement',
+                helperText: 'Define how many players advance from this stage before opening advancement review.',
+            };
+        }
+
+        if ((flow.teamsAdvancing ?? 0) <= 0) {
+            return {
+                canReviewAdvancement: false,
+                lockedLabel: 'No output',
+                helperText: 'This stage currently produces no advancing players.',
+            };
+        }
+
+        if ((stage.status || 'upcoming') !== 'completed') {
+            return {
+                canReviewAdvancement: false,
+                lockedLabel: 'Complete stage',
+                helperText: 'Finish and mark this stage completed before reviewing qualifiers for the next stage.',
+            };
+        }
+
+        return {
+            canReviewAdvancement: true,
+            lockedLabel: 'Ready',
+            helperText: 'Review the qualifying players, then advance them into the next stage.',
+        };
+    }, []);
+
     return (
         <>
             <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6">
@@ -773,6 +819,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 const isExpanded = expandedStageId === stage.id;
                                 const isLast = index === sortedStages.length - 1;
                                 const prevStage = index > 0 ? sortedStages[index - 1] : null;
+                                const readiness = getStageReadiness(stage, flow, isLast);
 
                                 return (
                                     <div key={stage.id}>
@@ -953,50 +1000,76 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     </div>
                                                 )}
 
-                                                {/* Schedule summary + button */}
-                                                <button
-                                                    onClick={() => setScheduleStageId(stage.id)}
-                                                    className="w-full flex items-center gap-2 px-3 py-2 bg-white/[0.02] border border-white/5 rounded-lg hover:border-white/15 transition-colors group/sched"
-                                                >
-                                                    <Calendar className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-                                                    {stage.starts_at || stage.ends_at ? (
-                                                        <span className="text-xs text-gray-300 flex-1 text-left">
-                                                            {stage.starts_at ? new Date(stage.starts_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                                                            {' '}&rarr;{' '}
-                                                            {stage.ends_at ? new Date(stage.ends_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-500 flex-1 text-left">No schedule set</span>
-                                                    )}
-                                                    <span className="text-[10px] text-gray-600 group-hover/sched:text-white transition-colors">Configure</span>
-                                                </button>
-
-                                                {/* Manage Groups Button */}
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className={`w-full text-xs ${
-                                                        isExpanded
-                                                            ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/5'
-                                                            : 'border-white/10 text-gray-400 hover:text-white'
-                                                    }`}
-                                                    onClick={() => setExpandedStageId(isExpanded ? null : stage.id)}
-                                                >
-                                                    {isExpanded ? <ChevronDown className="w-3.5 h-3.5 mr-1.5" /> : <ChevronRight className="w-3.5 h-3.5 mr-1.5" />}
-                                                    {isExpanded ? 'Collapse' : 'Groups & Rounds'}
-                                                </Button>
-
-                                                {/* Advance Teams Button — only show when stage is fully configured */}
-                                                {!isLast && flow?.isConfigured && flow?.teamsAdvancing != null && flow.teamsAdvancing > 0 && (
-                                                    <Button
-                                                        size="sm"
-                                                        className="w-full text-xs bg-emerald-600/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-600 hover:text-white transition-all"
-                                                        onClick={() => setAdvanceConfirmStageId(stage.id)}
+                                                <div className="grid gap-2 lg:grid-cols-[1.2fr_1fr_1fr]">
+                                                    <button
+                                                        onClick={() => setScheduleStageId(stage.id)}
+                                                        className="flex min-h-[64px] items-center gap-3 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 text-left transition-colors hover:border-white/15"
                                                     >
-                                                        <ArrowRight className="w-3.5 h-3.5 mr-1.5" />
-                                                        Advance Top {flow.teamsAdvancing} {UnitsLabel}
+                                                        <Calendar className="h-4 w-4 flex-shrink-0 text-gray-500" />
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">Schedule</p>
+                                                            <p className="mt-1 text-xs text-gray-300">
+                                                                {stage.starts_at || stage.ends_at
+                                                                    ? `${stage.starts_at ? new Date(stage.starts_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'} → ${stage.ends_at ? new Date(stage.ends_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}`
+                                                                    : 'Add timing for this stage'}
+                                                            </p>
+                                                        </div>
+                                                        <span className="text-[10px] text-zinc-500">Configure</span>
+                                                    </button>
+
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className={`min-h-[64px] justify-start px-3 text-left ${
+                                                            isExpanded
+                                                                ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-300'
+                                                                : 'border-white/10 text-gray-300 hover:text-white'
+                                                        }`}
+                                                        onClick={() => setExpandedStageId(isExpanded ? null : stage.id)}
+                                                    >
+                                                        <div className="flex w-full items-center gap-3">
+                                                            {isExpanded ? <ChevronDown className="h-4 w-4 text-emerald-400" /> : <ChevronRight className="h-4 w-4 text-zinc-500" />}
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">Lobbies & Rounds</p>
+                                                                <p className="mt-1 text-xs">
+                                                                    {isExpanded ? 'Stage operations open' : 'Seed lobbies and run rounds'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
                                                     </Button>
-                                                )}
+
+                                                    <Button
+                                                        variant={readiness.canReviewAdvancement ? 'default' : 'secondary'}
+                                                        size="sm"
+                                                        disabled={!readiness.canReviewAdvancement}
+                                                        className={`min-h-[64px] justify-start px-3 text-left ${
+                                                            readiness.canReviewAdvancement
+                                                                ? 'border-emerald-500/30 bg-emerald-600/15 text-emerald-200 hover:bg-emerald-600'
+                                                                : 'border-white/10 bg-white/[0.02] text-zinc-500'
+                                                        }`}
+                                                        onClick={() => readiness.canReviewAdvancement && setAdvanceConfirmStageId(stage.id)}
+                                                    >
+                                                        <div className="flex w-full items-center gap-3">
+                                                            <ArrowRight className={`h-4 w-4 ${readiness.canReviewAdvancement ? 'text-emerald-300' : 'text-zinc-600'}`} />
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">Advancement</p>
+                                                                <p className="mt-1 text-xs">
+                                                                    {readiness.canReviewAdvancement && flow?.teamsAdvancing
+                                                                        ? `Review top ${flow.teamsAdvancing} ${UnitsLabel}`
+                                                                        : readiness.lockedLabel}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </Button>
+                                                </div>
+
+                                                <div className={`rounded-lg border px-3 py-2 text-xs ${
+                                                    readiness.canReviewAdvancement
+                                                        ? 'border-emerald-500/20 bg-emerald-500/[0.05] text-emerald-200'
+                                                        : 'border-white/8 bg-white/[0.02] text-zinc-400'
+                                                }`}>
+                                                    {readiness.helperText}
+                                                </div>
                                             </div>
 
                                             {/* Inline Group Management (expanded) */}

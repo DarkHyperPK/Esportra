@@ -53,6 +53,22 @@ function readApiErrorBody(body: unknown): ApiErrorBody {
   return {};
 }
 
+function buildApiErrorMessage(
+  status: number,
+  body: unknown,
+  fallback: string,
+): string {
+  const parsed = readApiErrorBody(body);
+  const message = parsed.message || parsed.error || parsed.detail || parsed.title || fallback;
+  const traceId = parsed.traceId || parsed.trace_id;
+
+  if (traceId) {
+    return `${message} Reference ID: ${traceId}`;
+  }
+
+  return message || `Request failed (${status}).`;
+}
+
 export function getApiErrorMessage(
   error: unknown,
   fallback = 'Something went wrong. Please try again.',
@@ -125,7 +141,11 @@ async function fetchWithAuth(
       try { body = JSON.parse(text); } catch { body = text; }
     } catch { body = null; }
 
-    throw new ApiError(response.status, body, `API ${response.status}: ${path}`);
+    throw new ApiError(
+      response.status,
+      body,
+      buildApiErrorMessage(response.status, body, `Request failed (${response.status}).`),
+    );
   }
 
   return response;
@@ -217,7 +237,11 @@ export const apiClient = {
         const text = await response.text();
         try { body = JSON.parse(text); } catch { body = text; }
       } catch { body = null; }
-      throw new ApiError(response.status, body, `Upload failed ${response.status}: ${path}`);
+      throw new ApiError(
+        response.status,
+        body,
+        buildApiErrorMessage(response.status, body, `Upload failed (${response.status}).`),
+      );
     }
 
     return response.json() as Promise<T>;

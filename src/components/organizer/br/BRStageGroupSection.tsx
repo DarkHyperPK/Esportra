@@ -65,6 +65,11 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
 
   const totalAssigned = groups.reduce((sum, g) => sum + g.team_count, 0);
   const isSingleLobby = groups.length === 1;
+  const hasGroups = groups.length > 0;
+  const hasTeamsToSeed = registeredTeamCount > 0;
+  const hasUnassignedTeams = totalAssigned < registeredTeamCount;
+  const canManageRounds = hasGroups && (!hasTeamsToSeed || !hasUnassignedTeams);
+  const remainingTeams = Math.max(registeredTeamCount - totalAssigned, 0);
 
   const handleDistribute = async () => {
     try {
@@ -76,6 +81,38 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
 
   return (
     <div className="space-y-4 mt-4 border-t border-white/5 pt-4">
+      {!isLoading && !error && (
+        <div className="grid gap-2 md:grid-cols-3">
+          <div className={`rounded-xl border px-3 py-3 ${hasGroups ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Step 1</p>
+            <p className="mt-1 text-sm font-semibold text-white">{isSingleLobby ? 'Main Lobby Ready' : 'Lobbies Ready'}</p>
+            <p className="mt-1 text-xs text-zinc-400">
+              {hasGroups ? `${groups.length} ${isSingleLobby ? 'lobby' : 'groups'} configured.` : 'Create the playable lobby structure first.'}
+            </p>
+          </div>
+          <div className={`rounded-xl border px-3 py-3 ${canManageRounds ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : hasGroups ? 'border-amber-500/20 bg-amber-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Step 2</p>
+            <p className="mt-1 text-sm font-semibold text-white">Seed Participants</p>
+            <p className="mt-1 text-xs text-zinc-400">
+              {!hasTeamsToSeed
+                ? 'No accepted participants yet.'
+                : hasUnassignedTeams
+                  ? `${remainingTeams} ${remainingTeams === 1 ? 'participant remains' : 'participants remain'} unassigned.`
+                  : 'All participants have been seeded into lobbies.'}
+            </p>
+          </div>
+          <div className={`rounded-xl border px-3 py-3 ${canManageRounds ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Step 3</p>
+            <p className="mt-1 text-sm font-semibold text-white">Run Groups & Rounds</p>
+            <p className="mt-1 text-xs text-zinc-400">
+              {canManageRounds
+                ? 'Open a lobby card below to create rounds and submit results.'
+                : 'Rounds unlock once every participant is placed in a lobby.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Loading */}
       {isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -122,13 +159,18 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
                 size="sm"
                 onClick={() => totalAssigned > 0 ? setConfirmDistribute(true) : handleDistribute()}
                 disabled={assignTeams.isPending || registeredTeamCount === 0}
-                className="h-7 text-[11px] bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-500/20"
+                className="h-7 text-[11px] border border-rose-500/20 bg-rose-600/10 text-rose-300 hover:bg-rose-600/20"
               >
                 <Shuffle className="w-3 h-3 mr-1" />
-                {assignTeams.isPending ? 'Distributing...' : totalAssigned > 0 ? 'Redistribute' : 'Distribute'}
+                {assignTeams.isPending ? 'Seeding...' : totalAssigned > 0 ? 'Re-seed' : 'Seed participants'}
               </Button>
             </div>
           </div>
+          {hasTeamsToSeed && hasUnassignedTeams && (
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-3 py-2 text-xs text-amber-200">
+              Seed the remaining {remainingTeams} {remainingTeams === 1 ? 'participant' : 'participants'} before running rounds or advancing this stage.
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {groups.map((group) => (
               <GroupCard
@@ -151,7 +193,14 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
 
       {/* Round Management Panel */}
       {!isLoading && !error && selectedGroup && (
-        selectedGroupTeamsLoading ? (
+        !canManageRounds ? (
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-sm font-semibold text-white">Rounds are locked</p>
+            <p className="mt-1 text-xs text-zinc-400">
+              Finish seeding every participant into a lobby before creating rounds for {displayGroupName(selectedGroup, isSingleLobby)}.
+            </p>
+          </div>
+        ) : selectedGroupTeamsLoading ? (
           <div className="space-y-2 rounded-2xl border border-white/10 bg-black/20 p-4">
             <div className="h-5 w-40 bg-white/5 rounded animate-pulse" />
             {Array.from({ length: 2 }).map((_, i) => (
@@ -162,7 +211,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
           <RoundManagementPanel
             stageId={stageId}
             groupId={selectedGroup.id}
-            groupName={selectedGroup.name}
+            groupName={displayGroupName(selectedGroup, isSingleLobby)}
             teams={selectedGroupTeams}
             scoringPreset={scoringPreset}
           />
@@ -216,3 +265,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
 };
 
 export default BRStageGroupSection;
+
+function displayGroupName(group: { name: string }, isSingleLobby: boolean) {
+  return isSingleLobby ? 'Main Lobby' : group.name;
+}
