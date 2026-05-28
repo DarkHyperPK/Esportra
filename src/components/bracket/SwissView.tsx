@@ -13,6 +13,8 @@ import { RefreshCw, Undo2, Check, Copy, Gamepad2, Swords } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { MapVeto } from '@/components/tournament/MapVeto';
+import { StageProgressChip } from '@/components/tournament/StageProgressChip';
+import { useStageCompletion } from '@/hooks/useStageCompletion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { FilterState } from '@/components/bracket/BracketSidebarFilter';
 
@@ -200,7 +202,8 @@ export const SwissView: React.FC<SwissViewProps> = ({
     const [isProcessing, setIsProcessing] = useState(false);
     const [mapVetoOpen, setMapVetoOpen] = useState(false);
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
-    const [isFinalizing, setIsFinalizing] = useState(false);
+
+    const { isComplete, alreadyAdvanced, progressLabel, refetch: refetchCompletion } = useStageCompletion(stageId);
 
     // Helpers
     const getRawId = (id: string | number) => String(id).replace('db-', '');
@@ -266,20 +269,11 @@ export const SwissView: React.FC<SwissViewProps> = ({
     // Formula: ceil((maxRounds + 1) / 2)
     const threshold = Math.ceil((maxRounds + 1) / 2);
 
-    // Finalize stage — marks stage as 'completed' so advancement button unlocks
-    const handleFinalizeStage = async () => {
-        setIsFinalizing(true);
-        try {
-            await apiClient.patch(`/api/stages/${stageId}/status`, { status: 'completed' });
-            toast({ title: 'Stage Finalized', description: 'Stage marked as completed. You can now advance teams from the Stages tab.' });
-            onMatchUpdate?.();
-        } catch (error: any) {
-            console.error('[SwissView] Error finalizing stage:', error);
-            toast({ title: 'Error', description: error.message || 'Failed to finalize stage', variant: 'destructive' });
-        } finally {
-            setIsFinalizing(false);
-        }
-    };
+    // Finalize stage — completion is derived from match results
+    const handleRefreshCompletion = useCallback(async () => {
+        await refetchCompletion();
+        onMatchUpdate?.();
+    }, [refetchCompletion, onMatchUpdate]);
 
 
     // Handlers
@@ -509,23 +503,19 @@ export const SwissView: React.FC<SwissViewProps> = ({
                                 Generate Round {currentRound + 1}
                             </Button>
                         )}
-                        {canFinalizeStage && stage?.status !== 'completed' && (
+                        {canFinalizeStage && !isComplete && (
                             <Button
-                                onClick={handleFinalizeStage}
-                                disabled={isFinalizing}
-                                className="bg-green-600 hover:bg-green-500 text-white font-semibold"
+                                onClick={handleRefreshCompletion}
+                                variant="outline"
+                                className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-semibold"
                             >
-                                {isFinalizing ? (
-                                    <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Finalizing...</>
-                                ) : (
-                                    <><Check className="w-4 h-4 mr-2" />Finalize Stage</>
-                                )}
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Refresh Progress
                             </Button>
                         )}
-                        {stage?.status === 'completed' && (
-                            <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full">
-                                <Check className="w-4 h-4 text-green-500" />
-                                <span className="text-green-400 font-bold uppercase tracking-wider text-sm">Stage Finalized</span>
+                        {(isComplete || alreadyAdvanced) && (
+                            <div className="flex items-center gap-2">
+                                <StageProgressChip progressLabel={progressLabel} />
                             </div>
                         )}
                     </div>

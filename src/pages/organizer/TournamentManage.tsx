@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQueries } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { OrganizerTeamCard } from '@/components/organizer/OrganizerTeamCard';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -306,6 +306,27 @@ const TournamentDashboard = () => {
   const participants = (dashboardData?.participants || []) as Participant[];
   const stages = dashboardData?.stages || [];
   const isOrganizer = dashboardData?.isOrganizer || false;
+
+  const stageCompletionQueries = useQueries({
+    queries: stages.map((stage) => ({
+      queryKey: ['stage-completion', stage.id],
+      queryFn: async () => {
+        const raw = await apiClient.get<{ isComplete?: boolean }>(`/api/stages/${stage.id}/completion-status`);
+        return Boolean(raw.isComplete);
+      },
+      enabled: Boolean(stage.id) && isOrganizer,
+      staleTime: 60_000,
+    })),
+  });
+
+  const hasIncompleteStages = useMemo(() => {
+    if (stages.length === 0) return false;
+    return stageCompletionQueries.some((query, index) => {
+      if (query.isLoading || query.isError) return true;
+      return !query.data;
+    });
+  }, [stages.length, stageCompletionQueries]);
+
   const staffPermissions = (dashboardData?.staffPermissions || []) as StaffPermission[];
   const mockCount = dashboardData?.mockCount ?? 0;
 
@@ -432,7 +453,7 @@ const TournamentDashboard = () => {
 
       const currentTime = new Date();
       const isOverdue = currentTime > endDate;
-      const incompleteStages = stages.some(stage => stage.status !== 'completed');
+      const incompleteStages = hasIncompleteStages;
 
       if (isOverdue && incompleteStages && tournament.status !== 'completed') {
         console.log('[TournamentManage] Tournament is overdue with incomplete stages. Extending matches...');
@@ -457,7 +478,7 @@ const TournamentDashboard = () => {
     };
 
     checkOverdue();
-  }, [tournament?.id, tournament?.end_date, stages.length, isOrganizer]);
+  }, [tournament?.id, tournament?.end_date, tournament?.status, stages.length, isOrganizer, hasIncompleteStages]);
 
 
   const handleTeamClick = async (participant: Participant) => {

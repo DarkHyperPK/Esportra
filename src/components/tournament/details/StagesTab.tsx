@@ -2,7 +2,8 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { StageProgressChip, getStageProgressFromStage } from '@/components/tournament/StageProgressChip';
+import type { StageProgressLabel } from '@/types/stageCompletion';
 import {
     Dialog,
     DialogContent,
@@ -23,7 +24,7 @@ interface Stage {
     stage_order: number;
     name: string;
     format: string;
-    status: 'upcoming' | 'pending' | 'active' | 'completed' | 'live';
+    progress_label?: StageProgressLabel | string | null;
     capacity: number | null;
     advancement_count: number | null;
     is_locked: boolean;
@@ -88,16 +89,9 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId }) => {
         return format.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     };
 
-    const getStageStatusColor = (status: Stage['status']) => {
-        switch (status) {
-            case 'completed': return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
-            case 'active':
-            case 'live': return 'text-blue-500 bg-blue-500/10 border-blue-500/20';
-            default: return 'text-zinc-400 bg-zinc-800/50 border-zinc-700/50';
-        }
-    };
-
-    const isStageActive = (status: string) => status === 'active' || status === 'live';
+    const isStageCurrent = (progressLabel: StageProgressLabel) => progressLabel === 'in_progress';
+    const isStageFinished = (progressLabel: StageProgressLabel) =>
+        progressLabel === 'ready_to_advance' || progressLabel === 'advanced';
 
     const getFlowDescription = () => {
         if (!stages || stages.length === 0) return '';
@@ -132,8 +126,9 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId }) => {
 
             <div className="relative pl-6 sm:pl-10 space-y-12 before:absolute before:inset-y-0 before:left-[11px] sm:before:left-[19px] before:w-0.5 before:bg-gradient-to-b before:from-zinc-800 before:via-zinc-800 before:to-transparent">
                 {stages.map((stage, index) => {
-                    const isActive = isStageActive(stage.status);
-                    const isCompleted = stage.status === 'completed';
+                    const progressLabel = getStageProgressFromStage(stage);
+                    const isActive = isStageCurrent(progressLabel);
+                    const isCompleted = isStageFinished(progressLabel);
                     const isLast = index === stages.length - 1;
                     const previousStage = index > 0 ? stages[index - 1] : null;
 
@@ -176,9 +171,7 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId }) => {
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2.5">
                                                 <span className="text-xs font-mono font-bold text-zinc-500 uppercase tracking-widest">Stage 0{index + 1}</span>
-                                                <Badge variant="outline" className={`border-0 uppercase text-[10px] tracking-wider font-semibold px-2 py-0.5 ${getStageStatusColor(stage.status)}`}>
-                                                    {stage.status === 'live' ? 'Live Now' : stage.status}
-                                                </Badge>
+                                                <StageProgressChip progressLabel={progressLabel} />
                                             </div>
                                             <h3 className={`text-2xl font-bold ${isActive ? 'text-white' : 'text-zinc-200'}`}>
                                                 {stage.name}

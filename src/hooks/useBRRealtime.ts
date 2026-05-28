@@ -82,6 +82,14 @@ export function useBRRealtime({
       }
     };
 
+    const invalidateStageCompletion = () => {
+      if (stageId) {
+        queryClient.invalidateQueries({ queryKey: ['stage-completion', stageId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['stage-completion'] });
+      }
+    };
+
     const invalidatePlayerContext = () => {
       if (tournamentId) {
         queryClient.invalidateQueries({ queryKey: ['br-player-context', tournamentId] });
@@ -101,6 +109,7 @@ export function useBRRealtime({
       invalidateRounds();
       invalidatePlayerContext();
       invalidateLeaderboard();
+      invalidateStageCompletion();
     };
 
     const handleRoundReset = (payload: BrScopedPayload) => {
@@ -110,6 +119,7 @@ export function useBRRealtime({
       invalidateRoundEvidence(payload.roundId);
       invalidateLeaderboard();
       invalidatePlayerContext();
+      invalidateStageCompletion();
     };
 
     const handleEvidenceSubmitted = (payload: BrScopedPayload) => {
@@ -129,11 +139,13 @@ export function useBRRealtime({
       invalidateRoundResults(payload.roundId);
       invalidateRounds();
       invalidateLeaderboard();
+      invalidateStageCompletion();
     };
 
     const handleLeaderboardUpdated = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
       invalidateLeaderboard();
+      invalidateStageCompletion();
     };
 
     conn.on('RoundCreated', handleRoundCreated);

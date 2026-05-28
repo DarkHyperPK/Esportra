@@ -22,7 +22,6 @@ interface BRStageGroupSectionProps {
   registeredTeamCount: number;
   hasNextStage: boolean;
   advancementCount: number | null;
-  stageStatus: string | null;
   onUpdate: () => void;
 }
 

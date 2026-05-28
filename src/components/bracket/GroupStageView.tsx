@@ -14,6 +14,8 @@ import { Check, Copy, Gamepad2, Swords, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { MapVeto } from '@/components/tournament/MapVeto';
+import { StageProgressChip } from '@/components/tournament/StageProgressChip';
+import { useStageCompletion } from '@/hooks/useStageCompletion';
 
 interface GroupStageViewProps {
     stageId: string;
@@ -222,7 +224,8 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
     const [isProcessing, setIsProcessing] = useState(false);
     const [mapVetoOpen, setMapVetoOpen] = useState(false);
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
-    const [isFinalizing, setIsFinalizing] = useState(false);
+
+    const { isComplete, alreadyAdvanced, progressLabel, refetch: refetchCompletion } = useStageCompletion(stageId);
 
     // Use prop teamsMap if provided (from parent), otherwise use local state
     const teamsMap = propTeamsMap || localTeamsMap;
@@ -423,19 +426,10 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
 
     const isAllMatchesComplete = matches.length > 0 && matches.every(m => m.status === 'completed');
 
-    const handleFinalizeStage = async () => {
-        setIsFinalizing(true);
-        try {
-            await apiClient.patch(`/api/stages/${stageId}/status`, { status: 'completed' });
-            toast({ title: 'Stage Finalized', description: 'Stage marked as completed. You can now advance teams from the Stages tab.' });
-            onMatchUpdate?.();
-        } catch (error: any) {
-            console.error('[GroupStageView] Error finalizing stage:', error);
-            toast({ title: 'Error', description: error.message || 'Failed to finalize stage', variant: 'destructive' });
-        } finally {
-            setIsFinalizing(false);
-        }
-    };
+    const handleRefreshCompletion = useCallback(async () => {
+        await refetchCompletion();
+        onMatchUpdate?.();
+    }, [refetchCompletion, onMatchUpdate]);
 
     const handleAutoAdvanceByes = async () => {
         if (!versionId) return;
@@ -485,23 +479,22 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                     >
                         Auto Advance Byes
                     </Button>
-                    {isAllMatchesComplete && stage?.status !== 'completed' && (
+                    {isAllMatchesComplete && !isComplete && (
                         <Button
-                            onClick={handleFinalizeStage}
-                            disabled={isFinalizing}
-                            className="bg-green-600 hover:bg-green-500 text-white font-semibold"
+                            onClick={handleRefreshCompletion}
+                            variant="outline"
+                            className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-medium"
                         >
-                            {isFinalizing ? (
-                                <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Finalizing...</>
-                            ) : (
-                                <><Check className="w-4 h-4 mr-2" />Finalize Stage</>
-                            )}
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Refresh Progress
                         </Button>
                     )}
-                    {stage?.status === 'completed' && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full">
-                            <Check className="w-4 h-4 text-green-500" />
-                            <span className="text-green-400 font-bold uppercase tracking-wider text-sm">Stage Finalized</span>
+                    {(isComplete || alreadyAdvanced) && (
+                        <div className="flex items-center gap-2">
+                            <StageProgressChip progressLabel={progressLabel} />
+                            {isComplete && !alreadyAdvanced && (
+                                <span className="text-xs text-gray-400">Advance teams from the Stages tab.</span>
+                            )}
                         </div>
                     )}
                 </div>

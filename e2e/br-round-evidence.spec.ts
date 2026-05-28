@@ -6,12 +6,14 @@ import { ApiClient } from './helpers/api';
 import {
   setupBrRoundFixture,
   getRoundEvidenceCount,
+  getStageCompletionStatus,
   submitPlayerEvidence,
   publishRoundResultsFromEvidence,
 } from './helpers/brSetup';
 import { readE2eEnv, e2eSkipReason } from './helpers/env';
 import { loginViaUi } from './helpers/uiAuth';
 import { assertNoOrphanLeaderboardZeros, openOrganizerGamesTab } from './helpers/uiLeaderboard';
+import { assertNoManualStageStatusControls, assertDerivedStageProgressVisible, openOrganizerStagesTab } from './helpers/uiStages';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const evidencePath = path.resolve(__dirname, 'fixtures/evidence.png');
@@ -100,10 +102,18 @@ test.describe('BR game room — multi-player evidence flow', () => {
 
       await publishRoundResultsFromEvidence(organizer, fixture.roundId);
 
+      await expect.poll(
+        async () => (await getStageCompletionStatus(organizer, fixture.stageId)).isComplete,
+        { timeout: 30_000 },
+      ).toBe(true);
+
       const organizerContext = await browser.newContext();
       const organizerPage = await organizerContext.newPage();
       try {
         await loginViaUi(organizerPage, env.organizerEmail, env.organizerPassword);
+        await openOrganizerStagesTab(organizerPage, fixture.slug);
+        await assertNoManualStageStatusControls(organizerPage);
+        await assertDerivedStageProgressVisible(organizerPage);
         const leaderboardSection = await openOrganizerGamesTab(organizerPage, fixture.slug);
         await expect(leaderboardSection.getByText(activePlayers[0].email.split('@')[0])).toBeVisible();
         await expect(leaderboardSection.getByText(activePlayers[1].email.split('@')[0])).toBeVisible();

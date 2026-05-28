@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueries } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -15,6 +16,9 @@ import { RoundRobinGenerator } from '@/services/bracket/RoundRobinGenerator';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { GraphValidator } from '@/services/bracket/BracketGenerator';
 import { StageCompletionService } from '@/services/bracket/StageCompletionService';
+import { StageProgressChip, getStageProgressFromStage } from '@/components/tournament/StageProgressChip';
+import type { StageCompletionStatus } from '@/types/stageCompletion';
+import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 // import { useStageRealtime } from '@/hooks/useStageRealtime';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
@@ -44,6 +48,37 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const [stageToDelete, setStageToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [tournamentWinner, setTournamentWinner] = useState<{ id: string; name: string; logo_url?: string | null } | null>(null);
+
+    const sortedStages = useMemo(
+        () => [...stages].sort((a, b) => a.stage_order - b.stage_order),
+        [stages],
+    );
+
+    const stageCompletionQueries = useQueries({
+        queries: sortedStages.map((stage) => ({
+            queryKey: ['stage-completion', stage.id],
+            queryFn: async (): Promise<StageCompletionStatus> => {
+                const raw = await apiClient.get<any>(`/api/stages/${stage.id}/completion-status`);
+                return {
+                    isComplete: Boolean(raw.isComplete),
+                    alreadyAdvanced: Boolean(raw.alreadyAdvanced),
+                    progressLabel: normalizeStageProgressLabel(raw.progressLabel),
+                    reason: raw.reason,
+                };
+            },
+            enabled: Boolean(stage.id),
+            staleTime: 15_000,
+        })),
+    });
+
+    const completionByStageId = useMemo(() => {
+        const map = new Map<string, StageCompletionStatus>();
+        sortedStages.forEach((stage, index) => {
+            const result = stageCompletionQueries[index]?.data;
+            if (result) map.set(stage.id, result);
+        });
+        return map;
+    }, [sortedStages, stageCompletionQueries]);
 
     /* 
     // Subscribe to realtime stage updates - this will trigger onUpdate when stages change
@@ -498,28 +533,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             const repo = new MatchRepository();
             await repo.createVersion(graph);
 
-            // Check for immediate completion (e.g. Byes)
-            const completionService = new StageCompletionService();
-            const { isComplete } = await completionService.checkStageCompletion(stageId);
-
-            if (isComplete) {
-                // If all matches complete (rare case with all Byes), mark as completed
-                try {
-                    await apiClient.patch(`/api/stages/${stageId}/status`, { status: 'completed' });
-                    toast({ title: 'Stage Completed', description: 'Stage automatically completed due to Byes.' });
-                    onUpdate();
-                } catch {
-                    // ignore
-                }
-            } else {
-                // Otherwise, set stage to 'live' since brackets are now generated
-                try {
-                    await apiClient.patch(`/api/stages/${stageId}/status`, { status: 'live' });
-                } catch (updateError) {
-                    console.error('[StageManagement] Failed to update stage status to live:', updateError);
-                }
-            }
-
             // Update state and navigate
             setHasBrackets(prev => ({ ...prev, [stageId]: true }));
 
@@ -612,18 +625,12 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         if (advancedStages[stageId] || advancingStages[stageId]) return;
         setAdvancingStages(prev => ({ ...prev, [stageId]: true }));
         try {
-            // If stage isn't marked completed yet, check and auto-complete
-            const stage = stages.find(s => s.id === stageId);
-            if (stage && stage.status !== 'completed') {
-                const completionService = new StageCompletionService();
-                const { isComplete } = await completionService.checkStageCompletion(stageId);
-                if (isComplete) {
-                    await apiClient.patch(`/api/stages/${stageId}/status`, { status: 'completed' });
-                } else {
-                    toast({ title: 'Stage Not Complete', description: 'All matches must be completed before advancing teams.', variant: 'destructive' });
-                    setAdvancingStages(prev => ({ ...prev, [stageId]: false }));
-                    return;
-                }
+            const completionService = new StageCompletionService();
+            const { isComplete } = await completionService.checkStageCompletion(stageId);
+            if (!isComplete) {
+                toast({ title: 'Stage Not Complete', description: 'All matches must be completed before advancing teams.', variant: 'destructive' });
+                setAdvancingStages(prev => ({ ...prev, [stageId]: false }));
+                return;
             }
 
             const service = new StageCompletionService();
@@ -719,7 +726,12 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {stages.map((stage, index) => (
+                            {stages.map((stage, index) => {
+                                const completion = completionByStageId.get(stage.id);
+                                const progressLabel = completion?.progressLabel ?? getStageProgressFromStage(stage);
+                                const stageComplete = completion?.isComplete ?? false;
+
+                                return (
                                 <div
                                     key={stage.id}
                                     className="p-6 bg-zinc-800/10 border border-white/10/30 rounded-lg hover:border-emerald-400/30 transition-all"
@@ -735,12 +747,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                     <span className="text-xs text-gray-400 uppercase tracking-wider bg-gray-800 px-2 py-0.5 rounded">
                                                         {stage.format?.replace('_', ' ') || 'N/A'}
                                                     </span>
-                                                    <span className={`text-xs uppercase tracking-wider px-2 py-0.5 rounded font-medium ${stage.status === 'live' ? "bg-red-500/20 text-red-400" :
-                                                        stage.status === 'completed' ? "bg-emerald-500/20 text-emerald-400" :
-                                                            "bg-blue-500/20 text-blue-400"
-                                                        }`}>
-                                                        {stage.status || 'upcoming'}
-                                                    </span>
+                                                    <StageProgressChip progressLabel={progressLabel} />
                                                     {stage.is_locked && (
                                                         <span className="bg-amber-500/20 text-amber-400 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded flex items-center gap-1">
                                                             <Lock className="w-3 h-3" /> Locked
@@ -815,7 +822,9 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                             const stageBracketExists = hasBrackets[stage.id];
                                             const isFirstStage = index === 0;
                                             const previousStage = index > 0 ? stages[index - 1] : null;
-                                            const previousStageCompleted = previousStage?.status === 'completed';
+                                            const previousStageCompleted = previousStage
+                                                ? (completionByStageId.get(previousStage.id)?.isComplete ?? false)
+                                                : true;
                                             const previousStageBracketExists = previousStage ? hasBrackets[previousStage.id] : true;
 
                                             // Can generate bracket if: first stage OR previous stage is completed with brackets
@@ -867,7 +876,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                             );
                                         })()}
                                         {/* Winner Display - only on last completed stage */}
-                                        {index === stages.length - 1 && stage.status === 'completed' && tournamentWinner && (
+                                        {index === stages.length - 1 && stageComplete && tournamentWinner && (
                                             <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-lg">
                                                 <Trophy className="w-4 h-4 text-amber-400" />
                                                 <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">Winner:</span>
@@ -905,7 +914,8 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
                                     </div>
                                 </div>
-                            ))}
+                            );
+                            })}
                         </div>
                     )}
                 </CardContent>

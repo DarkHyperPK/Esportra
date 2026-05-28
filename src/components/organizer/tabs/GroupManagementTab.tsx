@@ -7,6 +7,7 @@ import { GroupSetupPanel } from '@/components/organizer/br/GroupSetupPanel';
 import { GroupCard } from '@/components/organizer/br/GroupCard';
 import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementPanel';
 import AdvanceTeamsPanel from '@/components/organizer/br/AdvanceTeamsPanel';
+import { useStageCompletion } from '@/hooks/useStageCompletion';
 import {
   Select,
   SelectContent,
@@ -58,6 +59,8 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
   );
 
   const [selectedStageId, setSelectedStageId] = useState<string>(sortedStages[0]?.id ?? '');
+
+  const { alreadyAdvanced } = useStageCompletion(selectedStageId || null);
 
   // Sync selectedStageId when stages load or change
   useEffect(() => {
@@ -231,7 +234,7 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
       {(() => {
         if (isLoading || error || groups.length === 0) return null;
         const currentStage = sortedStages.find(s => s.id === selectedStageId);
-        if (!currentStage || currentStage.status === 'completed') return null;
+        if (!currentStage || alreadyAdvanced) return null;
         const hasNextStage = sortedStages.some(s => s.stage_order > currentStage.stage_order);
         if (!hasNextStage) return null;
         return (

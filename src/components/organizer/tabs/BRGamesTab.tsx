@@ -7,6 +7,8 @@ import { useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeade
 import { useBRGroupTeams, useBRGroups } from '@/hooks/useBRGroups';
 import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementPanel';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
+import { StageProgressChip } from '@/components/tournament/StageProgressChip';
+import { useStageCompletion } from '@/hooks/useStageCompletion';
 import type { Database } from '@/integrations/supabase/types';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
@@ -82,6 +84,8 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
         selectedStageId || null,
         selectedGroupId || null
     );
+
+    const { progressLabel: selectedStageProgress } = useStageCompletion(selectedStageId || null);
 
     if (sortedStages.length === 0) {
         return (
@@ -220,13 +224,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
                                 {selectedGroupName} — Leaderboard
                             </h3>
                             {selectedStage && (
-                                <span className={`text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded font-semibold ${
-                                    selectedStage.status === 'live' ? "bg-red-500/20 text-red-400" :
-                                    selectedStage.status === 'completed' ? "bg-emerald-500/20 text-emerald-400" :
-                                    "bg-blue-500/15 text-blue-400"
-                                }`}>
-                                    {selectedStage.status || 'upcoming'}
-                                </span>
+                                <StageProgressChip progressLabel={selectedStageProgress} />
                             )}
                         </div>
                         {leaderboardLoading ? (

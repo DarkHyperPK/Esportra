@@ -1,4 +1,6 @@
 import { apiClient } from '@/lib/apiClient';
+import type { StageCompletionStatus, StageProgressLabel } from '@/types/stageCompletion';
+import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 
 interface AdvancingTeam {
     team_id: string;
@@ -17,28 +19,44 @@ interface Stage {
     capacity: number | null;
 }
 
+interface StageCompletionApiResponse {
+    isComplete: boolean;
+    alreadyAdvanced?: boolean;
+    progressLabel?: string;
+    reason?: string;
+    groupsTotal?: number;
+    groupsWithCompletedRounds?: number;
+    advancingTeams?: Array<{ teamId?: string; team_id?: string; teamName?: string; team_name?: string; seed: number }>;
+}
+
 export class StageCompletionService {
     /**
      * Checks if a stage has met its completion criteria.
      */
-    async checkStageCompletion(stageId: string): Promise<{
-        isComplete: boolean;
-        advancingTeams: AdvancingTeam[];
-        reason?: string;
-    }> {
+    async checkStageCompletion(stageId: string): Promise<StageCompletionStatus & { advancingTeams: AdvancingTeam[] }> {
         try {
-            const result = await apiClient.get(`/api/stages/${stageId}/completion-status`);
+            const result = await apiClient.get<StageCompletionApiResponse>(`/api/stages/${stageId}/completion-status`);
             return {
                 isComplete: result.isComplete,
-                advancingTeams: (result.advancingTeams || []).map((t: any) => ({
-                    team_id: t.teamId,
-                    team_name: t.teamName,
-                    seed: t.seed
+                alreadyAdvanced: Boolean(result.alreadyAdvanced),
+                progressLabel: normalizeStageProgressLabel(result.progressLabel),
+                reason: result.reason,
+                groupsTotal: result.groupsTotal,
+                groupsWithCompletedRounds: result.groupsWithCompletedRounds,
+                advancingTeams: (result.advancingTeams || []).map((t) => ({
+                    team_id: t.team_id ?? t.teamId ?? '',
+                    team_name: t.team_name ?? t.teamName ?? '',
+                    seed: t.seed,
                 })),
-                reason: result.reason
             };
         } catch (err: any) {
-            return { isComplete: false, advancingTeams: [], reason: err.message || 'Error checking completion' };
+            return {
+                isComplete: false,
+                alreadyAdvanced: false,
+                progressLabel: 'setup',
+                advancingTeams: [],
+                reason: err.message || 'Error checking completion',
+            };
         }
     }
 

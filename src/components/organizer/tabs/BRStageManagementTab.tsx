@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -11,6 +12,9 @@ import { apiClient, ApiError } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 import BRStageGroupSection from '@/components/organizer/br/BRStageGroupSection';
+import { StageProgressChip } from '@/components/tournament/StageProgressChip';
+import type { StageCompletionStatus } from '@/types/stageCompletion';
+import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 import { getBRConfig } from '@/utils/gameFeatures';
 import esportsGames from '@/data/esportsGames.json';
 
@@ -187,6 +191,34 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const [addStageErrors, setAddStageErrors] = useState<string[]>([]);
 
     const sortedStages = useMemo(() => [...stages].sort((a, b) => a.stage_order - b.stage_order), [stages]);
+
+    const stageCompletionQueries = useQueries({
+        queries: sortedStages.map((stage) => ({
+            queryKey: ['stage-completion', stage.id],
+            queryFn: async (): Promise<StageCompletionStatus> => {
+                const raw = await apiClient.get<any>(`/api/stages/${stage.id}/completion-status`);
+                return {
+                    isComplete: Boolean(raw.isComplete),
+                    alreadyAdvanced: Boolean(raw.alreadyAdvanced),
+                    progressLabel: normalizeStageProgressLabel(raw.progressLabel),
+                    reason: raw.reason,
+                    groupsTotal: raw.groupsTotal,
+                    groupsWithCompletedRounds: raw.groupsWithCompletedRounds,
+                };
+            },
+            enabled: Boolean(stage.id),
+            staleTime: 15_000,
+        })),
+    });
+
+    const completionByStageId = useMemo(() => {
+        const map = new Map<string, StageCompletionStatus>();
+        sortedStages.forEach((stage, index) => {
+            const result = stageCompletionQueries[index]?.data;
+            if (result) map.set(stage.id, result);
+        });
+        return map;
+    }, [sortedStages, stageCompletionQueries]);
 
     const acceptedTeamCount = useMemo(() => {
         if (teamSize === 1) {
@@ -485,16 +517,6 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         }
     };
 
-    const handleStatusChange = async (stageId: string, status: string) => {
-        try {
-            await apiClient.patch(`/api/stages/${stageId}/status`, { status });
-            toast({ title: 'Status updated', description: `Stage is now ${status}.` });
-            onUpdate();
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message || 'Failed to update status', variant: 'destructive' });
-        }
-    };
-
     const handleResetAllStages = async () => {
         setIsResetting(true);
         try {
@@ -663,7 +685,11 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         };
     }, [sortedStages, stageFlows, registeredTeamCount]);
 
-    const getStageReadiness = useCallback((stage: TournamentStage, flow: StageFlowInfo | undefined, isLast: boolean): StageReadiness => {
+    const getStageReadiness = useCallback((
+        flow: StageFlowInfo | undefined,
+        isLast: boolean,
+        isStageComplete: boolean,
+    ): StageReadiness => {
         if (isLast) {
             return {
                 canReviewAdvancement: false,
@@ -688,11 +714,11 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             };
         }
 
-        if ((stage.status || 'upcoming') !== 'completed') {
+        if (!isStageComplete) {
             return {
                 canReviewAdvancement: false,
-                lockedLabel: 'Complete stage',
-                helperText: 'Finish and mark this stage completed before reviewing qualifiers for the next stage.',
+                lockedLabel: 'Complete rounds',
+                helperText: 'Finish and save results for every group before reviewing qualifiers for the next stage.',
             };
         }
 
@@ -814,8 +840,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 const flow = stageFlows.get(stage.id);
                                 const isExpanded = expandedStageId === stage.id;
                                 const isLast = index === sortedStages.length - 1;
-                                const prevStage = index > 0 ? sortedStages[index - 1] : null;
-                                const readiness = getStageReadiness(stage, flow, isLast);
+                                const completion = completionByStageId.get(stage.id);
+                                const readiness = getStageReadiness(flow, isLast, completion?.isComplete ?? false);
 
                                 return (
                                     <div key={stage.id}>
@@ -830,11 +856,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                 <div className="flex items-start justify-between gap-3">
                                                     {/* Left: Stage number + name + status */}
                                                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-                                                            stage.status === 'live' ? 'bg-red-500/15 border border-red-500/30 text-red-400' :
-                                                            stage.status === 'completed' ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400' :
-                                                            'bg-white/5 border border-white/10 text-gray-400'
-                                                        }`}>
+                                                        <div className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 bg-white/5 border border-white/10 text-gray-400">
                                                             {index + 1}
                                                         </div>
                                                         <div className="min-w-0">
@@ -869,13 +891,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                                 </button>
                                                             )}
                                                             <div className="flex items-center gap-2 mt-0.5">
-                                                                <span className={`text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded font-semibold ${
-                                                                    stage.status === 'live' ? "bg-red-500/20 text-red-400" :
-                                                                    stage.status === 'completed' ? "bg-emerald-500/20 text-emerald-400" :
-                                                                    "bg-blue-500/15 text-blue-400"
-                                                                }`}>
-                                                                    {stage.status || 'upcoming'}
-                                                                </span>
+                                                                <StageProgressChip progressLabel={completion?.progressLabel} />
                                                                 {isLast && (
                                                                     <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold">
                                                                         Finals
@@ -887,19 +903,6 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
                                                     {/* Right: Actions */}
                                                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                                                        <Select
-                                                            value={stage.status || 'upcoming'}
-                                                            onValueChange={(v) => handleStatusChange(stage.id, v)}
-                                                        >
-                                                            <SelectTrigger className="w-[110px] h-7 text-[11px]">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="upcoming">Upcoming</SelectItem>
-                                                                <SelectItem value="live">Live</SelectItem>
-                                                                <SelectItem value="completed">Completed</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
                                                         <div className="flex flex-col">
                                                             <Button size="icon" variant="ghost" className="h-5 w-5 text-gray-500 hover:text-white" disabled={index === 0} onClick={() => handleReorder(stage.id, 'up')}>
                                                                 <ArrowUp className="w-2.5 h-2.5" />
@@ -1070,7 +1073,6 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                         registeredTeamCount={flow?.teamsEntering ?? registeredTeamCount}
                                                         hasNextStage={!isLast}
                                                         advancementCount={stage.advancement_count}
-                                                        stageStatus={stage.status}
                                                         onUpdate={onUpdate}
                                                     />
                                                 </div>

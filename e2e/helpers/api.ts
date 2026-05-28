@@ -50,6 +50,34 @@ export class ApiClient {
     return res.json() as Promise<T>;
   }
 
+  async request(
+    method: string,
+    path: string,
+    body?: unknown,
+  ): Promise<{ status: number; body: string }> {
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method,
+      headers: this.headers(),
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return { status: res.status, body: await res.text() };
+  }
+
+  async expectFailure(
+    method: 'GET' | 'POST' | 'PATCH' | 'PUT',
+    path: string,
+    expectedStatus: number,
+    body?: unknown,
+  ): Promise<string> {
+    const { status, body: responseBody } = await this.request(method, path, body);
+    if (status !== expectedStatus) {
+      throw new Error(
+        `${method} ${path} expected ${expectedStatus} but got ${status}: ${responseBody}`,
+      );
+    }
+    return responseBody;
+  }
+
   async uploadEvidenceImage(filePath: string, fileName = 'evidence.png'): Promise<string> {
     const fileBuffer = await fs.readFile(filePath);
     const form = new FormData();
