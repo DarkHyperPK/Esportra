@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -226,7 +226,7 @@ const BRGameRoom: React.FC = () => {
       });
       clearEvidence();
     } catch (error) {
-      const message = error instanceof Error ? error.message : '';
+      const message = getApiErrorMessage(error, 'Could not submit your report. Please try again.');
       if (message.includes('409') || message.toLowerCase().includes('already')) {
         await refetchEvidence();
         clearEvidence();
@@ -237,7 +237,7 @@ const BRGameRoom: React.FC = () => {
       } else if (message.includes('403') || message.toLowerCase().includes('forbidden')) {
         toast({ title: 'Not assigned', description: 'You are not assigned to this lobby.', variant: 'destructive' });
       } else {
-        toast({ title: 'Submission failed', description: message || 'Could not submit your report. Please try again.', variant: 'destructive' });
+        toast({ title: 'Submission failed', description: message, variant: 'destructive' });
       }
     }
   };

@@ -9,6 +9,7 @@ import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementP
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import { useStageCompletion } from '@/hooks/useStageCompletion';
+import { getApiErrorMessage } from '@/lib/apiClient';
 import type { Database } from '@/integrations/supabase/types';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
@@ -198,7 +199,9 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
                     <div className="flex items-center justify-between gap-3">
                         <div>
                             <p className="text-sm text-red-300">Failed to load groups</p>
-                            <p className="text-xs text-red-400/70">{(groupsError as Error).message}</p>
+                            <p className="text-xs text-red-400/70">
+                                {getApiErrorMessage(groupsError, 'We could not load BR groups for this stage.')}
+                            </p>
                         </div>
                         <Button
                             variant="ghost"

@@ -1,5 +1,27 @@
 import fs from 'node:fs/promises';
 
+export type ApiErrorPayload = {
+  error?: string;
+  message?: string;
+  detail?: string;
+  title?: string;
+};
+
+export function parseErrorBody(body: string): ApiErrorPayload {
+  try {
+    const parsed = JSON.parse(body) as unknown;
+    if (parsed && typeof parsed === 'object') return parsed as ApiErrorPayload;
+  } catch {
+    // Plain text responses are still useful for assertions.
+  }
+  return { message: body };
+}
+
+export function getErrorText(body: string): string {
+  const parsed = parseErrorBody(body);
+  return parsed.error || parsed.message || parsed.detail || parsed.title || body;
+}
+
 export class ApiClient {
   constructor(
     private readonly baseUrl: string,
@@ -76,6 +98,15 @@ export class ApiClient {
       );
     }
     return responseBody;
+  }
+
+  async expectFailureText(
+    method: 'GET' | 'POST' | 'PATCH' | 'PUT',
+    path: string,
+    expectedStatus: number,
+    body?: unknown,
+  ): Promise<string> {
+    return getErrorText(await this.expectFailure(method, path, expectedStatus, body));
   }
 
   async uploadEvidenceImage(filePath: string, fileName = 'evidence.png'): Promise<string> {

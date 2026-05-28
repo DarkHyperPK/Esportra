@@ -14,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { getApiErrorMessage } from '@/lib/apiClient';
 import type { BRDistributionMethod } from '@/types/brGroups';
 
 interface BRStageGroupSectionProps {
@@ -118,7 +119,9 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
           <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
           <div className="flex-1">
             <p className="text-sm text-red-300">Failed to load groups</p>
-            <p className="text-xs text-red-400/60">{(error as Error).message}</p>
+            <p className="text-xs text-red-400/60">
+              {getApiErrorMessage(error, 'We could not load the BR lobby setup for this stage.')}
+            </p>
           </div>
           <Button variant="ghost" size="sm" onClick={() => refetch()} className="text-red-300 hover:text-red-200 hover:bg-red-500/10">
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Retry

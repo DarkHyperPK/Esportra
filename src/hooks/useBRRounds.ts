@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { BR_CONFIG } from '@/config/brConfig';
 import type { BRRound, BRRoundResult, BRResultInput } from '@/types/brRounds';
@@ -57,8 +57,12 @@ export const useBRRounds = (
       await invalidateRoundQueries(data.id);
       toast({ title: `Round ${data.round_number} created` });
     },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to create round', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({
+        title: 'Failed to create round',
+        description: getApiErrorMessage(error, 'We could not create this round. Check the group setup and try again.'),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -72,8 +76,12 @@ export const useBRRounds = (
       const action = data.status === 'active' ? 'started' : data.status === 'completed' ? 'completed' : 'updated';
       toast({ title: `Round ${data.round_number} ${action}` });
     },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to update round', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({
+        title: 'Failed to update round',
+        description: getApiErrorMessage(error, 'We could not update this round. Check the schedule and try again.'),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -87,8 +95,12 @@ export const useBRRounds = (
         description: 'Lobby code, schedule, queue timer, results, and evidence were cleared.',
       });
     },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to reset round', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({
+        title: 'Failed to reset round',
+        description: getApiErrorMessage(error, 'We could not reset this round. Please try again.'),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -129,8 +141,12 @@ export const useBRRoundResults = (roundId: string | null, stageId?: string | nul
       }
       toast({ title: `${data.saved} results saved` });
     },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to save results', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({
+        title: 'Failed to save results',
+        description: getApiErrorMessage(error, 'We could not save these results. Check every placement and try again.'),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -231,8 +247,12 @@ export const useBRRoundEvidence = (
       await invalidateRelatedQueries();
       toast({ title: variables.reviewed ? 'Evidence reviewed' : 'Evidence reopened' });
     },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to update evidence', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      toast({
+        title: 'Failed to update evidence',
+        description: getApiErrorMessage(error, 'We could not update this evidence review. Please try again.'),
+        variant: 'destructive',
+      });
     },
   });
 

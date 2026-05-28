@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, FileText, Hash, LogOut, LogIn, Pencil, Check, X, RotateCcw } from 'lucide-react';
-import { apiClient, ApiError } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 import BRStageGroupSection from '@/components/organizer/br/BRStageGroupSection';
@@ -370,8 +370,12 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             toast({ title: 'Updated', description: `Stage ${field} saved.` });
             setEditingField(null);
             onUpdate();
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message || 'Failed to update', variant: 'destructive' });
+        } catch (error: unknown) {
+            toast({
+                title: 'Could not update stage',
+                description: getApiErrorMessage(error, 'We could not save this stage change. Please try again.'),
+                variant: 'destructive',
+            });
         }
     }, [stages, tournamentId, toast, onUpdate]);
 
@@ -452,8 +456,12 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             setNewIsFinal(false);
             setAddStageErrors([]);
             onUpdate();
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message || 'Failed to add stage', variant: 'destructive' });
+        } catch (error: unknown) {
+            toast({
+                title: 'Could not add stage',
+                description: getApiErrorMessage(error, 'We could not add this BR stage. Please try again.'),
+                variant: 'destructive',
+            });
         }
     };
 
@@ -482,8 +490,12 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             setDeleteConfirmId(null);
             if (expandedStageId === stageId) setExpandedStageId(null);
             onUpdate();
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message || 'Failed to delete stage', variant: 'destructive' });
+        } catch (error: unknown) {
+            toast({
+                title: 'Could not delete stage',
+                description: getApiErrorMessage(error, 'We could not delete this stage. Please try again.'),
+                variant: 'destructive',
+            });
         }
     };
 
@@ -526,8 +538,12 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             setResetConfirmOpen(false);
             setExpandedStageId(null);
             onUpdate();
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message || 'Failed to reset stages', variant: 'destructive' });
+        } catch (error: unknown) {
+            toast({
+                title: 'Could not reset stages',
+                description: getApiErrorMessage(error, 'We could not clear the stage setup. Please try again.'),
+                variant: 'destructive',
+            });
         } finally {
             setIsResetting(false);
         }
@@ -618,8 +634,12 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             setTemplateDialogOpen(false);
             setSelectedTemplate(null);
             onUpdate();
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message || 'Failed to apply template', variant: 'destructive' });
+        } catch (error: unknown) {
+            toast({
+                title: 'Could not apply template',
+                description: getApiErrorMessage(error, 'We could not apply this stage template. Please try again.'),
+                variant: 'destructive',
+            });
         } finally {
             setApplyingTemplate(false);
         }
@@ -635,10 +655,12 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             toast({ title: `${data.advanced} teams advanced to ${data.to_stage}` });
             setAdvanceConfirmStageId(null);
             onUpdate();
-        } catch (error: any) {
-            const msg = error instanceof ApiError && typeof error.body === 'object' && error.body?.error
-                ? error.body.error : error.message;
-            toast({ title: 'Advancement failed', description: msg, variant: 'destructive' });
+        } catch (error: unknown) {
+            toast({
+                title: 'Advancement failed',
+                description: getApiErrorMessage(error, 'We could not advance teams yet. Check that every group has completed results.'),
+                variant: 'destructive',
+            });
         } finally {
             setIsAdvancing(false);
         }
@@ -688,6 +710,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const getStageReadiness = useCallback((
         flow: StageFlowInfo | undefined,
         isLast: boolean,
+        advancementCount: number | null,
         isStageComplete: boolean,
     ): StageReadiness => {
         if (isLast) {
@@ -698,7 +721,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             };
         }
 
-        if (!flow?.isConfigured || !stage.advancement_count) {
+        if (!flow?.isConfigured || !advancementCount) {
             return {
                 canReviewAdvancement: false,
                 lockedLabel: 'Set advancement',
@@ -842,7 +865,12 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 const isLast = index === sortedStages.length - 1;
                                 const prevStage = index > 0 ? sortedStages[index - 1] : null;
                                 const completion = completionByStageId.get(stage.id);
-                                const readiness = getStageReadiness(flow, isLast, completion?.isComplete ?? false);
+                                const readiness = getStageReadiness(
+                                    flow,
+                                    isLast,
+                                    stage.advancement_count,
+                                    completion?.isComplete ?? false,
+                                );
 
                                 return (
                                     <div key={stage.id}>

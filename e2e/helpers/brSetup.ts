@@ -22,6 +22,31 @@ type StageRow = {
 type GroupRow = { id: string };
 type RoundRow = { id: string; lobby_code?: string; lobbyCode?: string };
 
+export type BRGroupRow = {
+  id: string;
+  name?: string;
+  team_count?: number;
+  teamCount?: number;
+  lobby_size?: number;
+  lobbySize?: number;
+};
+
+export type BRGroupTeamRow = {
+  team_id?: string | null;
+  participant_id?: string | null;
+  team_name?: string | null;
+  teamName?: string | null;
+};
+
+export type BRRoundRow = {
+  id: string;
+  round_number?: number;
+  roundNumber?: number;
+  status?: string;
+  lobby_code?: string | null;
+  lobbyCode?: string | null;
+};
+
 export type BrTournamentOptions = {
   lobbyCode?: string;
   maxTeams?: number;
@@ -42,6 +67,22 @@ export type StageCompletionStatus = {
   groupsWithCompletedRounds?: number;
 };
 
+export async function createOrganizerClientFromEnv(env: {
+  apiUrl: string;
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  organizerEmail: string;
+  organizerPassword: string;
+}, signInWithPassword: (url: string, key: string, email: string, password: string) => Promise<{ access_token: string }>): Promise<ApiClient> {
+  const session = await signInWithPassword(
+    env.supabaseUrl,
+    env.supabaseAnonKey,
+    env.organizerEmail,
+    env.organizerPassword,
+  );
+  return new ApiClient(env.apiUrl, session.access_token);
+}
+
 function defaultBrDates() {
   const now = Date.now();
   return {
@@ -58,6 +99,14 @@ export async function setTournamentOngoing(
   await organizer.put(`/api/tournaments/${tournamentId}`, { status: 'ongoing' });
 }
 
+export async function setTournamentStatus(
+  organizer: ApiClient,
+  tournamentId: string,
+  status: string,
+): Promise<void> {
+  await organizer.put(`/api/tournaments/${tournamentId}`, { status });
+}
+
 export async function getTournamentStages(
   organizer: ApiClient,
   tournamentId: string,
@@ -70,6 +119,55 @@ export async function getStageCompletionStatus(
   stageId: string,
 ): Promise<StageCompletionStatus> {
   return organizer.get(`/api/stages/${stageId}/completion-status`);
+}
+
+export async function getBRGroups(organizer: ApiClient, stageId: string): Promise<BRGroupRow[]> {
+  return organizer.get<BRGroupRow[]>(`/api/stages/${stageId}/br/groups`);
+}
+
+export async function getBRGroupTeams(
+  organizer: ApiClient,
+  stageId: string,
+  groupId: string,
+): Promise<BRGroupTeamRow[]> {
+  return organizer.get<BRGroupTeamRow[]>(`/api/stages/${stageId}/br/groups/${groupId}/teams`);
+}
+
+export async function createBRGroups(
+  organizer: ApiClient,
+  stageId: string,
+  params: { groupCount: number; lobbySize?: number; force?: boolean },
+): Promise<BRGroupRow[]> {
+  return organizer.post<BRGroupRow[]>(`/api/stages/${stageId}/br/groups`, params);
+}
+
+export async function seedGroups(
+  organizer: ApiClient,
+  stageId: string,
+  method: 'random' | 'snake' = 'random',
+): Promise<{ assigned: number; groups: number }> {
+  return organizer.post(`/api/stages/${stageId}/br/groups/assign`, { method });
+}
+
+export async function createRound(
+  organizer: ApiClient,
+  stageId: string,
+  groupId: string,
+  body: { lobbyCode?: string | null; scheduledAt?: string | null; queueTimerMinutes?: number | null } = {},
+): Promise<BRRoundRow> {
+  return organizer.post<BRRoundRow>(`/api/stages/${stageId}/br/groups/${groupId}/rounds`, body);
+}
+
+export async function updateRound(
+  organizer: ApiClient,
+  roundId: string,
+  body: { status?: string; lobbyCode?: string | null; scheduledAt?: string | null; queueTimerMinutes?: number | null },
+): Promise<BRRoundRow> {
+  return organizer.patch<BRRoundRow>(`/api/br/rounds/${roundId}`, body);
+}
+
+export async function resetRound(organizer: ApiClient, roundId: string): Promise<BRRoundRow> {
+  return organizer.post<BRRoundRow>(`/api/br/rounds/${roundId}/reset`, {});
 }
 
 export async function syncBrStagesTwoStage(
@@ -159,6 +257,65 @@ export async function setupMinimalBracketFixture(
   if (!stageId) throw new Error('Bracket tournament has no stages after setup');
 
   return { tournamentId: tournament.id, slug: tournament.slug, stageId };
+}
+
+export async function createBrTournament(
+  organizer: ApiClient,
+  playerClients: ApiClient[],
+  options: BrTournamentOptions & { autoBootstrap?: boolean; autoSeed?: boolean } = {},
+): Promise<Omit<BrTournamentFixture, 'groupId' | 'roundId' | 'lobbyCode'> & { lobbyCode: string }> {
+  const stamp = Date.now();
+  const lobbyCode = options.lobbyCode ?? `E2E-${stamp.toString(36).toUpperCase()}`;
+  const maxTeams = options.maxTeams ?? Math.max(playerClients.length + 2, 8);
+  const dates = defaultBrDates();
+
+  const tournament = await organizer.post<TournamentRow>('/api/tournaments', {
+    name: `E2E BR ${stamp}`,
+    slug: `e2e-br-${stamp}`,
+    game: 'Fortnite',
+    tournamentType: 'battle_royale',
+    teamSize: 1,
+    maxTeams,
+    startDate: options.startDate ?? dates.startDate,
+    endDate: options.endDate ?? dates.endDate,
+    registrationDeadline: options.registrationDeadline ?? dates.registrationDeadline,
+    status: options.status ?? 'open',
+    isPublic: true,
+    checkInRequired: false,
+    settings: {
+      brConfig: {
+        scoringPreset: 'fortnite',
+        totalRounds: 2,
+        lobbySize: maxTeams,
+      },
+    },
+  });
+
+  await Promise.all(
+    playerClients.map((client) =>
+      client.post(`/api/tournaments/${tournament.id}/register`, {}),
+    ),
+  );
+
+  const stages = await getTournamentStages(organizer, tournament.id);
+  const stageId = stages[0]?.id;
+  if (!stageId) throw new Error('Tournament has no stages after create');
+
+  if (options.autoBootstrap !== false) {
+    await organizer.post(`/api/stages/${stageId}/br/bootstrap`, {});
+  }
+
+  if (options.autoSeed !== false) {
+    await seedGroups(organizer, stageId, 'random');
+  }
+
+  return {
+    tournamentId: tournament.id,
+    tournamentName: tournament.name,
+    slug: tournament.slug,
+    stageId,
+    lobbyCode,
+  };
 }
 
 export async function setupBrRoundFixture(
@@ -261,6 +418,26 @@ export async function publishRoundResultsDirect(
 
   await organizer.put(`/api/br/rounds/${roundId}/results`, { results });
   await organizer.patch(`/api/br/rounds/${roundId}`, { status: 'completed' });
+}
+
+export async function saveRoundResultsDirect(
+  organizer: ApiClient,
+  stageId: string,
+  groupId: string,
+  roundId: string,
+): Promise<void> {
+  type GroupTeam = { team_id?: string | null; participant_id?: string | null };
+  const teams = await organizer.get<GroupTeam[]>(
+    `/api/stages/${stageId}/br/groups/${groupId}/teams`,
+  );
+
+  const results = teams.map((team, index) => ({
+    teamId: team.team_id ?? team.participant_id,
+    placement: index + 1,
+    kills: Math.max(0, 3 - index),
+  }));
+
+  await organizer.put(`/api/br/rounds/${roundId}/results`, { results });
 }
 
 export async function publishRoundResultsFromEvidence(
