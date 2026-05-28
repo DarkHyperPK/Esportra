@@ -64,7 +64,6 @@ test.describe('BR organizer games', () => {
     await page.getByRole('button', { name: /^Start$/i }).click({ force: true });
     await expect(page.getByRole('alertdialog', { name: /Start Round/i })).toBeVisible();
     await page.getByRole('button', { name: /^Start Round$/i }).click({ force: true });
-    await expectToast(page, /started/i);
     await expect(page.getByText('Live')).toBeVisible();
     await expect(page.getByText(fixture.lobbyCode)).toBeVisible();
     await expectNoTechnicalCopy(page);

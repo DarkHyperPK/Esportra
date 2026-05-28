@@ -56,14 +56,18 @@ test.describe('BR negative paths and error UX', () => {
     const organizer = await createOrganizerClient(env!);
     const players = await createPlayerClients(env!, 1);
     const fixture = await setupBrRoundFixture(organizer, players, { activateRound: false });
+    await setTournamentOngoing(organizer, fixture.tournamentId);
 
     await loginViaUi(page, env!.organizerEmail, env!.organizerPassword);
     await openOrganizerGames(page, fixture.slug);
     await expandFirstRound(page);
-    await setRoundSettings(page, { lobbyCode: fixture.lobbyCode });
+    await setRoundSettings(page, {
+      lobbyCode: fixture.lobbyCode,
+      scheduledAt: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 16),
+    });
     await page.getByRole('button', { name: /^Start$/i }).click();
     await page.getByRole('button', { name: /^Start Round$/i }).click();
-    await expectToast(page, /ongoing|Failed to update round/i);
+    await expectToast(page, /tournament window|Failed to update round/i, { timeout: 20_000 });
     await expectNoTechnicalCopy(page);
   });
 

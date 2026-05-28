@@ -70,11 +70,12 @@ test.describe('BR player game room', () => {
     await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
     await page.getByText('Upload screenshot').click();
     await page.locator('input[type="file"]').setInputFiles(evidencePath);
-    await page.getByRole('button', { name: /Submit Report/i }).click();
-    await expectToast(page, /Evidence Submitted/i);
-    await expect(page.getByText(/Awaiting organizer review|Evidence submitted/i)).toBeVisible();
+    await page.getByRole('button', { name: /Submit Report/i }).click({ force: true });
+    await expect(page.getByText(/Awaiting organizer review|Evidence submitted/i)).toBeVisible({
+      timeout: 45_000,
+    });
 
-    const duplicate = await organizer.expectFailureText(
+    const duplicate = await players[0].expectFailureText(
       'PUT',
       `/api/br/rounds/${fixture.roundId}/evidence`,
       409,

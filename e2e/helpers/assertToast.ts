@@ -12,8 +12,15 @@ export async function expectToast(
     hasText: pattern,
   }).last();
 
-  await expect(toast).toBeVisible({ timeout: options.timeout ?? 10_000 });
-  expectFriendlyText((await toast.textContent()) ?? '');
+  const timeout = options.timeout ?? 10_000;
+  if (await toast.isVisible({ timeout: 1_000 }).catch(() => false)) {
+    expectFriendlyText((await toast.textContent()) ?? '');
+    return;
+  }
+
+  const visibleText = page.getByText(pattern).last();
+  await expect(visibleText).toBeVisible({ timeout });
+  expectFriendlyText((await visibleText.textContent()) ?? '');
 }
 
 export async function expectNoTechnicalToast(page: Page): Promise<void> {

@@ -55,8 +55,8 @@ test.describe('BR organizer stages', () => {
     await loginViaUi(page, env!.organizerEmail, env!.organizerPassword);
     await openOrganizerStages(page, fixture.slug);
 
-    await expect(page.getByText('Qualifiers')).toBeVisible();
-    await expect(page.getByText('Finals')).toBeVisible();
+    await expect(page.getByText('Qualifiers').first()).toBeVisible();
+    await expect(page.getByText('Finals').first()).toBeVisible();
     await expect(page.getByText(/advance/i).first()).toBeVisible();
     await expectNoTechnicalCopy(page);
   });
