@@ -78,8 +78,10 @@ const BRGameRoom: React.FC = () => {
     context.groupId,
     { refetchIntervalMs: fallbackPollingMs, realtimeConnected: connected },
   );
+  const effectiveActiveRoundId = activeRound?.id ?? context.activeRound?.id ?? null;
+  const hasActiveRound = Boolean(activeRound ?? context.activeRound);
   const { evidence, submitEvidence, isSubmitting } = useBRRoundEvidence(
-    activeRound?.id ?? null,
+    effectiveActiveRoundId,
     context.stageId,
     context.groupId,
     { realtimeConnected: connected },
@@ -130,7 +132,7 @@ const BRGameRoom: React.FC = () => {
   const activeRoundNumber = activeRound?.round_number ?? context.activeRound?.roundNumber ?? null;
   const activeCode = activeRound?.lobby_code ?? context.activeRound?.lobbyCode ?? null;
   const gamesCompleted = completedRounds || context.completedRounds;
-  const allGamesFinished = totalRounds > 0 && gamesCompleted >= totalRounds && !activeRound;
+  const allGamesFinished = totalRounds > 0 && gamesCompleted >= totalRounds && !hasActiveRound;
   const winner = allGamesFinished && leaderboard.length > 0 ? leaderboard[0] : null;
 
   const userRank = userTeam
@@ -169,7 +171,7 @@ const BRGameRoom: React.FC = () => {
   };
 
   const submitReport = async () => {
-    if (!userTeam || !activeRound?.id) return;
+    if (!userTeam || !effectiveActiveRoundId) return;
     if (!evidenceFile) {
       toast({ title: 'Evidence required', description: 'Please upload a screenshot of your results.', variant: 'destructive' });
       return;
