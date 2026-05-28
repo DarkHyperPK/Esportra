@@ -1,15 +1,20 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { useBRGameResults } from '@/hooks/useBRGameResults';
+import {
+  useBRPlayerContext,
+  useBRGroupLeaderboard,
+  useBRGroupRounds,
+} from '@/hooks/useBRGroupLeaderboard';
+import { useBRRoundEvidence, useBRCompletedRoundResults } from '@/hooks/useBRRounds';
+import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import PremiumBackground from '@/components/ui/PremiumBackground';
@@ -20,7 +25,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import esportsGamesData from '@/data/esportsGames.json';
 import type { BRScoringPreset } from '@/types/battleRoyale';
 
 const stagger = {
@@ -34,7 +38,6 @@ const BRGameRoom: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Fetch tournament data
   const { data: tournamentData, isLoading: loadingTournament } = useQuery({
     queryKey: ['tournament-details', slug],
     queryFn: () => apiClient.get<any>(`/api/tournaments/${slug}`),
@@ -44,8 +47,48 @@ const BRGameRoom: React.FC = () => {
   const tournament = tournamentData?.tournament || tournamentData;
   const game = tournament?.game || '';
   const isBR = isBattleRoyale(game);
+  const [brStreamConnected, setBrStreamConnected] = useState(false);
 
-  // Fetch participants
+  const { context, isInGroup, isLoading: contextLoading } = useBRPlayerContext(
+    tournament?.id,
+    !!tournament?.id,
+    { realtimeConnected: brStreamConnected },
+  );
+
+  const { connected } = useBRRealtime({
+    stageId: context.stageId,
+    groupId: context.groupId,
+    roundId: context.activeRound?.id ?? null,
+    tournamentId: tournament?.id,
+    enabled: Boolean(context.stageId && context.groupId),
+  });
+
+  useEffect(() => {
+    setBrStreamConnected(connected);
+  }, [connected]);
+
+  const fallbackPollingMs = connected ? false : 60_000;
+  const { leaderboard } = useBRGroupLeaderboard(
+    context.stageId,
+    context.groupId,
+    { refetchIntervalMs: fallbackPollingMs },
+  );
+  const { rounds, completedRounds, activeRound, totalRounds } = useBRGroupRounds(
+    context.stageId,
+    context.groupId,
+    { refetchIntervalMs: fallbackPollingMs, realtimeConnected: connected },
+  );
+  const { evidence, submitEvidence, isSubmitting } = useBRRoundEvidence(
+    activeRound?.id ?? null,
+    context.stageId,
+    context.groupId,
+    { realtimeConnected: connected },
+  );
+  const { completedRounds: finishedRounds, resultsByRoundNumber } = useBRCompletedRoundResults(
+    rounds,
+    Boolean(context.groupId),
+  );
+
   const { data: participantsData } = useQuery({
     queryKey: ['tournament-participants', tournament?.id],
     queryFn: () => apiClient.get<any[]>(`/api/tournaments/${tournament.id}/participants`),
@@ -54,7 +97,6 @@ const BRGameRoom: React.FC = () => {
 
   const participants = participantsData || [];
 
-  // Find user's team
   const userTeam = useMemo(() => {
     if (!user?.id || !participants.length) return null;
     for (const p of participants) {
@@ -69,7 +111,6 @@ const BRGameRoom: React.FC = () => {
     return null;
   }, [user?.id, participants]);
 
-  // BR config
   const brConf = getBRConfig(game);
   const brSettings = tournament?.settings?.brSettings || {};
   const brPresetKey = brSettings?.brScoringPreset || 'standard';
@@ -77,33 +118,32 @@ const BRGameRoom: React.FC = () => {
     || brConf?.scoringPresets?.[brPresetKey]
     || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
   const brKillCap = brSettings?.brKillCap ?? brScoringPreset.killCap ?? null;
-  const brGameCount = brSettings?.brGameCount || brConf?.defaultGameCount || 6;
+  const brGameCount = context.totalRounds || brSettings?.brGameCount || brConf?.defaultGameCount || 6;
 
-  const brTeams = useMemo(() =>
-    participants.map(p => ({
-      id: p.team_id || p.id,
-      name: p.team_name || p.solo_username || p.solo_full_name || p.name || p.display_name || 'Unknown',
-      logo: p.team_logo || p.team_logo_url || undefined,
-    })),
-    [participants]
-  );
-
-  const brResults = useBRGameResults({
-    tournamentId: tournament?.id,
-    gameCount: brGameCount,
-    scoringPreset: brScoringPreset,
-    killCap: brKillCap,
-    teams: brTeams,
-    tiebreaker: brSettings?.brTiebreaker || 'most_wins',
-  });
-
-  // Self-report state
   const [reportPlacement, setReportPlacement] = useState<number>(1);
   const [reportKills, setReportKills] = useState<number>(0);
-  const [reportSubmitting, setReportSubmitting] = useState(false);
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+
+  const activeRoundNumber = activeRound?.round_number ?? context.activeRound?.roundNumber ?? null;
+  const activeCode = activeRound?.lobby_code ?? context.activeRound?.lobbyCode ?? null;
+  const gamesCompleted = completedRounds || context.completedRounds;
+  const allGamesFinished = totalRounds > 0 && gamesCompleted >= totalRounds && !activeRound;
+  const winner = allGamesFinished && leaderboard.length > 0 ? leaderboard[0] : null;
+
+  const userRank = userTeam
+    ? leaderboard.findIndex((e) => e.teamId === userTeam.id) + 1
+    : 0;
+  const userEntry = userTeam
+    ? leaderboard.find((e) => e.teamId === userTeam.id)
+    : null;
+
+  const userEvidence = userTeam
+    ? evidence.find((item) => item.teamId === userTeam.id)
+    : undefined;
+  const userAlreadySubmitted = Boolean(userEvidence);
 
   const handleEvidenceSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -128,16 +168,13 @@ const BRGameRoom: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Submit self-report with evidence
   const submitReport = async () => {
-    if (!userTeam || !brResults.activeGameNumber) return;
+    if (!userTeam || !activeRound?.id) return;
     if (!evidenceFile) {
       toast({ title: 'Evidence required', description: 'Please upload a screenshot of your results.', variant: 'destructive' });
       return;
     }
-    setReportSubmitting(true);
     try {
-      // Upload evidence image
       let imageUrl = '';
       try {
         const fd = new FormData();
@@ -147,37 +184,33 @@ const BRGameRoom: React.FC = () => {
         imageUrl = url;
       } catch {
         toast({ title: 'Upload failed', description: 'Could not upload evidence image. Please try again.', variant: 'destructive' });
-        setReportSubmitting(false);
         return;
       }
 
-      // Submit evidence via hook
-      await brResults.submitEvidence(brResults.activeGameNumber, {
-        teamId: userTeam.id,
-        teamName: userTeam.name,
+      await submitEvidence({
         imageUrl,
-        submittedAt: new Date().toISOString(),
         placement: reportPlacement,
         kills: reportKills,
       });
 
-      toast({ title: 'Evidence Submitted', description: `Placement: #${reportPlacement}, Kills: ${reportKills}. The organizer will review your submission.` });
+      toast({
+        title: 'Evidence Submitted',
+        description: `Placement: #${reportPlacement}, Kills: ${reportKills}. The organizer will review your submission.`,
+      });
       clearEvidence();
-    } catch {
-      toast({ title: 'Submission failed', description: 'Could not submit your report. Please try again.', variant: 'destructive' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('409') || message.toLowerCase().includes('already')) {
+        toast({ title: 'Already submitted', description: 'You already submitted evidence for this round.', variant: 'destructive' });
+      } else if (message.includes('403') || message.toLowerCase().includes('forbidden')) {
+        toast({ title: 'Not assigned', description: 'You are not assigned to this lobby.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Submission failed', description: message || 'Could not submit your report. Please try again.', variant: 'destructive' });
+      }
     }
-    setReportSubmitting(false);
   };
 
-  // Game logo
-  const gameMeta = useMemo(() => {
-    const g = esportsGamesData.games.find(g => g.name === game);
-    return g || null;
-  }, [game]);
-
-  const [historyExpanded, setHistoryExpanded] = useState(false);
-
-  if (loadingTournament) return <PremiumLoadingScreen />;
+  if (loadingTournament || contextLoading) return <PremiumLoadingScreen />;
 
   if (!tournament) {
     return (
@@ -198,22 +231,20 @@ const BRGameRoom: React.FC = () => {
     );
   }
 
-  const activeGame = brResults.activeGameNumber;
-  const activeCode = activeGame ? brResults.getLobbyCode(activeGame) : null;
-  const allGamesFinished = brResults.gamesCompleted >= brGameCount;
-
-  // Find user's rank in leaderboard
-  const userRank = userTeam
-    ? brResults.leaderboard.findIndex(e => e.teamId === userTeam.id) + 1
-    : 0;
-  const userEntry = userTeam
-    ? brResults.leaderboard.find(e => e.teamId === userTeam.id)
-    : null;
-
-  // Check if user already submitted evidence for active game
-  const userAlreadySubmitted = activeGame && userTeam
-    ? (brResults.getEvidence(activeGame) || []).some(ev => ev.teamId === userTeam.id)
-    : false;
+  if (!isInGroup) {
+    return (
+      <PremiumBackground className="min-h-screen">
+        <div className="max-w-lg mx-auto px-4 py-16 text-center space-y-4">
+          <Shield className="w-10 h-10 text-zinc-600 mx-auto" />
+          <h1 className="text-lg font-bold text-white">{tournament.name}</h1>
+          <p className="text-sm text-zinc-400">
+            You are not assigned to a BR lobby yet. Check back once the organizer seeds groups.
+          </p>
+          <Button variant="outline" onClick={() => navigate(`/tournaments/${slug}`)}>Back to tournament</Button>
+        </div>
+      </PremiumBackground>
+    );
+  }
 
   return (
     <PremiumBackground className="min-h-screen">
@@ -223,7 +254,6 @@ const BRGameRoom: React.FC = () => {
         initial="hidden"
         animate="visible"
       >
-        {/* ─── Header ─── */}
         <motion.div variants={stagger.item} className="flex items-center gap-3">
           <button
             onClick={() => navigate(`/tournaments/${slug}`)}
@@ -237,9 +267,15 @@ const BRGameRoom: React.FC = () => {
               <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">{game}</span>
               <span className="w-1 h-1 rounded-full bg-zinc-700" />
               <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Battle Royale</span>
+              {context.groupName && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                  <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest truncate">{context.groupName}</span>
+                </>
+              )}
               <span className="w-1 h-1 rounded-full bg-zinc-700" />
               <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">
-                {brResults.gamesCompleted}/{brGameCount} Games
+                {gamesCompleted}/{totalRounds || brGameCount} Rounds
               </span>
             </div>
           </div>
@@ -251,14 +287,11 @@ const BRGameRoom: React.FC = () => {
           )}
         </motion.div>
 
-        {/* ─── Active Game — LIVE ─── */}
-        {activeGame ? (
+        {activeRoundNumber ? (
           <motion.div variants={stagger.item}>
             <div className="relative rounded-2xl overflow-hidden">
-              {/* Animated border glow */}
               <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-rose-500/40 via-rose-500/10 to-rose-500/40 animate-pulse" />
               <Card className="relative bg-[#0a0a0c]/90 backdrop-blur-xl border-0 rounded-2xl overflow-hidden">
-                {/* Live indicator bar */}
                 <div className="h-[2px] bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
 
                 <CardHeader className="pb-0 pt-5 px-5 sm:px-6">
@@ -272,10 +305,10 @@ const BRGameRoom: React.FC = () => {
                       </div>
                       <div>
                         <CardTitle className="text-base sm:text-lg font-bold text-white tracking-tight">
-                          Game {activeGame}
+                          Round {activeRoundNumber}
                         </CardTitle>
                         <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest mt-0.5">
-                          {brResults.gamesCompleted} of {brGameCount} completed
+                          {gamesCompleted} of {totalRounds || brGameCount} completed
                         </p>
                       </div>
                     </div>
@@ -287,7 +320,6 @@ const BRGameRoom: React.FC = () => {
                 </CardHeader>
 
                 <CardContent className="p-5 sm:p-6 space-y-5">
-                  {/* Lobby Code — Hero */}
                   {activeCode ? (
                     <div className="relative rounded-xl overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.06] to-transparent" />
@@ -324,7 +356,6 @@ const BRGameRoom: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Self-Report Form */}
                   {userTeam && !userAlreadySubmitted && (
                     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-4">
                       <div className="flex items-center gap-2">
@@ -362,16 +393,11 @@ const BRGameRoom: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Evidence Upload */}
                       <div>
                         <label className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-2 block">Evidence Screenshot</label>
                         {evidencePreview ? (
                           <div className="relative rounded-xl overflow-hidden border border-white/[0.06] group">
-                            <img
-                              src={evidencePreview}
-                              alt="Evidence preview"
-                              className="w-full h-36 object-cover"
-                            />
+                            <img src={evidencePreview} alt="Evidence preview" className="w-full h-36 object-cover" />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                             <button
                               type="button"
@@ -405,16 +431,16 @@ const BRGameRoom: React.FC = () => {
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={submitReport}
-                        disabled={reportSubmitting || !evidenceFile}
+                        disabled={isSubmitting || !evidenceFile}
                         className={cn(
-                          "w-full h-11 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200",
+                          'w-full h-11 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200',
                           evidenceFile
-                            ? "bg-rose-500 hover:bg-rose-600 text-white shadow-[0_0_20px_rgba(244,63,94,0.2)]"
-                            : "bg-zinc-900 text-zinc-600 cursor-not-allowed border border-white/[0.04]"
+                            ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-[0_0_20px_rgba(244,63,94,0.2)]'
+                            : 'bg-zinc-900 text-zinc-600 cursor-not-allowed border border-white/[0.04]',
                         )}
                       >
                         <Send className="w-4 h-4" />
-                        {reportSubmitting ? 'Submitting...' : 'Submit Report'}
+                        {isSubmitting ? 'Submitting...' : 'Submit Report'}
                       </motion.button>
                       <p className="text-[9px] text-zinc-700 text-center">
                         The organizer will verify your results and finalize scores.
@@ -422,12 +448,14 @@ const BRGameRoom: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Already submitted notice */}
                   {userTeam && userAlreadySubmitted && (
                     <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15">
                       <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                       <p className="text-sm text-emerald-300/80">
-                        Evidence submitted for Game {activeGame}. Awaiting organizer review.
+                        Evidence submitted for Round {activeRoundNumber}.
+                        {userEvidence?.reviewed
+                          ? ' Your submission has been reviewed.'
+                          : ' Awaiting organizer review.'}
                       </p>
                     </div>
                   )}
@@ -435,8 +463,7 @@ const BRGameRoom: React.FC = () => {
               </Card>
             </div>
           </motion.div>
-        ) : allGamesFinished || brResults.winner ? (
-          /* ─── Tournament Complete ─── */
+        ) : allGamesFinished || winner ? (
           <motion.div variants={stagger.item}>
             <div className="relative rounded-2xl overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-amber-500/[0.08] via-transparent to-amber-500/[0.04]" />
@@ -448,13 +475,13 @@ const BRGameRoom: React.FC = () => {
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-white tracking-tight">Tournament Complete</h2>
-                      {brResults.winner && (
+                      {winner && (
                         <p className="text-amber-300/80 font-medium text-sm mt-1">
-                          Winner: <span className="text-amber-300 font-bold">{brResults.winner.teamName}</span>
-                          {' '}<span className="text-amber-400/60">— {brResults.winner.totalPoints} pts</span>
+                          Winner: <span className="text-amber-300 font-bold">{winner.teamName}</span>
+                          {' '}<span className="text-amber-400/60">— {winner.totalPoints} pts</span>
                         </p>
                       )}
-                      {userTeam && brResults.winner?.teamId === userTeam.id && (
+                      {userTeam && winner?.teamId === userTeam.id && (
                         <p className="text-amber-200 text-sm mt-1.5 font-bold flex items-center gap-1.5">
                           <Medal className="w-4 h-4" /> Congratulations! You won!
                         </p>
@@ -466,60 +493,57 @@ const BRGameRoom: React.FC = () => {
             </div>
           </motion.div>
         ) : (
-          /* ─── Waiting for Next Game ─── */
           <motion.div variants={stagger.item}>
             <Card className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl">
               <CardContent className="py-10 px-6 flex flex-col items-center text-center">
                 <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
                   <Gamepad2 className="w-7 h-7 text-zinc-600" />
                 </div>
-                <h3 className="text-base font-bold text-white tracking-tight mb-1">Waiting for Next Game</h3>
+                <h3 className="text-base font-bold text-white tracking-tight mb-1">Waiting for Next Round</h3>
                 <p className="text-sm text-zinc-500 max-w-xs">
-                  {brResults.gamesCompleted} of {brGameCount} games completed. The organizer will start the next game soon.
+                  {gamesCompleted} of {totalRounds || brGameCount} rounds completed. The organizer will start the next round soon.
                 </p>
               </CardContent>
             </Card>
           </motion.div>
         )}
 
-        {/* ─── Your Standing ─── */}
         {userTeam && userEntry && (
           <motion.div variants={stagger.item}>
             <Card className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
-              {/* Subtle top accent */}
               <div className={cn(
-                "h-[2px]",
-                userRank === 1 ? "bg-gradient-to-r from-transparent via-amber-400 to-transparent" :
-                userRank <= 3 ? "bg-gradient-to-r from-transparent via-zinc-400 to-transparent" :
-                "bg-gradient-to-r from-transparent via-zinc-700 to-transparent"
+                'h-[2px]',
+                userRank === 1 ? 'bg-gradient-to-r from-transparent via-amber-400 to-transparent' :
+                userRank <= 3 ? 'bg-gradient-to-r from-transparent via-zinc-400 to-transparent' :
+                'bg-gradient-to-r from-transparent via-zinc-700 to-transparent',
               )} />
               <CardContent className="p-5 sm:p-6">
                 <div className="flex items-center gap-4 mb-4">
                   <div className={cn(
-                    "w-12 h-12 rounded-xl flex items-center justify-center border font-black text-xl",
-                    userRank === 1 ? "bg-amber-500/10 border-amber-500/20 text-amber-400" :
-                    userRank === 2 ? "bg-zinc-400/10 border-zinc-400/15 text-zinc-300" :
-                    userRank === 3 ? "bg-amber-700/10 border-amber-700/15 text-amber-600" :
-                    "bg-white/[0.03] border-white/[0.06] text-zinc-400"
+                    'w-12 h-12 rounded-xl flex items-center justify-center border font-black text-xl',
+                    userRank === 1 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
+                    userRank === 2 ? 'bg-zinc-400/10 border-zinc-400/15 text-zinc-300' :
+                    userRank === 3 ? 'bg-amber-700/10 border-amber-700/15 text-amber-600' :
+                    'bg-white/[0.03] border-white/[0.06] text-zinc-400',
                   )}>
                     #{userRank}
                   </div>
                   <div>
                     <p className="text-sm font-bold text-white tracking-tight">Your Standing</p>
                     <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest">
-                      {userEntry.gamesPlayed} game{userEntry.gamesPlayed !== 1 ? 's' : ''} played
+                      {userEntry.gamesPlayed} round{userEntry.gamesPlayed !== 1 ? 's' : ''} played
                     </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-4 gap-3">
                   {[
-                    { label: 'Points', value: userEntry.totalPoints, color: 'text-white', icon: Flame },
-                    { label: 'Kills', value: userEntry.totalKills, color: 'text-rose-400', icon: Crosshair },
-                    { label: 'Best', value: `#${userEntry.bestPlacement === 999 ? '-' : userEntry.bestPlacement}`, color: 'text-emerald-400', icon: Target },
-                    { label: 'Wins', value: userEntry.wins, color: 'text-amber-400', icon: Trophy },
-                  ].map(stat => (
+                    { label: 'Points', value: userEntry.totalPoints, color: 'text-white' },
+                    { label: 'Kills', value: userEntry.totalKills, color: 'text-rose-400' },
+                    { label: 'Best', value: `#${userEntry.bestPlacement === 999 ? '-' : userEntry.bestPlacement}`, color: 'text-emerald-400' },
+                    { label: 'Wins', value: userEntry.wins, color: 'text-amber-400' },
+                  ].map((stat) => (
                     <div key={stat.label} className="text-center rounded-xl bg-white/[0.02] border border-white/[0.04] py-3 px-2">
-                      <p className={cn("text-xl sm:text-2xl font-bold", stat.color)}>{stat.value}</p>
+                      <p className={cn('text-xl sm:text-2xl font-bold', stat.color)}>{stat.value}</p>
                       <p className="text-[9px] text-zinc-600 uppercase font-bold tracking-wider mt-0.5">{stat.label}</p>
                     </div>
                   ))}
@@ -529,20 +553,16 @@ const BRGameRoom: React.FC = () => {
           </motion.div>
         )}
 
-        {/* ─── Game History ─── */}
-        {brResults.gamesCompleted > 0 && (
+        {gamesCompleted > 0 && (
           <motion.div variants={stagger.item} className="space-y-2">
             <button
-              onClick={() => setHistoryExpanded(prev => !prev)}
+              onClick={() => setHistoryExpanded((prev) => !prev)}
               className="w-full flex items-center justify-between px-1 py-1 group"
             >
               <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                Game History
+                Round History
               </span>
-              <motion.div
-                animate={{ rotate: historyExpanded ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-              >
+              <motion.div animate={{ rotate: historyExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
                 <ChevronDown className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
               </motion.div>
             </button>
@@ -556,57 +576,55 @@ const BRGameRoom: React.FC = () => {
                   transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
                   className="overflow-hidden space-y-2"
                 >
-                  {Array.from({ length: brGameCount }, (_, i) => i + 1)
-                    .filter(n => brResults.getGameStatus(n) === 'completed')
-                    .map(gameNum => {
-                      const results = brResults.getGameResults(gameNum);
-                      const userResult = userTeam ? results?.find(r => r.teamId === userTeam.id) : null;
-                      return (
-                        <div
-                          key={gameNum}
-                          className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.03] transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
-                              <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                            </div>
-                            <span className="text-sm font-semibold text-zinc-300">Game {gameNum}</span>
+                  {finishedRounds.map((round) => {
+                    const results = resultsByRoundNumber.get(round.round_number) ?? [];
+                    const userResult = userTeam
+                      ? results.find((r) => r.team_id === userTeam.id)
+                      : null;
+                    return (
+                      <div
+                        key={round.id}
+                        className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.03] transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                           </div>
-                          {userResult ? (
-                            <div className="flex items-center gap-3 text-xs">
-                              <span className={cn(
-                                "font-bold px-2 py-0.5 rounded",
-                                userResult.placement === 1 ? "text-amber-400 bg-amber-500/10" :
-                                userResult.placement <= 3 ? "text-zinc-300 bg-white/[0.04]" : "text-zinc-500"
-                              )}>
-                                #{userResult.placement}
-                              </span>
-                              <span className="text-rose-400 font-medium">{userResult.kills} kills</span>
-                              <span className="text-white font-bold">{userResult.totalPoints} pts</span>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-zinc-700 font-mono">No data</span>
-                          )}
+                          <span className="text-sm font-semibold text-zinc-300">Round {round.round_number}</span>
                         </div>
-                      );
-                    })}
+                        {userResult ? (
+                          <div className="flex items-center gap-3 text-xs">
+                            <span className={cn(
+                              'font-bold px-2 py-0.5 rounded',
+                              userResult.placement === 1 ? 'text-amber-400 bg-amber-500/10' :
+                              userResult.placement <= 3 ? 'text-zinc-300 bg-white/[0.04]' : 'text-zinc-500',
+                            )}>
+                              #{userResult.placement}
+                            </span>
+                            <span className="text-rose-400 font-medium">{userResult.kills} kills</span>
+                            <span className="text-white font-bold">{userResult.total_points} pts</span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-zinc-700 font-mono">No data</span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </motion.div>
               )}
             </AnimatePresence>
           </motion.div>
         )}
 
-        {/* ─── Leaderboard ─── */}
         <motion.div variants={stagger.item}>
           <BRLeaderboard
-            entries={brResults.leaderboard}
-            totalGames={brGameCount}
-            gamesCompleted={brResults.gamesCompleted}
+            entries={leaderboard}
+            totalGames={totalRounds || brGameCount}
+            gamesCompleted={gamesCompleted}
           />
         </motion.div>
 
-        {/* ─── Dispute Option ─── */}
-        {brResults.gamesCompleted > 0 && userTeam && (
+        {gamesCompleted > 0 && userTeam && (
           <motion.div variants={stagger.item}>
             <div className="rounded-xl border border-white/[0.04] bg-white/[0.01] p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">

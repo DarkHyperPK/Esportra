@@ -80,7 +80,12 @@ export const useBRGroupStage = (stageId: string | null) => {
   };
 };
 
-export const useBRGroupLeaderboard = (stageId: string | null, groupId: string | null) => {
+export const useBRGroupLeaderboard = (
+  stageId: string | null,
+  groupId: string | null,
+  options: { refetchIntervalMs?: number | false } = {},
+) => {
+  const { refetchIntervalMs = false } = options;
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['br-group-leaderboard', stageId, groupId],
     queryFn: async () => {
@@ -91,6 +96,8 @@ export const useBRGroupLeaderboard = (stageId: string | null, groupId: string | 
     },
     enabled: !!stageId && !!groupId,
     staleTime: 1000 * 30,
+    refetchInterval: !!stageId && !!groupId ? refetchIntervalMs : false,
+    refetchIntervalInBackground: Boolean(refetchIntervalMs),
   });
 
   return {
@@ -104,6 +111,7 @@ export const useBRGroupLeaderboard = (stageId: string | null, groupId: string | 
 interface UseBRGroupRoundsOptions {
   enabled?: boolean;
   refetchIntervalMs?: number | false;
+  realtimeConnected?: boolean;
 }
 
 export const useBRGroupRounds = (
@@ -111,15 +119,18 @@ export const useBRGroupRounds = (
   groupId: string | null,
   options: UseBRGroupRoundsOptions = {},
 ) => {
-  const { enabled = true, refetchIntervalMs = false } = options;
+  const { enabled = true, refetchIntervalMs = false, realtimeConnected = false } = options;
+  const effectiveInterval = realtimeConnected
+    ? false
+    : refetchIntervalMs;
   const { data, isLoading, error } = useQuery({
     queryKey: ['br-rounds', stageId, groupId],
     queryFn: () =>
       apiClient.get<BRRound[]>(`/api/stages/${stageId}/br/groups/${groupId}/rounds`),
     enabled: enabled && !!stageId && !!groupId,
     staleTime: 1000 * 60,
-    refetchInterval: enabled && !!stageId && !!groupId ? refetchIntervalMs : false,
-    refetchIntervalInBackground: Boolean(refetchIntervalMs),
+    refetchInterval: enabled && !!stageId && !!groupId ? effectiveInterval : false,
+    refetchIntervalInBackground: Boolean(effectiveInterval),
   });
 
   const rounds = data ?? [];
@@ -156,15 +167,20 @@ export interface BRPlayerContext {
   } | null;
 }
 
-export const useBRPlayerContext = (tournamentId: string | null | undefined, enabled = true) => {
+export const useBRPlayerContext = (
+  tournamentId: string | null | undefined,
+  enabled = true,
+  options?: { realtimeConnected?: boolean },
+) => {
+  const realtimeConnected = options?.realtimeConnected ?? false;
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['br-player-context', tournamentId],
     queryFn: () =>
       apiClient.get<BRPlayerContext>(`/api/tournaments/${tournamentId}/br/player-context`),
     enabled: enabled && !!tournamentId,
     staleTime: 1000 * 5,
-    refetchInterval: enabled && !!tournamentId ? 5000 : false,
-    refetchIntervalInBackground: true,
+    refetchInterval: enabled && !!tournamentId && !realtimeConnected ? 60_000 : false,
+    refetchIntervalInBackground: !realtimeConnected,
   });
 
   const defaultContext: BRPlayerContext = {

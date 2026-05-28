@@ -8,6 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useBRGroupStage, useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
 import { useBRGroupParticipants } from '@/hooks/useBRGroups';
+import { useBRRealtime } from '@/hooks/useBRRealtime';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 
 interface BRGroupStageViewProps {
@@ -128,9 +129,11 @@ interface GroupContentProps {
 
 const GroupContent: React.FC<GroupContentProps> = ({ stageId, groupId, qualificationCount }) => {
   const { toast } = useToast();
+  const { connected } = useBRRealtime({ stageId, groupId });
   const { leaderboard, isLoading: lbLoading, error: lbError, refetch: refetchLb } = useBRGroupLeaderboard(stageId, groupId);
   const { totalRounds, completedRounds, activeRound, isLoading: roundsLoading } = useBRGroupRounds(stageId, groupId, {
-    refetchIntervalMs: 5000,
+    refetchIntervalMs: connected ? false : 60_000,
+    realtimeConnected: connected,
   });
   const { data: participants = [], isLoading: participantsLoading } = useBRGroupParticipants(stageId, groupId);
 

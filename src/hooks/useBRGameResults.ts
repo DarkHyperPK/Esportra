@@ -1,3 +1,8 @@
+/**
+ * @deprecated Legacy JSON BR game state. Player and organizer flows now use
+ * relational br_rounds/br_round_evidence via BRGroupEndpoints.
+ * Kept for rollback; no production imports should remain.
+ */
 import { useCallback, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';

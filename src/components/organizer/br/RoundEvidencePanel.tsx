@@ -8,14 +8,21 @@ interface RoundEvidencePanelProps {
   roundId: string;
   stageId: string;
   groupId: string;
+  realtimeConnected?: boolean;
 }
 
 export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
   roundId,
   stageId,
   groupId,
+  realtimeConnected = false,
 }) => {
-  const { evidence, isLoading, markReviewed, isUpdating } = useBRRoundEvidence(roundId, stageId, groupId);
+  const { evidence, isLoading, markReviewed, isUpdating } = useBRRoundEvidence(
+    roundId,
+    stageId,
+    groupId,
+    { realtimeConnected },
+  );
 
   return (
     <div className="space-y-3">

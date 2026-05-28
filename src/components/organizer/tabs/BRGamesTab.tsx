@@ -249,7 +249,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
                                 pageSize={20}
                             />
                             <p className="text-xs text-zinc-500 text-right mt-1">
-                              Rounds are managed in the panel above
+                              Rounds are managed in the panel below
                             </p>
                             </>
                         )}

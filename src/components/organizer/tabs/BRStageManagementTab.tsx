@@ -1019,9 +1019,9 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                         <div className="flex w-full items-center gap-3">
                                                             {isExpanded ? <ChevronDown className="h-4 w-4 text-emerald-400" /> : <ChevronRight className="h-4 w-4 text-zinc-500" />}
                                                             <div className="min-w-0 flex-1">
-                                                                <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">Lobbies & Rounds</p>
+                                                                <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">Lobbies & Seeding</p>
                                                                 <p className="mt-1 text-xs">
-                                                                    {isExpanded ? 'Stage operations open' : 'Seed lobbies and run rounds'}
+                                                                    {isExpanded ? 'Lobby setup open' : 'Configure lobbies and seed participants'}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -1068,7 +1068,6 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                         stageId={stage.id}
                                                         stageCapacity={stage.capacity}
                                                         registeredTeamCount={flow?.teamsEntering ?? registeredTeamCount}
-                                                        scoringPreset={scoringPreset}
                                                         hasNextStage={!isLast}
                                                         advancementCount={stage.advancement_count}
                                                         stageStatus={stage.status}

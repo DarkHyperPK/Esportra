@@ -29,6 +29,12 @@ import { lazyWithRetry } from "@/utils/lazyWithRetry";
 
 const AdminLayout = lazyWithRetry(() => import("@/components/admin/AdminLayout"));
 
+/** Legacy `/br-lobby` URLs redirect to the canonical game room route. */
+function BRGameRoomLegacyRedirect() {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={`/tournaments/${slug}/br-game-room`} replace />;
+}
+
 // Lazy Load Pages
 const Index = lazyWithRetry(() => import("./pages/Index"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
@@ -714,9 +720,14 @@ const AppContent = React.memo(() => {
                     <CaptainMatchPage />
                   </ProtectedRoute>
                 } />
-                <Route path="/tournaments/:slug/br-lobby" element={
+                <Route path="/tournaments/:slug/br-game-room" element={
                   <ProtectedRoute>
                     <BRGameRoom />
+                  </ProtectedRoute>
+                } />
+                <Route path="/tournaments/:slug/br-lobby" element={
+                  <ProtectedRoute>
+                    <BRGameRoomLegacyRedirect />
                   </ProtectedRoute>
                 } />
                 <Route path="/map-veto/:token" element={<MapVetoToken />} />

@@ -212,7 +212,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                         {isRegistered && !awaitingApproval && isCaptain && (
                                             <div className="flex gap-4">
                                                 {isBattleRoyale(tournament.game || '') ? (
-                                                    <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/br-lobby`)} className="h-14 md:h-16 px-8 md:px-12 bg-emerald-600 hover:bg-emerald-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-pulse">
+                                                    <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/br-game-room`)} className="h-14 md:h-16 px-8 md:px-12 bg-emerald-600 hover:bg-emerald-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-pulse">
                                                         <span className="relative z-10 flex items-center gap-2"><Swords className="w-5 h-5" /> ENTER GAME ROOM</span>
                                                     </Button>
                                                 ) : (

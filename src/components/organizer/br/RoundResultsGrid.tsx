@@ -42,6 +42,7 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
 }) => {
   const teams = teamsProp ?? [];
   const existingResults = existingResultsProp ?? [];
+
   const calcPoints = useCallback(
     (placement: number, kills: number) => {
       const pp =
@@ -57,9 +58,17 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
     [scoringPreset]
   );
 
+  const resultsByTeamId = useMemo(() => {
+    const map = new Map<string, BRRoundResult>();
+    for (const result of existingResults) {
+      map.set(result.team_id, result);
+    }
+    return map;
+  }, [existingResults]);
+
   const buildRows = useCallback((): ResultRow[] => {
     return teams.map((team) => {
-      const existing = existingResults.find((r) => r.team_id === team.team_id);
+      const existing = resultsByTeamId.get(team.team_id);
       if (existing) {
         const pts = calcPoints(existing.placement, existing.kills);
         return {
@@ -82,16 +91,31 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
         totalPoints: 0,
       };
     });
-  }, [teams, existingResults, calcPoints]);
+  }, [teams, resultsByTeamId, calcPoints]);
+
+  const serverRowsSignature = useMemo(
+    () => teams
+      .map((team) => {
+        const existing = resultsByTeamId.get(team.team_id);
+        return existing
+          ? `${team.team_id}:${existing.placement}:${existing.kills}`
+          : `${team.team_id}:0:0`;
+      })
+      .join('|'),
+    [teams, resultsByTeamId]
+  );
 
   const [rows, setRows] = useState<ResultRow[]>(buildRows);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
+    if (isEditing) return;
     setRows(buildRows());
-  }, [buildRows]);
+  }, [buildRows, serverRowsSignature, isEditing]);
 
   const updateRow = useCallback(
     (teamId: string, field: 'placement' | 'kills', rawValue: number) => {
+      setIsEditing(true);
       const value = field === 'placement'
         ? Math.max(0, Math.min(teams.length || 999, rawValue))
         : Math.max(0, rawValue);
@@ -139,6 +163,7 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
     }));
     try {
       await onSave(results);
+      setIsEditing(false);
     } catch {
       /* toast handled by hook */
     }
@@ -166,12 +191,13 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
       </div>
 
       {/* Rows */}
-      <div className="space-y-1">
+      <div className="space-y-1 max-h-[420px] overflow-y-auto overscroll-contain [contain:layout_style_paint]">
         {rows.map((row) => {
           const hasDupe = duplicatePlacements.has(row.placement) && row.placement >= 1;
           return (
             <div
               key={row.teamId}
+              style={{ contentVisibility: 'auto' }}
               className={`grid grid-cols-[2fr_80px_80px_60px_60px_60px] gap-2 items-center px-3 py-1.5 rounded-lg ${
                 hasDupe ? 'bg-red-500/10 border border-red-500/20' : 'bg-white/[0.02] hover:bg-white/5'
               } transition-colors`}

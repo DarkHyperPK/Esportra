@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "knip": "knip",
     "knip:strict": "knip --include files,dependencies,binaries,unlisted",
-    "knip:fix": "knip --fix"
+    "knip:fix": "knip --fix",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@capacitor/android": "^7.2.0",

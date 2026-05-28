@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useBRRounds, useBRRoundResults } from '@/hooks/useBRRounds';
+import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { useToast } from '@/hooks/use-toast';
 import { RoundResultsGrid } from './RoundResultsGrid';
 import { RoundEvidencePanel } from './RoundEvidencePanel';
@@ -73,9 +74,14 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   teams,
   scoringPreset,
 }) => {
-  const { rounds, isLoading, error, refetch, createRound, updateRound, resetRound } = useBRRounds(stageId, groupId);
-  const { toast } = useToast();
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
+  const { connected } = useBRRealtime({ stageId, groupId, roundId: expandedRoundId });
+  const { rounds, isLoading, error, refetch, createRound, updateRound, resetRound } = useBRRounds(
+    stageId,
+    groupId,
+    { realtimeConnected: connected },
+  );
+  const { toast } = useToast();
   // Reset expansion if the expanded round was deleted
   useEffect(() => {
     if (expandedRoundId && !rounds.some(r => r.id === expandedRoundId)) {
@@ -214,6 +220,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
                 settings.queueTimerMinutes
               )}
               isUpdating={isMutatingRound}
+              realtimeConnected={connected}
             />
           ))}
         </div>
@@ -277,6 +284,7 @@ interface RoundRowProps {
   onStatusAction: (action: RoundAction, settings?: RoundActionSettings) => void;
   onRoundSettingsSave: (settings: { lobbyCode: string; scheduledAt: string | null; queueTimerMinutes: number | null }) => Promise<void>;
   isUpdating: boolean;
+  realtimeConnected?: boolean;
 }
 
 const RoundRow: React.FC<RoundRowProps> = ({
@@ -290,6 +298,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
   onStatusAction,
   onRoundSettingsSave,
   isUpdating,
+  realtimeConnected = false,
 }) => {
   const { results, isLoading: resultsLoading, submitResults } = useBRRoundResults(
     isExpanded ? round.id : null,
@@ -306,12 +315,13 @@ const RoundRow: React.FC<RoundRowProps> = ({
   const [settingsDirty, setSettingsDirty] = useState(false);
   const statusCfg = STATUS_CONFIG[round.status] ?? STATUS_CONFIG.pending;
   const hasPendingEvidenceReview = (round.pending_evidence_count ?? 0) > 0;
-  const rosterIds = new Set(teams.map((team) => team.team_id));
-  const resultIds = new Set(results.map((result) => result.team_id));
-  const hasSavedFullResults = teams.length > 0
-    && results.length === teams.length
-    && teams.every((team) => resultIds.has(team.team_id))
-    && results.every((result) => rosterIds.has(result.team_id));
+  const hasSavedFullResults = useMemo(() => {
+    if (teams.length === 0 || results.length !== teams.length) return false;
+    const rosterIds = new Set(teams.map((team) => team.team_id));
+    const resultIds = new Set(results.map((result) => result.team_id));
+    return teams.every((team) => resultIds.has(team.team_id))
+      && results.every((result) => rosterIds.has(result.team_id));
+  }, [teams, results]);
   const hasRoundState = round.status !== 'pending'
     || round.result_count > 0
     || (round.evidence_count ?? 0) > 0
@@ -542,6 +552,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
             roundId={round.id}
             stageId={stageId}
             groupId={groupId}
+            realtimeConnected={realtimeConnected}
           />
 
           {resultsLoading ? (

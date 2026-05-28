@@ -106,4 +106,5 @@ export const HubPaths = {
   Conversation  : '/hubs/conversations',
   Live          : '/hubs/live',
   VenueStatus   : '/hubs/venue-status',
+  BR            : '/hubs/br',
 } as const;

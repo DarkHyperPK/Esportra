@@ -6,7 +6,12 @@ import { BR_CONFIG } from '@/config/brConfig';
 import type { BRRound, BRRoundResult, BRResultInput } from '@/types/brRounds';
 import type { BREvidence } from '@/types/battleRoyale';
 
-export const useBRRounds = (stageId: string | null, groupId: string | null) => {
+export const useBRRounds = (
+  stageId: string | null,
+  groupId: string | null,
+  options?: { realtimeConnected?: boolean },
+) => {
+  const realtimeConnected = options?.realtimeConnected ?? false;
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -30,7 +35,16 @@ export const useBRRounds = (stageId: string | null, groupId: string | null) => {
       ),
     enabled: !!stageId && !!groupId,
     staleTime: 1000 * 60,
-    refetchInterval: 15000,
+    refetchInterval: (query) => {
+      if (realtimeConnected) return false;
+      const data = query.state.data;
+      if (!Array.isArray(data)) return false;
+      const needsLiveUpdates = data.some(
+        (round) => round.status === 'active' || (round.pending_evidence_count ?? 0) > 0
+      );
+      return needsLiveUpdates ? 60_000 : false;
+    },
+    refetchIntervalInBackground: false,
   });
 
   const createRound = useMutation({
@@ -163,7 +177,13 @@ export const useBRCompletedRoundResults = (rounds: BRRound[], enabled = true) =>
   };
 };
 
-export const useBRRoundEvidence = (roundId: string | null, stageId?: string | null, groupId?: string | null) => {
+export const useBRRoundEvidence = (
+  roundId: string | null,
+  stageId?: string | null,
+  groupId?: string | null,
+  options?: { realtimeConnected?: boolean },
+) => {
+  const realtimeConnected = options?.realtimeConnected ?? false;
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -172,7 +192,14 @@ export const useBRRoundEvidence = (roundId: string | null, stageId?: string | nu
     queryFn: () => apiClient.get<BREvidence[]>(`/api/br/rounds/${roundId}/evidence`),
     enabled: !!roundId,
     staleTime: BR_CONFIG.ROUNDS_STALE_TIME_MS,
-    refetchInterval: 15000,
+    refetchInterval: (query) => {
+      if (realtimeConnected) return false;
+      const data = query.state.data;
+      if (!Array.isArray(data)) return false;
+      const hasPendingReview = data.some((item) => !item.reviewed);
+      return hasPendingReview ? 60_000 : false;
+    },
+    refetchIntervalInBackground: false,
   });
 
   const invalidateRelatedQueries = async () => {
