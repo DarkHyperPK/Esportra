@@ -6,12 +6,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, FileText, Hash, LogOut, LogIn, Pencil, Check, X, RotateCcw, Calendar } from 'lucide-react';
+import { Layers, Plus, Trophy, ArrowUp, ArrowDown, Trash2, Users, ArrowRight, AlertTriangle, ChevronDown, ChevronRight, FileText, Hash, LogOut, LogIn, Pencil, Check, X, RotateCcw } from 'lucide-react';
 import { apiClient, ApiError } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 import BRStageGroupSection from '@/components/organizer/br/BRStageGroupSection';
-import { BRScheduleDialog } from '@/components/organizer/br/BRScheduleDialog';
 import { getBRConfig } from '@/utils/gameFeatures';
 import esportsGames from '@/data/esportsGames.json';
 
@@ -175,9 +174,6 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     // Advance teams confirmation
     const [advanceConfirmStageId, setAdvanceConfirmStageId] = useState<string | null>(null);
     const [isAdvancing, setIsAdvancing] = useState(false);
-
-    // Schedule dialog
-    const [scheduleStageId, setScheduleStageId] = useState<string | null>(null);
 
     // Inline editing state
     const [editingField, setEditingField] = useState<{ stageId: string; field: 'name' | 'capacity' | 'advancement' } | null>(null);
@@ -1000,22 +996,15 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                                     </div>
                                                 )}
 
-                                                <div className="grid gap-2 lg:grid-cols-[1.2fr_1fr_1fr]">
-                                                    <button
-                                                        onClick={() => setScheduleStageId(stage.id)}
-                                                        className="flex min-h-[64px] items-center gap-3 rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 text-left transition-colors hover:border-white/15"
-                                                    >
-                                                        <Calendar className="h-4 w-4 flex-shrink-0 text-gray-500" />
+                                                <div className="grid gap-2 lg:grid-cols-[1fr_1fr]">
+                                                    <div className="flex min-h-[64px] items-center rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2 text-left">
                                                         <div className="min-w-0 flex-1">
-                                                            <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">Schedule</p>
+                                                            <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500">Round operations</p>
                                                             <p className="mt-1 text-xs text-gray-300">
-                                                                {stage.starts_at || stage.ends_at
-                                                                    ? `${stage.starts_at ? new Date(stage.starts_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'} → ${stage.ends_at ? new Date(stage.ends_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}`
-                                                                    : 'Add timing for this stage'}
+                                                                Create rounds, set schedules, manage lobby codes, save results, and complete rounds from the Games tab.
                                                             </p>
                                                         </div>
-                                                        <span className="text-[10px] text-zinc-500">Configure</span>
-                                                    </button>
+                                                    </div>
 
                                                     <Button
                                                         variant="outline"
@@ -1675,21 +1664,6 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Schedule Dialog */}
-            {scheduleStageId && (() => {
-                const schedStage = sortedStages.find(s => s.id === scheduleStageId);
-                if (!schedStage) return null;
-                return (
-                    <BRScheduleDialog
-                        open={true}
-                        onOpenChange={(o) => { if (!o) setScheduleStageId(null); }}
-                        stage={schedStage}
-                        tournamentId={tournamentId}
-                        allStages={stages}
-                        onUpdate={onUpdate}
-                    />
-                );
-            })()}
         </>
     );
 };

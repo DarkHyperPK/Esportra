@@ -42,6 +42,7 @@ type RoundAction = 'start' | 'complete' | 'reopen' | 'reset';
 interface RoundActionSettings {
   lobbyCode: string | null;
   queueTimerMinutes: number | null;
+  scheduledAt: string | null;
 }
 
 interface RoundManagementPanelProps {
@@ -56,6 +57,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending: { label: 'Pending', color: 'border-zinc-500/30 text-zinc-400' },
   active: { label: 'Live', color: 'border-amber-500/30 text-amber-400 bg-amber-500/10' },
   completed: { label: 'Completed', color: 'border-emerald-500/30 text-emerald-400' },
+};
+
+const toLocalInputValue = (iso: string | null | undefined) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
 export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
@@ -102,6 +110,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
           roundId,
           status: statusMap[action],
           lobbyCode: confirmAction.settings?.lobbyCode ?? null,
+          scheduledAt: confirmAction.settings?.scheduledAt ?? null,
           queueTimerMinutes: confirmAction.settings?.queueTimerMinutes ?? null,
         });
       } else {
@@ -114,8 +123,13 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
     }
   };
 
-  const handleLobbyCodeUpdate = async (roundId: string, lobbyCode: string, queueTimerMinutes: number | null) => {
-    await updateRound.mutateAsync({ roundId, lobbyCode: lobbyCode || null, queueTimerMinutes });
+  const handleLobbyCodeUpdate = async (
+    roundId: string,
+    lobbyCode: string,
+    scheduledAt: string | null,
+    queueTimerMinutes: number | null
+  ) => {
+    await updateRound.mutateAsync({ roundId, lobbyCode: lobbyCode || null, scheduledAt, queueTimerMinutes });
   };
 
   if (isLoading) {
@@ -193,7 +207,12 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
 
                  setConfirmAction({ roundId: round.id, roundNumber: round.round_number, action, settings });
                }}
-              onRoundSettingsSave={(settings) => handleLobbyCodeUpdate(round.id, settings.lobbyCode, settings.queueTimerMinutes)}
+              onRoundSettingsSave={(settings) => handleLobbyCodeUpdate(
+                round.id,
+                settings.lobbyCode,
+                settings.scheduledAt,
+                settings.queueTimerMinutes
+              )}
               isUpdating={isMutatingRound}
             />
           ))}
@@ -211,10 +230,10 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               {confirmAction?.action === 'reset' && 'Reset Round?'}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
-              {confirmAction?.action === 'start' && 'This will publish the current lobby code and queue timer, then set the round live for players.'}
+              {confirmAction?.action === 'start' && 'This will publish the current lobby code, schedule, and queue timer, then set the round live for players.'}
               {confirmAction?.action === 'complete' && 'This will lock the round results. You can re-open later if needed.'}
               {confirmAction?.action === 'reopen' && 'This will unlock the round for result editing. Any leaderboard standings calculated from this round may change if results are modified.'}
-              {confirmAction?.action === 'reset' && 'This will clear the lobby code, results, and submitted evidence, then move the round back to pending.'}
+              {confirmAction?.action === 'reset' && 'This will clear the lobby code, schedule, queue timer, results, and submitted evidence, then move the round back to pending.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -256,7 +275,7 @@ interface RoundRowProps {
   isExpanded: boolean;
   onToggle: () => void;
   onStatusAction: (action: RoundAction, settings?: RoundActionSettings) => void;
-  onRoundSettingsSave: (settings: { lobbyCode: string; queueTimerMinutes: number | null }) => Promise<void>;
+  onRoundSettingsSave: (settings: { lobbyCode: string; scheduledAt: string | null; queueTimerMinutes: number | null }) => Promise<void>;
   isUpdating: boolean;
 }
 
@@ -278,23 +297,35 @@ const RoundRow: React.FC<RoundRowProps> = ({
     groupId
   );
   const [lobbyCode, setLobbyCode] = useState(round.lobby_code ?? '');
+  const [scheduledAtInput, setScheduledAtInput] = useState(
+    round.scheduled_at ? toLocalInputValue(round.scheduled_at) : ''
+  );
   const [queueTimerInput, setQueueTimerInput] = useState(
     round.queue_timer_minutes != null ? String(round.queue_timer_minutes) : ''
   );
   const [settingsDirty, setSettingsDirty] = useState(false);
   const statusCfg = STATUS_CONFIG[round.status] ?? STATUS_CONFIG.pending;
   const hasPendingEvidenceReview = (round.pending_evidence_count ?? 0) > 0;
+  const rosterIds = new Set(teams.map((team) => team.team_id));
+  const resultIds = new Set(results.map((result) => result.team_id));
+  const hasSavedFullResults = teams.length > 0
+    && results.length === teams.length
+    && teams.every((team) => resultIds.has(team.team_id))
+    && results.every((result) => rosterIds.has(result.team_id));
   const hasRoundState = round.status !== 'pending'
     || round.result_count > 0
     || (round.evidence_count ?? 0) > 0
     || !!round.lobby_code
+    || !!round.scheduled_at
+    || round.queue_timer_minutes != null
     || !!round.queue_started_at;
 
   useEffect(() => {
     setLobbyCode(round.lobby_code ?? '');
+    setScheduledAtInput(round.scheduled_at ? toLocalInputValue(round.scheduled_at) : '');
     setQueueTimerInput(round.queue_timer_minutes != null ? String(round.queue_timer_minutes) : '');
     setSettingsDirty(false);
-  }, [round.id, round.lobby_code, round.queue_timer_minutes]);
+  }, [round.id, round.lobby_code, round.scheduled_at, round.queue_timer_minutes]);
 
   const getRoundSettings = (): RoundActionSettings => {
     const trimmedLobbyCode = lobbyCode.trim();
@@ -303,6 +334,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
 
     return {
       lobbyCode: trimmedLobbyCode === '' ? null : trimmedLobbyCode,
+      scheduledAt: scheduledAtInput.trim() === '' ? null : new Date(scheduledAtInput).toISOString(),
       queueTimerMinutes: Number.isFinite(parsedTimer) ? parsedTimer : null,
     };
   };
@@ -313,6 +345,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
     const settings = getRoundSettings();
     await onRoundSettingsSave({
       lobbyCode: settings.lobbyCode ?? '',
+      scheduledAt: settings.scheduledAt,
       queueTimerMinutes: settings.queueTimerMinutes,
     });
     setSettingsDirty(false);
@@ -370,7 +403,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
         <div className="border-t border-white/5 px-4 py-4 space-y-4">
           {/* Round Settings + Actions Row */}
           <div className="space-y-3">
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_280px]">
               <div className="rounded-xl border border-white/6 bg-white/[0.02] p-3">
                 <label className="mb-2 flex text-[10px] text-zinc-500 uppercase tracking-wider items-center gap-1">
                   <Key className="w-3 h-3" /> Lobby Code
@@ -384,6 +417,22 @@ const RoundRow: React.FC<RoundRowProps> = ({
                 />
                 <p className="mt-2 text-[10px] leading-relaxed text-zinc-600">
                   The code becomes visible to players only when the round is live.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-white/6 bg-white/[0.02] p-3">
+                <label className="mb-2 flex text-[10px] text-zinc-500 uppercase tracking-wider items-center gap-1">
+                  <Clock className="w-3 h-3" /> Scheduled Start
+                </label>
+                <Input
+                  type="datetime-local"
+                  value={scheduledAtInput}
+                  onChange={(e) => { setScheduledAtInput(e.target.value); setSettingsDirty(true); }}
+                  disabled={round.status === 'completed'}
+                  className="h-10 text-sm bg-white/5 border-white/10 text-white [color-scheme:dark]"
+                />
+                <p className="mt-2 text-[10px] leading-relaxed text-zinc-600">
+                  Set the intended round start time here while you manage the lobby.
                 </p>
               </div>
 
@@ -421,11 +470,16 @@ const RoundRow: React.FC<RoundRowProps> = ({
                 <div className="space-y-1">
                   <p className="text-[11px] font-medium text-white">Round controls</p>
                   <p className="text-[10px] leading-relaxed text-zinc-500">
-                    Saving updates the draft instantly. Starting a round also publishes the current lobby code and queue timer automatically.
+                    Saving updates the round draft instantly. Starting a round also publishes the current lobby code, schedule, and queue timer automatically.
                   </p>
                   {hasPendingEvidenceReview && round.status === 'active' && (
                     <p className="text-[10px] leading-relaxed text-amber-300/80">
                       Complete is locked until all submitted evidence is reviewed.
+                    </p>
+                  )}
+                  {!hasSavedFullResults && round.status === 'active' && (
+                    <p className="text-[10px] leading-relaxed text-amber-300/80">
+                      Save Results first, then complete the round.
                     </p>
                   )}
                 </div>
@@ -453,7 +507,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
                     <Button
                       size="sm"
                       onClick={() => onStatusAction('complete')}
-                      disabled={isUpdating || hasPendingEvidenceReview}
+                      disabled={isUpdating || hasPendingEvidenceReview || !hasSavedFullResults}
                       className="h-9 text-xs bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/20"
                     >
                       <CheckCircle className="w-3 h-3 mr-1" /> Complete

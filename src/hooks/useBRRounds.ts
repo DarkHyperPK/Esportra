@@ -70,7 +70,7 @@ export const useBRRounds = (stageId: string | null, groupId: string | null) => {
       await invalidateRoundQueries(data.id ?? variables.roundId);
       toast({
         title: `Round ${variables.roundNumber} reset`,
-        description: 'Lobby code, results, and evidence were cleared.',
+        description: 'Lobby code, schedule, queue timer, results, and evidence were cleared.',
       });
     },
     onError: (error: Error) => {

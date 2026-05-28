@@ -70,6 +70,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   const hasUnassignedTeams = totalAssigned < registeredTeamCount;
   const canManageRounds = hasGroups && (!hasTeamsToSeed || !hasUnassignedTeams);
   const remainingTeams = Math.max(registeredTeamCount - totalAssigned, 0);
+  const rosterLocked = hasRounds;
 
   const handleDistribute = async () => {
     try {
@@ -158,7 +159,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
               <Button
                 size="sm"
                 onClick={() => totalAssigned > 0 ? setConfirmDistribute(true) : handleDistribute()}
-                disabled={assignTeams.isPending || registeredTeamCount === 0}
+                disabled={assignTeams.isPending || registeredTeamCount === 0 || rosterLocked}
                 className="h-7 text-[11px] border border-rose-500/20 bg-rose-600/10 text-rose-300 hover:bg-rose-600/20"
               >
                 <Shuffle className="w-3 h-3 mr-1" />
@@ -166,6 +167,11 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
               </Button>
             </div>
           </div>
+          {rosterLocked && (
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-zinc-400">
+              Roster locked. This stage already has rounds, so reseeding and manual lobby edits are disabled.
+            </div>
+          )}
           {hasTeamsToSeed && hasUnassignedTeams && (
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-3 py-2 text-xs text-amber-200">
               Seed the remaining {remainingTeams} {remainingTeams === 1 ? 'participant' : 'participants'} before running rounds or advancing this stage.
