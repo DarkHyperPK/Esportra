@@ -217,9 +217,6 @@ export const useBRRoundEvidence = (
     onSuccess: async () => {
       await invalidateRelatedQueries();
     },
-    onError: (error: Error) => {
-      toast({ title: 'Failed to submit evidence', description: error.message, variant: 'destructive' });
-    },
   });
 
   const markReviewedMutation = useMutation({

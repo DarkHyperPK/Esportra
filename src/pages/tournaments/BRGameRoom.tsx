@@ -80,7 +80,7 @@ const BRGameRoom: React.FC = () => {
   );
   const effectiveActiveRoundId = activeRound?.id ?? context.activeRound?.id ?? null;
   const hasActiveRound = Boolean(activeRound ?? context.activeRound);
-  const { evidence, submitEvidence, isSubmitting } = useBRRoundEvidence(
+  const { evidence, submitEvidence, isSubmitting, refetch: refetchEvidence } = useBRRoundEvidence(
     effectiveActiveRoundId,
     context.stageId,
     context.groupId,
@@ -104,14 +104,37 @@ const BRGameRoom: React.FC = () => {
     for (const p of participants) {
       const playerName = p.team_name || p.solo_username || p.solo_full_name || p.name || p.display_name || 'Player';
       if (p.user_id === user.id || p.captain_id === user.id) {
-        return { id: p.team_id || p.id, name: playerName };
+        const participantId = p.id as string;
+        const teamId = (p.team_id as string | null | undefined) ?? null;
+        return {
+          id: teamId ?? participantId,
+          participantId,
+          teamId,
+          name: playerName,
+        };
       }
       if (p.members?.some((m: any) => m.user_id === user.id)) {
-        return { id: p.team_id || p.id, name: playerName };
+        const participantId = p.id as string;
+        const teamId = (p.team_id as string | null | undefined) ?? null;
+        return {
+          id: teamId ?? participantId,
+          participantId,
+          teamId,
+          name: playerName,
+        };
       }
     }
     return null;
   }, [user?.id, participants]);
+
+  const userEntityIds = useMemo(() => {
+    if (!userTeam) return new Set<string>();
+    return new Set(
+      [userTeam.participantId, userTeam.teamId, userTeam.id].filter(
+        (value): value is string => Boolean(value),
+      ),
+    );
+  }, [userTeam]);
 
   const brConf = getBRConfig(game);
   const brSettings = tournament?.settings?.brSettings || {};
@@ -136,14 +159,14 @@ const BRGameRoom: React.FC = () => {
   const winner = allGamesFinished && leaderboard.length > 0 ? leaderboard[0] : null;
 
   const userRank = userTeam
-    ? leaderboard.findIndex((e) => e.teamId === userTeam.id) + 1
+    ? leaderboard.findIndex((e) => userEntityIds.has(e.teamId)) + 1
     : 0;
   const userEntry = userTeam
-    ? leaderboard.find((e) => e.teamId === userTeam.id)
+    ? leaderboard.find((e) => userEntityIds.has(e.teamId))
     : null;
 
   const userEvidence = userTeam
-    ? evidence.find((item) => item.teamId === userTeam.id)
+    ? evidence.find((item) => userEntityIds.has(item.teamId))
     : undefined;
   const userAlreadySubmitted = Boolean(userEvidence);
 
@@ -195,6 +218,8 @@ const BRGameRoom: React.FC = () => {
         kills: reportKills,
       });
 
+      await refetchEvidence();
+
       toast({
         title: 'Evidence Submitted',
         description: `Placement: #${reportPlacement}, Kills: ${reportKills}. The organizer will review your submission.`,
@@ -203,7 +228,12 @@ const BRGameRoom: React.FC = () => {
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
       if (message.includes('409') || message.toLowerCase().includes('already')) {
-        toast({ title: 'Already submitted', description: 'You already submitted evidence for this round.', variant: 'destructive' });
+        await refetchEvidence();
+        clearEvidence();
+        toast({
+          title: 'Evidence already submitted',
+          description: 'Your report for this round is already on file. Awaiting organizer review.',
+        });
       } else if (message.includes('403') || message.toLowerCase().includes('forbidden')) {
         toast({ title: 'Not assigned', description: 'You are not assigned to this lobby.', variant: 'destructive' });
       } else {
@@ -430,6 +460,7 @@ const BRGameRoom: React.FC = () => {
                       </div>
 
                       <motion.button
+                        type="button"
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={submitReport}
@@ -483,7 +514,7 @@ const BRGameRoom: React.FC = () => {
                           {' '}<span className="text-amber-400/60">— {winner.totalPoints} pts</span>
                         </p>
                       )}
-                      {userTeam && winner?.teamId === userTeam.id && (
+                      {userTeam && winner && userEntityIds.has(winner.teamId) && (
                         <p className="text-amber-200 text-sm mt-1.5 font-bold flex items-center gap-1.5">
                           <Medal className="w-4 h-4" /> Congratulations! You won!
                         </p>
