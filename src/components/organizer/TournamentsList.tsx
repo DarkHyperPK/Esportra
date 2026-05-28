@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Calendar, CheckCircle2, Clock, Plus, Trophy, Users } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchMeRoles, getOrganizationId } from "@/lib/meRoles";
+import { fetchCurrentOrganizationId } from "@/lib/currentOrganization";
 import { CommandButton, CommandEmptyState, CommandPanel, CommandToolbar } from "@/components/management/CommandSurface";
 import { cn } from "@/lib/utils";
 
@@ -25,17 +25,6 @@ const normalizeRows = (value: any): any[] => {
   if (Array.isArray(value?.data)) return value.data;
   if (Array.isArray(value?.items)) return value.items;
   return [];
-};
-
-const getCurrentOrganization = async () => {
-  const roles = await fetchMeRoles().catch(() => null);
-  const roleOrgId = getOrganizationId(roles);
-  const mine = await apiClient.get<any>("/api/organizations/mine").catch(() => null);
-  if (mine?.id) return mine;
-  const me = await apiClient.get<any>("/api/organizations/me").catch(() => null);
-  if (me?.id) return me;
-  if (roleOrgId) return { id: roleOrgId };
-  return null;
 };
 
 const statusStyles: Record<string, string> = {
@@ -64,13 +53,13 @@ const TournamentsList = () => {
       }
 
       try {
-        const org = await getCurrentOrganization();
-        if (!org?.id) {
+        const organizationId = await fetchCurrentOrganizationId();
+        if (!organizationId) {
           if (mounted) setTournaments([]);
           return;
         }
 
-        const raw = await apiClient.get<any>(`/api/organizations/${org.id}/tournaments`);
+        const raw = await apiClient.get<any>(`/api/organizations/${organizationId}/tournaments`);
         const tournamentsData = normalizeRows(raw);
         const mapped = tournamentsData.map((tournament: any) => {
           let displayStatus = tournament.status || "draft";

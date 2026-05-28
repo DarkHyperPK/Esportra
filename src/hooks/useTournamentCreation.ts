@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiClient } from '@/lib/apiClient';
+import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
 import esportsGames from '@/data/esportsGames.json';
 
 interface FormData {
@@ -118,6 +119,7 @@ export const useTournamentCreation = () => {
       };
 
       const startDateTime = new Date(`${formData.date}T${formData.time}`);
+      const organizationId = await fetchCurrentOrganizationId();
 
       const tournament = await apiClient.post<{ id: string; slug: string }>('/api/tournaments', {
         name:        formData.name,
@@ -130,6 +132,7 @@ export const useTournamentCreation = () => {
         prizePool:   toMoney(formData.prizePool),
         startDate:   startDateTime.toISOString(),
         isPublic:    true,
+        organizationId: organizationId ?? undefined,
       });
 
       toast({ title: "Tournament Created", description: "Your tournament has been successfully created!" });

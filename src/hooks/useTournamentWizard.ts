@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { validateStep } from '@/schemas/tournamentSchema';
 import esportsGames from '@/data/esportsGames.json';
@@ -295,6 +296,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
             } else {
                 // ── CREATE path ─────────────────────────────────────────────────
                 const slug = slugify(data.name, { lower: true, strict: true });
+                const organizationId = await fetchCurrentOrganizationId();
 
                 const tournament = await apiClient.post<{ slug: string; name?: string }>('/api/tournaments', {
                     name:                 data.name,
@@ -313,6 +315,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     bannerUrl:            data.bannerUrl,
                     logoUrl:              data.logoUrl,
                     isPublic:             data.visibility === 'public',
+                    organizationId:       organizationId ?? undefined,
                     checkInRequired:      data.checkInRequired,
                     checkInDeadline:      new Date(startDateTime.getTime() - (data.checkInWindowMinutes || 30) * 60000).toISOString(),
                     autoRemoveUnchecked:  data.autoRemoveUnchecked,

@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
+import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchMeRoles, getOrganizationId } from '@/lib/meRoles';
 import esportsGames from '@/data/esportsGames.json';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -52,20 +52,6 @@ interface DeletedTournament {
   days_remaining: number;
 }
 
-const getCurrentOrganization = async () => {
-  const roles = await fetchMeRoles().catch(() => null);
-  const roleOrgId = getOrganizationId(roles);
-
-  const mine = await apiClient.get<any>('/api/organizations/mine').catch(() => null);
-  if (mine?.id) return mine;
-
-  const me = await apiClient.get<any>('/api/organizations/me').catch(() => null);
-  if (me?.id) return me;
-
-  if (roleOrgId) return { id: roleOrgId };
-  return null;
-};
-
 const normalizeTournamentRows = (value: any): any[] => {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.data)) return value.data;
@@ -91,11 +77,11 @@ const TournamentList = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const orgData = await getCurrentOrganization();
+      const organizationId = await fetchCurrentOrganizationId();
 
-      if (!orgData?.id) return [];
+      if (!organizationId) return [];
 
-      const data = await apiClient.get<any[]>(`/api/organizations/${orgData.id}/tournaments`);
+      const data = await apiClient.get<any[]>(`/api/organizations/${organizationId}/tournaments`);
 
       return normalizeTournamentRows(data).map((tournament: any) => ({
         id: tournament.id,
@@ -129,11 +115,11 @@ const TournamentList = () => {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const orgData = await getCurrentOrganization();
+      const organizationId = await fetchCurrentOrganizationId();
 
-      if (!orgData?.id) return [];
+      if (!organizationId) return [];
 
-      const data = await apiClient.get<any[]>(`/api/organizations/${orgData.id}/tournaments?deleted=true`);
+      const data = await apiClient.get<any[]>(`/api/organizations/${organizationId}/tournaments?deleted=true`);
 
       return normalizeTournamentRows(data).map((t: any) => {
         const deletedDate = new Date(t.deleted_at);
