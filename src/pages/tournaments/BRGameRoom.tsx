@@ -67,7 +67,7 @@ const BRGameRoom: React.FC = () => {
     setBrStreamConnected(connected);
   }, [connected]);
 
-  const fallbackPollingMs = connected ? false : 60_000;
+  const fallbackPollingMs = connected ? false : 30_000;
   const { leaderboard } = useBRGroupLeaderboard(
     context.stageId,
     context.groupId,
@@ -612,7 +612,7 @@ const BRGameRoom: React.FC = () => {
                   {finishedRounds.map((round) => {
                     const results = resultsByRoundNumber.get(round.round_number) ?? [];
                     const userResult = userTeam
-                      ? results.find((r) => r.team_id === userTeam.id)
+                      ? results.find((r) => userEntityIds.has(r.team_id))
                       : null;
                     return (
                       <div

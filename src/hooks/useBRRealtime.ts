@@ -100,9 +100,7 @@ export function useBRRealtime({
       if (!active || !matchesScope(payload, scope)) return;
       invalidateRounds();
       invalidatePlayerContext();
-      if (payload.status === 'completed') {
-        invalidateLeaderboard();
-      }
+      invalidateLeaderboard();
     };
 
     const handleRoundReset = (payload: BrScopedPayload) => {
@@ -130,6 +128,7 @@ export function useBRRealtime({
       if (!active || !matchesScope(payload, scope)) return;
       invalidateRoundResults(payload.roundId);
       invalidateRounds();
+      invalidateLeaderboard();
     };
 
     const handleLeaderboardUpdated = (payload: BrScopedPayload) => {

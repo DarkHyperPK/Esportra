@@ -5,11 +5,22 @@ import EntityAvatar from '@/components/ui/EntityAvatar';
 
 interface PublicTeamCardProps {
     participant: any;
+    isSolo?: boolean;
     renderStatusBadge?: (participant: any) => React.ReactNode;
 }
 
-export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, renderStatusBadge }) => {
+export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, isSolo = false, renderStatusBadge }) => {
     const [isHovered, setIsHovered] = useState(false);
+
+    const displayName = isSolo
+        ? (participant.display_name || participant.solo_username || participant.solo_riot_tag || participant.team_name || 'Unknown Player')
+        : (participant.team_name || 'Unknown Team');
+
+    const avatarSrc = isSolo
+        ? (participant.solo_avatar_url || participant.user?.avatar_url || participant.team_logo)
+        : participant.team_logo;
+
+    const avatarType = isSolo ? 'user' : 'team';
 
     // Parse members from multiple formats (JSON array string, comma-separated, or actual array)
     const getMembers = (membersInput: any): string[] => {
@@ -35,7 +46,19 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
         return [];
     };
 
-    const members = useMemo(() => getMembers(participant.team_members), [participant.team_members]);
+    const members = useMemo(() => {
+        if (isSolo) {
+            const details = [
+                participant.solo_full_name,
+                participant.solo_riot_tag,
+                participant.solo_username || participant.user?.username,
+            ].filter(Boolean);
+            return details.length > 0 ? details : getMembers(participant.team_members);
+        }
+        return getMembers(participant.team_members);
+    }, [isSolo, participant.solo_full_name, participant.solo_riot_tag, participant.solo_username, participant.user?.username, participant.team_members]);
+
+    const registeredAt = participant.registered_at || participant.created_at;
 
     return (
         // Layout Placeholder - Keeps the grid cell stable
@@ -75,13 +98,13 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
                             {/* Logo */}
                             <div className="relative w-24 h-24 flex items-center justify-center mb-2">
                                 <EntityAvatar
-                                    type="team"
-                                    src={participant.team_logo}
-                                    name={participant.team_name}
-                                    entityId={participant.team_id || participant.id}
+                                    type={avatarType}
+                                    src={avatarSrc}
+                                    name={displayName}
+                                    entityId={participant.team_id || participant.user_id || participant.id}
                                     size="w-24 h-24"
                                     className="border border-white/10 bg-white/[0.03] p-1.5"
-                                    imgClassName="object-contain filter drop-shadow-md"
+                                    imgClassName={isSolo ? 'object-cover filter drop-shadow-md' : 'object-contain filter drop-shadow-md'}
                                     fallbackClassName="text-xl tracking-wider"
                                 />
                             </div>
@@ -89,11 +112,11 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
                             {/* Name */}
                             <div className="text-center w-full relative z-10">
                                 <h3 className="text-xl font-bold text-white truncate px-2">
-                                    {participant.team_name || 'Unknown Team'}
+                                    {displayName}
                                 </h3>
-                                {participant.registered_at && (
+                                {registeredAt && (
                                     <p className="text-sm text-gray-500 mt-1">
-                                        {new Date(participant.registered_at).toLocaleDateString()}
+                                        {new Date(registeredAt).toLocaleDateString()}
                                     </p>
                                 )}
                             </div>
@@ -111,7 +134,9 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
                         >
                             <div className="flex items-center justify-center gap-2 mb-6 pt-2">
                                 <Users className="w-5 h-5 text-purple-400" />
-                                <h4 className="text-lg font-bold text-white tracking-wide uppercase">ROSTER</h4>
+                                <h4 className="text-lg font-bold text-white tracking-wide uppercase">
+                                    {isSolo ? 'PROFILE' : 'ROSTER'}
+                                </h4>
                             </div>
 
                             <div className="flex flex-col gap-3 px-2 pb-6">
@@ -123,7 +148,9 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, ren
                                         </div>
                                     ))
                                 ) : (
-                                    <p className="text-sm text-gray-500 italic text-center py-4">No members listed</p>
+                                    <p className="text-sm text-gray-500 italic text-center py-4">
+                                        {isSolo ? 'No profile details listed' : 'No members listed'}
+                                    </p>
                                 )}
                                 {members.length > 5 && (
                                     <p className="text-xs text-gray-500 text-center italic mt-1">

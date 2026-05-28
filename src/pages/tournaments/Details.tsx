@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle, Clock, AlertTriangle, Ban as BanIcon, Swords, ChevronRight, Copy, Loader2, Mail } from 'lucide-react';
+import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle, Clock, AlertTriangle, Ban as BanIcon, Swords, ChevronRight, Loader2, Mail } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRole } from '@/contexts/RoleContext';
@@ -893,7 +893,7 @@ const TournamentDetails = () => {
 
           <TabsContent value={competitorTabValue}>
             <div className="container mx-auto px-4">
-              <TeamsTab participants={enrichedParticipants} />
+              <TeamsTab participants={enrichedParticipants} isSolo={terminology.isSolo} />
             </div>
           </TabsContent>
 
@@ -944,27 +944,9 @@ const TournamentDetails = () => {
                     </div>
                     <div className="flex-1">
                       <h3 className="text-sm font-bold text-white">Game {brResults.activeGameNumber} is Live</h3>
-                      {brResults.getLobbyCode(brResults.activeGameNumber) && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-zinc-400">Lobby Code:</span>
-                          <span className="text-sm font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                            {brResults.getLobbyCode(brResults.activeGameNumber)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const code = brResults.getLobbyCode(brResults.activeGameNumber!);
-                              if (code) {
-                                navigator.clipboard.writeText(code);
-                                toast({ title: 'Lobby code copied!' });
-                              }
-                            }}
-                            className="text-zinc-400 hover:text-white p-0.5"
-                          >
-                            <Copy className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
+                      <p className="text-xs text-zinc-400 mt-1">
+                        Lobby codes are only available in the Match Room for registered players.
+                      </p>
                     </div>
                   </div>
                 )}

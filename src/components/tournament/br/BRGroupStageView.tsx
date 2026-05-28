@@ -3,9 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Users, Swords, Copy, Loader2, AlertCircle, Clock } from 'lucide-react';
+import { Users, Swords, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useToast } from '@/hooks/use-toast';
 import { useBRGroupStage, useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
 import { useBRGroupParticipants } from '@/hooks/useBRGroups';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
@@ -115,6 +114,7 @@ const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
           stageId={stageId}
           groupId={activeGroupId}
           qualificationCount={qualificationCount}
+          tournamentSlug={tournamentSlug}
         />
       )}
     </div>
@@ -125,14 +125,25 @@ interface GroupContentProps {
   stageId: string;
   groupId: string;
   qualificationCount?: number;
+  tournamentSlug?: string;
 }
 
-const GroupContent: React.FC<GroupContentProps> = ({ stageId, groupId, qualificationCount }) => {
-  const { toast } = useToast();
+const GroupContent: React.FC<GroupContentProps> = ({
+  stageId,
+  groupId,
+  qualificationCount,
+  tournamentSlug,
+}) => {
+  const navigate = useNavigate();
   const { connected } = useBRRealtime({ stageId, groupId });
-  const { leaderboard, isLoading: lbLoading, error: lbError, refetch: refetchLb } = useBRGroupLeaderboard(stageId, groupId);
+  const pollIntervalMs = connected ? false : 30_000;
+  const { leaderboard, isLoading: lbLoading, error: lbError, refetch: refetchLb } = useBRGroupLeaderboard(
+    stageId,
+    groupId,
+    { refetchIntervalMs: pollIntervalMs },
+  );
   const { totalRounds, completedRounds, activeRound, isLoading: roundsLoading } = useBRGroupRounds(stageId, groupId, {
-    refetchIntervalMs: connected ? false : 60_000,
+    refetchIntervalMs: pollIntervalMs,
     realtimeConnected: connected,
   });
   const { data: participants = [], isLoading: participantsLoading } = useBRGroupParticipants(stageId, groupId);
@@ -187,30 +198,23 @@ const GroupContent: React.FC<GroupContentProps> = ({ stageId, groupId, qualifica
           <div className="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
             <Swords className="w-5 h-5 text-rose-400" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-white">Round {activeRound.round_number} is Live</h3>
-            {activeRound.lobby_code && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs text-zinc-400">Lobby Code:</span>
-                <span className="text-sm font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                  {activeRound.lobby_code}
-                </span>
-                <button
-                  type="button"
-                  aria-label="Copy lobby code"
-                  onClick={() => {
-                    if (activeRound.lobby_code) {
-                      navigator.clipboard.writeText(activeRound.lobby_code);
-                      toast({ title: 'Lobby code copied!' });
-                    }
-                  }}
-                  className="text-zinc-400 hover:text-white p-0.5"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
+            <p className="text-xs text-zinc-400 mt-1">
+              Lobby codes are only shared in the Match Room for registered players.
+            </p>
           </div>
+          {tournamentSlug && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="flex-shrink-0 border-rose-500/30 text-rose-300 hover:text-white hover:border-rose-500"
+              onClick={() => navigate(`/tournaments/${tournamentSlug}/br-game-room`)}
+            >
+              Match Room
+            </Button>
+          )}
         </div>
       )}
 

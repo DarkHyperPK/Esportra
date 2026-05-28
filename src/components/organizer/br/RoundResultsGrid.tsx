@@ -272,7 +272,7 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
           onClick={handleSave}
           disabled={!canSave || isSaving}
           title={saveBlockReason ?? undefined}
-          className="w-full bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Save className="w-3.5 h-3.5 mr-2" />
           {isSaving ? 'Saving...' : 'Save Results'}

@@ -11,37 +11,47 @@ import {
 
 interface TeamsTabProps {
     participants: any[]; // enriched participants
+    isSolo?: boolean;
 }
 
 const TEAMS_PAGE_SIZE = 24;
 
-export const TeamsTab: React.FC<TeamsTabProps> = ({ participants }) => {
+export const TeamsTab: React.FC<TeamsTabProps> = ({ participants, isSolo = false }) => {
     const [page, setPage] = useState(1);
-    const teamParticipants = useMemo(
-        () => participants.filter((participant) => participant.participant_type === 'team'),
-        [participants]
+    const visibleParticipants = useMemo(
+        () => participants.filter((participant) => {
+            const type = String(participant.participant_type || '').toLowerCase();
+            if (isSolo) {
+                return type === 'solo' || (!participant.team_id && !!participant.user_id);
+            }
+            return type === 'team' || !!participant.team_id;
+        }),
+        [participants, isSolo]
     );
-    const totalPages = Math.max(1, Math.ceil(teamParticipants.length / TEAMS_PAGE_SIZE));
+    const totalPages = Math.max(1, Math.ceil(visibleParticipants.length / TEAMS_PAGE_SIZE));
     const pagedParticipants = useMemo(() => {
         const start = (page - 1) * TEAMS_PAGE_SIZE;
-        return teamParticipants.slice(start, start + TEAMS_PAGE_SIZE);
-    }, [page, teamParticipants]);
-    const rangeStart = teamParticipants.length === 0 ? 0 : ((page - 1) * TEAMS_PAGE_SIZE) + 1;
-    const rangeEnd = Math.min(page * TEAMS_PAGE_SIZE, teamParticipants.length);
+        return visibleParticipants.slice(start, start + TEAMS_PAGE_SIZE);
+    }, [page, visibleParticipants]);
+    const rangeStart = visibleParticipants.length === 0 ? 0 : ((page - 1) * TEAMS_PAGE_SIZE) + 1;
+    const rangeEnd = Math.min(page * TEAMS_PAGE_SIZE, visibleParticipants.length);
 
     useEffect(() => {
         setPage(1);
-    }, [teamParticipants.length]);
+    }, [visibleParticipants.length]);
 
     useEffect(() => {
         setPage((current) => Math.min(current, totalPages));
     }, [totalPages]);
 
+    const emptyLabel = isSolo ? 'NO_PLAYERS_REGISTERED' : 'NO_TEAMS_REGISTERED';
+    const countLabel = isSolo ? 'players' : 'teams';
+
     return (
         <>
-            {teamParticipants.length === 0 ? (
+            {visibleParticipants.length === 0 ? (
                 <div className="min-h-[400px] flex items-center justify-center border border-dashed border-white/10 rounded-2xl bg-[#121214]">
-                    <p className="text-gray-500 font-mono text-sm tracking-widest">NO_TEAMS_REGISTERED</p>
+                    <p className="text-gray-500 font-mono text-sm tracking-widest">{emptyLabel}</p>
                 </div>
             ) : (
                 <div className="space-y-5">
@@ -50,6 +60,7 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({ participants }) => {
                             <PublicTeamCard
                                 key={participant.id}
                                 participant={participant}
+                                isSolo={isSolo}
                                 renderStatusBadge={(p) => (
                                     <div className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border ${p.status === 'checked_in' || p.checked_in_at
                                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
@@ -64,7 +75,7 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({ participants }) => {
                     {totalPages > 1 && (
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <p className="text-xs text-zinc-500">
-                                Showing {rangeStart}-{rangeEnd} of {teamParticipants.length} teams
+                                Showing {rangeStart}-{rangeEnd} of {visibleParticipants.length} {countLabel}
                             </p>
                             <Pagination className="mx-0 w-auto justify-start sm:justify-end">
                                 <PaginationContent>
