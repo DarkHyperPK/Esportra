@@ -1,5 +1,3 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 import { signInWithPassword } from './helpers/auth';
 import { ApiClient } from './helpers/api';
@@ -7,9 +5,8 @@ import {
   setupBrRoundFixture,
   getStageCompletionStatus,
   getTournamentStages,
-  publishRoundResultsFromEvidence,
+  publishRoundResultsDirect,
   setTournamentOngoing,
-  submitPlayerEvidence,
   syncBrStagesTwoStage,
 } from './helpers/brSetup';
 import { readE2eEnv, e2eSkipReason } from './helpers/env';
@@ -21,9 +18,6 @@ import {
   openOrganizerStagesTab,
   openPublicStagesTab,
 } from './helpers/uiStages';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const evidencePath = path.resolve(__dirname, 'fixtures/evidence.png');
 
 const env = readE2eEnv();
 const skipReason = e2eSkipReason(env);
@@ -93,8 +87,7 @@ test.describe('Stage status simplification — full coverage', () => {
     expect(live.progressLabel).toBe('in_progress');
     expect(live.isComplete).toBe(false);
 
-    await submitPlayerEvidence(playerClient, fixture.roundId, evidencePath, 1, 3);
-    await publishRoundResultsFromEvidence(organizer, fixture.roundId);
+    await publishRoundResultsDirect(organizer, fixture.stageId, fixture.groupId, fixture.roundId);
 
     await expect.poll(
       async () => (await getStageCompletionStatus(organizer, fixture.stageId)).isComplete,
@@ -227,9 +220,7 @@ test.describe('Stage status simplification — full coverage', () => {
     await setTournamentOngoing(organizer, fixture.tournamentId);
     await organizer.patch(`/api/br/rounds/${round.id}`, { status: 'active', lobbyCode: fixture.lobbyCode });
 
-    await submitPlayerEvidence(player1, round.id, evidencePath, 1, 2);
-    await submitPlayerEvidence(player2, round.id, evidencePath, 2, 1);
-    await publishRoundResultsFromEvidence(organizer, round.id);
+    await publishRoundResultsDirect(organizer, qualifierStageId, groupId, round.id);
 
     await expect.poll(
       async () => (await getStageCompletionStatus(organizer, qualifierStageId)).isComplete,

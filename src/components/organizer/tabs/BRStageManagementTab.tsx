@@ -840,6 +840,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                 const flow = stageFlows.get(stage.id);
                                 const isExpanded = expandedStageId === stage.id;
                                 const isLast = index === sortedStages.length - 1;
+                                const prevStage = index > 0 ? sortedStages[index - 1] : null;
                                 const completion = completionByStageId.get(stage.id);
                                 const readiness = getStageReadiness(flow, isLast, completion?.isComplete ?? false);
 

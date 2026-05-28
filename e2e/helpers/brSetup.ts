@@ -197,6 +197,27 @@ export async function setupBrRoundFixture(
   };
 }
 
+export async function publishRoundResultsDirect(
+  organizer: ApiClient,
+  stageId: string,
+  groupId: string,
+  roundId: string,
+): Promise<void> {
+  type GroupTeam = { team_id?: string | null; participant_id?: string | null };
+  const teams = await organizer.get<GroupTeam[]>(
+    `/api/stages/${stageId}/br/groups/${groupId}/teams`,
+  );
+
+  const results = teams.map((team, index) => ({
+    teamId: team.team_id ?? team.participant_id,
+    placement: index + 1,
+    kills: Math.max(0, 3 - index),
+  }));
+
+  await organizer.put(`/api/br/rounds/${roundId}/results`, { results });
+  await organizer.patch(`/api/br/rounds/${roundId}`, { status: 'completed' });
+}
+
 export async function publishRoundResultsFromEvidence(
   organizer: ApiClient,
   roundId: string,
