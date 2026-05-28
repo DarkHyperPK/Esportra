@@ -245,7 +245,11 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: st
                                 entries={leaderboard}
                                 totalGames={totalRounds}
                                 gamesCompleted={completedRounds}
-                                qualificationCutoff={selectedStage?.advancement_count ?? undefined}
+                                qualificationCutoff={
+                                  selectedStage?.advancement_count && selectedStage.advancement_count > 0
+                                    ? selectedStage.advancement_count
+                                    : undefined
+                                }
                                 pageSize={20}
                             />
                             <p className="text-xs text-zinc-500 text-right mt-1">

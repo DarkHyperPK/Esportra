@@ -95,6 +95,27 @@ export async function setupBrRoundFixture(
   };
 }
 
+export async function publishRoundResultsFromEvidence(
+  organizer: ApiClient,
+  roundId: string,
+): Promise<void> {
+  type EvidenceRow = { teamId: string; placement?: number | null; kills?: number | null };
+  const evidence = await organizer.get<EvidenceRow[]>(`/api/br/rounds/${roundId}/evidence`);
+
+  for (const item of evidence) {
+    await organizer.patch(`/api/br/rounds/${roundId}/evidence/${item.teamId}`, { reviewed: true });
+  }
+
+  const results = evidence.map((item, index) => ({
+    teamId: item.teamId,
+    placement: index + 1,
+    kills: item.kills ?? 0,
+  }));
+
+  await organizer.put(`/api/br/rounds/${roundId}/results`, { results });
+  await organizer.patch(`/api/br/rounds/${roundId}`, { status: 'completed' });
+}
+
 export async function submitPlayerEvidence(
   client: ApiClient,
   roundId: string,

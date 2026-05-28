@@ -7,9 +7,11 @@ import {
   setupBrRoundFixture,
   getRoundEvidenceCount,
   submitPlayerEvidence,
+  publishRoundResultsFromEvidence,
 } from './helpers/brSetup';
 import { readE2eEnv, e2eSkipReason } from './helpers/env';
 import { loginViaUi } from './helpers/uiAuth';
+import { assertNoOrphanLeaderboardZeros, openOrganizerGamesTab } from './helpers/uiLeaderboard';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const evidencePath = path.resolve(__dirname, 'fixtures/evidence.png');
@@ -79,21 +81,7 @@ test.describe('BR game room — multi-player evidence flow', () => {
             await page.locator('input[type="file"]').setInputFiles(evidencePath);
             await expect(page.getByRole('button', { name: 'Submit Report' })).toBeEnabled();
             await page.getByRole('button', { name: 'Submit Report' }).click();
-            const uiSubmitted = await page
-              .getByText(/Evidence submitted for Round/i)
-              .isVisible({ timeout: 20_000 })
-              .catch(() => false);
-            if (!uiSubmitted) {
-              await submitPlayerEvidence(
-                playerClient,
-                fixture.roundId,
-                evidencePath,
-                index + 1,
-                index + 2,
-              );
-            }
           } else {
-            // Staging may still run legacy BR game room UI without relational lobby state.
             await submitPlayerEvidence(
               playerClient,
               fixture.roundId,
@@ -109,6 +97,20 @@ test.describe('BR game room — multi-player evidence flow', () => {
         () => getRoundEvidenceCount(organizer, fixture.roundId),
         { timeout: 30_000 },
       ).toBeGreaterThanOrEqual(2);
+
+      await publishRoundResultsFromEvidence(organizer, fixture.roundId);
+
+      const organizerContext = await browser.newContext();
+      const organizerPage = await organizerContext.newPage();
+      try {
+        await loginViaUi(organizerPage, env.organizerEmail, env.organizerPassword);
+        const leaderboardSection = await openOrganizerGamesTab(organizerPage, fixture.slug);
+        await expect(leaderboardSection.getByText(activePlayers[0].email.split('@')[0])).toBeVisible();
+        await expect(leaderboardSection.getByText(activePlayers[1].email.split('@')[0])).toBeVisible();
+        await assertNoOrphanLeaderboardZeros(leaderboardSection);
+      } finally {
+        await organizerContext.close();
+      }
     } finally {
       await Promise.all(playerContexts.map((context) => context.close()));
     }

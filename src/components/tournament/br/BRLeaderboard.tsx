@@ -32,6 +32,8 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({
 }) => {
   const [page, setPage] = React.useState(1);
   const sorted = React.useMemo(() => [...entries].sort((a, b) => b.totalPoints - a.totalPoints), [entries]);
+  const hasQualificationCutoff =
+    typeof qualificationCutoff === 'number' && qualificationCutoff > 0;
   const totalPages = pageSize ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
   const pageStartIndex = pageSize ? (page - 1) * pageSize : 0;
   const visibleEntries = pageSize ? sorted.slice(pageStartIndex, pageStartIndex + pageSize) : sorted;
@@ -90,7 +92,7 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({
                     absoluteIndex === 0 ? "bg-amber-500/10 border border-amber-500/20" :
                     absoluteIndex === 1 ? "bg-gray-400/5 border border-gray-400/10" :
                     absoluteIndex === 2 ? "bg-amber-700/5 border border-amber-700/10" :
-                    qualificationCutoff && absoluteIndex < qualificationCutoff ? "bg-emerald-500/[0.03]" :
+                    qualificationCutoff != null && hasQualificationCutoff && absoluteIndex < qualificationCutoff ? "bg-emerald-500/[0.03]" :
                     "hover:bg-white/[0.02]"
                   )}
                 >
@@ -146,7 +148,7 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({
               </div>
 
               {/* Qualification cutoff line */}
-              {qualificationCutoff && absoluteIndex + 1 === qualificationCutoff && absoluteIndex < sorted.length - 1 && (
+              {hasQualificationCutoff && absoluteIndex + 1 === qualificationCutoff && absoluteIndex < sorted.length - 1 && (
                 <div className="flex items-center gap-2 py-1">
                   <div className="flex-1 h-px bg-emerald-500/40" />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500/70 whitespace-nowrap">
