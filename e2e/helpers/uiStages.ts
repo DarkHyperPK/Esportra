@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
+import { dismissBetaModal, skipBetaModal } from './uiAuth';
 
 export async function openOrganizerStagesTab(page: Page, slug: string): Promise<void> {
   await page.goto(`/organizer/tournament/${slug}?tab=stages`);
@@ -9,10 +10,12 @@ export async function openOrganizerStagesTab(page: Page, slug: string): Promise<
 }
 
 export async function openPublicStagesTab(page: Page, slug: string): Promise<void> {
+  await skipBetaModal(page);
   await page.goto(`/tournaments/${slug}?tab=stages`);
-  await expect(page.getByText(/Tournament Structure|Stage 0/i).first()).toBeVisible({
-    timeout: 45_000,
-  });
+  await dismissBetaModal(page);
+  await expect(
+    page.getByText(/Tournament Structure|Stage 01|Setup|In Progress|Main Event/i).first(),
+  ).toBeVisible({ timeout: 45_000 });
 }
 
 /** Manual stage status dropdowns should not exist after stage-status simplification. */

@@ -3,6 +3,7 @@ import { signInWithPassword } from './helpers/auth';
 import { ApiClient } from './helpers/api';
 import {
   setupBrRoundFixture,
+  setupMinimalBracketFixture,
   getStageCompletionStatus,
   getTournamentStages,
   publishRoundResultsDirect,
@@ -207,20 +208,18 @@ test.describe('Stage status simplification — full coverage', () => {
       fixture.stageId,
     );
 
-    await organizer.post(`/api/stages/${qualifierStageId}/br/groups/assign`, { method: 'random' });
-    const groups = await organizer.get<{ id: string }[]>(`/api/stages/${qualifierStageId}/br/groups`);
-    const groupId = groups[0]?.id;
-    if (!groupId) throw new Error('No groups after two-stage sync');
-
-    const round = await organizer.post<{ id: string }>(
-      `/api/stages/${qualifierStageId}/br/groups/${groupId}/rounds`,
-      { lobbyCode: fixture.lobbyCode },
-    );
-
     await setTournamentOngoing(organizer, fixture.tournamentId);
-    await organizer.patch(`/api/br/rounds/${round.id}`, { status: 'active', lobbyCode: fixture.lobbyCode });
+    await organizer.patch(`/api/br/rounds/${fixture.roundId}`, {
+      status: 'active',
+      lobbyCode: fixture.lobbyCode,
+    });
 
-    await publishRoundResultsDirect(organizer, qualifierStageId, groupId, round.id);
+    await publishRoundResultsDirect(
+      organizer,
+      qualifierStageId,
+      fixture.groupId,
+      fixture.roundId,
+    );
 
     await expect.poll(
       async () => (await getStageCompletionStatus(organizer, qualifierStageId)).isComplete,
@@ -258,14 +257,7 @@ test.describe('Stage status simplification — full coverage', () => {
 
   test('public Stages tab — progress_label chips, no legacy status badges', async ({ page }) => {
     const organizer = await createOrganizerClient();
-    const playerSession = await signInWithPassword(
-      env!.supabaseUrl,
-      env!.supabaseAnonKey,
-      env!.players[0].email,
-      env!.players[0].password,
-    );
-    const playerClient = new ApiClient(env!.apiUrl, playerSession.access_token);
-    const fixture = await setupBrRoundFixture(organizer, [playerClient], { activateRound: false });
+    const fixture = await setupMinimalBracketFixture(organizer);
 
     await openPublicStagesTab(page, fixture.slug);
     await assertDerivedStageProgressVisible(page);

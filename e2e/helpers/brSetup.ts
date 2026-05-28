@@ -116,6 +116,51 @@ export async function syncBrStagesTwoStage(
  * API-driven BR tournament setup: create tournament, register players in parallel,
  * seed groups, create + optionally activate a round with a lobby code.
  */
+export async function setupMinimalBracketFixture(
+  organizer: ApiClient,
+): Promise<{ tournamentId: string; slug: string; stageId: string }> {
+  const stamp = Date.now();
+  const dates = defaultBrDates();
+
+  const tournament = await organizer.post<TournamentRow>('/api/tournaments', {
+    name: `E2E Bracket ${stamp}`,
+    slug: `e2e-bracket-${stamp}`,
+    game: 'Valorant',
+    tournamentType: 'single_elimination',
+    teamSize: 5,
+    maxTeams: 8,
+    startDate: dates.startDate,
+    endDate: dates.endDate,
+    registrationDeadline: dates.registrationDeadline,
+    status: 'open',
+    isPublic: true,
+    checkInRequired: false,
+  });
+
+  const existingStages = await getTournamentStages(organizer, tournament.id);
+  let stageId = existingStages[0]?.id;
+
+  if (!stageId) {
+    await organizer.put(`/api/tournaments/${tournament.id}/stages`, {
+      stages: [
+        {
+          name: 'Playoffs',
+          format: 'single_elimination',
+          stageOrder: 1,
+          advancementCount: 4,
+          capacity: 8,
+        },
+      ],
+    });
+    const stages = await getTournamentStages(organizer, tournament.id);
+    stageId = stages[0]?.id;
+  }
+
+  if (!stageId) throw new Error('Bracket tournament has no stages after setup');
+
+  return { tournamentId: tournament.id, slug: tournament.slug, stageId };
+}
+
 export async function setupBrRoundFixture(
   organizer: ApiClient,
   playerClients: ApiClient[],

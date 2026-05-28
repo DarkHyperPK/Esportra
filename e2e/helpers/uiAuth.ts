@@ -3,14 +3,14 @@ import type { Page } from '@playwright/test';
 const BETA_DISMISS_KEY = 'beta-notice-permanent-dismiss';
 
 /** Skip staging beta modal via localStorage (works before first paint). */
-async function skipBetaModal(page: Page): Promise<void> {
+export async function skipBetaModal(page: Page): Promise<void> {
   await page.addInitScript((key) => {
     localStorage.setItem(key, 'true');
   }, BETA_DISMISS_KEY);
 }
 
 /** Dismiss beta modal if it still appears. */
-async function dismissBetaModal(page: Page): Promise<void> {
+export async function dismissBetaModal(page: Page): Promise<void> {
   const dismiss = page.getByRole('button', { name: "Don't show me again" });
   if (await dismiss.isVisible({ timeout: 2_000 }).catch(() => false)) {
     await dismiss.click();
