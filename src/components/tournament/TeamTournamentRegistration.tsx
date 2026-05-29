@@ -213,98 +213,84 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     if (!user?.id) return;
     setFetchingTeams(true);
     try {
-      // Get teams user owns
-      const ownedTeams = await apiClient.get<TeamRow[]>(
-        `/api/teams?owner_id=${user.id}`
-      );
+      let teams: TeamRow[] = [];
 
-      // Get teams where user is captain (role = 'captain')
-      const memberTeams = await apiClient.get<{ team_id: string }[]>(
-        `/api/teams/me?role=captain`
-      );
+      try {
+        const ownedTeams = await apiClient.get<TeamRow[]>(`/api/teams?owner_id=${user.id}`);
+        teams = [...(ownedTeams || [])];
+      } catch (ownedError) {
+        console.warn('Owner team lookup failed:', ownedError);
+      }
 
-      const captainTeamIds = (memberTeams || []).map(m => m.team_id).filter(Boolean);
-      let teams = [...(ownedTeams || [])];
+      if (teams.length === 0) {
+        const captainTeams = await apiClient.get<TeamRow[]>('/api/teams/my-captain-teams');
+        teams = [...(captainTeams || [])];
+      }
 
-      if (captainTeamIds.length > 0) {
-        const extraTeams = await apiClient.get<TeamRow[]>(
-          `/api/teams?ids=${captainTeamIds.join(',')}`
-        );
-
-        // Merge and avoid duplicates
-        const ownedIds = new Set(teams.map(t => t.id));
-        (extraTeams || []).forEach(t => {
-          if (!ownedIds.has(t.id)) {
-            teams.push(t);
-          }
-        });
+      if (teams.length === 0) {
+        const myTeams = await apiClient.get<TeamRow[]>('/api/teams/me');
+        teams = (myTeams || []).filter((team) => String(team.owner_id) === user.id);
       }
 
       const ids = new Set<string>();
       const reasons: Record<string, string[]> = {};
 
-      for (const team of (teams || [])) {
+      for (const team of teams) {
         const errs: string[] = [];
 
-        // Check if team has a roster for this tournament's game
-        // This is the primary check with the new roster system
-        const rosters = await apiClient.get<any[]>(
-          `/api/teams/${team.id}/rosters`
-        );
+        try {
+          const rosters = await apiClient.get<any[]>(`/api/teams/${team.id}/rosters`);
 
-        const normalize = (s: string) => (s || '').toLowerCase().trim();
-        const tournamentGameNormalized = normalize(tournament.game || '');
+          const normalizeGame = (s: string) => (s || '').toLowerCase().trim();
+          const tournamentGameNormalized = normalizeGame(tournament.game || '');
 
-        // Check if team has a roster matching the tournament's game
-        const hasMatchingRoster = (rosters || []).some((r: RosterRow) =>
-          normalize(r.game) === tournamentGameNormalized && rosterMatchesMode(r)
-        );
-
-        // Fallback: also check team.games for backwards compatibility
-        const teamGames = Array.isArray(team.games) ? team.games : (typeof team.games === 'string' ? [team.games] : []);
-        const hasGameInTeam = teamGames.some((g: string) => normalize(g) === tournamentGameNormalized);
-
-        if (!hasMatchingRoster && !hasGameInTeam) {
-          errs.push("Team doesn't include this game. Create a roster for this game first.");
-        }
-
-        // Check if matching roster has enough members
-        if (hasMatchingRoster && tournament.game) {
-          const matchingRoster = (rosters || []).find((r: RosterRow) =>
-            normalize(r.game) === tournamentGameNormalized && rosterMatchesMode(r)
+          const hasMatchingRoster = (rosters || []).some((r: RosterRow) =>
+            normalizeGame(r.game) === tournamentGameNormalized && rosterMatchesMode(r)
           );
 
-          if (matchingRoster) {
-            // Check roster member count
-            const rosterMembers = await apiClient.get<any[]>(
-              `/api/teams/${team.id}/rosters/${matchingRoster.id}/members`
-            );
-            const rosterMemberCount = (rosterMembers || []).length + 1; // +1 for captain/owner
+          const teamGames = Array.isArray(team.games) ? team.games : (typeof team.games === 'string' ? [team.games] : []);
+          const hasGameInTeam = teamGames.some((g: string) => normalizeGame(g) === tournamentGameNormalized);
 
-            if (rosterMemberCount < coreMembers) {
-              errs.push(`Roster needs at least ${coreMembers} members (has ${rosterMemberCount}).`);
+          if (!hasMatchingRoster && !hasGameInTeam) {
+            errs.push("Team doesn't include this game. Create a roster for this game first.");
+          }
+
+          if (hasMatchingRoster && tournament.game) {
+            const matchingRoster = (rosters || []).find((r: RosterRow) =>
+              normalizeGame(r.game) === tournamentGameNormalized && rosterMatchesMode(r)
+            );
+
+            if (matchingRoster) {
+              const rosterMembers = await apiClient.get<any[]>(
+                `/api/teams/${team.id}/rosters/${matchingRoster.id}/members`
+              );
+              const rosterMemberCount = (rosterMembers || []).length + 1;
+
+              if (rosterMemberCount < coreMembers) {
+                errs.push(`Roster needs at least ${coreMembers} members (has ${rosterMemberCount}).`);
+              }
+            }
+          } else {
+            const members = await apiClient.get<any[]>(`/api/teams/${team.id}/members/detailed`);
+            const activeCount = (members || []).length + 1;
+
+            if (activeCount < coreMembers) {
+              errs.push(`Need at least ${coreMembers} members (have ${activeCount}).`);
             }
           }
-        } else {
-          // Fallback: check team_members if no roster system
-          const members = await apiClient.get<any[]>(
-            `/api/teams/${team.id}/members?active=true`
-          );
-          let activeCount = (members || []).length + 1; // include captain
-
-          if (activeCount < coreMembers) {
-            errs.push(`Need at least ${coreMembers} members (have ${activeCount}).`);
-          }
+        } catch (teamError) {
+          console.error(`Eligibility check failed for team ${team.id}:`, teamError);
+          errs.push('Unable to verify team eligibility. Try again.');
         }
 
         if (errs.length === 0) ids.add(team.id);
         reasons[team.id] = errs;
       }
 
-      setCaptainTeams(teams || []);
+      setCaptainTeams(teams);
       setEligibleTeamIds(ids);
       setIneligibleReasons(reasons);
-      if (teams && teams.length > 0) {
+      if (teams.length > 0) {
         const firstEligible = (teams.find(t => ids.has(t.id)) || {}).id || '';
         setSelectedTeamId(firstEligible);
       }

@@ -99,6 +99,7 @@ interface DatabaseTournament {
   is_online: boolean;
   max_participants: number;
   team_size?: number;
+  game_mode?: string;
   prize_pool: string;
   entry_fee: string | null;
   user_id: string;
@@ -348,7 +349,8 @@ const TournamentDetails = () => {
         reserved_invite_slots: t.reserved_invite_slots ?? t.reservedInviteSlots ?? parsedSettings?.reservedInviteSlots ?? 0,
         invite_expiry_days: t.invite_expiry_days ?? t.inviteExpiryDays ?? parsedSettings?.inviteExpiryDays ?? 7,
         registration_type: t.registration_type ?? t.registrationType ?? parsedSettings?.registrationType ?? null,
-        team_size: 1,
+        team_size: t.team_size ?? t.teamSize ?? parsedSettings?.teamSize ?? 1,
+        game_mode: t.game_mode ?? t.gameMode ?? parsedSettings?.gameMode ?? null,
         prize_pool: t.prize_pool?.toString() || '0',
         entry_fee: t.entry_fee?.toString() || '0',
         description: t.description || '',
@@ -1037,6 +1039,7 @@ const TournamentDetails = () => {
             tournamentId={tournament.id}
             tournamentName={tournament.name}
             game={tournament.game}
+            gameMode={tournament.game_mode}
             settings={tournament.settings}
             entryFee={tournament.entry_fee}
             currency={tournament.currency}

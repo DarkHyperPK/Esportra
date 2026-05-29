@@ -13,6 +13,7 @@ interface TournamentRegistrationProps {
   tournamentId: string;
   tournamentName: string;
   game?: string;
+  gameMode?: string | null;
   teamSize?: number;
   structure?: string;
   settings?: any;
@@ -30,6 +31,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   tournamentId,
   tournamentName,
   game = '',
+  gameMode,
   teamSize = 1,
   structure = 'solo',
   settings,
@@ -289,6 +291,8 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
           id: tournamentId,
           name: tournamentName,
           game: game || '',
+          game_mode: gameMode ?? undefined,
+          gameMode: gameMode ?? undefined,
           start_date: new Date().toISOString(),
           entry_fee: parsedFee || undefined,
           prize_pool: undefined,

@@ -26,6 +26,7 @@ export interface BaseTournament {
     invite_expiry_days?: number;
     registration_type?: string;
     team_size: number;
+    game_mode?: string | null;
     prize_pool: string;
     entry_fee: string | null;
     start_date?: string;

@@ -15,6 +15,7 @@
     "test:e2e": "playwright test",
     "test:e2e:br": "playwright test e2e/br-errors-negative.spec.ts e2e/br-organizer-games.spec.ts e2e/br-organizer-stages.spec.ts e2e/br-player-game-room.spec.ts e2e/br-public-leaderboard.spec.ts e2e/br-round-evidence.spec.ts --workers=1",
     "test:e2e:promote": "playwright test e2e/tournament-browse-promotion.spec.ts e2e/stage-status-simplification.spec.ts e2e/br-round-evidence.spec.ts e2e/br-organizer-stages.spec.ts e2e/br-organizer-games.spec.ts e2e/br-player-game-room.spec.ts e2e/br-public-leaderboard.spec.ts e2e/br-errors-negative.spec.ts --workers=1",
+    "test:e2e:catalog": "playwright test e2e/game-catalog-robustness.spec.ts e2e/game-catalog-gui.spec.ts --workers=1",
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
