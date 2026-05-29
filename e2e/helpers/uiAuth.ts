@@ -32,10 +32,19 @@ export async function waitForAuthenticatedNav(page: Page): Promise<void> {
 
 const NAV = { waitUntil: 'domcontentloaded' as const, timeout: 90_000 };
 
+async function gotoReliable(page: Page, url: string): Promise<void> {
+  try {
+    await page.goto(url, { waitUntil: 'commit', timeout: 45_000 });
+  } catch {
+    await page.goto(url, NAV);
+  }
+  await page.waitForLoadState('domcontentloaded', { timeout: 30_000 }).catch(() => undefined);
+}
+
 /** Sign in through the app UI so Supabase session + AuthContext are fully initialized. */
 export async function loginViaUi(page: Page, email: string, password: string): Promise<void> {
   await skipBetaModal(page);
-  await page.goto('/auth/signin', NAV);
+  await gotoReliable(page, '/auth/signin');
   await dismissBetaModal(page);
   await page.getByPlaceholder('Enter your email').fill(email);
   await page.getByPlaceholder('Enter your password').fill(password);
@@ -59,7 +68,8 @@ export async function ensureOrganizerRole(page: Page): Promise<void> {
   await page.evaluate(() => {
     localStorage.setItem('sessionRole', 'organizer');
   });
-  await page.goto('/organizer/tournaments', NAV);
+  await page.goto('/organizer/tournaments', { waitUntil: 'commit', timeout: 45_000 });
+  await page.waitForLoadState('domcontentloaded', { timeout: 30_000 }).catch(() => undefined);
   await dismissBetaModal(page);
   if (page.url().includes('/unauthorized')) {
     throw new Error('Organizer session role not active — check E2E organizer account roles');
