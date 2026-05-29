@@ -174,7 +174,11 @@ export async function openTournamentRegistration(page: Page, slug: string): Prom
   await expect(page.getByRole('heading', { name: /INITIATE_REGISTRATION|MODIFY_REGISTRATION/i })).toBeVisible({
     timeout: 20_000,
   });
-  await expect(page.getByText(/Loading your teams/i)).toHaveCount(0, { timeout: 30_000 });
+  await expect(
+    page.getByText(
+      /Select Your Team|Not Eligible|Create a team first|Register as an individual|Register Team|Register Solo/i,
+    ).first(),
+  ).toBeVisible({ timeout: 45_000 });
 }
 
 export async function openTeamsPage(page: Page): Promise<void> {
