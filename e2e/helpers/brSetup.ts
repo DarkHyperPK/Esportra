@@ -83,13 +83,27 @@ export async function createOrganizerClientFromEnv(env: {
   return new ApiClient(env.apiUrl, session.access_token);
 }
 
-function defaultBrDates() {
+export function defaultBrDates() {
   const now = Date.now();
   return {
-    startDate: new Date(now - 3_600_000).toISOString(),
+    startDate: new Date(now + 7_200_000).toISOString(),
     endDate: new Date(now + 172_800_000).toISOString(),
-    registrationDeadline: new Date(now - 7_200_000).toISOString(),
+    registrationDeadline: new Date(now + 3_600_000).toISOString(),
   };
+}
+
+async function closeRegistrationIfDefault(
+  organizer: ApiClient,
+  tournamentId: string,
+  options?: { startDate?: string; endDate?: string; registrationDeadline?: string },
+): Promise<void> {
+  if (options?.startDate || options?.registrationDeadline) return;
+  const now = Date.now();
+  await organizer.put(`/api/tournaments/${tournamentId}`, {
+    startDate: new Date(now - 3_600_000).toISOString(),
+    registrationDeadline: new Date(now - 7_200_000).toISOString(),
+    ...(!options?.endDate ? { endDate: new Date(now + 172_800_000).toISOString() } : {}),
+  });
 }
 
 export async function setTournamentOngoing(
@@ -296,6 +310,7 @@ export async function createBrTournament(
       client.post(`/api/tournaments/${tournament.id}/register`, {}),
     ),
   );
+  await closeRegistrationIfDefault(organizer, tournament.id, options);
 
   const stages = await getTournamentStages(organizer, tournament.id);
   const stageId = stages[0]?.id;
@@ -359,6 +374,7 @@ export async function setupBrRoundFixture(
       client.post(`/api/tournaments/${tournamentId}/register`, {}),
     ),
   );
+  await closeRegistrationIfDefault(organizer, tournamentId, options);
 
   const stages = await getTournamentStages(organizer, tournamentId);
   const stageId = stages[0]?.id;

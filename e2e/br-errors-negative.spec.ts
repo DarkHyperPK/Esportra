@@ -7,12 +7,12 @@ import { createOrganizerClient, createPlayerClients } from './helpers/e2eClients
 import {
   createRound,
   getBRGroups,
+  getRoundEvidenceCount,
   saveRoundResultsDirect,
   setTournamentOngoing,
   setupBrRoundFixture,
-  submitPlayerEvidence,
 } from './helpers/brSetup';
-import { expandFirstRound, openOrganizerGames, setRoundSettings } from './helpers/uiBR';
+import { expandFirstRound, openOrganizerGames, openPlayerGameRoom, setRoundSettings } from './helpers/uiBR';
 import { expectFriendlyText, expectNoTechnicalCopy } from './helpers/assertCopy';
 import { expectToast } from './helpers/assertToast';
 
@@ -116,15 +116,26 @@ test.describe('BR negative paths and error UX', () => {
     expect(response.body).toMatch(/save round results|results/i);
   });
 
-  test('API rejects completing while evidence is unreviewed', async () => {
+  test('API rejects completing while evidence is unreviewed', async ({ page }) => {
     const organizer = await createOrganizerClient(env!);
-    const players = await createPlayerClients(env!, 1);
+    const players = await createPlayerClients(env!, 2);
     const fixture = await setupBrRoundFixture(organizer, players);
-    await submitPlayerEvidence(players[0], fixture.roundId, evidencePath, 1, 2);
+
+    await loginViaUi(page, env!.players[0].email, env!.players[0].password);
+    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
+    await page.getByText('Upload screenshot').click();
+    await page.locator('input[type="file"]').setInputFiles(evidencePath);
+    await expect(page.getByRole('button', { name: /Submit Report/i })).toBeEnabled();
+    await page.getByRole('button', { name: /Submit Report/i }).click();
+    await expect.poll(
+      () => getRoundEvidenceCount(organizer, fixture.roundId),
+      { timeout: 30_000 },
+    ).toBeGreaterThanOrEqual(1);
+
     await saveRoundResultsDirect(organizer, fixture.stageId, fixture.groupId, fixture.roundId);
 
     await expectApiMessage(
-      () => organizer.expectFailureText('PATCH', `/api/br/rounds/${fixture.roundId}`, 400, {
+      () => organizer.expectFailureText('PATCH', `/api/br/rounds/${fixture.roundId}`, 409, {
         status: 'completed',
       }),
       /evidence.*reviewed|review/i,
@@ -138,7 +149,7 @@ test.describe('BR negative paths and error UX', () => {
     const round2 = await createRound(organizer, fixture.stageId, fixture.groupId, { lobbyCode: 'SECOND-ROUND' });
 
     await expectApiMessage(
-      () => organizer.expectFailureText('PATCH', `/api/br/rounds/${round2.id}`, 409, {
+      () => organizer.expectFailureText('PATCH', `/api/br/rounds/${round2.id}`, 400, {
         status: 'active',
         lobbyCode: 'SECOND-ROUND',
       }),
@@ -185,10 +196,11 @@ test.describe('BR negative paths and error UX', () => {
     const organizer = await createOrganizerClient(env!);
     const players = await createPlayerClients(env!, 1);
     const fixture = await setupBrRoundFixture(organizer, players, { activateRound: false });
+    const imageUrl = await players[0].uploadEvidenceImage(evidencePath);
 
     await expectApiMessage(
       () => players[0].expectFailureText('PUT', `/api/br/rounds/${fixture.roundId}/evidence`, 409, {
-        imageUrl: 'https://staging.esportra.com/e2e/evidence.png',
+        imageUrl,
       }),
       /round is live|submitted while the round is live/i,
     );

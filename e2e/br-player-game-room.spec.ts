@@ -7,10 +7,10 @@ import { createOrganizerClient, createPlayerClients } from './helpers/e2eClients
 import {
   createRound,
   getBRGroups,
+  getRoundEvidenceCount,
   publishRoundResultsDirect,
   setTournamentOngoing,
   setupBrRoundFixture,
-  submitPlayerEvidence,
 } from './helpers/brSetup';
 import { openPlayerGameRoom, openPublicTournament } from './helpers/uiBR';
 import { expectNoTechnicalCopy } from './helpers/assertCopy';
@@ -70,10 +70,14 @@ test.describe('BR player game room', () => {
     await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
     await page.getByText('Upload screenshot').click();
     await page.locator('input[type="file"]').setInputFiles(evidencePath);
-    await page.getByRole('button', { name: /Submit Report/i }).click({ force: true });
-    await expect(page.getByText(/Awaiting organizer review|Evidence submitted/i)).toBeVisible({
-      timeout: 45_000,
-    });
+    await expect(page.getByRole('button', { name: /Submit Report/i })).toBeEnabled();
+    await page.getByRole('button', { name: /Submit Report/i }).click();
+    await expect.poll(
+      () => getRoundEvidenceCount(organizer, fixture.roundId),
+      { timeout: 30_000 },
+    ).toBeGreaterThanOrEqual(1);
+    await page.reload();
+    await expect(page.getByText(/Awaiting organizer review|Evidence submitted/i)).toBeVisible({ timeout: 45_000 });
 
     const duplicate = await players[0].expectFailureText(
       'PUT',

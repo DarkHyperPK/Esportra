@@ -13,6 +13,7 @@ import {
   publishRoundResultsDirect,
   seedGroups,
   setTournamentOngoing,
+  setupBrRoundFixture,
   syncBrStagesTwoStage,
   updateRound,
 } from './helpers/brSetup';
@@ -156,7 +157,7 @@ test.describe('BR organizer stages', () => {
   test('advance teams from organizer stage UI after completion', async ({ page }) => {
     const organizer = await createOrganizerClient(env!);
     const players = await createPlayerClients(env!, 2);
-    const fixture = await createBrTournament(organizer, players, { activateRound: false });
+    const fixture = await setupBrRoundFixture(organizer, players, { activateRound: false });
     const { qualifierStageId } = await syncBrStagesTwoStage(organizer, fixture.tournamentId, fixture.stageId);
 
     await setTournamentOngoing(organizer, fixture.tournamentId);

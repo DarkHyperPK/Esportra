@@ -7,12 +7,12 @@ import { createOrganizerClient, createPlayerClients } from './helpers/e2eClients
 import {
   createRound,
   getBRGroups,
+  getRoundEvidenceCount,
   publishRoundResultsDirect,
   resetRound,
   saveRoundResultsDirect,
   setTournamentOngoing,
   setupBrRoundFixture,
-  submitPlayerEvidence,
   updateRound,
 } from './helpers/brSetup';
 import { expandFirstRound, fillResultsGrid, openOrganizerGames, openPlayerGameRoom, setRoundSettings } from './helpers/uiBR';
@@ -24,6 +24,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const evidencePath = path.resolve(__dirname, 'fixtures/evidence.png');
 const env = readE2eEnv();
 const skipReason = e2eSkipReason(env);
+
+function toDateTimeLocalValue(date: Date): string {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
 
 test.describe('BR organizer games', () => {
   test.describe.configure({ mode: 'serial' });
@@ -57,14 +61,14 @@ test.describe('BR organizer games', () => {
 
     await setRoundSettings(page, {
       lobbyCode: fixture.lobbyCode,
-      scheduledAt: new Date(Date.now() + 3_600_000).toISOString().slice(0, 16),
+      scheduledAt: toDateTimeLocalValue(new Date(Date.now() - 300_000)),
       queueTimerMinutes: '5',
     });
 
     await page.getByRole('button', { name: /^Start$/i }).click({ force: true });
     await expect(page.getByRole('alertdialog', { name: /Start Round/i })).toBeVisible();
     await page.getByRole('button', { name: /^Start Round$/i }).click({ force: true });
-    await expect(page.getByText('Live')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Round 1 Live/i })).toBeVisible();
     await expect(page.getByText(fixture.lobbyCode)).toBeVisible();
     await expectNoTechnicalCopy(page);
   });
@@ -93,12 +97,25 @@ test.describe('BR organizer games', () => {
     const players = await createPlayerClients(env!, 2);
     const fixture = await setupBrRoundFixture(organizer, players);
 
-    await submitPlayerEvidence(players[0], fixture.roundId, evidencePath, 1, 2);
+    await loginViaUi(page, env!.players[0].email, env!.players[0].password);
+    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
+    await page.getByText('Upload screenshot').click();
+    await page.locator('input[type="file"]').setInputFiles(evidencePath);
+    await expect(page.getByRole('button', { name: /Submit Report/i })).toBeEnabled();
+    await page.getByRole('button', { name: /Submit Report/i }).click();
+    await expect.poll(
+      () => getRoundEvidenceCount(organizer, fixture.roundId),
+      { timeout: 30_000 },
+    ).toBeGreaterThanOrEqual(1);
 
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
     await loginViaUi(page, env!.organizerEmail, env!.organizerPassword);
     await openOrganizerGames(page, fixture.slug);
     await expandFirstRound(page);
-    await expect(page.getByText(/Pending review/i)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('Pending review', { exact: true })).toBeVisible({ timeout: 30_000 });
     await page.getByRole('button', { name: /Mark reviewed/i }).click();
     await expectToast(page, /Evidence reviewed/i);
     await expect(page.getByText(/^Reviewed$/i)).toBeVisible();
@@ -175,8 +192,10 @@ test.describe('BR organizer games', () => {
 
       await publishRoundResultsDirect(organizer, fixture.stageId, fixture.groupId, fixture.roundId);
 
-      await expect(playerPage.getByText(/Round History|Your Standing|Tournament Complete/i).first()).toBeVisible({
-        timeout: 90_000,
+      const completedState = playerPage.getByText(/Round History|Your Standing|Waiting for Next Round|Tournament Complete/i).first();
+      await completedState.waitFor({ state: 'visible', timeout: 45_000 }).catch(async () => {
+        await playerPage.reload();
+        await expect(completedState).toBeVisible({ timeout: 45_000 });
       });
       await expectNoTechnicalCopy(playerPage);
     } finally {

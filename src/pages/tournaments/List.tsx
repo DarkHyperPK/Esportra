@@ -27,12 +27,12 @@ const STATUS_TABS = [
   { key: 'cancelled', label: 'Cancelled', icon: Archive },
 ] as const;
 
-// Map tab keys to DB statuses
-function getEffectiveStatus(t: any): string {
-  if (t.status === 'cancelled') return 'cancelled';
-  if (t.status === 'completed') return 'completed';
-  if (t.status === 'ongoing') return 'live';
-  return 'upcoming'; // open, published, check_in, draft
+function getEffectiveStatus(t: { status?: string | null }): string {
+  const status = t.status ?? 'open';
+  if (status === 'cancelled') return 'cancelled';
+  if (status === 'completed') return 'completed';
+  if (status === 'ongoing') return 'live';
+  return 'upcoming';
 }
 
 const TournamentList = () => {
@@ -66,9 +66,11 @@ const TournamentList = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Build query params for tournaments
+  // Build query params for tournaments — filter by tab server-side so the row cap
+  // isn't filled by unrelated statuses; API sorts by created_at DESC (newest first).
   const tournamentsQueryParams = useMemo(() => {
-    const params = new URLSearchParams({ limit: '100', offset: '0' });
+    const params = new URLSearchParams({ limit: '200', offset: '0' });
+    if (activeTab) params.set('status_group', activeTab);
     if (selectedGame) params.set('game', selectedGame);
     if (selectedFormat === 'online') params.set('is_online', 'true');
     if (selectedFormat === 'lan') params.set('is_online', 'false');
@@ -76,23 +78,29 @@ const TournamentList = () => {
     if (selectedCity) params.set('city', selectedCity);
     if (selectedRegion) params.set('region', selectedRegion);
     return params.toString();
-  }, [selectedGame, selectedFormat, selectedCountry, selectedCity, selectedRegion]);
+  }, [activeTab, selectedGame, selectedFormat, selectedCountry, selectedCity, selectedRegion]);
 
   // Fetch tournaments via useQuery (cached, no refetch on tab-switch)
   const { data: allTournaments = [], isLoading: loading } = useQuery<Tournament[]>({
     queryKey: ['browse-tournaments', tournamentsQueryParams],
     queryFn: async () => {
       const tournamentsData = await apiClient.get<any[]>(`/api/tournaments?${tournamentsQueryParams}`);
-      return (tournamentsData || []).map(tournament => ({
-        ...tournament,
-        image_url: tournament.banner_url ?? tournament.logo_url ?? null,
-        current_participants: tournament.current_participants ?? 0,
-        status: tournament.status ?? 'open',
-        team_size: tournament.team_size ?? 1,
-        is_online: !tournament.venue_id,
-        venue_city: tournament.venue_city ?? null,
-        venue_country: tournament.venue_country ?? null,
-      }));
+      return (tournamentsData || [])
+        .map(tournament => ({
+          ...tournament,
+          image_url: tournament.banner_url ?? tournament.logo_url ?? null,
+          current_participants: tournament.current_participants ?? 0,
+          status: tournament.status ?? 'open',
+          team_size: tournament.team_size ?? 1,
+          is_online: !tournament.venue_id,
+          venue_city: tournament.venue_city ?? null,
+          venue_country: tournament.venue_country ?? null,
+        }))
+        .sort((a, b) => {
+          const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return bCreated - aCreated;
+        });
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -108,10 +116,10 @@ const TournamentList = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Filter by status tab
+  // Server filters via status_group; keep client guard for older API/cache responses.
   const tournaments = useMemo(() => {
     if (!activeTab) return allTournaments;
-    return allTournaments.filter(t => getEffectiveStatus(t) === activeTab);
+    return allTournaments.filter((t) => getEffectiveStatus(t) === activeTab);
   }, [allTournaments, activeTab]);
 
   // Sync tab to URL
