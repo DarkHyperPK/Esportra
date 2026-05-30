@@ -66,6 +66,35 @@ fi
 
 access_token="$(echo "$auth_body" | python3 -c "import json,sys; print(json.load(sys.stdin)['access_token'])")"
 
+check_supabase_login() {
+  local label="$1"
+  local email="$2"
+  local password="$3"
+  local secret_hint="$4"
+
+  echo "Preflight: Supabase sign-in for ${label} (${email})"
+  local response
+  response="$(curl --silent --show-error --max-time 30 \
+    -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" \
+    -H "apikey: ${E2E_SUPABASE_ANON_KEY}" \
+    -H "Authorization: Bearer ${E2E_SUPABASE_ANON_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "{\"email\":\"${email}\",\"password\":\"${password}\"}" \
+    -w "\n__HTTP__%{http_code}")"
+
+  local body="${response%%__HTTP__*}"
+  local status="${response##*__HTTP__}"
+
+  if [[ "$status" != "200" ]]; then
+    echo "::error title=${label} login failed::Supabase rejected ${label} credentials (HTTP ${status}). Check ${secret_hint} on ${SUPABASE_URL}."
+    echo "$body" | head -c 500
+    exit 1
+  fi
+}
+
+check_supabase_login "player 1" "${E2E_PLAYER1_EMAIL}" "${E2E_PLAYER1_PASSWORD}" "E2E_PLAYER1_PASSWORD"
+check_supabase_login "player 2" "${E2E_PLAYER2_EMAIL}" "${E2E_PLAYER2_PASSWORD}" "E2E_PLAYER2_PASSWORD"
+
 echo "Preflight: API accepts organizer JWT"
 api_status="$(curl --silent --max-time 30 -o /tmp/e2e-preflight-body.txt -w '%{http_code}' \
   -H "Authorization: Bearer ${access_token}" \
@@ -93,4 +122,4 @@ if [[ "${PREFLIGHT_REQUIRE_VITE:-false}" == "true" ]]; then
   fi
 fi
 
-echo "E2E preflight passed — credentials and API auth are aligned."
+echo "E2E preflight passed — organizer, player 1, player 2, and API auth are aligned."
