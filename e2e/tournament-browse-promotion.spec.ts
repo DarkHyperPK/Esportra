@@ -8,7 +8,7 @@ import { expectNoTechnicalCopy } from './helpers/assertCopy';
 const env = readE2eEnv();
 const skipReason = e2eSkipReason(env);
 
-test.describe('Tournament browse — promotion gate', () => {
+test.describe('@promotion Tournament browse — promotion gate', () => {
   test.beforeEach(({ page: _page }, testInfo) => {
     test.skip(!!skipReason, skipReason ?? undefined);
     testInfo.setTimeout(120_000);

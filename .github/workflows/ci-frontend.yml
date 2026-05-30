@@ -2,19 +2,23 @@ name: CI — Frontend
 
 on:
   push:
-    branches: [staging, main]
+    branches: [staging, main, 'deploy/**']
     paths:
       - 'src/**'
+      - 'e2e/**'
       - 'package*.json'
       - 'vite.config.*'
+      - 'playwright.config.ts'
       - 'index.html'
       - '.github/workflows/ci-frontend.yml'
   pull_request:
     branches: [staging, main]
     paths:
       - 'src/**'
+      - 'e2e/**'
       - 'package*.json'
       - 'vite.config.*'
+      - 'playwright.config.ts'
       - 'index.html'
 
 jobs:
@@ -36,8 +40,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Dead code check (knip — files, deps, binaries)
-        run: npm run knip:strict
+      - name: Check App Route Symbols
+        run: npm run check:app-routes
+
+      - name: Check Critical Runtime Symbols
+        run: npm run check:critical-symbols
 
       - name: Build
         env:

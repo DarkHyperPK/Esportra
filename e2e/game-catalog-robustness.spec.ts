@@ -32,7 +32,7 @@ function findApiGame(catalog: CatalogGame[], slug: string): CatalogGame {
   return game;
 }
 
-test.describe('Game catalog — backend robustness', () => {
+test.describe('@staging-only Game catalog — backend robustness', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeEach(() => {

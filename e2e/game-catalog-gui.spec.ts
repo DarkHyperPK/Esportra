@@ -27,7 +27,7 @@ import {
 const env = readE2eEnv();
 const skipReason = e2eSkipReason(env);
 
-test.describe('Game catalog — GUI flows', () => {
+test.describe('@staging-only Game catalog — GUI flows', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeEach(() => {
