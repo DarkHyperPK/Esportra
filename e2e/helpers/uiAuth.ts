@@ -50,12 +50,16 @@ export async function loginViaUi(page: Page, email: string, password: string): P
   await page.getByPlaceholder('Enter your password').fill(password);
   await page.getByRole('button', { name: 'Sign In' }).click();
 
+  if (await page.getByText(/Invalid login credentials/i).isVisible({ timeout: 5_000 }).catch(() => false)) {
+    throw new Error(`Login failed for ${email}: invalid credentials (check E2E_ORGANIZER_PASSWORD and Supabase URL in build)`);
+  }
+
   await page.waitForURL((url) => !url.pathname.includes('/auth/signin'), {
     timeout: 60_000,
     waitUntil: 'domcontentloaded',
   });
 
-  if (await page.getByText(/Invalid login credentials/i).isVisible({ timeout: 2_000 }).catch(() => false)) {
+  if (await page.getByText(/Invalid login credentials/i).isVisible({ timeout: 1_000 }).catch(() => false)) {
     throw new Error(`Login failed for ${email}: invalid credentials`);
   }
 
