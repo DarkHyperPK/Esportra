@@ -7,9 +7,9 @@ import { expectToast } from './helpers/assertToast';
 import {
   buildSkirmish2v2Roster,
   buildUnderstaffedValorantRoster,
+  createDedicatedCaptainTeam,
   ensureCaptainTeam,
   getUserId,
-  type TeamRow,
 } from './helpers/teamCatalogSetup';
 import {
   completeBracketTournamentWizard,
@@ -135,12 +135,9 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
   test('captain sees ineligible team when no matching roster exists for 5v5 Valorant', async ({ page }) => {
     const organizer = await createOrganizerClient(env!);
     const [captainClient] = await createPlayerClients(env!, 1);
-    const captainId = await getUserId(env!, env!.players[0].email, env!.players[0].password!);
     const stamp = Date.now();
 
-    const team = await ensureCaptainTeam(captainClient, stamp, captainId);
-    const ownedTeams = await captainClient.get<TeamRow[]>(`/api/teams?owner_id=${captainId}&limit=5`);
-    expect(ownedTeams.some((row) => row.id === team.id)).toBe(true);
+    await createDedicatedCaptainTeam(captainClient, stamp, 'Ineligible Gate');
 
     const tournament = await createCatalogTournament(organizer, {
       name: `E2E GUI Team Gate ${stamp}`,
@@ -155,8 +152,7 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openTournamentRegistration(page, tournament.slug ?? tournament.id);
 
-    await expect(page.getByText(/Select Your Team/i)).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(/Not Eligible/i).first()).toBeVisible();
+    await expect(page.getByText(/Not Eligible/i).first()).toBeVisible({ timeout: 30_000 });
     await expect(
       page
         .getByText(

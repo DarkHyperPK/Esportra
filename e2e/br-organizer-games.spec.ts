@@ -45,7 +45,7 @@ test.describe('BR organizer games', () => {
     await openOrganizerGames(page, fixture.slug);
 
     await expect(page.getByRole('button', { name: /Round 1/i })).toBeVisible();
-    await expect(page.getByText('Pending')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Round 1 Pending/i })).toBeVisible();
     await expectNoTechnicalCopy(page);
   });
 
@@ -88,7 +88,7 @@ test.describe('BR organizer games', () => {
     await page.getByRole('button', { name: /^Complete$/i }).click();
     await page.getByRole('button', { name: /^Complete Round$/i }).click();
     await expectToast(page, /completed/i);
-    await expect(page.getByText('Completed')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Round 1 Completed/i })).toBeVisible();
     await expectNoTechnicalCopy(page);
   });
 
@@ -140,7 +140,7 @@ test.describe('BR organizer games', () => {
     await page.getByRole('button', { name: /Reset/i }).click();
     await page.getByRole('button', { name: /Reset Round/i }).click();
     await expectToast(page, /reset/i);
-    await expect(page.getByText('Pending')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Round 1 Pending/i })).toBeVisible();
   });
 
   test('leaderboard updates after completed round and has no orphan zero rows', async ({ page }) => {
