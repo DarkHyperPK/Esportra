@@ -137,7 +137,7 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     const [captainClient] = await createPlayerClients(env!, 1);
     const stamp = Date.now();
 
-    await createDedicatedCaptainTeam(captainClient, stamp, 'Ineligible Gate');
+    const team = await createDedicatedCaptainTeam(captainClient, stamp, 'Ineligible Gate');
 
     const tournament = await createCatalogTournament(organizer, {
       name: `E2E GUI Team Gate ${stamp}`,
@@ -152,13 +152,11 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openTournamentRegistration(page, tournament.slug ?? tournament.id);
 
-    await expect(page.getByText(/Not Eligible/i).first()).toBeVisible({ timeout: 30_000 });
+    const registrationDialog = page.getByRole('dialog', { name: /INITIATE_REGISTRATION/i });
+    const teamRow = registrationDialog.locator('div').filter({ hasText: team.name }).first();
+    await expect(teamRow.getByText(/Not Eligible/i)).toBeVisible({ timeout: 30_000 });
     await expect(
-      page
-        .getByText(
-          /doesn't include this game|Create a roster for this game first|No matching roster found/i,
-        )
-        .first(),
+      teamRow.getByText(/doesn't include this game|Create a roster for this game first|No matching roster found/i),
     ).toBeVisible();
   });
 
