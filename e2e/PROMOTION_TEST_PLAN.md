@@ -6,6 +6,10 @@ Run before promoting frontend work to production:
 npm run test:e2e:promotion
 ```
 
+Triggered automatically on push to `main` via `.github/workflows/deploy-prod.yml`.
+
+Staging full suite runs on push to `staging` via `.github/workflows/deploy-staging.yml`.
+
 ## `@promotion` specs (production-safe)
 
 | Spec | Covers |
