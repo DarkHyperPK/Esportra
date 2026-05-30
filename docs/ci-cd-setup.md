@@ -90,7 +90,7 @@ Run in both frontend and backend repos.
 
 ## Troubleshooting
 
-- **Staging didn't update after merge to `staging`:** Check Actions log; promote step only runs if tests pass.
+- **Staging didn't update after merge to `staging`:** Check Actions log; promote step only runs if tests pass. Re-run workflow from Actions tab if an empty commit did not trigger the pipeline (path filters require file changes).
 - **Coolify still deploys on `staging` push:** Coolify branch not switched to `deploy/staging` yet.
 - **E2E skipped:** Add GitHub secrets listed above.
 - **Double deploy:** Ensure Coolify watches `deploy/*` only, not both `staging` and `deploy/staging`.
