@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readE2eEnv, e2eSkipReason } from './helpers/env';
 import { createOrganizerClient } from './helpers/e2eClients';
 import { createPublicBrowseTournament, listBrowseTournaments } from './helpers/browseSetup';
-import { clearBrowseFilters, openBrowseTab, selectBrowseFormatOnline, selectBrowseRegion } from './helpers/uiBrowse';
+import { clearBrowseFilters, openBrowseTab, selectBrowseFormatOnline, selectBrowseRegion, waitForBrowseList } from './helpers/uiBrowse';
 import { expectNoTechnicalCopy } from './helpers/assertCopy';
 
 const env = readE2eEnv();
@@ -67,6 +67,7 @@ test.describe('@promotion Tournament browse — promotion gate', () => {
     });
 
     await openBrowseTab(page, 'upcoming');
+    await waitForBrowseList(page);
     await clearBrowseFilters(page);
     await expect(page.getByText(fixture.name)).toBeVisible({ timeout: 45_000 });
     await expectNoTechnicalCopy(page);
@@ -81,6 +82,7 @@ test.describe('@promotion Tournament browse — promotion gate', () => {
     await organizer.put(`/api/tournaments/${fixture.id}`, { status: 'completed' });
 
     await openBrowseTab(page, 'completed');
+    await waitForBrowseList(page);
     await clearBrowseFilters(page);
     await expect(page.getByText(fixture.name)).toBeVisible({ timeout: 45_000 });
     await expectNoTechnicalCopy(page);
@@ -97,6 +99,7 @@ test.describe('@promotion Tournament browse — promotion gate', () => {
     });
 
     await openBrowseTab(page, 'upcoming');
+    await waitForBrowseList(page);
     await clearBrowseFilters(page);
     await selectBrowseRegion(page, 'eu');
     await expect(page.getByText(euFixture.name)).toBeVisible({ timeout: 45_000 });
@@ -113,6 +116,7 @@ test.describe('@promotion Tournament browse — promotion gate', () => {
     });
 
     await openBrowseTab(page, 'upcoming');
+    await waitForBrowseList(page);
     await clearBrowseFilters(page);
     await selectBrowseFormatOnline(page);
     await expect(page.getByText(fixture.name)).toBeVisible({ timeout: 45_000 });

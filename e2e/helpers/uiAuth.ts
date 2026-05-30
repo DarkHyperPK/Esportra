@@ -67,7 +67,7 @@ export async function loginViaUi(page: Page, email: string, password: string): P
   await waitForAuthenticatedNav(page);
 }
 
-/** Tournament create/management routes require RoleContext organizer, not just the account capability. */
+/** Wait until organizer tournaments shell is ready (post auth + role load). */
 export async function ensureOrganizerRole(page: Page): Promise<void> {
   await page.evaluate(() => {
     localStorage.setItem('sessionRole', 'organizer');
@@ -78,8 +78,24 @@ export async function ensureOrganizerRole(page: Page): Promise<void> {
   if (page.url().includes('/unauthorized')) {
     throw new Error('Organizer session role not active — check E2E organizer account roles');
   }
+
+  const rolesResponse = await page
+    .waitForResponse((resp) => resp.url().includes('/api/me/roles'), { timeout: 45_000 })
+    .catch(() => null);
+  if (rolesResponse && !rolesResponse.ok()) {
+    throw new Error(
+      `Organizer roles API failed (${rolesResponse.status()}). Preview origin may be blocked by CORS — use http://localhost:4173 in CI.`,
+    );
+  }
+
   await expect(
-    page.getByText(/Manage Tournaments|Hosted Tournaments|Tournament Ops/i).first(),
+    page
+      .getByText(/Manage Tournaments|Hosted Tournaments|Tournament Ops|No hosted tournaments found|Loading tournaments/i)
+      .first(),
+  ).toBeVisible({ timeout: 45_000 });
+
+  await expect(
+    page.getByText(/Manage Tournaments|Hosted Tournaments|Tournament Ops|No hosted tournaments found/i).first(),
   ).toBeVisible({ timeout: 45_000 });
 }
 

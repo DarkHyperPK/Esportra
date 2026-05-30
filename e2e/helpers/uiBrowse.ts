@@ -26,3 +26,16 @@ export async function clearBrowseFilters(page: Page): Promise<void> {
     await clear.click();
   }
 }
+
+/** Wait for browse list API to succeed (fails fast if CORS blocks localhost → staging API). */
+export async function waitForBrowseList(page: Page): Promise<void> {
+  const response = await page.waitForResponse(
+    (resp) => resp.url().includes('/api/tournaments') && resp.request().method() === 'GET',
+    { timeout: 45_000 },
+  );
+  if (!response.ok()) {
+    throw new Error(
+      `Browse list API failed (${response.status()}). If running preview locally, ensure staging API CORS allows http://localhost:4173.`,
+    );
+  }
+}
