@@ -9,6 +9,7 @@ on:
       - 'e2e/**'
       - 'package*.json'
       - 'eslint.config.js'
+      - 'tools/**'
       - 'vite.config.*'
       - 'playwright.config.ts'
       - 'index.html'
