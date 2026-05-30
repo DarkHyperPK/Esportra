@@ -50,7 +50,7 @@ function readPlayer(index: 1 | 2 | 3): E2ePlayer | null {
     process.env[`E2E_PLAYER${index}_PASSWORD`] ?? process.env.E2E_PLAYER_PASSWORD;
   if (isPlaceholder(password)) return null;
 
-  return { email, password: password! };
+  return { email: email.trim(), password: password!.trim() };
 }
 
 export function readE2eEnv(): E2eEnv | null {
@@ -84,8 +84,8 @@ export function readE2eEnv(): E2eEnv | null {
     apiUrl: apiUrl.replace(/\/$/, ''),
     supabaseUrl: supabaseUrl.replace(/\/$/, ''),
     supabaseAnonKey,
-    organizerEmail,
-    organizerPassword,
+    organizerEmail: organizerEmail.trim(),
+    organizerPassword: organizerPassword!.trim(),
     players,
     baseUrl,
     brGameRoomPath,

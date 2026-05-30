@@ -19,7 +19,7 @@ export async function signInWithPassword(
       Authorization: `Bearer ${anonKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email: email.trim(), password: password.trim() }),
   });
 
   if (!res.ok) {
