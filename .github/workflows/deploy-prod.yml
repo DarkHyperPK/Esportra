@@ -48,9 +48,9 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: |
-          export VITE_SUPABASE_URL="${VITE_PROD_SUPABASE_URL:-$VITE_SUPABASE_URL}"
-          export VITE_SUPABASE_ANON_KEY="${VITE_PROD_SUPABASE_ANON_KEY:-$VITE_SUPABASE_ANON_KEY}"
-          export VITE_API_URL="${VITE_PROD_API_URL:-$VITE_API_URL}"
+          export VITE_SUPABASE_URL="${VITE_PROD_SUPABASE_URL:-${VITE_SUPABASE_URL:-https://placeholder.supabase.co}}"
+          export VITE_SUPABASE_ANON_KEY="${VITE_PROD_SUPABASE_ANON_KEY:-${VITE_SUPABASE_ANON_KEY:-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder}}"
+          export VITE_API_URL="${VITE_PROD_API_URL:-${VITE_API_URL:-https://placeholder.api.com}}"
           export VITE_APP_NAME=Esportra
           npm run build
 
@@ -172,6 +172,7 @@ jobs:
     if: failure() && !cancelled()
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       issues: write
     steps:
       - uses: actions/checkout@v4
