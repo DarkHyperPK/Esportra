@@ -58,7 +58,7 @@ You merge to `staging` or `main`. GitHub Actions tests, then updates `deploy/*`.
 
 | **CI — Frontend** | FE | Push/PR to `staging`/`main` | Lint + build only (placeholders) | Code/lint/build broken |
 
-| **Build & Deploy — Staging** | FE | Push `staging` | E2E preflight + full Playwright + promote | Misconfig **or** real test failure |
+| **Build & Deploy — Staging** | FE | Push `staging` | E2E preflight + stable Playwright (`@flaky` excluded) + promote | Misconfig **or** real test failure |
 
 | **Build & Deploy — Production** | FE | Push `main` | Prod build + `@promotion` E2E + promote | Misconfig **or** real test failure |
 
@@ -275,6 +275,8 @@ Run in **both** repos.
 | Playwright timeout on sign-in | Usually fixed by preflight — re-run after secrets aligned |
 
 | CI green, Deploy red | Expected when E2E fails; check `ci-failure` issue or Playwright artifact |
+
+| `@flaky` Playwright failure | Not deploy-blocking; run with `npm run test:e2e:flaky` and fix outside the promotion gate |
 
 | No backend Actions in frontend repo | Backend is `esportra-backend` — separate repo |
 

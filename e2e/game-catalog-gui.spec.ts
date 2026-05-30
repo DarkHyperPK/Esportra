@@ -242,6 +242,8 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     await page.getByRole('button', { name: /CREATE ROSTER/i }).click();
 
     await expect(page.getByRole('dialog')).toBeHidden({ timeout: 20_000 });
-    await expect(page.getByText(rosterName)).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page.locator('div.font-heading').filter({ hasText: new RegExp(`^${rosterName}$`) }),
+    ).toBeVisible({ timeout: 20_000 });
   });
 });
