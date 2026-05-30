@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Validate E2E secrets and auth before Playwright runs.
 # Exits 1 with actionable messages for misconfiguration (not cryptic test timeouts).
+# GitHub Actions secrets: paste values without trailing newlines (trimmed before sign-in).
 set -euo pipefail
 
 require() {
