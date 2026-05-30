@@ -121,7 +121,7 @@ export async function buildUnderstaffedValorantRoster(
   captainId: string,
   stamp: string,
 ): Promise<{ teamId: string; rosterId: string }> {
-  const team = await ensureCaptainTeam(captainClient, stamp, captainId);
+  const team = await createDedicatedCaptainTeam(captainClient, stamp, 'Understaffed');
   const roster = await createValorantRoster(captainClient, team.id, stamp, {
     format: '5v5',
     teamSize: 5,

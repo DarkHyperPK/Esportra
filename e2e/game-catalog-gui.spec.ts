@@ -221,20 +221,31 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     await expectToast(page, /Registered|Registration/i);
   });
 
-  test('captain creates Valorant roster through Teams page GUI', async ({ page }) => {
+  test('captain creates roster through Teams page GUI', async ({ page }) => {
+    const [captainClient] = await createPlayerClients(env!, 1);
+    const captainId = await getUserId(env!, env!.players[0].email, env!.players[0].password!);
     const stamp = Date.now();
+    const team = await ensureCaptainTeam(captainClient, stamp, captainId);
+    const existing = await captainClient.get<Array<{ id: string; game?: string }>>(`/api/teams/${team.id}/rosters`);
+    for (const roster of existing ?? []) {
+      if ((roster.game ?? '').toLowerCase() === 'fortnite') {
+        await captainClient.request('DELETE', `/api/teams/${team.id}/rosters/${roster.id}`);
+      }
+    }
+
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openTeamsPage(page);
 
     await page.getByRole('button', { name: /CREATE ROSTER/i }).click();
     await expect(page.getByRole('heading', { name: /Create Roster/i })).toBeVisible();
 
-    await page.getByPlaceholder(/VALORANT MAIN/i).fill(`E2E GUI Roster ${stamp}`);
+    const rosterName = `E2E GUI Roster ${stamp}`;
+    await page.getByPlaceholder(/VALORANT MAIN/i).fill(rosterName);
     await page.getByRole('combobox').filter({ hasText: /Select competitive game/i }).click();
-    await page.getByRole('option', { name: 'Valorant' }).click();
+    await page.getByRole('option', { name: 'Fortnite' }).click();
     await page.getByRole('button', { name: /CREATE ROSTER/i }).click();
 
-    await expectToast(page, /Roster|created|success/i);
-    await expect(page.getByText(`E2E GUI Roster ${stamp}`)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('dialog')).toBeHidden({ timeout: 20_000 });
+    await expect(page.getByText(rosterName)).toBeVisible({ timeout: 20_000 });
   });
 });

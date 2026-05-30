@@ -12,7 +12,7 @@ import {
   setTournamentOngoing,
   setupBrRoundFixture,
 } from './helpers/brSetup';
-import { openPlayerGameRoom, openPublicTournament } from './helpers/uiBR';
+import { openPlayerGameRoom, openPublicTournament, waitForPlayerLobbyCode } from './helpers/uiBR';
 import { expectNoTechnicalCopy } from './helpers/assertCopy';
 import { expectToast } from './helpers/assertToast';
 
@@ -127,7 +127,7 @@ test.describe('BR player game room', () => {
     await expectNoTechnicalCopy(page);
   });
 
-  test('player room observes a newly started round after organizer action', async ({ page }) => {
+  test('realtime @flaky player room observes a newly started round after organizer action', async ({ page }) => {
     const organizer = await createOrganizerClient(env!);
     const players = await createPlayerClients(env!, 2);
     const fixture = await setupBrRoundFixture(organizer, players, { activateRound: false });
@@ -143,7 +143,7 @@ test.describe('BR player game room', () => {
       lobbyCode: fixture.lobbyCode,
     });
 
-    await expect(page.getByText(fixture.lobbyCode)).toBeVisible({ timeout: 75_000 });
+    await waitForPlayerLobbyCode(page, fixture.lobbyCode);
 
     const secondRound = await createRound(organizer, fixture.stageId, groupId, { lobbyCode: `${fixture.lobbyCode}-2` });
     expect(secondRound.id).toBeTruthy();

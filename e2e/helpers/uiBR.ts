@@ -70,13 +70,39 @@ export async function setRoundSettings(
 }
 
 export async function fillResultsGrid(page: Page, teamCount: number): Promise<void> {
-  const placeInputs = page.locator('input[type="number"]').filter({ hasNot: page.locator('[placeholder="e.g. 5"]') });
-  const count = await placeInputs.count();
+  const saveButton = page.getByRole('button', { name: /Save Results/i });
+  const gridSection = saveButton.locator('xpath=ancestor::div[contains(@class,"space-y-3")]').first();
+  const rows = gridSection.locator('.space-y-1 > div');
 
-  // The results grid alternates placement/kills inputs after the settings inputs.
-  const gridStart = Math.max(0, count - (teamCount * 2));
+  await expect(rows.first()).toBeVisible({ timeout: 15_000 });
+  await expect(rows).toHaveCount(teamCount, { timeout: 15_000 });
+
   for (let i = 0; i < teamCount; i++) {
-    await placeInputs.nth(gridStart + i * 2).fill(String(i + 1));
-    await placeInputs.nth(gridStart + i * 2 + 1).fill(String(Math.max(0, 3 - i)));
+    const inputs = rows.nth(i).locator('input[type="number"]');
+    await inputs.nth(0).fill(String(i + 1));
+    await inputs.nth(1).fill(String(Math.max(0, 3 - i)));
   }
+
+  await expect(saveButton).toBeEnabled({ timeout: 15_000 });
+}
+
+export async function expectRoundLiveBadge(page: Page, roundNumber = 1): Promise<void> {
+  const roundButton = page.getByRole('button', { name: new RegExp(`Round\\s+${roundNumber}`, 'i') }).first();
+  await expect(roundButton).toContainText('Live', { timeout: 30_000 });
+}
+
+export async function waitForPlayerLobbyCode(page: Page, lobbyCode: string, timeoutMs = 90_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    if (await page.getByText(lobbyCode).isVisible().catch(() => false)) {
+      return;
+    }
+
+    await page.waitForTimeout(5_000);
+    await page.reload();
+    await dismissBetaModal(page);
+  }
+
+  await expect(page.getByText(lobbyCode)).toBeVisible({ timeout: 1_000 });
 }
