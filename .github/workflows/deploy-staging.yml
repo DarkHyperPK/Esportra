@@ -7,6 +7,7 @@ on:
       - 'src/**'
       - 'e2e/**'
       - 'package*.json'
+      - 'eslint.config.js'
       - 'vite.config.*'
       - 'playwright.config.ts'
       - 'index.html'

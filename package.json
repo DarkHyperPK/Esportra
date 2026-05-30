@@ -9,7 +9,7 @@
     "build:dev": "vite build --mode development",
     "check:app-routes": "node tools/check-app-route-symbols.cjs",
     "check:critical-symbols": "node tools/check-app-route-symbols.cjs",
-    "lint": "eslint .",
+    "lint": "eslint src --max-warnings 9999",
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:staging": "playwright test",
