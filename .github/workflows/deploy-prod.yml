@@ -1,3 +1,4 @@
+# See docs/ci-cd-setup.md
 name: Build & Deploy — Production (Frontend)
 
 on:
