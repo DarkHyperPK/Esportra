@@ -1,8 +1,6 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import TournamentBasicInfoForm from './TournamentBasicInfoForm';
 import TournamentDetailsForm from './TournamentDetailsForm';
 import { useTournamentCreation } from '@/hooks/useTournamentCreation';

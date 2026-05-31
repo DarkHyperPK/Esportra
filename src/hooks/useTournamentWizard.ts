@@ -12,13 +12,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { validateStep } from '@/schemas/tournamentSchema';
-import esportsGames from '@/data/esportsGames.json';
 import { getGameByName, getDefaultGameMode, getDefaultTeamSize, isBattleRoyale, getBRConfig, getEffectiveGameFeatures } from '@/utils/gameFeatures';
 import slugify from 'slugify';
 
@@ -49,7 +48,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
-                try { return { ...DEFAULT_WIZARD_DATA, ...JSON.parse(saved) }; } catch { }
+                try { return { ...DEFAULT_WIZARD_DATA, ...JSON.parse(saved) }; } catch { /* ignore corrupt draft */ }
             }
         }
         return DEFAULT_WIZARD_DATA;

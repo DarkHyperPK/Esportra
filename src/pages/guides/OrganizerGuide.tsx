@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import {
   Trophy, Users, Settings, Shield, ChevronRight, ChevronDown,
   Swords, BarChart3, AlertTriangle, Info, ArrowRight, BookOpen,
-  Network,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';

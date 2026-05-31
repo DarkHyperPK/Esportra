@@ -4,7 +4,6 @@ import {
   STAGE_PROGRESS_CLASSES,
   STAGE_PROGRESS_LABELS,
   normalizeStageProgressLabel,
-  type StageProgressLabel,
 } from '@/types/stageCompletion';
 
 interface StageProgressChipProps {
@@ -26,16 +25,3 @@ export const StageProgressChip: React.FC<StageProgressChipProps> = ({ progressLa
     </span>
   );
 };
-
-export function getStageProgressFromStage(stage: { progress_label?: string | null; status?: string | null }): StageProgressLabel {
-  if (stage.progress_label) {
-    return normalizeStageProgressLabel(stage.progress_label);
-  }
-
-  // Legacy fallback while older payloads still include status.
-  if (stage.status === 'completed') return 'advanced';
-  if (stage.status === 'live') return 'in_progress';
-  return 'setup';
-}
-
-export default StageProgressChip;

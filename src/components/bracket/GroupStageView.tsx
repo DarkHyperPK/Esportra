@@ -199,7 +199,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
     onMatchUpdate,
     tournamentId,
     onByeAdvance,
-    stage,
+    stage: _stage,
     teamsMap: propTeamsMap,
     onMatchClick,
     onMatchRoom,

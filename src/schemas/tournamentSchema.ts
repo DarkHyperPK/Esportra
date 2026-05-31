@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // Helper to check if number is power of 2
-const isPowerOfTwo = (n: number) => n > 0 && (n & (n - 1)) === 0;
+const _isPowerOfTwo = (n: number) => n > 0 && (n & (n - 1)) === 0;
 
 // Step 1: Basic Info Schema
 const basicInfoBase = z.object({

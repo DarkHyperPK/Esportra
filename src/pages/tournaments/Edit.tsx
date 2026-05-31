@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
@@ -15,13 +15,7 @@ const EditTournament = () => {
   const [tournamentId, setTournamentId] = useState<string | null>(null);
   const [participantCount, setParticipantCount] = useState<number>(0);
 
-  useEffect(() => {
-    if (slug) {
-      fetchTournamentData();
-    }
-  }, [slug]);
-
-  const fetchTournamentData = async () => {
+  const fetchTournamentData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -162,7 +156,13 @@ const EditTournament = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [slug, toast, navigate]);
+
+  useEffect(() => {
+    if (slug) {
+      fetchTournamentData();
+    }
+  }, [slug, fetchTournamentData]);
 
   if (loading) {
     return (

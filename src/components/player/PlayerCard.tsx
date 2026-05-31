@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Crown, Camera, ClipboardList } from 'lucide-react';
+import { Crown, Camera, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -26,17 +26,7 @@ interface PlayerCardProps {
     className?: string;
 }
 
-const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser, onEdit, onUploadImage, className }) => {
-    // If stats are provided, they are "Real", otherwise they are placeholders or indicative of missing data
-    const stats = member.stats || {
-        kd: '--',
-        winRate: '--',
-        hs: '--'
-    };
-
-    const isValorant = member.game?.toLowerCase().includes('valorant');
-    const hasRealStats = !!member.stats && isValorant;
-
+const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser: _isCurrentUser, onEdit, onUploadImage, className }) => {
     return (
         <div
             className={cn(
@@ -123,33 +113,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser,
                         {member.username}
                     </h3>
 
-                    {/* Stats Grid - Hidden for now, will be re-enabled with platform stats */}
-                    {false && isValorant && (
-                        <div className="grid grid-cols-3 gap-2 border-t border-white/10 pt-4">
-                            <div className="flex flex-col items-center">
-                                <span className="text-[9px] uppercase tracking-widest text-white/30 mb-1">K/D</span>
-                                <span className={cn(
-                                    "text-sm font-mono font-bold",
-                                    hasRealStats && parseFloat(stats.kd || '0') >= 1 ? "text-indigo-400" : "text-white/80"
-                                )}>
-                                    {stats.kd}
-                                </span>
-                            </div>
-                            <div className="flex flex-col items-center border-l border-white/5">
-                                <span className="text-[9px] uppercase tracking-widest text-white/30 mb-1">WIN</span>
-                                <span className={cn(
-                                    "text-sm font-mono font-bold",
-                                    hasRealStats ? "text-emerald-400" : "text-white/80"
-                                )}>
-                                    {stats.winRate}
-                                </span>
-                            </div>
-                            <div className="flex flex-col items-center border-l border-white/5">
-                                <span className="text-[9px] uppercase tracking-widest text-white/30 mb-1">HS%</span>
-                                <span className="text-sm font-mono text-white/80 font-bold">{stats.hs}</span>
-                            </div>
-                        </div>
-                    )}
+                    {/* Stats grid hidden until platform stats are wired */}
                 </div>
 
                 {/* HOVER BORDER GLOW */}

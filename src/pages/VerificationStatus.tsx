@@ -6,8 +6,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { fetchMeRoles, isApprovedVerifiedRole } from '@/lib/meRoles';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useRole } from '@/hooks/useRole';
 import { useNavigate } from 'react-router-dom';
 import VerificationRequestForm from '@/components/VerificationRequestForm';
 import {

@@ -59,7 +59,7 @@ interface VerifyData {
   }>;
 }
 
-const MatchChecker: React.FC<MatchCheckerProps> = ({ tournamentId, initialMatchId }) => {
+const MatchChecker: React.FC<MatchCheckerProps> = ({ tournamentId: _tournamentId, initialMatchId }) => {
   const [matchIdInput, setMatchIdInput] = useState(initialMatchId || '');
   const [activeMatchId, setActiveMatchId] = useState<string | null>(initialMatchId || null);
 

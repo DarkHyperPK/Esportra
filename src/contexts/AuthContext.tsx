@@ -1,4 +1,5 @@
-import { createContext, useContext, ReactNode, useState, useEffect, useMemo } from 'react';
+import { ReactNode, useState, useEffect, useMemo } from 'react';
+import { AuthContext } from '@/contexts/auth-context';
 import * as Sentry from '@sentry/react';
 import { UserProfile, AuthContextType, UserRole } from '@/types/auth';
 import { useProfile } from '@/hooks/useProfile';
@@ -9,17 +10,13 @@ import { apiClient } from '@/lib/apiClient';
 import { detectUserCountry } from '@/utils/countries';
 import React from 'react';
 
-// Create the context outside of any component
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-AuthContext.displayName = 'AuthContext'; // Add display name for better debugging
-
 interface AuthProviderProps {
   children: ReactNode;
 }
 
 // Separate the provider implementation
 function AuthProviderImpl({ children }: AuthProviderProps) {
-  const { user, session, loading: authLoading, error: authError } = useAuthState();
+  const { user, loading: authLoading, error: authError } = useAuthState();
   const { signIn, signUp: originalSignUp, signInWithGoogle, signInWithDiscord, signOut } = useAuthActions();
   const { updateProfile } = useProfileManagement();
   const {
@@ -238,14 +235,4 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
   );
 }
 
-// Export the provider component
 export const AuthProvider = React.memo(AuthProviderImpl);
-
-// Export the hook with a stable reference
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};

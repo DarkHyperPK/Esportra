@@ -4,10 +4,9 @@ import { auditLog } from '@/lib/auditLog';
 import { saveAs } from 'file-saver';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Megaphone, Search, Plus, Filter, MoreHorizontal, CheckCircle,
-    XCircle, Clock, ArrowRight, User, Building2, Globe, Mail,
-    Phone, DollarSign, Target, MessageSquare, Trash2, Edit,
-    ToggleLeft, ToggleRight, Palette, LayoutGrid, List as ListIcon,
+    Megaphone, Plus, CheckCircle,
+    XCircle, User, Building2, Globe, Mail,
+    Phone, Trash2, Edit,
     FileText, ExternalLink, Download, Loader2, ShieldCheck
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -140,10 +139,8 @@ const SponsorCard = ({
 const SponsorManagement = () => {
     const [activeTab, setActiveTab] = useState<'applications' | 'sponsors'>('applications');
     const queryClient = useQueryClient();
-    const { data: applications = [], isLoading: appsLoading } = useAdminSponsorApplications();
-    const { data: sponsors = [], isLoading: sponsorsLoading } = useAdminSponsors();
-
-    const [searchTerm, setSearchTerm] = useState('');
+    const { data: applications = [] } = useAdminSponsorApplications();
+    const { data: sponsors = [] } = useAdminSponsors();
 
     // Modals
     const [appModal, setAppModal] = useState<{ open: boolean; app: Application | null }>({ open: false, app: null });
@@ -212,7 +209,7 @@ const SponsorManagement = () => {
     const handleUpdateAppStatus = async (id: string, status: Application['status']) => {
         try {
             await updateAppStatusMutation.mutateAsync({ id, status });
-        } catch (err: any) {
+        } catch {
             toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
             return;
         }
@@ -237,27 +234,6 @@ const SponsorManagement = () => {
         } catch (err: any) {
             toast({ title: 'Approval Failed', description: err.message || 'Could not approve application.', variant: 'destructive' });
         }
-    };
-
-    const handlePromoteToSponsor = async (app: Application) => {
-        // Pre-fill sponsor modal with application data
-        setAppModal({ open: false, app: null });
-        setSponsorModal({
-            open: true,
-            isNew: true,
-            linkedAppId: app.id,
-            linkedAppEmail: app.contact_email,
-            sponsor: {
-                name: app.company_name,
-                website_url: app.company_website,
-                tier: (app.partnership_tier as any) || 'diamond',
-                description: app.message,
-                accent_color: '#8b5cf6', // Default
-                placement: ['banner'],
-                priority: 0,
-                is_active: true // Auto-activate on promotion
-            }
-        });
     };
 
     /* ─── Sponsor Logic (Main CRM) ─── */

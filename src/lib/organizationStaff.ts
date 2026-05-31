@@ -106,7 +106,7 @@ export const inviteOrganizationStaff = async ({
     userEmail,
     role,
     permissions,
-    assignedBy,
+    assignedBy: _assignedBy,
     orgName,
     orgLogo,
     inviterName,

@@ -1,52 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { useRequireVerification } from '@/hooks/useRequireVerification';
 import {
   Users,
   Trophy,
   Gamepad2,
-  Plus,
-  CheckCircle,
-  XCircle,
   Crown,
-  Edit3,
-  Trash2,
-  UserPlus,
   Shield,
-  Sparkles,
   Star,
-  Zap,
-  Settings,
-  PlusCircle
+  Settings
 } from "lucide-react";
-import esportsGames from '@/data/esportsGames.json';
-import { fetchGameData } from '@/hooks/useRawgGame';
 import CountrySelector from '@/components/ui/CountrySelector';
 import { detectUserCountry } from '@/utils/countries';
 
 
-
-interface Game {
-  name: string;
-  formats: Array<{
-    name: string;
-    value: string;
-    teamSize: number;
-  }>;
-  defaultFormat: string;
-  logo: string;
-}
 
 interface TeamMember {
   id: string;
@@ -76,7 +51,7 @@ interface TeamCreationWizardProps {
 }
 
 const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const requireVerification = useRequireVerification();
 
@@ -89,86 +64,19 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
   const [editCountry, setEditCountry] = useState('');
 
   // Team creation state
-  const [selectedGames, setSelectedGames] = useState<string[]>([]); // deprecated for initial creation; rosters handle games
   const [teamName, setTeamName] = useState('');
   const [teamTag, setTeamTag] = useState('');
   const [teamLogoFile, setTeamLogoFile] = useState<File | null>(null);
   const [teamLogoUrl, setTeamLogoUrl] = useState<string | null>(null);
   const [teamCountryCode, setTeamCountryCode] = useState('');
 
-  // Member management
-  const [verifiedUsers, setVerifiedUsers] = useState<any[]>([]);
-  const [selectedMembers, setSelectedMembers] = useState<TeamMember[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Loading states
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [userTeam, setUserTeam] = useState<Team | null>(null);
-  const [fetchingTeam, setFetchingTeam] = useState(true);
 
-  // Game images from RAWG API
-  const [gameImages, setGameImages] = useState<Record<string, string>>({});
-  const [imagesLoading, setImagesLoading] = useState(true);
-
-  // Fetch game images via shared RAWG cache
-  const fetchGameImages = async () => {
-    setImagesLoading(true);
-    const images: Record<string, string> = {};
-    const games = esportsGames.games;
-
-    await Promise.all(
-      games.map(async (game: Game) => {
-        try {
-          const cached = await fetchGameData(game.name);
-          if (cached.gameLogo) images[game.name] = cached.gameLogo;
-        } catch {
-          // ignore individual failures
-        }
-      })
-    );
-
-    setGameImages({ ...images });
-    setImagesLoading(false);
-  };
-
-  // Fetch verified users and user's team
-  useEffect(() => {
-    fetchVerifiedUsers();
-    fetchUserTeam();
-    fetchGameImages();
-
-    // Autodetect country
-    const autodetect = async () => {
-      if (!teamCountryCode) {
-        const detected = await detectUserCountry();
-        if (detected) setTeamCountryCode(detected);
-      }
-    };
-    autodetect();
-  }, []);
-
-  const fetchVerifiedUsers = async () => {
-    try {
-      const data = await apiClient.get<any[]>('/api/profiles/search?verified=true');
-      setVerifiedUsers(data || []);
-    } catch (error) {
-      console.error('Error fetching verified users:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load verified users',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const fetchUserTeam = async () => {
+  const fetchUserTeam = useCallback(async () => {
     if (!user) return;
 
     try {
-      setFetchingTeam(true);
-
-      // Get user's teams via API
       const teams = await apiClient.get<any[]>('/api/teams/me');
       const ownedTeam = (teams || []).find((t: any) => t.owner_id === user.id);
 
@@ -196,12 +104,18 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
         description: 'Failed to load your team',
         variant: 'destructive',
       });
-    } finally {
-      setFetchingTeam(false);
     }
-  };
+  }, [toast, user]);
 
-  const handleGameToggle = (_gameName: string) => { };
+  useEffect(() => {
+    void fetchUserTeam();
+
+    const autodetect = async () => {
+      const detected = await detectUserCountry();
+      if (detected) setTeamCountryCode(detected);
+    };
+    void autodetect();
+  }, [fetchUserTeam]);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -235,8 +149,6 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
       }
 
       const sanitizedTeamName = teamName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-      const fileExt = file.name.split('.').pop();
-      const fileName = `logo-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
       console.log('Uploading via backend proxy');
 
@@ -274,53 +186,6 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
 
       return null;
     }
-  };
-
-  const addMember = (user: any) => {
-    // Check if user is admin
-    if (user.is_admin) {
-      toast({
-        title: 'Cannot add admin',
-        description: 'Admins cannot be added to teams as members. They can only create and manage teams.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Check if user is already selected
-    if (selectedMembers.some(m => m.id === user.id)) {
-      toast({
-        title: 'Already Selected',
-        description: 'This user is already in your team',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Add user as first member (captain) if no members yet
-    const role = selectedMembers.length === 0 ? 'captain' : 'member';
-
-    setSelectedMembers(prev => [...prev, {
-      id: user.id,
-      username: user.username,
-      full_name: user.full_name,
-      avatar_url: user.avatar_url,
-      role,
-      verified: user.verified,
-    }]);
-  };
-
-  const removeMember = (userId: string) => {
-    setSelectedMembers(prev => {
-      const newMembers = prev.filter(m => m.id !== userId);
-
-      // If captain is removed, make first remaining member captain
-      if (newMembers.length > 0 && !newMembers.some(m => m.role === 'captain')) {
-        newMembers[0].role = 'captain';
-      }
-
-      return newMembers;
-    });
   };
 
   const handleCreateTeam = async () => {
@@ -432,20 +297,12 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
 
   const resetForm = () => {
     setCurrentStep(1);
-    setSelectedGames([]);
     setTeamName('');
     setTeamTag('');
     setTeamLogoFile(null);
     setTeamLogoUrl(null);
-    setSelectedMembers([]);
-    setSearchQuery('');
     setTeamCountryCode('');
   };
-
-  const filteredUsers = verifiedUsers.filter(user =>
-    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (user.full_name && user.full_name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
 
   // If user already has a team, show team management
   if (userTeam) {

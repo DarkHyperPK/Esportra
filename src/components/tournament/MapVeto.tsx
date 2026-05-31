@@ -35,7 +35,6 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   game = 'valorant',
   onComplete,
   forcedTeamId,
-  ...props // Capture remaining props including debug ones
 }) => {
   const {
     veto,
@@ -58,8 +57,8 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     handleResetVeto,
     resetting,
     isOrganizer,
-    isCaptain,
-    userTeamId,
+    isCaptain: _isCaptain,
+    userTeamId: _userTeamId,
     showSideDialog,
     setShowSideDialog,
     pendingMapId,

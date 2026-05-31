@@ -23,18 +23,11 @@ import {
   UserPlus,
   UserMinus,
   Crown,
-  Users,
-  Mail,
-  Calendar,
-  Eye,
-  X,
-  CheckCircle,
   AlertTriangle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { useAdmin } from '@/contexts/AdminContext';
-import { ROLE_PERMISSIONS } from '@/hooks/useAdminPermissions';
+import { useAuth } from '@/hooks/useAuth';
+import { useAdmin } from '@/hooks/useAdmin';
 
 interface AdminUser {
   id: string;

@@ -8,9 +8,9 @@ import {
 import { JackMenuItem, JackMenuDivider } from "@/components/ui/JackMenuItem";
 import { JackButton } from "@/components/ui/JackButton";
 import React, { useCallback, useEffect, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRole } from "@/contexts/RoleContext";
-import { useAdmin } from "@/contexts/AdminContext";
+import { useAuth } from "@/hooks/useAuth";
+import { useRole } from "@/hooks/useRole";
+import { useAdmin } from "@/hooks/useAdmin";
 import { apiClient } from "@/lib/apiClient";
 import { deriveHasApprovedLicense, deriveHasOrganization, fetchMeRoles } from "@/lib/meRoles";
 import { RoleSwitcherDialog } from "@/components/RoleSwitcher";

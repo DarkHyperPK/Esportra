@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import WizardProgress from '@/components/tournament/wizard/WizardProgress';
 import StepPersonalDetails from './StepPersonalDetails';
@@ -54,7 +54,7 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
     useEffect(() => {
         const timer = setTimeout(() => {
             // Strip File objects before saving
-            const { cnicFront, cnicBack, venueExterior, venueInterior, gamingArea, ...serializable } = data;
+            const { cnicFront: _cnicFront, cnicBack: _cnicBack, venueExterior: _venueExterior, venueInterior: _venueInterior, gamingArea: _gamingArea, ...serializable } = data;
             localStorage.setItem(draftKey, JSON.stringify(serializable));
         }, 500);
         return () => clearTimeout(timer);

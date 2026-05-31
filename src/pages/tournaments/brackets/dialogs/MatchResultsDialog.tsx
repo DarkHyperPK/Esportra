@@ -7,7 +7,8 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog';
 import { Eye, Bot, ChevronDown, Swords } from 'lucide-react';
-import { MAP_THEMES, getMapSplash, FullScoreboard } from '@/components/tournament/FullScoreboard';
+import { FullScoreboard } from '@/components/tournament/FullScoreboard';
+import { MAP_THEMES, getMapSplash } from '@/components/tournament/fullScoreboardConstants';
 import { cn } from '@/lib/utils';
 
 export interface MatchResult {

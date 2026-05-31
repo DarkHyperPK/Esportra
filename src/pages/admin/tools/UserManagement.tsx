@@ -10,17 +10,13 @@ import {
     Eye,
     Ban,
     MoreVertical,
-    Mail,
-    Calendar,
     Shield,
     CheckCircle,
     XCircle,
     RefreshCw,
     Download,
     UserCheck,
-    UserX,
     ExternalLink,
-    MapPin,
     Globe,
     Gamepad2,
     Link2,
@@ -35,7 +31,7 @@ import {
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments, useAdminUserSuspend, useAdminUserUnsuspend, useAdminBulkUserAction, adminKeys } from "@/hooks/useAdminQueries";
+import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments, useAdminUserSuspend, useAdminUserUnsuspend, useAdminBulkUserAction } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/apiClient";
 import { downloadCsvExport } from "@/lib/exportUtils";
@@ -80,7 +76,7 @@ interface User {
     admin_roles?: string[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 interface UserDetail {
     profile: {
         id: string;

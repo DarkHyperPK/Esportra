@@ -3,8 +3,6 @@ import { motion } from 'framer-motion';
 import {
     Check,
     Edit2,
-    Calendar,
-    Users,
     Trophy,
     UserCheck,
     Gamepad2,
@@ -12,14 +10,11 @@ import {
     MapPin,
     Eye,
     EyeOff,
-    Lock,
     Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { TournamentWizardData, WIZARD_STEPS } from '@/types/tournamentWizard';
+import { TournamentWizardData } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS, SEEDING_TYPE_LABELS } from '@/schemas/tournamentSchema';
-import { cn } from '@/lib/utils';
 import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 
 interface StepReviewProps {

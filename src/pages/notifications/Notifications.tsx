@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useNotifications } from '@/components/NotificationContext';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
@@ -9,16 +9,11 @@ import { Trash2, CheckCheck, Bell, Inbox, ShieldAlert, Users, Info, ExternalLink
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+
+
 
 const NotificationsPage = () => {
   const { notifications, markAsRead, markAllAsRead, refreshNotifications } = useNotifications();
-  const [selected, setSelected] = useState<null | typeof notifications[0]>(null);
   const [selectedNotifications, setSelectedNotifications] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -39,48 +34,6 @@ const NotificationsPage = () => {
     setOptimisticIds(prev => prev.filter(i => i !== id));
   };
 
-  // Accept team invite logic
-  const handleAcceptInvite = async (notification: any) => {
-    const notifId = notification.id;
-    try {
-      hideOptimistically(notifId);
-      toast({ title: 'Joining team...', duration: 1000 });
-
-      await apiClient.post('/api/notifications/accept-invite', {
-        notificationId: notifId,
-        teamId: notification.team_id,
-      });
-
-      toast({ title: 'Joined team successfully!', variant: 'default' });
-      await refreshNotifications();
-      window.dispatchEvent(new CustomEvent('teamInviteAccepted'));
-    } catch (e: any) {
-      console.error(e);
-      revertOptimistic(notifId);
-      toast({ title: 'Error accepting invite', description: e.message, variant: 'destructive' });
-    }
-  };
-
-  // Reject invite logic
-  const handleRejectInvite = async (notification: any) => {
-    const notifId = notification.id;
-    try {
-      hideOptimistically(notifId);
-
-      await apiClient.post('/api/notifications/reject-invite', {
-        notificationId: notifId,
-        teamId: notification.team_id,
-      });
-
-      toast({ title: 'Invite rejected', variant: 'default' });
-      await refreshNotifications();
-    } catch (e: any) {
-      console.error(e);
-      revertOptimistic(notifId);
-      toast({ title: 'Error rejecting invite', variant: 'destructive' });
-    }
-  };
-
   // Delete single notification
   const handleDeleteNotification = async (notificationId: string) => {
     try {
@@ -88,7 +41,7 @@ const NotificationsPage = () => {
       await apiClient.delete(`/api/notifications/${notificationId}`);
       toast({ title: 'Deleted', variant: 'default' });
       await refreshNotifications();
-    } catch (error) {
+    } catch {
       toast({ title: 'Error deleting', variant: 'destructive' });
     } finally {
       setIsDeleting(false);
@@ -104,7 +57,7 @@ const NotificationsPage = () => {
       toast({ title: 'Deleted selected', variant: 'default' });
       setSelectedNotifications([]);
       await refreshNotifications();
-    } catch (error) {
+    } catch {
       toast({ title: 'Error deleting', variant: 'destructive' });
     } finally {
       setIsDeleting(false);
@@ -140,7 +93,7 @@ const NotificationsPage = () => {
   };
 
   const filtered = useMemo(() => {
-    let result = notifications.filter(n => !optimisticIds.includes(n.id));
+    const result = notifications.filter(n => !optimisticIds.includes(n.id));
     if (filter === 'unread') return result.filter(n => !n.is_read);
     if (filter === 'invites') return result.filter(n => n.type === 'team_invite');
     if (filter === 'system') return result.filter(n => n.type !== 'team_invite');

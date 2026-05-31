@@ -1,13 +1,12 @@
 import React, { useMemo } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from 'react-router-dom';
 import Footer from '@/components/Footer';
-import { Trophy, Calendar, Clock, MapPin } from 'lucide-react';
+import { Trophy, Calendar } from 'lucide-react';
 
 const PlayerHistory = () => {
     const { user } = useAuth();

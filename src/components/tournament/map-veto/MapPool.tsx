@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Sword, Shield as ShieldIcon, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MatchMapVeto, GameMap, PickedMap, VETO_SEQUENCES, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService } from '@/hooks/useMapVetoMachine';
+import { MatchMapVeto, GameMap, PickedMap, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService } from '@/hooks/useMapVetoMachine';
 import { vetoService } from '@/services/vetoService';
 
 interface MapPoolProps {
@@ -290,8 +290,8 @@ export const MapPool: React.FC<MapPoolProps> = ({
                             pickActionType === 'pick' ? service : service
                         );
 
-                        let teamPicks = pickActionTeamId === effectiveTeam1Id ? team1Picked : team2Picked;
-                        let isTeam1 = pickActionTeamId === effectiveTeam1Id;
+                        const teamPicks = pickActionTeamId === effectiveTeam1Id ? team1Picked : team2Picked;
+                        const isTeam1 = pickActionTeamId === effectiveTeam1Id;
 
                         let mapIndex = -1;
                         for (let i = teamPicks.length - 1; i >= 0; i--) {
@@ -392,7 +392,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         const mapStatus = getMapStatus(map.id);
                         const canInteract = !mapStatus.isBanned && !mapStatus.isPicked && isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined));
 
-                        let mapImageUrl = map.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
+                        const mapImageUrl = map.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
                         // Revert: Do not replace system.assets.website with system.assets.games as it might be breaking images
                         // if (mapImageUrl && mapImageUrl.includes('website-assets')) {
                         //     mapImageUrl = mapImageUrl.replace('website-assets/', 'system.assets.games/');

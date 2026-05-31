@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/form';
 import { Label } from '@/components/ui/label';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
-import { X, Plus, Info } from 'lucide-react';
+import { X, Info } from 'lucide-react';
 
 import { Venue } from '@/types/venue';
 

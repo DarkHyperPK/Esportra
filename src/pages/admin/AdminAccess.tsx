@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { Shield, UserPlus, UserMinus, Crown, Users, ChevronRight, ArrowLeft } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Shield, UserPlus, UserMinus, Crown, Users, ArrowLeft } from 'lucide-react';
 
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';

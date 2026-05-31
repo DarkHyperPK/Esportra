@@ -6,7 +6,7 @@ import { getCountryFlagUrl } from '@/utils/countries';
 import { Globe } from 'lucide-react';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import { useQuery } from '@tanstack/react-query';
-import SEO from '@/components/SEO';
+import { SEO } from '@/components/SEO';
 
 // ── Types ──
 interface TeamStats {

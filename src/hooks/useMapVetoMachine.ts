@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { buildHubConnection, startWithRetry, HubPaths } from '@/lib/signalrClient';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRole } from '@/contexts/RoleContext';
-import { useAdmin } from '@/contexts/AdminContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useRole } from '@/hooks/useRole';
+import { useAdmin } from '@/hooks/useAdmin';
 import { useToast } from '@/hooks/use-toast';
-import { valorantTables } from '@/utils/gameTables';
-import { vetoService, BestOf, TeamSide, VetoService } from '@/services/vetoService';
+import { vetoService, VetoService } from '@/services/vetoService';
 import type { HubConnection } from '@microsoft/signalr';
 export { VetoService };
 
@@ -281,8 +280,8 @@ export const useMapVetoMachine = ({
     tournamentId,
     team1Id,
     team2Id,
-    team1Name,
-    team2Name,
+    team1Name: _team1Name,
+    team2Name: _team2Name,
     bestOf,
     game = 'valorant',
     forcedTeamId,
@@ -316,11 +315,9 @@ export const useMapVetoMachine = ({
     // VetoService: uses actual map pool size when maps are loaded, falls back to game default
     const actualPoolSize = allAvailableMaps.length > 0 ? allAvailableMaps.length : undefined;
     const service = useMemo(() => new VetoService(game, actualPoolSize), [game, actualPoolSize]);
-    const localSequences = useMemo(() => getLocalSequences(service), [service]);
 
     // Refs
     const copiedLinkTimeoutRef = useRef<NodeJS.Timeout>();
-    const scrollPositionRef = useRef<number>(0);
     const lastResetBestOfRef = useRef<number | null>(null);
     const initInProgressRef = useRef(false); // Guard against duplicate init calls
 
@@ -508,7 +505,7 @@ export const useMapVetoMachine = ({
         };
 
         autoInitializeOrUpdateVeto();
-    }, [veto?.id, veto?.status, veto?.best_of, veto?.current_team_id, veto?.team1_id, veto?.current_action_number, bestOf, dbBestOf]);
+    }, [bestOf, dbBestOf, matchId, team1Id, team2Id, tournamentId, veto]);
 
     // Fetch Veto Data
     const fetchVetoData = useCallback(async () => {
@@ -643,7 +640,7 @@ export const useMapVetoMachine = ({
             }
         };
         fetchAllMaps();
-    }, [tournamentId]);
+    }, [game, tournamentId]);
 
     // Initial Fetch
     useEffect(() => {
@@ -721,7 +718,7 @@ export const useMapVetoMachine = ({
             setDialogStep('bo');
             setShowBODialog(true);
         }
-    }, [veto, isOrganizer, currentRole, showBODialog, dialogManuallyClosed]);
+    }, [bestOf, currentRole, dialogManuallyClosed, isOrganizer, showBODialog, veto]);
 
     // Role Switch Prompt Logic
     useEffect(() => {
@@ -764,7 +761,6 @@ export const useMapVetoMachine = ({
 
         setSelectedBO(bo);
         const normalizedBestOf = getBestOf(bo);
-        const firstAction = localSequences[normalizedBestOf][0];
 
         try {
             await apiClient.post(`/api/veto/${matchId}/init`, {
@@ -894,14 +890,6 @@ export const useMapVetoMachine = ({
             const currentActionNum = dbVeto.current_action_number || 1;
             const currentBestOf = getBestOf(dbVeto.best_of || 1);
 
-            // 2. Calculate expected team using Service
-            let expectedTeamId: string;
-            if (actionType === 'pick_side') {
-                expectedTeamId = getSidePickerTeam(currentActionNum, currentBestOf, dbVeto.team1_id!, dbVeto.team2_id!, service);
-            } else {
-                expectedTeamId = getTeamForAction(currentActionNum, currentBestOf, dbVeto.team1_id!, dbVeto.team2_id!, service);
-            }
-
             // 3. Perform action via backend API (replaces client-side insert + update)
             const endpoint = actionType === 'ban' ? 'ban'
                 : actionType === 'pick' ? 'pick'
@@ -988,7 +976,7 @@ export const useMapVetoMachine = ({
         } finally {
             setActionLoading(null);
         }
-    }, [veto, matchId, onComplete, toast, isOrganizer, userTeamId, isCaptain, fetchVetoData]);
+    }, [fetchVetoData, isCaptain, isOrganizer, matchId, onComplete, service, toast, tournamentId, userTeamId, veto]);
 
     const handleMapAction = useCallback(async (mapId: string) => {
         if (!veto) return;

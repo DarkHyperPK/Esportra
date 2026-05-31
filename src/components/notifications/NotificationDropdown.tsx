@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNotifications } from '@/components/NotificationContext';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Bell, CheckCheck, Users, ShieldAlert, Info, ArrowRight, Shield, Check, X, Loader2, FileText, CheckCircle2, AlertTriangle, XCircle, Swords, Map, Trophy, Rocket, ClipboardList, ArrowUpRight, ShieldOff, Clock } from 'lucide-react';
+import { Bell, CheckCheck, Users, ShieldAlert, Info, ArrowRight, Shield, Check, X, Loader2, FileText, CheckCircle2, AlertTriangle, XCircle, Swords, Map, Trophy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { respondToOrgStaffInvite } from '@/lib/organizationStaff';

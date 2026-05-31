@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
-import { BracketNode, BracketEdge } from '@/types/bracket-graph';
 import { useBracketRealtime } from './useBracketRealtime';
 
 const repo = new MatchRepository();

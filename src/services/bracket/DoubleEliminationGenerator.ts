@@ -14,7 +14,7 @@ export class DoubleEliminationGenerator implements IBracketGenerator {
         stageId?: string,
         bestOf: number = 1,
         bracketSize?: number,
-        advancementCount?: number
+        _advancementCount?: number
     ): BracketGraph {
         const versionId = crypto.randomUUID();
         const nodes: BracketNode[] = [];

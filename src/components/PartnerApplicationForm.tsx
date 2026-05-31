@@ -33,7 +33,7 @@ const PARTNERSHIP_GOALS = [
     { value: 'exclusive_offers', label: 'Exclusive Offers', desc: 'Provide deals to Esportra users' },
 ];
 
-const BUDGET_OPTIONS = [
+const _BUDGET_OPTIONS = [
     { value: 'under_1k', label: 'Under $1,000', tier: 'partner' },
     { value: '1k_5k', label: '$1,000 – $5,000', tier: 'partner' },
     { value: '5k_15k', label: '$5,000 – $15,000', tier: 'ascendant' },

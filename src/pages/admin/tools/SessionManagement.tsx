@@ -37,8 +37,8 @@ import {
   useOnlineCount,
   useRevokeSession,
 } from "@/hooks/useAdminQueries";
-import type { ActiveSession, SessionAuditEntry } from "@/hooks/useAdminQueries";
-import { useAuth } from "@/contexts/AuthContext";
+import type { ActiveSession } from "@/hooks/useAdminQueries";
+import { useAuth } from "@/hooks/useAuth";
 
 // ── Constants ───────────────────────────────────────────────────────────────
 

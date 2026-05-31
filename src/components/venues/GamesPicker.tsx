@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Search, X, Gamepad2 } from 'lucide-react';
+import { X, Gamepad2 } from 'lucide-react';
 import esportsData from '@/data/esportsGames.json';
 
 interface Game {

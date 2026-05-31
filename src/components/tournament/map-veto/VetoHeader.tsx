@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Copy, Check, Link2 } from 'lucide-react';
+import { RotateCcw, Check, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchMapVeto } from '@/hooks/useMapVetoMachine';
 import { useToast } from '@/hooks/use-toast';

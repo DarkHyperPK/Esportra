@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, Loader2, Search, Users } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { fetchMeRoles, getOrganizationId } from "@/lib/meRoles";
 import { Input } from "@/components/ui/input";
 import { CommandButton, CommandEmptyState, CommandPanel, CommandToolbar } from "@/components/management/CommandSurface";

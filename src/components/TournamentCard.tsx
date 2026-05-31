@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Users, Trophy, CheckCircle, Clock, MapPin, Eye } from 'lucide-react';
-import { useRole } from '@/contexts/RoleContext';
-import { useAdmin } from '@/contexts/AdminContext';
+import { Calendar, Users, Trophy, CheckCircle, MapPin, Eye } from 'lucide-react';
+import { useRole } from '@/hooks/useRole';
+import { useAdmin } from '@/hooks/useAdmin';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRawgGame } from '@/hooks/useRawgGame';
-import { cn } from '@/lib/utils';
 
 const REGION_LABELS: Record<string, string> = {
   'na-east': 'NA East', 'na-west': 'NA West', 'latam': 'LATAM',
@@ -49,7 +48,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   name,
   game,
   date,
-  time,
+  time: _time,
   venue,
   max_participants,
   current_participants,
@@ -65,8 +64,8 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   status,
   onDelete,
   organizer_name,
-  start_date,
-  end_date,
+  start_date: _start_date,
+  end_date: _end_date,
   winner_name,
   title_sponsor_name,
   region,
@@ -77,19 +76,13 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   const admin = useAdmin();
   const ownerId = organizer_id || user_id;
   const isOrganizer = (currentRole === 'organizer' && currentUserId && ownerId && currentUserId === ownerId) || admin.hasPermission('tournaments:edit');
-  const [isHovered, setIsHovered] = useState(false);
   const [bannerFailed, setBannerFailed] = useState(false);
 
   // Use the custom hook for game images and carousel
-  const { gameLogo, gameBanner, rawgScreenshots, carouselIndex } = useRawgGame(game);
+  const { gameBanner, rawgScreenshots, carouselIndex } = useRawgGame(game);
 
   const isCustomVideo = image_url?.includes('youtube.com/embed/');
   const hasCustomImage = image_url && !isCustomVideo && !bannerFailed;
-
-  // Date-Driven Status Logic
-  const now = new Date();
-  const startDate = start_date ? new Date(start_date) : new Date(`${date}T${time}`);
-  const endDate = end_date ? new Date(end_date) : (startDate ? new Date(startDate.getTime() + 4 * 60 * 60 * 1000) : null);
 
   const isUpcoming = status === 'open' || status === 'published' || status === 'check_in';
   const isLive = status === 'ongoing';
@@ -141,8 +134,6 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
 
   return (
     <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       className="group relative h-[380px] w-full overflow-hidden bg-[#0a0a0c] border border-white/5 cursor-pointer transition-transform duration-300 hover:-translate-y-1"
       onClick={() => navigate(`/tournaments/${slug || id}`)}
     >

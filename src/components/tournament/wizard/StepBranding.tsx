@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { Image, DollarSign, FileText, Link as LinkIcon, MessageCircle, Twitter } from 'lucide-react';
+import { DollarSign, FileText, Link as LinkIcon, MessageCircle, Twitter } from 'lucide-react';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import ImageUploader from './ImageUploader';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 import RichTextEditor from '@/components/ui/RichTextEditor';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 
 const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) => {
     const { profile } = useAuth();

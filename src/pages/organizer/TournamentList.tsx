@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, Search } from 'lucide-react';
 import { Tournament } from '@/hooks/useTournaments';
 import { apiClient } from '@/lib/apiClient';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { TournamentCard } from '@/components/TournamentCard';
 
 const TournamentList = () => {

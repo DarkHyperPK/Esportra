@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, Clock, User, Zap, Copy } from 'lucide-react';
+import { Check, Clock, Zap, Copy } from 'lucide-react';
 import { useMatchCheckin } from '@/hooks/useMatchCheckin';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
-import { formatDistanceToNow, format, differenceInMinutes } from 'date-fns';
+import { format } from 'date-fns';
 import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { Countdown } from '@/components/ui/Countdown';
 
@@ -42,8 +42,6 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
         checkIn,
         isCheckinWindowOpen,
         isCheckinWindowClosed,
-        getTimeUntilCheckinOpens,
-        getTimeUntilWindowCloses
     } = useMatchCheckin(matchId, team1Id, team2Id);
     const { toast } = useToast();
     const [manualCode, setManualCode] = useState('');
@@ -52,8 +50,6 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
 
     const windowOpen = scheduledTime ? isCheckinWindowOpen(scheduledTime, checkInWindowMinutes) : false;
     const windowClosed = scheduledTime ? isCheckinWindowClosed(scheduledTime, checkInWindowMinutes) : false;
-    const timeUntilOpen = scheduledTime ? getTimeUntilCheckinOpens(scheduledTime, checkInWindowMinutes) : null;
-    const timeUntilClosed = scheduledTime ? getTimeUntilWindowCloses(scheduledTime, checkInWindowMinutes) : null;
 
     const isTeam1 = userTeamId === team1Id;
     const myTeamCheckedIn = isTeam1 ? checkinStatus.team1CheckedIn : checkinStatus.team2CheckedIn;
@@ -87,15 +83,6 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
     const handleCheckIn = () => {
         if (!userTeamId) return;
         checkIn.mutate(userTeamId);
-    };
-
-    // Format time until check-in opens
-    const formatTimeRemaining = (ms: number) => {
-        const minutes = Math.floor(ms / 60000);
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        if (hours > 0) return `${hours}h ${mins}m`;
-        return `${mins}m`;
     };
 
     return (

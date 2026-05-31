@@ -1,18 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 
 import Footer from '@/components/Footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, Calendar, MapPin, Wifi, ChevronDown, X, Search, Flame, Clock, CheckCircle, Archive } from 'lucide-react';
+import { MapPin, Wifi, ChevronDown, X, Search, Flame, Clock, CheckCircle, Archive } from 'lucide-react';
 import { Tournament } from '@/types/tournament';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { TournamentCard } from '@/components/TournamentCard';
 import { formatDate } from '@/utils/dateFormat';
-import SEO from '@/components/SEO';
+import { SEO } from '@/components/SEO';
 
 interface TournamentFilters {
   cities: string[];
@@ -38,8 +37,6 @@ function getEffectiveStatus(t: { status?: string | null }): string {
 const TournamentList = () => {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { toast } = useToast();
-
   // Filter state — read initial tab from URL
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'upcoming');
   const [selectedGame, setSelectedGame] = useState('');

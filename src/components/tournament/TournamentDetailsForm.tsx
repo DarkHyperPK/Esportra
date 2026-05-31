@@ -24,7 +24,7 @@ interface TournamentDetailsFormProps {
 const TournamentDetailsForm = ({
   formData,
   onInputChange,
-  onCheckboxChange
+  onCheckboxChange: _onCheckboxChange
 }: TournamentDetailsFormProps) => {
 
   return (

@@ -4,7 +4,7 @@ import { useQueries } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Layers, Plus, Users, Trophy, Lock, Unlock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, Eye, RefreshCw, Play, CheckCircle2, Check } from 'lucide-react';
+import { Layers, Trophy, Lock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, RefreshCw, Check } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
@@ -16,7 +16,8 @@ import { RoundRobinGenerator } from '@/services/bracket/RoundRobinGenerator';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { GraphValidator } from '@/services/bracket/BracketGenerator';
 import { StageCompletionService } from '@/services/bracket/StageCompletionService';
-import { StageProgressChip, getStageProgressFromStage } from '@/components/tournament/StageProgressChip';
+import { StageProgressChip } from '@/components/tournament/StageProgressChip';
+import { getStageProgressFromStage } from '@/components/tournament/getStageProgressFromStage';
 import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 // import { useStageRealtime } from '@/hooks/useStageRealtime';
@@ -492,7 +493,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             }
 
             // Fetch tournament start date and scheduling config for auto-scheduling (Swiss/RR)
-            let enrichedConfig = { ...stageConfig };
+            const enrichedConfig = { ...stageConfig };
             if (format === 'swiss' || format === 'round_robin') {
                 try {
                     const response = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);

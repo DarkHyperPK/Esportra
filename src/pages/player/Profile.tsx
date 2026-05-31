@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRole } from "@/contexts/RoleContext";
+import { useAuth } from "@/hooks/useAuth";
+import { useRole } from "@/hooks/useRole";
 import Footer from "@/components/Footer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";

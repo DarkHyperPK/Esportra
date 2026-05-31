@@ -40,8 +40,8 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
   isSaving,
   isLocked,
 }) => {
-  const teams = teamsProp ?? [];
-  const existingResults = existingResultsProp ?? [];
+  const teams = useMemo(() => teamsProp ?? [], [teamsProp]);
+  const existingResults = useMemo(() => existingResultsProp ?? [], [existingResultsProp]);
 
   const calcPoints = useCallback(
     (placement: number, kills: number) => {

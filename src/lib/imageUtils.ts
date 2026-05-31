@@ -18,7 +18,7 @@ export async function getCroppedImg(
     imageSrc: string,
     pixelCrop: { x: number; y: number; width: number; height: number },
     brightness: number = 100,
-    flip = { horizontal: false, vertical: false }
+    _flip = { horizontal: false, vertical: false }
 ): Promise<Blob | null> {
     const image = await createImage(imageSrc)
     const canvas = document.createElement('canvas')
@@ -45,7 +45,7 @@ export async function getCroppedImg(
     )
 
     // As a blob
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
         canvas.toBlob((file) => {
             resolve(file)
         }, 'image/jpeg')

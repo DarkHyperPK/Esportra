@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Upload, X, Image as ImageIcon, Loader2, RotateCcw, Check, Sun } from 'lucide-react';
+import { Upload, X, Loader2, RotateCcw, Check, Sun } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

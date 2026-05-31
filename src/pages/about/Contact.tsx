@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import Footer from '@/components/Footer';
 import { motion } from 'framer-motion';
-import { Mail, MessageSquare, MapPin, Send, Phone } from 'lucide-react';
+import { Mail, MessageSquare, MapPin, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';

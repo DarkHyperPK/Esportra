@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import {
-  MessageSquare, Clock, CheckCircle, XCircle, RefreshCw,
-  AlertCircle, ExternalLink, Send, Image as ImageIcon, X,
+  MessageSquare, Clock, CheckCircle, XCircle, RefreshCw, ExternalLink, Send, Image as ImageIcon, X,
   ShieldAlert, Trophy, Calendar, ChevronRight,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -16,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { PageTransition } from '@/components/PageTransition';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useHub } from '@/contexts/SignalRContext';
+import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 
 interface Dispute {
@@ -112,7 +111,7 @@ const MyDisputes = () => {
 
       // Fetch tournament names
       const tournamentIds = Array.from(new Set((disputesData || []).map((d: any) => d.tournament_id).filter(Boolean)));
-      let tournamentsMap = new Map<string, { name: string; slug: string }>();
+      const tournamentsMap = new Map<string, { name: string; slug: string }>();
       if (tournamentIds.length > 0) {
         const rawT = await apiClient.get<any>(
           `/api/tournaments?ids=${tournamentIds.join(',')}`
@@ -123,7 +122,7 @@ const MyDisputes = () => {
 
       // Fetch match context for disputes that have a match_id
       const matchIds = [...new Set((disputesData || []).filter((d: any) => d.match_id).map((d: any) => d.match_id as string))];
-      let matchesMap = new Map<string, any>();
+      const matchesMap = new Map<string, any>();
       if (matchIds.length > 0) {
         const rawM = await apiClient.get<any>(
           `/api/brackets/matches?ids=${matchIds.join(',')}`
@@ -211,7 +210,7 @@ const MyDisputes = () => {
     try {
       setSubmittingComment(true);
 
-      const disputeData = await apiClient.get<{ status: string }>(`/api/disputes/${disputeId}`).catch(() => null);
+      await apiClient.get<{ status: string }>(`/api/disputes/${disputeId}`).catch(() => null);
 
       let attachmentUrl: string | null = null;
       if (commentAttachment) {

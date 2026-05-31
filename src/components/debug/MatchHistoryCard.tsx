@@ -1,15 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-    User, Trophy, Skull, Target, Map as MapIcon, ChevronDown, ChevronUp,
-    Swords, Clock, Calendar, Zap, TrendingUp, List, BarChart3,
-    ArrowUpRight, ArrowDownRight, Info, Crosshair
+import { Trophy, Skull, Target, Map as MapIcon, ChevronDown, ChevronUp, Clock, Zap, List, BarChart3
 } from "lucide-react";
 import {
-    LineChart,
-    Line,
     XAxis,
     YAxis,
     CartesianGrid,
@@ -33,9 +26,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
     const [mapData, setMapData] = useState<Record<string, unknown> | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
     const [activeTab, setActiveTab] = useState<'scoreboard' | 'economy' | 'rounds'>('scoreboard');
-    const [selectedRound, setSelectedRound] = useState(0);
     const [allAgents, setAllAgents] = useState<Record<string, Record<string, unknown>>>({});
-    const [weapons, setWeapons] = useState<Record<string, Record<string, unknown>>>({});
 
     // Parse Core Player Info
     const player = matchData.players.find((p: any) => p.puuid === targetPuuid);
@@ -151,14 +142,9 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
         });
 
         return { economyData, playerStatsMap, roundCount: rounds.length };
-    }, [matchData]);
+    }, [matchData, player]);
 
     const targetKAST = analytics ? Math.round((analytics.playerStatsMap[targetPuuid].kastCount / analytics.roundCount) * 100) : 0;
-    const targetHS = analytics ? (() => {
-        const hits = analytics.playerStatsMap[targetPuuid].hits;
-        const total = hits.head + hits.body + hits.leg;
-        return total > 0 ? Math.round((hits.head / total) * 100) : 0;
-    })() : 0;
 
     // Valorant API assets
     useEffect(() => {
@@ -174,14 +160,6 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                 const map: Record<string, any> = {};
                 data.data.forEach((a: any) => { map[a.uuid.toLowerCase()] = a; });
                 setAllAgents(map);
-            });
-
-        fetch(`https://valorant-api.com/v1/weapons`)
-            .then(res => res.json())
-            .then(data => {
-                const map: Record<string, any> = {};
-                data.data.forEach((w: any) => { map[w.uuid.toLowerCase()] = w; });
-                setWeapons(map);
             });
 
         const mapUri = matchData.matchInfo.mapId;
@@ -201,17 +179,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
         );
     }
 
-    // Coordinate Mapping logic
-    const mapToPixels = (x: number, y: number) => {
-        if (!mapData) return { x: 0, y: 0 };
-        const { xMultiplier, yMultiplier, xScalarToAdd, yScalarToAdd } = mapData;
-        return {
-            x: ((y * xMultiplier) + xScalarToAdd) * 100, // Normalized to 100%
-            y: ((x * yMultiplier) + yScalarToAdd) * 100
-        };
-    };
-
-    const renderScoreboardTable = (players: any[], teamName: string, color: string) => (
+    const renderScoreboardTable = (players: any[], _teamName: string, _color: string) => (
         <div className="overflow-x-auto">
             <table className="w-full text-[11px] text-left border-separate border-spacing-y-1">
                 <thead>

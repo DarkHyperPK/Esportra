@@ -65,7 +65,7 @@ function formatDate(dateStr: string | null): string {
   });
 }
 
-function formatDateTime(dateStr: string | null): string {
+function _formatDateTime(dateStr: string | null): string {
   if (!dateStr) return "—";
   return new Date(dateStr).toLocaleString("en-US", {
     year: "numeric",

@@ -22,7 +22,7 @@ interface DisputeActionsProps {
 }
 
 const DisputeActions: React.FC<DisputeActionsProps> = ({
-  status, canAssist, canAssignOthers,
+  status, canAssist, canAssignOthers: _canAssignOthers,
   assigneeId, assignmentOptions, assignmentLoading,
   resolutionNotes, resolutionStatus, resolvedByName,
   onAssigneeChange, onAssign, onStatusChange, onNotesChange,

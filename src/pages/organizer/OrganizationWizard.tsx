@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
@@ -45,7 +45,7 @@ const STEPS = [
 ];
 
 const OrganizationWizard: React.FC = () => {
-    const { user, profile } = useAuth();
+    const { user } = useAuth();
     const { toast } = useToast();
     const navigate = useNavigate();
     const requireVerification = useRequireVerification();

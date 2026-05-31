@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Copy, Image as ImageIcon, Shield, ChevronDown } from 'lucide-react';
+import { Copy, Shield, ChevronDown } from 'lucide-react';
 import { FullScoreboard } from '@/components/tournament/FullScoreboard';
 import { useToast } from '@/hooks/use-toast';
 

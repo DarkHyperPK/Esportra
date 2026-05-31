@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Upload, Clock } from 'lucide-react';
+import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { JackButton } from '@/components/ui/JackButton';
 import { useNavigate } from 'react-router-dom';

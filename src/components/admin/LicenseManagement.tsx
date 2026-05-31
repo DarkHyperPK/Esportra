@@ -3,12 +3,11 @@ import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Search, Award, Shield, ChevronLeft, ChevronRight, RefreshCw,
   Copy, Check, UserPlus, Ban, RotateCcw, Eye, Building, MapPin,
-  Trophy, FileText, Loader2, X, Trash2
+  Trophy, FileText, Loader2, Trash2
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,

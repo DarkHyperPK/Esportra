@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { HubConnectionState } from '@microsoft/signalr';
-import { useHub } from '@/contexts/SignalRContext';
+import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 
 interface BrEventScope {

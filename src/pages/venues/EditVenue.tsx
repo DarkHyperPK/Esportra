@@ -1,6 +1,6 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import CitySearch from '@/components/venues/CitySearch';
 import GamesPicker from '@/components/venues/GamesPicker';
 import {
   Loader2, Save, ChevronLeft, Wifi, Wind, Coffee, Car, Maximize2,
-  Zap, Cpu, Monitor, X, Plus
+  Zap, Cpu, X
 } from 'lucide-react';
 import { Venue } from '@/types/venue';
 
@@ -74,11 +74,7 @@ const EditVenue = () => {
   const [ram, setRam] = useState('');
   const [monitors, setMonitors] = useState('');
 
-  useEffect(() => {
-    if (id) fetchVenue();
-  }, [id]);
-
-  const fetchVenue = async () => {
+  const fetchVenue = useCallback(async () => {
     try {
       const data = await apiClient.get<any>(`/api/venues/${id}`);
       if (!data) { navigate('/venues/dashboard'); return; }
@@ -119,7 +115,11 @@ const EditVenue = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, user?.id, navigate, toast]);
+
+  useEffect(() => {
+    if (id) fetchVenue();
+  }, [id, fetchVenue]);
 
   const handleSave = async () => {
     if (!venue) return;

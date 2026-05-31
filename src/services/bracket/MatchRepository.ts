@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/apiClient';
-import { BracketGraph, BracketVersion, BracketNode, BracketEdge, MatchEvent } from '@/types/bracket-graph';
+import { BracketGraph, BracketNode, BracketEdge, MatchEvent } from '@/types/bracket-graph';
 
 export class MatchRepository {
     /**

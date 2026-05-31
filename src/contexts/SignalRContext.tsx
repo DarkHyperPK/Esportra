@@ -9,9 +9,7 @@
  */
 
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useRef,
   type ReactNode,
@@ -19,16 +17,8 @@ import {
 import { HubConnection, HubConnectionState } from '@microsoft/signalr';
 import { buildHubConnection } from '@/lib/signalrClient';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
-
-// ── Context ───────────────────────────────────────────────────────────────────
-
-interface SignalRContextValue {
-  /** Returns (creating + starting if needed) a singleton connection for the hub. */
-  getConnection: (hubPath: string, options?: { autoStart?: boolean }) => HubConnection;
-}
-
-const SignalRContext = createContext<SignalRContextValue | null>(null);
+import { useAuth } from '@/hooks/useAuth';
+import { SignalRContext } from '@/contexts/signalr-context';
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
@@ -126,21 +116,4 @@ export function SignalRProvider({ children }: { children: ReactNode }) {
       {children}
     </SignalRContext.Provider>
   );
-}
-
-// ── Hook ──────────────────────────────────────────────────────────────────────
-
-export function useSignalR(): SignalRContextValue {
-  const ctx = useContext(SignalRContext);
-  if (!ctx) throw new Error('useSignalR must be used inside <SignalRProvider>');
-  return ctx;
-}
-
-/**
- * Returns a singleton HubConnection for the given hub path.
- * The connection is created + started on first call per path.
- */
-export function useHub(hubPath: string, options?: { autoStart?: boolean }): HubConnection {
-  const { getConnection } = useSignalR();
-  return getConnection(hubPath, options);
 }

@@ -1,6 +1,6 @@
 // TournamentAnnouncementPanel.tsx — Send and view tournament announcements
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import {
     fetchAnnouncements,
@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Megaphone, Trash2, Send, Loader2, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { cn } from "@/lib/utils";
 
 interface TournamentAnnouncementPanelProps {
     tournamentId: string;

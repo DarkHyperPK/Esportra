@@ -1,7 +1,7 @@
 // StaffDashboard.tsx — Dedicated dashboard for organization staff members
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/apiClient";
 import { ProfileLoading } from "@/components/profile/ProfileLoading";

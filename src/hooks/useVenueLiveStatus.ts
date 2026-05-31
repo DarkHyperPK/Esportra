@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { HubConnectionState } from '@microsoft/signalr';
 import { apiClient } from '@/lib/apiClient';
-import { useHub } from '@/contexts/SignalRContext';
+import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 
 export interface LiveStatus {
@@ -68,7 +68,7 @@ export function useVenueLiveStatus(venueId: string | undefined): LiveStatus | nu
       if (conn.state === HubConnectionState.Connected)
         conn.invoke('LeaveVenue', venueId).catch(() => {});
     };
-  }, [conn, venueId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [conn, venueId]);  
 
   return status;
 }

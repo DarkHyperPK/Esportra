@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,13 +42,7 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
   const [unbanDialogOpen, setUnbanDialogOpen] = useState(false);
   const [selectedBan, setSelectedBan] = useState<BanRecord | null>(null);
 
-  useEffect(() => {
-    if (tournamentId) {
-      fetchBans();
-    }
-  }, [tournamentId]);
-
-  const fetchBans = async () => {
+  const fetchBans = useCallback(async () => {
     try {
       setLoading(true);
       const bansData = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bans`);
@@ -86,7 +80,13 @@ const BanManagement: React.FC<BanManagementProps> = ({ tournamentId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tournamentId, toast]);
+
+  useEffect(() => {
+    if (tournamentId) {
+      fetchBans();
+    }
+  }, [tournamentId, fetchBans]);
 
   const handleUnban = async () => {
     if (!selectedBan) return;

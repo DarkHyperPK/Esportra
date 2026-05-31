@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Image as ImageIcon, RefreshCw, Send, Paperclip } from 'lucide-react';
+import { RefreshCw, Send, Paperclip } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface Comment {

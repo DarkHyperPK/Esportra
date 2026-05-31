@@ -8,19 +8,15 @@
  * CARD HEIGHT: Fixed at 200px to prevent overlapping
  */
 
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Radio, Copy, Check, ZoomIn, ZoomOut,
-  Trophy, PlayCircle, Swords, Gamepad2, ChevronDown, RefreshCw, Eye, Settings2, Maximize2, Bot
+import { Copy, Check,
+  Trophy, Swords, Gamepad2
 } from 'lucide-react';
 import { MatchResultsDialog } from './dialogs/MatchResultsDialog';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import type { BracketMatch } from '@/types/bracketTypes';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { MapVeto } from '@/components/tournament/MapVeto';
@@ -111,8 +107,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
       // New system: match_result_reports with screenshot_urls
       try {
-        const matchIds = Object.keys(automatedGames || {});
-        // Also fetch from brkt_matches for this tournament
         const allReports = await apiClient.get<any[]>(
           `/api/tournaments/${tournamentId}/result-reports`
         );
@@ -191,7 +185,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   }, [teamsData]);
 
   // Adapt data
-  const { matches: adaptedMatches, teamCount } = useMemo(() => {
+  const { matches: adaptedMatches } = useMemo(() => {
     if (propMatches.length > 0) return { matches: propMatches, teamCount: propTeamCount };
 
     // Always use live nodes/edges — the graph endpoint serves real-time DB state.
@@ -247,7 +241,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
 
   // Categorize matches
-  const { winnersRounds, losersRounds, finalsMatches, maxWinnersRound } = useMemo(() => {
+  const { winnersRounds, losersRounds, finalsMatches } = useMemo(() => {
     const winners: Record<number, BracketMatch[]> = {};
     const losers: Record<number, BracketMatch[]> = {};
     const finals: BracketMatch[] = [];
@@ -270,7 +264,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       winnersRounds: winners,
       losersRounds: losers,
       finalsMatches: finals.sort((a, b) => a.round - b.round || a.matchNumber - b.matchNumber),
-      maxWinnersRound: Math.max(...Object.keys(winners).map(Number), 0)
     };
   }, [matches]);
 
@@ -331,7 +324,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
           slot = idx;
         } else {
           // Subsequent Rounds: Center between children
-          const prevRound = wRounds[rIdx - 1];
 
           // Find matches in previous round where target_match_id == this match id
           const children = graphData?.edges?.filter(e =>
@@ -655,13 +647,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
         setResultsDialogOpen(true);
       }}
     />
-  ), [expandedMatch, isOrganizer, isProcessing, handleScoreChange, toggleExpand, openGoLive, openMapVeto, openPartyCode, saveScore, proofs, onByeAdvance]);
-
-  // Open bracket in fullscreen new tab
-  const openFullscreen = useCallback(() => {
-    const url = window.location.href;
-    window.open(url, '_blank', 'fullscreen=yes,menubar=no,toolbar=no,location=no,status=no');
-  }, []);
+  ), [expandedMatch, isOrganizer, isProcessing, versionId, tournamentId, handleScoreChange, toggleExpand, openGoLive, openMapVeto, openPartyCode, saveScore, proofs, onByeAdvance]);
 
   // Render Alternative Views
   if (format === 'round_robin') {

@@ -16,20 +16,11 @@ import {
   Clock,
   Star,
   Building,
-  Monitor,
   Gamepad2,
-  Mail,
   Phone,
-  DollarSign,
-  User,
   Image as ImageIcon,
   Cpu,
-  Wifi,
   Coffee,
-  Car,
-  Wind,
-  Zap,
-  Maximize2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAdminVenues, useAdminVenueUpdate } from "@/hooks/useAdminQueries";

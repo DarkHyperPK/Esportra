@@ -32,7 +32,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useAdmin } from "@/contexts/AdminContext";
+import { useAdmin } from "@/hooks/useAdmin";
 import {
   useAdminRoles,
   useAdminPermissions,

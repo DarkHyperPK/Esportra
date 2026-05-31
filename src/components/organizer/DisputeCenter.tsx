@@ -13,8 +13,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { useTournamentStaff } from '@/hooks/useTournamentStaff';
-import type { Database } from '@/lib/database.types';
-import { useHub } from '@/contexts/SignalRContext';
+import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 import type { DisputeReport, DisputeRiotAccount } from './DisputeEvidencePanel';
 import DisputeEvidencePanel from './DisputeEvidencePanel';
@@ -64,8 +63,6 @@ interface DisputeCenterProps {
   currentUserId?: string;
 }
 
-type TournamentDisputeRow = Database['public']['Tables']['tournament_disputes']['Row'];
-
 const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId, currentUserId }) => {
   const { toast } = useToast();
   const conn = useHub(HubPaths.Match);
@@ -84,7 +81,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
   const [searchQuery, setSearchQuery] = useState('');
 
   const actorUserId = currentUserId ?? organizerId;
-  const { staff, loading: staffLoading, hasPermission } = useTournamentStaff(tournamentId);
+  const { staff, loading: _staffLoading, hasPermission } = useTournamentStaff(tournamentId);
   const activeStaff = useMemo(
     () => staff.filter((member) => member.status === 'active'),
     [staff]

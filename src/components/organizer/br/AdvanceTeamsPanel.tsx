@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Trophy, Users, Loader2, Eye, ChevronUp } from 'lucide-react';
+import { ArrowRight, Loader2, Eye, ChevronUp } from 'lucide-react';
 import { useBRAdvancement } from '@/hooks/useBRAdvancement';
 import type { QualifiedTeam } from '@/hooks/useBRAdvancement';
 

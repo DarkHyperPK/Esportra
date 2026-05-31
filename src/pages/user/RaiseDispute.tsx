@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -331,7 +331,7 @@ const RaiseDispute = () => {
           fileName = `temp/${selectedTournament}/${reasonSlug}/${user.id}-${Date.now()}.${fileExt}`;
         }
         
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('tournaments.disputes.evidence')
           .upload(fileName, evidenceFile, { upsert: false });
 

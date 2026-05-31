@@ -21,7 +21,7 @@ const IS_STAGING = window.location.hostname.includes('staging');
  * Reusable SEO head component. Place at the top of any page component
  * to set dynamic meta tags, Open Graph, Twitter cards, and JSON-LD.
  */
-const SEO = ({
+export function SEO({
   title,
   description = DEFAULT_DESCRIPTION,
   image = DEFAULT_IMAGE,
@@ -29,7 +29,7 @@ const SEO = ({
   type = 'website',
   jsonLd,
   noindex = false,
-}: SEOProps) => {
+}: SEOProps) {
   const fullTitle = title ? `${title} | ${SITE_NAME}` : `${SITE_NAME} — Competitive Esports Tournament Platform`;
   const canonicalUrl = url ? `${BASE_URL}${url}` : undefined;
   const shouldNoindex = noindex || IS_STAGING;
@@ -63,6 +63,4 @@ const SEO = ({
       )}
     </Helmet>
   );
-};
-
-export default SEO;
+}

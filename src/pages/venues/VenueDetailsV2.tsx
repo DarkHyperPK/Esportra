@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState, Suspense } from 'react';
+import React, { useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useTrackImpression } from '@/hooks/useVenueImpressions';
 import { useVenueLiveStatus } from '@/hooks/useVenueLiveStatus';
 import { useVenueSeats } from '@/hooks/useVenueSeats';
@@ -11,12 +11,12 @@ import {
   MapPin, Clock, Phone, Mail, Cpu, Monitor, Wifi, Coffee, Car,
   Wind, Zap, Maximize2, Share2, ChevronLeft, ChevronRight,
   Gamepad2, CheckCircle, X, Copy, Check,
-  AlertTriangle, Globe, Armchair, Image as ImageIcon, ExternalLink
+  AlertTriangle, Armchair, Image as ImageIcon, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import Footer from '@/components/Footer';
-import SEO from '@/components/SEO';
+import { SEO } from '@/components/SEO';
 
 import { lazyWithRetry } from '@/utils/lazyWithRetry';
 
@@ -119,9 +119,7 @@ const VenueDetailsV2 = () => {
   const seatData = useVenueSeats(venue?.id);
   const tracked = useRef(false);
 
-  useEffect(() => { fetchVenue(); }, [slug]);
-
-  const fetchVenue = async () => {
+  const fetchVenue = useCallback(async () => {
     try {
       if (!slug) return;
       const data = await apiClient.get<any>(`/api/venues/${slug}`);
@@ -141,7 +139,9 @@ const VenueDetailsV2 = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [slug, user?.id, navigate, toast, trackImpression]);
+
+  useEffect(() => { fetchVenue(); }, [fetchVenue]);
 
   // ── Loading skeleton ──────────────────────────────────────────────
   if (loading) return (

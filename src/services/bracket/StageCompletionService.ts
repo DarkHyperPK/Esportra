@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/apiClient';
-import type { StageCompletionStatus, StageProgressLabel } from '@/types/stageCompletion';
+import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 
 interface AdvancingTeam {

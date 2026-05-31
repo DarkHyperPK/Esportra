@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Building2,
   Calendar,
   CheckCircle,
   ExternalLink,
@@ -17,7 +16,7 @@ import {
   Users,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
@@ -611,11 +610,11 @@ const OrganizationSettings: React.FC = () => {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-2">
-            <button type="button" onClick={() => { setActiveAlbum(null); organization && void fetchMedia(organization.id, null); }} className={cn('border px-3 py-2 font-mono text-[10px] uppercase tracking-wider', !activeAlbum ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>
+            <button type="button" onClick={() => { setActiveAlbum(null); if (organization) void fetchMedia(organization.id, null); }} className={cn('border px-3 py-2 font-mono text-[10px] uppercase tracking-wider', !activeAlbum ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>
               All Media
             </button>
             {albums.map((album) => (
-              <button key={album.id} type="button" onClick={() => { setActiveAlbum(album); organization && void fetchMedia(organization.id, album.id); }} className={cn('border px-3 py-2 font-mono text-[10px] uppercase tracking-wider', activeAlbum?.id === album.id ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>
+              <button key={album.id} type="button" onClick={() => { setActiveAlbum(album); if (organization) void fetchMedia(organization.id, album.id); }} className={cn('border px-3 py-2 font-mono text-[10px] uppercase tracking-wider', activeAlbum?.id === album.id ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>
                 {album.title}
               </button>
             ))}

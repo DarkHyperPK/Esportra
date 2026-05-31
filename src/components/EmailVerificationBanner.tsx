@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle, Mail } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -9,7 +9,6 @@ const EmailVerificationBanner = () => {
   const { user, isEmailVerified, loading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [dismissed, setDismissed] = useState(false);
   const [resending, setResending] = useState(false);
 
   if (loading || !user || isEmailVerified) return null;

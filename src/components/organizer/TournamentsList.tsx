@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar, CheckCircle2, Clock, Plus, Trophy, Users } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { fetchCurrentOrganizationId } from "@/lib/currentOrganization";
 import { CommandButton, CommandEmptyState, CommandPanel, CommandToolbar } from "@/components/management/CommandSurface";
 import { cn } from "@/lib/utils";

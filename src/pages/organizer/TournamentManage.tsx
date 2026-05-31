@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { useQueryClient, useQueries } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { OrganizerTeamCard } from '@/components/organizer/OrganizerTeamCard';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,37 +25,23 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
-import { Tournament as TournamentType } from '@/hooks/useTournaments';
-import { TournamentStatus } from '@/types/tournament';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import {
   AlertTriangle,
-  ArrowDown,
-  ArrowRight,
-  ArrowUp,
-  Ban as BanIcon,
   Calendar,
   CheckCircle,
-  Clock,
   Edit2,
   Eye,
   GamepadIcon,
   Globe,
   Layers,
-  Lock,
   Loader2,
   Mail,
   MapPin,
-  Plus,
   RefreshCw,
-  Settings,
   ShieldCheck,
-  Shuffle,
   Swords,
-  Trash2,
   Trophy,
-  Unlock,
-  Users,
   X,
   Zap,
 } from 'lucide-react';
@@ -67,7 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import type { StaffPermission } from '@/lib/tournamentStaff';
 import {
   AlertDialog,
@@ -78,23 +64,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { handleError, TournamentError, AuthError, DatabaseError } from '@/utils/errorHandler';
-import { tournamentApi } from '@/services/api';
 import esportsGames from '@/data/esportsGames.json';
 import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
-import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
 import BanManagement from '@/components/organizer/BanManagement';
 import PaymentManagement from '@/components/organizer/PaymentManagement';
 import DisputeCenter from '@/components/organizer/DisputeCenter';
 import MatchChecker from '@/components/organizer/MatchChecker';
 import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnouncementPanel';
 // Staff management has moved to Organization Settings (OrganizationStaffManager)
-import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal';
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
-import { GroupManagementTab } from '@/components/organizer/tabs/GroupManagementTab';
 import { BRStageManagementTab } from '@/components/organizer/tabs/BRStageManagementTab';
 import { BRGamesTab } from '@/components/organizer/tabs/BRGamesTab';
 import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTournamentDashboard';
@@ -107,64 +86,6 @@ import { CommandButton, CommandTabButton } from '@/components/management/Command
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 const PARTICIPANTS_PAGE_SIZE = 24;
 const isValidInviteEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-
-interface DatabaseTournament {
-  id: string;
-  name?: string;
-  game?: string;
-  date?: string;
-  time?: string;
-  venue?: string;
-  max_participants?: number;
-  prize_pool?: string;
-  description?: string;
-  organizer_id?: string;
-  entry_fee?: string | null;
-  is_online?: boolean;
-  created_at?: string;
-  updated_at?: string;
-  status?: string;
-  image_url?: string | null;
-  team_size?: number;
-  slug?: string;
-  check_in_required?: boolean;
-  check_in_deadline?: string | null;
-  auto_remove_unchecked?: boolean;
-  start_date?: string | null;
-  end_date?: string | null;
-  registration_deadline?: string | null;
-  venue_id?: string | null;
-  banner_url?: string | null;
-  logo_url?: string | null;
-  max_teams?: number | null;
-  min_teams?: number | null;
-  is_public?: boolean;
-  format?: string;
-  registration_open?: boolean;
-}
-
-interface LocalTournament extends DatabaseTournament {
-  current_participants: number;
-  check_in_required?: boolean;
-  check_in_deadline?: string | null;
-  auto_remove_unchecked?: boolean;
-}
-
-interface TournamentRegistration {
-  id: string;
-  tournament_id: string;
-  user_id: string;
-  gamer_tag: string | null;
-  team_name: string | null;
-  team_members: string | null;
-  status: string;
-  registered_at: string;
-  created_at: string;
-  profiles?: {
-    username: string;
-    full_name: string | null;
-  };
-}
 
 interface Participant {
   id: string;
@@ -200,19 +121,6 @@ const STAFF_PERMISSION_LABELS: Record<StaffPermission, string> = {
   'disputes:assist': 'Disputes',
 };
 
-// Mock data for teams and bracket
-const mockTeams = [
-  { id: 'team1', name: 'Alpha Squad', members: ['Alice', 'Bob'] },
-  { id: 'team2', name: 'Bravo Force', members: ['Charlie', 'Dave'] },
-  { id: 'team3', name: 'Charlie Crew', members: ['Eve', 'Frank'] },
-  { id: 'team4', name: 'Delta Team', members: ['Grace', 'Heidi'] },
-];
-const mockBracket = [
-  { round: 1, match: 1, teamA: 'Alpha Squad', teamB: 'Bravo Force', winner: null },
-  { round: 1, match: 2, teamA: 'Charlie Crew', teamB: 'Delta Team', winner: null },
-  { round: 2, match: 1, teamA: null, teamB: null, winner: null }, // Finals
-];
-
 // ErrorBoundary component
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
   constructor(props) {
@@ -222,9 +130,9 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   static getDerivedStateFromError(error) {
     return { hasError: true, error };
   }
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(_error, _errorInfo) {
     // You can log errorInfo here if needed
-    // console.error('ErrorBoundary caught:', error, errorInfo);
+    // console.error('ErrorBoundary caught:', _error, _errorInfo);
   }
   render() {
     if (this.state.hasError) {
@@ -248,8 +156,6 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     return this.props.children;
   }
 }
-
-const getTeamDisplayName = (team: any) => team.name || team.team_name || 'Unknown';
 
 const tabVariants = {
   enter: (direction: number) => ({
@@ -291,9 +197,7 @@ const TournamentDashboard = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { user } = useAuth();
-  const userId = user?.id;
 
   const {
     data: dashboardData,
@@ -304,7 +208,10 @@ const TournamentDashboard = () => {
 
   const tournament = dashboardData?.tournament;
   const tournamentModeFeatures = getEffectiveGameFeatures(tournament?.game || '', tournament?.game_mode);
-  const participants = (dashboardData?.participants || []) as Participant[];
+  const participants = useMemo(
+    () => (dashboardData?.participants || []) as Participant[],
+    [dashboardData?.participants],
+  );
   const stages = dashboardData?.stages || [];
   const isOrganizer = dashboardData?.isOrganizer || false;
 
@@ -322,13 +229,16 @@ const TournamentDashboard = () => {
 
   const hasIncompleteStages = useMemo(() => {
     if (stages.length === 0) return false;
-    return stageCompletionQueries.some((query, index) => {
+    return stageCompletionQueries.some((query, _index) => {
       if (query.isLoading || query.isError) return true;
       return !query.data;
     });
   }, [stages.length, stageCompletionQueries]);
 
-  const staffPermissions = (dashboardData?.staffPermissions || []) as StaffPermission[];
+  const staffPermissions = useMemo(
+    () => (dashboardData?.staffPermissions || []) as StaffPermission[],
+    [dashboardData?.staffPermissions],
+  );
   const mockCount = dashboardData?.mockCount ?? 0;
 
   // BR game results management
@@ -357,24 +267,17 @@ const TournamentDashboard = () => {
   };
 
   const loading = dashboardLoading;
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [bracket, setBracket] = useState<any[]>([]);
-  const [bracketGenerated, setBracketGenerated] = useState(false);
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [banReason, setBanReason] = useState('');
   const [banTarget, setBanTarget] = useState<{ id: string, userId: string } | null>(null);
-  const [bracketType, setBracketType] = useState<'single' | 'double' | 'roundrobin' | 'swiss'>('single');
   const [gameLogo, setGameLogo] = useState<string | null>(null);
   const [logoError, setLogoError] = useState(false);
 
-  const [gameBackgroundUrl, setGameBackgroundUrl] = useState<string | null>(null);
   const [teamDialogOpen, setTeamDialogOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Participant | null>(null);
   const [selectedTeamMembers, setSelectedTeamMembers] = useState<string[]>([]);
   const [teamCaptain, setTeamCaptain] = useState<string | null>(null);
   const [teamLoading, setTeamLoading] = useState<boolean>(false);
-  const [teamModalOpen, setTeamModalOpen] = useState(false);
-  const [teamModalData, setTeamModalData] = useState<{ id?: string | null; name: string; logo?: string | null; members: string[] }>({ name: '', members: [] });
   // Initialize activeTab from ?tab= query param, then location state, then default 'overview'
   const [activeTab, setActiveTab] = useState(
     searchParams.get('tab') || (location.state as { activeTab?: string })?.activeTab || 'overview'
@@ -383,8 +286,6 @@ const TournamentDashboard = () => {
   const [removingUnchecked, setRemovingUnchecked] = useState(false);
   const [savingAssistedReporting, setSavingAssistedReporting] = useState(false);
   const [savingMapVeto, setSavingMapVeto] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [cascadeWarnings, setCascadeWarnings] = useState<Array<{ entity: string; count: number; description?: string }>>([]);
   const [hasStaffAccess, setHasStaffAccess] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [participantsPage, setParticipantsPage] = useState(1);
@@ -479,10 +380,10 @@ const TournamentDashboard = () => {
     };
 
     checkOverdue();
-  }, [tournament?.id, tournament?.end_date, tournament?.status, stages.length, isOrganizer, hasIncompleteStages]);
+  }, [tournament, isOrganizer, stages.length, hasIncompleteStages, refetchDashboard, toast]);
 
 
-  const handleTeamClick = async (participant: Participant) => {
+  const handleTeamClick = useCallback(async (participant: Participant) => {
     setSelectedTeam(participant);
     setTeamLoading(true);
     setTeamCaptain(null);
@@ -511,30 +412,28 @@ const TournamentDashboard = () => {
       if (rawTokens.length > 0 && !tokensAreIds) {
         setSelectedTeamMembers(rawTokens);
       }
-      // Resolve team id and owner
+      // Resolve team id and logo
       let teamId = participant.team_id as string | null;
-      let ownerId: string | null = null;
       let logoUrl: string | null = participant.team_logo || null;
       if (!teamId) {
         // Try exact name match first
         try {
-          const results = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(participant.team_name || '')}&type=team`);
           // Search teams by name — use team search endpoint
           const teamResults = await apiClient.get<any[]>(`/api/teams/search?name=${encodeURIComponent(participant.team_name || '')}`).catch(() => []);
           const exactMatch = (teamResults || []).find((t: any) => t.name === participant.team_name);
           const fuzzyMatch = (teamResults || [])[0];
           const match = exactMatch || fuzzyMatch;
           if (match) {
-            teamId = match.id; ownerId = match.owner_id; logoUrl = logoUrl || match.logo_url || null;
+            teamId = match.id; logoUrl = logoUrl || match.logo_url || null;
           }
-        } catch { }
+        } catch { /* ignored */ }
       } else {
         try {
           const teamData = await apiClient.get<any>(`/api/teams/${teamId}`).catch(() => null);
           if (teamData) {
-            ownerId = teamData.owner_id; logoUrl = logoUrl || teamData.logo_url || null;
+            logoUrl = logoUrl || teamData.logo_url || null;
           }
-        } catch { }
+        } catch { /* ignored */ }
       }
       if (logoUrl && selectedTeam) selectedTeam.team_logo = logoUrl;
       // First, try reading names saved in tournament registration directly
@@ -594,7 +493,7 @@ const TournamentDashboard = () => {
       console.error(e);
       setTeamLoading(false);
     }
-  };
+  }, [tournament?.id, tournament?.game, selectedTeam]);
 
   // Data managed by useTournamentDashboard
 
@@ -645,50 +544,6 @@ const TournamentDashboard = () => {
       case 'completed': return 'border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.15)]';
       case 'cancelled': return 'border-gray-500';
       default: return 'border-white/10';
-    }
-  };
-
-  const getStatusTextColor = (status: string) => {
-    switch (status) {
-      case 'draft': return 'text-amber-400';
-      case 'open':
-      case 'upcoming': return 'text-rose-400';
-      case 'ongoing': return 'text-red-400';
-      case 'completed': return 'text-rose-400';
-      case 'cancelled': return 'text-gray-400';
-      default: return 'text-white';
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!isOrganizer) {
-      toast({
-        title: 'Not allowed',
-        description: 'Only the lead organizer can delete this tournament.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    try {
-      setIsDeleting(true);
-
-      // Soft delete: set deleted_at timestamp
-      await apiClient.put(`/api/tournaments/${tournament?.id}`, { deletedAt: new Date().toISOString() } as any);
-
-      toast({
-        title: 'Tournament deleted',
-        description: `${tournament?.name} has been moved to deleted tournaments. You can restore it within 7 days.`,
-      });
-      navigate('/organizer/tournaments');
-    } catch (error) {
-      console.error('Error deleting tournament:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete tournament',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -764,26 +619,11 @@ const TournamentDashboard = () => {
     }
   };
 
-  // Payment approval/rejection
-  const [approvingPayment, setApprovingPayment] = useState<string | null>(null);
+  // Payment rejection
   const [rejectingPayment, setRejectingPayment] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState<string | null>(null);
   const [receiptViewUrl, setReceiptViewUrl] = useState<string | null>(null);
-
-  const handleApprovePayment = async (participantId: string) => {
-    if (!tournament?.id) return;
-    setApprovingPayment(participantId);
-    try {
-      await apiClient.post(`/api/tournaments/${tournament.id}/participants/${participantId}/approve-payment`);
-      toast({ title: 'Payment Approved', description: 'The participant is now registered.' });
-      refetchDashboard();
-    } catch (error: any) {
-      toast({ title: 'Approval Failed', description: error.message, variant: 'destructive' });
-    } finally {
-      setApprovingPayment(null);
-    }
-  };
 
   const handleRejectPayment = async (participantId: string) => {
     if (!tournament?.id) return;
@@ -802,8 +642,6 @@ const TournamentDashboard = () => {
       setRejectingPayment(null);
     }
   };
-
-  const pendingPayments = participants.filter(p => p.payment_status === 'pending');
 
   const handleToggleAssistedReporting = async (enabled: boolean) => {
     if (!tournament?.id) return;
@@ -863,184 +701,6 @@ const TournamentDashboard = () => {
     }
   };
 
-  // Open team modal: fetch members and logo on demand for accuracy
-  const openTeamModal = async (p: Participant) => {
-    try {
-      let teamId = p.team_id || null;
-      let logo: string | null | undefined = (p as any).team_logo;
-      // Load the exact registration row first (use id for precision)
-      let regTeamMembers: string[] = [];
-      let regRosterId: string | null = null;
-      let regRosterName: string | null = null;
-      let regTeamId: string | null = null;
-      try {
-        const regRow = await apiClient.get<any>(`/api/tournaments/${tournament?.id}/participants/${p.id}`).catch(() => null);
-        if (regRow) {
-          const raw = regRow.team_members;
-          regRosterId = regRow.roster_id || null;
-          regRosterName = regRow.roster_name || null;
-          regTeamId = regRow.team_id || null;
-
-          // Robustly parse team_members in multiple shapes
-          if (raw) {
-            if (Array.isArray(raw)) {
-              // Could be array of strings, ids or objects
-              const items = raw as any[];
-              // If objects with usernames/gamer_tag/full_name
-              if (items.length > 0 && typeof items[0] === 'object' && items[0] !== null) {
-                const maybeNames = items
-                  .map((it: any) => it?.gamer_tag || it?.username || it?.full_name || it?.name || null)
-                  .filter(Boolean);
-                if (maybeNames.length > 0) {
-                  regTeamMembers = maybeNames as string[];
-                } else {
-                  const ids = items.map((it: any) => it?.user_id).filter(Boolean);
-                  if (ids.length > 0) {
-                    const profsTok = await apiClient.post<any[]>('/api/profiles/resolve-players', { tokens: ids, areUuids: true }).catch(() => []);
-                    const mapTok = new Map<string, string>();
-                    const isVal = tournament?.game?.toLowerCase() === 'valorant';
-                    (profsTok || []).forEach((p: any) => {
-                      const tag = isVal ? p.riot_tag : (p.riot_tag || p.steam_tag);
-                      mapTok.set(p.id, tag || p.username || p.full_name || `player_${String(p.id).substring(0, 8)}`);
-                    });
-                    regTeamMembers = ids.map((id: string) => mapTok.get(id) || `player_${String(id).substring(0, 8)}`);
-                  }
-                }
-              } else {
-                regTeamMembers = items.map((s: any) => String(s).trim()).filter(Boolean);
-              }
-            } else if (typeof raw === 'string') {
-              regTeamMembers = String(raw).split(',').map(s => s.trim()).filter(Boolean);
-            } else if (typeof raw === 'object' && Array.isArray((raw as any).members)) {
-              const m = (raw as any).members as any[];
-              regTeamMembers = m.map((s: any) => String(s).trim()).filter(Boolean);
-            }
-          }
-        }
-      } catch { }
-      if (!teamId && p.team_name) {
-        try {
-          const teamResults = await apiClient.get<any[]>(`/api/teams/search?name=${encodeURIComponent(p.team_name)}`).catch(() => []);
-          const match = (teamResults || [])[0];
-          if (match) { teamId = match.id; logo = logo || match.logo_url || null; }
-        } catch { }
-      } else if (teamId && !logo) {
-        try {
-          const teamData = await apiClient.get<any>(`/api/teams/${teamId}`).catch(() => null);
-          logo = teamData?.logo_url || null;
-        } catch { }
-      }
-      // Simplified logic: 1) Already resolved names from participants list; 2) roster_id; 3) derive roster by team_id + tournament.game
-      let members: string[] = [];
-
-      const toNames = (rows: any[]) =>
-        (rows || []).map((r: any) => r.username || r.full_name || `player_${String(r.user_id).substring(0, 8)}`);
-
-      // Step 0: Check if participant already has resolved readable member names (from fetchTournamentData loop)
-      if (p.team_members) {
-        const parsedMembers = (() => {
-          if (Array.isArray(p.team_members)) {
-            return p.team_members.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
-          }
-          if (typeof p.team_members === 'string' && p.team_members.trim().length > 0) {
-            const trimmed = p.team_members.trim();
-            if (trimmed.startsWith('[')) {
-              try {
-                const parsed = JSON.parse(trimmed);
-                if (Array.isArray(parsed)) return parsed.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
-              } catch { /* fall through */ }
-            }
-            return trimmed.split(',').map(s => s.trim()).filter(Boolean);
-          }
-          return [];
-        })();
-        const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
-        if (parsedMembers.length > 0 && parsedMembers.some(t => !looksLikeUuid(t))) {
-          members = parsedMembers;
-          console.log('Using already-resolved members from participant.team_members:', members);
-        }
-      }
-
-      // Step 1: If we have parsed names from regRow.team_members, use those
-      if (members.length === 0 && regTeamMembers.length > 0) {
-        members = regTeamMembers;
-        console.log('Using parsed members from registration row:', members);
-      }
-
-      // Step 2: use roster_id on registration if available
-      if (members.length === 0 && regRosterId) {
-        const roster = await apiClient.get<any[]>(`/api/rosters/${regRosterId}/members`).catch(() => null);
-        const rosterError = !roster;
-        if (rosterError) {
-          console.error('Error fetching roster members in modal:', rosterError);
-        } else {
-          const names = toNames(roster || []);
-          if (names.length > 0) {
-            members = names;
-            console.log('Resolved members from roster_id in modal:', members);
-          }
-        }
-      }
-
-      // Step 3: if missing, derive roster by team_id + game match (game or name ilike)
-      if (members.length === 0) {
-        const effectiveTeamId = regTeamId || teamId;
-        const game = String(tournament?.game || '').trim().toLowerCase();
-        if (effectiveTeamId && game) {
-          const rosters = await apiClient.get<any[]>(`/api/teams/${effectiveTeamId}/rosters`).catch(() => []);
-          const list = rosters || [];
-          let pickedId: string | null = null;
-          if (list.length === 1) {
-            pickedId = list[0].id;
-          } else if (list.length > 1) {
-            const byGame = list.filter((r: any) => String(r.game || '').trim().toLowerCase() === game);
-            if (byGame.length === 1) {
-              pickedId = byGame[0].id;
-            } else if (byGame.length > 1) {
-              // pick most recent among game matches
-              const sorted = [...byGame].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-              pickedId = sorted[0].id;
-            } else {
-              // fallback: name contains game
-              const byName = list.filter((r: any) => String(r.name || '').toLowerCase().includes(game));
-              if (byName.length > 0) {
-                const sorted = [...byName].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-                pickedId = sorted[0].id;
-              }
-            }
-          }
-          if (!pickedId && list.length > 0) {
-            const sorted = [...list].sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-            pickedId = sorted[0].id;
-          }
-          if (pickedId) {
-            const roster = await apiClient.get<any[]>(`/api/rosters/${pickedId}/members`).catch(() => null);
-            const rosterError3 = !roster;
-            if (rosterError3) {
-              console.error('Error fetching roster members (Step 3) in modal:', rosterError3);
-            } else {
-              const names = toNames(roster || []);
-              if (names.length > 0) {
-                members = names;
-                console.log('Resolved members from inferred roster (Step 3) in modal:', members);
-              }
-            }
-          }
-        }
-      }
-
-      console.log('Modal opening - participant:', p.team_name, 'resolved members:', members);
-      setTeamModalData({ id: teamId, name: p.team_name || 'Team', logo: logo || null, members });
-      setTeamModalOpen(true);
-    } catch (e) {
-      const fallbackMembers = Array.isArray(p.team_members)
-        ? p.team_members.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean)
-        : typeof p.team_members === 'string' ? p.team_members.split(',').map(s => s.trim()).filter(Boolean) : [];
-      setTeamModalData({ id: p.team_id || null, name: p.team_name || 'Team', logo: (p as any).team_logo || null, members: fallbackMembers });
-      setTeamModalOpen(true);
-    }
-  };
-
   // Ban participant (delete registration from DB)
   const handleBan = async (participantId: string, userId: string) => {
     try {
@@ -1084,209 +744,6 @@ const TournamentDashboard = () => {
     }
   };
 
-  // Helper: next power of two
-  const nextPowerOfTwo = (n: number) => {
-    return Math.pow(2, Math.ceil(Math.log2(n)));
-  };
-
-  // Update validateMatches for custom bracket structure
-  const validateMatches = (matches: any[]) => {
-    if (!Array.isArray(matches) || matches.length === 0) return false;
-    for (const match of matches) {
-      if (!match || typeof match !== 'object') return false;
-      const home = match.home;
-      const visitor = match.visitor;
-      if (!home || typeof home !== 'object') return false;
-      if (!visitor || typeof visitor !== 'object') return false;
-      // Accept either 'name' or 'team_name'
-      if (!('id' in home) || (!('name' in home) && !('team_name' in home))) return false;
-      if (!('id' in visitor) || (!('name' in visitor) && !('team_name' in visitor))) return false;
-    }
-    return true;
-  };
-
-  // Update BracketTeam type to allow team_name (for normalization)
-  interface BracketTeam {
-    id: string;
-    name: string;
-    logo?: string | null;
-    team_name?: string;
-  }
-
-  interface BracketMatchType {
-    id: string;
-    round: number;
-    home: BracketTeam;
-    visitor: BracketTeam;
-  }
-
-  type BracketTeamWithName = BracketTeam;
-
-  const generateCustomBracketMatches = (teams: BracketTeamWithName[]): BracketMatchType[] => {
-    // Pad to next power of two
-    const totalTeams = teams.length;
-    const bracketSize = Math.pow(2, Math.ceil(Math.log2(totalTeams)));
-    const byes = bracketSize - totalTeams;
-    const allTeams = [...teams];
-    for (let i = 0; i < byes; i++) {
-      allTeams.push({ id: `bye-${i}`, name: 'BYE', logo: null });
-    }
-    // Normalize: ensure every team has a .name property
-    const normalizedTeams = allTeams.map(team => ({
-      ...team,
-      name: team.name || team.team_name || 'Unknown'
-    }));
-    let matches: BracketMatchType[] = [];
-    let round = 1;
-    let matchId = 1;
-    let currentRoundTeams = normalizedTeams;
-    while (currentRoundTeams.length > 1) {
-      let nextRoundTeams: BracketTeam[] = [];
-      for (let i = 0; i < currentRoundTeams.length; i += 2) {
-        const home = currentRoundTeams[i];
-        const visitor = currentRoundTeams[i + 1];
-        matches.push({
-          id: matchId.toString(),
-          round,
-          home,
-          visitor,
-        });
-        // For next round, winner is TBD
-        nextRoundTeams.push({ id: `tbd-${round}-${i / 2}`, name: 'TBD', logo: null });
-        matchId++;
-      }
-      currentRoundTeams = nextRoundTeams;
-      round++;
-    }
-    return matches;
-  };
-
-  // Custom BracketMatch component
-  const BracketMatch = ({ match }) => {
-    const home = match.home;
-    const visitor = match.visitor;
-    const round = match.round ? `Round ${match.round}` : 'Match';
-    return (
-      <TooltipProvider>
-        <UITooltip>
-          <TooltipTrigger asChild>
-            <div className="bg-[#0a0a0c] border border-white/10/40 rounded-lg shadow-md px-4 py-3 flex flex-col items-center min-w-[180px] max-w-[220px]">
-              <div className="flex items-center gap-2 mb-2 w-full justify-between">
-                {/* Home team */}
-                <div className="flex items-center gap-2">
-                  {home.logo ? (
-                    <img src={home.logo} loading="lazy" alt={getTeamDisplayName(home)} className="w-6 h-6 rounded bg-white border border-gray-300" />
-                  ) : (
-                    <span className="w-6 h-6 flex items-center justify-center rounded bg-white border border-gray-300">
-                      <GamepadIcon className="w-4 h-4 text-rose-400" />
-                    </span>
-                  )}
-                  <span className="font-semibold text-white text-sm truncate max-w-[80px]">{getTeamDisplayName(home)}</span>
-                </div>
-                <span className="text-xs text-gray-400 font-bold">vs</span>
-                {/* Visitor team */}
-                <div className="flex items-center gap-2">
-                  {visitor.logo ? (
-                    <img src={visitor.logo} loading="lazy" alt={getTeamDisplayName(visitor)} className="w-6 h-6 rounded bg-white border border-gray-300" />
-                  ) : (
-                    <span className="w-6 h-6 flex items-center justify-center rounded bg-white border border-gray-300">
-                      <GamepadIcon className="w-4 h-4 text-rose-400" />
-                    </span>
-                  )}
-                  <span className="font-semibold text-white text-sm truncate max-w-[80px]">{getTeamDisplayName(visitor)}</span>
-                </div>
-              </div>
-              <div className="text-xs text-emerald-300 font-bold mb-1">{round}</div>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent className="bg-[#0a0a0c] border border-emerald-400/40 rounded-lg shadow-lg p-3">
-            <div className="mb-1 text-emerald-300 font-bold">{round}</div>
-            <div className="flex items-center gap-2 mb-1">
-              {home.logo ? (
-                <img src={home.logo} loading="lazy" alt={getTeamDisplayName(home)} className="w-5 h-5 rounded bg-white border border-gray-300" />
-              ) : (
-                <GamepadIcon className="w-4 h-4 text-rose-400" />
-              )}
-              <span className="font-semibold text-white text-xs">{getTeamDisplayName(home)}</span>
-            </div>
-            <div className="flex items-center gap-2 mb-1">
-              {visitor.logo ? (
-                <img src={visitor.logo} loading="lazy" alt={getTeamDisplayName(visitor)} className="w-5 h-5 rounded bg-white border border-gray-300" />
-              ) : (
-                <GamepadIcon className="w-4 h-4 text-rose-400" />
-              )}
-              <span className="font-semibold text-white text-xs">{getTeamDisplayName(visitor)}</span>
-            </div>
-          </TooltipContent>
-        </UITooltip>
-      </TooltipProvider>
-    );
-  };
-
-  // Update BracketSVGStyle for more aggressive SVG and parent container overrides
-  const BracketSVGStyle = () => {
-    return (
-      <style>{`
-      .bracket-svg-root,
-      .bracket-svg-root > div,
-      .bracket-svg-root svg {
-        width: 100% !important;
-        height: 100% !important;
-        min-width: 0 !important;
-        min-height: 0 !important;
-        background: transparent !important;
-        box-shadow: none !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-      }
-      .bracket-svg-root svg {
-        background: transparent !important;
-      }
-    `}</style>
-    );
-  };
-
-  // Add a blurred background and animated border/glow
-  const BracketPremiumOverlay = () => {
-    return (
-      <>
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          zIndex: 0,
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          background: 'rgba(18,18,22,0.7)',
-          borderRadius: 32,
-          pointerEvents: 'none',
-        }} />
-        <div className="bracket-glow-border" style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          borderRadius: 32,
-          boxShadow: '0 0 32px 4px #a259ff88, 0 0 0 4px #18181b',
-          border: '2px solid #a259ff',
-          pointerEvents: 'none',
-          animation: 'bracketGlow 2s infinite alternate',
-          zIndex: 2,
-        }} />
-        <style>{`
-        @keyframes bracketGlow {
-          0% { box-shadow: 0 0 32px 4px #a259ff44, 0 0 0 4px #18181b; }
-          100% { box-shadow: 0 0 48px 8px #a259ffcc, 0 0 0 4px #18181b; }
-        }
-      `}</style>
-      </>
-    );
-  };
-
   const formatCountdown = useCallback((ms: number) => {
     const totalSeconds = Math.max(0, Math.floor(ms / 1000));
     const hours = Math.floor(totalSeconds / 3600);
@@ -1320,7 +777,6 @@ const TournamentDashboard = () => {
       ? formatCountdown(effectiveDeadlineMs - now)
       : null;
   const showCheckInSummary = Boolean((effectiveCheckInRequired || isOrganizer) && teamParticipants.length > 0);
-  const pendingDisplayTeams = teamParticipants.filter((p) => !p.checked_in_at).slice(0, 4);
 
   const staffPermissionSummary =
     staffPermissions.map((perm) => STAFF_PERMISSION_LABELS[perm] || perm).join(', ') || 'Limited access';
@@ -1409,7 +865,7 @@ const TournamentDashboard = () => {
             background = background_image;
             logo = logo_image;
           }
-        } catch (e) {
+        } catch {
           localStorage.removeItem(cacheKey);
         }
       }
@@ -1436,8 +892,6 @@ const TournamentDashboard = () => {
       }
 
       // 3. Update State
-      setGameBackgroundUrl(background);
-
       // Check static data for logo override
       const foundGame = esportsGames.games.find(g =>
         normalize(g.name) === normalize(gameName) ||
@@ -1468,7 +922,7 @@ const TournamentDashboard = () => {
 
     openedParticipantParamRef.current = participantId;
     void handleTeamClick(participant);
-  }, [activeTab, participants, searchParams]);
+  }, [activeTab, participants, searchParams, handleTeamClick]);
 
   if (loading) {
     return (
@@ -2633,7 +2087,12 @@ const TournamentDashboard = () => {
                   <Button variant="ghost" onClick={() => setTeamDialogOpen(false)} className="border border-white/10 text-white hover:bg-white/5 h-10 px-5 rounded-lg">Close</Button>
                   <Button
                     variant="destructive"
-                    onClick={() => { setBanDialogOpen(true); setBanTarget({ id: selectedTeam?.id!, userId: selectedTeam?.user_id! }); setTeamDialogOpen(false); }}
+                    onClick={() => {
+                      if (!selectedTeam) return;
+                      setBanDialogOpen(true);
+                      setBanTarget({ id: selectedTeam.id, userId: selectedTeam.user_id });
+                      setTeamDialogOpen(false);
+                    }}
                     className="bg-red-500 hover:bg-red-600 text-white h-10 px-6 rounded-lg font-bold shadow-lg shadow-red-900/20 transition-all hover:scale-105"
                   >
                     Ban Team

@@ -26,7 +26,7 @@ export class SwissGenerator implements IBracketGenerator {
         console.log('[SwissGenerator] Total teams:', teams.length);
 
         // 1. Sort teams by seed initially
-        let sortedTeams = [...teams].sort((a, b) => (a.seed || 999) - (b.seed || 999));
+        const sortedTeams = [...teams].sort((a, b) => (a.seed || 999) - (b.seed || 999));
 
         // 2. Split into groups if needed
         const groups: any[][] = [];

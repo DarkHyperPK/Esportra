@@ -14,7 +14,7 @@ import {
     AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useMockTournament } from '@/hooks/useMockTournament';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 
 interface MockModePanelProps {
     tournamentId: string;

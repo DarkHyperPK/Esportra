@@ -242,7 +242,7 @@ const RiotTest = () => {
                             <Skeleton key={i} className="h-24 w-full bg-zinc-900/50 border border-zinc-800 rounded-xl" />
                         ))
                     ) : matches.length > 0 ? (
-                        matches.map((m, i) => (
+                        matches.map((m, _i) => (
                             <MatchHistoryCard key={m.matchInfo.matchId} matchData={m} targetPuuid={puuid} />
                         ))
                     ) : result?.error ? (

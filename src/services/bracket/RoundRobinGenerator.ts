@@ -14,8 +14,8 @@ export class RoundRobinGenerator implements IBracketGenerator {
         stageId?: string,
         bestOf: number = 1,
         bracketSize?: number, // Interpreted as "Number of Groups" for RR
-        advancementCount?: number,
-        config?: any
+        _advancementCount?: number,
+        _config?: any
     ): BracketGraph {
         const versionId = crypto.randomUUID();
         const nodes: BracketNode[] = [];
@@ -114,7 +114,7 @@ export class RoundRobinGenerator implements IBracketGenerator {
         }
 
         // Copy teams array to avoid mutation
-        let participants = [...teams];
+        const participants = [...teams];
 
         // If odd number of teams, add a BYE placeholder
         const hasBye = participants.length % 2 !== 0;

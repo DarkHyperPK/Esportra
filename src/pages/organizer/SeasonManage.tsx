@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { apiClient } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import SeasonStructureBuilder from '@/components/season/builder/SeasonStructureBuilder';
-import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import {
   buildSeasonTreeFromDrafts,
   getPhaseMetaForType,
@@ -42,20 +40,16 @@ import { usePublishSeason, useUpdateSeason, useArchiveSeason, useCancelSeason, u
 import { useToast } from '@/hooks/use-toast';
 import { seasonBasicsSchema } from '@/schemas/seasonSchema';
 import type {
-  AdvancementConnection,
-  SeasonNodeDraft,
   SeasonBuilderNode,
-  SeasonNodeStatus,
   SeasonNodeType,
   SeasonParticipantMode,
   SeasonQualificationType,
   SeasonRuleDraft,
   SeasonStaffMember,
   SeasonStatus,
-  SeasonTreeNode,
   UpdateSeasonPayload,
 } from '@/types/season';
-import { CheckCircle2, ExternalLink, Plus, RefreshCw, Trash2, Users, Archive, XCircle, Copy, Settings, FileText, TrendingUp, GitBranch, AlertCircle, ArrowRight, Bell, Clock, Info, Shield, Activity, X, AlertTriangle, Lock, ShieldOff, LayoutDashboard, Workflow, Trophy, ClipboardList, Target, Menu, ChevronLeft, type LucideIcon } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Plus, RefreshCw, Trash2, Users, Archive, XCircle, Copy, Settings, FileText, TrendingUp, GitBranch, AlertCircle, ArrowRight, Bell, Clock, Info, Activity, X, AlertTriangle, Lock, ShieldOff, LayoutDashboard, Workflow, Trophy, ClipboardList, Target, Menu, ChevronLeft, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   AlertDialog,
@@ -124,8 +118,6 @@ const STATUS_STYLES: Record<SeasonStatus, string> = {
 };
 
 const SEASON_STATUSES: SeasonStatus[] = ['draft', 'published', 'active', 'completed', 'archived'];
-const NODE_TYPES: SeasonNodeType[] = ['root', 'qualifier', 'event', 'stage', 'final', 'custom'];
-const NODE_STATUSES: SeasonNodeStatus[] = ['draft', 'scheduled', 'live', 'completed', 'archived'];
 const STAFF_ROLES: SeasonStaffMember['role'][] = ['co_organizer', 'admin'];
 const QUALIFICATION_TYPES: SeasonQualificationType[] = ['qualified', 'wildcard', 'reserve'];
 const SEASON_TOURNAMENT_ROLES = ['qualifier', 'event', 'regional_final', 'last_chance_qualifier', 'playoff', 'grand_final', 'custom'];
@@ -237,7 +229,7 @@ const SeasonManage = () => {
   const duplicateSeason = useDuplicateSeason();
   const addSeasonTournament = useAddSeasonTournament();
   const tournamentsQuery = useSeasonTournaments(seasonId ?? '');
-  const advancementQuery = useSeasonAdvancement(seasonId ?? '');
+  useSeasonAdvancement(seasonId ?? '');
   const auditLogQuery = useSeasonAuditLog(seasonId ?? '');
 
   const [overview, setOverview] = useState<OverviewState>(emptyOverview);
@@ -246,8 +238,6 @@ const SeasonManage = () => {
   const [nodeRows, setNodeRows] = useState<SeasonBuilderNode[]>([]);
   const [ruleRows, setRuleRows] = useState<SeasonRuleDraft[]>([]);
   const [qualificationBusyId, setQualificationBusyId] = useState<string | null>(null);
-  const [announceTitle, setAnnounceTitle] = useState('');
-  const [announceBody, setAnnounceBody] = useState('');
   const [showStructureSaveConfirm, setShowStructureSaveConfirm] = useState(false);
   const [rosterLock, setRosterLock] = useState(false);
   const [allowRosterChangesBetween, setAllowRosterChangesBetween] = useState(true);
@@ -381,7 +371,9 @@ const SeasonManage = () => {
       resetNewTournament();
       setIsAddTournamentOpen(false);
       await tournamentsQuery.refetch();
-    } catch {}
+    } catch {
+      // addSeasonTournament surfaces errors via mutation state
+    }
   };
 
   const handleOverviewSave = async () => {
@@ -668,35 +660,6 @@ const SeasonManage = () => {
       toast({
         title: 'Duplicate failed',
         description: duplicateError instanceof Error ? duplicateError.message : 'Could not duplicate this season.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!seasonId || !data) return;
-
-    if (data.season.status !== 'draft') {
-      toast({
-        title: 'Cannot delete',
-        description: 'Only draft seasons can be deleted.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!confirm('Are you sure you want to delete this season? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await apiClient.delete(`/api/seasons/${seasonId}`);
-      toast({ title: 'Season deleted', description: 'The season has been deleted.' });
-      window.location.href = '/organizer/seasons';
-    } catch (deleteError) {
-      toast({
-        title: 'Deletion failed',
-        description: deleteError instanceof Error ? deleteError.message : 'Could not delete this season.',
         variant: 'destructive',
       });
     }

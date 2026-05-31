@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import {
     type StaffPermission,
     type OrganizationStaffRecord,
@@ -19,7 +19,7 @@ import {
     fetchAuditLogs,
     fetchOrgTournaments,
 } from "@/lib/organizationStaff";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import {
     ChevronDown,
     ChevronRight,

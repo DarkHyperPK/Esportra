@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, Clock, Loader2 } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { Calendar } from "@/components/ui/calendar";
 import { getTimezoneAbbr } from "@/lib/timeUtils";
 import { CommandEmptyState, CommandPanel, CommandToolbar } from "@/components/management/CommandSurface";

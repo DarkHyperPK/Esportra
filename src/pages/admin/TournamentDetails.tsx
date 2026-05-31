@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
@@ -25,24 +25,23 @@ const TournamentDetails = () => {
   const navigate = useNavigate();
   const [tournament, setTournament] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
 
-  const fetchTournament = async () => {
+  const fetchTournament = useCallback(async () => {
     setLoading(true);
     try {
       const response = await apiClient.get<any>(`/api/tournaments/${id}`);
       const data = response?.tournament || response;
       setTournament(data);
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Failed to fetch tournament.' });
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
-    fetchTournament();
-  }, [id]);
+    void fetchTournament();
+  }, [fetchTournament]);
 
   const handleMarkFinished = async () => {
     try {
@@ -55,7 +54,7 @@ const TournamentDetails = () => {
 
       toast({ title: 'Tournament marked as finished.' });
       await fetchTournament();
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Failed to mark as finished.' });
     }
   };
@@ -67,7 +66,7 @@ const TournamentDetails = () => {
       await auditLog.log('delete', 'tournament', id!, name, { deleted_from: 'admin_details' });
       toast({ title: 'Tournament deleted.' });
       navigate('/admin');
-    } catch (error) {
+    } catch {
       toast({ title: 'Error', description: 'Failed to delete tournament.' });
     }
   };

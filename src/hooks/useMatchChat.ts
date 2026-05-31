@@ -11,8 +11,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { HubConnectionState } from '@microsoft/signalr';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { useHub } from '@/contexts/SignalRContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 
 interface MatchMessage {

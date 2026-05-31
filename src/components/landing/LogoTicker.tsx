@@ -33,7 +33,7 @@ const LogoTicker = () => {
 
             <div className="container mx-auto px-4 relative z-10">
                 <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20">
-                    {sponsorsWithLogos.map((sponsor, index) => (
+                    {sponsorsWithLogos.map((sponsor, _index) => (
                         <motion.a
                             key={sponsor.id}
                             href={sponsor.website_url}

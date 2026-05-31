@@ -1,19 +1,15 @@
 import { Toaster } from "@/components/ui/toaster";
-import { Loader2 } from "lucide-react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NotificationProvider } from "@/components/NotificationContext";
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { AnimatePresence } from "framer-motion";
 import { PageTransition } from "@/components/PageTransition";
 import { AdminProvider } from "@/contexts/AdminContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { SignalRProvider } from "@/contexts/SignalRContext";
 import { TransitionLayout } from "@/components/TransitionLayout";
-import { LoadingSpinner } from "@/components/effects/LoadingSpinner";
 import { SuspensionGuard } from "@/components/auth/SuspensionGuard";
 import { useGlobalSmoothScroll } from "@/hooks/useGlobalSmoothScroll";
 
@@ -90,7 +86,7 @@ const CreateSeason = lazyWithRetry(() => import("./pages/organizer/CreateSeason"
 const SeasonSetupPlan = lazyWithRetry(() => import("./pages/organizer/SeasonSetupPlan"));
 const SeasonSetupReview = lazyWithRetry(() => import("./pages/organizer/SeasonSetupReview"));
 const SeasonManage = lazyWithRetry(() => import("./pages/organizer/SeasonManage"));
-const TournamentList = lazyWithRetry(() => import("./pages/organizer/TournamentList"));
+const _TournamentList = lazyWithRetry(() => import("./pages/organizer/TournamentList"));
 const ManageTournaments = lazyWithRetry(() => import("./pages/organizer/ManageTournaments"));
 const TournamentManage = lazyWithRetry(() => import("./pages/organizer/TournamentManage"));
 const EditTournament = lazyWithRetry(() => import("./pages/tournaments/Edit"));
@@ -103,7 +99,7 @@ const ManageBracketPage = lazyWithRetry(() => import("./pages/organizer/ManageBr
 const FullscreenBracketPage = lazyWithRetry(() => import("./pages/tournaments/brackets/FullscreenBracketPage"));
 const OrganizationPublicProfile = lazyWithRetry(() => import("./pages/org/PublicProfile"));
 const OrganizationWizard = lazyWithRetry(() => import("./pages/organizer/OrganizationWizard"));
-const OrganizationSettings = lazyWithRetry(() => import("./pages/organizer/OrganizationSettings"));
+const _OrganizationSettings = lazyWithRetry(() => import("./pages/organizer/OrganizationSettings"));
 const AdminSeasonAudit = lazyWithRetry(() => import("./pages/admin/AdminSeasonAudit"));
 const AdminSeasonOverride = lazyWithRetry(() => import("./pages/admin/AdminSeasonOverride"));
 const AdminSeasonAnalytics = lazyWithRetry(() => import("./pages/admin/AdminSeasonAnalytics"));
@@ -135,7 +131,7 @@ const ADMIN_ROLE_SETS = {
 const VenueSearch = lazyWithRetry(() => import("./pages/venues/VenueSearchV2"));
 const FeaturedVenues = lazyWithRetry(() => import("./pages/venues/Featured"));
 const VenueDetails = lazyWithRetry(() => import("./pages/venues/VenueDetailsV2"));
-const ManageVenues = lazyWithRetry(() => import("./pages/venues/ManageVenues"));
+const _ManageVenues = lazyWithRetry(() => import("./pages/venues/ManageVenues"));
 const ListVenue = lazyWithRetry(() => import("./pages/venues/ListVenue"));
 const EditVenue = lazyWithRetry(() => import("./pages/venues/EditVenue"));
 
@@ -143,7 +139,7 @@ const EditVenue = lazyWithRetry(() => import("./pages/venues/EditVenue"));
 const BrowseTournaments = lazyWithRetry(() => import("./pages/tournaments/List"));
 const CreateTournament = lazyWithRetry(() => import("./pages/tournaments/Create"));
 const SeasonsList = lazyWithRetry(() => import("./pages/seasons/List"));
-const SeasonsDetails = lazyWithRetry(() => import("./pages/seasons/Details"));
+const _SeasonsDetails = lazyWithRetry(() => import("./pages/seasons/Details"));
 const SeasonPublic = lazyWithRetry(() => import("./pages/seasons/SeasonPublic"));
 
 // About

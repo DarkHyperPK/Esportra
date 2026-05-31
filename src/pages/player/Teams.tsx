@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from "framer-motion";
-import { useAuth } from '@/contexts/AuthContext';
-import { useRole } from '@/contexts/RoleContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useRole } from '@/hooks/useRole';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
@@ -19,7 +18,7 @@ import { Link } from 'react-router-dom';
 import TeamCreationWizard from '@/components/player/TeamCreationWizard';
 import CaptainJourneyTour from '@/components/player/CaptainJourneyTour';
 import { hasSeenTour, markTourSeen } from '@/lib/onboardingFlags';
-import { Plus, Users, Settings, Crown, Trash2, UserMinus, UserPlus, Calendar, Trophy, Gamepad2, Edit, X, Upload, Save, Shield } from 'lucide-react';
+import { Plus, Users, Crown, Trash2, UserMinus, Calendar, Trophy, Gamepad2, Edit, X, Shield } from 'lucide-react';
 import esportsGames from '@/data/esportsGames.json';
 import EditTeamDialog from '@/components/player/EditTeamDialog';
 import PlayerCard from '@/components/player/PlayerCard';
@@ -50,12 +49,11 @@ const SortablePlayerCard: React.FC<{
 };
 
 const TeamsPage = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { canCreateTeams, currentRole } = useRole();
   const {
     userTeams,
     fetchUserTeams,
-    createTeam,
     inviteUserToTeam,
     removeMemberFromTeam,
     transferCaptaincy,
@@ -70,15 +68,9 @@ const TeamsPage = () => {
   // State for team management
   const [showRemoveMember, setShowRemoveMember] = useState(false);
   const [showEditTeam, setShowEditTeam] = useState(false);
-  const [editTeamName, setEditTeamName] = useState('');
-  const [editTeamTag, setEditTeamTag] = useState('');
-  const [editTeamLogoFile, setEditTeamLogoFile] = useState<File | null>(null);
-  const [editTeamLogoUrl, setEditTeamLogoUrl] = useState<string | null>(null);
-  const [editSubmitting, setEditSubmitting] = useState(false);
 
   // Game images for edit modal
   const [gameImages, setGameImages] = useState<Record<string, string>>({});
-  const [imagesLoading, setImagesLoading] = useState(true);
 
   type TeamMember = {
     id: string;
@@ -102,16 +94,9 @@ const TeamsPage = () => {
   const [showTransferCaptaincy, setShowTransferCaptaincy] = useState(false);
   const [showDisbandTeam, setShowDisbandTeam] = useState(false);
 
-  const [showTeamStats, setShowTeamStats] = useState(false);
-  const [showMemberRoles, setShowMemberRoles] = useState(false);
-  const [showTournamentManagement, setShowTournamentManagement] = useState(false);
-  const [showTeamSettings, setShowTeamSettings] = useState(false);
   const [showTeamCreationWizard, setShowTeamCreationWizard] = useState(false);
   const [showJourneyTour, setShowJourneyTour] = useState(false);
   const [showTeamInviteModal, setShowTeamInviteModal] = useState(false);
-  const [teamLogo, setTeamLogo] = useState<File | null>(null);
-  const [teamBio, setTeamBio] = useState('');
-  const [teamColors, setTeamColors] = useState({ primary: '#3B82F6', secondary: '#1E40AF' });
   const [pendingInvites, setPendingInvites] = useState<Array<{ id: string; team_id: string; roster_id?: string | null; team_name?: string; roster_name?: string }>>([]);
   const [teamInvites, setTeamInvites] = useState<Array<{ id: string; invited_email?: string | null; invited_user_id?: string | null; created_at?: string }>>([]);
   const [ownerProfile, setOwnerProfile] = useState<{ username?: string; email?: string; avatar_url?: string; card_image_url?: string } | null>(null);
@@ -135,23 +120,18 @@ const TeamsPage = () => {
   const [newRosterGame, setNewRosterGame] = useState('');
   const [newRosterFormat, setNewRosterFormat] = useState<string>('');
   const [newRosterTeamSize, setNewRosterTeamSize] = useState<number>(5);
-  const [newRosterMembers, setNewRosterMembers] = useState<string[]>([]);
   const [rosterSubmitting, setRosterSubmitting] = useState(false);
   const [manageRosterModalOpen, setManageRosterModalOpen] = useState(false);
   const [manageRoster, setManageRoster] = useState<Roster | null>(null);
   const [manageMembers, setManageMembers] = useState<string[]>([]);
   const [manageMemberStatuses, setManageMemberStatuses] = useState<Record<string, boolean>>({});
   const [editRosterName, setEditRosterName] = useState('');
-  const [editRosterGame, setEditRosterGame] = useState('');
-  const [editRosterFormat, setEditRosterFormat] = useState('');
-  const [editRosterTeamSize, setEditRosterTeamSize] = useState<number>(5);
   const [inviteSearch, setInviteSearch] = useState('');
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [rosterInvites, setRosterInvites] = useState<Array<{ id: string; invited_email?: string | null; invited_user_id?: string | null; created_at?: string; profiles?: { username: string; avatar_url: string } | null }>>([]);
   const [inviteInput, setInviteInput] = useState('');
   const [selectedInvitees, setSelectedInvitees] = useState<Array<{ id: string; email: string; username?: string }>>([]);
   const [suggestedUsers, setSuggestedUsers] = useState<Array<{ id: string; email: string; username?: string }>>([]);
-  const [isSearchingInvitee, setIsSearchingInvitee] = useState(false);
   const [teamStats, setTeamStats] = useState({ matches: 0, wins: 0, winRate: 0, tournamentWins: 0 });
   const [selectedTournament, setSelectedTournament] = useState<any>(null);
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
@@ -202,30 +182,12 @@ const TeamsPage = () => {
     id: string;
     tournaments?: { name: string; start_date: string; prize_pool: string; slug?: string; game?: string; winner_id?: string | null; status?: string } | null;
   };
-  const [upcomingTournaments, setUpcomingTournaments] = useState<any[]>([]);
   const [teamRegistrations, setTeamRegistrations] = useState<RegistrationWithTournament[]>([]);
 
   const currentTeam = userTeams?.[0];
   const isCaptain = currentTeam?.owner_id === user?.id;
 
-  // Debug logging
-  // Debug logging removed for production safety
-
-  useEffect(() => {
-    if (user?.id) {
-      fetchUserTeams();
-      fetchUpcomingTournaments();
-      fetchGameImages();
-    }
-  }, [user?.id, fetchUserTeams]);
-
-  useEffect(() => {
-    if (currentTeam?.id) {
-      fetchTeamStats();
-    }
-  }, [currentTeam?.id]);
-
-  const fetchTeamStats = async () => {
+  const fetchTeamStats = useCallback(async () => {
     if (!currentTeam?.id) return;
     try {
       const stats = await apiClient.get<{ matches: number; wins: number; winRate: number; tournamentWins: number }>(
@@ -235,25 +197,9 @@ const TeamsPage = () => {
     } catch (err) {
       console.error('Error in fetchTeamStats:', err);
     }
-  };
+  }, [currentTeam?.id]);
 
-  // Listen for team invite acceptance events
-  useEffect(() => {
-    const handleTeamInviteAccepted = () => {
-      console.log('Team invite accepted, refreshing teams...');
-      fetchUserTeams();
-    };
-
-    window.addEventListener('teamInviteAccepted', handleTeamInviteAccepted);
-
-    return () => {
-      window.removeEventListener('teamInviteAccepted', handleTeamInviteAccepted);
-    };
-  }, [fetchUserTeams]);
-
-  // Fetch game images for edit modal
-  const fetchGameImages = async () => {
-    setImagesLoading(true);
+  const fetchGameImages = useCallback(async () => {
     const images: Record<string, string> = {};
     const games = esportsGames.games;
 
@@ -268,8 +214,105 @@ const TeamsPage = () => {
       })
     );
     setGameImages({ ...images });
-    setImagesLoading(false);
-  };
+  }, []);
+
+  const fetchTeamPendingInvites = useCallback(async () => {
+    if (!currentTeam?.id) return;
+    try {
+      const data = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/invites`);
+      setTeamInvites((data || []).filter((i: any) => !i.roster_id));
+    } catch {
+      setTeamInvites([]);
+    }
+  }, [currentTeam?.id]);
+
+  const fetchRosters = useCallback(async () => {
+    if (!userTeams || userTeams.length === 0) return;
+    try {
+      const allRosters: Roster[] = [];
+      for (const team of userTeams) {
+        try {
+          const data = await apiClient.get<any[]>(`/api/teams/${team.id}/rosters`);
+          const rosterList: Roster[] = (data || []).map((r: any) => {
+            const members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
+              .map((m: any) => ({
+                user_id: m.user_id,
+                username: m.username || 'Unknown',
+                avatar_url: m.avatar_url || null,
+                card_image_url: m.card_image_url || null,
+                is_starter: m.is_starter ?? true
+              }));
+
+            if (team.owner_id && !members.some(m => m.user_id === team.owner_id)) {
+              const ownerMember = team.members?.find((m: any) => m.id === team.owner_id || m.user_id === team.owner_id);
+              members.unshift({
+                user_id: team.owner_id,
+                username: ownerMember?.username || 'Captain',
+                avatar_url: ownerMember?.avatar_url || null,
+                card_image_url: ownerMember?.card_image_url || null
+              });
+            }
+
+            return {
+              id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
+              members, member_count: members.length
+            };
+          });
+          allRosters.push(...rosterList);
+        } catch (err) {
+          console.error(`Error fetching rosters for team ${team.id}:`, err);
+        }
+      }
+      setRosters(allRosters);
+    } catch (err) {
+      console.error('Error in fetchRosters:', err);
+      setRosters([]);
+    }
+  }, [userTeams]);
+
+  const fetchTeamRegistrations = useCallback(async () => {
+    if (!currentTeam || !currentTeam.id) {
+      setTeamRegistrations([]);
+      return;
+    }
+    try {
+      const data = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/registrations`);
+      const parsed = (data || []).map((r: any) => ({
+        ...r,
+        tournaments: typeof r.tournaments === 'string' ? JSON.parse(r.tournaments) : r.tournaments
+      }));
+      setTeamRegistrations(parsed);
+    } catch {
+      setTeamRegistrations([]);
+    }
+  }, [currentTeam]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserTeams();
+      fetchGameImages();
+    }
+  }, [user?.id, fetchUserTeams, fetchGameImages]);
+
+  useEffect(() => {
+    if (currentTeam?.id) {
+      fetchTeamStats();
+    }
+  }, [currentTeam?.id, fetchTeamStats]);
+
+  // Listen for team invite acceptance events
+  useEffect(() => {
+    const handleTeamInviteAccepted = () => {
+      console.log('Team invite accepted, refreshing teams...');
+      fetchUserTeams();
+    };
+
+    window.addEventListener('teamInviteAccepted', handleTeamInviteAccepted);
+
+    return () => {
+      window.removeEventListener('teamInviteAccepted', handleTeamInviteAccepted);
+    };
+  }, [fetchUserTeams]);
 
   // Editing logic removed in favor of EditTeamDialog component
 
@@ -309,66 +352,6 @@ const TeamsPage = () => {
   if (typeof window !== 'undefined') {
     (window as any).testStorageAccess = testStorageAccess;
   };
-
-  const handlePlayerCardUpload = async (file: File, teamName: string, memberId: string, username: string) => {
-    if (!file || !user) return;
-
-    // Sanitize team name for folder path
-    const sanitizedTeamName = teamName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const sanitizedUsername = username.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${sanitizedUsername}_${memberId}_${Date.now()}.${fileExt}`;
-    const filePath = `player cards/${sanitizedTeamName}/${fileName}`;
-
-    try {
-      const { error: uploadError } = await supabase.storage
-        .from('users.avatars')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('users.avatars')
-        .getPublicUrl(filePath);
-
-      // Update team member's avatar in profiles table if it's the user's own card
-      // OR if we want to store it specifically for this team context?
-      // The user request implies "player cards", which usually means the profile picture 
-      // used in the card. For now, we update the profile avatar_url to keep it simple
-      // unless we have a specific team_member_avatar column.
-      // Based on previous code, PlayerCard uses member.avatar_url from profile.
-
-      await apiClient.put(`/api/profiles/${memberId}/card-image`, { url: publicUrl });
-
-      // Refresh data
-      toast({
-        title: "Player Card Updated",
-        description: "Your new player card image has been uploaded successfully.",
-      });
-
-      // Trigger refresh
-      window.dispatchEvent(new Event('teamAppsUpdated')); // Using existing event or creating new one
-      // Or just force re-fetch
-      setRefreshKey(prev => prev + 1);
-
-    } catch (error: any) {
-      console.error('Error uploading player card:', error);
-      toast({
-        title: "Upload Failed",
-        description: error.message || "Could not upload player card image.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  useEffect(() => {
-    if (user?.id) fetchUserTeams();
-  }, [user?.id, refreshKey]);
 
   useEffect(() => {
     if (currentTeam) {
@@ -438,80 +421,7 @@ const TeamsPage = () => {
       setOwnerProfile(null);
       setTeamMembers([]);
     }
-  }, [currentTeam, isCaptain]);
-
-  const fetchStatsForMembers = async (members: TeamMember[]) => {
-    const membersWithPuuid = members.filter(m => m?.riot_puuid);
-    if (membersWithPuuid.length === 0) return;
-
-    for (const member of membersWithPuuid) {
-      if (!member) continue;
-      try {
-        // 1. Get region/shard via .NET proxy
-        const shardData = await apiClient.post<any>('/api/integrations/riot/proxy', {
-          endpoint: `/riot/account/v1/active-shards/by-game/val/by-puuid/${member.riot_puuid}`, region: 'americas'
-        });
-
-        const shard = shardData?.activeShard?.toLowerCase();
-        let valRegion = 'ap';
-        if (['na', 'br', 'latam'].includes(shard)) { valRegion = 'na'; }
-        else if (['eu'].includes(shard)) { valRegion = 'eu'; }
-
-        // 2. Get match history
-        const historyData = await apiClient.post<any>('/api/integrations/riot/proxy', {
-          endpoint: `/val/match/v1/matchlists/by-puuid/${member.riot_puuid}`, region: valRegion
-        });
-
-        if (!historyData?.history || historyData.history.length === 0) continue;
-
-        const latestMatchId = historyData.history[0]?.matchId;
-
-        if (member.stats?.latest_match_id === latestMatchId) continue;
-
-        const latestMatches = historyData.history.slice(0, 5);
-        let totalKills = 0, totalDeaths = 0, totalWins = 0, totalHeadshots = 0, totalHits = 0;
-
-        for (const mInfo of latestMatches) {
-          const detail = await apiClient.post<any>('/api/integrations/riot/proxy', {
-            endpoint: `/val/match/v1/matches/${mInfo.matchId}`, region: valRegion
-          });
-          if (!detail || detail.error) continue;
-
-          const p = detail.players.find((pl: any) => pl.puuid === member.riot_puuid);
-          if (!p) continue;
-
-          totalKills += p.stats.kills;
-          totalDeaths += p.stats.deaths;
-
-          const teamDetails = detail.teams.find((t: any) => t.teamId === p.teamId);
-          if (teamDetails?.won) totalWins++;
-
-          detail.roundResults?.forEach((round: any) => {
-            const ps = round.playerStats.find((s: any) => s.puuid === member.riot_puuid);
-            ps?.damage?.forEach((d: any) => {
-              totalHeadshots += d.headshots;
-              totalHits += (d.headshots + d.bodyshots + d.legshots);
-            });
-          });
-        }
-
-        const calculatedStats = {
-          kd: (totalKills / Math.max(1, totalDeaths)).toFixed(2),
-          winRate: Math.round((totalWins / latestMatches.length) * 100) + '%',
-          hs: totalHits > 0 ? Math.round((totalHeadshots / totalHits) * 100) + '%' : '0%',
-          latest_match_id: latestMatchId
-        };
-
-        // Stats calculation done — update local state only (no backend persistence)
-
-        setTeamMembers(prev => prev.map(m =>
-          m?.user_id === member.user_id ? { ...m, stats: calculatedStats } : m
-        ));
-      } catch (err) {
-        console.error(`Failed to fetch stats for ${member.username}:`, err);
-      }
-    }
-  };
+  }, [currentTeam, isCaptain, fetchTeamRegistrations, fetchRosters, fetchTeamPendingInvites]);
 
   useEffect(() => {
     const fetchInvites = async () => {
@@ -525,89 +435,6 @@ const TeamsPage = () => {
     };
     fetchInvites();
   }, [user?.id]);
-
-  const fetchTeamPendingInvites = async () => {
-    if (!currentTeam?.id) return;
-    try {
-      const data = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/invites`);
-      // Filter to team-level invites (no roster_id)
-      setTeamInvites((data || []).filter((i: any) => !i.roster_id));
-    } catch {
-      setTeamInvites([]);
-    }
-  };
-
-  const fetchRosters = async () => {
-    if (!userTeams || userTeams.length === 0) return;
-    try {
-      const allRosters: Roster[] = [];
-      for (const team of userTeams) {
-        try {
-          const data = await apiClient.get<any[]>(`/api/teams/${team.id}/rosters`);
-          const rosterList: Roster[] = (data || []).map((r: any) => {
-            const members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
-              .map((m: any) => ({
-                user_id: m.user_id,
-                username: m.username || 'Unknown',
-                avatar_url: m.avatar_url || null,
-                card_image_url: m.card_image_url || null,
-                is_starter: m.is_starter ?? true
-              }));
-
-            // Add captain if not already in members (use team.members data, no external state dependency)
-            if (team.owner_id && !members.some(m => m.user_id === team.owner_id)) {
-              const ownerMember = team.members?.find((m: any) => m.id === team.owner_id || m.user_id === team.owner_id);
-              members.unshift({
-                user_id: team.owner_id,
-                username: ownerMember?.username || 'Captain',
-                avatar_url: ownerMember?.avatar_url || null,
-                card_image_url: ownerMember?.card_image_url || null
-              });
-            }
-
-            return {
-              id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
-              members, member_count: members.length
-            };
-          });
-          allRosters.push(...rosterList);
-        } catch (err) {
-          console.error(`Error fetching rosters for team ${team.id}:`, err);
-        }
-      }
-      setRosters(allRosters);
-    } catch (err) {
-      console.error('Error in fetchRosters:', err);
-      setRosters([]);
-    }
-  };
-
-  const fetchUpcomingTournaments = async () => {
-    try {
-      const data = await apiClient.get<any[]>('/api/tournaments/upcoming');
-      setUpcomingTournaments(data || []);
-    } catch {
-      setUpcomingTournaments([]);
-    }
-  };
-
-  const fetchTeamRegistrations = async () => {
-    if (!currentTeam || !currentTeam.id) {
-      setTeamRegistrations([]);
-      return;
-    }
-    try {
-      const data = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/registrations`);
-      // Parse tournaments JSON if returned as string
-      const parsed = (data || []).map((r: any) => ({
-        ...r,
-        tournaments: typeof r.tournaments === 'string' ? JSON.parse(r.tournaments) : r.tournaments
-      }));
-      setTeamRegistrations(parsed);
-    } catch {
-      setTeamRegistrations([]);
-    }
-  };
 
   const handleLeaveTeam = async () => {
     if (!currentTeam) return;
@@ -726,7 +553,6 @@ const TeamsPage = () => {
     setNewRosterGame('');
     setNewRosterFormat('');
     setNewRosterTeamSize(5);
-    setNewRosterMembers([]);
     setRosterModalOpen(true);
   };
 
@@ -742,7 +568,6 @@ const TeamsPage = () => {
       toast({ title: 'Duplicate game', description: 'You already have a roster for this game.', variant: 'destructive' });
       return;
     }
-    const maxAllowed = newRosterTeamSize === 5 ? 7 : newRosterTeamSize;
     // Creation no longer requires full members; allow 0..max (members can be added later)
     setRosterSubmitting(true);
     try {
@@ -855,19 +680,18 @@ const TeamsPage = () => {
         return;
       }
       try {
-        setIsSearchingInvitee(true);
         const data = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(q)}`);
         const existingRosterIds = new Set(manageMembers);
         const toShow = (data || [])
           .filter((u: any) => u.id !== user?.id && !existingRosterIds.has(u.id) && !selectedInvitees.some(s => s.id === u.id))
           .map((u: any) => ({ id: u.id, email: u.email, username: u.username }));
         setSuggestedUsers(toShow);
-      } finally {
-        setIsSearchingInvitee(false);
+      } catch {
+        setSuggestedUsers([]);
       }
     };
     run();
-  }, [inviteInput, manageRoster, currentTeam?.members, selectedInvitees]);
+  }, [inviteInput, manageRoster, manageMembers, selectedInvitees, user?.id]);
 
   const handleAddMemberToRoster = async (userId: string) => {
     if (!manageRoster || !currentTeam) return;
@@ -998,60 +822,6 @@ const TeamsPage = () => {
     } catch (e: any) {
       console.error('Failed to delete roster:', e);
       toast({ title: 'Failed to delete roster', description: e?.message || 'Could not delete roster.', variant: 'destructive' });
-    }
-  };
-
-  const inviteByEmail = async () => {
-    if (!manageRoster || !currentTeam) return;
-    const email = (inviteSearch || '').trim();
-    if (!email || !email.includes('@')) {
-      toast({ title: 'Enter a valid email', variant: 'destructive' });
-      return;
-    }
-    const maxAllowed = manageRoster.team_size === 5 ? 7 : manageRoster.team_size;
-    if (manageMembers.length >= maxAllowed) {
-      toast({ title: 'Roster is full', description: `Max ${maxAllowed} members for this roster.`, variant: 'destructive' });
-      return;
-    }
-    try {
-      setInvitingUserId('invite');
-      // Find user by email
-      const results = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(email)}`);
-      const prof = (results || []).find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
-      if (!prof) {
-        toast({ title: 'User not found', description: 'No account with that email.', variant: 'destructive' });
-        return;
-      }
-
-      // Create invitation via API (handles duplicate/team checks + notification server-side)
-      const invite = await apiClient.post<any>(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/invite`, {
-        userId: prof.id, email
-      });
-
-      if (invite) {
-        setRosterInvites(prev => [{ id: invite.id, invited_email: invite.invited_email, invited_user_id: invite.invited_user_id, created_at: invite.created_at }, ...prev]);
-        setInviteSearch('');
-      }
-
-      // Dispatch Email
-      await sendEmail({
-        type: 'TeamInvite',
-        email: email,
-        data: {
-          teamName: currentTeam.name,
-          invitedBy: user?.user_metadata?.username || 'A player',
-        }
-      }).then(res => {
-        if (!res.success) {
-          console.error('[InviteByEmail] Email failed:', res.error);
-        }
-      });
-
-      toast({ title: 'Invitation sent' });
-    } catch (e: any) {
-      toast({ title: 'Invite failed', description: e?.message || 'Could not invite user', variant: 'destructive' });
-    } finally {
-      setInvitingUserId(null);
     }
   };
 

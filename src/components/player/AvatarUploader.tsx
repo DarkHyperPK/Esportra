@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { User, Camera, Loader2, X } from 'lucide-react';
+import { Camera, Loader2, X } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -54,7 +54,7 @@ const AvatarUploader = ({ value, onChange, onRemove, size = 'xl', uploadPath }: 
 
         setIsUploading(true);
         try {
-            const fileExt = file.name.split('.').pop();
+            const _fileExt = file.name.split('.').pop();
 
             // Use uploadPath if provided (e.g. "Player-cards/team_name/userId_card.png")
             // Otherwise default to avatars folder

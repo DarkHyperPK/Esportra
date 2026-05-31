@@ -1,9 +1,8 @@
 import React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, UserCheck, Users, Bell } from 'lucide-react';
+import { Calendar, Clock, UserCheck, Bell } from 'lucide-react';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
 

@@ -6,20 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Check, ChevronRight, ArrowLeft, Trophy, Users, Shield, Map as MapIcon, AlertCircle, Plus, Trash2, Pencil, X, ChevronsUpDown, Book, Eye } from 'lucide-react';
+import { Check, ChevronRight, ArrowLeft, Trophy, Users, Shield, Plus, Trash2, Pencil, Book } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 
 import { RECOMMENDED_TEMPLATES } from '@/data/recommended_templates';
 import { StageGuidelineModal } from './StageGuidelineModal';
-import { getGameTableName } from '@/utils/gameTables';
 import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import esportsGames from '@/data/esportsGames.json';
 
 // Maps series format strings from esportsGames.json to display labels and numeric best_of values
@@ -266,7 +262,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     const maxTeams = d.max_teams === 0 ? null : d.max_teams;
                     setTournamentMaxParticipants(maxTeams);
 
-                    let gData = gameData;
+                    const gData = gameData;
                     if (game) {
                         // Check game data again in case it changed or wasn't set initially
                         const gData = esportsGames.games.find(g =>

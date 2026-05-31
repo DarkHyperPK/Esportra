@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useAdmin } from "@/contexts/AdminContext";
+import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -16,20 +16,15 @@ import {
   BarChart3,
   UserCheck,
   Activity,
-  ChevronRight,
-  Sparkles,
   RefreshCw,
   Download,
   Search,
   Eye,
-  Clock,
   CheckCircle,
   AlertTriangle,
   TrendingUp,
   Calendar,
   Globe,
-  ArrowUpRight,
-  ArrowDownRight,
   Home,
   LogOut,
   Megaphone,

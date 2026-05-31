@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar, Clock, Check, X, ArrowRightLeft, AlertCircle } from 'lucide-react';
 import { useTimeProposal } from '@/hooks/useTimeProposal';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
-import { getTimezoneAbbr, localInputToUTC, utcToLocalDate } from '@/lib/timeUtils';
+import { getTimezoneAbbr, utcToLocalDate } from '@/lib/timeUtils';
 import { Countdown } from '@/components/ui/Countdown';
 
 interface TimeProposalCardProps {
@@ -23,15 +23,15 @@ interface TimeProposalCardProps {
 const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
     matchId,
     roundDeadline,
-    team1Name,
-    team2Name,
-    userTeamId,
-    team1Id,
+    team1Name: _team1Name,
+    team2Name: _team2Name,
+    userTeamId: _userTeamId,
+    team1Id: _team1Id,
     isCaptain,
     onTimeAccepted,
 }) => {
     const { user } = useAuth();
-    const { activeProposal, acceptedProposal, proposeTime, acceptProposal, rejectProposal, counterProposal, isLoading } = useTimeProposal(matchId);
+    const { activeProposal, acceptedProposal, proposeTime, acceptProposal, rejectProposal, counterProposal } = useTimeProposal(matchId);
 
     const [showPicker, setShowPicker] = useState(false);
     const [proposedDate, setProposedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
@@ -41,7 +41,6 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
     console.log('[TimeProposalCard] Match:', matchId, 'Deadline:', roundDeadline);
 
     const isMyProposal = activeProposal?.proposed_by === user?.id;
-    const isTeam1 = userTeamId === team1Id;
 
     const handlePropose = async () => {
         // Convert local date+time to a Date object (interpreted as local time)

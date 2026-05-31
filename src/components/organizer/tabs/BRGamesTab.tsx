@@ -26,8 +26,8 @@ interface BRGamesTabProps {
     scoringPreset: ScoringPreset;
 }
 
-export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId, stages: stagesProp, scoringPreset }) => {
-    const stages = stagesProp ?? [];
+export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId: _tournamentId, stages: stagesProp, scoringPreset }) => {
+    const stages = useMemo(() => stagesProp ?? [], [stagesProp]);
     const sortedStages = useMemo(
         () => [...stages].sort((a, b) => a.stage_order - b.stage_order),
         [stages]

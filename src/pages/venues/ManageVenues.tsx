@@ -1,7 +1,7 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Edit, Trash2, MapPin, Eye, Copy, Check, AlertCircle } from 'lucide-react';
@@ -68,13 +68,7 @@ const ManageVenues = () => {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [submitting, setSubmitting] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (user) {
-            fetchMyVenues();
-        }
-    }, [user]);
-
-    const fetchMyVenues = async () => {
+    const fetchMyVenues = useCallback(async () => {
         try {
             setLoading(true);
             const data = await apiClient.get<Venue[]>(`/api/venues?owner_id=${user?.id}`);
@@ -89,7 +83,13 @@ const ManageVenues = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user?.id, toast]);
+
+    useEffect(() => {
+        if (user) {
+            fetchMyVenues();
+        }
+    }, [user, fetchMyVenues]);
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this venue? This cannot be undone.')) return;

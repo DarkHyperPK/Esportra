@@ -1,8 +1,7 @@
-import { useState, useRef, MouseEvent } from 'react';
-import { motion, AnimatePresence, useMotionTemplate, useMotionValue } from 'framer-motion';
-import { Users, Trophy, Wallet, Calendar, ShieldCheck, MapPin, BarChart3, Globe2, Crown, Zap } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Users, Trophy, Wallet, ShieldCheck, MapPin, BarChart3, Globe2, Crown, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Card, CardContent } from "@/components/ui/card";
 import { getWebsiteAssetUrl } from '@/lib/storage';
 
 type FeatureRole = 'players' | 'organizers' | 'venues';

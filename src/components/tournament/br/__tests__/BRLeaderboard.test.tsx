@@ -8,7 +8,6 @@ function hasQualificationCutoff(cutoff: number | undefined): boolean {
 describe('BRLeaderboard qualification cutoff guard', () => {
   it('treats advancement_count 0 as disabled (prevents orphan "0" text nodes)', () => {
     expect(hasQualificationCutoff(0)).toBe(false);
-    expect(0 && hasQualificationCutoff(0)).toBe(0);
     expect(hasQualificationCutoff(undefined)).toBe(false);
     expect(hasQualificationCutoff(4)).toBe(true);
   });

@@ -10,7 +10,7 @@ import {
 import { Loader2 } from 'lucide-react';
 import { useVenueSearch } from '@/hooks/useVenueSearch';
 import { useVenueImpressionsData, useVenueImpressionTotals } from '@/hooks/useVenueImpressions';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 
 const TOOLTIP_STYLE = {
   contentStyle: {

@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/select";
 import esportsGames from '@/data/esportsGames.json';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Checkbox } from '@/components/ui/checkbox';
 
 interface FormData {
   name: string;

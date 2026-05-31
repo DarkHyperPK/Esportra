@@ -1,5 +1,5 @@
 import React from "react";
-import { countries, getCountryFlag, getCountryFlagUrl } from "@/utils/countries";
+import { countries, getCountryFlagUrl } from "@/utils/countries";
 import {
     Select,
     SelectContent,

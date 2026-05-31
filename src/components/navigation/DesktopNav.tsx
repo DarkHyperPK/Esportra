@@ -1,8 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
 import { ChevronDown, MapPin, Trophy, Medal, Info, Handshake, Shield } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRole } from "@/contexts/RoleContext";
-import { useAdmin } from "@/contexts/AdminContext";
+import { useAuth } from "@/hooks/useAuth";
+import { useRole } from "@/hooks/useRole";
+import { useAdmin } from "@/hooks/useAdmin";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import UserMenu from "./UserMenu";
 import { cn } from "@/lib/utils";

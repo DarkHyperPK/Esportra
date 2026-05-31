@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Footer from "@/components/Footer";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from "@/lib/apiClient";
 import { useOrganizerStats } from "@/hooks/useOrganizerStats";
 import TournamentsList from "@/components/organizer/TournamentsList";

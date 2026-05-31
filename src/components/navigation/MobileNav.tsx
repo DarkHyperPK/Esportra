@@ -1,9 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
 import { Bell, ChevronDown, LogOut, MapPin, Medal, Plus, Shield, Trophy, User, Info, Handshake } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRole } from "@/contexts/RoleContext";
-import { useAdmin } from "@/contexts/AdminContext";
-import { useNotifications } from "@/components/NotificationContext";
+import { useAuth } from "@/hooks/useAuth";
+import { useRole } from "@/hooks/useRole";
+import { useAdmin } from "@/hooks/useAdmin";
+import { useNotifications } from "@/hooks/useNotifications";
 import { UserRole } from "@/types/auth";
 import RoleSwitcher from "@/components/RoleSwitcher";
 import { useState } from "react";

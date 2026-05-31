@@ -9,7 +9,6 @@ export interface TypewriterProps {
 
 export const TypewriterEffect = ({ words, className, cursorClassName }: TypewriterProps) => {
     const [index, setIndex] = useState(0);
-    const baseText = useMotionValue("");
     const count = useMotionValue(0);
     const rounded = useTransform(count, (latest) => Math.round(latest));
     const displayText = useTransform(rounded, (latest) =>
@@ -36,7 +35,7 @@ export const TypewriterEffect = ({ words, className, cursorClassName }: Typewrit
             },
         });
         return () => controls.stop();
-    }, [index, words]);
+    }, [index, words, count]);
 
     return (
         <div className={className}>

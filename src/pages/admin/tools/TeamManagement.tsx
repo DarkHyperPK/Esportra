@@ -2,11 +2,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
 import {
-  ArrowLeft, UsersRound, Search, Eye, MoreVertical, Calendar,
-  Users, Trophy, RefreshCw, Trash2, UserMinus, ArrowRightLeft,
-  Pencil, Shield, Loader2, Gamepad2, Globe, Crown, X, Download, History
+  ArrowLeft, UsersRound, Search, Eye, MoreVertical,
+  Users, RefreshCw, Trash2, UserMinus, ArrowRightLeft,
+  Pencil, Loader2, Gamepad2, Crown, Download
 } from "lucide-react";
 import { csvEscape } from "@/lib/exportUtils";
 import { Link } from "react-router-dom";

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import TeamTournamentRegistration from '@/components/tournament/TeamTournamentRegistration';
 import SoloTournamentRegistration from '@/components/tournament/SoloTournamentRegistration';
@@ -33,14 +33,10 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   game = '',
   gameMode,
   teamSize = 1,
-  structure = 'solo',
   settings,
   entryFee,
   currency = 'USD',
   paymentInstructions,
-  onSuccess,
-  isEdit = false,
-  initialData,
   onRegisterSuccess,
   onCancel
 }) => {
@@ -161,14 +157,6 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
     } finally {
       setUploading(false);
     }
-  };
-
-  const handleSkipReceipt = () => {
-    toast({
-      title: 'Registration Pending',
-      description: 'You can upload your payment receipt later from the tournament page.',
-    });
-    onRegisterSuccess?.();
   };
 
   // Show login prompt if not authenticated

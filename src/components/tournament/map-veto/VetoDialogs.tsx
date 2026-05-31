@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, Sword, Shield as ShieldIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchMapVeto, getVetoFormat, getSidePickerTeam, GameMap } from '@/hooks/useMapVetoMachine';
-import { useToast } from '@/hooks/use-toast';
 
 interface VetoDialogsProps {
     showRoleSwitchPrompt: boolean;

@@ -89,7 +89,7 @@ const MapVetoToken: React.FC = () => {
     );
   }
 
-  const { veto, match, tournament, teamId, isTeam1 } = vetoData;
+  const { veto, match, tournament, teamId, isTeam1: _isTeam1 } = vetoData;
 
   return (
     <div className="min-h-screen bg-transparent p-4">

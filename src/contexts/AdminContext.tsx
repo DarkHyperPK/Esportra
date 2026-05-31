@@ -1,25 +1,8 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { apiClient } from '@/lib/apiClient';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { ROLE_PERMISSIONS } from '@/hooks/useAdminPermissions';
-
-type AdminContextValue = {
-  isAdmin: boolean;
-  roles: string[];
-  permissions: string[];
-  loading: boolean;
-  hasPermission: (perm: string) => boolean;
-  refresh: (options?: { silent?: boolean }) => Promise<void>;
-};
-
-const AdminContext = createContext<AdminContextValue>({
-  isAdmin: false,
-  roles: [],
-  permissions: [],
-  loading: true,
-  hasPermission: () => false,
-  refresh: async () => { }
-});
+import { AdminContext, type AdminContextValue } from '@/contexts/admin-context';
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -139,5 +122,3 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
 };
-
-export const useAdmin = () => useContext(AdminContext);

@@ -1,12 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Users, Monitor, DollarSign, Twitter, Instagram, Disc as Discord, Upload } from 'lucide-react';
+import { Monitor, DollarSign, Twitter, Instagram, Disc as Discord, Upload } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { VerificationWizardStepProps } from '@/types/verificationWizard';
-import { Button } from '@/components/ui/button';
 
 const StepExperience: React.FC<VerificationWizardStepProps> = ({ data, updateData, errors, role }) => {
     const isVenue = role === 'venue_owner';

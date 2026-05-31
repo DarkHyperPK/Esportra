@@ -16,24 +16,21 @@ import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import { usePublicBracketData } from '@/hooks/usePublicBracketData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Users, Calendar, MapPin, DollarSign, Edit, LogOut, CheckCircle, Clock, AlertTriangle, Ban as BanIcon, Swords, ChevronRight, Loader2, Mail } from 'lucide-react';
+import { Trophy, Swords, Loader2, Mail } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRole } from '@/contexts/RoleContext';
-import { useAdmin } from '@/contexts/AdminContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useRole } from '@/hooks/useRole';
+import { useAdmin } from '@/hooks/useAdmin';
 import { formatDate, formatTime } from '@/utils/dateFormat';
 import { useRequireVerification } from '@/hooks/useRequireVerification';
-import { Tournament, BaseTournament, TournamentRegistration, RegistrationStatus, RegistrationType } from '@/types/tournament';
+import { Tournament, BaseTournament, TournamentRegistration } from '@/types/tournament';
 import TournamentRegistrationForm from '@/components/TournamentRegistration';
-import { formatDistanceToNowStrict } from 'date-fns';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -47,8 +44,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import PremiumBackground from "@/components/ui/PremiumBackground";
-import { AnimatePresence, motion } from "framer-motion";
 import esportsGamesData from '@/data/esportsGames.json';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import { isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
@@ -60,7 +55,7 @@ import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
 import BRGroupStageView from '@/components/tournament/br/BRGroupStageView';
 import { useBRGroupStage } from '@/hooks/useBRGroupLeaderboard';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
-import SEO from '@/components/SEO';
+import { SEO } from '@/components/SEO';
 import { useTournamentInvitations } from '@/hooks/useTournamentInvitations';
 
 interface EsportsGame {
@@ -79,72 +74,18 @@ interface EsportsGamesData {
 
 const esportsGames = esportsGamesData as EsportsGamesData;
 
-const getPublicGroupCount = (stage: any): number => {
-  const config = typeof stage?.config === 'string'
-    ? (() => {
-        try { return JSON.parse(stage.config); } catch { return {}; }
-      })()
-    : (stage?.config ?? {});
-  const count = Number(config.group_count ?? config.swiss_groups ?? 0);
-  return Number.isFinite(count) && count > 1 ? count : 0;
-};
-
-interface DatabaseTournament {
-  id: string;
-  name: string;
-  game: string;
-  date: string;
-  time: string;
-  venue: string | null;
-  is_online: boolean;
-  max_participants: number;
-  team_size?: number;
-  game_mode?: string;
-  prize_pool: string;
-  entry_fee: string | null;
-  user_id: string;
-  rewards?: string | null;
-  created_at: string;
-  image_url?: string | null;
-  slug: string;
-  check_in_required?: boolean;
-  check_in_deadline?: string | null;
-  auto_remove_unchecked?: boolean;
-  settings?: any;
-}
-
-interface DatabaseRegistration {
-  id: string;
-  tournament_id: string;
-  user_id: string;
-  participant_type: string;
-  gamer_tag?: string | null;
-  team_name?: string | null;
-  team_members?: string | null;
-  status?: RegistrationStatus;
-  checked_in_at?: string | null;
-  registered_at?: string;
-  created_at: string;
-  updated_at?: string;
-  team_captain?: string | null;
-  team_email?: string | null;
-  team_phone?: string | null;
-  team_logo?: string | null;
-}
-
 const TournamentDetails = () => {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
-  const urlMatchId = typeof window !== 'undefined' ? new URLSearchParams(location.search).get('matchId') : null;
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { currentRole } = useRole();
   const admin = useAdmin();
   const requireVerification = useRequireVerification();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
-  const [checkInCount, setCheckInCount] = useState(0);
+  const [, setCheckInCount] = useState(0);
   const [isRegistered, setIsRegistered] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [registrationDetails, setRegistrationDetails] = useState<TournamentRegistration | null>(null);
@@ -153,10 +94,6 @@ const TournamentDetails = () => {
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [registrationLoading, setRegistrationLoading] = useState(true);
-  const [allRegistrations, setAllRegistrations] = useState<DatabaseRegistration[]>([]);
-  const [registrationsLoading, setRegistrationsLoading] = useState(false);
-  const [isBanned, setIsBanned] = useState(false);
-  const [banReason, setBanReason] = useState<string | null>(null);
   const [showBannerDialog, setShowBannerDialog] = useState(false);
   const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
   const terminology = useGameTerminology(tournament?.game);
@@ -185,7 +122,10 @@ const TournamentDetails = () => {
 
   const isOrganizer = (currentRole === 'organizer' && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id)) || admin.hasPermission('tournaments:edit');
   const requiresCheckIn = Boolean(tournament?.check_in_required);
-  const checkInDeadlineDate = tournament?.check_in_deadline ? new Date(tournament.check_in_deadline) : null;
+  const checkInDeadlineDate = useMemo(
+    () => (tournament?.check_in_deadline ? new Date(tournament.check_in_deadline) : null),
+    [tournament?.check_in_deadline]
+  );
   const registrationStatus = (registrationDetails?.status || '').toLowerCase();
   const hasCheckedIn = Boolean(registrationDetails?.checked_in_at) || registrationStatus === 'checked_in';
   const awaitingApproval = registrationStatus === 'pending';
@@ -215,8 +155,6 @@ const TournamentDetails = () => {
     checkInStartTime instanceof Date &&
     now >= checkInStartTime && // Must be AFTER check-in opens
     now <= checkInDeadlineDate; // Must be BEFORE check-in closes
-  // Live Check-in Countdown
-  const [timeLeft, setTimeLeft] = useState<string>('');
 
   // Global handler for banner edit
   useEffect(() => {
@@ -225,7 +163,7 @@ const TournamentDetails = () => {
   }, []);
 
   // Public Bracket View State - Refactored to Hook
-  const { stages, activeVersionsMap, loading: bracketLoading } = usePublicBracketData(tournament?.id);
+  const { stages, activeVersionsMap } = usePublicBracketData(tournament?.id);
   const [selectedStageId, setSelectedStageId] = useState<string | null>(requestedBRStageId);
 
   // Multi-group stage detection — check first stage for groups
@@ -297,29 +235,6 @@ const TournamentDetails = () => {
     tiebreaker: brSettings?.brTiebreaker || 'most_wins',
     enabled: shouldLoadLegacyBRLeaderboard,
   });
-
-  useEffect(() => {
-    if (!checkInDeadlineDate || !(checkInDeadlineDate instanceof Date)) return;
-
-    const updateTimer = () => {
-      const now = new Date();
-      if (now >= checkInDeadlineDate) {
-        setTimeLeft('Closed');
-        return;
-      }
-      setTimeLeft(formatDistanceToNowStrict(checkInDeadlineDate, { addSuffix: true }));
-    };
-
-    // Initial call
-    updateTimer();
-
-    // Update every minute (since formatDistanceToNowString usually shows "in 5 minutes", "in 1 hour")
-    // If we want seconds, we might need a custom formatter, but date-fns is usually enough for "in X minutes"
-    const interval = setInterval(updateTimer, 1000 * 60);
-    return () => clearInterval(interval);
-  }, [checkInDeadlineDate]);
-
-  const checkInCountdown = timeLeft;
 
   const fetchTournamentData = useCallback(async () => {
     if (!slug || slug === 'undefined') {
@@ -408,8 +323,6 @@ const TournamentDetails = () => {
       setRegistrationLoading(false);
       setIsRegistered(false);
       setRegistrationDetails(null);
-      setIsBanned(false);
-      setBanReason(null);
       return;
     }
     setRegistrationLoading(true);
@@ -418,8 +331,6 @@ const TournamentDetails = () => {
 
       // Handle bans
       if (status.userBan || status.teamBan) {
-        setIsBanned(true);
-        setBanReason(status.userBan?.banReason || status.teamBan?.banReason || null);
         setIsRegistered(false);
         setRegistrationDetails(null);
         setIsCaptain(false);
@@ -427,9 +338,6 @@ const TournamentDetails = () => {
         hasCheckedRegistration.current = true;
         return;
       }
-
-      setIsBanned(false);
-      setBanReason(null);
 
       // Try primary endpoint first, then fallback
       const r = status.registration;
@@ -548,26 +456,6 @@ const TournamentDetails = () => {
     await fetchTournamentData();
   }, [checkRegistration, fetchTournamentData]);
 
-  const handleRegister = async () => {
-    if (!requireVerification()) return;
-    if (!user?.id || !tournament) return;
-
-    // Already registered — show toast and bail
-    if (isRegistered && registrationDetails) {
-      toast({
-        title: "Already Registered",
-        description: "You are already registered for this tournament",
-      });
-      return;
-    }
-
-    setShowEditDialog(true);
-  };
-
-  const handleEditRegistration = () => {
-    setShowEditDialog(true);
-  };
-
   const handleWithdraw = async () => {
     if (!user?.id || !tournament) return;
 
@@ -671,88 +559,9 @@ const TournamentDetails = () => {
 
   const normalize = (str) => str?.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 
-  const getMembers = (members: any): string[] => {
-    if (!members) return [];
-    if (Array.isArray(members)) {
-      return members
-        .map((m) => (typeof m === 'string' ? m : (m?.username || m?.name || '')))
-        .filter(Boolean);
-    }
-    if (typeof members === 'string') {
-      const trimmed = members.trim();
-      if (trimmed.startsWith('[')) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          if (Array.isArray(parsed)) return parsed.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
-        } catch { /* fall through */ }
-      }
-      return trimmed.split(',').map((s) => s.trim()).filter(Boolean);
-    }
-    if (typeof members === 'object' && Array.isArray((members as any).members)) {
-      return (members as any).members
-        .map((m: any) => (typeof m === 'string' ? m : (m?.username || m?.name || '')))
-        .filter(Boolean);
-    }
-    return [];
-  };
-
   const selectedGame = tournament ? esportsGames.games.find(
     (g) => normalize(g.name) === normalize(tournament.game)
   ) : null;
-
-  // Resolve team members from registration data or API
-  const [resolvedMembers, setResolvedMembers] = useState<string[] | null>(null);
-  useEffect(() => {
-    const run = async () => {
-      if (!registrationDetails || registrationDetails.registration_type !== 'team') return;
-      const current = getMembers(registrationDetails.team_members);
-      if (current.length > 0) {
-        setResolvedMembers(current);
-        return;
-      }
-      // If no members in registration, try to resolve via team API
-      const teamId = (registrationDetails as any).team_id;
-      if (!teamId) return;
-      try {
-        const teamData = await apiClient.get<any>(`/api/teams/${teamId}/members/detailed`);
-        const members = (teamData || [])
-          .filter((m: any) => m.is_active)
-          .map((m: any) => {
-            const gameKey = tournament?.game?.toLowerCase();
-            const isValorant = gameKey === 'valorant';
-            const isCS2 = gameKey === 'cs2' || gameKey === 'counter-strike 2';
-            return (isValorant && m.riot_tag) || m.username || m.full_name || m.user_id?.substring(0, 8);
-          })
-          .filter(Boolean) as string[];
-        setResolvedMembers(members.length > 0 ? members : null);
-      } catch {
-        setResolvedMembers(null);
-      }
-    };
-    run();
-  }, [registrationDetails, user?.id]);
-
-  // Fetch all registrations if organizer (via dedicated backend endpoint)
-  useEffect(() => {
-    const fetchAllRegistrations = async () => {
-      if (!isOrganizer || !tournament?.id) return;
-      setRegistrationsLoading(true);
-      try {
-        const data = await apiClient.get<any[]>(`/api/tournaments/${tournament.id}/registrations`);
-        setAllRegistrations((data || []) as unknown as DatabaseRegistration[]);
-      } catch (err) {
-        setAllRegistrations([]);
-      } finally {
-        setRegistrationsLoading(false);
-      }
-    };
-    if (isOrganizer && tournament?.id) {
-      fetchAllRegistrations();
-    }
-  }, [isOrganizer, tournament?.id]);
-
-
-
 
   if (loading) {
     return <PremiumLoadingScreen text="LOADING TOURNAMENT DATA" />;

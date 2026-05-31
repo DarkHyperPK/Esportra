@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchPendingStaffInvites,
   respondToStaffInvite,
-  TournamentStaffInvite,
 } from '@/lib/tournamentStaff';
 
 export function useStaffInvites(userId?: string) {

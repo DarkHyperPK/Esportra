@@ -1,6 +1,5 @@
-import { Trophy, Swords, Medal, LayoutGrid, ChevronRight, Layers } from 'lucide-react';
+import { Trophy, Swords, Medal, LayoutGrid, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 export type FilterState =

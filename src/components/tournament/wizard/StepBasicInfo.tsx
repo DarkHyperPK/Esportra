@@ -9,9 +9,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, MapPin, Calendar, Clock, Eye, EyeOff, Lock, Target } from 'lucide-react';
+import { Globe, MapPin, Calendar, Clock, EyeOff, Lock, Target } from 'lucide-react';
 import esportsGames from '@/data/esportsGames.json';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';

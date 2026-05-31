@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/apiClient';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
@@ -56,7 +54,6 @@ type TeamRow = { id: string; name: string; games: Record<string, unknown> | null
 interface RosterRow { id: string; game?: string; format?: string | null; team_size?: number; name?: string }
 interface RosterMember { user_id: string; username?: string; full_name?: string; avatar_url?: string; is_starter?: boolean; profiles?: Record<string, unknown> }
 interface RiotAccount { user_id: string; game_name?: string; tag_line?: string }
-interface RegistrationStatus { tournament_id: string; [key: string]: unknown }
 
 const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   tournament,
@@ -67,8 +64,6 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(false);
-  const [isRegistered, setIsRegistered] = useState(false);
-  const [existingRegistration, setExistingRegistration] = useState<RegistrationStatus | null>(null);
   const [fetchingTeams, setFetchingTeams] = useState(true);
 
   // Team selection flow
@@ -100,21 +95,14 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     return mode?.teamSize || Number(tournament.team_size) || 5;
   };
 
-  const rosterMatchesMode = (roster: RosterRow) => {
+  const rosterMatchesMode = useCallback((roster: RosterRow) => {
     if (!tournamentGameMode || !roster.format) return true;
     return normalize(roster.format) === normalize(tournamentGameMode);
-  };
+  }, [tournamentGameMode]);
 
   const coreMembers = getCoreTeamSize(tournament.game, tournamentGameMode);
   // Default max to tournament's team_size, or industry standard (core + 2 subs)
   const maxMembers = tournament.team_size ? Number(tournament.team_size) : coreMembers + 2;
-
-
-
-  useEffect(() => {
-    fetchCaptainTeams();
-  }, [user?.id]);
-
 
   useEffect(() => {
     const fetchRosters = async () => {
@@ -138,7 +126,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
       }
     };
     fetchRosters();
-  }, [selectedTeamId, tournament.game, coreMembers]);
+  }, [coreMembers, rosterMatchesMode, selectedTeamId, tournament.game]);
 
   // Fetch roster members data when selectedRosterId changes
   useEffect(() => {
@@ -209,7 +197,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     fetchRosterMembers();
   }, [selectedRosterId, selectedTeamId, captainTeams]);
 
-  const fetchCaptainTeams = async () => {
+  const fetchCaptainTeams = useCallback(async () => {
     if (!user?.id) return;
     setFetchingTeams(true);
     try {
@@ -223,8 +211,8 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
       }
 
       if (teams.length === 0) {
-        const captainTeams = await apiClient.get<TeamRow[]>('/api/teams/my-captain-teams');
-        teams = [...(captainTeams || [])];
+        const captainTeamsResponse = await apiClient.get<TeamRow[]>('/api/teams/my-captain-teams');
+        teams = [...(captainTeamsResponse || [])];
       }
 
       if (teams.length === 0) {
@@ -300,7 +288,11 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     } finally {
       setFetchingTeams(false);
     }
-  };
+  }, [coreMembers, rosterMatchesMode, tournament.game, user?.id]);
+
+  useEffect(() => {
+    void fetchCaptainTeams();
+  }, [fetchCaptainTeams]);
 
   const formatDate = (raw: string | null | undefined) => {
     try {
@@ -351,7 +343,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
       (rosterMembers || []).forEach((r: RosterMember) => memberStatusMap.set(r.user_id, r.is_starter ?? true));
 
       // distinct IDs
-      let memberIds = Array.from(new Set(((rosterMembers || []).map((r: RosterMember) => r.user_id))));
+      const memberIds = Array.from(new Set(((rosterMembers || []).map((r: RosterMember) => r.user_id))));
 
       // Sort: Starters first, then Bench
       memberIds.sort((a, b) => {
@@ -445,7 +437,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
       const roster = teamRosters.find(r => r.id === selectedRosterId);
 
-      const data = await apiClient.post<any>(`/api/tournaments/${tournament.id}/register`, {
+      await apiClient.post(`/api/tournaments/${tournament.id}/register`, {
         participantType: 'team',
         teamCaptainId: user.id,
         teamId: selectedTeamId,

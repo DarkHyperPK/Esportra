@@ -593,7 +593,7 @@ export const useUpdateSystemSettings = () => {
       toast({ title: 'Settings saved', description: 'System settings have been updated successfully.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       const message = body?.error || body?.message || (error as Error)?.message || 'Failed to save settings.';
       const details = Array.isArray(body?.details) ? body.details.join(', ') : null;
@@ -665,7 +665,7 @@ export const useCreateAdminRole = () => {
       toast({ title: 'Role created', description: 'New admin role has been created.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({ title: 'Failed to create role', description: body?.error || (error as Error)?.message || 'Unknown error', variant: 'destructive' });
     },
@@ -683,7 +683,7 @@ export const useUpdateAdminRole = () => {
       toast({ title: 'Role updated', description: 'Role permissions have been updated.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({ title: 'Failed to update role', description: body?.error || (error as Error)?.message || 'Unknown error', variant: 'destructive' });
     },
@@ -701,7 +701,7 @@ export const useDeleteAdminRole = () => {
       toast({ title: 'Role deleted', description: 'Custom role has been removed.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({ title: 'Failed to delete role', description: body?.error || (error as Error)?.message || 'Unknown error', variant: 'destructive' });
     },
@@ -789,7 +789,7 @@ export const useReviewModeration = () => {
       });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({
         title: 'Review failed',
@@ -812,7 +812,7 @@ export const useDismissModeration = () => {
       toast({ title: 'Item dismissed', description: 'Moderation item has been removed.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({
         title: 'Dismiss failed',
@@ -833,7 +833,7 @@ export const useReportContent = () => {
       toast({ title: 'Content reported', description: 'Thank you — our team will review this shortly.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({
         title: 'Report failed',
@@ -941,7 +941,7 @@ export const useRevokeSession = () => {
       }
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({
         title: 'Revoke failed',
@@ -998,7 +998,7 @@ export const useAddIpAllowlist = () => {
       toast({ title: 'IP added', description: 'IP address has been added to the allowlist.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({
         title: 'Failed to add IP',
@@ -1022,7 +1022,7 @@ export const useUpdateIpAllowlist = () => {
       toast({ title: 'IP updated', description: 'IP allowlist entry has been updated.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({
         title: 'Failed to update IP',
@@ -1045,7 +1045,7 @@ export const useDeleteIpAllowlist = () => {
       toast({ title: 'IP deleted', description: 'IP address has been removed from the allowlist.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({
         title: 'Failed to delete IP',
@@ -1074,7 +1074,7 @@ export const useToggleIpAllowlist = () => {
       });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({
         title: 'Toggle failed',
@@ -1172,7 +1172,7 @@ export const useCreateReportSchedule = () => {
       toast({ title: 'Schedule created', description: 'Report schedule has been created successfully.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as { body?: { error?: string } })?.body;
       toast({
         title: 'Failed to create schedule',
@@ -1195,7 +1195,7 @@ export const useUpdateReportSchedule = () => {
       toast({ title: 'Schedule updated', description: 'Report schedule has been updated.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as { body?: { error?: string } })?.body;
       toast({
         title: 'Failed to update schedule',
@@ -1217,7 +1217,7 @@ export const useDeleteReportSchedule = () => {
       toast({ title: 'Schedule deleted', description: 'Report schedule has been removed.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as { body?: { error?: string } })?.body;
       toast({
         title: 'Failed to delete schedule',
@@ -1240,7 +1240,7 @@ export const useRunReportNow = () => {
       toast({ title: 'Report triggered', description: 'Report is now running. Check history for results.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as { body?: { error?: string } })?.body;
       toast({
         title: 'Failed to run report',
@@ -1489,7 +1489,7 @@ export const useUpdateAnomalyRule = () => {
       toast({ title: 'Rule updated', description: 'Detection rule has been updated successfully.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({
         title: 'Update failed',
@@ -1512,7 +1512,7 @@ export const useResolveAnomaly = () => {
       toast({ title: 'Anomaly resolved', description: 'The anomaly event has been marked as resolved.' });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({
         title: 'Resolve failed',
@@ -1538,7 +1538,7 @@ export const useScanAnomalies = () => {
       });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({
         title: 'Scan failed',
@@ -1601,7 +1601,7 @@ export const useSaveDashboardPreferences = () => {
       });
     },
     onError: (error: unknown) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ApiError shape not exported
+       
       const body = (error as any)?.body;
       toast({
         title: 'Save failed',

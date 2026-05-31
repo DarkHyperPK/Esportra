@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Trophy, Calendar, Users, ArrowRight, Gamepad2, Loader2, Swords } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -27,7 +27,7 @@ export default function SeasonPublicPage() {
   const advancementQuery = useSeasonAdvancement(seasonId);
 
   const season = seasonQuery.data;
-  const tournaments = tournamentsQuery.data ?? [];
+  const tournaments = useMemo(() => tournamentsQuery.data ?? [], [tournamentsQuery.data]);
   const standings = standingsQuery.data ?? [];
   const participants = participantsQuery.data ?? [];
   const advancementConnections = advancementQuery.data ?? [];

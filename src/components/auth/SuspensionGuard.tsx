@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiClient } from "@/lib/apiClient";
 
@@ -8,7 +8,7 @@ import { apiClient } from "@/lib/apiClient";
  * If a user is suspended, it prevents them from accessing any other part of the app.
  */
 export const SuspensionGuard = ({ children }: { children: React.ReactNode }) => {
-    const { profile, user, signOut } = useAuth();
+    const { profile, user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 

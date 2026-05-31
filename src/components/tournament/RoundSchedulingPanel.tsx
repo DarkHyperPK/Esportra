@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,11 +76,13 @@ const getRoundNameForFormat = (
             if (isLosers) {
                 return `Losers Round ${roundIndex + 1}`;
             }
+            {
             const wRoundsFromEnd = totalRounds - roundIndex;
             if (wRoundsFromEnd === 0) return 'Grand Finals';
             if (wRoundsFromEnd === 1) return 'Winners Finals';
             if (wRoundsFromEnd === 2) return 'Winners Semi-Finals';
             return `Winners Round ${roundIndex + 1}`;
+            }
 
         case 'swiss':
             return `Day ${roundIndex + 1} — Swiss Round ${roundIndex + 1}`;
@@ -90,12 +92,14 @@ const getRoundNameForFormat = (
 
         case 'single_elimination':
         default:
+            {
             const roundsFromEnd = totalRounds - roundIndex;
             if (roundsFromEnd === 0) return 'Grand Finals';
             if (roundsFromEnd === 1) return 'Finals';
             if (roundsFromEnd === 2) return 'Semi-Finals';
             if (roundsFromEnd === 3) return 'Quarter-Finals';
             return `Round ${roundIndex + 1}`;
+            }
     }
 };
 
@@ -113,7 +117,6 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     tournamentStartDate,
     tournamentEndDate,
     selfPlayEnabled,
-    onScheduleApplied
 }) => {
     const { matches, schedulingConfig, updateConfig, isLoading, updateMatchTime } = useMatchScheduling(stageId);
     const [expandedRound, setExpandedRound] = useState<number | null>(0);
@@ -124,8 +127,9 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     const [savedRoundKeys, setSavedRoundKeys] = useState<Set<string>>(new Set());
 
     // Config key helper: for DE, scope by bracket type; for others, just roundIndex
-    const configKey = (roundIndex: number, bracketKey?: string | null): string =>
-        stageFormat === 'double_elimination' && bracketKey ? `${bracketKey}_${roundIndex}` : String(roundIndex);
+    const configKey = useCallback((roundIndex: number, bracketKey?: string | null): string =>
+        stageFormat === 'double_elimination' && bracketKey ? `${bracketKey}_${roundIndex}` : String(roundIndex),
+    [stageFormat]);
 
     // Optimistic scheduling mode with instant UI
     const [optimisticMode, setOptimisticMode] = useState<'round_based' | 'granular' | null>(null);
@@ -159,7 +163,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
             grouped.get(key)!.push(match);
         });
         return grouped;
-    }, [matches, stageFormat]);
+    }, [configKey, matches, stageFormat]);
 
     // Legacy flat grouping (used by non-DE rendering)
     const matchesByRound = useMemo(() => {
@@ -330,6 +334,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
             }
             setSavedRoundKeys(prev => new Set(prev).add(key));
         } catch (error) {
+            console.error('[RoundScheduling] Failed to save round schedule:', error);
         } finally {
             setSaving(false);
         }

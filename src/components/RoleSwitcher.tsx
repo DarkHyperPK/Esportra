@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ArrowRightLeft, Building2, Gamepad2, Trophy } from 'lucide-react';
-import { useRole } from '@/contexts/RoleContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useRole } from '@/hooks/useRole';
+import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from "@/hooks/use-toast";
 import VerificationRequestForm from '@/components/VerificationRequestForm';
@@ -90,10 +90,9 @@ export const RoleSwitcherDialog: React.FC<{
   const [switching, setSwitching] = useState(false);
 
   // Check verification status for organizer and venue_owner roles using multi-role system
-  const checkVerificationStatus = async () => {
+  const checkVerificationStatus = useCallback(async () => {
     if (!user) return;
     try {
-      // Fetch roles from the .NET backend — same endpoint RoleContext uses
       const rolesData = await apiClient.get<{
         userRoles: Array<{ role: string; is_active: boolean }>;
         verifiedRoles: Array<{ role: string; status: string; is_active: boolean }>;
@@ -116,13 +115,13 @@ export const RoleSwitcherDialog: React.FC<{
       setVerificationSystemReady(false);
       setVerificationStatus({ organizer: false, venue_owner: false });
     }
-  };
+  }, [profile?.is_admin, user]);
 
   useEffect(() => {
     if (open) {
-      checkVerificationStatus();
+      void checkVerificationStatus();
     }
-  }, [user, open]);
+  }, [checkVerificationStatus, open]);
 
   const handleRoleSwitch = async (newRole: 'casual' | 'organizer' | 'venue_owner') => {
     if (currentRole === 'admin' || isLoading) {

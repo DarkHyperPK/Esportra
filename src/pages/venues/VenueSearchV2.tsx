@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import SEO from '@/components/SEO';
+import { SEO } from '@/components/SEO';
 
 interface VenueFilters {
   cities: string[];
@@ -239,7 +239,7 @@ const VenueSearchV2 = () => {
             initial="hidden" animate="show"
             variants={{ show: { transition: { staggerChildren: 0.06 } } }}
           >
-            {venues.map((venue, i) => (
+            {venues.map((venue, _i) => (
               <motion.div key={venue.id}
                 variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
                 transition={{ duration: 0.3 }}>

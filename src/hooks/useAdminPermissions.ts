@@ -1,4 +1,4 @@
-import { useAdmin } from '@/contexts/AdminContext';
+import { useAdmin } from '@/hooks/useAdmin';
 
 export interface AdminPermission {
   key: string;

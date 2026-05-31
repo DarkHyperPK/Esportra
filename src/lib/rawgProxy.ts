@@ -9,7 +9,7 @@ import { apiClient } from "@/lib/apiClient";
 /**
  * Search for games on RAWG via the backend proxy
  */
-export async function rawgSearchGames(searchName: string, pageSize = 1): Promise<any> {
+export async function rawgSearchGames(searchName: string, _pageSize = 1): Promise<any> {
     return apiClient.get(`/api/games/search?q=${encodeURIComponent(searchName)}`);
 }
 

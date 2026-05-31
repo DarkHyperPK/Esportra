@@ -6,7 +6,8 @@ import { FileText, ChevronDown, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { BracketMatch } from '@/types/bracketTypes';
 import { apiClient } from '@/lib/apiClient';
-import { FullScoreboard, MAP_THEMES, getMapSplash } from './FullScoreboard';
+import { FullScoreboard } from './FullScoreboard';
+import { MAP_THEMES, getMapSplash } from './fullScoreboardConstants';
 
 interface Props {
     tournamentId: string;
@@ -118,12 +119,12 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches, i
             pastMatches.forEach(m => {
                 matchIdMap[m.id.replace(/^(db-|wb-|lb-)/, '')] = m.id;
             });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             const data = await apiClient.get<any[]>( // API returns dynamic jsonb columns
                 `/api/tournaments/${tournamentId}/match-games?matchIds=${Object.keys(matchIdMap).join(',')}`
             );
             const grouped: Record<string, GameDetail[]> = {};
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             data?.forEach((game: any) => { // API returns dynamic jsonb columns
                 const prefixedId = matchIdMap[game.match_id];
                 if (!prefixedId) return;

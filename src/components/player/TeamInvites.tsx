@@ -1,10 +1,9 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { useTeamManagement, TeamInvite } from '@/hooks/useTeamManagement';
-import { CheckCircle, XCircle, Clock, Users, Sparkles, Bell } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Users, Bell } from "lucide-react";
 
 const TeamInvites = () => {
   const { teamInvites, invitesLoading, acceptTeamInvite, declineTeamInvite } = useTeamManagement();

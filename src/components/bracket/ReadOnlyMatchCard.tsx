@@ -1,4 +1,3 @@
-import { BracketMatch } from '@/types/bracketTypes';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import { formatLocalTime } from '@/lib/timeUtils';
 

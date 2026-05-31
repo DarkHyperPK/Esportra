@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ExternalLink, Star, Award, Zap, ArrowRight, Trophy, Activity, TrendingUp, MousePointer2, Crosshair, Wind, Cpu } from 'lucide-react';
+import { Star, Award, Zap, ArrowRight, Cpu } from 'lucide-react';
 import { useSponsors, trackImpression, trackClick, Sponsor } from '@/hooks/useSponsors';
 import PartnerApplicationForm from '@/components/PartnerApplicationForm';
 import Footer from '@/components/Footer';

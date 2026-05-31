@@ -1,29 +1,19 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, CheckCircle, ArrowRight, Calendar, Settings, GitBranch, Globe, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Calendar, Settings, GitBranch, Globe, Eye, Loader2 } from 'lucide-react';
 import BracketVisualization from '@/pages/tournaments/brackets/BracketVisualization';
 import Footer from '@/components/Footer';
-import { stageCompletionService } from '@/services/bracket/StageCompletionService';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import RoundSchedulingPanel from '@/components/tournament/RoundSchedulingPanel';
 import StageSchedulingConfig from '@/components/tournament/StageSchedulingConfig';
-import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 import { useQueryClient } from '@tanstack/react-query';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
-
-interface AdvancingTeam {
-    team_id: string;
-    team_name: string;
-    seed: number;
-}
 
 const ManageBracketPage = () => {
     const { slug, stageId } = useParams<{ slug: string; stageId: string }>();
@@ -39,29 +29,6 @@ const ManageBracketPage = () => {
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isOrganizer, setIsOrganizer] = useState(false);
-
-    // Stage completion state
-    const [stageComplete, setStageComplete] = useState(false);
-    const [advancingTeams, setAdvancingTeams] = useState<AdvancingTeam[]>([]);
-    const [nextStage, setNextStage] = useState<any>(null);
-    const [isAdvancing, setIsAdvancing] = useState(false);
-
-    // Debounce ref for stage completion check to prevent race conditions
-    const completionCheckTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-
-    // Check stage completion when stage or versionId changes
-    const checkStageCompletion = useCallback(async () => {
-        if (!stageId || !versionId) return;
-
-        try {
-            const result = await stageCompletionService.checkStageCompletion(stageId);
-            setStageComplete(result.isComplete);
-            setAdvancingTeams(result.advancingTeams || []);
-            setNextStage((result as any).nextStage || null);
-        } catch (error) {
-            console.error('[ManageBracketPage] Error checking stage completion:', error);
-        }
-    }, [stageId, versionId]);
 
     // No longer using realtime updates for organizers to prevent data shifts 
     // during management actions. Relying on explicit fetchData(true) calls.
@@ -117,19 +84,6 @@ const ManageBracketPage = () => {
             if (versionData) {
                 setVersionId(versionData.id);
                 setVersionStatus(versionData.status);
-
-                // Check stage completion status
-                const completionResult = await stageCompletionService.checkStageCompletion(stageId);
-                setStageComplete(completionResult.isComplete);
-                setAdvancingTeams(completionResult.advancingTeams);
-
-                // Get next stage info (only if current stage is complete)
-                if (completionResult.isComplete) {
-                    const nextStageInfo = await stageCompletionService.getNextStage(stageId);
-                    setNextStage(nextStageInfo);
-                } else {
-                    setNextStage(null);
-                }
             } else {
                 toast({ title: 'No Bracket', description: 'No bracket found for this stage', variant: 'destructive' });
             }
@@ -141,42 +95,6 @@ const ManageBracketPage = () => {
             if (!silent) setLoading(false);
         }
     }, [slug, stageId, user?.id, navigate, toast]);
-
-    // Handle advancing teams to next stage
-    const handleAdvanceTeams = async () => {
-        if (!stageId) return;
-
-        setIsAdvancing(true);
-        try {
-            const result = await stageCompletionService.advanceTeamsToNextStage(stageId);
-
-            if (result.success) {
-                toast({
-                    title: 'Teams Advanced!',
-                    description: `${result.advancedCount} teams have been advanced to the next stage.`
-                });
-
-                // Navigate to tournament management page
-                if (result.nextStageId) {
-                    navigate(`/organizer/tournament/${slug}`);
-                }
-            } else {
-                toast({
-                    title: 'Error',
-                    description: result.error || 'Failed to advance teams',
-                    variant: 'destructive'
-                });
-            }
-        } catch (error: any) {
-            toast({
-                title: 'Error',
-                description: error.message,
-                variant: 'destructive'
-            });
-        } finally {
-            setIsAdvancing(false);
-        }
-    };
 
     // Handle single BYE advancement
     const handleByeAdvance = async (matchId: string) => {
@@ -255,121 +173,6 @@ const ManageBracketPage = () => {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         }
     };
-
-    // Handle bulk BYE advancement
-    const handleAutoAdvanceByes = async () => {
-        if (!versionId) {
-            console.error('[AutoAdvance] No versionId found');
-            return;
-        }
-
-        console.log('[AutoAdvance] querying versionId:', versionId);
-
-        try {
-            // Get all pending matches with exactly one team
-            const byeMatches = await apiClient.get<any[]>(`/api/stages/${stageId}/matches?status=pending`).catch(() => []);
-
-            console.log('[AutoAdvance] Pending matches count:', byeMatches?.length);
-            console.log('[AutoAdvance] Pending matches statuses:', byeMatches?.map((m: any) => `${m.id}: ${m.status}, t1=${m.team1_id}, t2=${m.team2_id}`));
-
-            // Filter to only PENDING BYE matches (exactly one team)
-            const actualByeMatches = byeMatches?.filter((m: any) => {
-                const isPending = m.status === 'pending';
-                // Check if one team is missing or TBD
-                // Note: The DB columns team1_id/team2_id might be null strings or empty
-                const t1 = m.team1_id;
-                const t2 = m.team2_id;
-                const isBye = (t1 && !t2) || (!t1 && t2);
-                // Note: If ids are not null but point to TBD teams, this check might fail if we don't join teams. 
-                // But typically TBD teams have null IDs in matches or specific placeholders.
-                // Let's assume for now the DB has NULL for missing teams.
-
-                return isPending && isBye;
-            }) || [];
-
-            console.log('[AutoAdvance] Filtered BYE matches:', actualByeMatches.length);
-
-            if (actualByeMatches.length === 0) {
-                toast({ title: 'No BYEs', description: 'No PENDING BYE matches to advance' });
-                return;
-            }
-
-            // --- OPTIMISTIC UPDATE FOR ALL BYES ---
-            const queryKey = ['bracket-graph', versionId];
-            let currentGraphData = queryClient.getQueryData<{ nodes: any[]; edges: any[] }>(queryKey);
-            const originalGraphData = currentGraphData; // Save for perfect rollback
-
-            if (currentGraphData && versionId) {
-                let updatedNodes = [...currentGraphData.nodes];
-
-                for (const match of actualByeMatches) {
-                    const winnerId = match.team1_id || match.team2_id;
-                    const isBo1 = (match.best_of || 1) === 1;
-                    const winScore = isBo1 ? 13 : 1;
-                    const t1Score = match.team1_id ? winScore : 0;
-                    const t2Score = match.team2_id ? winScore : 0;
-
-                    updatedNodes = optimisticBracket.applyScore(
-                        updatedNodes,
-                        match.id,
-                        t1Score,
-                        t2Score,
-                        match.team1_id,
-                        match.team2_id
-                    );
-
-                    updatedNodes = optimisticBracket.applyAdvancement(
-                        updatedNodes,
-                        currentGraphData.edges,
-                        match.id,
-                        winnerId,
-                        null
-                    );
-                }
-
-                currentGraphData = { ...currentGraphData, nodes: updatedNodes };
-                queryClient.setQueryData(queryKey, currentGraphData);
-            }
-            // --------------------------------------
-
-            // Advance each BYE match using GraphMatchService
-            let advancedCount = 0;
-            let failureCount = 0;
-            for (const match of actualByeMatches) {
-                const isBo1 = (match.best_of || 1) === 1;
-                const winScore = isBo1 ? 13 : 1;
-                const result = await GraphMatchService.saveScoreAndAdvance(
-                    match.id,
-                    match.team1_id ? winScore : 0,
-                    match.team2_id ? winScore : 0,
-                    match.team1_id,
-                    match.team2_id
-                );
-
-                if (result.success) {
-                    advancedCount++;
-                } else {
-                    failureCount++;
-                }
-            }
-
-            if (failureCount > 0 && originalGraphData && versionId) {
-                // Partial or full failure: rollback to original state
-                queryClient.setQueryData(queryKey, originalGraphData);
-                throw new Error(`Failed to advance ${failureCount} match(es).`);
-            }
-
-            toast({
-                title: 'BYEs Advanced',
-                description: `${advancedCount} BYE match(es) have been processed!`
-            });
-            // Removed fetchData(true) to preserve optimistic state
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        }
-    };
-
-
 
     // Handle publishing bracket
     const handlePublishBracket = async () => {

@@ -19,8 +19,6 @@ import {
   FileText,
   MapPin,
   Globe,
-  Mail,
-  Phone,
   ImageIcon
 } from "lucide-react";
 import { Link } from "react-router-dom";

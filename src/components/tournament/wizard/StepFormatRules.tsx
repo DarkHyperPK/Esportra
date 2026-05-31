@@ -9,16 +9,12 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
-import { Trophy, Users, Shuffle, Award, Target, Plus, Trash2, Layers, Map as MapIcon, Check, FileText } from 'lucide-react';
+import { Trophy, Users, Target, Plus, Trash2, Layers, Map as MapIcon, Check, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WizardStepProps } from '@/types/tournamentWizard';
-import {
-    BRACKET_TYPE_LABELS,
-    SEEDING_TYPE_LABELS,
-    POWER_OF_TWO_OPTIONS
-} from '@/schemas/tournamentSchema';
+
+
 import { cn } from '@/lib/utils';
-import esportsGames from '@/data/esportsGames.json';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { getWebsiteAssetUrl } from '@/lib/storage';

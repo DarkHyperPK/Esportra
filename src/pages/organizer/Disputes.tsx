@@ -1,19 +1,19 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useHub } from '@/contexts/SignalRContext';
+import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldAlert, Clock, CheckCircle, XCircle,
   RefreshCw, AlertCircle, Send, Image as ImageIcon, X,
-  Trophy, Calendar, User, Search, MessageSquare, ZoomIn,
+  Trophy, Calendar, Search, MessageSquare, ZoomIn,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -197,7 +197,7 @@ const OrganizerDisputesPage: React.FC = () => {
         setUploadingAttachment(false);
       }
 
-      const result = await apiClient.post<{ autoPromoted?: boolean }>(`/api/organizer/disputes/${selectedDispute.id}/comments`, {
+      const _result = await apiClient.post<{ autoPromoted?: boolean }>(`/api/organizer/disputes/${selectedDispute.id}/comments`, {
         comment: commentText.trim() || '',
         attachmentUrl,
       });

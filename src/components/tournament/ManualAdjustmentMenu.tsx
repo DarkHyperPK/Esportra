@@ -41,7 +41,7 @@ type AdjustmentAction = 'walkover_team1' | 'walkover_team2' | 'swap' | 'reset';
 
 const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
     matchId,
-    tournamentId,
+    tournamentId: _tournamentId,
     team1Id,
     team2Id,
     team1Name,

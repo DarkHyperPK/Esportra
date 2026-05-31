@@ -1,10 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/effects/LoadingSpinner';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRole } from '@/contexts/RoleContext';
-import { useAdmin } from '@/contexts/AdminContext';
+import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { useQuery } from '@tanstack/react-query';
 import Footer from '@/components/Footer';
@@ -17,13 +14,9 @@ import { Trophy } from 'lucide-react';
 const TournamentBrackets = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const { currentRole } = useRole();
-  const admin = useAdmin();
 
   const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
-  const [isClearing, setIsClearing] = useState(false);
 
   // 1. Fetch Tournament & Participants
   const tournamentQuery = useQuery({
@@ -34,8 +27,10 @@ const TournamentBrackets = () => {
   });
 
   const tournament = tournamentQuery.data?.tournament ?? null;
-  const stages: any[] = tournamentQuery.data?.stages ?? [];
-  const participants: any[] = tournamentQuery.data?.participants ?? [];
+  const stages = useMemo<any[]>(
+    () => tournamentQuery.data?.stages ?? [],
+    [tournamentQuery.data?.stages]
+  );
   const loading = tournamentQuery.isLoading;
 
   // Fetch bracket versions - Organizers see drafts, others only active
@@ -81,13 +76,6 @@ const TournamentBrackets = () => {
     versionId: activeVersionId || undefined,
     slug: slug,
   });
-
-  // 3. Permissions
-  const isOrganizerRole = currentRole === 'organizer' || admin.hasPermission('tournaments:edit');
-  const isOrganizerOwner = useMemo(() =>
-    isOrganizerRole && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id),
-    [isOrganizerRole, user?.id, tournament?.organization?.owner_id]
-  );
 
   if (loading) {
     return (

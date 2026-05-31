@@ -1,13 +1,11 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Trophy, AlertCircle, Swords, Copy, MessageCircle, Clock, ShieldAlert, ExternalLink } from 'lucide-react';
-import { MatchCard } from './brackets/MatchCard';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
@@ -25,9 +23,7 @@ import TimeProposalCard from '@/components/tournament/TimeProposalCard';
 import MatchChat from '@/components/tournament/MatchChat';
 import TournamentEndScreen from '@/components/tournament/TournamentEndScreen';
 import EntityAvatar from '@/components/ui/EntityAvatar';
-import { formatDistanceToNow, format } from 'date-fns';
 
-import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { useMatchCheckin } from '@/hooks/useMatchCheckin';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useTimeProposal } from '@/hooks/useTimeProposal';
@@ -47,7 +43,7 @@ const CaptainMatchPage = () => {
 
     const { slug, matchId: urlMatchId } = useParams<{ slug: string; matchId?: string }>();
     const navigate = useNavigate();
-    const { user, profile } = useAuth();
+    const { user } = useAuth();
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const { userTeams, loading: teamsLoading } = useTeamManagement();
@@ -58,9 +54,8 @@ const CaptainMatchPage = () => {
     const [userTeamId, setUserTeamId] = useState<string | undefined>(undefined);
     const [isCaptain, setIsCaptain] = useState(false);
     const [isOrganizer, setIsOrganizer] = useState(false);
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [stageFormat, setStageFormat] = useState<string>('single_elimination');
-    const [roundDeadline, setRoundDeadline] = useState<string | null>(null);
+    const stageFormat = 'single_elimination';
+    const roundDeadline: string | null = null;
     const [participantStatus, setParticipantStatus] = useState<string | null>(null);
     const [stageConfigs, setStageConfigs] = useState<Record<string, any>>({});
     const terminology = useGameTerminology(tournament?.game);
@@ -143,12 +138,6 @@ const CaptainMatchPage = () => {
             }
         }
     }, [bracketVersions, tournament?.id]);
-
-    useEffect(() => {
-    }, [tournament]);
-
-    useEffect(() => {
-    }, [allGraphData]);
 
     // Extract team IDs and fetch team data
     const teamIds = useMemo(() => {
@@ -238,13 +227,6 @@ const CaptainMatchPage = () => {
     const organizerMatchLoading = isOrganizerMatchView && !organizerMatch;
     const pageLoading = loading || bracketLoading || organizerMatchLoading;
 
-    // Calculate team count from matches
-    const teamCount = useMemo(() => {
-        if (!allGraphData?.nodes) return 8;
-        const winnersNodes = allGraphData.nodes.filter((n: any) => n.bracket_type === 'winners' && n.round_index === 0);
-        return Math.max(winnersNodes.length * 2, 4);
-    }, [allGraphData?.nodes]);
-
     // Fetch tournament details
     const fetchTournamentData = useCallback(async () => {
         if (!slug) return;
@@ -290,11 +272,7 @@ const CaptainMatchPage = () => {
 
             // 1. Organizer status already set from API response
 
-            // 2. Check if user is Admin
-            const isAd = !!(profile as any)?.is_admin || profile?.role === 'admin';
-            setIsAdmin(isAd);
-
-            // 3. Check if user is registered SOLO
+            // 2. Check if user is registered SOLO
             let userParticipant = participants.find((p: any) => p.user_id === user.id);
 
             // 2. If not solo, check if any of user's TEAMS are registered
@@ -306,7 +284,7 @@ const CaptainMatchPage = () => {
             if (userParticipant) {
 
                 let isCap = false;
-                let teamId = userParticipant.team_id || userParticipant.user_id || undefined;
+                const teamId = userParticipant.team_id || userParticipant.user_id || undefined;
 
                 if (userParticipant.participant_type === 'solo') {
                     isCap = true; // Solo players are captains
@@ -331,7 +309,7 @@ const CaptainMatchPage = () => {
         };
 
         checkRoles();
-    }, [user, profile, participants, userTeams, teamsLoading, tournament]);
+    }, [user, participants, userTeams, teamsLoading, tournament]);
 
     // Find active match for the team (prefer URL matchId from notification links)
     const activeMatch = useMemo(() => {
@@ -508,7 +486,7 @@ const CaptainMatchPage = () => {
     const isVetoEnabled = useMemo(() => {
         if (!gameHasMapVeto(tournament?.game || '', tournament?.game_mode)) return false;
         return tournament?.settings?.mapVetoEnabled !== false;
-    }, [tournament?.settings, tournament?.game]);
+    }, [tournament?.settings, tournament?.game, tournament?.game_mode]);
 
     // Watch reports for the active match — used to detect disputed status
     const activeMatchRawId = activeMatch ? activeMatch.id.replace(/^(db-|wb-|lb-)/, '') : undefined;
@@ -522,7 +500,7 @@ const CaptainMatchPage = () => {
     );
 
     // Auto-Report State
-    const [matchGames, setMatchGames] = useState<any[]>([]);
+    const [, setMatchGames] = useState<any[]>([]);
     const [nextGameNumber, setNextGameNumber] = useState(1);
     const [nextGameMap, setNextGameMap] = useState<{ id: string, name: string } | null>(null);
 
@@ -558,7 +536,7 @@ const CaptainMatchPage = () => {
         }
 
         setNextGameMap(null);
-    }, [activeMatch?.id]);
+    }, [activeMatch]);
 
     useEffect(() => {
         fetchMatchGamesAndMap();
@@ -669,32 +647,6 @@ const CaptainMatchPage = () => {
 
         return isDE ? `Winners Round ${round}` : `Round ${round}`;
     };
-
-    const transformMatch = (m: BracketMatch): any => ({
-        id: m.id,
-        match_number: m.matchNumber,
-        status: m.status,
-        team1: m.team1 ? {
-            id: m.team1.id,
-            name: m.team1.name,
-            logo: m.team1.logo_url,
-            score: m.team1_score,
-            isWinner: m.winner?.id === m.team1.id
-        } : null,
-        team2: m.team2 ? {
-            id: m.team2.id,
-            name: m.team2.name,
-            logo: m.team2.logo_url,
-            score: m.team2_score,
-            isWinner: m.winner?.id === m.team2.id
-        } : null,
-        winner_id: m.winner?.id,
-        roundName: getRoundName(m.round, m.bracketSide),
-        scheduledTime: m.scheduledTime,
-        resultImages: m.resultImages,
-        partyCode: m.partyCode,
-        bestOf: m.bestOf
-    });
 
     // Actions handlers
     const handleOpenVeto = (match: BracketMatch) => {

@@ -12,7 +12,7 @@ import BrandShowcase from "@/components/landing/BrandShowcase";
 import TheHeartbeat from "@/components/landing/TheHeartbeat";
 import Roadmap from "@/components/landing/Roadmap";
 import PremiumBackground from "@/components/ui/PremiumBackground";
-import SEO from '@/components/SEO';
+import { SEO } from '@/components/SEO';
 
 const Index = () => {
     return (

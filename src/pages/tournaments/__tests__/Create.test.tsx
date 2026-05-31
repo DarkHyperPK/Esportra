@@ -28,7 +28,7 @@ vi.mock('@/contexts/AuthContext', () => ({
   useAuth: vi.fn()
 }));
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 
 describe('Create Tournament Page', () => {
   beforeEach(() => {

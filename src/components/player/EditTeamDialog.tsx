@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Team } from '@/hooks/useTeamManagement';
 import { useTeamMutations } from '@/hooks/teams/useTeamMutations';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Check, Loader2, Upload, X } from 'lucide-react';
@@ -22,17 +20,6 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
 
     const [name, setName] = useState('');
     const [tag, setTag] = useState('');
-    const [game, setGame] = useState('');
-    const [gameFormat, setGameFormat] = useState('');
-
-    const [socialLinks, setSocialLinks] = useState<Record<string, string>>({
-        website: '',
-        twitter: '',
-        instagram: '',
-        youtube: '',
-        discord: '',
-    });
-
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const [removeLogo, setRemoveLogo] = useState(false);

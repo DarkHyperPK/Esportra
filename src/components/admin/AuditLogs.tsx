@@ -25,7 +25,6 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { useAuth } from '@/contexts/AuthContext';
 import { useAdminAuditLogs } from '@/hooks/useAdminQueries';
 
 interface AuditLog {
@@ -42,7 +41,6 @@ interface AuditLog {
 }
 
 const AuditLogs: React.FC = () => {
-  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);

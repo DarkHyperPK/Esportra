@@ -3,15 +3,15 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Trophy, Clock, Swords, CheckCircle2, AlertCircle, Check, X, ShieldAlert, Search, Info, SearchX, RefreshCcw, Zap, AlertTriangle, Upload, ImagePlus, X as XIcon } from 'lucide-react';
+import { Loader2, Trophy, Clock, Swords, CheckCircle2, AlertCircle, Check, ShieldAlert, Search, Info, SearchX, RefreshCcw, Zap, AlertTriangle, ImagePlus, X as XIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
-import { useAuth } from '@/contexts/AuthContext';
-import { useMatchResultReport, MatchResultReport } from '@/hooks/useMatchResultReport';
+import { useAuth } from '@/hooks/useAuth';
+import { useMatchResultReport } from '@/hooks/useMatchResultReport';
 import { formatDistanceToNow, format } from 'date-fns';
-import { FullScoreboard, getAgentIcon, getMapSplash, MAP_THEMES } from './FullScoreboard';
+import { FullScoreboard } from './FullScoreboard';
+import { MAP_THEMES, getAgentIcon, getMapSplash } from './fullScoreboardConstants';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 
 interface MatchCandidate {

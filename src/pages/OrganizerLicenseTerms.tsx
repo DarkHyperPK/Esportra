@@ -2,7 +2,7 @@ import React from 'react';
 import Footer from '@/components/Footer';
 import { Link } from 'react-router-dom';
 import { getWebsiteAssetUrl } from '@/lib/storage';
-import { ShieldCheck, AlertTriangle, Scale, FileText, Ban, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Scale, Ban, CheckCircle2 } from 'lucide-react';
 
 const OrganizerLicenseTerms: React.FC = () => {
   return (

@@ -2,14 +2,11 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import { useAuth } from '@/contexts/AuthContext';
-import { Trophy, Globe, Twitter, Instagram, Youtube, Link2, Calendar, Users, MapPin, Search, ArrowRight, ImageIcon, Play, Loader2, Award, Zap, CheckCircle2, Building2, Folder } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Trophy, Globe, Twitter, Instagram, Youtube, Link2, ArrowRight, ImageIcon, Loader2, Zap, CheckCircle2, Building2, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Footer from '@/components/Footer';
 import { TournamentCard } from '@/components/TournamentCard';
 
@@ -32,7 +29,7 @@ const OrganizationPublicProfile = () => {
     });
 
     // Fetch Tournaments
-    const { data: tournaments, isLoading: tournamentsLoading } = useQuery({
+    const { data: tournaments, isLoading: _tournamentsLoading } = useQuery({
         queryKey: ['org-tournaments', org?.id],
         queryFn: async () => {
             return await apiClient.get(`/api/organizations/${org.id}/tournaments`);

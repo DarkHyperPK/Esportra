@@ -1,4 +1,4 @@
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { ShieldAlert, Mail, Clock, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,7 @@ const SuspendedPage = () => {
                                         <Clock className="w-3 h-3" /> Duration
                                     </p>
                                     <p className="text-zinc-200 text-sm font-medium">
-                                        {isPermanent ? "Permanent" : formatDistanceToNow(suspensionUntil!!)}
+                                        {isPermanent ? "Permanent" : formatDistanceToNow(suspensionUntil!)}
                                     </p>
                                 </div>
                             </div>

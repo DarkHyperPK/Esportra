@@ -1,7 +1,7 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { useAdmin } from "@/contexts/AdminContext";
-import { useRole } from "@/contexts/RoleContext";
+import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
+import { useRole } from "@/hooks/useRole";
 import { ProfileLoading } from "./profile/ProfileLoading";
 import { UserRole } from "@/types/auth";
 

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChevronRight, Volume2, VolumeX, ChevronDown, Trophy } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 

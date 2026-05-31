@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAdmin } from '@/contexts/AdminContext';
+import { useAdmin } from '@/hooks/useAdmin';
 import { ProfileLoading } from '@/components/profile/ProfileLoading';
 import { motion } from 'framer-motion';
 import { Shield } from 'lucide-react';

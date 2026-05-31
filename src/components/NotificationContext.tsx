@@ -1,33 +1,12 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
+import React, { useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { HubConnectionState } from '@microsoft/signalr';
 import { apiClient } from '@/lib/apiClient';
-import { useAuth } from '@/contexts/AuthContext';
-import { useHub } from '@/contexts/SignalRContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
+import { NotificationContext, type Notification } from '@/contexts/notification-context';
 
-export interface Notification {
-  id: string;
-  user_id: string;
-  type: string;
-  title: string;
-  message: string;
-  reason?: string;
-  link?: string;
-  team_id?: string;
-  is_read: boolean;
-  data?: Record<string, any>;
-  created_at: string;
-}
-
-interface NotificationContextType {
-  notifications: Notification[];
-  unreadCount: number;
-  markAsRead: (id: string) => Promise<void>;
-  markAllAsRead: () => Promise<void>;
-  refreshNotifications: () => Promise<void>;
-}
-
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+export type { Notification };
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
@@ -68,12 +47,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
-  // Wire up SignalR listeners (replaces polling)
   useEffect(() => {
     if (!user || !hub || authLoading || listenersAttached.current) return;
 
     const onNewNotification = (payload: Record<string, string>) => {
-      // Prepend new notification and bump unread count; full data comes from a re-fetch
       const stub: Notification = {
         id: payload.id ?? crypto.randomUUID(),
         user_id: user.id,
@@ -88,7 +65,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       setUnreadCount(prev => prev + 1);
     };
 
-    const onNotificationRead = (notificationId: string) => {
+    const onNewNotificationRead = (notificationId: string) => {
       setNotifications(prev => {
         const updated = prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n);
         setUnreadCount(updated.filter(n => !n.is_read).length);
@@ -102,19 +79,18 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     };
 
     hub.on('NewNotification', onNewNotification);
-    hub.on('NotificationRead', onNotificationRead);
+    hub.on('NotificationRead', onNewNotificationRead);
     hub.on('AllRead', onAllRead);
     listenersAttached.current = true;
 
     return () => {
       hub.off('NewNotification', onNewNotification);
-      hub.off('NotificationRead', onNotificationRead);
+      hub.off('NotificationRead', onNewNotificationRead);
       hub.off('AllRead', onAllRead);
       listenersAttached.current = false;
     };
   }, [user, hub, authLoading]);
 
-  // Initial fetch on mount — one-time load of existing notifications
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -126,18 +102,15 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   }, [user, fetchNotifications, authLoading]);
 
   const markAsRead = async (id: string) => {
-    // Optimistic update
     setNotifications(prev => {
       const updated = prev.map(n => n.id === id ? { ...n, is_read: true } : n);
       setUnreadCount(updated.filter(n => !n.is_read).length);
       return updated;
     });
 
-    // Skip API call for synthetic invite notifications
     if (String(id).startsWith('invite-')) return;
 
     try {
-      // Use SignalR for multi-tab sync when connected, fall back to REST
       if (hub.state === HubConnectionState.Connected) {
         await hub.invoke('MarkRead', id);
       } else {
@@ -149,7 +122,6 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const markAllAsRead = async () => {
-    // Optimistic
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     setUnreadCount(0);
 
@@ -169,10 +141,4 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </NotificationContext.Provider>
   );
-};
-
-export const useNotifications = () => {
-  const ctx = useContext(NotificationContext);
-  if (!ctx) throw new Error('useNotifications must be used within a NotificationProvider');
-  return ctx;
 };

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, Minimize2, Maximize2, ChevronDown, ShieldCheck, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { useMatchChat } from '@/hooks/useMatchChat';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 
 interface MatchChatProps {

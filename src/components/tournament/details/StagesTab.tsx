@@ -2,7 +2,8 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent } from '@/components/ui/card';
-import { StageProgressChip, getStageProgressFromStage } from '@/components/tournament/StageProgressChip';
+import { StageProgressChip } from '@/components/tournament/StageProgressChip';
+import { getStageProgressFromStage } from '@/components/tournament/getStageProgressFromStage';
 import type { StageProgressLabel } from '@/types/stageCompletion';
 import {
     Dialog,
@@ -12,7 +13,7 @@ import {
     DialogDescription
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trophy, Calendar, CheckCircle2, Clock, CircleDot, AlertTriangle, Layers, Lock, ArrowDown, Shield, Swords, Map as MapIcon, ChevronRight, Users } from 'lucide-react';
+import { Trophy, Layers, Lock, ArrowDown, Shield, Swords, Map as MapIcon, ChevronRight, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface StagesTabProps {

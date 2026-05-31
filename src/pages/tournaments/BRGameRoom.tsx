@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import {
   useBRPlayerContext,
@@ -20,8 +20,7 @@ import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import PremiumBackground from '@/components/ui/PremiumBackground';
 import {
   Trophy, Copy, ArrowLeft, Radio, Clock, CheckCircle, Key, Send,
-  Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown,
-  Crosshair, Medal, Flame, Shield,
+  Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown, Medal, Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -97,7 +96,7 @@ const BRGameRoom: React.FC = () => {
     enabled: !!tournament?.id,
   });
 
-  const participants = participantsData || [];
+  const participants = useMemo(() => participantsData || [], [participantsData]);
 
   const userTeam = useMemo(() => {
     if (!user?.id || !participants.length) return null;

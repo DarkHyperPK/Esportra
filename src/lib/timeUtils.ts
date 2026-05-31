@@ -8,7 +8,7 @@
  * 3. Timezone labels are shown so users know what time zone they're seeing.
  */
 
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 
 // ─── Timezone Detection ───────────────────────────────────────────────────
 

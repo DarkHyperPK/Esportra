@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import Footer from '@/components/Footer';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { Zap, Shield, ChevronRight, Cpu, Globe, BarChart3 } from 'lucide-react';
+import { Zap, ChevronRight, Cpu, Globe, BarChart3 } from 'lucide-react';
 import { JackButton } from '@/components/ui/JackButton';
 import { Link } from 'react-router-dom';
 import { getWebsiteAssetUrl } from '@/lib/storage';

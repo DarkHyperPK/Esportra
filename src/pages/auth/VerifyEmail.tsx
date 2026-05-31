@@ -1,7 +1,6 @@
 'use client';
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { Mail, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import AuthLayout from '@/components/auth/AuthLayout';

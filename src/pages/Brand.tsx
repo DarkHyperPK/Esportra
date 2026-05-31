@@ -4,7 +4,7 @@ import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { JackButton } from "@/components/ui/JackButton";
 import Footer from "@/components/Footer";
-import SEO from "@/components/SEO";
+import { SEO } from "@/components/SEO";
 
 /* ============================================================== */
 /*  Brand Page — copy-first, editorial                              */

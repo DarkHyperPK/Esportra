@@ -1,32 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import { apiClient } from '@/lib/apiClient';
-import { useAuth } from './AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { RoleContext, type RoleContextType, type UserRole } from '@/contexts/role-context';
 
-export type UserRole = 'casual' | 'organizer' | 'venue_owner' | 'admin';
-
-interface RoleContextType {
-  currentRole: UserRole;
-  isLoading: boolean;
-  switchRole: (newRole: UserRole, reason?: string) => Promise<boolean>;
-  resetToBaseRole: () => void;
-  refreshRoleFromDatabase: () => Promise<void>;
-  canCreateTeams: boolean;
-  canCreateTournaments: boolean;
-  canManageTournaments: boolean;
-  canJoinTeams: boolean;
-  canReportScores: boolean;
-  canVerifyResults: boolean;
-}
-
-const RoleContext = createContext<RoleContextType | undefined>(undefined);
+export type { UserRole };
 
 interface RoleProviderProps {
   children: ReactNode;
 }
 
 export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
-  const { user, profile, updateProfile } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [currentRole, setCurrentRole] = useState<UserRole>('casual');
   const [isLoading, setIsLoading] = useState(true);
@@ -125,7 +110,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   }, [profile?.role]);
 
   // Switch user role (session-based, works with multi-role system)
-  const switchRole = React.useCallback(async (newRole: UserRole, reason?: string): Promise<boolean> => {
+  const switchRole = React.useCallback(async (newRole: UserRole, _reason?: string): Promise<boolean> => {
     if (!user) {
       toast({
         title: 'Error',
@@ -267,7 +252,6 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
   // Permission checks - Super admin gets all perks, other admins stay on casual
   const isSuperAdmin = profile?.is_admin && (profile?.admin_roles as string[])?.includes('super_admin');
-  const isAdmin = profile?.is_admin;
 
   // Super admin: gets all perks (casual, organizer, venue owner) without switching
   // Other admins: stay on casual, get their specific admin role perks
@@ -329,10 +313,3 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   );
 };
 
-export const useRole = (): RoleContextType => {
-  const context = useContext(RoleContext);
-  if (context === undefined) {
-    throw new Error('useRole must be used within a RoleProvider');
-  }
-  return context;
-};

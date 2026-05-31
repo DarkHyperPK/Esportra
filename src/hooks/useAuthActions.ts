@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useToast } from './use-toast';
 import { UserRole } from '@/types/auth';
-import { getDashboardPath } from '@/utils/redirectUtils';
 
 export const useAuthActions = () => {
   const [loading, setLoading] = useState(false);
@@ -50,7 +49,7 @@ export const useAuthActions = () => {
     username: string,
     fullName?: string,
     role: UserRole = 'casual',
-    dateOfBirth?: string
+    _dateOfBirth?: string
   ) => {
     setLoading(true);
     console.log("Signing up with role:", role);

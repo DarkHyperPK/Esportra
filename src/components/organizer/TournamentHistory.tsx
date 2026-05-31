@@ -2,7 +2,7 @@ import React, { memo, useCallback, useEffect, useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Loader2, Calendar, Users, Trophy, ChevronDown, ChevronUp, Search, Swords } from "lucide-react";
 import { apiClient } from '@/lib/apiClient';
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useRawgGame } from "@/hooks/useRawgGame";
@@ -21,11 +21,7 @@ export default function TournamentHistory() {
     const [tournaments, setTournaments] = useState<any[]>([]);
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchHistory();
-    }, [user?.id]);
-
-    const fetchHistory = async () => {
+    const fetchHistory = useCallback(async () => {
         if (!user?.id) return;
         setLoading(true);
         try {
@@ -64,7 +60,11 @@ export default function TournamentHistory() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user?.id]);
+
+    useEffect(() => {
+        fetchHistory();
+    }, [fetchHistory]);
 
     const fetchTournamentDetails = useCallback(async (tournamentId: string) => {
         const tournament = tournaments.find(t => t.id === tournamentId);

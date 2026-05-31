@@ -11,8 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, Trash2, X, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface CascadeWarning {
     entity: string;

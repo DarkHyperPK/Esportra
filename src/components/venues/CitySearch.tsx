@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MapPin, X, Check, ChevronsUpDown, Loader2 } from 'lucide-react';
+import { MapPin, X, Loader2 } from 'lucide-react';
 
 interface LocationResult {
   display_name: string;

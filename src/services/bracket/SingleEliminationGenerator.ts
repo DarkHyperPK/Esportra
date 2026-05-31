@@ -1,4 +1,4 @@
-import { IBracketGenerator, GraphValidator } from './BracketGenerator';
+import { IBracketGenerator } from './BracketGenerator';
 import { BracketGraph, BracketNode, BracketEdge, BracketVersion } from '@/types/bracket-graph';
 
 interface Team {
@@ -33,7 +33,7 @@ export class SingleEliminationGenerator implements IBracketGenerator {
         const targetRemainingTeams = Math.max(1, Math.pow(2, Math.ceil(Math.log2(effectiveAdvCount))));
         const numRounds = Math.max(1, fullRounds - Math.log2(targetRemainingTeams));
 
-        const numByes = powerOfTwo - numTeams;
+        const _numByes = powerOfTwo - numTeams;
 
         // Standard bracket seeding: 1 vs N, 2 vs N-1, etc.
         const seededTeams = this.seedTeams(teams, powerOfTwo);

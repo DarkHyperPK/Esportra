@@ -158,10 +158,9 @@ interface BRStageManagementTabProps {
     onUpdate: () => void;
 }
 
-export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tournamentId, stages: stagesProp, participants: participantsProp, maxParticipants, teamSize, game, scoringPreset, onUpdate }) => {
-    // Defensive defaults — prevent .map() on undefined if parent passes undefined during loading
-    const stages = stagesProp ?? [];
-    const participants = participantsProp ?? [];
+export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tournamentId, stages: stagesProp, participants: participantsProp, maxParticipants, teamSize, game, scoringPreset: _scoringPreset, onUpdate }) => {
+    const stages = useMemo(() => stagesProp ?? [], [stagesProp]);
+    const participants = useMemo(() => participantsProp ?? [], [participantsProp]);
     const { toast } = useToast();
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);

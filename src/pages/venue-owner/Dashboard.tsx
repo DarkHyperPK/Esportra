@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from "@/lib/apiClient";
 import { useVenueImpressionTotals } from "@/hooks/useVenueImpressions";
@@ -80,11 +80,7 @@ const VenueOwnerDashboard = () => {
   const [activeView, setActiveView] = useState<'venues' | 'analytics'>('venues');
   const [submitting, setSubmitting] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) fetchMyVenues();
-  }, [user]);
-
-  const fetchMyVenues = async () => {
+  const fetchMyVenues = useCallback(async () => {
     try {
       setLoading(true);
       const data = await apiClient.get<Venue[]>(`/api/venues?owner_id=${user?.id}`);
@@ -94,7 +90,11 @@ const VenueOwnerDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, toast]);
+
+  useEffect(() => {
+    if (user) fetchMyVenues();
+  }, [user, fetchMyVenues]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this venue? This cannot be undone.')) return;
