@@ -118,7 +118,6 @@ export function isSkirmishGameMode(gameName: string, modeKey?: string | null): b
 export function gameHasMapVeto(gameName: string, modeKey?: string | null): boolean {
   return getEffectiveGameFeatures(gameName, modeKey).mapVeto;
 }
-}
 
 /** Check if a game has a map pool */
 export function gameHasMapPool(gameName: string, modeKey?: string | null): boolean {
