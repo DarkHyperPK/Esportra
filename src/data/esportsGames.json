@@ -54,6 +54,14 @@
           "participantMode": "solo",
           "allowsSubstitutes": false,
           "maxRosterSize": 1,
+          "mapPoolFilter": "skirmish",
+          "features": {
+            "mapVeto": false,
+            "mapPool": true,
+            "mapPoolSize": 5,
+            "assistedReporting": false,
+            "hasSidePick": false
+          },
           "aliases": [
             "skirmish",
             "swiftplay",
@@ -71,6 +79,14 @@
           "participantMode": "team",
           "allowsSubstitutes": true,
           "maxRosterSize": 3,
+          "mapPoolFilter": "skirmish",
+          "features": {
+            "mapVeto": false,
+            "mapPool": true,
+            "mapPoolSize": 5,
+            "assistedReporting": false,
+            "hasSidePick": false
+          },
           "aliases": [
             "2v2",
             "skirmish_2v2"

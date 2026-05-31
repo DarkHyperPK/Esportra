@@ -13,11 +13,11 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { WizardStepProps } from '@/types/tournamentWizard';
-import { getGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 import { useServerRegions, CONTINENT_LABELS } from '@/hooks/useServerRegions';
 
 const StepSettings: React.FC<WizardStepProps> = ({ data, updateData }) => {
-    const features = getGameFeatures(data.game || '');
+    const features = getEffectiveGameFeatures(data.game || '', data.gameMode);
     const showMapVeto = features.mapVeto;
     const showAssistedReporting = features.assistedReporting;
     const isBR = isBattleRoyale(data.game || '');

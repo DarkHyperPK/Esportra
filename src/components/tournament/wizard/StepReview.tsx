@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { TournamentWizardData, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS, SEEDING_TYPE_LABELS } from '@/schemas/tournamentSchema';
 import { cn } from '@/lib/utils';
-import { getGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 
 interface StepReviewProps {
     data: TournamentWizardData;
@@ -30,7 +30,7 @@ interface StepReviewProps {
 
 const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
     const hasErrors = Object.keys(errors).length > 0;
-    const features = getGameFeatures(data.game || '');
+    const features = getEffectiveGameFeatures(data.game || '', data.gameMode);
     const isBR = isBattleRoyale(data.game || '');
     const brConfig = getBRConfig(data.game || '');
 

@@ -83,7 +83,7 @@ import {
 import { handleError, TournamentError, AuthError, DatabaseError } from '@/utils/errorHandler';
 import { tournamentApi } from '@/services/api';
 import esportsGames from '@/data/esportsGames.json';
-import { getGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 import BanManagement from '@/components/organizer/BanManagement';
@@ -303,6 +303,7 @@ const TournamentDashboard = () => {
   } = useTournamentDashboard(slug);
 
   const tournament = dashboardData?.tournament;
+  const tournamentModeFeatures = getEffectiveGameFeatures(tournament?.game || '', tournament?.game_mode);
   const participants = (dashboardData?.participants || []) as Participant[];
   const stages = dashboardData?.stages || [];
   const isOrganizer = dashboardData?.isOrganizer || false;
@@ -2508,7 +2509,7 @@ const TournamentDashboard = () => {
                       </Card>
 
                       {/* Assisted Match Reporting — games with API integration */}
-                      {getGameFeatures(tournament?.game || '').assistedReporting && (
+                      {tournamentModeFeatures.assistedReporting && (
                         <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
                           <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
@@ -2548,7 +2549,7 @@ const TournamentDashboard = () => {
                       )}
 
                       {/* Map Veto — games with map veto support */}
-                      {getGameFeatures(tournament?.game || '').mapVeto && (
+                      {tournamentModeFeatures.mapVeto && (
                         <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
                           <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">

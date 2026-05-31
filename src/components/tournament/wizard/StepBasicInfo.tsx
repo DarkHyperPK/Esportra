@@ -15,7 +15,7 @@ import { Globe, MapPin, Calendar, Clock, Eye, EyeOff, Lock, Target } from 'lucid
 import esportsGames from '@/data/esportsGames.json';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
-import { getGameByName, getDefaultGameMode, getDefaultTeamSize, getGameModes, getGameModeGroups, isBattleRoyale, getBRConfig, EsportsGame } from '@/utils/gameFeatures';
+import { getGameByName, getDefaultGameMode, getDefaultTeamSize, getGameModes, getGameModeGroups, isBattleRoyale, getBRConfig, EsportsGame, getEffectiveGameFeatures } from '@/utils/gameFeatures';
 
 const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode }) => {
     const selectedGame = getGameByName(data.game) as EsportsGame | undefined;
@@ -28,20 +28,22 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
         const defaultMode = game ? getDefaultGameMode(game.name) : undefined;
         const teamSize = game ? getDefaultTeamSize(game.name, defaultMode?.value) : data.teamSize;
         const updates: Partial<typeof data> = { game: gameName, gameMode: defaultMode?.value || '', teamSize };
-        // Auto-disable map veto for games that don't support it
-        if (game && !game.features.mapVeto) {
-            updates.mapVetoEnabled = false;
-            updates.mapPoolIds = [];
-        } else if (game?.features.mapVeto) {
-            updates.mapVetoEnabled = true;
-        }
+        const modeFeatures = getEffectiveGameFeatures(gameName, defaultMode?.value);
+        updates.mapVetoEnabled = modeFeatures.mapVeto;
+        updates.mapPoolIds = [];
         updateData(updates);
     };
 
     const handleFormatChange = (modeValue: string) => {
         const mode = selectedGameModes.find(m => (m.key || m.value) === modeValue || m.value === modeValue);
         if (mode) {
-            updateData({ gameMode: mode.value, teamSize: mode.teamSize });
+            const modeFeatures = getEffectiveGameFeatures(data.game || '', mode.value);
+            updateData({
+                gameMode: mode.value,
+                teamSize: mode.teamSize,
+                mapVetoEnabled: modeFeatures.mapVeto,
+                mapPoolIds: [],
+            });
         }
     };
 

@@ -19,7 +19,7 @@ import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { validateStep } from '@/schemas/tournamentSchema';
 import esportsGames from '@/data/esportsGames.json';
-import { getGameByName, getDefaultGameMode, getDefaultTeamSize, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { getGameByName, getDefaultGameMode, getDefaultTeamSize, isBattleRoyale, getBRConfig, getEffectiveGameFeatures } from '@/utils/gameFeatures';
 import slugify from 'slugify';
 
 const STORAGE_KEY = 'tournament_wizard_draft';
@@ -73,11 +73,9 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     const defaultMode = getDefaultGameMode(updates.game);
                     newData.gameMode = defaultMode?.value || '';
                     newData.teamSize = getDefaultTeamSize(updates.game, newData.gameMode);
-                    // Auto-configure game features
-                    if (!game.features.mapVeto) {
-                        newData.mapVetoEnabled = false;
-                        newData.mapPoolIds = [];
-                    }
+                    const modeFeatures = getEffectiveGameFeatures(updates.game, newData.gameMode);
+                    newData.mapVetoEnabled = modeFeatures.mapVeto;
+                    newData.mapPoolIds = [];
                     // Auto-set tournament type based on game
                     if (isBattleRoyale(updates.game)) {
                         newData.tournamentType = 'battle_royale';
@@ -178,6 +176,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                 ? new Date(data.registrationCloses)
                 : new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000);
             const resolvedGameMode = data.gameMode || getDefaultGameMode(data.game)?.value || undefined;
+            const modeFeatures = getEffectiveGameFeatures(data.game, resolvedGameMode);
 
             if (tournamentId) {
                 // ── UPDATE path ─────────────────────────────────────────────────
@@ -207,9 +206,9 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     region:               data.region || null,
                     currency:             data.currency || 'USD',
                     settings:             {
-                        assistedMatchReporting: data.assistedMatchReporting ?? false,
+                        assistedMatchReporting: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
                         checkInWindowMinutes: data.checkInWindowMinutes || 30,
-                        mapVetoEnabled: data.mapVetoEnabled ?? true,
+                        mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
                         ...(data.tournamentType === 'battle_royale' ? {
                             brGameCount: data.brGameCount,
                             brScoringPreset: data.brScoringPreset,
@@ -328,9 +327,9 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     tournamentType:       data.tournamentType || 'bracket',
                     serverRegion:         data.serverRegion || null,
                     settings: {
-                        assistedMatchReporting: data.assistedMatchReporting ?? false,
+                        assistedMatchReporting: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
                         checkInWindowMinutes: data.checkInWindowMinutes || 30,
-                        mapVetoEnabled: data.mapVetoEnabled ?? true,
+                        mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
                         // BR-specific settings
                         ...(data.tournamentType === 'battle_royale' ? {
                             brGameCount: data.brGameCount,

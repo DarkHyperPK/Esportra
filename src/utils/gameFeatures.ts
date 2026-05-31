@@ -30,6 +30,8 @@ export interface GameMode extends GameFormat {
   aliases?: string[];
   modeGroup?: string;
   variantLabel?: string;
+  mapPoolFilter?: 'standard' | 'skirmish';
+  features?: Partial<GameFeatures>;
 }
 
 export interface GameModeGroup {
@@ -95,14 +97,32 @@ export function getGameFeatures(gameName: string): GameFeatures {
   return game?.features ?? DEFAULT_FEATURES;
 }
 
+/** Merge game-level and mode-level feature flags (mode overrides win). */
+export function getEffectiveGameFeatures(gameName: string, modeKey?: string | null): GameFeatures {
+  const base = getGameFeatures(gameName);
+  const mode = getGameMode(gameName, modeKey);
+  if (!mode?.features) return base;
+  return { ...base, ...mode.features };
+}
+
+/** Whether the selected catalog mode uses the Skirmish map pool. */
+export function isSkirmishGameMode(gameName: string, modeKey?: string | null): boolean {
+  const mode = getGameMode(gameName, modeKey);
+  if (!mode) return false;
+  if (mode.mapPoolFilter === 'skirmish') return true;
+  return normalize(mode.modeGroup) === 'skirmish'
+    || normalize(mode.key || mode.value).includes('skirmish');
+}
+
 /** Check if a game supports map veto */
-export function gameHasMapVeto(gameName: string): boolean {
-  return getGameFeatures(gameName).mapVeto;
+export function gameHasMapVeto(gameName: string, modeKey?: string | null): boolean {
+  return getEffectiveGameFeatures(gameName, modeKey).mapVeto;
+}
 }
 
 /** Check if a game has a map pool */
-export function gameHasMapPool(gameName: string): boolean {
-  return getGameFeatures(gameName).mapPool;
+export function gameHasMapPool(gameName: string, modeKey?: string | null): boolean {
+  return getEffectiveGameFeatures(gameName, modeKey).mapPool;
 }
 
 /** Get catalog modes for a game, falling back to legacy formats. */

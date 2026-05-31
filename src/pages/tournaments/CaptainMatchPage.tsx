@@ -506,7 +506,7 @@ const CaptainMatchPage = () => {
     }, [activeMatchVersion, stageConfigs]);
 
     const isVetoEnabled = useMemo(() => {
-        if (!gameHasMapVeto(tournament?.game || '')) return false;
+        if (!gameHasMapVeto(tournament?.game || '', tournament?.game_mode)) return false;
         return tournament?.settings?.mapVetoEnabled !== false;
     }, [tournament?.settings, tournament?.game]);
 

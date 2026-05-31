@@ -22,7 +22,7 @@ import esportsGames from '@/data/esportsGames.json';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { getWebsiteAssetUrl } from '@/lib/storage';
-import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode, getGameModeGroups } from '@/utils/gameFeatures';
+import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode, getGameModeGroups, getEffectiveGameFeatures } from '@/utils/gameFeatures';
 
 /* ──────────────────────────────────────────────────────────────
    Sub-components
@@ -97,9 +97,6 @@ const MapCard: React.FC<MapCardProps> = ({ map, isSelected, onToggle, index }) =
 const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode, tournamentId, participantsCount }) => {
     const { toast } = useToast();
     const selectedGame = getGameByName(data.game || '');
-    const gameFeatures = selectedGame?.features;
-    const hasMapPool = gameFeatures?.mapPool ?? false;
-    const mapPoolSizeLimit = gameFeatures?.mapPoolSize ?? 7;
     const isBR = isBattleRoyale(data.game || '');
     const brConfig = getBRConfig(data.game || '');
     const selectedGameModes = selectedGame ? getGameModes(selectedGame.name) : [];
@@ -110,6 +107,10 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         ?? (selectedGame ? getGameMode(selectedGame.name, selectedGame.defaultMode || selectedGame.defaultFormat) : undefined)
         ?? selectedGameModes[0];
     const activeGameModeValue = activeGameMode ? (activeGameMode.key || activeGameMode.value) : '';
+    const gameFeatures = getEffectiveGameFeatures(data.game || '', activeGameModeValue);
+    const hasMapPool = gameFeatures.mapPool;
+    const mapPoolSizeLimit = gameFeatures.mapPoolSize ?? 7;
+    const organizerMapPoolOnly = hasMapPool && !gameFeatures.mapVeto;
     const activeTeamSize = activeGameMode?.teamSize ?? data.teamSize ?? 1;
     const isGameModeLocked = Boolean(isEditMode || tournamentId);
 
@@ -119,9 +120,12 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         );
         if (!mode) return;
 
+        const modeFeatures = getEffectiveGameFeatures(data.game || '', mode.value);
         const updates: Partial<typeof data> = {
             gameMode: mode.value,
             teamSize: mode.teamSize,
+            mapVetoEnabled: modeFeatures.mapVeto,
+            mapPoolIds: [],
         };
 
         if (isBR && brConfig) {
@@ -240,14 +244,18 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                 const dbGameName = isCS2 ? 'Counter-Strike 2' : data.game;
 
                 const maps = await apiClient.get<{ id: string; map_name: string; map_image_url?: string }[]>(
-                    `/api/games/maps?game=${encodeURIComponent(dbGameName)}`
+                    `/api/games/maps?game=${encodeURIComponent(dbGameName)}${activeGameModeValue ? `&mode=${encodeURIComponent(activeGameModeValue)}` : ''}`
                 );
 
                 setAvailableMaps(maps || []);
 
-                // Auto-select first batch of maps by default if none selected
-                if (maps && maps.length > 0 && (!data.mapPoolIds || data.mapPoolIds.length === 0)) {
-                    updateData({ mapPoolIds: maps.slice(0, mapPoolSizeLimit).map(m => m.id) });
+                // Auto-select when pool is empty (e.g. after mode switch)
+                if (maps && maps.length > 0) {
+                    if (!data.mapPoolIds || data.mapPoolIds.length === 0) {
+                        updateData({ mapPoolIds: maps.slice(0, mapPoolSizeLimit).map(m => m.id) });
+                    }
+                } else {
+                    updateData({ mapPoolIds: [] });
                 }
             } catch (err) {
                 console.error('[StepFormatRules] Error fetching maps:', err);
@@ -258,7 +266,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         };
 
         fetchMaps();
-    }, [data.game]);
+    }, [data.game, activeGameModeValue, hasMapPool, mapPoolSizeLimit]);
 
 
     // Toggle map selection
@@ -683,7 +691,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 Map Pool
                             </Label>
                             <p className="text-sm text-gray-400">
-                                Select maps for this tournament. These will be used in map veto during matches.
+                                {organizerMapPoolOnly
+                                    ? 'Select maps for this tournament. Skirmish uses an organizer-managed map pool — there is no captain map veto.'
+                                    : 'Select maps for this tournament. These will be used in map veto during matches.'}
                             </p>
 
                             {loadingMaps ? (
