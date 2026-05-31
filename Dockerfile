@@ -22,9 +22,9 @@ ENV VITE_APP_VERSION=$VITE_APP_VERSION
 ENV VITE_FACEIT_CLIENT_ID=$VITE_FACEIT_CLIENT_ID
 ENV VITE_FACEIT_REDIRECT_URI=$VITE_FACEIT_REDIRECT_URI
 
-# Install dependencies
-COPY package*.json ./
-RUN npm install
+# Install dependencies (match CI: use lockfile + .npmrc legacy-peer-deps)
+COPY package*.json .npmrc ./
+RUN npm ci
 
 # Copy source code and build
 COPY . .
