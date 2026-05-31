@@ -181,11 +181,15 @@ export async function openTournamentRegistration(page: Page, slug: string): Prom
   ).toBeVisible({ timeout: 45_000 });
 }
 
+export function getRegistrationDialog(page: Page) {
+  return page.getByRole('dialog', { name: /INITIATE_REGISTRATION/i });
+}
+
 export function getRegistrationTeamCard(page: Page, teamName: string) {
-  const dialog = page.getByRole('dialog', { name: /INITIATE_REGISTRATION/i });
+  const dialog = getRegistrationDialog(page);
   return dialog
-    .locator('div.border.rounded-lg')
-    .filter({ has: dialog.getByText(teamName, { exact: true }) });
+    .getByText(teamName, { exact: true })
+    .locator('xpath=ancestor::div[contains(@class,"border") and contains(@class,"rounded-lg")][1]');
 }
 
 export async function openTeamsPage(page: Page): Promise<void> {

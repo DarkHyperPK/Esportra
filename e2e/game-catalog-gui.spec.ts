@@ -19,6 +19,7 @@ import {
   openTeamsPage,
   openTournamentRegistration,
   getRegistrationTeamCard,
+  getRegistrationDialog,
   clickWizardNext,
   advanceWizardThroughSettings,
   clickWizardCreate,
@@ -153,7 +154,10 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openTournamentRegistration(page, tournament.slug ?? tournament.id);
 
+    const dialog = getRegistrationDialog(page);
+    await expect(dialog.getByText(team.name, { exact: true })).toBeVisible({ timeout: 30_000 });
     const teamCard = getRegistrationTeamCard(page, team.name);
+    await teamCard.scrollIntoViewIfNeeded();
     await expect(teamCard.getByText(/Not Eligible/i)).toBeVisible({ timeout: 30_000 });
     await expect(
       teamCard.getByText(/doesn't include this game|Create a roster for this game first|No matching roster found/i),
@@ -182,8 +186,11 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openTournamentRegistration(page, tournament.slug ?? tournament.id);
 
-    const teamCard = getRegistrationTeamCard(page, teamName);
+    const dialog = getRegistrationDialog(page);
     await expect(page.getByText(/Select Your Team/i)).toBeVisible({ timeout: 30_000 });
+    await expect(dialog.getByText(teamName, { exact: true })).toBeVisible({ timeout: 30_000 });
+    const teamCard = getRegistrationTeamCard(page, teamName);
+    await teamCard.scrollIntoViewIfNeeded();
     await expect(teamCard.getByText(/Not Eligible/i)).toBeVisible({ timeout: 30_000 });
     await expect(
       teamCard.getByText(/Roster needs at least 5 members|needs at least 5 members/i),
