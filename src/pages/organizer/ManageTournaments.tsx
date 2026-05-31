@@ -1,27 +1,23 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import esportsGames from '@/data/esportsGames.json';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, RotateCcw, Clock } from 'lucide-react';
-
-import { TournamentCard } from '@/components/TournamentCard';
+import { OrganizerTournamentCard } from '@/components/organizer/OrganizerTournamentCard';
 import {
   CommandButton,
   CommandEmptyState,
   CommandHeader,
   CommandPanel,
-  CommandSection,
   CommandShell,
-  CommandTabs,
+  CommandSection,
 } from '@/components/management/CommandSurface';
 
 interface Tournament {
@@ -39,9 +35,12 @@ interface Tournament {
   is_online: boolean | null;
   image_url: string | null;
   slug: string | null;
-  deleted_at?: string | null;
+  status: string;
+  team_size: number;
   start_date?: string;
   end_date?: string;
+  created_at?: string;
+  currency?: string;
 }
 
 interface DeletedTournament {
@@ -59,103 +58,143 @@ const normalizeTournamentRows = (value: any): any[] => {
   return [];
 };
 
+function sortByNewest<T extends { created_at?: string; start_date?: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const aTime = new Date(a.created_at || a.start_date || 0).getTime();
+    const bTime = new Date(b.created_at || b.start_date || 0).getTime();
+    return bTime - aTime;
+  });
+}
+
 const TournamentList = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'active' | 'deleted'>('active');
   const [restoring, setRestoring] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Delete modal state
+  const [selectedActiveIds, setSelectedActiveIds] = useState<Set<string>>(new Set());
+  const [selectedDeletedIds, setSelectedDeletedIds] = useState<Set<string>>(new Set());
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [tournamentToDelete, setTournamentToDelete] = useState<{ id: string; name: string; status: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [cascadeWarnings, setCascadeWarnings] = useState<Array<{ entity: string; count: number; description?: string }>>([]);
 
-  // Fetch Tournaments - Optimized N+1 Query Fix
+  const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
+  const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
+
   const { data: tournaments = [], isLoading: loading } = useQuery({
     queryKey: ['organizer-tournaments', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
 
       const organizationId = await fetchCurrentOrganizationId();
-
       if (!organizationId) return [];
 
       const data = await apiClient.get<any[]>(`/api/organizations/${organizationId}/tournaments`);
 
-      return normalizeTournamentRows(data).map((tournament: any) => ({
-        id: tournament.id,
-        name: tournament.name,
-        game: tournament.game,
-        date: tournament.start_date ? new Date(tournament.start_date).toISOString().split('T')[0] : '',
-        time: tournament.start_date ? new Date(tournament.start_date).toTimeString().split(' ')[0] : '',
-        venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
-        max_participants: tournament.max_teams ?? tournament.max_participants ?? 0,
-        current_participants: tournament.current_participants ?? tournament.participant_count ?? tournament.tournament_participants?.[0]?.count ?? 0,
-        prize_pool: tournament.prize_pool?.toString() || '0',
-        user_id: user.id, // Current user is organization owner here
-        entry_fee: tournament.entry_fee?.toString() || 'Free',
-        is_online: !tournament.venue_id,
-        image_url: tournament.banner_url || undefined,
-        slug: tournament.slug,
-        status: (tournament.status || 'draft') as 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled',
-        team_size: tournament.team_size || 1, // fallback default
-        start_date: tournament.start_date,
-        end_date: tournament.end_date,
-      }));
+      return sortByNewest(
+        normalizeTournamentRows(data).map((tournament: any) => ({
+          id: tournament.id,
+          name: tournament.name,
+          game: tournament.game,
+          date: tournament.start_date ? new Date(tournament.start_date).toISOString().split('T')[0] : '',
+          time: tournament.start_date ? new Date(tournament.start_date).toTimeString().split(' ')[0] : '',
+          venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
+          max_participants: tournament.max_teams ?? tournament.max_participants ?? 0,
+          current_participants: tournament.current_participants ?? tournament.participant_count ?? 0,
+          prize_pool: tournament.prize_pool?.toString() || '0',
+          user_id: user.id,
+          entry_fee: tournament.entry_fee?.toString() || 'Free',
+          is_online: !tournament.venue_id,
+          image_url: tournament.banner_url || undefined,
+          slug: tournament.slug,
+          status: (tournament.status || 'draft') as Tournament['status'],
+          team_size: tournament.team_size || 1,
+          start_date: tournament.start_date,
+          end_date: tournament.end_date,
+          created_at: tournament.created_at,
+          currency: tournament.currency,
+        })),
+      );
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60, // 1 minute
-    refetchOnWindowFocus: false
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
   });
 
-  // Fetch Deleted Tournaments
-  const { data: deletedTournaments = [] } = useQuery({
+  const { data: deletedTournaments = [], isLoading: loadingDeleted } = useQuery({
     queryKey: ['organizer-deleted-tournaments', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
 
       const organizationId = await fetchCurrentOrganizationId();
-
       if (!organizationId) return [];
 
       const data = await apiClient.get<any[]>(`/api/organizations/${organizationId}/tournaments?deleted=true`);
 
-      return normalizeTournamentRows(data).map((t: any) => {
-        const deletedDate = new Date(t.deleted_at);
-        const now = new Date();
-        const diffTime = 7 * 24 * 60 * 60 * 1000 - (now.getTime() - deletedDate.getTime());
-        const daysRemaining = Math.max(0, Math.ceil(diffTime / (24 * 60 * 60 * 1000)));
-        return {
-          id: t.id,
-          name: t.name,
-          game: t.game,
-          deleted_at: t.deleted_at,
-          days_remaining: daysRemaining,
-        };
-      });
+      return sortByNewest(
+        normalizeTournamentRows(data).map((t: any) => {
+          const deletedDate = new Date(t.deleted_at);
+          const now = new Date();
+          const diffTime = 7 * 24 * 60 * 60 * 1000 - (now.getTime() - deletedDate.getTime());
+          const daysRemaining = Math.max(0, Math.ceil(diffTime / (24 * 60 * 60 * 1000)));
+          return {
+            id: t.id,
+            name: t.name,
+            game: t.game,
+            deleted_at: t.deleted_at,
+            created_at: t.created_at,
+            days_remaining: daysRemaining,
+          };
+        }),
+      );
     },
-    enabled: !!user?.id,
-    staleTime: 1000 * 60, // 1 minute
-    refetchOnWindowFocus: false
+    enabled: !!user?.id && activeTab === 'deleted',
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
   });
 
+  const refreshLists = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['organizer-tournaments'] });
+    queryClient.invalidateQueries({ queryKey: ['organizer-deleted-tournaments'] });
+    queryClient.invalidateQueries({ queryKey: ['browse-tournaments'] });
+  }, [queryClient]);
 
+  const toggleActiveSelect = useCallback((id: string) => {
+    setSelectedActiveIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleDeletedSelect = useCallback((id: string) => {
+    setSelectedDeletedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const allActiveSelected = tournaments.length > 0 && selectedActiveIds.size === tournaments.length;
+  const allDeletedSelected = deletedTournaments.length > 0 && selectedDeletedIds.size === deletedTournaments.length;
 
   const handleDeleteClick = async (tournamentId: string, tournamentName: string, status: string) => {
     try {
-      // Query cascade effects
-      // Query cascade effects
-      const [participantsResult] = await Promise.all([
-        apiClient.get<any>(`/api/tournaments/${tournamentId}/participants?count_only=true`).catch(() => ({ count: 0 })),
-      ]);
+      const participantsResult = await apiClient
+        .get<any>(`/api/tournaments/${tournamentId}/participants?count_only=true`)
+        .catch(() => ({ count: 0 }));
 
       const warnings = [];
       if (participantsResult.count && participantsResult.count > 0) {
         warnings.push({
           entity: 'participant',
           count: participantsResult.count,
-          description: 'will be removed from this tournament'
+          description: 'will be removed from this tournament',
         });
       }
 
@@ -177,8 +216,6 @@ const TournamentList = () => {
 
     try {
       setDeleteLoading(true);
-
-      // Soft delete: set deleted_at timestamp
       await apiClient.put(`/api/tournaments/${tournamentToDelete.id}`, { deletedAt: new Date().toISOString() });
 
       toast({
@@ -186,10 +223,12 @@ const TournamentList = () => {
         description: `${tournamentToDelete.name} has been moved to deleted tournaments. You can restore it within 7 days.`,
       });
 
-      // Refresh all tournament lists (organizer + browse page)
-      queryClient.invalidateQueries({ queryKey: ['organizer-tournaments'] });
-      queryClient.invalidateQueries({ queryKey: ['organizer-deleted-tournaments'] });
-      queryClient.invalidateQueries({ queryKey: ['browse-tournaments'] });
+      setSelectedActiveIds((prev) => {
+        const next = new Set(prev);
+        next.delete(tournamentToDelete.id);
+        return next;
+      });
+      refreshLists();
       setDeleteModalOpen(false);
       setTournamentToDelete(null);
       setCascadeWarnings([]);
@@ -205,10 +244,38 @@ const TournamentList = () => {
     }
   };
 
+  const handleBatchSoftDelete = async () => {
+    if (selectedActiveIds.size === 0) return;
+
+    try {
+      setBatchDeleteLoading(true);
+      const ids = Array.from(selectedActiveIds);
+      const deletedAt = new Date().toISOString();
+      await Promise.all(ids.map((id) => apiClient.put(`/api/tournaments/${id}`, { deletedAt })));
+
+      toast({
+        title: 'Tournaments deleted',
+        description: `${ids.length} tournament${ids.length === 1 ? '' : 's'} moved to deleted.`,
+      });
+
+      setSelectedActiveIds(new Set());
+      setBatchDeleteOpen(false);
+      refreshLists();
+    } catch (error: any) {
+      console.error('Error batch deleting tournaments:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete selected tournaments',
+        variant: 'destructive',
+      });
+    } finally {
+      setBatchDeleteLoading(false);
+    }
+  };
+
   const handleRestore = async (tournamentId: string, tournamentName: string) => {
     try {
       setRestoring(tournamentId);
-
       await apiClient.put(`/api/tournaments/${tournamentId}`, { clearDeletedAt: true, status: 'open' });
 
       toast({
@@ -216,15 +283,45 @@ const TournamentList = () => {
         description: `${tournamentName} has been restored successfully.`,
       });
 
-      // Refresh all tournament lists (organizer + browse page)
-      queryClient.invalidateQueries({ queryKey: ['organizer-tournaments'] });
-      queryClient.invalidateQueries({ queryKey: ['organizer-deleted-tournaments'] });
-      queryClient.invalidateQueries({ queryKey: ['browse-tournaments'] });
+      setSelectedDeletedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(tournamentId);
+        return next;
+      });
+      refreshLists();
     } catch (error: any) {
       console.error('Error restoring tournament:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to restore tournament',
+        variant: 'destructive',
+      });
+    } finally {
+      setRestoring(null);
+    }
+  };
+
+  const handleBatchRestore = async () => {
+    if (selectedDeletedIds.size === 0) return;
+
+    try {
+      setRestoring('batch');
+      const ids = Array.from(selectedDeletedIds);
+      await Promise.all(
+        ids.map((id) => apiClient.put(`/api/tournaments/${id}`, { clearDeletedAt: true, status: 'open' })),
+      );
+
+      toast({
+        title: 'Tournaments restored',
+        description: `${ids.length} tournament${ids.length === 1 ? '' : 's'} restored.`,
+      });
+
+      setSelectedDeletedIds(new Set());
+      refreshLists();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to restore selected tournaments',
         variant: 'destructive',
       });
     } finally {
@@ -239,7 +336,6 @@ const TournamentList = () => {
 
     try {
       setRestoring(tournamentId);
-
       await apiClient.delete(`/api/tournaments/${tournamentId}`);
 
       toast({
@@ -247,6 +343,11 @@ const TournamentList = () => {
         description: `${tournamentName} has been permanently removed.`,
       });
 
+      setSelectedDeletedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(tournamentId);
+        return next;
+      });
       queryClient.invalidateQueries({ queryKey: ['organizer-deleted-tournaments'] });
       queryClient.invalidateQueries({ queryKey: ['browse-tournaments'] });
     } catch (error: any) {
@@ -260,6 +361,123 @@ const TournamentList = () => {
       setRestoring(null);
     }
   };
+
+  const handleBatchPermanentDelete = async () => {
+    if (selectedDeletedIds.size === 0) return;
+    const count = selectedDeletedIds.size;
+    if (!confirm(`Permanently delete ${count} tournament${count === 1 ? '' : 's'}? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setRestoring('batch');
+      const ids = Array.from(selectedDeletedIds);
+      await Promise.all(ids.map((id) => apiClient.delete(`/api/tournaments/${id}`)));
+
+      toast({
+        title: 'Tournaments permanently deleted',
+        description: `${count} tournament${count === 1 ? '' : 's'} removed.`,
+      });
+
+      setSelectedDeletedIds(new Set());
+      queryClient.invalidateQueries({ queryKey: ['organizer-deleted-tournaments'] });
+      queryClient.invalidateQueries({ queryKey: ['browse-tournaments'] });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to permanently delete selected tournaments',
+        variant: 'destructive',
+      });
+    } finally {
+      setRestoring(null);
+    }
+  };
+
+  const selectionToolbar = useMemo(() => {
+    if (activeTab === 'active' && tournaments.length > 0) {
+      return (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-none border border-white/10 bg-[#0a0a0c]/80 px-4 py-3">
+          <label className="flex cursor-pointer items-center gap-3 text-sm text-zinc-300">
+            <Checkbox
+              checked={allActiveSelected}
+              onCheckedChange={(checked) => {
+                if (checked) setSelectedActiveIds(new Set(tournaments.map((t) => t.id)));
+                else setSelectedActiveIds(new Set());
+              }}
+              aria-label="Select all hosted tournaments"
+            />
+            <span>Select all ({tournaments.length})</span>
+            {selectedActiveIds.size > 0 && (
+              <span className="text-rose-300">{selectedActiveIds.size} selected</span>
+            )}
+          </label>
+          {selectedActiveIds.size > 0 && (
+            <CommandButton
+              size="sm"
+              variant="danger"
+              onClick={() => setBatchDeleteOpen(true)}
+            >
+              Delete selected ({selectedActiveIds.size})
+            </CommandButton>
+          )}
+        </div>
+      );
+    }
+
+    if (activeTab === 'deleted' && deletedTournaments.length > 0) {
+      return (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-none border border-white/10 bg-[#0a0a0c]/80 px-4 py-3">
+          <label className="flex cursor-pointer items-center gap-3 text-sm text-zinc-300">
+            <Checkbox
+              checked={allDeletedSelected}
+              onCheckedChange={(checked) => {
+                if (checked) setSelectedDeletedIds(new Set(deletedTournaments.map((t) => t.id)));
+                else setSelectedDeletedIds(new Set());
+              }}
+              aria-label="Select all deleted tournaments"
+            />
+            <span>Select all ({deletedTournaments.length})</span>
+            {selectedDeletedIds.size > 0 && (
+              <span className="text-rose-300">{selectedDeletedIds.size} selected</span>
+            )}
+          </label>
+          {selectedDeletedIds.size > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <CommandButton
+                size="sm"
+                variant="success"
+                onClick={handleBatchRestore}
+                disabled={restoring === 'batch'}
+              >
+                Restore selected ({selectedDeletedIds.size})
+              </CommandButton>
+              <CommandButton
+                size="sm"
+                variant="danger"
+                onClick={handleBatchPermanentDelete}
+                disabled={restoring === 'batch'}
+              >
+                Delete forever ({selectedDeletedIds.size})
+              </CommandButton>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  }, [
+    activeTab,
+    allActiveSelected,
+    allDeletedSelected,
+    deletedTournaments,
+    handleBatchPermanentDelete,
+    handleBatchRestore,
+    restoring,
+    selectedActiveIds.size,
+    selectedDeletedIds.size,
+    tournaments,
+  ]);
 
   if (loading) {
     return (
@@ -279,7 +497,7 @@ const TournamentList = () => {
         <CommandHeader
           eyebrow="Tournament Ops"
           title="Manage Tournaments"
-          description="Manage every tournament hosted by your organization, including recently deleted events."
+          description="Newest tournaments first. Select multiple events to delete or restore in bulk."
           actions={
             <CommandButton asChild>
               <Link to="/tournaments/create">Create Tournament</Link>
@@ -287,25 +505,26 @@ const TournamentList = () => {
           }
         />
 
-        <Tabs defaultValue="active" className="w-full">
-          <CommandTabs
-            active="active"
-            onChange={() => undefined}
-            tabs={[
-              { value: 'active', label: `Hosted (${tournaments.length})` },
-              { value: 'deleted', label: `Deleted (${deletedTournaments.length})` },
-            ]}
-            className="mb-6 hidden"
-          />
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            setActiveTab(value as 'active' | 'deleted');
+            setSelectedActiveIds(new Set());
+            setSelectedDeletedIds(new Set());
+          }}
+          className="w-full"
+        >
           <TabsList className="mb-6 h-auto rounded-none border border-white/10 bg-[#0a0a0c]/92 p-2">
             <TabsTrigger value="active" className="rounded-none data-[state=active]:bg-rose-500 data-[state=active]:text-white">
               Hosted Tournaments ({tournaments.length})
             </TabsTrigger>
             <TabsTrigger value="deleted" className="rounded-none text-red-300 data-[state=active]:bg-rose-500 data-[state=active]:text-white">
-              <Trash2 className="w-4 h-4 mr-2" />
+              <Trash2 className="mr-2 h-4 w-4" />
               Deleted ({deletedTournaments.length})
             </TabsTrigger>
           </TabsList>
+
+          {selectionToolbar}
 
           <TabsContent value="active">
             {tournaments.length === 0 ? (
@@ -316,30 +535,26 @@ const TournamentList = () => {
                 action={<CommandButton asChild><Link to="/tournaments/create">Create Tournament</Link></CommandButton>}
               />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 md:gap-6">
                 {tournaments.map((tournament) => (
-                  <TournamentCard
+                  <OrganizerTournamentCard
                     key={tournament.id}
                     id={tournament.id}
                     name={tournament.name}
                     game={tournament.game}
-                    date={tournament.date}
-                    time={tournament.time}
-                    venue={tournament.venue}
+                    slug={tournament.slug || ''}
+                    status={tournament.status}
                     max_participants={tournament.max_participants}
                     current_participants={tournament.current_participants}
-                    status={tournament.status}
-                    team_size={tournament.team_size}
                     prize_pool={tournament.prize_pool}
-                    user_id={tournament.user_id}
                     entry_fee={tournament.entry_fee || 'Free'}
                     is_online={tournament.is_online ?? false}
                     image_url={tournament.image_url || undefined}
-                    currentUserId={user?.id}
-                    slug={tournament.slug || ''}
                     start_date={tournament.start_date}
-                    end_date={tournament.end_date}
-                    currency={tournament.currency}
+                    created_at={tournament.created_at}
+                    selectable
+                    selected={selectedActiveIds.has(tournament.id)}
+                    onToggleSelect={toggleActiveSelect}
                     onDelete={() => handleDeleteClick(tournament.id, tournament.name, tournament.status)}
                   />
                 ))}
@@ -348,49 +563,63 @@ const TournamentList = () => {
           </TabsContent>
 
           <TabsContent value="deleted">
-            {deletedTournaments.length === 0 ? (
-              <CommandEmptyState title="No deleted tournaments" description="Deleted tournaments will appear here while they can still be restored." icon={<Trash2 className="h-5 w-5" />} />
+            {loadingDeleted ? (
+              <div className="py-16 text-center text-zinc-500">Loading deleted tournaments...</div>
+            ) : deletedTournaments.length === 0 ? (
+              <CommandEmptyState
+                title="No deleted tournaments"
+                description="Deleted tournaments will appear here while they can still be restored."
+                icon={<Trash2 className="h-5 w-5" />}
+              />
             ) : (
               <div className="space-y-4">
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-none p-4 mb-6">
+                <div className="mb-6 rounded-none border border-amber-500/30 bg-amber-500/10 p-4">
                   <p className="text-sm text-amber-200">
-                    <Clock className="w-4 h-4 inline mr-2" />
+                    <Clock className="mr-2 inline h-4 w-4" />
                     Deleted tournaments will be permanently removed after 7 days. Restore them before the deadline to keep your data.
                   </p>
                 </div>
 
                 {deletedTournaments.map((tournament) => (
-                  <CommandPanel key={tournament.id} className="flex items-center justify-between p-4">
+                  <CommandPanel key={tournament.id} className="flex flex-wrap items-center justify-between gap-4 p-4">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={selectedDeletedIds.has(tournament.id)}
+                        onCheckedChange={() => toggleDeletedSelect(tournament.id)}
+                        aria-label={`Select ${tournament.name}`}
+                        className="mt-1"
+                      />
                       <div>
                         <h3 className="font-semibold text-white">{tournament.name}</h3>
                         <p className="text-sm text-gray-400">{tournament.game}</p>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="mt-1 flex items-center gap-2">
                           <Badge variant={tournament.days_remaining <= 2 ? 'destructive' : 'secondary'}>
-                            <Clock className="w-3 h-3 mr-1" />
+                            <Clock className="mr-1 h-3 w-3" />
                             {tournament.days_remaining} {tournament.days_remaining === 1 ? 'day' : 'days'} left to restore
                           </Badge>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <CommandButton
-                          size="sm"
-                          variant="success"
-                          onClick={() => handleRestore(tournament.id, tournament.name)}
-                          disabled={restoring === tournament.id}
-                        >
-                          <RotateCcw className="w-4 h-4 mr-2" />
-                          {restoring === tournament.id ? 'Restoring...' : 'Restore'}
-                        </CommandButton>
-                        <CommandButton
-                          size="sm"
-                          variant="danger"
-                          onClick={() => handlePermanentDelete(tournament.id, tournament.name)}
-                          disabled={restoring === tournament.id}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete Forever
-                        </CommandButton>
-                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <CommandButton
+                        size="sm"
+                        variant="success"
+                        onClick={() => handleRestore(tournament.id, tournament.name)}
+                        disabled={restoring === tournament.id || restoring === 'batch'}
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        {restoring === tournament.id ? 'Restoring...' : 'Restore'}
+                      </CommandButton>
+                      <CommandButton
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handlePermanentDelete(tournament.id, tournament.name)}
+                        disabled={restoring === tournament.id || restoring === 'batch'}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Forever
+                      </CommandButton>
+                    </div>
                   </CommandPanel>
                 ))}
               </div>
@@ -399,7 +628,6 @@ const TournamentList = () => {
         </Tabs>
       </div>
 
-      {/* Delete Confirmation Modal */}
       {tournamentToDelete && (
         <DeleteConfirmationModal
           isOpen={deleteModalOpen}
@@ -423,6 +651,18 @@ const TournamentList = () => {
           }
         />
       )}
+
+      <DeleteConfirmationModal
+        isOpen={batchDeleteOpen}
+        onClose={() => setBatchDeleteOpen(false)}
+        onConfirm={handleBatchSoftDelete}
+        entityType="tournament"
+        entityName={`${selectedActiveIds.size} selected tournaments`}
+        isDeleting={batchDeleteLoading}
+        cascadeWarnings={[]}
+        requireNameConfirmation={false}
+        customWarning="Selected tournaments will move to the Deleted tab and can be restored within 7 days."
+      />
     </CommandShell>
   );
 };
