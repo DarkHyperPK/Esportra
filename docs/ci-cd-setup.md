@@ -230,6 +230,8 @@ See also [e2e/PROMOTION_TEST_PLAN.md](e2e/PROMOTION_TEST_PLAN.md) and [e2e/.env.
 
 4. Cherry-pick / release branch → `main`
 
+   Do not cherry-pick CI/E2E fixes to `main` before staging deploy is green — that bypasses the staging gate and triggers prod unnecessarily.
+
 5. Wait for production deploy workflows green on both repos
 
 6. Production updates from `deploy/main`

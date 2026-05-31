@@ -18,6 +18,7 @@ import {
   openCreateTournamentWizard,
   openTeamsPage,
   openTournamentRegistration,
+  getRegistrationTeamCard,
   clickWizardNext,
   advanceWizardThroughSettings,
   clickWizardCreate,
@@ -152,11 +153,10 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openTournamentRegistration(page, tournament.slug ?? tournament.id);
 
-    const registrationDialog = page.getByRole('dialog', { name: /INITIATE_REGISTRATION/i });
-    const teamRow = registrationDialog.locator('div').filter({ hasText: team.name }).first();
-    await expect(teamRow.getByText(/Not Eligible/i)).toBeVisible({ timeout: 30_000 });
+    const teamCard = getRegistrationTeamCard(page, team.name);
+    await expect(teamCard.getByText(/Not Eligible/i)).toBeVisible({ timeout: 30_000 });
     await expect(
-      teamRow.getByText(/doesn't include this game|Create a roster for this game first|No matching roster found/i),
+      teamCard.getByText(/doesn't include this game|Create a roster for this game first|No matching roster found/i),
     ).toBeVisible();
   });
 
@@ -167,6 +167,7 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     const stamp = Date.now();
 
     await buildUnderstaffedValorantRoster(captainClient, captainId, stamp);
+    const teamName = `E2E Understaffed ${stamp}`;
 
     const tournament = await createCatalogTournament(organizer, {
       name: `E2E GUI Understaffed ${stamp}`,
@@ -181,10 +182,11 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openTournamentRegistration(page, tournament.slug ?? tournament.id);
 
+    const teamCard = getRegistrationTeamCard(page, teamName);
     await expect(page.getByText(/Select Your Team/i)).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(/Not Eligible/i).first()).toBeVisible({ timeout: 30_000 });
+    await expect(teamCard.getByText(/Not Eligible/i)).toBeVisible({ timeout: 30_000 });
     await expect(
-      page.getByText(/Roster needs at least 5 members|needs at least 5 members/i).first(),
+      teamCard.getByText(/Roster needs at least 5 members|needs at least 5 members/i),
     ).toBeVisible();
   });
 

@@ -181,6 +181,13 @@ export async function openTournamentRegistration(page: Page, slug: string): Prom
   ).toBeVisible({ timeout: 45_000 });
 }
 
+export function getRegistrationTeamCard(page: Page, teamName: string) {
+  const dialog = page.getByRole('dialog', { name: /INITIATE_REGISTRATION/i });
+  return dialog
+    .locator('div.border.rounded-lg')
+    .filter({ has: dialog.getByText(teamName, { exact: true }) });
+}
+
 export async function openTeamsPage(page: Page): Promise<void> {
   await skipBetaModal(page);
   await page.goto('/player/teams', { waitUntil: 'domcontentloaded', timeout: 60_000 });
