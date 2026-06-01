@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Users, Trash2, Settings2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -86,6 +87,8 @@ export const OrganizerTournamentCard = React.memo(function OrganizerTournamentCa
 
   const gameLogo = gameAssets.gameLogo;
   const managePath = `/organizer/tournament/${slug || id}`;
+  const hasCustomImage = Boolean(image_url && !bannerFailed);
+  const hasCarousel = !hasCustomImage && gameAssets.rawgScreenshots.length > 0;
 
   const handleManage = useCallback(() => {
     navigate(managePath);
@@ -111,27 +114,45 @@ export const OrganizerTournamentCard = React.memo(function OrganizerTournamentCa
       )}
     >
       <div className="relative min-h-[180px] flex-1 overflow-hidden bg-black">
-        <img
-          key={banner.carouselKey ?? banner.src}
-          src={banner.src}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          onError={() => setBannerFailed(true)}
-          className="absolute inset-0 h-full w-full object-cover object-center opacity-50 transition-opacity duration-700 group-hover:opacity-60"
-        />
+        {hasCarousel ? (
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={banner.carouselKey ?? banner.src}
+              src={banner.src}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.5, ease: 'easeInOut' }}
+              onError={() => setBannerFailed(true)}
+              className="absolute inset-0 h-full w-full object-cover object-center opacity-50 group-hover:opacity-60"
+            />
+          </AnimatePresence>
+        ) : (
+          <img
+            src={banner.src}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onError={() => setBannerFailed(true)}
+            className="absolute inset-0 h-full w-full object-cover object-center opacity-50 transition-opacity duration-700 group-hover:opacity-60"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/50 to-transparent" />
 
         <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
           {selectable && (
             <label
-              className="flex h-8 w-8 items-center justify-center rounded-none border border-white/20 bg-black/70"
+              className="flex shrink-0 items-center justify-center"
               onClick={(e) => e.stopPropagation()}
             >
               <Checkbox
                 checked={selected}
                 onCheckedChange={handleToggleSelect}
                 aria-label={`Select ${name}`}
+                className="h-3.5 w-3.5 rounded-[2px] border-white/15 bg-black/35 shadow-none data-[state=checked]:border-rose-400/50 data-[state=checked]:bg-rose-500/70 [&_svg]:h-2.5 [&_svg]:w-2.5"
               />
             </label>
           )}
