@@ -99,7 +99,7 @@ const TournamentList = () => {
         normalizeTournamentRows(data).map((tournament: any) => ({
           id: tournament.id,
           name: tournament.name,
-          game: tournament.game,
+          game: tournament.game || 'Unknown',
           date: tournament.start_date ? new Date(tournament.start_date).toISOString().split('T')[0] : '',
           time: tournament.start_date ? new Date(tournament.start_date).toTimeString().split(' ')[0] : '',
           venue: tournament.venue_id ? `Venue ${tournament.venue_id}` : 'Online',
@@ -555,7 +555,7 @@ const TournamentList = () => {
                     key={tournament.id}
                     id={tournament.id}
                     name={tournament.name}
-                    game={tournament.game}
+                    game={tournament.game || 'Unknown'}
                     slug={tournament.slug || ''}
                     status={tournament.status}
                     max_participants={tournament.max_participants}

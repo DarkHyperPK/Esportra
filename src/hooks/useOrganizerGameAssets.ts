@@ -6,7 +6,7 @@ export type OrganizerGameAssets = CachedGame & {
   isLoading: boolean;
 };
 
-const EMPTY: OrganizerGameAssets = {
+const IDLE_SNAPSHOT: OrganizerGameAssets = Object.freeze({
   gameLogo: null,
   gameBanner: null,
   cover: null,
@@ -14,22 +14,41 @@ const EMPTY: OrganizerGameAssets = {
   rawgScreenshots: [],
   videos: [],
   carouselIndex: 0,
-  isLoading: true,
-};
+  isLoading: false,
+});
 
-function normalizeGameKey(game: string) {
-  return game.trim().toLowerCase();
+const LOADING_SNAPSHOT: OrganizerGameAssets = Object.freeze({
+  ...IDLE_SNAPSHOT,
+  isLoading: true,
+});
+
+function normalizeGameKey(game: string | null | undefined) {
+  return (game ?? '').trim().toLowerCase();
 }
 
 type GameStore = {
   assets: CachedGame | null;
   carouselIndex: number;
   isLoading: boolean;
+  snapshot: OrganizerGameAssets;
   listeners: Set<() => void>;
   intervalId: ReturnType<typeof setInterval> | null;
 };
 
 const stores = new Map<string, GameStore>();
+
+function rebuildSnapshot(store: GameStore) {
+  if (!store.assets) {
+    store.snapshot = store.isLoading ? LOADING_SNAPSHOT : IDLE_SNAPSHOT;
+    return;
+  }
+
+  store.snapshot = {
+    ...store.assets,
+    carouselIndex: store.carouselIndex,
+    isLoading: store.isLoading,
+  };
+}
 
 function getStore(key: string): GameStore {
   let store = stores.get(key);
@@ -38,6 +57,7 @@ function getStore(key: string): GameStore {
       assets: null,
       carouselIndex: 0,
       isLoading: false,
+      snapshot: IDLE_SNAPSHOT,
       listeners: new Set(),
       intervalId: null,
     };
@@ -47,19 +67,15 @@ function getStore(key: string): GameStore {
 }
 
 function snapshotForKey(key: string): OrganizerGameAssets {
-  const store = stores.get(key);
-  if (!store || !store.assets) {
-    return { ...EMPTY, isLoading: store?.isLoading ?? false };
-  }
-  return {
-    ...store.assets,
-    carouselIndex: store.carouselIndex,
-    isLoading: store.isLoading,
-  };
+  if (!key) return IDLE_SNAPSHOT;
+  return getStore(key).snapshot;
 }
 
 function notify(key: string) {
-  stores.get(key)?.listeners.forEach((listener) => listener());
+  const store = stores.get(key);
+  if (!store) return;
+  rebuildSnapshot(store);
+  store.listeners.forEach((listener) => listener());
 }
 
 function stopCarousel(key: string) {
@@ -84,6 +100,8 @@ function startCarousel(key: string) {
 
 async function ensureGameLoaded(game: string) {
   const key = normalizeGameKey(game);
+  if (!key) return;
+
   const store = getStore(key);
 
   if (store.assets) return;
@@ -93,7 +111,7 @@ async function ensureGameLoaded(game: string) {
   notify(key);
 
   try {
-    const data = await fetchGameData(game);
+    const data = await fetchGameData(game.trim());
     store.assets = data;
     store.carouselIndex = 0;
     startCarousel(key);
@@ -105,6 +123,8 @@ async function ensureGameLoaded(game: string) {
 
 function subscribeGameAssets(game: string, listener: () => void) {
   const key = normalizeGameKey(game);
+  if (!key) return () => undefined;
+
   const store = getStore(key);
   store.listeners.add(listener);
   return () => {
@@ -128,18 +148,19 @@ export function useOrganizerGameAssetsPrefetch(gameNames: (string | null | undef
 
 /**
  * Per-card subscription — carousel ticks only re-render cards for that game.
+ * Snapshots are cached on the store so getSnapshot stays referentially stable between updates.
  */
-export function useOrganizerCardGameAssets(game: string): OrganizerGameAssets {
+export function useOrganizerCardGameAssets(game: string | null | undefined): OrganizerGameAssets {
   const normalized = normalizeGameKey(game);
 
   useEffect(() => {
-    if (game.trim()) void ensureGameLoaded(game);
-  }, [game]);
+    if (normalized) void ensureGameLoaded(game!.trim());
+  }, [game, normalized]);
 
   return useSyncExternalStore(
-    (listener) => subscribeGameAssets(game, listener),
+    (listener) => subscribeGameAssets(game ?? '', listener),
     () => snapshotForKey(normalized),
-    () => EMPTY,
+    () => IDLE_SNAPSHOT,
   );
 }
 
