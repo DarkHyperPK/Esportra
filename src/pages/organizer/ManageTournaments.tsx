@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
@@ -11,6 +11,7 @@ import { DeleteConfirmationModal } from '@/components/ui/DeleteConfirmationModal
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, RotateCcw, Clock } from 'lucide-react';
 import { OrganizerTournamentCard } from '@/components/organizer/OrganizerTournamentCard';
+import { useOrganizerGameAssetsPrefetch } from '@/hooks/useOrganizerGameAssets';
 import {
   CommandButton,
   CommandEmptyState,
@@ -183,7 +184,13 @@ const TournamentList = () => {
   const allActiveSelected = tournaments.length > 0 && selectedActiveIds.size === tournaments.length;
   const allDeletedSelected = deletedTournaments.length > 0 && selectedDeletedIds.size === deletedTournaments.length;
 
-  const handleDeleteClick = async (tournamentId: string, tournamentName: string, status: string) => {
+  const tournamentGames = useMemo(() => tournaments.map((t) => t.game), [tournaments]);
+  useOrganizerGameAssetsPrefetch(tournamentGames);
+
+  const tournamentsRef = useRef(tournaments);
+  tournamentsRef.current = tournaments;
+
+  const handleDeleteClick = useCallback(async (tournamentId: string, tournamentName: string, status: string) => {
     try {
       const participantsResult = await apiClient
         .get<any>(`/api/tournaments/${tournamentId}/participants?count_only=true`)
@@ -209,7 +216,14 @@ const TournamentList = () => {
         variant: 'destructive',
       });
     }
-  };
+  }, [toast]);
+
+  const requestDelete = useCallback((id: string) => {
+    const tournament = tournamentsRef.current.find((t) => t.id === id);
+    if (tournament) {
+      void handleDeleteClick(tournament.id, tournament.name, tournament.status);
+    }
+  }, [handleDeleteClick]);
 
   const handleDeleteConfirm = async () => {
     if (!tournamentToDelete) return;
@@ -555,7 +569,7 @@ const TournamentList = () => {
                     selectable
                     selected={selectedActiveIds.has(tournament.id)}
                     onToggleSelect={toggleActiveSelect}
-                    onDelete={() => handleDeleteClick(tournament.id, tournament.name, tournament.status)}
+                    onDelete={requestDelete}
                   />
                 ))}
               </div>
