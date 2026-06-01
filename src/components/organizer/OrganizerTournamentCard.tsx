@@ -26,6 +26,7 @@ export type OrganizerTournamentCardProps = {
   start_date?: string;
   end_date?: string;
   created_at?: string;
+  lite?: boolean;
   selected?: boolean;
   selectable?: boolean;
   onToggleSelect?: (id: string) => void;
@@ -69,6 +70,7 @@ export const OrganizerTournamentCard = React.memo(function OrganizerTournamentCa
   is_online,
   image_url,
   start_date,
+  lite = false,
   selected = false,
   selectable = false,
   onToggleSelect,
@@ -76,7 +78,7 @@ export const OrganizerTournamentCard = React.memo(function OrganizerTournamentCa
 }: OrganizerTournamentCardProps) {
   const navigate = useNavigate();
   const [bannerFailed, setBannerFailed] = useState(false);
-  const gameAssets = useOrganizerCardGameAssets(game);
+  const gameAssets = useOrganizerCardGameAssets(game, !lite);
 
   const banner = useMemo(() => {
     if (bannerFailed) {
@@ -88,7 +90,7 @@ export const OrganizerTournamentCard = React.memo(function OrganizerTournamentCa
   const gameLogo = gameAssets.gameLogo;
   const managePath = `/organizer/tournament/${slug || id}`;
   const hasCustomImage = Boolean(image_url && !bannerFailed);
-  const hasCarousel = !hasCustomImage && gameAssets.rawgScreenshots.length > 0;
+  const hasCarousel = !lite && !hasCustomImage && gameAssets.rawgScreenshots.length > 0;
 
   const handleManage = useCallback(() => {
     navigate(managePath);
@@ -156,7 +158,7 @@ export const OrganizerTournamentCard = React.memo(function OrganizerTournamentCa
               />
             </label>
           )}
-          {gameLogo ? (
+          {gameLogo && !lite ? (
             <div className="h-9 w-9 overflow-hidden border border-white/20 bg-black/70 p-0.5">
               <img src={gameLogo} alt={game} className="h-full w-full object-cover" loading="lazy" />
             </div>

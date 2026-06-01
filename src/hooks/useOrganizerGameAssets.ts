@@ -135,31 +135,39 @@ function subscribeGameAssets(game: string, listener: () => void) {
 /**
  * Prefetch unique games once at the list level (deduped by module store).
  */
-export function useOrganizerGameAssetsPrefetch(gameNames: (string | null | undefined)[]) {
+export function useOrganizerGameAssetsPrefetch(
+  gameNames: (string | null | undefined)[],
+  enabled = true,
+) {
   const key = gameNames.filter(Boolean).join('|');
 
   useEffect(() => {
+    if (!enabled) return;
     const unique = Array.from(new Set(gameNames.filter(Boolean).map((g) => g!.trim())));
     unique.forEach((game) => {
       void ensureGameLoaded(game);
     });
-  }, [key]);
+  }, [enabled, key]);
 }
 
 /**
  * Per-card subscription — carousel ticks only re-render cards for that game.
  * Snapshots are cached on the store so getSnapshot stays referentially stable between updates.
  */
-export function useOrganizerCardGameAssets(game: string | null | undefined): OrganizerGameAssets {
+export function useOrganizerCardGameAssets(
+  game: string | null | undefined,
+  enabled = true,
+): OrganizerGameAssets {
   const normalized = normalizeGameKey(game);
 
   useEffect(() => {
-    if (normalized) void ensureGameLoaded(game!.trim());
-  }, [game, normalized]);
+    if (!enabled || !normalized) return;
+    void ensureGameLoaded(game!.trim());
+  }, [enabled, game, normalized]);
 
   return useSyncExternalStore(
-    (listener) => subscribeGameAssets(game ?? '', listener),
-    () => snapshotForKey(normalized),
+    (listener) => (enabled ? subscribeGameAssets(game ?? '', listener) : () => undefined),
+    () => (enabled ? snapshotForKey(normalized) : IDLE_SNAPSHOT),
     () => IDLE_SNAPSHOT,
   );
 }

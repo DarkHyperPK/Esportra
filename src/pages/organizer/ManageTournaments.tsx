@@ -13,6 +13,10 @@ import { Trash2, RotateCcw, Clock } from 'lucide-react';
 import { OrganizerTournamentCard } from '@/components/organizer/OrganizerTournamentCard';
 import { useOrganizerGameAssetsPrefetch } from '@/hooks/useOrganizerGameAssets';
 import {
+  ORGANIZER_TOURNAMENT_LITE_THRESHOLD,
+  runBulkTournamentLifecycle,
+} from '@/lib/organizerTournamentBulk';
+import {
   CommandButton,
   CommandEmptyState,
   CommandHeader,
@@ -84,6 +88,7 @@ const TournamentList = () => {
 
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
 
   const { data: tournaments = [], isLoading: loading } = useQuery({
     queryKey: ['organizer-tournaments', user?.id],
@@ -185,7 +190,8 @@ const TournamentList = () => {
   const allDeletedSelected = deletedTournaments.length > 0 && selectedDeletedIds.size === deletedTournaments.length;
 
   const tournamentGames = useMemo(() => tournaments.map((t) => t.game), [tournaments]);
-  useOrganizerGameAssetsPrefetch(tournamentGames);
+  const liteList = tournaments.length > ORGANIZER_TOURNAMENT_LITE_THRESHOLD;
+  useOrganizerGameAssetsPrefetch(tournamentGames, !liteList);
 
   const tournamentsRef = useRef(tournaments);
   tournamentsRef.current = tournaments;
@@ -263,13 +269,24 @@ const TournamentList = () => {
 
     try {
       setBatchDeleteLoading(true);
+      const organizationId = await fetchCurrentOrganizationId();
+      if (!organizationId) {
+        throw new Error('Organization not found');
+      }
+
       const ids = Array.from(selectedActiveIds);
-      const deletedAt = new Date().toISOString();
-      await Promise.all(ids.map((id) => apiClient.put(`/api/tournaments/${id}`, { deletedAt })));
+      setBatchProgress({ done: 0, total: ids.length });
+
+      const affected = await runBulkTournamentLifecycle(
+        organizationId,
+        ids,
+        'soft-delete',
+        (done, total) => setBatchProgress({ done, total }),
+      );
 
       toast({
         title: 'Tournaments deleted',
-        description: `${ids.length} tournament${ids.length === 1 ? '' : 's'} moved to deleted.`,
+        description: `${affected} tournament${affected === 1 ? '' : 's'} moved to deleted.`,
       });
 
       setSelectedActiveIds(new Set());
@@ -284,6 +301,7 @@ const TournamentList = () => {
       });
     } finally {
       setBatchDeleteLoading(false);
+      setBatchProgress(null);
     }
   };
 
@@ -320,14 +338,24 @@ const TournamentList = () => {
 
     try {
       setRestoring('batch');
+      const organizationId = await fetchCurrentOrganizationId();
+      if (!organizationId) {
+        throw new Error('Organization not found');
+      }
+
       const ids = Array.from(selectedDeletedIds);
-      await Promise.all(
-        ids.map((id) => apiClient.put(`/api/tournaments/${id}`, { clearDeletedAt: true, status: 'open' })),
+      setBatchProgress({ done: 0, total: ids.length });
+
+      const affected = await runBulkTournamentLifecycle(
+        organizationId,
+        ids,
+        'restore',
+        (done, total) => setBatchProgress({ done, total }),
       );
 
       toast({
         title: 'Tournaments restored',
-        description: `${ids.length} tournament${ids.length === 1 ? '' : 's'} restored.`,
+        description: `${affected} tournament${affected === 1 ? '' : 's'} restored.`,
       });
 
       setSelectedDeletedIds(new Set());
@@ -340,6 +368,7 @@ const TournamentList = () => {
       });
     } finally {
       setRestoring(null);
+      setBatchProgress(null);
     }
   };
 
@@ -385,12 +414,24 @@ const TournamentList = () => {
 
     try {
       setRestoring('batch');
+      const organizationId = await fetchCurrentOrganizationId();
+      if (!organizationId) {
+        throw new Error('Organization not found');
+      }
+
       const ids = Array.from(selectedDeletedIds);
-      await Promise.all(ids.map((id) => apiClient.delete(`/api/tournaments/${id}`)));
+      setBatchProgress({ done: 0, total: ids.length });
+
+      const affected = await runBulkTournamentLifecycle(
+        organizationId,
+        ids,
+        'permanent-delete',
+        (done, total) => setBatchProgress({ done, total }),
+      );
 
       toast({
         title: 'Tournaments permanently deleted',
-        description: `${count} tournament${count === 1 ? '' : 's'} removed.`,
+        description: `${affected} tournament${affected === 1 ? '' : 's'} removed.`,
       });
 
       setSelectedDeletedIds(new Set());
@@ -404,6 +445,7 @@ const TournamentList = () => {
       });
     } finally {
       setRestoring(null);
+      setBatchProgress(null);
     }
   };
 
@@ -566,6 +608,7 @@ const TournamentList = () => {
                     image_url={tournament.image_url || undefined}
                     start_date={tournament.start_date}
                     created_at={tournament.created_at}
+                    lite={liteList}
                     selectable
                     selected={selectedActiveIds.has(tournament.id)}
                     onToggleSelect={toggleActiveSelect}
@@ -675,7 +718,11 @@ const TournamentList = () => {
         isDeleting={batchDeleteLoading}
         cascadeWarnings={[]}
         requireNameConfirmation={false}
-        customWarning="Selected tournaments will move to the Deleted tab and can be restored within 7 days."
+        customWarning={
+          batchProgress
+            ? `Deleting ${batchProgress.done} of ${batchProgress.total} tournaments…`
+            : 'Selected tournaments will move to the Deleted tab and can be restored within 7 days.'
+        }
       />
     </CommandShell>
   );
