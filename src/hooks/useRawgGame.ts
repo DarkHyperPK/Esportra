@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { rawgSearchGames, rawgGetScreenshots } from '@/lib/rawgProxy';
 import { apiClient } from '@/lib/apiClient';
 import esportsGames from '@/data/esportsGames.json';
-import igdbManifest from '../../public/games/igdb/manifest.json';
+import igdbManifest from '@/data/igdb-manifest.json';
 
 type IgdbManifestEntry = {
     slug: string;
@@ -10,6 +10,8 @@ type IgdbManifestEntry = {
     cover?: string;
     hero?: string;
     header?: string;
+    coverUrl?: string;
+    heroUrl?: string;
 };
 
 const bundledIgdbBySlug = new Map(
@@ -97,9 +99,9 @@ export function getBundledGameAssets(gameName: string): CachedGame | null {
         (catalogGame ? bundledIgdbBySlug.get(catalogGame.slug.toLowerCase()) : undefined)
         ?? bundledIgdbByName.get(normalized);
 
-    const cover = toPublicAssetPath(igdbEntry?.cover);
-    const hero = toPublicAssetPath(igdbEntry?.hero);
-    const header = toPublicAssetPath(igdbEntry?.header);
+    const cover = toPublicAssetPath(igdbEntry?.cover) ?? igdbEntry?.coverUrl ?? null;
+    const hero = toPublicAssetPath(igdbEntry?.hero) ?? igdbEntry?.heroUrl ?? null;
+    const header = toPublicAssetPath(igdbEntry?.header) ?? igdbEntry?.heroUrl ?? null;
     const catalogLogo = toPublicAssetPath(catalogGame?.logo);
 
     const banner = hero ?? header ?? cover ?? catalogLogo;

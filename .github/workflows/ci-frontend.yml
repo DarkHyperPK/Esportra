@@ -1,13 +1,19 @@
 name: CI — Frontend
 
 on:
+  workflow_dispatch:
   push:
-    branches: [staging, main, 'deploy/**']
+    branches: [main, 'deploy/**']
     paths:
       - 'src/**'
       - 'e2e/**'
+      - 'public/**'
       - 'package*.json'
+      - 'tsconfig.json'
       - 'eslint.config.js'
+      - 'postcss.config.js'
+      - 'tailwind.config.ts'
+      - 'components.json'
       - 'tools/**'
       - 'vite.config.*'
       - 'playwright.config.ts'
@@ -18,17 +24,31 @@ on:
     paths:
       - 'src/**'
       - 'e2e/**'
+      - 'public/**'
       - 'package*.json'
+      - 'tsconfig.json'
       - 'eslint.config.js'
+      - 'postcss.config.js'
+      - 'tailwind.config.ts'
+      - 'components.json'
       - 'tools/**'
       - 'vite.config.*'
       - 'playwright.config.ts'
       - 'index.html'
+      - '.github/workflows/ci-frontend.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-lint:
     name: Build & Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -57,3 +77,11 @@ jobs:
           VITE_API_URL: https://placeholder.api.com
           VITE_APP_NAME: Esportra
         run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
