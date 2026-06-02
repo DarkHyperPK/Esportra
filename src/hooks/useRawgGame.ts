@@ -2,6 +2,22 @@ import { useState, useEffect, useRef } from 'react';
 import { rawgSearchGames, rawgGetScreenshots } from '@/lib/rawgProxy';
 import { apiClient } from '@/lib/apiClient';
 import esportsGames from '@/data/esportsGames.json';
+import igdbManifest from '../../public/games/igdb/manifest.json';
+
+type IgdbManifestEntry = {
+    slug: string;
+    name: string;
+    cover?: string;
+    hero?: string;
+    header?: string;
+};
+
+const bundledIgdbBySlug = new Map(
+    (igdbManifest as IgdbManifestEntry[]).map((entry) => [entry.slug.toLowerCase(), entry]),
+);
+const bundledIgdbByName = new Map(
+    (igdbManifest as IgdbManifestEntry[]).map((entry) => [entry.name.trim().toLowerCase(), entry]),
+);
 
 interface IgdbVideo {
     videoId: string;
@@ -29,7 +45,7 @@ export interface CachedGame {
     videos: IgdbVideo[];
 }
 
-const CACHE_KEY = 'game_assets_cache_v4';
+const CACHE_KEY = 'game_assets_cache_v5';
 const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
 
 function loadPersistedCache(): Map<string, CachedGame> {
@@ -58,13 +74,60 @@ function persistCache() {
 const gameCache = loadPersistedCache();
 const pendingFetches = new Map<string, Promise<CachedGame>>();
 
-/** Get the Twitch CDN logo from esportsGames.json as fallback */
-function getTwitchFallback(gameName: string): string | null {
-    const game = (esportsGames.games as any[]).find(
-        g => g.name.toLowerCase() === gameName.trim().toLowerCase()
-            || g.slug === gameName.trim().toLowerCase()
+function resolveCatalogGame(gameName: string) {
+    const normalized = gameName.trim().toLowerCase();
+    return (esportsGames.games as Array<{ name: string; slug: string; logo?: string; aliases?: string[] }>).find(
+        (g) =>
+            g.name.toLowerCase() === normalized
+            || g.slug === normalized
+            || (g.aliases ?? []).some((alias) => alias.toLowerCase() === normalized),
     );
-    return game?.logo ?? null;
+}
+
+function toPublicAssetPath(path: string | undefined): string | null {
+    if (!path) return null;
+    return path.startsWith('/') ? path : `/${path}`;
+}
+
+/** Local bundled IGDB art (public/games/igdb) — works when RAWG/IGDB APIs fail. */
+export function getBundledGameAssets(gameName: string): CachedGame | null {
+    const catalogGame = resolveCatalogGame(gameName);
+    const normalized = gameName.trim().toLowerCase();
+    const igdbEntry =
+        (catalogGame ? bundledIgdbBySlug.get(catalogGame.slug.toLowerCase()) : undefined)
+        ?? bundledIgdbByName.get(normalized);
+
+    const cover = toPublicAssetPath(igdbEntry?.cover);
+    const hero = toPublicAssetPath(igdbEntry?.hero);
+    const header = toPublicAssetPath(igdbEntry?.header);
+    const catalogLogo = toPublicAssetPath(catalogGame?.logo);
+
+    const banner = hero ?? header ?? cover ?? catalogLogo;
+    if (!banner) return null;
+
+    const rawgScreenshots = [hero, header].filter(Boolean) as string[];
+    return {
+        gameLogo: cover ?? catalogLogo ?? banner,
+        gameBanner: banner,
+        cover,
+        screenshots: rawgScreenshots.length > 0 ? rawgScreenshots : [banner],
+        rawgScreenshots: rawgScreenshots.length > 0 ? rawgScreenshots : [banner],
+        videos: [],
+    };
+}
+
+/** Logo path from esportsGames.json (may 404 if asset missing). */
+function getCatalogLogo(gameName: string): string | null {
+    return toPublicAssetPath(resolveCatalogGame(gameName)?.logo);
+}
+
+function hasVisualAssets(cached: CachedGame): boolean {
+    return Boolean(
+        cached.gameBanner
+        || cached.gameLogo
+        || cached.rawgScreenshots.length > 0
+        || cached.screenshots.length > 0,
+    );
 }
 
 function getRawgGameName(name: string) {
@@ -98,9 +161,8 @@ export async function fetchGameData(
     const cacheKey = gameName.trim().toLowerCase();
     const skipRawg = options?.skipRawg ?? false;
 
-    // Return cached result (but only if it has RAWG data, or caller doesn't need it)
     const cached = gameCache.get(cacheKey);
-    if (cached && (skipRawg || cached.rawgScreenshots.length > 0)) {
+    if (cached && (skipRawg || hasVisualAssets(cached))) {
         return cached;
     }
 
@@ -149,31 +211,42 @@ export async function fetchGameData(
             const igdbVideos = igdb?.videos || [];
             const rawgLogo = rawg?.logo || null;
             const rawgScreenshots = rawg?.screenshots || [];
-            const twitchFallback = getTwitchFallback(gameName);
+            const catalogLogo = getCatalogLogo(gameName);
+            const bundled = getBundledGameAssets(gameName);
 
             const result: CachedGame = {
-                gameLogo: rawgLogo || twitchFallback,
-                gameBanner: igdbBanners[0] || rawgLogo || twitchFallback,
-                cover: igdbCover,
+                gameLogo: rawgLogo || bundled?.gameLogo || catalogLogo,
+                gameBanner: igdbBanners[0] || rawgLogo || bundled?.gameBanner || catalogLogo,
+                cover: igdbCover || bundled?.cover || null,
                 screenshots: igdbBanners.length > 0
                     ? igdbBanners
-                    : [rawgLogo].filter(Boolean) as string[],
+                    : bundled?.screenshots.length
+                        ? bundled.screenshots
+                        : ([rawgLogo].filter(Boolean) as string[]),
                 rawgScreenshots: rawgScreenshots.length > 0
                     ? rawgScreenshots
-                    : [rawgLogo].filter(Boolean) as string[],
+                    : bundled?.rawgScreenshots.length
+                        ? bundled.rawgScreenshots
+                        : ([rawgLogo].filter(Boolean) as string[]),
                 videos: igdbVideos,
             };
-            gameCache.set(cacheKey, result);
+
+            const merged = hasVisualAssets(result)
+                ? result
+                : (bundled ?? result);
+
+            gameCache.set(cacheKey, merged);
             persistCache();
-            return result;
+            return merged;
         } catch {
-            const fallback = getTwitchFallback(gameName);
-            const result: CachedGame = {
-                gameLogo: fallback,
-                gameBanner: fallback,
+            const bundled = getBundledGameAssets(gameName);
+            const catalogLogo = getCatalogLogo(gameName);
+            const result: CachedGame = bundled ?? {
+                gameLogo: catalogLogo,
+                gameBanner: catalogLogo,
                 cover: null,
-                screenshots: fallback ? [fallback] : [],
-                rawgScreenshots: fallback ? [fallback] : [],
+                screenshots: catalogLogo ? [catalogLogo] : [],
+                rawgScreenshots: catalogLogo ? [catalogLogo] : [],
                 videos: [],
             };
             gameCache.set(cacheKey, result);

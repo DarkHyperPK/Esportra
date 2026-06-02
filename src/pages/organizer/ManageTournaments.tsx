@@ -90,8 +90,11 @@ const TournamentList = () => {
   const [batchDeleteLoading, setBatchDeleteLoading] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
 
+  const activeListKey = useMemo(() => ['organizer-tournaments', user?.id] as const, [user?.id]);
+  const deletedListKey = useMemo(() => ['organizer-deleted-tournaments', user?.id] as const, [user?.id]);
+
   const { data: tournaments = [], isLoading: loading } = useQuery({
-    queryKey: ['organizer-tournaments', user?.id],
+    queryKey: activeListKey,
     queryFn: async () => {
       if (!user?.id) return [];
 
@@ -131,7 +134,7 @@ const TournamentList = () => {
   });
 
   const { data: deletedTournaments = [], isLoading: loadingDeleted } = useQuery({
-    queryKey: ['organizer-deleted-tournaments', user?.id],
+    queryKey: deletedListKey,
     queryFn: async () => {
       if (!user?.id) return [];
 
@@ -232,27 +235,38 @@ const TournamentList = () => {
   }, [handleDeleteClick]);
 
   const handleDeleteConfirm = async () => {
-    if (!tournamentToDelete) return;
+    if (!tournamentToDelete || !user?.id) return;
+
+    const deleted = tournamentToDelete;
+    const previousActive = queryClient.getQueryData<Tournament[]>(activeListKey);
+
+    queryClient.setQueryData<Tournament[]>(activeListKey, (current = []) =>
+      current.filter((t) => t.id !== deleted.id),
+    );
+    setSelectedActiveIds((prev) => {
+      const next = new Set(prev);
+      next.delete(deleted.id);
+      return next;
+    });
+    setDeleteModalOpen(false);
+    setTournamentToDelete(null);
+    setCascadeWarnings([]);
 
     try {
       setDeleteLoading(true);
-      await apiClient.put(`/api/tournaments/${tournamentToDelete.id}`, { deletedAt: new Date().toISOString() });
+      await apiClient.put(`/api/tournaments/${deleted.id}`, { deletedAt: new Date().toISOString() });
 
       toast({
         title: 'Tournament deleted',
-        description: `${tournamentToDelete.name} has been moved to deleted tournaments. You can restore it within 7 days.`,
+        description: `${deleted.name} has been moved to deleted tournaments. You can restore it within 7 days.`,
       });
 
-      setSelectedActiveIds((prev) => {
-        const next = new Set(prev);
-        next.delete(tournamentToDelete.id);
-        return next;
-      });
-      refreshLists();
-      setDeleteModalOpen(false);
-      setTournamentToDelete(null);
-      setCascadeWarnings([]);
+      void queryClient.invalidateQueries({ queryKey: deletedListKey });
+      void queryClient.invalidateQueries({ queryKey: ['browse-tournaments'] });
     } catch (error: any) {
+      if (previousActive) {
+        queryClient.setQueryData(activeListKey, previousActive);
+      }
       console.error('Error deleting tournament:', error);
       toast({
         title: 'Error',
@@ -265,7 +279,17 @@ const TournamentList = () => {
   };
 
   const handleBatchSoftDelete = async () => {
-    if (selectedActiveIds.size === 0) return;
+    if (selectedActiveIds.size === 0 || !user?.id) return;
+
+    const ids = Array.from(selectedActiveIds);
+    const idSet = new Set(ids);
+    const previousActive = queryClient.getQueryData<Tournament[]>(activeListKey);
+
+    queryClient.setQueryData<Tournament[]>(activeListKey, (current = []) =>
+      current.filter((t) => !idSet.has(t.id)),
+    );
+    setSelectedActiveIds(new Set());
+    setBatchDeleteOpen(false);
 
     try {
       setBatchDeleteLoading(true);
@@ -274,7 +298,6 @@ const TournamentList = () => {
         throw new Error('Organization not found');
       }
 
-      const ids = Array.from(selectedActiveIds);
       setBatchProgress({ done: 0, total: ids.length });
 
       const affected = await runBulkTournamentLifecycle(
@@ -289,10 +312,12 @@ const TournamentList = () => {
         description: `${affected} tournament${affected === 1 ? '' : 's'} moved to deleted.`,
       });
 
-      setSelectedActiveIds(new Set());
-      setBatchDeleteOpen(false);
-      refreshLists();
+      void queryClient.invalidateQueries({ queryKey: deletedListKey });
+      void queryClient.invalidateQueries({ queryKey: ['browse-tournaments'] });
     } catch (error: any) {
+      if (previousActive) {
+        queryClient.setQueryData(activeListKey, previousActive);
+      }
       console.error('Error batch deleting tournaments:', error);
       toast({
         title: 'Error',

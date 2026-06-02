@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { fetchGameData, type CachedGame } from '@/hooks/useRawgGame';
+import { fetchGameData, getBundledGameAssets, type CachedGame } from '@/hooks/useRawgGame';
 
 export type OrganizerGameAssets = CachedGame & {
   carouselIndex: number;
@@ -106,6 +106,14 @@ async function ensureGameLoaded(game: string) {
 
   if (store.assets) return;
   if (store.isLoading) return;
+
+  const bundled = getBundledGameAssets(game.trim());
+  if (bundled) {
+    store.assets = bundled;
+    store.carouselIndex = 0;
+    startCarousel(key);
+    notify(key);
+  }
 
   store.isLoading = true;
   notify(key);
