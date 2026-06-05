@@ -207,6 +207,17 @@ export function isBattleRoyale(gameName: string): boolean {
   return game?.type === 'battle_royale' || game?.features?.isBattleRoyale === true;
 }
 
+/** Prefer persisted tournament type when catalog cache is not loaded yet. */
+export function isBattleRoyaleTournament(
+  gameName?: string | null,
+  tournamentType?: string | null,
+): boolean {
+  const normalizedType = (tournamentType || '').trim().toLowerCase();
+  if (normalizedType === 'battle_royale') return true;
+  if (gameName) return isBattleRoyale(gameName);
+  return false;
+}
+
 /** Get BR config for a game (returns undefined for non-BR games) */
 export function getBRConfig(gameName: string): BRConfig | undefined {
   const game = getGameByName(gameName);

@@ -106,3 +106,25 @@ export async function waitForPlayerLobbyCode(page: Page, lobbyCode: string, time
 
   await expect(page.getByText(lobbyCode)).toBeVisible({ timeout: 1_000 });
 }
+
+export async function waitForPlayerEvidenceUpload(page: Page, lobbyCode?: string, timeoutMs = 90_000): Promise<void> {
+  if (lobbyCode) {
+    await waitForPlayerLobbyCode(page, lobbyCode, timeoutMs);
+  } else {
+    await expect(page.getByText(/Report Your Results|Round \d+/i).first()).toBeVisible({
+      timeout: timeoutMs,
+    });
+  }
+
+  await expect(page.getByRole('button', { name: /Upload screenshot/i })).toBeVisible({
+    timeout: 30_000,
+  });
+}
+
+export async function submitPlayerEvidenceViaUI(page: Page, evidencePath: string, lobbyCode?: string): Promise<void> {
+  await waitForPlayerEvidenceUpload(page, lobbyCode);
+  await page.getByRole('button', { name: /Upload screenshot/i }).click();
+  await page.locator('input[type="file"]').setInputFiles(evidencePath);
+  await expect(page.getByRole('button', { name: /Submit Report/i })).toBeEnabled({ timeout: 15_000 });
+  await page.getByRole('button', { name: /Submit Report/i }).click();
+}

@@ -12,7 +12,7 @@ import {
   setTournamentOngoing,
   setupBrRoundFixture,
 } from './helpers/brSetup';
-import { openPlayerGameRoom, openPublicTournament, waitForPlayerLobbyCode } from './helpers/uiBR';
+import { openPlayerGameRoom, openPublicTournament, waitForPlayerLobbyCode, submitPlayerEvidenceViaUI } from './helpers/uiBR';
 import { expectNoTechnicalCopy } from './helpers/assertCopy';
 import { expectToast } from './helpers/assertToast';
 
@@ -44,7 +44,7 @@ test.describe('BR player game room', () => {
       await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
     }
 
-    await expect(page.getByText(fixture.lobbyCode)).toBeVisible({ timeout: 45_000 });
+    await waitForPlayerLobbyCode(page, fixture.lobbyCode);
     await expectNoTechnicalCopy(page);
   });
 
@@ -55,7 +55,7 @@ test.describe('BR player game room', () => {
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
-    await expect(page.getByText(fixture.lobbyCode)).toBeVisible();
+    await waitForPlayerLobbyCode(page, fixture.lobbyCode);
     const lobbyCard = page.getByText('Lobby Code').locator('xpath=ancestor::div[contains(@class,"rounded-xl")]').first();
     await lobbyCard.locator('button').last().click();
     await expectToast(page, /Copied/i);
@@ -68,10 +68,7 @@ test.describe('BR player game room', () => {
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
-    await page.getByText('Upload screenshot').click();
-    await page.locator('input[type="file"]').setInputFiles(evidencePath);
-    await expect(page.getByRole('button', { name: /Submit Report/i })).toBeEnabled();
-    await page.getByRole('button', { name: /Submit Report/i }).click();
+    await submitPlayerEvidenceViaUI(page, evidencePath, fixture.lobbyCode);
     await expect.poll(
       () => getRoundEvidenceCount(organizer, fixture.roundId),
       { timeout: 30_000 },

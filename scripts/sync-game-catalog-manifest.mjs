@@ -24,6 +24,7 @@ const backendCatalogPath = path.resolve(
 );
 
 const syncPath = path.join(repoRoot, 'src/data/gameCatalogSync.json');
+const e2eCatalogFixturePath = path.join(repoRoot, 'e2e/fixtures/backend-catalog.json');
 
 if (!fs.existsSync(backendCatalogPath)) {
   console.error(`Backend catalog not found: ${backendCatalogPath}`);
@@ -49,6 +50,8 @@ const manifest = {
 };
 
 fs.writeFileSync(syncPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+fs.writeFileSync(e2eCatalogFixturePath, raw, 'utf8');
 console.log(`Updated ${path.relative(repoRoot, syncPath)}`);
+console.log(`Updated ${path.relative(repoRoot, e2eCatalogFixturePath)}`);
 console.log(`  catalogVersion: ${manifest.catalogVersion}`);
 console.log(`  contentHash:    ${manifest.contentHash}`);

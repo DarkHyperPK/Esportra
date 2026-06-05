@@ -7,13 +7,13 @@ import {
   setupBrRoundFixture,
   getRoundEvidenceCount,
   getStageCompletionStatus,
-  submitPlayerEvidence,
   publishRoundResultsFromEvidence,
 } from './helpers/brSetup';
 import { readE2eEnv, e2eSkipReason } from './helpers/env';
 import { loginViaUi } from './helpers/uiAuth';
 import { assertNoOrphanLeaderboardZeros, openOrganizerGamesTab } from './helpers/uiLeaderboard';
 import { assertNoManualStageStatusControls, assertDerivedStageProgressVisible, openOrganizerStagesTab } from './helpers/uiStages';
+import { submitPlayerEvidenceViaUI } from './helpers/uiBR';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const evidencePath = path.resolve(__dirname, 'fixtures/evidence.png');
@@ -71,27 +71,7 @@ test.describe('BR game room — multi-player evidence flow', () => {
           await page.goto(`/tournaments/${fixture.slug}/${env.brGameRoomPath}`);
 
           await expect(page.getByText(fixture.tournamentName)).toBeVisible({ timeout: 45_000 });
-
-          const lobbyCodeVisible = await page
-            .getByText(fixture.lobbyCode)
-            .isVisible({ timeout: 12_000 })
-            .catch(() => false);
-
-          if (lobbyCodeVisible) {
-            await expect(page.getByText('Report Your Results')).toBeVisible();
-            await page.getByText('Upload screenshot').click();
-            await page.locator('input[type="file"]').setInputFiles(evidencePath);
-            await expect(page.getByRole('button', { name: 'Submit Report' })).toBeEnabled();
-            await page.getByRole('button', { name: 'Submit Report' }).click();
-          } else {
-            await submitPlayerEvidence(
-              playerClient,
-              fixture.roundId,
-              evidencePath,
-              index + 1,
-              index + 2,
-            );
-          }
+          await submitPlayerEvidenceViaUI(page, evidencePath, fixture.lobbyCode);
         }),
       );
 

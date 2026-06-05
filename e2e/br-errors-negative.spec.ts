@@ -12,7 +12,7 @@ import {
   setTournamentOngoing,
   setupBrRoundFixture,
 } from './helpers/brSetup';
-import { expandFirstRound, openOrganizerGames, openPlayerGameRoom, setRoundSettings } from './helpers/uiBR';
+import { expandFirstRound, openOrganizerGames, openPlayerGameRoom, setRoundSettings, submitPlayerEvidenceViaUI } from './helpers/uiBR';
 import { expectFriendlyText, expectNoTechnicalCopy } from './helpers/assertCopy';
 import { expectToast } from './helpers/assertToast';
 
@@ -123,10 +123,7 @@ test.describe('BR negative paths and error UX', () => {
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
-    await page.getByText('Upload screenshot').click();
-    await page.locator('input[type="file"]').setInputFiles(evidencePath);
-    await expect(page.getByRole('button', { name: /Submit Report/i })).toBeEnabled();
-    await page.getByRole('button', { name: /Submit Report/i }).click();
+    await submitPlayerEvidenceViaUI(page, evidencePath, fixture.lobbyCode);
     await expect.poll(
       () => getRoundEvidenceCount(organizer, fixture.roundId),
       { timeout: 30_000 },

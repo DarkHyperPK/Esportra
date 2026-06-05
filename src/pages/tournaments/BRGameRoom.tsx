@@ -11,7 +11,7 @@ import {
 } from '@/hooks/useBRGroupLeaderboard';
 import { useBRRoundEvidence, useBRCompletedRoundResults } from '@/hooks/useBRRounds';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
-import { isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { isBattleRoyaleTournament, getBRConfig } from '@/utils/gameFeatures';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,7 +49,8 @@ const BRGameRoom: React.FC = () => {
 
   const tournament = tournamentData?.tournament || tournamentData;
   const game = tournament?.game || '';
-  const isBR = isBattleRoyale(game);
+  const tournamentType = tournament?.tournament_type ?? tournament?.tournamentType ?? null;
+  const isBR = isBattleRoyaleTournament(game, tournamentType);
   const { data: catalogGame } = useGameCatalogGame(game);
   const [brStreamConnected, setBrStreamConnected] = useState(false);
 

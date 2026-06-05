@@ -65,7 +65,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig, getGameByName } from '@/utils/gameFeatures';
+import { getEffectiveGameFeatures, isBattleRoyaleTournament, getBRConfig, getGameByName } from '@/utils/gameFeatures';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import BanManagement from '@/components/organizer/BanManagement';
 import PaymentManagement from '@/components/organizer/PaymentManagement';
@@ -243,7 +243,10 @@ const TournamentDashboard = () => {
   const mockCount = dashboardData?.mockCount ?? 0;
 
   // BR game results management
-  const isBR = isBattleRoyale(tournament?.game || '');
+  const isBR = isBattleRoyaleTournament(
+    tournament?.game || '',
+    tournament?.tournament_type ?? tournament?.tournamentType,
+  );
   const brConf = isBR ? getBRConfig(tournament?.game || '') : null;
   const brSettings = isBR ? tournament?.settings : null;
   const brPresetKey = brSettings?.brScoringPreset || brConf?.defaultPreset || '';
@@ -1257,7 +1260,10 @@ const TournamentDashboard = () => {
                 </SelectTrigger>
                 <SelectContent className="bg-[#09090b] border-white/10 text-white z-[60]">
                   {(() => {
-                    const isBRMobile = isBattleRoyale(tournament?.game || '');
+                    const isBRMobile = isBattleRoyaleTournament(
+                      tournament?.game || '',
+                      tournament?.tournament_type ?? tournament?.tournamentType,
+                    );
                     const mobileTabs = isBRMobile
                       ? ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
                       : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
@@ -1291,7 +1297,10 @@ const TournamentDashboard = () => {
             >
               <TabsList className="bg-transparent p-0 h-auto gap-1">
                 {(() => {
-                  const isBR = isBattleRoyale(tournament?.game || '');
+                  const isBR = isBattleRoyaleTournament(
+    tournament?.game || '',
+    tournament?.tournament_type ?? tournament?.tournamentType,
+  );
                   const tabs = isBR
                     ? ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
                     : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];

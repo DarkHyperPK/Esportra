@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
-import { isBattleRoyale, getBRConfig, getGameByName, getDefaultGameMode } from '@/utils/gameFeatures';
+import { isBattleRoyaleTournament, getBRConfig, getDefaultGameMode, getGameByName } from '@/utils/gameFeatures';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import { cn } from '@/lib/utils';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
@@ -82,7 +82,10 @@ const TournamentDetails = () => {
   const [showBannerDialog, setShowBannerDialog] = useState(false);
   const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
   const terminology = useGameTerminology(tournament?.game);
-  const isBR = isBattleRoyale(tournament?.game || '');
+  const isBR = isBattleRoyaleTournament(
+    tournament?.game || '',
+    tournament?.tournament_type ?? tournament?.tournamentType,
+  );
   const detailsSearchParams = typeof window !== 'undefined' ? new URLSearchParams(location.search) : null;
   const requestedDetailsTab = detailsSearchParams?.get('tab') ?? null;
   const requestedBRStageId = detailsSearchParams?.get('brStage') ?? null;

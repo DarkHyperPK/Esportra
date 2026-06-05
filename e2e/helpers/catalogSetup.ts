@@ -25,16 +25,23 @@ const defaultBackendCatalog = path.resolve(
   '../esportra-backend/src/Esportra.Api/GameCatalog/esportsGames.json',
 );
 
-const backendCatalogPath = path.resolve(
-  process.env.E2E_BACKEND_CATALOG_PATH?.trim()
-    || process.env.BACKEND_CATALOG_PATH?.trim()
-    || defaultBackendCatalog,
-);
+const vendoredBackendCatalog = path.resolve(repoRoot, 'e2e/fixtures/backend-catalog.json');
+
+function resolveBackendCatalogPath(): string {
+  const explicit = process.env.E2E_BACKEND_CATALOG_PATH?.trim()
+    || process.env.BACKEND_CATALOG_PATH?.trim();
+  if (explicit) return path.resolve(explicit);
+  if (fs.existsSync(defaultBackendCatalog)) return defaultBackendCatalog;
+  if (fs.existsSync(vendoredBackendCatalog)) return vendoredBackendCatalog;
+  return defaultBackendCatalog;
+}
+
+const backendCatalogPath = resolveBackendCatalogPath();
 
 function loadBackendCatalog(): { catalogVersion?: string; games: BackendGame[] } {
   if (!fs.existsSync(backendCatalogPath)) {
     throw new Error(
-      `Backend catalog not found at ${backendCatalogPath}. Set E2E_BACKEND_CATALOG_PATH.`,
+      `Backend catalog not found at ${backendCatalogPath}. Set E2E_BACKEND_CATALOG_PATH or run npm run sync:game-catalog.`,
     );
   }
   return JSON.parse(fs.readFileSync(backendCatalogPath, 'utf8')) as {

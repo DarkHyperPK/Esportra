@@ -15,7 +15,7 @@ import {
   setupBrRoundFixture,
   updateRound,
 } from './helpers/brSetup';
-import { expandFirstRound, fillResultsGrid, expectRoundLiveBadge, openOrganizerGames, openPlayerGameRoom, setRoundSettings } from './helpers/uiBR';
+import { expandFirstRound, fillResultsGrid, expectRoundLiveBadge, openOrganizerGames, openPlayerGameRoom, setRoundSettings, submitPlayerEvidenceViaUI } from './helpers/uiBR';
 import { assertNoOrphanLeaderboardZeros } from './helpers/uiLeaderboard';
 import { expectNoTechnicalCopy } from './helpers/assertCopy';
 import { expectToast } from './helpers/assertToast';
@@ -99,10 +99,7 @@ test.describe('BR organizer games', () => {
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
-    await page.getByText('Upload screenshot').click();
-    await page.locator('input[type="file"]').setInputFiles(evidencePath);
-    await expect(page.getByRole('button', { name: /Submit Report/i })).toBeEnabled();
-    await page.getByRole('button', { name: /Submit Report/i }).click();
+    await submitPlayerEvidenceViaUI(page, evidencePath, fixture.lobbyCode);
     await expect.poll(
       () => getRoundEvidenceCount(organizer, fixture.roundId),
       { timeout: 30_000 },
