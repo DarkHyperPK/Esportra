@@ -10,11 +10,40 @@ export interface BRScoringPreset {
   killCap: number | null;
 }
 
-export interface BRConfig {
-  playersPerLobby: number;
-  defaultGameCount: number;
-  scoringPresets: Record<string, BRScoringPreset>;
-  defaultPreset: string;
+export type BRMapMode = 'none' | 'fixed_stage' | 'per_round' | 'rotation';
+
+export type BRAdvancementMode = 'top_n_per_group' | 'top_n_overall';
+
+export type BRTiebreaker = 'most_wins' | 'most_kills' | 'head_to_head';
+
+export interface BRMapCatalog {
+  hasMaps: boolean;
+  pool: string[];
+}
+
+export interface BRMapConfig {
+  mode: BRMapMode;
+  pool: string[];
+  fixedMap: string | null;
+}
+
+export interface BRStageScoringOverride {
+  presetKey?: string;
+  custom?: BRScoringPreset | null;
+  killCap?: number | null;
+}
+
+export interface BRAdvancementConfig {
+  mode: BRAdvancementMode;
+  perGroup?: number;
+  overall?: number;
+}
+
+export interface BRStageConfig {
+  scoring?: BRStageScoringOverride | null;
+  gameCount?: number | null;
+  advancement?: BRAdvancementConfig | null;
+  map?: Partial<BRMapConfig> | null;
 }
 
 export interface BRTournamentSettings {
@@ -22,7 +51,32 @@ export interface BRTournamentSettings {
   scoringPreset: string;
   customScoring?: BRScoringPreset;
   killCap: number | null;
-  tiebreaker: 'most_wins' | 'most_kills' | 'head_to_head';
+  tiebreaker: BRTiebreaker;
+}
+
+export interface BRTournamentSettingsExtended extends BRTournamentSettings {
+  brDefaultLobbySize?: number;
+  brDefaultGameCount?: number;
+  brDefaultMapMode?: BRMapMode;
+}
+
+export interface ResolvedStageBRConfig {
+  scoringPreset: BRScoringPreset;
+  killCap: number | null;
+  tiebreaker: BRTiebreaker;
+  gameCount: number;
+  lobbySize: number | null;
+  advancement: BRAdvancementConfig | null;
+  map: BRMapConfig;
+}
+
+export interface BRConfig {
+  playersPerLobby: number;
+  defaultGameCount: number;
+  scoringPresets: Record<string, BRScoringPreset>;
+  defaultPreset: string;
+  maps?: BRMapCatalog;
+  defaultMapMode?: BRMapMode;
 }
 
 export interface BRGameResult {

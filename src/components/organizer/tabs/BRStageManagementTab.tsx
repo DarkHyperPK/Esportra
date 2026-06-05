@@ -12,13 +12,65 @@ import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 import BRStageGroupSection from '@/components/organizer/br/BRStageGroupSection';
+import BRStageAdvancedConfig from '@/components/organizer/br/BRStageAdvancedConfig';
+import { resolveStageBRConfig, parseStageConfig } from '@/utils/brConfigResolve';
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 import { getBRConfig } from '@/utils/gameFeatures';
+import { getBRTemplates, type BRStageTemplate } from '@/config/brPresets';
 import esportsGames from '@/data/esportsGames.json';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
+
+type StageDtoPatch = Partial<{
+    id: string | null;
+    name: string;
+    stageOrder: number;
+    capacity: number | null;
+    advancementCount: number | null;
+    startsAt: string | null;
+    endsAt: string | null;
+}>;
+
+/** Build a stage PUT DTO while preserving existing config.br overrides. */
+function buildBrStageDto(stage: TournamentStage, patch?: StageDtoPatch) {
+    const parsedConfig = parseStageConfig(stage);
+    const dto: Record<string, unknown> = {
+        id: patch?.id !== undefined ? patch.id : stage.id,
+        name: patch?.name ?? stage.name,
+        format: stage.format || 'battle_royale',
+        stageOrder: patch?.stageOrder ?? stage.stage_order,
+        bestOf: 1,
+        capacity: patch?.capacity !== undefined ? patch.capacity : stage.capacity,
+        advancementCount: patch?.advancementCount !== undefined ? patch.advancementCount : stage.advancement_count,
+        startsAt: patch?.startsAt !== undefined ? patch.startsAt : (stage.starts_at || null),
+        endsAt: patch?.endsAt !== undefined ? patch.endsAt : (stage.ends_at || null),
+    };
+    if (Object.keys(parsedConfig).length > 0) {
+        dto.config = parsedConfig;
+    }
+    return dto;
+}
+
+function buildNewBrStageDto(params: {
+    name: string;
+    stageOrder: number;
+    capacity: number | null;
+    advancementCount: number | null;
+}) {
+    return {
+        id: null,
+        name: params.name,
+        format: 'battle_royale',
+        stageOrder: params.stageOrder,
+        bestOf: 1,
+        capacity: params.capacity,
+        advancementCount: params.advancementCount,
+        startsAt: null,
+        endsAt: null,
+    };
+}
 
 interface Participant {
     team_id?: string | null;
@@ -31,107 +83,7 @@ interface ScoringPreset {
     killCap: number | null;
 }
 
-interface StageTemplate {
-    id: string;
-    name: string;
-    description: string;
-    icon: string;
-    teamRange: string;
-    minTeams: number;
-    maxTeams: number;
-    stages: { name: string; capacity: number | null; advancementCount: number | null }[];
-}
-
-/**
- * Generate format-aware BR stage templates.
- *
- * All capacities and team ranges are derived from `lobbySize` — the maximum
- * number of competing UNITS (players / duos / squads) that fit in one game
- * lobby, calculated as: Math.floor(game.playersPerLobby / team_size).
- *
- * Examples for a 100-player-lobby game:
- *   Solo  (team_size=1): lobbySize=100 → single lobby fits 100 players
- *   Duo   (team_size=2): lobbySize=50  → single lobby fits 50 duos
- *   Squad (team_size=4): lobbySize=25  → single lobby fits 25 squads
- *
- * The fallback (lobbySize=null) uses the old hardcoded values so existing
- * behaviour is preserved for games without a configured playersPerLobby.
- */
-function getBRTemplates(lobbySize: number | null, unitsLabel: string): StageTemplate[] {
-    const L = lobbySize ?? 20; // fallback to legacy value when game has no config
-    const half = Math.max(1, Math.floor(L / 2));
-    const twoThirds = Math.max(1, Math.floor((L * 2) / 3));
-
-    return [
-        {
-            id: 'single_lobby',
-            name: 'Single Lobby',
-            description: `All ${unitsLabel} in one lobby. Best for small events that fit within a single game session.`,
-            icon: '',
-            teamRange: `4–${L} ${unitsLabel}`,
-            minTeams: 4,
-            maxTeams: L,
-            stages: [
-                { name: 'Main Event', capacity: null, advancementCount: null },
-            ],
-        },
-        {
-            id: 'open_qualifier',
-            name: 'Qualifier → Finals',
-            description: `2-stage format. ${unitsLabel.charAt(0).toUpperCase() + unitsLabel.slice(1)} compete across qualifier lobbies; top performers advance to a single finals lobby.`,
-            icon: '',
-            teamRange: `${L + 1}–${L * 3} ${unitsLabel}`,
-            minTeams: L + 1,
-            maxTeams: L * 3,
-            stages: [
-                { name: 'Qualifiers', capacity: L, advancementCount: half },
-                { name: 'Grand Finals', capacity: null, advancementCount: null },
-            ],
-        },
-        {
-            id: 'dual_group',
-            name: 'Dual Group → Finals',
-            description: `2 parallel groups compete separately; top ${unitsLabel} from each merge into one finals lobby.`,
-            icon: '',
-            teamRange: `${L + 1}–${L * 2} ${unitsLabel}`,
-            minTeams: L + 1,
-            maxTeams: L * 2,
-            stages: [
-                { name: 'Group Stage', capacity: L, advancementCount: half },
-                { name: 'Grand Finals', capacity: null, advancementCount: null },
-            ],
-        },
-        {
-            id: 'triple_stage',
-            name: 'Groups → Semis → Finals',
-            description: `3-stage progression. Large pool narrows through semi-finals into a single finals lobby.`,
-            icon: '',
-            teamRange: `${L * 2 + 1}–${L * 5} ${unitsLabel}`,
-            minTeams: L * 2 + 1,
-            maxTeams: L * 5,
-            stages: [
-                { name: 'Group Stage', capacity: L, advancementCount: half },
-                { name: 'Semi-Finals', capacity: L, advancementCount: twoThirds },
-                { name: 'Grand Finals', capacity: null, advancementCount: null },
-            ],
-        },
-        {
-            id: 'four_stage',
-            name: 'Full Circuit (4 Stages)',
-            description: `Open → Quarter → Semi → Finals. Best for large-scale events with high ${unitsLabel} counts.`,
-            icon: '',
-            teamRange: `${L * 4 + 1}–${L * 10} ${unitsLabel}`,
-            minTeams: L * 4 + 1,
-            maxTeams: L * 10,
-            stages: [
-                { name: 'Open Qualifiers', capacity: L, advancementCount: twoThirds },
-                { name: 'Quarter-Finals', capacity: L, advancementCount: half },
-                { name: 'Semi-Finals', capacity: L, advancementCount: twoThirds },
-                { name: 'Grand Finals', capacity: null, advancementCount: null },
-            ],
-        },
-    ];
-}
+type StageTemplate = BRStageTemplate;
 
 interface StageFlowInfo {
     teamsEntering: number;
@@ -154,11 +106,12 @@ interface BRStageManagementTabProps {
     maxParticipants?: number | null;
     teamSize?: number | null;
     game?: string;
+    tournamentSettings?: Record<string, unknown> | null;
     scoringPreset: ScoringPreset;
     onUpdate: () => void;
 }
 
-export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tournamentId, stages: stagesProp, participants: participantsProp, maxParticipants, teamSize, game, scoringPreset: _scoringPreset, onUpdate }) => {
+export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tournamentId, stages: stagesProp, participants: participantsProp, maxParticipants, teamSize, game, tournamentSettings, scoringPreset: _scoringPreset, onUpdate }) => {
     const stages = useMemo(() => stagesProp ?? [], [stagesProp]);
     const participants = useMemo(() => participantsProp ?? [], [participantsProp]);
     const { toast } = useToast();
@@ -265,7 +218,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const UnitsLabel = unitsLabel.charAt(0).toUpperCase() + unitsLabel.slice(1);
 
     // Format-aware stage templates — recomputed whenever the game or team format changes
-    const brTemplates = useMemo(() => getBRTemplates(maxLobbySize, unitsLabel), [maxLobbySize, unitsLabel]);
+    const brTemplates = useMemo(() => getBRTemplates(maxLobbySize, unitsLabel, game), [maxLobbySize, unitsLabel, game]);
 
     // Validate the template config and return per-stage error messages
     const templateConfigErrors = useMemo((): string[] => {
@@ -346,23 +299,13 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const saveInlineEdit = useCallback(async (stageId: string, field: 'name' | 'capacity' | 'advancement', value: string) => {
         try {
             const stageDtos = stages.map(s => {
-                const dto: any = {
-                    id: s.id,
-                    name: s.name,
-                    format: s.format || 'battle_royale',
-                    stageOrder: s.stage_order,
-                    bestOf: 1,
-                    capacity: s.capacity,
-                    advancementCount: s.advancement_count,
-                    startsAt: s.starts_at || null,
-                    endsAt: s.ends_at || null,
-                };
+                const patch: StageDtoPatch = {};
                 if (s.id === stageId) {
-                    if (field === 'name') dto.name = value.trim();
-                    if (field === 'capacity') dto.capacity = value && value !== 'none' ? parseInt(value) : null;
-                    if (field === 'advancement') dto.advancementCount = value && value !== 'none' ? parseInt(value) : null;
+                    if (field === 'name') patch.name = value.trim();
+                    if (field === 'capacity') patch.capacity = value && value !== 'none' ? parseInt(value) : null;
+                    if (field === 'advancement') patch.advancementCount = value && value !== 'none' ? parseInt(value) : null;
                 }
-                return dto;
+                return buildBrStageDto(s, patch);
             });
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
@@ -405,29 +348,14 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
         try {
             const newOrder = stages.length + 1;
-            const stageDtos = stages.map(s => ({
-                id: s.id,
-                name: s.name,
-                format: s.format || 'battle_royale',
-                stageOrder: s.stage_order,
-                bestOf: 1,
-                capacity: s.capacity,
-                advancementCount: s.advancement_count,
-                startsAt: s.starts_at || null,
-                endsAt: s.ends_at || null,
-            }));
+            const stageDtos = stages.map(s => buildBrStageDto(s));
 
-            stageDtos.push({
-                id: null as any,
+            stageDtos.push(buildNewBrStageDto({
                 name: newName.trim(),
-                format: 'battle_royale',
                 stageOrder: newOrder,
-                bestOf: 1,
                 capacity: newIsFinal ? null : lobbySize,
                 advancementCount: newIsFinal ? null : newAdvancement,
-                startsAt: null,
-                endsAt: null,
-            });
+            }));
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
 
@@ -472,17 +400,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 .filter(s => s.id !== stageId)
                 .sort((a, b) => a.stage_order - b.stage_order);
             if (remaining.length > 0) {
-                const resequenced = remaining.map((s, i) => ({
-                    id: s.id,
-                    name: s.name,
-                    format: s.format || 'battle_royale',
-                    stageOrder: i + 1,
-                    bestOf: 1,
-                    capacity: s.capacity,
-                    advancementCount: s.advancement_count,
-                    startsAt: s.starts_at || null,
-                    endsAt: s.ends_at || null,
-                }));
+                const resequenced = remaining.map((s, i) => buildBrStageDto(s, { stageOrder: i + 1 }));
                 await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: resequenced });
             }
             toast({ title: 'Stage deleted' });
@@ -509,16 +427,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
         const target = sortedStages[targetIdx];
 
         try {
-            const stageDtos = stages.map(s => ({
-                id: s.id,
-                name: s.name,
-                format: s.format || 'battle_royale',
+            const stageDtos = stages.map(s => buildBrStageDto(s, {
                 stageOrder: s.id === current.id ? target.stage_order : s.id === target.id ? current.stage_order : s.stage_order,
-                bestOf: 1,
-                capacity: s.capacity,
-                advancementCount: s.advancement_count,
-                startsAt: s.starts_at || null,
-                endsAt: s.ends_at || null,
             }));
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
@@ -588,19 +498,25 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                 });
             }
             const isSingleLobbyTemplate = selectedTemplate.stages.length === 1;
-            const stageDtos = selectedTemplate.stages.map((ts, i) => ({
-                id: null as any,
-                name: isSingleLobbyTemplate ? 'Main Event' : ts.name,
-                format: 'battle_royale',
-                stageOrder: i + 1,
-                bestOf: 1,
-                capacity: isSingleLobbyTemplate || i < selectedTemplate.stages.length - 1
-                    ? templateConfig[i]?.capacity || maxLobbySize || registeredTeamCount || null
-                    : templateConfig[i]?.capacity || maxLobbySize || null,
-                advancementCount: i < selectedTemplate.stages.length - 1 ? templateConfig[i]?.advancement ?? null : null,
-                startsAt: null,
-                endsAt: null,
-            }));
+            const stageDtos = selectedTemplate.stages.map((ts, i) => {
+                const dto: Record<string, unknown> = {
+                    id: null,
+                    name: isSingleLobbyTemplate ? 'Main Event' : ts.name,
+                    format: 'battle_royale',
+                    stageOrder: i + 1,
+                    bestOf: 1,
+                    capacity: isSingleLobbyTemplate || i < selectedTemplate.stages.length - 1
+                        ? templateConfig[i]?.capacity || maxLobbySize || registeredTeamCount || null
+                        : templateConfig[i]?.capacity || maxLobbySize || null,
+                    advancementCount: i < selectedTemplate.stages.length - 1 ? templateConfig[i]?.advancement ?? null : null,
+                    startsAt: null,
+                    endsAt: null,
+                };
+                if (ts.config && Object.keys(ts.config).length > 0) {
+                    dto.config = ts.config;
+                }
+                return dto;
+            });
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
 
@@ -647,9 +563,21 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const handleAdvanceTeams = async (stageId: string, advancementCount: number) => {
         setIsAdvancing(true);
         try {
+            const stage = stages.find((s) => s.id === stageId);
+            const resolved = stage && game
+                ? resolveStageBRConfig({
+                    gameName: game,
+                    settings: tournamentSettings,
+                    stage,
+                    teamSize: teamSize ?? 1,
+                })
+                : null;
+            const body = {
+                teamsPerGroup: resolved?.advancement?.perGroup ?? advancementCount,
+            };
             const data = await apiClient.post<{ advanced: number; to_stage: string }>(
                 `/api/stages/${stageId}/br/advance?preview=false`,
-                { teamsPerGroup: advancementCount }
+                body,
             );
             toast({ title: `${data.advanced} teams advanced to ${data.to_stage}` });
             setAdvanceConfirmStageId(null);
@@ -1094,7 +1022,16 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
                                             {/* Inline Group Management (expanded) */}
                                             {isExpanded && (
-                                                <div className="mt-4 pt-4 border-t border-white/5">
+                                                <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
+                                                    {game && (
+                                                        <BRStageAdvancedConfig
+                                                            tournamentId={tournamentId}
+                                                            stages={stages}
+                                                            stage={stage}
+                                                            gameName={game}
+                                                            onSaved={onUpdate}
+                                                        />
+                                                    )}
                                                     <BRStageGroupSection
                                                         stageId={stage.id}
                                                         stageCapacity={stage.capacity}

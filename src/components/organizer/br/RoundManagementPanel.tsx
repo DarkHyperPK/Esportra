@@ -7,6 +7,7 @@ import { RoundEvidencePanel } from './RoundEvidencePanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,9 +29,13 @@ import {
   Undo2,
   Clock,
   RotateCcw,
+  MapPin,
 } from 'lucide-react';
 import type { BRGroupTeam } from '@/types/brGroups';
 import type { BRRound, BRResultInput } from '@/types/brRounds';
+import type { BRMapConfig } from '@/types/battleRoyale';
+import { resolveMapForRound } from '@/utils/brConfigResolve';
+import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 
 interface ScoringPreset {
   placements: number[];
@@ -40,11 +45,12 @@ interface ScoringPreset {
 
 type RoundAction = 'start' | 'complete' | 'reopen' | 'reset';
 
-interface RoundActionSettings {
+type RoundActionSettings = {
   lobbyCode: string | null;
   queueTimerMinutes: number | null;
   scheduledAt: string | null;
-}
+  map?: string | null;
+};
 
 interface RoundManagementPanelProps {
   stageId: string;
@@ -52,6 +58,7 @@ interface RoundManagementPanelProps {
   groupName: string;
   teams: BRGroupTeam[];
   scoringPreset: ScoringPreset;
+  mapConfig: BRMapConfig;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -73,6 +80,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   groupName,
   teams,
   scoringPreset,
+  mapConfig,
 }) => {
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
   const { connected } = useBRRealtime({ stageId, groupId, roundId: expandedRoundId });
@@ -98,7 +106,12 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
 
   const handleCreateRound = async () => {
     try {
-      await createRound.mutateAsync({});
+      const payload: { map?: string | null } = {};
+      if (BR_FEATURE_FLAGS.mapsEnabled) {
+        const nextRoundNumber = rounds.length + 1;
+        payload.map = resolveMapForRound(mapConfig, nextRoundNumber);
+      }
+      await createRound.mutateAsync(payload);
     } catch {
       /* toast handled by hook */
     }
@@ -118,6 +131,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
           lobbyCode: confirmAction.settings?.lobbyCode ?? null,
           scheduledAt: confirmAction.settings?.scheduledAt ?? null,
           queueTimerMinutes: confirmAction.settings?.queueTimerMinutes ?? null,
+          map: confirmAction.settings?.map ?? null,
         });
       } else {
         await updateRound.mutateAsync({ roundId, status: statusMap[action] });
@@ -133,9 +147,10 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
     roundId: string,
     lobbyCode: string,
     scheduledAt: string | null,
-    queueTimerMinutes: number | null
+    queueTimerMinutes: number | null,
+    map?: string | null,
   ) => {
-    await updateRound.mutateAsync({ roundId, lobbyCode: lobbyCode || null, scheduledAt, queueTimerMinutes });
+    await updateRound.mutateAsync({ roundId, lobbyCode: lobbyCode || null, scheduledAt, queueTimerMinutes, map });
   };
 
   if (isLoading) {
@@ -190,6 +205,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               groupId={groupId}
               teams={teams}
               scoringPreset={scoringPreset}
+              mapConfig={mapConfig}
               isExpanded={expandedRoundId === round.id}
                onToggle={() => setExpandedRoundId(expandedRoundId === round.id ? null : round.id)}
                onStatusAction={(action, settings) => {
@@ -198,6 +214,15 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
                      title: 'Lobby code required',
                     description: 'Enter the lobby code before starting the round so players receive it immediately.',
                     variant: 'destructive',
+                   });
+                   return;
+                 }
+
+                 if (BR_FEATURE_FLAGS.mapsEnabled && action === 'start' && mapConfig.mode === 'per_round' && !round.map && !settings?.map) {
+                   toast({
+                     title: 'Map required',
+                     description: 'Select a map for this round before starting it.',
+                     variant: 'destructive',
                    });
                    return;
                  }
@@ -217,7 +242,8 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
                 round.id,
                 settings.lobbyCode,
                 settings.scheduledAt,
-                settings.queueTimerMinutes
+                settings.queueTimerMinutes,
+                settings.map,
               )}
               isUpdating={isMutatingRound}
               realtimeConnected={connected}
@@ -282,9 +308,10 @@ interface RoundRowProps {
   isExpanded: boolean;
   onToggle: () => void;
   onStatusAction: (action: RoundAction, settings?: RoundActionSettings) => void;
-  onRoundSettingsSave: (settings: { lobbyCode: string; scheduledAt: string | null; queueTimerMinutes: number | null }) => Promise<void>;
+  onRoundSettingsSave: (settings: { lobbyCode: string; scheduledAt: string | null; queueTimerMinutes: number | null; map?: string | null }) => Promise<void>;
   isUpdating: boolean;
   realtimeConnected?: boolean;
+  mapConfig: BRMapConfig;
 }
 
 const RoundRow: React.FC<RoundRowProps> = ({
@@ -299,6 +326,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
   onRoundSettingsSave,
   isUpdating,
   realtimeConnected = false,
+  mapConfig,
 }) => {
   const { results, isLoading: resultsLoading, submitResults } = useBRRoundResults(
     isExpanded ? round.id : null,
@@ -312,6 +340,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
   const [queueTimerInput, setQueueTimerInput] = useState(
     round.queue_timer_minutes != null ? String(round.queue_timer_minutes) : ''
   );
+  const [mapInput, setMapInput] = useState(round.map ?? '');
   const [settingsDirty, setSettingsDirty] = useState(false);
   const statusCfg = STATUS_CONFIG[round.status] ?? STATUS_CONFIG.pending;
   const hasPendingEvidenceReview = (round.pending_evidence_count ?? 0) > 0;
@@ -334,8 +363,9 @@ const RoundRow: React.FC<RoundRowProps> = ({
     setLobbyCode(round.lobby_code ?? '');
     setScheduledAtInput(round.scheduled_at ? toLocalInputValue(round.scheduled_at) : '');
     setQueueTimerInput(round.queue_timer_minutes != null ? String(round.queue_timer_minutes) : '');
+    setMapInput(round.map ?? resolveMapForRound(mapConfig, round.round_number) ?? '');
     setSettingsDirty(false);
-  }, [round.id, round.lobby_code, round.scheduled_at, round.queue_timer_minutes]);
+  }, [round.id, round.lobby_code, round.scheduled_at, round.queue_timer_minutes, round.map, round.round_number, mapConfig]);
 
   const getRoundSettings = (): RoundActionSettings => {
     const trimmedLobbyCode = lobbyCode.trim();
@@ -346,6 +376,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
       lobbyCode: trimmedLobbyCode === '' ? null : trimmedLobbyCode,
       scheduledAt: scheduledAtInput.trim() === '' ? null : new Date(scheduledAtInput).toISOString(),
       queueTimerMinutes: Number.isFinite(parsedTimer) ? parsedTimer : null,
+      map: BR_FEATURE_FLAGS.mapsEnabled && mapConfig.mode !== 'none' ? (mapInput.trim() || null) : null,
     };
   };
 
@@ -357,6 +388,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
       lobbyCode: settings.lobbyCode ?? '',
       scheduledAt: settings.scheduledAt,
       queueTimerMinutes: settings.queueTimerMinutes,
+      map: settings.map,
     });
     setSettingsDirty(false);
   };
@@ -404,6 +436,12 @@ const RoundRow: React.FC<RoundRowProps> = ({
             </span>
           )}
           {round.queue_timer_minutes ? `Queue ${round.queue_timer_minutes}m` : null}
+          {BR_FEATURE_FLAGS.mapsEnabled && round.map ? (
+            <span className="flex items-center gap-1 text-emerald-400/80">
+              <MapPin className="w-3 h-3" />
+              {round.map}
+            </span>
+          ) : null}
           {round.lobby_code ? `${round.lobby_code}` : 'No lobby code'}
         </span>
       </button>
@@ -474,6 +512,30 @@ const RoundRow: React.FC<RoundRowProps> = ({
                 </p>
               </div>
             </div>
+
+            {BR_FEATURE_FLAGS.mapsEnabled && mapConfig.mode !== 'none' && (
+              <div className="rounded-xl border border-white/6 bg-white/[0.02] p-3">
+                <label className="mb-2 flex text-[10px] text-zinc-500 uppercase tracking-wider items-center gap-1">
+                  <MapPin className="w-3 h-3" /> Map
+                </label>
+                {mapConfig.mode === 'per_round' ? (
+                  <Select value={mapInput || undefined} onValueChange={(value) => { setMapInput(value); setSettingsDirty(true); }}>
+                    <SelectTrigger className="h-10 text-sm bg-white/5 border-white/10 text-white">
+                      <SelectValue placeholder="Select map..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mapConfig.pool.map((mapName) => (
+                        <SelectItem key={mapName} value={mapName}>{mapName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="h-10 flex items-center px-3 rounded-md bg-white/5 border border-white/10 text-sm text-zinc-300">
+                    {round.map ?? resolveMapForRound(mapConfig, round.round_number) ?? '—'}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="rounded-xl border border-white/6 bg-white/[0.02] px-3 py-3">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

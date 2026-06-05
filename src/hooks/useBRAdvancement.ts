@@ -35,15 +35,19 @@ interface AdvanceExecuteResponse {
   finals_group_id: string;
 }
 
+interface AdvanceRequest {
+  teamsPerGroup?: number;
+}
+
 export const useBRAdvancement = (stageId: string | null) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const preview = useMutation({
-    mutationFn: (teamsPerGroup?: number) =>
+    mutationFn: (body: AdvanceRequest = {}) =>
       apiClient.post<AdvancePreviewResponse>(
         `/api/stages/${stageId}/br/advance?preview=true`,
-        teamsPerGroup ? { teamsPerGroup } : {}
+        body,
       ),
     onError: (error: Error) => {
       toast({ title: 'Preview failed', description: extractErrorMessage(error), variant: 'destructive' });
@@ -51,10 +55,10 @@ export const useBRAdvancement = (stageId: string | null) => {
   });
 
   const execute = useMutation({
-    mutationFn: (teamsPerGroup?: number) =>
+    mutationFn: (body: AdvanceRequest = {}) =>
       apiClient.post<AdvanceExecuteResponse>(
         `/api/stages/${stageId}/br/advance?preview=false`,
-        teamsPerGroup ? { teamsPerGroup } : {}
+        body,
       ),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['br-groups'] });

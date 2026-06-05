@@ -18,7 +18,8 @@ import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { getWebsiteAssetUrl } from '@/lib/storage';
-import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode, getGameModeGroups, getEffectiveGameFeatures } from '@/utils/gameFeatures';
+import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode, getGameModeGroups, getEffectiveGameFeatures, gameHasBRMaps } from '@/utils/gameFeatures';
+import type { BRMapMode } from '@/types/battleRoyale';
 
 /* ──────────────────────────────────────────────────────────────
    Sub-components
@@ -129,6 +130,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
             const validOptions = [20, 30, 40, 60, 100, 150, 200];
             const target = unitsPerLobby * 5;
             updates.maxTeams = validOptions.find(n => n >= target) ?? validOptions[validOptions.length - 1];
+            updates.brDefaultLobbySize = unitsPerLobby;
         }
 
         updateData(updates);
@@ -563,7 +565,51 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                         );
                     })()}
 
+                    {/* Default lobby size */}
+                    <div className="space-y-3">
+                        <div className="w-full h-px bg-white/5 my-6" />
+                        <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                            <Layers className="w-4 h-4" />
+                            Default Lobby Size
+                        </Label>
+                        <Input
+                            type="number"
+                            min={2}
+                            max={200}
+                            value={data.brDefaultLobbySize}
+                            onChange={(e) => updateData({ brDefaultLobbySize: Math.max(2, parseInt(e.target.value) || 2) })}
+                            className="[color-scheme:dark]"
+                        />
+                        <p className="text-sm text-gray-400">
+                            Competing units per lobby for new stages. Override per stage in tournament management.
+                        </p>
+                    </div>
 
+                    {/* Default map mode */}
+                    {gameHasBRMaps(data.game) && (
+                        <div className="space-y-3">
+                            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                <MapIcon className="w-4 h-4" />
+                                Default Map Mode
+                            </Label>
+                            <Select
+                                value={data.brDefaultMapMode}
+                                onValueChange={(v) => updateData({ brDefaultMapMode: v as BRMapMode })}
+                            >
+                                <SelectTrigger className="w-full font-bold tracking-tight">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="per_round">Organizer picks per round</SelectItem>
+                                    <SelectItem value="fixed_stage">One map per stage</SelectItem>
+                                    <SelectItem value="rotation">Auto-rotate map pool</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-sm text-gray-400">
+                                How maps are chosen for rounds. Override per stage after creation.
+                            </p>
+                        </div>
+                    )}
 
                 </>
             ) : (

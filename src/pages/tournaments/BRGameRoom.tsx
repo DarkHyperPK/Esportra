@@ -20,9 +20,10 @@ import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import PremiumBackground from '@/components/ui/PremiumBackground';
 import {
   Trophy, Copy, ArrowLeft, Radio, Clock, CheckCircle, Key, Send,
-  Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown, Medal, Shield,
+  Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown, Medal, Shield, MapPin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { BRScoringPreset } from '@/types/battleRoyale';
 
@@ -153,6 +154,7 @@ const BRGameRoom: React.FC = () => {
 
   const activeRoundNumber = activeRound?.round_number ?? context.activeRound?.roundNumber ?? null;
   const activeCode = activeRound?.lobby_code ?? context.activeRound?.lobbyCode ?? null;
+  const activeMap = activeRound?.map ?? null;
   const gamesCompleted = completedRounds || context.completedRounds;
   const allGamesFinished = totalRounds > 0 && gamesCompleted >= totalRounds && !hasActiveRound;
   const winner = allGamesFinished && leaderboard.length > 0 ? leaderboard[0] : null;
@@ -384,6 +386,16 @@ const BRGameRoom: React.FC = () => {
                       <Clock className="w-7 h-7 text-zinc-700 mb-2" />
                       <p className="text-sm text-zinc-500 font-medium">Waiting for lobby code...</p>
                       <p className="text-[10px] text-zinc-700 mt-1">The organizer will share it shortly</p>
+                    </div>
+                  )}
+
+                  {BR_FEATURE_FLAGS.mapsEnabled && activeMap && (
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-white/10 bg-white/[0.03]">
+                      <MapPin className="w-4 h-4 text-emerald-400" />
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Map</p>
+                        <p className="text-sm font-semibold text-white">{activeMap}</p>
+                      </div>
                     </div>
                   )}
 

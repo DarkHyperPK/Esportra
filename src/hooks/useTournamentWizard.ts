@@ -82,6 +82,11 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         if (brConfig) {
                             newData.brGameCount = brConfig.defaultGameCount;
                             newData.brScoringPreset = brConfig.defaultPreset;
+                            newData.brDefaultLobbySize = Math.floor(
+                              brConfig.playersPerLobby / Math.max(1, newData.teamSize),
+                            );
+                            newData.brDefaultMapMode = brConfig.defaultMapMode
+                              ?? (brConfig.maps?.hasMaps ? 'per_round' : 'none');
                             const preset = brConfig.scoringPresets[brConfig.defaultPreset];
                             if (preset) {
                                 newData.brKillCap = preset.killCap;
@@ -214,6 +219,9 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                             brCustomScoring: data.brCustomScoring,
                             brKillCap: data.brKillCap,
                             brTiebreaker: data.brTiebreaker,
+                            brDefaultLobbySize: data.brDefaultLobbySize,
+                            brDefaultGameCount: data.brGameCount,
+                            brDefaultMapMode: data.brDefaultMapMode,
                             brMultiStage: data.brMultiStage,
                             ...(data.brMultiStage ? {
                                 brLobbySize: data.brLobbySize,
@@ -226,7 +234,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
 
                 // Stage sync — single PUT replaces 3 sequential Supabase calls (delete/upsert/insert)
                 const stagesToSync = (() => {
-                    const defaultBrLobbySize = data.brLobbySize || data.maxTeams;
+                    const defaultBrLobbySize = data.brDefaultLobbySize || data.brLobbySize || data.maxTeams;
                     if (data.tournamentType === 'battle_royale' && data.brMultiStage) {
                         return [
                             {
@@ -336,6 +344,9 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                             brCustomScoring: data.brCustomScoring,
                             brKillCap: data.brKillCap,
                             brTiebreaker: data.brTiebreaker,
+                            brDefaultLobbySize: data.brDefaultLobbySize,
+                            brDefaultGameCount: data.brGameCount,
+                            brDefaultMapMode: data.brDefaultMapMode,
                             brMultiStage: data.brMultiStage,
                             ...(data.brMultiStage ? {
                                 brLobbySize: data.brLobbySize,
@@ -346,7 +357,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     },
                     // Backend handles stages + map pool in one transaction
                     stages: (() => {
-                        const defaultBrLobbySize = data.brLobbySize || data.maxTeams;
+                        const defaultBrLobbySize = data.brDefaultLobbySize || data.brLobbySize || data.maxTeams;
                         if (data.tournamentType === 'battle_royale' && data.brMultiStage) {
                             return [
                                 {

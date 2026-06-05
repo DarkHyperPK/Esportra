@@ -1406,6 +1406,7 @@ const TournamentDashboard = () => {
                         maxParticipants={tournament.max_participants ?? null}
                         teamSize={tournament.team_size ?? null}
                         game={tournament.game || ''}
+                        tournamentSettings={brSettings as Record<string, unknown> | null}
                         scoringPreset={brScoringPreset}
                         onUpdate={() => refetchDashboard()}
                       />
@@ -1429,6 +1430,9 @@ const TournamentDashboard = () => {
                     <BRGamesTab
                       tournamentId={tournament!.id}
                       stages={stages}
+                      game={tournament.game || ''}
+                      tournamentSettings={brSettings as Record<string, unknown> | null}
+                      teamSize={tournament.team_size ?? 1}
                       scoringPreset={brScoringPreset}
                     />
                   </TabTransition>

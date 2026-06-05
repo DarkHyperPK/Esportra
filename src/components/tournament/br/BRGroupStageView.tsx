@@ -3,7 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Users, Swords, Loader2, AlertCircle, Clock } from 'lucide-react';
+import { Users, Swords, Loader2, AlertCircle, Clock, MapPin } from 'lucide-react';
+import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useBRGroupStage, useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
 import { useBRGroupParticipants } from '@/hooks/useBRGroups';
@@ -203,6 +204,12 @@ const GroupContent: React.FC<GroupContentProps> = ({
             <p className="text-xs text-zinc-400 mt-1">
               Lobby codes are only shared in the Match Room for registered players.
             </p>
+            {BR_FEATURE_FLAGS.mapsEnabled && activeRound.map && (
+              <p className="text-xs text-zinc-300 mt-1.5 flex items-center gap-1">
+                <MapPin className="w-3 h-3 text-rose-400" />
+                {activeRound.map}
+              </p>
+            )}
           </div>
           {tournamentSlug && (
             <Button

@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { TournamentWizardData } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS, SEEDING_TYPE_LABELS } from '@/schemas/tournamentSchema';
-import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig, gameHasBRMaps } from '@/utils/gameFeatures';
 
 interface StepReviewProps {
     data: TournamentWizardData;
@@ -75,6 +75,8 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 { label: 'Scoring', value: data.brScoringPreset === 'custom' ? 'Custom' : (brConfig?.scoringPresets?.[data.brScoringPreset]?.name || data.brScoringPreset) },
                 { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
                 { label: 'Max Participants', value: data.maxTeams ? `${data.maxTeams} ${data.teamSize === 1 ? 'Players' : data.teamSize === 2 ? 'Duos' : data.teamSize === 3 ? 'Trios' : 'Squads'}` : 'Unlimited' },
+                { label: 'Default Lobby Size', value: `${data.brDefaultLobbySize} per lobby` },
+                ...(gameHasBRMaps(data.game) ? [{ label: 'Default Map Mode', value: data.brDefaultMapMode.replace('_', ' ') }] : []),
                 { label: 'Team Size', value: data.teamSize === 1 ? 'Solo (Individual)' : data.teamSize === 2 ? 'Duo (2 players)' : data.teamSize === 3 ? 'Trio (3 players)' : `${data.teamSize} players` },
                 ...(data.brMultiStage ? [
                     { label: 'Lobby Size', value: `${data.brLobbySize} teams per group` },

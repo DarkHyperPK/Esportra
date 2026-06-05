@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Users, Save, AlertTriangle } from 'lucide-react';
 import type { BRRoundResult, BRResultInput } from '@/types/brRounds';
 import type { BRGroupTeam } from '@/types/brGroups';
+import { calculateBRPoints } from '@/utils/brScoring';
 
 interface ScoringPreset {
   placements: number[];
@@ -44,18 +45,9 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
   const existingResults = useMemo(() => existingResultsProp ?? [], [existingResultsProp]);
 
   const calcPoints = useCallback(
-    (placement: number, kills: number) => {
-      const pp =
-        placement >= 1 && placement <= scoringPreset.placements.length
-          ? scoringPreset.placements[placement - 1]
-          : 0;
-      const effectiveKills = scoringPreset.killCap
-        ? Math.min(kills, scoringPreset.killCap)
-        : kills;
-      const kp = effectiveKills * scoringPreset.killPoints;
-      return { placementPoints: pp, killPoints: kp, totalPoints: pp + kp };
-    },
-    [scoringPreset]
+    (placement: number, kills: number) =>
+      calculateBRPoints(placement, kills, scoringPreset, scoringPreset.killCap),
+    [scoringPreset],
   );
 
   const resultsByTeamId = useMemo(() => {

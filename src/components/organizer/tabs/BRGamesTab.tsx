@@ -11,6 +11,8 @@ import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import { useStageCompletion } from '@/hooks/useStageCompletion';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import type { Database } from '@/integrations/supabase/types';
+import { resolveStageBRConfig, getQualificationCutoff, sortBRLeaderboardEntries } from '@/utils/brConfigResolve';
+import type { BRMapConfig } from '@/types/battleRoyale';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
@@ -23,10 +25,21 @@ interface ScoringPreset {
 interface BRGamesTabProps {
     tournamentId: string;
     stages: TournamentStage[];
-    scoringPreset: ScoringPreset;
+    game: string;
+    tournamentSettings?: Record<string, unknown> | null;
+    teamSize?: number;
+    /** @deprecated use resolved stage config instead */
+    scoringPreset?: ScoringPreset;
 }
 
-export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId: _tournamentId, stages: stagesProp, scoringPreset }) => {
+export const BRGamesTab: React.FC<BRGamesTabProps> = ({
+    tournamentId: _tournamentId,
+    stages: stagesProp,
+    game,
+    tournamentSettings,
+    teamSize = 1,
+    scoringPreset: legacyScoringPreset,
+}) => {
     const stages = useMemo(() => stagesProp ?? [], [stagesProp]);
     const sortedStages = useMemo(
         () => [...stages].sort((a, b) => a.stage_order - b.stage_order),
@@ -40,6 +53,29 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId: _tournamen
     const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
     const selectedStage = sortedStages.find(s => s.id === selectedStageId);
+
+    const resolvedStageConfig = useMemo(() => {
+        if (!selectedStage) return null;
+        return resolveStageBRConfig({
+            gameName: game,
+            settings: tournamentSettings,
+            stage: selectedStage,
+            teamSize,
+        });
+    }, [selectedStage, game, tournamentSettings, teamSize]);
+
+    const scoringPreset = useMemo(() => {
+        if (resolvedStageConfig) {
+            return {
+                placements: resolvedStageConfig.scoringPreset.placements,
+                killPoints: resolvedStageConfig.scoringPreset.killPoints,
+                killCap: resolvedStageConfig.killCap,
+            };
+        }
+        return legacyScoringPreset ?? { placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
+    }, [resolvedStageConfig, legacyScoringPreset]);
+
+    const mapConfig: BRMapConfig = resolvedStageConfig?.map ?? { mode: 'none', pool: [], fixedMap: null };
 
     const {
         groups,
@@ -79,6 +115,20 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId: _tournamen
         selectedStageId || null,
         selectedGroupId || null
     );
+
+    const sortedLeaderboard = useMemo(() => {
+        if (!resolvedStageConfig) return leaderboard;
+        return sortBRLeaderboardEntries(leaderboard, resolvedStageConfig.tiebreaker);
+    }, [leaderboard, resolvedStageConfig]);
+
+    const qualificationCutoff = useMemo(() => {
+        if (!resolvedStageConfig) {
+            return selectedStage?.advancement_count && selectedStage.advancement_count > 0
+                ? selectedStage.advancement_count
+                : undefined;
+        }
+        return getQualificationCutoff(resolvedStageConfig, groups.length);
+    }, [resolvedStageConfig, selectedStage, groups.length]);
 
     // Fetch round summary for accurate totalGames/gamesCompleted in leaderboard
     const { totalRounds, completedRounds } = useBRGroupRounds(
@@ -243,14 +293,10 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId: _tournamen
                         ) : (
                             <>
                             <BRLeaderboard
-                                entries={leaderboard}
+                                entries={sortedLeaderboard}
                                 totalGames={totalRounds}
                                 gamesCompleted={completedRounds}
-                                qualificationCutoff={
-                                  selectedStage?.advancement_count && selectedStage.advancement_count > 0
-                                    ? selectedStage.advancement_count
-                                    : undefined
-                                }
+                                qualificationCutoff={qualificationCutoff}
                                 pageSize={20}
                             />
                             <p className="text-xs text-zinc-500 text-right mt-1">
@@ -276,6 +322,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({ tournamentId: _tournamen
                                 groupName={selectedGroupName || selectedGroup.name}
                                 teams={groupTeams}
                                 scoringPreset={scoringPreset}
+                                mapConfig={mapConfig}
                             />
                         </Card>
                     )}

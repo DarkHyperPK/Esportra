@@ -2,6 +2,7 @@ export interface BRRound {
   id: string;
   round_number: number;
   lobby_code: string | null;
+  map: string | null;
   status: 'pending' | 'active' | 'completed';
   scheduled_at: string | null;
   started_at: string | null;

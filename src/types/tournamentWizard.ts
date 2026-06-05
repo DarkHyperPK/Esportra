@@ -45,6 +45,8 @@ export interface TournamentWizardData {
     brCustomScoring: BRScoringPreset | null;
     brKillCap: number | null;
     brTiebreaker: 'most_wins' | 'most_kills' | 'head_to_head';
+    brDefaultLobbySize: number;
+    brDefaultMapMode: 'none' | 'fixed_stage' | 'per_round' | 'rotation';
 
     // Step 3: Branding
     bannerUrl: string | null;
@@ -127,6 +129,8 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     brCustomScoring: null,
     brKillCap: null,
     brTiebreaker: 'most_wins',
+    brDefaultLobbySize: 20,
+    brDefaultMapMode: 'none',
 
     // Step 3
     bannerUrl: null,

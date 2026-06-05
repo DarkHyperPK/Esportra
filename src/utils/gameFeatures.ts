@@ -197,3 +197,15 @@ export function getBRConfig(gameName: string): BRConfig | undefined {
   const game = getGameByName(gameName);
   return game?.brConfig;
 }
+
+/** Whether a BR game has selectable maps */
+export function gameHasBRMaps(gameName: string): boolean {
+  const game = getGameByName(gameName);
+  return game?.brConfig?.maps?.hasMaps === true;
+}
+
+/** Catalog map pool for a BR game */
+export function getBRMapPool(gameName: string, _modeKey?: string | null): string[] {
+  const game = getGameByName(gameName);
+  return game?.brConfig?.maps?.pool ?? [];
+}
