@@ -17,10 +17,9 @@ import { resolveStageBRConfig, parseStageConfig } from '@/utils/brConfigResolve'
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
-import { getBRConfig } from '@/utils/gameFeatures';
+import { getBRConfig, getDefaultGameMode, getDefaultTeamSize } from '@/utils/gameFeatures';
 import { getBRTemplates, type BRStageTemplate } from '@/config/brPresets';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
-import esportsGames from '@/data/esportsGames.json';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
@@ -204,13 +203,9 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     // This handles older tournaments where team_size was never persisted to the DB.
     const effectiveTeamSize = useMemo(() => {
         if (teamSize != null && teamSize > 0) return teamSize;
-        // Fallback: look up the game's default format team size
-        const gameConfig = game ? (esportsGames.games as { name: string; formats: { value: string; teamSize: number }[]; defaultFormat: string }[]).find(g => g.name.toLowerCase() === (game || '').toLowerCase()) : null;
-        if (gameConfig) {
-            const fmt = gameConfig.formats.find(f => f.value === gameConfig.defaultFormat) ?? gameConfig.formats[0];
-            return fmt?.teamSize ?? 1;
-        }
-        return 1; // ultimate fallback: solo
+        if (!game) return 1;
+        const defaultMode = getDefaultGameMode(game);
+        return defaultMode?.teamSize ?? getDefaultTeamSize(game) ?? 1;
     }, [teamSize, game]);
 
     // playersPerLobby is total player count; divide by effectiveTeamSize to get competing-unit capacity

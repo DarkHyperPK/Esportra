@@ -11,7 +11,8 @@ import { useCreateSeason } from '@/hooks/useSeasons';
 import { useToast } from '@/hooks/use-toast';
 import { buildSeasonTemplatePlan } from '@/components/season/builder/seasonTemplateHydration';
 import { getTemplatesForGame, type SeasonTemplate } from '@/data/seasonTemplates';
-import esportsGames from '@/data/esportsGames.json';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
+import { getLocalLogo } from '@/utils/gameCatalogCache';
 import type { CreateSeasonRequest, CreateSeasonResponse, SeasonParticipantMode } from '@/types/season';
 import { useSeasonSmoothScroll } from './useSeasonSmoothScroll';
 
@@ -114,30 +115,26 @@ const SeasonWizard = () => {
   const [selectedBlueprintId, setSelectedBlueprintId] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [createdSeason, setCreatedSeason] = useState<CreateSeasonResponse | null>(null);
-  const [catalogGames, setCatalogGames] = useState<CatalogGame[]>([]);
+  const { data: catalogData } = useGameCatalog();
 
   const gameOptions = useMemo<CatalogGame[]>(() => {
-    const localLogoBySlug = new Map(esportsGames.games.map((game) => [game.slug, game.logo ?? null]));
-    if (catalogGames.length > 0) {
-      return catalogGames.map((game) => ({
-        ...game,
-        logo: game.logo ?? localLogoBySlug.get(game.slug) ?? null,
-      }));
-    }
-    return esportsGames.games.map((game) => ({
+    const games = catalogData?.games ?? [];
+    return games.map((game) => ({
       slug: game.slug,
       name: game.name,
       category: game.category,
-      logo: game.logo,
-      defaultModeKey: game.formats?.[0]?.value ?? 'default',
-      modes: (game.formats ?? []).map((format) => ({
-        modeKey: format.value,
-        name: format.name ?? format.value,
-        teamSize: format.teamSize,
-        participantMode: 'team' as SeasonParticipantMode,
+      logo: game.logo || getLocalLogo(game.slug) || null,
+      defaultModeKey: game.defaultMode ?? game.defaultFormat,
+      modes: (game.modes ?? game.formats).map((mode) => ({
+        modeKey: mode.key || mode.value,
+        name: mode.name,
+        teamSize: mode.teamSize,
+        participantMode: (mode.participantMode ?? 'team') as SeasonParticipantMode,
+        modeGroup: mode.modeGroup ?? null,
+        variantLabel: mode.variantLabel ?? null,
       })),
     }));
-  }, [catalogGames]);
+  }, [catalogData]);
   const selectedGame = useMemo(() => gameOptions.find((game) => game.name === form.game), [form.game, gameOptions]);
   const selectedMode = useMemo(() => selectedGame?.modes.find((mode) => mode.modeKey === form.gameMode) ?? selectedGame?.modes[0], [selectedGame, form.gameMode]);
   const blueprints = useMemo<Blueprint[]>(() => {
@@ -146,18 +143,6 @@ const SeasonWizard = () => {
     return gameTemplates.some((template) => template.id === 'custom') ? gameTemplates : [...gameTemplates, CUSTOM_BLUEPRINT];
   }, [form.game]);
   const selectedBlueprint = blueprints.find((blueprint) => blueprint.id === selectedBlueprintId);
-
-  useEffect(() => {
-    let alive = true;
-    apiClient.get<{ games: CatalogGame[] }>('/api/games/catalog')
-      .then((catalog) => {
-        if (alive) setCatalogGames(catalog.games ?? []);
-      })
-      .catch((error) => {
-        console.warn('[SeasonCreate] Catalog endpoint unavailable; falling back to packaged game list.', error);
-      });
-    return () => { alive = false; };
-  }, []);
 
   useEffect(() => {
     if (!form.game) {

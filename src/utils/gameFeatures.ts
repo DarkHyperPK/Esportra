@@ -1,7 +1,8 @@
-// Game feature flags and helpers for the esportsGames registry
+// Game feature flags and helpers — reads from backend catalog cache (API) when loaded.
 
-import esportsGames from '@/data/esportsGames.json';
 import type { BRConfig } from '@/types/battleRoyale';
+import { catalogGameHasBRMaps, getCatalogMapPool } from '@/utils/gameCatalogBr';
+import { getCatalogGames, getLocalFallbackGames } from '@/utils/gameCatalogCache';
 
 export interface GameFeatures {
   mapVeto: boolean;
@@ -80,15 +81,29 @@ const DEFAULT_FEATURES: GameFeatures = {
 
 const normalize = (value: string | undefined | null) => (value || '').trim().toLowerCase();
 
+function getAllGames(): EsportsGame[] {
+  return getCatalogGames() ?? getLocalFallbackGames();
+}
+
 /** Find a game by name, slug, or alias (case-insensitive) */
 export function getGameByName(gameName: string): EsportsGame | undefined {
   const normalized = normalize(gameName);
-  return (esportsGames.games as EsportsGame[]).find(
+  return getAllGames().find(
     g =>
       normalize(g.name) === normalized ||
       normalize(g.slug) === normalized ||
       (g.aliases || []).some(alias => normalize(alias) === normalized)
   );
+}
+
+/** All catalog games (API cache when loaded, otherwise bundled fallback). */
+export function listCatalogGames(): EsportsGame[] {
+  return getAllGames();
+}
+
+/** Logo path for a game (from catalog cache or bundled fallback). */
+export function getGameLogo(gameName: string): string {
+  return getGameByName(gameName)?.logo ?? '';
 }
 
 /** Get feature flags for a game (returns defaults if game not found) */
@@ -198,12 +213,12 @@ export function getBRConfig(gameName: string): BRConfig | undefined {
   return game?.brConfig;
 }
 
-/** @deprecated Use catalogGameHasBRMaps from gameCatalogBr with backend catalog data. */
-export function gameHasBRMaps(_gameName: string): boolean {
-  return false;
+/** Whether the game catalog defines BR map pools for this game. */
+export function gameHasBRMaps(gameName: string): boolean {
+  return catalogGameHasBRMaps(getBRConfig(gameName));
 }
 
-/** @deprecated Use getCatalogMapPool from gameCatalogBr with backend catalog data. */
-export function getBRMapPool(_gameName: string, _modeKey?: string | null): string[] {
-  return [];
+/** Map pool names from the active catalog (backend when loaded). */
+export function getBRMapPool(gameName: string, _modeKey?: string | null): string[] {
+  return getCatalogMapPool(getBRConfig(gameName));
 }

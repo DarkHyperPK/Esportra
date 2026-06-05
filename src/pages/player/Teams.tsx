@@ -19,7 +19,14 @@ import TeamCreationWizard from '@/components/player/TeamCreationWizard';
 import CaptainJourneyTour from '@/components/player/CaptainJourneyTour';
 import { hasSeenTour, markTourSeen } from '@/lib/onboardingFlags';
 import { Plus, Users, Crown, Trash2, UserMinus, Calendar, Trophy, Gamepad2, Edit, X, Shield } from 'lucide-react';
-import esportsGames from '@/data/esportsGames.json';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
+import {
+  getGameByName,
+  getDefaultGameMode,
+  getGameLogo as resolveGameLogo,
+  getGameModes,
+  listCatalogGames,
+} from '@/utils/gameFeatures';
 import EditTeamDialog from '@/components/player/EditTeamDialog';
 import PlayerCard from '@/components/player/PlayerCard';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -49,6 +56,8 @@ const SortablePlayerCard: React.FC<{
 };
 
 const TeamsPage = () => {
+  useGameCatalog();
+  const catalogGames = listCatalogGames();
   const { user } = useAuth();
   const { canCreateTeams, currentRole } = useRole();
   const {
@@ -136,14 +145,11 @@ const TeamsPage = () => {
   const [selectedTournament, setSelectedTournament] = useState<any>(null);
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
 
-  // Simple game logo resolver (uses bundled esportsGames.json)
   const getGameLogo = useCallback((gameName: string): string => {
     if (!gameName) return '';
     try {
       const apiImage = (gameImages as any)?.[gameName] || '';
-      const game = (esportsGames as any)?.games?.find((g: any) => String(g.name).toLowerCase() === String(gameName).toLowerCase());
-      const staticImage = game?.logo || '';
-      // Prefer API image; fall back to static; then placeholder
+      const staticImage = resolveGameLogo(gameName) || '';
       return apiImage || staticImage || '/placeholder.svg';
     } catch {
       return '/placeholder.svg';
@@ -201,10 +207,10 @@ const TeamsPage = () => {
 
   const fetchGameImages = useCallback(async () => {
     const images: Record<string, string> = {};
-    const games = esportsGames.games;
+    const games = listCatalogGames();
 
     await Promise.all(
-      games.map(async (game: any) => {
+      games.map(async (game) => {
         try {
           const cached = await fetchGameData(game.name);
           if (cached.gameLogo) images[game.name] = cached.gameLogo;
@@ -1762,11 +1768,12 @@ const TeamsPage = () => {
                   value={newRosterGame}
                   onValueChange={(val) => {
                     setNewRosterGame(val);
-                    const game = (esportsGames as any).games.find((g: any) => g.name === val);
+                    const game = getGameByName(val);
                     if (game) {
-                      setNewRosterFormat(game.defaultFormat);
-                      const fmt = game.formats.find((f: any) => f.value === game.defaultFormat) || game.formats[0];
-                      setNewRosterTeamSize(fmt?.teamSize || 5);
+                      const defaultMode = getDefaultGameMode(game.name);
+                      const modeValue = defaultMode?.value || game.defaultFormat;
+                      setNewRosterFormat(modeValue);
+                      setNewRosterTeamSize(defaultMode?.teamSize || 5);
                     }
                   }}
                 >
@@ -1774,7 +1781,7 @@ const TeamsPage = () => {
                     <SelectValue placeholder="Select competitive game" />
                   </SelectTrigger>
                   <SelectContent position="popper" sideOffset={4} className="bg-[#0f1115] border-white/10 text-white rounded-xl shadow-2xl backdrop-blur-xl z-[1100]">
-                    {(esportsGames as any).games.map((g: any) => (
+                    {catalogGames.map((g) => (
                       <SelectItem key={g.name} value={g.name} className="hover:bg-white/5 focus:bg-white/10 transition-colors py-3 cursor-pointer">
                         <div className="flex items-center gap-3">
                           {getGameLogo(g.name) ? (
@@ -1802,9 +1809,9 @@ const TeamsPage = () => {
                       value={newRosterFormat}
                       onValueChange={(val) => {
                         setNewRosterFormat(val);
-                        const game = (esportsGames as any).games.find((g: any) => g.name === newRosterGame);
-                        const fmt = game?.formats.find((f: any) => f.value === val);
-                        const fmtSize = (val === '5v5') ? 5 : (fmt?.teamSize || 5);
+                        const game = getGameByName(newRosterGame);
+                        const mode = game ? getGameModes(game.name).find((candidate) => candidate.value === val) : undefined;
+                        const fmtSize = (val === '5v5') ? 5 : (mode?.teamSize || 5);
                         setNewRosterTeamSize(fmtSize);
                       }}
                     >
@@ -1812,7 +1819,7 @@ const TeamsPage = () => {
                         <SelectValue placeholder="Format" />
                       </SelectTrigger>
                       <SelectContent position="popper" sideOffset={4} className="bg-[#0f1115] border-white/10 text-white rounded-xl shadow-2xl backdrop-blur-xl z-[1100]">
-                        {((esportsGames as any).games.find((g: any) => g.name === newRosterGame)?.formats || []).map((f: any) => (
+                        {(getGameByName(newRosterGame) ? getGameModes(newRosterGame) : []).map((f) => (
                           <SelectItem key={f.value} value={f.value} className="hover:bg-white/5 py-3 cursor-pointer">{f.name}</SelectItem>
                         ))}
                       </SelectContent>

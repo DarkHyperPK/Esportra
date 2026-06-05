@@ -2,6 +2,7 @@ import React from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Loader2, Trash2 } from 'lucide-react';
 import { useTournamentWizard } from '@/hooks/useTournamentWizard';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
 import WizardProgress from './WizardProgress';
 import StepBasicInfo from './StepBasicInfo';
 import StepFormatRules from './StepFormatRules';
@@ -22,6 +23,7 @@ interface WizardContainerProps {
 }
 
 const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tournamentId, participantsCount, seasonId }) => {
+    useGameCatalog();
     const {
         currentStep,
         data,

@@ -19,6 +19,8 @@ import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { validateStep } from '@/schemas/tournamentSchema';
 import { getGameByName, getDefaultGameMode, getDefaultTeamSize, isBattleRoyale, getBRConfig, getEffectiveGameFeatures } from '@/utils/gameFeatures';
+import { catalogGameHasBRMaps } from '@/utils/gameCatalogBr';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
 import slugify from 'slugify';
 
 const STORAGE_KEY = 'tournament_wizard_draft';
@@ -29,6 +31,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
     const { toast } = useToast();
     const { user } = useAuth();
     const queryClient = useQueryClient();
+    useGameCatalog();
 
     const [currentStep, setCurrentStepRaw] = useState(() => {
         if (typeof window !== 'undefined' && !tournamentId) {
@@ -86,7 +89,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                               brConfig.playersPerLobby / Math.max(1, newData.teamSize),
                             );
                             newData.brDefaultMapMode = brConfig.defaultMapMode
-                              ?? (brConfig.maps?.hasMaps ? 'per_round' : 'none');
+                              ?? (catalogGameHasBRMaps(brConfig) ? 'per_round' : 'none');
                             const preset = brConfig.scoringPresets[brConfig.defaultPreset];
                             if (preset) {
                                 newData.brKillCap = preset.killCap;

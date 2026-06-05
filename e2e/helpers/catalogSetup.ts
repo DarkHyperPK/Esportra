@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import type { ApiClient } from './api';
 import { defaultBrDates } from './brSetup';
 
-type LocalGame = {
+type BackendGame = {
   name: string;
   slug: string;
   type: string;
@@ -18,9 +18,30 @@ type LocalGame = {
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const esportsGames = JSON.parse(
-  fs.readFileSync(path.resolve(__dirname, '../../src/data/esportsGames.json'), 'utf8'),
-) as { catalogVersion?: string; games: LocalGame[] };
+const repoRoot = path.resolve(__dirname, '../..');
+
+const defaultBackendCatalog = path.resolve(
+  repoRoot,
+  '../esportra-backend/src/Esportra.Api/GameCatalog/esportsGames.json',
+);
+
+const backendCatalogPath = path.resolve(
+  process.env.E2E_BACKEND_CATALOG_PATH?.trim()
+    || process.env.BACKEND_CATALOG_PATH?.trim()
+    || defaultBackendCatalog,
+);
+
+function loadBackendCatalog(): { catalogVersion?: string; games: BackendGame[] } {
+  if (!fs.existsSync(backendCatalogPath)) {
+    throw new Error(
+      `Backend catalog not found at ${backendCatalogPath}. Set E2E_BACKEND_CATALOG_PATH.`,
+    );
+  }
+  return JSON.parse(fs.readFileSync(backendCatalogPath, 'utf8')) as {
+    catalogVersion?: string;
+    games: BackendGame[];
+  };
+}
 
 export type CatalogMode = {
   modeKey: string;
@@ -59,20 +80,20 @@ export type CatalogResponse = {
   games: CatalogGame[];
 };
 
-export function localCatalogGames(): LocalGame[] {
-  return esportsGames.games;
+export function localCatalogGames(): BackendGame[] {
+  return loadBackendCatalog().games;
 }
 
 export function localCatalogVersion(): string {
-  return (esportsGames as { catalogVersion?: string }).catalogVersion ?? '';
+  return loadBackendCatalog().catalogVersion ?? '';
 }
 
-export function localModeKeys(game: LocalGame): string[] {
+export function localModeKeys(game: BackendGame): string[] {
   const modes = game.modes?.length ? game.modes : game.formats ?? [];
   return modes.map((m) => m.key ?? m.value).sort();
 }
 
-export function localStructureKeys(game: LocalGame): string[] {
+export function localStructureKeys(game: BackendGame): string[] {
   return (game.tournamentCapabilities?.supportedStructures ?? [])
     .map((s) => s.key)
     .sort();

@@ -1,0 +1,7 @@
+{
+  "catalogVersion": "2026.06.19-staging-tournament-catalog",
+  "schemaVersion": 1,
+  "contentHash": "4a3a8a5cfe150a35d7467cfcd32f6118b2fd42c38ed5839b69b9888fc0f810dd",
+  "backendCatalogRelativePath": "src/Esportra.Api/GameCatalog/esportsGames.json",
+  "updatedAt": "2026-06-05"
+}

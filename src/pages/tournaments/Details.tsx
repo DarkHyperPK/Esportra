@@ -44,9 +44,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import esportsGamesData from '@/data/esportsGames.json';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
-import { isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { isBattleRoyale, getBRConfig, getGameByName, getDefaultGameMode } from '@/utils/gameFeatures';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
 import { cn } from '@/lib/utils';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
 import { useBRGameResults } from '@/hooks/useBRGameResults';
@@ -58,23 +58,8 @@ import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 import { SEO } from '@/components/SEO';
 import { useTournamentInvitations } from '@/hooks/useTournamentInvitations';
 
-interface EsportsGame {
-  name: string;
-  formats: {
-    name: string;
-    value: string;
-    teamSize: number;
-  }[];
-  defaultFormat: string;
-}
-
-interface EsportsGamesData {
-  games: EsportsGame[];
-}
-
-const esportsGames = esportsGamesData as EsportsGamesData;
-
 const TournamentDetails = () => {
+  useGameCatalog();
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -557,11 +542,8 @@ const TournamentDetails = () => {
     }
   }, [showEditDialog, slug, user?.id, checkRegistration]);
 
-  const normalize = (str) => str?.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
-
-  const selectedGame = tournament ? esportsGames.games.find(
-    (g) => normalize(g.name) === normalize(tournament.game)
-  ) : null;
+  const selectedGame = tournament ? getGameByName(tournament.game) : null;
+  const selectedGameMode = selectedGame ? getDefaultGameMode(selectedGame.name) : undefined;
 
   if (loading) {
     return <PremiumLoadingScreen text="LOADING TOURNAMENT DATA" />;
@@ -858,8 +840,8 @@ const TournamentDetails = () => {
             onCancel={() => setShowEditDialog(false)}
             initialData={registrationDetails}
             isEdit={!!registrationDetails}
-            structure={selectedGame?.defaultFormat || ''}
-            teamSize={tournament.team_size || selectedGame?.formats.find(f => f.value === selectedGame.defaultFormat)?.teamSize || 1}
+            structure={selectedGameMode?.value || selectedGame?.defaultFormat || ''}
+            teamSize={tournament.team_size || selectedGameMode?.teamSize || 1}
           />
         </DialogContent>
       </Dialog>

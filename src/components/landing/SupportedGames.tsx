@@ -1,8 +1,9 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import esportsData from "@/data/esportsGames.json";
+import { useGameCatalog } from '@/hooks/useGameCatalog';
+import { listCatalogGames } from '@/utils/gameFeatures';
 import { apiClient } from "@/lib/apiClient";
 import { getWebsiteAssetUrl } from "@/lib/storage";
 
@@ -81,7 +82,16 @@ const SupportedGames = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "300px" });
-  const games = esportsData.games as Game[];
+  const { data: catalogData } = useGameCatalog();
+  const games = useMemo(
+    () => (catalogData?.games ?? listCatalogGames()).map((game) => ({
+      name: game.name,
+      slug: game.slug,
+      category: game.category,
+      logo: game.logo,
+    })) as Game[],
+    [catalogData],
+  );
 
   const [gameAssets, setGameAssets] = useState<Record<string, GameAssets>>({});
   const [assetsRequested, setAssetsRequested] = useState(false);

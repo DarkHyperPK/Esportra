@@ -65,8 +65,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import esportsGames from '@/data/esportsGames.json';
-import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig, getGameByName } from '@/utils/gameFeatures';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
 import BanManagement from '@/components/organizer/BanManagement';
 import PaymentManagement from '@/components/organizer/PaymentManagement';
 import DisputeCenter from '@/components/organizer/DisputeCenter';
@@ -192,6 +192,7 @@ const TabTransition = ({ children, direction, className }: { children: React.Rea
 };
 
 const TournamentDashboard = () => {
+  useGameCatalog();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -893,10 +894,7 @@ const TournamentDashboard = () => {
 
       // 3. Update State
       // Check static data for logo override
-      const foundGame = esportsGames.games.find(g =>
-        normalize(g.name) === normalize(gameName) ||
-        g.name.toLowerCase() === gameName.toLowerCase()
-      );
+      const foundGame = getGameByName(gameName);
       if (foundGame?.logo) {
         setGameLogo(foundGame.logo);
       } else if (logo) {

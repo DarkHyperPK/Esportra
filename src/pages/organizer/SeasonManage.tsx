@@ -62,7 +62,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import esportsGames from '@/data/esportsGames.json';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
+import { listCatalogGames } from '@/utils/gameFeatures';
 
 type SeasonManageNavItem = {
   id: string;
@@ -210,6 +211,7 @@ const createEmptyRule = (sourceNodeId: string): SeasonRuleDraft => ({
 });
 
 const SeasonManage = () => {
+  useGameCatalog();
   const { id: seasonId } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -319,7 +321,7 @@ const SeasonManage = () => {
     [nodeRows],
   );
 
-  const gameOptions = useMemo(() => esportsGames.games.map((game) => game.name), []);
+  const gameOptions = useMemo(() => listCatalogGames().map((game) => game.name), []);
 
   const setTab = (tab: string) => {
     setSearchParams({ tab }, { replace: true });

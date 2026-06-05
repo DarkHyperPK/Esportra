@@ -39,7 +39,7 @@ test.describe('@staging-only Game catalog — backend robustness', () => {
     test.skip(Boolean(skipReason), skipReason ?? undefined);
   });
 
-  test('public catalog matches packaged frontend registry', async () => {
+  test('public catalog matches backend packaged registry', async () => {
     const catalog = await fetchCatalog(env!.apiUrl);
     const localGames = localCatalogGames();
 

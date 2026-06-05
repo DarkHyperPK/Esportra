@@ -9,6 +9,8 @@
     "build:dev": "vite build --mode development",
     "check:app-routes": "node tools/check-app-route-symbols.cjs",
     "check:critical-symbols": "node tools/check-app-route-symbols.cjs",
+    "check:game-catalog-sync": "node scripts/verify-game-catalog-sync.mjs",
+    "sync:game-catalog": "node scripts/sync-game-catalog-manifest.mjs && node scripts/generate-game-catalog-assets.mjs",
     "lint": "eslint src --max-warnings 9999",
     "preview": "vite preview",
     "test:e2e": "playwright test",

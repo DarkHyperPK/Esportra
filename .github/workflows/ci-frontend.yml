@@ -15,6 +15,9 @@ on:
       - 'tailwind.config.ts'
       - 'components.json'
       - 'tools/**'
+      - 'scripts/**'
+      - 'src/data/gameCatalogAssets.json'
+      - 'src/data/gameCatalogSync.json'
       - 'vite.config.*'
       - 'playwright.config.ts'
       - 'index.html'
@@ -32,6 +35,9 @@ on:
       - 'tailwind.config.ts'
       - 'components.json'
       - 'tools/**'
+      - 'scripts/**'
+      - 'src/data/gameCatalogAssets.json'
+      - 'src/data/gameCatalogSync.json'
       - 'vite.config.*'
       - 'playwright.config.ts'
       - 'index.html'
@@ -69,6 +75,9 @@ jobs:
 
       - name: Check Critical Runtime Symbols
         run: npm run check:critical-symbols
+
+      - name: Verify game catalog sync manifest
+        run: npm run check:game-catalog-sync
 
       - name: Build
         env:

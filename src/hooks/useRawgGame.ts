@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { rawgSearchGames, rawgGetScreenshots } from '@/lib/rawgProxy';
 import { apiClient } from '@/lib/apiClient';
-import esportsGames from '@/data/esportsGames.json';
+import { getGameByName } from '@/utils/gameFeatures';
 import igdbManifest from '@/data/igdb-manifest.json';
 
 type IgdbManifestEntry = {
@@ -77,13 +77,7 @@ const gameCache = loadPersistedCache();
 const pendingFetches = new Map<string, Promise<CachedGame>>();
 
 function resolveCatalogGame(gameName: string) {
-    const normalized = gameName.trim().toLowerCase();
-    return (esportsGames.games as Array<{ name: string; slug: string; logo?: string; aliases?: string[] }>).find(
-        (g) =>
-            g.name.toLowerCase() === normalized
-            || g.slug === normalized
-            || (g.aliases ?? []).some((alias) => alias.toLowerCase() === normalized),
-    );
+    return getGameByName(gameName);
 }
 
 function toPublicAssetPath(path: string | undefined): string | null {
@@ -118,7 +112,7 @@ export function getBundledGameAssets(gameName: string): CachedGame | null {
     };
 }
 
-/** Logo path from esportsGames.json (may 404 if asset missing). */
+/** Logo path from the active game catalog (may 404 if asset missing). */
 function getCatalogLogo(gameName: string): string | null {
     return toPublicAssetPath(resolveCatalogGame(gameName)?.logo);
 }

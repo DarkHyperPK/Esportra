@@ -11,12 +11,14 @@ import {
 } from '@/components/ui/select';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, MapPin, Calendar, Clock, EyeOff, Lock, Target } from 'lucide-react';
-import esportsGames from '@/data/esportsGames.json';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
-import { getGameByName, getDefaultGameMode, getDefaultTeamSize, getGameModes, getGameModeGroups, isBattleRoyale, getBRConfig, EsportsGame, getEffectiveGameFeatures } from '@/utils/gameFeatures';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
+import { getGameByName, getDefaultGameMode, getDefaultTeamSize, getGameModes, getGameModeGroups, isBattleRoyale, getBRConfig, EsportsGame, getEffectiveGameFeatures, listCatalogGames } from '@/utils/gameFeatures';
 
 const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode }) => {
+    useGameCatalog();
+    const catalogGames = listCatalogGames();
     const selectedGame = getGameByName(data.game) as EsportsGame | undefined;
     const selectedGameModes = selectedGame ? getGameModes(selectedGame.name) : [];
     const selectedGameModeGroups = selectedGame ? getGameModeGroups(selectedGame.name) : [];
@@ -125,7 +127,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         <SelectValue placeholder="Select a game" />
                     </SelectTrigger>
                     <SelectContent>
-                        {esportsGames.games
+                        {catalogGames
                             .filter((game) => game.slug !== 'cs2')
                             .map((game) => (
                             <SelectItem

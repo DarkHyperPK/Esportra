@@ -12,7 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
-import esportsGames from '@/data/esportsGames.json';
+import { getGameByName, getDefaultGameMode, getDefaultTeamSize } from '@/utils/gameFeatures';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
 
 interface FormData {
   name: string;
@@ -33,6 +34,7 @@ export const useTournamentCreation = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  useGameCatalog();
   const [formData, setFormData] = useState<FormData>({
     name: '',
     game: '',
@@ -59,19 +61,20 @@ export const useTournamentCreation = () => {
     setFormData(prev => {
       const updates: Partial<FormData> = { [field]: value };
       if (field === 'game') {
-        const game = esportsGames.games.find(g => g.name.toLowerCase() === value.toLowerCase());
+        const game = getGameByName(value);
         if (game) {
-          const defaultFormat = game.formats.find(f => f.value === game.defaultFormat);
-          if (defaultFormat) {
-            updates.structure = defaultFormat.value;
-            updates.teamSize  = defaultFormat.teamSize.toString();
+          const defaultMode = getDefaultGameMode(game.name);
+          if (defaultMode) {
+            updates.structure = defaultMode.value;
+            updates.teamSize = defaultMode.teamSize.toString();
           }
         }
       }
       if (field === 'structure') {
-        const game = esportsGames.games.find(g => g.name.toLowerCase() === prev.game.toLowerCase());
+        const game = getGameByName(prev.game);
         if (game) {
-          const format = game.formats.find(f => f.value === value);
+          const modes = game.modes?.length ? game.modes : game.formats;
+          const format = modes.find((candidate) => candidate.value === value);
           if (format) updates.teamSize = format.teamSize.toString();
         }
       }

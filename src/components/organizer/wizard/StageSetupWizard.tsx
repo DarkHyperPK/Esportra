@@ -16,9 +16,10 @@ import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { RECOMMENDED_TEMPLATES } from '@/data/recommended_templates';
 import { StageGuidelineModal } from './StageGuidelineModal';
 import { cn } from '@/lib/utils';
-import esportsGames from '@/data/esportsGames.json';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
+import { getGameByName } from '@/utils/gameFeatures';
 
-// Maps series format strings from esportsGames.json to display labels and numeric best_of values
+// Maps series format strings from catalog game features to display labels and numeric best_of values
 const SERIES_FORMAT_MAP: Record<string, { label: string; value: number }> = {
     bo1: { label: "Best of 1", value: 1 },
     bo2: { label: "Best of 2", value: 2 },
@@ -211,6 +212,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     existingStages,
     onComplete
 }) => {
+    useGameCatalog();
     const { toast } = useToast();
     const [step, setStep] = useState<'mode-select' | 'template-select' | 'template-config' | 'manual-config' | 'review'>('mode-select');
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -222,12 +224,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     const [participantsCount, setParticipantsCount] = useState<number>(0);
     const [checkInEnabled, setCheckInEnabled] = useState(false);
     const [tournamentMaxParticipants, setTournamentMaxParticipants] = useState<number | null>(null);
-    const [gameData, setGameData] = useState(() => {
-        if (!game) return null;
-        return esportsGames.games.find(g =>
-            g.name.toLowerCase() === game.toLowerCase()
-        );
-    });
+    const [gameData, setGameData] = useState(() => (game ? getGameByName(game) : null));
 
     // Manual Form State (Lifted up for Edit capability)
     const [manualFormState, setManualFormState] = useState<StageConfig>({
@@ -262,13 +259,8 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     const maxTeams = d.max_teams === 0 ? null : d.max_teams;
                     setTournamentMaxParticipants(maxTeams);
 
-                    const gData = gameData;
                     if (game) {
-                        // Check game data again in case it changed or wasn't set initially
-                        const gData = esportsGames.games.find(g =>
-                            g.name.toLowerCase() === game.toLowerCase()
-                        );
-                        setGameData(gData || null);
+                        setGameData(getGameByName(game) || null);
                     }
 
                     // Auto-set manual form capacity if creating new and max teams is set

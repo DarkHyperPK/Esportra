@@ -23,7 +23,7 @@ import {
   Info
 } from 'lucide-react';
 import { useGameLogo, useGameLogos } from '@/hooks/useGameLogo';
-import esportsGames from '@/data/esportsGames.json';
+import { getGameMode } from '@/utils/gameFeatures';
 
 interface TeamTournamentRegistrationProps {
   tournament: {
@@ -83,15 +83,8 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   const normalize = (value: string | null | undefined) => (value || '').trim().toLowerCase();
   const tournamentGameMode = (tournament.gameMode || tournament.game_mode || '').trim();
 
-  // Derive core team size from the explicit tournament game mode, falling back to legacy formats.
   const getCoreTeamSize = (gameName: string, modeKey?: string | null): number => {
-    const game = esportsGames.games.find(
-      g => normalize(g.name) === normalize(gameName) || normalize(g.slug) === normalize(gameName)
-    ) as any;
-    const modes = game?.modes?.length ? game.modes : (game?.formats || []);
-    const mode = modeKey
-      ? modes.find((m: any) => normalize(m.key || m.value) === normalize(modeKey) || normalize(m.value) === normalize(modeKey) || normalize(m.name) === normalize(modeKey))
-      : modes.find((m: any) => normalize(m.key || m.value) === normalize(game?.defaultMode || game?.defaultFormat));
+    const mode = getGameMode(gameName, modeKey);
     return mode?.teamSize || Number(tournament.team_size) || 5;
   };
 
