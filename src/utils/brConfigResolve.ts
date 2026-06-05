@@ -1,5 +1,6 @@
 import type {
   BRAdvancementConfig,
+  BRConfig,
   BRMapConfig,
   BRMapMode,
   BRScoringPreset,
@@ -8,7 +9,11 @@ import type {
   ResolvedStageBRConfig,
 } from '@/types/battleRoyale';
 import type { BRLeaderboardEntry } from '@/types/battleRoyale';
-import { getBRConfig, gameHasBRMaps, getBRMapPool } from '@/utils/gameFeatures';
+import { getBRConfig } from '@/utils/gameFeatures';
+import {
+  catalogGameHasBRMaps,
+  getCatalogMapPool,
+} from '@/utils/gameCatalogBr';
 
 type StageLike = {
   capacity?: number | null;
@@ -48,8 +53,9 @@ function resolveScoringPreset(
   gameName: string,
   settings: TournamentSettingsLike,
   stageOverride: BRStageConfig | null,
+  catalogBrConfig?: BRConfig | null,
 ): BRScoringPreset {
-  const catalog = getBRConfig(gameName);
+  const catalog = catalogBrConfig ?? getBRConfig(gameName);
   const stageScoring = stageOverride?.scoring;
 
   if (stageScoring?.custom) {
@@ -84,17 +90,16 @@ function resolveKillCap(
 }
 
 function resolveMapConfig(
-  gameName: string,
   settings: TournamentSettingsLike,
   stageOverride: BRStageConfig | null,
+  catalogBrConfig?: BRConfig | null,
 ): BRMapConfig {
-  const catalog = getBRConfig(gameName);
-  const catalogPool = getBRMapPool(gameName);
-  const hasMaps = gameHasBRMaps(gameName);
+  const catalogPool = getCatalogMapPool(catalogBrConfig);
+  const hasMaps = catalogGameHasBRMaps(catalogBrConfig);
 
   const defaultMode: BRMapMode = hasMaps
     ? (settings?.brDefaultMapMode as BRMapMode)
-      ?? catalog?.defaultMapMode
+      ?? catalogBrConfig?.defaultMapMode
       ?? 'per_round'
     : 'none';
 
@@ -143,12 +148,13 @@ export function resolveStageBRConfig(params: {
   settings?: TournamentSettingsLike;
   stage: StageLike;
   teamSize?: number;
+  catalogBrConfig?: BRConfig | null;
 }): ResolvedStageBRConfig {
-  const { gameName, settings, stage, teamSize = 1 } = params;
-  const catalog = getBRConfig(gameName);
+  const { gameName, settings, stage, teamSize = 1, catalogBrConfig } = params;
+  const catalog = catalogBrConfig ?? getBRConfig(gameName);
   const stageOverride = getStageBRConfig(stage);
 
-  const scoringPreset = resolveScoringPreset(gameName, settings, stageOverride);
+  const scoringPreset = resolveScoringPreset(gameName, settings, stageOverride, catalogBrConfig);
   const killCap = resolveKillCap(settings, stageOverride, scoringPreset);
 
   const tiebreaker = (settings?.brTiebreaker as BRTiebreaker) ?? 'most_wins';
@@ -175,7 +181,7 @@ export function resolveStageBRConfig(params: {
     gameCount,
     lobbySize: stage.capacity === undefined ? defaultLobbyUnits : stage.capacity,
     advancement: resolveAdvancement(stage, stageOverride),
-    map: resolveMapConfig(gameName, settings, stageOverride),
+    map: resolveMapConfig(settings, stageOverride, catalogBrConfig),
   };
 }
 

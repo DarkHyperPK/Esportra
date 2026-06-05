@@ -16,9 +16,15 @@ export type BRAdvancementMode = 'top_n_per_group' | 'top_n_overall';
 
 export type BRTiebreaker = 'most_wins' | 'most_kills' | 'head_to_head';
 
+export interface BRMapCatalogItem {
+  name: string;
+  imageUrl?: string | null;
+}
+
 export interface BRMapCatalog {
   hasMaps: boolean;
-  pool: string[];
+  pool?: string[];
+  items?: BRMapCatalogItem[];
 }
 
 export interface BRMapConfig {

@@ -24,6 +24,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
+import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
+import { getMapImageUrl } from '@/utils/gameCatalogBr';
+import { BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { BRScoringPreset } from '@/types/battleRoyale';
 
@@ -47,6 +50,7 @@ const BRGameRoom: React.FC = () => {
   const tournament = tournamentData?.tournament || tournamentData;
   const game = tournament?.game || '';
   const isBR = isBattleRoyale(game);
+  const { data: catalogGame } = useGameCatalogGame(game);
   const [brStreamConnected, setBrStreamConnected] = useState(false);
 
   const { context, isInGroup, isLoading: contextLoading } = useBRPlayerContext(
@@ -390,11 +394,14 @@ const BRGameRoom: React.FC = () => {
                   )}
 
                   {BR_FEATURE_FLAGS.mapsEnabled && activeMap && (
-                    <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-white/10 bg-white/[0.03]">
-                      <MapPin className="w-4 h-4 text-emerald-400" />
-                      <div>
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-white/[0.03]">
+                      <MapPin className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      <div className="min-w-0">
                         <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Map</p>
-                        <p className="text-sm font-semibold text-white">{activeMap}</p>
+                        <BRMapBadge
+                          mapName={activeMap}
+                          imageUrl={getMapImageUrl(catalogGame?.brConfig, activeMap)}
+                        />
                       </div>
                     </div>
                   )}

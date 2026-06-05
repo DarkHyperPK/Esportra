@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Users, Swords, Loader2, AlertCircle, Clock, MapPin } from 'lucide-react';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
+import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
+import { getMapImageUrl } from '@/utils/gameCatalogBr';
+import { BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useBRGroupStage, useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
 import { useBRGroupParticipants } from '@/hooks/useBRGroups';
@@ -13,6 +16,7 @@ import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 
 interface BRGroupStageViewProps {
   stageId: string;
+  gameName?: string;
   /** Number of teams that qualify from each group (for cutoff line) */
   qualificationCount?: number;
   /** If provided, renders a "Match Room" CTA button */
@@ -21,6 +25,7 @@ interface BRGroupStageViewProps {
 
 const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
   stageId,
+  gameName,
   qualificationCount,
   tournamentSlug,
 }) => {
@@ -114,6 +119,7 @@ const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
         <GroupContent
           stageId={stageId}
           groupId={activeGroupId}
+          gameName={gameName}
           qualificationCount={qualificationCount}
           tournamentSlug={tournamentSlug}
         />
@@ -125,6 +131,7 @@ const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
 interface GroupContentProps {
   stageId: string;
   groupId: string;
+  gameName?: string;
   qualificationCount?: number;
   tournamentSlug?: string;
 }
@@ -132,10 +139,12 @@ interface GroupContentProps {
 const GroupContent: React.FC<GroupContentProps> = ({
   stageId,
   groupId,
+  gameName,
   qualificationCount,
   tournamentSlug,
 }) => {
   const navigate = useNavigate();
+  const { data: catalogGame } = useGameCatalogGame(gameName);
   const { connected } = useBRRealtime({ stageId, groupId });
   const pollIntervalMs = connected ? false : 30_000;
   const { leaderboard, isLoading: lbLoading, error: lbError, refetch: refetchLb } = useBRGroupLeaderboard(
@@ -205,10 +214,12 @@ const GroupContent: React.FC<GroupContentProps> = ({
               Lobby codes are only shared in the Match Room for registered players.
             </p>
             {BR_FEATURE_FLAGS.mapsEnabled && activeRound.map && (
-              <p className="text-xs text-zinc-300 mt-1.5 flex items-center gap-1">
-                <MapPin className="w-3 h-3 text-rose-400" />
-                {activeRound.map}
-              </p>
+              <div className="mt-1.5">
+                <BRMapBadge
+                  mapName={activeRound.map}
+                  imageUrl={getMapImageUrl(catalogGame?.brConfig, activeRound.map)}
+                />
+              </div>
             )}
           </div>
           {tournamentSlug && (

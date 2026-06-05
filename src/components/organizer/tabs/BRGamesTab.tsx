@@ -12,6 +12,8 @@ import { useStageCompletion } from '@/hooks/useStageCompletion';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import type { Database } from '@/integrations/supabase/types';
 import { resolveStageBRConfig, getQualificationCutoff, sortBRLeaderboardEntries } from '@/utils/brConfigResolve';
+import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
+import { getCatalogMapItems } from '@/utils/gameCatalogBr';
 import type { BRMapConfig } from '@/types/battleRoyale';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
@@ -54,6 +56,10 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
 
     const selectedStage = sortedStages.find(s => s.id === selectedStageId);
 
+    const { data: catalogGame } = useGameCatalogGame(game);
+    const catalogBrConfig = catalogGame?.brConfig;
+    const mapCatalogItems = useMemo(() => getCatalogMapItems(catalogBrConfig), [catalogBrConfig]);
+
     const resolvedStageConfig = useMemo(() => {
         if (!selectedStage) return null;
         return resolveStageBRConfig({
@@ -61,8 +67,9 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
             settings: tournamentSettings,
             stage: selectedStage,
             teamSize,
+            catalogBrConfig,
         });
-    }, [selectedStage, game, tournamentSettings, teamSize]);
+    }, [selectedStage, game, tournamentSettings, teamSize, catalogBrConfig]);
 
     const scoringPreset = useMemo(() => {
         if (resolvedStageConfig) {
@@ -323,6 +330,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                 teams={groupTeams}
                                 scoringPreset={scoringPreset}
                                 mapConfig={mapConfig}
+                                mapCatalogItems={mapCatalogItems}
                             />
                         </Card>
                     )}

@@ -19,6 +19,7 @@ import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 import { getBRConfig } from '@/utils/gameFeatures';
 import { getBRTemplates, type BRStageTemplate } from '@/config/brPresets';
+import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import esportsGames from '@/data/esportsGames.json';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
@@ -192,7 +193,12 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const registeredTeamCount = maxParticipants || 0;
 
     // Max players per lobby from game config (e.g. 100 for Fortnite, 64 for PUBG, 60 for Apex)
-    const brConfig = useMemo(() => getBRConfig(game || ''), [game]);
+    const { data: catalogGame } = useGameCatalogGame(game);
+    const catalogBrConfig = catalogGame?.brConfig;
+    const brConfig = useMemo(
+        () => catalogBrConfig ?? getBRConfig(game || ''),
+        [catalogBrConfig, game],
+    );
 
     // Resolve effective teamSize: use prop if set, otherwise infer from the game's default format.
     // This handles older tournaments where team_size was never persisted to the DB.
@@ -218,7 +224,10 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     const UnitsLabel = unitsLabel.charAt(0).toUpperCase() + unitsLabel.slice(1);
 
     // Format-aware stage templates — recomputed whenever the game or team format changes
-    const brTemplates = useMemo(() => getBRTemplates(maxLobbySize, unitsLabel, game), [maxLobbySize, unitsLabel, game]);
+    const brTemplates = useMemo(
+        () => getBRTemplates(maxLobbySize, unitsLabel, game, catalogBrConfig),
+        [maxLobbySize, unitsLabel, game, catalogBrConfig],
+    );
 
     // Validate the template config and return per-stage error messages
     const templateConfigErrors = useMemo((): string[] => {

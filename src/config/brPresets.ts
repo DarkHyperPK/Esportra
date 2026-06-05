@@ -1,5 +1,6 @@
 import type { BRStageConfig } from '@/types/battleRoyale';
-import { getBRMapPool } from '@/utils/gameFeatures';
+import type { BRConfig } from '@/types/battleRoyale';
+import { getCatalogMapPool } from '@/utils/gameCatalogBr';
 
 export interface BRStageTemplateStage {
   name: string;
@@ -80,8 +81,7 @@ function genericTemplates(lobbySize: number | null, unitsLabel: string): BRStage
   ];
 }
 
-function apexAlgsPreset(lobbySize: number, unitsLabel: string): BRStageTemplate {
-  const pool = getBRMapPool('Apex Legends');
+function apexAlgsPreset(lobbySize: number, unitsLabel: string, mapPool: string[]): BRStageTemplate {
   return {
     id: 'apex_algs',
     name: 'Apex ALGS',
@@ -100,7 +100,7 @@ function apexAlgsPreset(lobbySize: number, unitsLabel: string): BRStageTemplate 
           br: {
             gameCount: 6,
             scoring: { presetKey: 'algs', killCap: 6 },
-            map: { mode: 'rotation', pool, fixedMap: null },
+            map: { mode: 'rotation', pool: mapPool, fixedMap: null },
           },
         },
       },
@@ -112,7 +112,7 @@ function apexAlgsPreset(lobbySize: number, unitsLabel: string): BRStageTemplate 
           br: {
             gameCount: 6,
             scoring: { presetKey: 'algs', killCap: 6 },
-            map: { mode: 'rotation', pool, fixedMap: null },
+            map: { mode: 'rotation', pool: mapPool, fixedMap: null },
           },
         },
       },
@@ -159,8 +159,7 @@ function fortniteFncsPreset(lobbySize: number, unitsLabel: string): BRStageTempl
   };
 }
 
-function pubgPcsBasicPreset(lobbySize: number, unitsLabel: string): BRStageTemplate {
-  const pool = getBRMapPool('PUBG');
+function pubgPcsBasicPreset(lobbySize: number, unitsLabel: string, mapPool: string[]): BRStageTemplate {
   return {
     id: 'pubg_pcs_basic',
     name: 'PUBG PCS Basic',
@@ -179,7 +178,7 @@ function pubgPcsBasicPreset(lobbySize: number, unitsLabel: string): BRStageTempl
           br: {
             gameCount: 6,
             scoring: { presetKey: 'pcs' },
-            map: { mode: 'rotation', pool, fixedMap: null },
+            map: { mode: 'rotation', pool: mapPool, fixedMap: null },
           },
         },
       },
@@ -191,7 +190,7 @@ function pubgPcsBasicPreset(lobbySize: number, unitsLabel: string): BRStageTempl
           br: {
             gameCount: 6,
             scoring: { presetKey: 'pcs' },
-            map: { mode: 'rotation', pool, fixedMap: null },
+            map: { mode: 'rotation', pool: mapPool, fixedMap: null },
           },
         },
       },
@@ -214,14 +213,16 @@ export function getBRTemplates(
   lobbySize: number | null,
   unitsLabel: string,
   gameName?: string | null,
+  catalogBrConfig?: BRConfig | null,
 ): BRStageTemplate[] {
   const L = lobbySize ?? 20;
   const generic = genericTemplates(lobbySize, unitsLabel);
+  const mapPool = getCatalogMapPool(catalogBrConfig);
 
   const gamePresets: BRStageTemplate[] = [
-    apexAlgsPreset(L, unitsLabel),
+    apexAlgsPreset(L, unitsLabel, mapPool),
     fortniteFncsPreset(L, unitsLabel),
-    pubgPcsBasicPreset(L, unitsLabel),
+    pubgPcsBasicPreset(L, unitsLabel, mapPool),
   ].filter((preset) => matchesGameFilter(gameName, preset.gameFilter));
 
   return [...generic, ...gamePresets];

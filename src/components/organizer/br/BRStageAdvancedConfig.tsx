@@ -3,12 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Settings2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { getStageBRConfig, parseStageConfig } from '@/utils/brConfigResolve';
-import { gameHasBRMaps, getBRMapPool } from '@/utils/gameFeatures';
+import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
+import {
+  catalogGameHasBRMaps,
+  getCatalogMapItems,
+  getCatalogMapPool,
+} from '@/utils/gameCatalogBr';
+import { BRMapOptionList } from '@/components/organizer/br/BRMapOptionList';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import type { BRAdvancementMode, BRMapMode, BRStageConfig } from '@/types/battleRoyale';
 import type { Database } from '@/integrations/supabase/types';
@@ -32,8 +37,11 @@ export const BRStageAdvancedConfig: React.FC<BRStageAdvancedConfigProps> = ({
 }) => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
-  const hasMaps = gameHasBRMaps(gameName) && BR_FEATURE_FLAGS.mapsEnabled;
-  const catalogPool = useMemo(() => getBRMapPool(gameName), [gameName]);
+  const { data: catalogGame, isLoading: catalogLoading } = useGameCatalogGame(gameName);
+  const catalogBrConfig = catalogGame?.brConfig;
+  const hasMaps = catalogGameHasBRMaps(catalogBrConfig) && BR_FEATURE_FLAGS.mapsEnabled;
+  const catalogMapItems = useMemo(() => getCatalogMapItems(catalogBrConfig), [catalogBrConfig]);
+  const catalogPool = useMemo(() => getCatalogMapPool(catalogBrConfig), [catalogBrConfig]);
 
   const existing = useMemo(() => getStageBRConfig(stage) ?? {}, [stage]);
 
@@ -227,15 +235,17 @@ export const BRStageAdvancedConfig: React.FC<BRStageAdvancedConfigProps> = ({
           )}
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {catalogPool.map((mapName) => (
-              <label key={mapName} className="flex items-center gap-2 text-xs text-zinc-300">
-                <Checkbox
-                  checked={selectedMaps.includes(mapName)}
-                  onCheckedChange={(checked) => toggleMap(mapName, checked === true)}
+            {catalogLoading ? (
+              <p className="text-xs text-zinc-500 col-span-full">Loading maps from game catalog…</p>
+            ) : (
+              <div className="col-span-full">
+                <BRMapOptionList
+                  items={catalogMapItems}
+                  selected={selectedMaps}
+                  onToggle={toggleMap}
                 />
-                {mapName}
-              </label>
-            ))}
+              </div>
+            )}
           </div>
         </div>
       )}

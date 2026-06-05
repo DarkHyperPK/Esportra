@@ -33,8 +33,9 @@ import {
 } from 'lucide-react';
 import type { BRGroupTeam } from '@/types/brGroups';
 import type { BRRound, BRResultInput } from '@/types/brRounds';
-import type { BRMapConfig } from '@/types/battleRoyale';
+import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
 import { resolveMapForRound } from '@/utils/brConfigResolve';
+import { BRMapOptionList, BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 
 interface ScoringPreset {
@@ -59,6 +60,7 @@ interface RoundManagementPanelProps {
   teams: BRGroupTeam[];
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
+  mapCatalogItems?: BRMapCatalogItem[];
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -81,6 +83,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   teams,
   scoringPreset,
   mapConfig,
+  mapCatalogItems = [],
 }) => {
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
   const { connected } = useBRRealtime({ stageId, groupId, roundId: expandedRoundId });
@@ -206,6 +209,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               teams={teams}
               scoringPreset={scoringPreset}
               mapConfig={mapConfig}
+              mapCatalogItems={mapCatalogItems}
               isExpanded={expandedRoundId === round.id}
                onToggle={() => setExpandedRoundId(expandedRoundId === round.id ? null : round.id)}
                onStatusAction={(action, settings) => {
@@ -312,6 +316,7 @@ interface RoundRowProps {
   isUpdating: boolean;
   realtimeConnected?: boolean;
   mapConfig: BRMapConfig;
+  mapCatalogItems: BRMapCatalogItem[];
 }
 
 const RoundRow: React.FC<RoundRowProps> = ({
@@ -327,6 +332,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
   isUpdating,
   realtimeConnected = false,
   mapConfig,
+  mapCatalogItems,
 }) => {
   const { results, isLoading: resultsLoading, submitResults } = useBRRoundResults(
     isExpanded ? round.id : null,
@@ -341,6 +347,10 @@ const RoundRow: React.FC<RoundRowProps> = ({
     round.queue_timer_minutes != null ? String(round.queue_timer_minutes) : ''
   );
   const [mapInput, setMapInput] = useState(round.map ?? '');
+  const selectedMapItem = useMemo(
+    () => mapCatalogItems.find((item) => item.name === (mapInput || round.map || '')),
+    [mapCatalogItems, round.map, mapInput],
+  );
   const [settingsDirty, setSettingsDirty] = useState(false);
   const statusCfg = STATUS_CONFIG[round.status] ?? STATUS_CONFIG.pending;
   const hasPendingEvidenceReview = (round.pending_evidence_count ?? 0) > 0;
@@ -437,9 +447,12 @@ const RoundRow: React.FC<RoundRowProps> = ({
           )}
           {round.queue_timer_minutes ? `Queue ${round.queue_timer_minutes}m` : null}
           {BR_FEATURE_FLAGS.mapsEnabled && round.map ? (
-            <span className="flex items-center gap-1 text-emerald-400/80">
+            <span className="inline-flex items-center gap-1 text-emerald-400/80">
               <MapPin className="w-3 h-3" />
-              {round.map}
+              <BRMapBadge
+                mapName={round.map}
+                imageUrl={mapCatalogItems.find((item) => item.name === round.map)?.imageUrl}
+              />
             </span>
           ) : null}
           {round.lobby_code ? `${round.lobby_code}` : 'No lobby code'}
@@ -519,19 +532,35 @@ const RoundRow: React.FC<RoundRowProps> = ({
                   <MapPin className="w-3 h-3" /> Map
                 </label>
                 {mapConfig.mode === 'per_round' ? (
-                  <Select value={mapInput || undefined} onValueChange={(value) => { setMapInput(value); setSettingsDirty(true); }}>
-                    <SelectTrigger className="h-10 text-sm bg-white/5 border-white/10 text-white">
-                      <SelectValue placeholder="Select map..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mapConfig.pool.map((mapName) => (
-                        <SelectItem key={mapName} value={mapName}>{mapName}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  mapCatalogItems.length > 0 ? (
+                    <BRMapOptionList
+                      items={mapCatalogItems}
+                      selected={mapInput ? [mapInput] : []}
+                      onToggle={(mapName, checked) => {
+                        setMapInput(checked ? mapName : '');
+                        setSettingsDirty(true);
+                      }}
+                      columns={2}
+                    />
+                  ) : (
+                    <Select value={mapInput || undefined} onValueChange={(value) => { setMapInput(value); setSettingsDirty(true); }}>
+                      <SelectTrigger className="h-10 text-sm bg-white/5 border-white/10 text-white">
+                        <SelectValue placeholder="Select map..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {mapConfig.pool.map((mapName) => (
+                          <SelectItem key={mapName} value={mapName}>{mapName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )
                 ) : (
                   <div className="h-10 flex items-center px-3 rounded-md bg-white/5 border border-white/10 text-sm text-zinc-300">
-                    {round.map ?? resolveMapForRound(mapConfig, round.round_number) ?? '—'}
+                    {selectedMapItem ? (
+                      <BRMapBadge mapName={selectedMapItem.name} imageUrl={selectedMapItem.imageUrl} />
+                    ) : (
+                      round.map ?? resolveMapForRound(mapConfig, round.round_number) ?? '—'
+                    )}
                   </div>
                 )}
               </div>
