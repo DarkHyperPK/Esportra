@@ -1,7 +1,6 @@
 import { expect } from '@playwright/test';
 import type { ApiClient } from './api';
 import { defaultBrDates } from './brSetup';
-import { buildR65v5Roster, buildValorant5v5Roster } from './teamCatalogSetup';
 
 export type GameMapRow = { id: string; map_name: string; map_image_url?: string | null };
 
@@ -46,15 +45,19 @@ export type VetoMatchFixture = {
 
 type ParticipantRow = {
   team_id?: string;
+  teamId?: string;
   id?: string;
   team_name?: string;
+  teamName?: string;
   teams?: { name?: string };
 };
 
 type BracketMatchRow = {
   id: string;
   team1_id?: string | null;
+  team1Id?: string | null;
   team2_id?: string | null;
+  team2Id?: string | null;
   round_index?: number;
   match_number?: number;
 };
@@ -165,8 +168,6 @@ async function closeRegistration(organizer: ApiClient, tournamentId: string): Pr
 
 export async function setupMapVetoMatchFixture(
   organizer: ApiClient,
-  captainA: ApiClient,
-  captainB: ApiClient,
   options: {
     game: 'Valorant' | 'Rainbow Six Siege';
     bestOf?: 1 | 3 | 5;
@@ -229,26 +230,23 @@ export async function setupMapVetoMatchFixture(
   const stageId = stages[0]?.id;
   if (!stageId) throw new Error('Veto fixture: tournament has no stage');
 
-  const teamA = game === 'Rainbow Six Siege'
-    ? await buildR65v5Roster(captainA, `${stamp}-a`, `${game} A`)
-    : await buildValorant5v5Roster(captainA, `${stamp}-a`, `${game} A`);
-  const teamB = game === 'Rainbow Six Siege'
-    ? await buildR65v5Roster(captainB, `${stamp}-b`, `${game} B`)
-    : await buildValorant5v5Roster(captainB, `${stamp}-b`, `${game} B`);
+  await organizer.post(`/api/tournaments/${tournament.id}/mock/generate`, { count: 2 });
 
-  await registerTeam(captainA, tournament.id, teamA.teamId, teamA.rosterId);
-  await registerTeam(captainB, tournament.id, teamB.teamId, teamB.rosterId);
   await closeRegistration(organizer, tournament.id);
 
   const participants = await organizer.get<ParticipantRow[]>(
     `/api/tournaments/${tournament.id}/participants`,
   );
   const teams = (participants ?? [])
-    .filter((row) => row.team_id)
-    .map((row) => ({
-      id: row.team_id as string,
-      name: row.teams?.name ?? row.team_name ?? 'Team',
-    }));
+    .map((row) => {
+      const id = row.team_id ?? row.teamId;
+      if (!id) return null;
+      return {
+        id,
+        name: row.teams?.name ?? row.team_name ?? row.teamName ?? 'Team',
+      };
+    })
+    .filter((row): row is { id: string; name: string } => row !== null);
 
   expect(teams.length).toBeGreaterThanOrEqual(2);
 
@@ -258,14 +256,21 @@ export async function setupMapVetoMatchFixture(
     format: 'single_elimination',
     teams,
     bestOf,
-    bracketSize: 8,
+    bracketSize: Math.max(teams.length, 2),
   });
 
   const matches = await organizer.get<BracketMatchRow[]>(
     `/api/brackets/matches?versionId=${bracket.versionId}`,
   );
-  const playable = (matches ?? []).find((match) => match.team1_id && match.team2_id);
+  const playable = (matches ?? []).find((match) => {
+    const team1 = match.team1_id ?? match.team1Id;
+    const team2 = match.team2_id ?? match.team2Id;
+    return team1 && team2;
+  });
   if (!playable?.id) throw new Error('Veto fixture: no bracket match with two teams');
+
+  const team1Id = playable.team1_id ?? playable.team1Id;
+  const team2Id = playable.team2_id ?? playable.team2Id;
 
   await organizer.post(`/api/matches/${playable.id}/go-live`, { partyCode: 'E2EVETO' });
 
@@ -275,8 +280,8 @@ export async function setupMapVetoMatchFixture(
     stageId,
     versionId: bracket.versionId,
     matchId: playable.id,
-    team1Id: playable.team1_id as string,
-    team2Id: playable.team2_id as string,
+    team1Id: team1Id as string,
+    team2Id: team2Id as string,
     mapPoolIds,
     game,
     bestOf,
@@ -351,6 +356,39 @@ export async function completeBo1VetoViaApi(
   fixture: VetoMatchFixture,
 ): Promise<VetoState> {
   return completeVetoViaApi(actor, { ...fixture, bestOf: 1 });
+}
+
+export async function waitForStagingVetoReady(
+  apiUrl: string,
+  options?: { timeoutMs?: number; intervalMs?: number },
+): Promise<void> {
+  const timeoutMs = options?.timeoutMs ?? 600_000;
+  const intervalMs = options?.intervalMs ?? 15_000;
+  const started = Date.now();
+
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const mapsRes = await fetch(
+        `${apiUrl.replace(/\/$/, '')}/api/games/maps?game=${encodeURIComponent('Rainbow Six Siege')}`,
+      );
+      if (mapsRes.ok) {
+        const maps = (await mapsRes.json()) as unknown[];
+        if (Array.isArray(maps) && maps.length >= 9) return;
+      }
+
+      const catalogRes = await fetch(
+        `${apiUrl.replace(/\/$/, '')}/api/games/catalog/r6`,
+      );
+      if (catalogRes.ok) return;
+    } catch {
+      // keep polling
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  throw new Error(
+    `Staging veto prerequisites not ready after ${timeoutMs}ms (R6 catalog/maps missing).`,
+  );
 }
 
 export async function waitForVetoComplete(
