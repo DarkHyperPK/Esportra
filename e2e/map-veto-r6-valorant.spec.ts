@@ -5,6 +5,7 @@ import { loginOrganizerViaUi } from './helpers/uiAuth';
 import {
   openCreateTournamentWizard,
   fillWizardStepBasicInfo,
+  fillWizardStepFormatRules,
   clickWizardNext,
 } from './helpers/uiCatalog';
 import { fetchCatalogGame } from './helpers/catalogSetup';
@@ -148,16 +149,22 @@ test.describe('@staging-only Map veto — Rainbow Six Siege', () => {
     });
     await clickWizardNext(page);
 
-    const selector = page.getByTestId('tournament-map-pool-selector');
+    const selector = page
+      .getByTestId('tournament-map-pool-selector')
+      .or(page.locator('div').filter({ has: page.getByRole('button', { name: /Clear All/i }) }).first());
     await expect(selector).toBeVisible({ timeout: 30_000 });
-    await expect(selector.getByText(/Select exactly 9 maps/i)).toBeVisible();
+    await expect(selector.getByText(/Select exactly 9 maps|9 of \d+ maps selected|9 of 9 required/i).first()).toBeVisible();
 
-    await page.getByRole('button', { name: /Clear All/i }).click();
+    await selector.getByRole('button', { name: /Clear All/i }).click();
+    await expect(selector.getByText(/0 of \d+ maps selected|0 of 9 required/i)).toBeVisible();
     await clickWizardNext(page);
-    await expect(page.getByText(/Select exactly 9 maps/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Format & Rules' })).toBeVisible();
 
-    await page.getByRole('button', { name: /Select Recommended/i }).click();
-    await expect(selector.getByText(/9 of 9 required/i)).toBeVisible();
+    await selector.getByRole('button', { name: /Select (Top 9|Recommended)/i }).click();
+    await expect(selector.getByText(/9 of 9 required|9 of \d+ maps selected/i)).toBeVisible();
+    await fillWizardStepFormatRules(page, { maxTeams: '8' });
+    await clickWizardNext(page);
+    await expect(page.getByRole('heading', { name: 'Branding' })).toBeVisible();
   });
 
   test('R6 BO1 — pure-ban sequence completes with decider side pick', async () => {

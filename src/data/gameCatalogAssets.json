@@ -1,5 +1,5 @@
 {
-  "catalogVersion": "2026.06.19-staging-tournament-catalog",
+  "catalogVersion": "2026.06.07-r6s-veto-catalog",
   "schemaVersion": 1,
   "games": [
     {
@@ -10,6 +10,26 @@
         "valorant",
         "Valorant",
         "vct"
+      ],
+      "modeOverlays": [
+        {
+          "modeKey": "skirmish_1v1",
+          "mapPoolFilter": "skirmish",
+          "features": {
+            "mapVeto": false,
+            "mapPool": false,
+            "mapPoolSize": 0
+          }
+        },
+        {
+          "modeKey": "skirmish_2v2",
+          "mapPoolFilter": "skirmish",
+          "features": {
+            "mapVeto": false,
+            "mapPool": false,
+            "mapPoolSize": 0
+          }
+        }
       ]
     },
     {

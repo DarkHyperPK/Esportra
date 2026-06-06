@@ -127,7 +127,15 @@ export async function banMap(client: ApiClient, matchId: string, mapId: string):
 
 export async function pickMap(client: ApiClient, matchId: string, mapId: string): Promise<VetoState> {
   const cleanedId = matchId.replace(/^(db-|wb-|lb-)/, '');
-  return client.post<VetoState>(`/api/veto/${cleanedId}/pick`, { mapId });
+  const stateBefore = await getVetoState(client, matchId);
+  const { status, body } = await client.request('POST', `/api/veto/${cleanedId}/pick`, { mapId });
+  if (!status || status >= 400) {
+    throw new Error(
+      `POST /api/veto/${cleanedId}/pick failed (${status}): ${body}. `
+      + `mapId=${mapId} vetoState=${JSON.stringify(stateBefore)}`,
+    );
+  }
+  return JSON.parse(body) as VetoState;
 }
 
 export async function pickSide(

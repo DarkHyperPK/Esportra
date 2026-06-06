@@ -1,8 +1,8 @@
 {
-  "catalogVersion": "2026.06.07-r6-map-veto-catalog",
+  "catalogVersion": "2026.06.07-r6s-veto-catalog",
   "schemaVersion": 1,
-  "contentHash": "manual-r6-map-veto-frontend-overlay",
+  "contentHash": "manual-r6s-veto-frontend-overlay",
   "backendCatalogRelativePath": "src/Esportra.Api/GameCatalog/esportsGames.json",
   "updatedAt": "2026-06-07",
-  "notes": "Manual overlay includes Rainbow Six Siege (mapPoolSize 9) until backend catalog sync is available."
+  "notes": "Frontend overlay pins to backend catalog 2026.06.07-r6s-veto-catalog (R6 9-map veto + skirmish mode overlays)."
 }
