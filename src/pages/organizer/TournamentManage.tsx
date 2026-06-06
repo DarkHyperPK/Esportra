@@ -65,7 +65,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { getEffectiveGameFeatures, isBattleRoyaleTournament, getBRConfig, getGameByName } from '@/utils/gameFeatures';
+import { getEffectiveGameFeatures, isBattleRoyaleTournament, getBRConfig, getGameByName, getPersistedTournamentFormat } from '@/utils/gameFeatures';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import BanManagement from '@/components/organizer/BanManagement';
 import PaymentManagement from '@/components/organizer/PaymentManagement';
@@ -245,7 +245,7 @@ const TournamentDashboard = () => {
   // BR game results management
   const isBR = isBattleRoyaleTournament(
     tournament?.game || '',
-    tournament?.tournament_type ?? tournament?.tournamentType,
+    getPersistedTournamentFormat(tournament),
   );
   const brConf = isBR ? getBRConfig(tournament?.game || '') : null;
   const brSettings = isBR ? tournament?.settings : null;
@@ -1262,7 +1262,7 @@ const TournamentDashboard = () => {
                   {(() => {
                     const isBRMobile = isBattleRoyaleTournament(
                       tournament?.game || '',
-                      tournament?.tournament_type ?? tournament?.tournamentType,
+                      getPersistedTournamentFormat(tournament),
                     );
                     const mobileTabs = isBRMobile
                       ? ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
@@ -1299,7 +1299,7 @@ const TournamentDashboard = () => {
                 {(() => {
                   const isBR = isBattleRoyaleTournament(
     tournament?.game || '',
-    tournament?.tournament_type ?? tournament?.tournamentType,
+    getPersistedTournamentFormat(tournament),
   );
                   const tabs = isBR
                     ? ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']

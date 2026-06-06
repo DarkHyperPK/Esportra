@@ -179,6 +179,7 @@ export async function openTournamentRegistration(page: Page, slug: string): Prom
       /Select Your Team|Not Eligible|Create a team first|Register as an individual|Register Team|Register Solo/i,
     ).first(),
   ).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByText('Loading your teams...')).toBeHidden({ timeout: 45_000 });
 }
 
 export function getRegistrationDialog(page: Page) {

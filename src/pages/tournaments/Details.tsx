@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
-import { isBattleRoyaleTournament, getBRConfig, getDefaultGameMode, getGameByName } from '@/utils/gameFeatures';
+import { isBattleRoyaleTournament, getBRConfig, getDefaultGameMode, getGameByName, getPersistedTournamentFormat } from '@/utils/gameFeatures';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import { cn } from '@/lib/utils';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
@@ -84,7 +84,7 @@ const TournamentDetails = () => {
   const terminology = useGameTerminology(tournament?.game);
   const isBR = isBattleRoyaleTournament(
     tournament?.game || '',
-    tournament?.tournament_type ?? tournament?.tournamentType,
+    getPersistedTournamentFormat(tournament),
   );
   const detailsSearchParams = typeof window !== 'undefined' ? new URLSearchParams(location.search) : null;
   const requestedDetailsTab = detailsSearchParams?.get('tab') ?? null;

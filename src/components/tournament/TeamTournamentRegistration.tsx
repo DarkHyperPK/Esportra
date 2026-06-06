@@ -191,7 +191,10 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   }, [selectedRosterId, selectedTeamId, captainTeams]);
 
   const fetchCaptainTeams = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setFetchingTeams(true);
+      return;
+    }
     setFetchingTeams(true);
     try {
       const normalizeOwnerId = (value: unknown) => String(value ?? '').toLowerCase();
@@ -211,20 +214,22 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
       let teams: TeamRow[] = [];
 
       try {
-        const ownedTeams = await apiClient.get<TeamRow[]>(`/api/teams?owner_id=${user.id}`);
-        teams = mergeUniqueTeams(
-          teams,
-          (ownedTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
-        );
-      } catch (ownedError) {
-        console.warn('Owner team lookup failed:', ownedError);
-      }
-
-      try {
         const captainTeamsResponse = await apiClient.get<TeamRow[]>('/api/teams/my-captain-teams');
         teams = mergeUniqueTeams(teams, captainTeamsResponse || []);
       } catch (captainError) {
         console.warn('Captain team lookup failed:', captainError);
+      }
+
+      if (teams.length === 0) {
+        try {
+          const ownedTeams = await apiClient.get<TeamRow[]>(`/api/teams?owner_id=${user.id}&limit=25`);
+          teams = mergeUniqueTeams(
+            teams,
+            (ownedTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
+          );
+        } catch (ownedError) {
+          console.warn('Owner team lookup failed:', ownedError);
+        }
       }
 
       if (teams.length === 0) {
@@ -235,10 +240,13 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         );
       }
 
+      setCaptainTeams(teams);
+      setFetchingTeams(false);
+
       const ids = new Set<string>();
       const reasons: Record<string, string[]> = {};
 
-      for (const team of teams) {
+      await Promise.all(teams.map(async (team) => {
         const errs: string[] = [];
 
         try {
@@ -273,7 +281,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                 errs.push(`Roster needs at least ${coreMembers} members (has ${rosterMemberCount}).`);
               }
             }
-          } else {
+          } else if (!hasMatchingRoster) {
             const members = await apiClient.get<any[]>(`/api/teams/${team.id}/members/detailed`);
             const activeCount = (members || []).length + 1;
 
@@ -288,9 +296,8 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
         if (errs.length === 0) ids.add(team.id);
         reasons[team.id] = errs;
-      }
+      }));
 
-      setCaptainTeams(teams);
       setEligibleTeamIds(ids);
       setIneligibleReasons(reasons);
       if (teams.length > 0) {

@@ -39,22 +39,20 @@ export async function openPublicLeaderboard(page: Page, slug: string): Promise<v
   });
 }
 
-const brGameRoomReadyPattern =
-  /not assigned to a BR lobby|Lobby Code|Round History|Your Standing|Waiting for Next Round|Report Your Results|Round Live|Waiting for lobby code/i;
 
 export async function waitForBrGameRoomReady(page: Page, tournamentName?: string): Promise<void> {
   await waitForAuthenticatedSession(page);
   await expect(page.getByText('This is not a Battle Royale tournament')).toBeHidden({ timeout: 10_000 });
   await expect(page.getByText('Tournament not found.')).toBeHidden({ timeout: 5_000 });
 
-  const readyLocator = tournamentName
-    ? page.getByText(tournamentName).first()
-        .or(page.getByRole('heading', { level: 1 }).first())
-        .or(page.getByText(brGameRoomReadyPattern).first())
-    : page.getByRole('heading', { level: 1 }).first()
-        .or(page.getByText(brGameRoomReadyPattern).first());
+  if (tournamentName) {
+    await expect(page.getByRole('heading', { level: 1, name: tournamentName })).toBeVisible({
+      timeout: 45_000,
+    });
+    return;
+  }
 
-  await expect(readyLocator).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible({ timeout: 45_000 });
 }
 
 export async function openPlayerGameRoom(

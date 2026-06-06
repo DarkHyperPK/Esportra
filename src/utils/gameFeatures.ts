@@ -207,13 +207,27 @@ export function isBattleRoyale(gameName: string): boolean {
   return game?.type === 'battle_royale' || game?.features?.isBattleRoyale === true;
 }
 
+/** Read persisted tournament format/type from API payloads (snake or camel case). */
+export function getPersistedTournamentFormat(
+  tournament?: {
+    tournament_type?: string | null;
+    tournamentType?: string | null;
+    format?: string | null;
+  } | null,
+): string | null {
+  return tournament?.tournament_type ?? tournament?.tournamentType ?? tournament?.format ?? null;
+}
+
 /** Prefer persisted tournament type when catalog cache is not loaded yet. */
 export function isBattleRoyaleTournament(
   gameName?: string | null,
   tournamentType?: string | null,
+  format?: string | null,
 ): boolean {
-  const normalizedType = (tournamentType || '').trim().toLowerCase();
-  if (normalizedType === 'battle_royale') return true;
+  for (const value of [tournamentType, format]) {
+    const normalized = (value || '').trim().toLowerCase().replace(/-/g, '_');
+    if (normalized === 'battle_royale') return true;
+  }
   if (gameName) return isBattleRoyale(gameName);
   return false;
 }

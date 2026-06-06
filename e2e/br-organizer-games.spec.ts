@@ -104,6 +104,7 @@ test.describe('BR organizer games', () => {
       { timeout: 30_000 },
     ).toBeGreaterThanOrEqual(1);
 
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => {
       localStorage.clear();
       sessionStorage.clear();

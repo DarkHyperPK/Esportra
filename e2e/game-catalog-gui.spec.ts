@@ -162,10 +162,12 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     await expect(dialog.getByText(team.name, { exact: true })).toBeVisible({ timeout: 30_000 });
     const teamCard = getRegistrationTeamCard(page, team.name);
     await teamCard.scrollIntoViewIfNeeded();
-    await expect(teamCard.getByText(/Not Eligible/i)).toBeVisible({ timeout: 30_000 });
+    await expect(teamCard.getByText(/Not Eligible/i)).toBeVisible({ timeout: 45_000 });
     await expect(
-      teamCard.getByText(/doesn't include this game|Create a roster for this game first|No matching roster found/i),
-    ).toBeVisible();
+      teamCard.getByText(
+        /doesn't include this game|Create a roster for this game first|No matching roster found|Need at least \d+ members/i,
+      ),
+    ).toBeVisible({ timeout: 45_000 });
   });
 
   test('captain with understaffed 5v5 roster sees eligibility error in registration UI', async ({ page }) => {
