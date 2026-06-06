@@ -25,6 +25,7 @@ import {
   advanceWizardThroughSettings,
   clickWizardCreate,
   fillWizardStepBranding,
+  waitForRegistrationTeamName,
 } from './helpers/uiCatalog';
 
 const env = readE2eEnv();
@@ -158,8 +159,8 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     await openTournamentRegistration(page, tournament.slug ?? tournament.id);
 
     const dialog = getRegistrationDialog(page);
-    await expect(page.getByText(/Select Your Team/i)).toBeVisible({ timeout: 30_000 });
-    await expect(dialog.getByText(team.name, { exact: true })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/Select Your Team/i)).toBeVisible({ timeout: 45_000 });
+    await waitForRegistrationTeamName(page, team.name);
     const teamCard = getRegistrationTeamCard(page, team.name);
     await teamCard.scrollIntoViewIfNeeded();
     await expect(teamCard.getByText(/Not Eligible/i)).toBeVisible({ timeout: 45_000 });

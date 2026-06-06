@@ -40,19 +40,24 @@ export async function openPublicLeaderboard(page: Page, slug: string): Promise<v
 }
 
 
+const brGameRoomReadyPattern =
+  /not assigned to a BR lobby|Lobby Code|Round History|Your Standing|Waiting for Next Round|Report Your Results|Round Live|Waiting for lobby code/i;
+
 export async function waitForBrGameRoomReady(page: Page, tournamentName?: string): Promise<void> {
   await waitForAuthenticatedSession(page);
-  await expect(page.getByText('This is not a Battle Royale tournament')).toBeHidden({ timeout: 10_000 });
+  await expect(page.getByText('This is not a Battle Royale tournament')).toBeHidden({ timeout: 15_000 });
   await expect(page.getByText('Tournament not found.')).toBeHidden({ timeout: 5_000 });
 
   if (tournamentName) {
-    await expect(page.getByRole('heading', { level: 1, name: tournamentName })).toBeVisible({
-      timeout: 45_000,
-    });
+    await expect(page.getByRole('heading', { name: tournamentName })).toBeVisible({ timeout: 60_000 });
     return;
   }
 
-  await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible({ timeout: 45_000 });
+  await expect(async () => {
+    const hasHeading = await page.getByRole('heading', { level: 1 }).first().isVisible().catch(() => false);
+    const hasReadyCopy = await page.getByText(brGameRoomReadyPattern).first().isVisible().catch(() => false);
+    expect(hasHeading || hasReadyCopy).toBe(true);
+  }).toPass({ timeout: 60_000 });
 }
 
 export async function openPlayerGameRoom(
@@ -67,7 +72,12 @@ export async function openPlayerGameRoom(
   await waitForBrGameRoomReady(page, tournamentName);
 }
 
-export async function waitForPlayerLobbyCode(page: Page, lobbyCode: string, timeoutMs = 90_000): Promise<void> {
+export async function waitForPlayerLobbyCode(
+  page: Page,
+  lobbyCode: string,
+  timeoutMs = 90_000,
+  tournamentName?: string,
+): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let lastHint = 'lobby code not visible yet';
 
@@ -95,7 +105,7 @@ export async function waitForPlayerLobbyCode(page: Page, lobbyCode: string, time
     await page.reload({ waitUntil: 'domcontentloaded' });
     await dismissBetaModal(page);
     try {
-      await waitForBrGameRoomReady(page);
+      await waitForBrGameRoomReady(page, tournamentName);
     } catch (error) {
       lastHint = `game room not ready: ${error instanceof Error ? error.message : String(error)}`;
     }

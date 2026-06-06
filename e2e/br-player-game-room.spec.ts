@@ -47,7 +47,7 @@ test.describe('BR player game room', () => {
       await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath, fixture.tournamentName);
     }
 
-    await waitForPlayerLobbyCode(page, fixture.lobbyCode);
+    await waitForPlayerLobbyCode(page, fixture.lobbyCode, 90_000, fixture.tournamentName);
     await expectNoTechnicalCopy(page);
   });
 
@@ -59,7 +59,7 @@ test.describe('BR player game room', () => {
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath, fixture.tournamentName);
-    await waitForPlayerLobbyCode(page, fixture.lobbyCode);
+    await waitForPlayerLobbyCode(page, fixture.lobbyCode, 90_000, fixture.tournamentName);
     const lobbyCard = page.getByText('Lobby Code').locator('xpath=ancestor::div[contains(@class,"rounded-xl")]').first();
     await lobbyCard.locator('button').last().click();
     await expectToast(page, /Copied/i);
@@ -145,7 +145,7 @@ test.describe('BR player game room', () => {
       lobbyCode: fixture.lobbyCode,
     });
 
-    await waitForPlayerLobbyCode(page, fixture.lobbyCode);
+    await waitForPlayerLobbyCode(page, fixture.lobbyCode, 90_000, fixture.tournamentName);
 
     const secondRound = await createRound(organizer, fixture.stageId, groupId, { lobbyCode: `${fixture.lobbyCode}-2` });
     expect(secondRound.id).toBeTruthy();

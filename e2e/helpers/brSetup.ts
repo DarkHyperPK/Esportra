@@ -478,6 +478,28 @@ export async function publishRoundResultsFromEvidence(
   await organizer.patch(`/api/br/rounds/${roundId}`, { status: 'completed' });
 }
 
+async function waitForSubmittedEvidence(
+  client: ApiClient,
+  roundId: string,
+  timeoutMs = 20_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let lastError = 'evidence row not visible yet';
+
+  while (Date.now() < deadline) {
+    try {
+      const rows = await client.get<unknown[]>(`/api/br/rounds/${roundId}/evidence`);
+      if (Array.isArray(rows) && rows.length > 0) return;
+      lastError = 'evidence GET returned an empty list';
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 750));
+  }
+
+  throw new Error(`Evidence for round ${roundId} never became visible: ${lastError}`);
+}
+
 export async function submitPlayerEvidence(
   client: ApiClient,
   roundId: string,
@@ -492,15 +514,16 @@ export async function submitPlayerEvidence(
       placement,
       kills,
     });
+    return;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    // Staging can persist evidence then 500 on pending-count cast; treat as success if row exists.
-    if (message.includes('failed (500)')) {
-      const rows = await client.get<unknown[]>(`/api/br/rounds/${roundId}/evidence`);
-      if (rows.length > 0) return;
+    // Staging can persist evidence then 500 on post-insert work; 409 means duplicate submit.
+    if (!message.includes('failed (500)') && !message.includes('failed (409)')) {
+      throw error;
     }
-    throw error;
   }
+
+  await waitForSubmittedEvidence(client, roundId);
 }
 
 type PlayerBrContextResponse = {

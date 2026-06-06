@@ -48,7 +48,14 @@ interface TeamTournamentRegistrationProps {
 }
 
 // API response shape from /api/teams — games field is a JSONB column with variable structure
-type TeamRow = { id: string; name: string; games: Record<string, unknown> | null; owner_id: string };
+type TeamRow = {
+  id: string;
+  name: string;
+  games: Record<string, unknown> | null;
+  owner_id: string;
+  created_at?: string | null;
+  createdAt?: string | null;
+};
 
 // API response types for roster/member data from .NET endpoints
 interface RosterRow { id: string; game?: string; format?: string | null; team_size?: number; name?: string }
@@ -210,6 +217,13 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         }
         return merged;
       };
+      const sortTeamsNewestFirst = (items: TeamRow[]) =>
+        [...items].sort((left, right) => {
+          const leftCreated = Date.parse(String(left.created_at ?? left.createdAt ?? '')) || 0;
+          const rightCreated = Date.parse(String(right.created_at ?? right.createdAt ?? '')) || 0;
+          if (leftCreated !== rightCreated) return rightCreated - leftCreated;
+          return right.name.localeCompare(left.name);
+        });
 
       let teams: TeamRow[] = [];
 
@@ -240,63 +254,72 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         );
       }
 
+      teams = sortTeamsNewestFirst(teams);
+
       setCaptainTeams(teams);
       setFetchingTeams(false);
 
       const ids = new Set<string>();
       const reasons: Record<string, string[]> = {};
+      const eligibilityBatchSize = 12;
 
-      await Promise.all(teams.map(async (team) => {
-        const errs: string[] = [];
+      for (let index = 0; index < teams.length; index += eligibilityBatchSize) {
+        const batch = teams.slice(index, index + eligibilityBatchSize);
+        await Promise.all(batch.map(async (team) => {
+          const errs: string[] = [];
 
-        try {
-          const rosters = await apiClient.get<any[]>(`/api/teams/${team.id}/rosters`);
+          try {
+            const rosters = await apiClient.get<any[]>(`/api/teams/${team.id}/rosters`);
 
-          const normalizeGame = (s: string) => (s || '').toLowerCase().trim();
-          const tournamentGameNormalized = normalizeGame(tournament.game || '');
+            const normalizeGame = (s: string) => (s || '').toLowerCase().trim();
+            const tournamentGameNormalized = normalizeGame(tournament.game || '');
 
-          const hasMatchingRoster = (rosters || []).some((r: RosterRow) =>
-            normalizeGame(r.game) === tournamentGameNormalized && rosterMatchesMode(r)
-          );
-
-          const teamGames = Array.isArray(team.games) ? team.games : (typeof team.games === 'string' ? [team.games] : []);
-          const hasGameInTeam = teamGames.some((g: string) => normalizeGame(g) === tournamentGameNormalized);
-
-          if (!hasMatchingRoster && !hasGameInTeam) {
-            errs.push("Team doesn't include this game. Create a roster for this game first.");
-          }
-
-          if (hasMatchingRoster && tournament.game) {
-            const matchingRoster = (rosters || []).find((r: RosterRow) =>
+            const hasMatchingRoster = (rosters || []).some((r: RosterRow) =>
               normalizeGame(r.game) === tournamentGameNormalized && rosterMatchesMode(r)
             );
 
-            if (matchingRoster) {
-              const rosterMembers = await apiClient.get<any[]>(
-                `/api/teams/${team.id}/rosters/${matchingRoster.id}/members`
-              );
-              const rosterMemberCount = (rosterMembers || []).length + 1;
+            const teamGames = Array.isArray(team.games) ? team.games : (typeof team.games === 'string' ? [team.games] : []);
+            const hasGameInTeam = teamGames.some((g: string) => normalizeGame(g) === tournamentGameNormalized);
 
-              if (rosterMemberCount < coreMembers) {
-                errs.push(`Roster needs at least ${coreMembers} members (has ${rosterMemberCount}).`);
+            if (!hasMatchingRoster && !hasGameInTeam) {
+              errs.push("Team doesn't include this game. Create a roster for this game first.");
+            }
+
+            if (hasMatchingRoster && tournament.game) {
+              const matchingRoster = (rosters || []).find((r: RosterRow) =>
+                normalizeGame(r.game) === tournamentGameNormalized && rosterMatchesMode(r)
+              );
+
+              if (matchingRoster) {
+                const rosterMembers = await apiClient.get<any[]>(
+                  `/api/teams/${team.id}/rosters/${matchingRoster.id}/members`
+                );
+                const rosterMemberCount = (rosterMembers || []).length + 1;
+
+                if (rosterMemberCount < coreMembers) {
+                  errs.push(`Roster needs at least ${coreMembers} members (has ${rosterMemberCount}).`);
+                }
+              }
+            } else if (!hasMatchingRoster) {
+              const members = await apiClient.get<any[]>(`/api/teams/${team.id}/members/detailed`);
+              const activeCount = (members || []).length + 1;
+
+              if (activeCount < coreMembers) {
+                errs.push(`Need at least ${coreMembers} members (have ${activeCount}).`);
               }
             }
-          } else if (!hasMatchingRoster) {
-            const members = await apiClient.get<any[]>(`/api/teams/${team.id}/members/detailed`);
-            const activeCount = (members || []).length + 1;
-
-            if (activeCount < coreMembers) {
-              errs.push(`Need at least ${coreMembers} members (have ${activeCount}).`);
-            }
+          } catch (teamError) {
+            console.error(`Eligibility check failed for team ${team.id}:`, teamError);
+            errs.push('Unable to verify team eligibility. Try again.');
           }
-        } catch (teamError) {
-          console.error(`Eligibility check failed for team ${team.id}:`, teamError);
-          errs.push('Unable to verify team eligibility. Try again.');
-        }
 
-        if (errs.length === 0) ids.add(team.id);
-        reasons[team.id] = errs;
-      }));
+          if (errs.length === 0) ids.add(team.id);
+          reasons[team.id] = errs;
+        }));
+
+        setEligibleTeamIds(new Set(ids));
+        setIneligibleReasons({ ...reasons });
+      }
 
       setEligibleTeamIds(ids);
       setIneligibleReasons(reasons);
@@ -610,7 +633,8 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
               <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Select Your Team</span>
             </div>
             {captainTeams.map((team) => {
-              const isEligible = eligibleTeamIds.has(team.id);
+              const eligibilityKnown = Object.prototype.hasOwnProperty.call(ineligibleReasons, team.id);
+              const isEligible = eligibilityKnown && eligibleTeamIds.has(team.id);
               const errs = ineligibleReasons[team.id] || [];
               const isSelected = selectedTeamId === team.id;
 
@@ -623,7 +647,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                       : 'border-[#2a2a2a] bg-[#111111] hover:border-[#3a3a3a] cursor-pointer'
                     : 'border-[#2a1a1a] bg-[#0f0a0a] opacity-60'
                     }`}
-                  onClick={() => isEligible && setSelectedTeamId(team.id)}
+                  onClick={() => eligibilityKnown && isEligible && setSelectedTeamId(team.id)}
                 >
                   <div className="p-4">
                     <div className="flex items-start gap-3">
@@ -649,7 +673,12 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                               <CheckCircle className="w-4 h-4 text-white" />
                             )}
                           </div>
-                          {isEligible ? (
+                          { !eligibilityKnown ? (
+                            <Badge variant="outline" className="border-[#3a3a3a] text-gray-400 bg-[#151515] px-2.5 py-0.5 text-xs">
+                              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                              Checking
+                            </Badge>
+                          ) : isEligible ? (
                             <Badge className="bg-[#1a3a1a] border border-[#2a5a2a] text-green-300 px-2.5 py-0.5 text-xs">
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Eligible
