@@ -181,6 +181,34 @@ export async function updateRound(
   return organizer.patch<BRRoundRow>(`/api/br/rounds/${roundId}`, body);
 }
 
+export async function getGroupRounds(
+  organizer: ApiClient,
+  stageId: string,
+  groupId: string,
+): Promise<BRRoundRow[]> {
+  return organizer.get<BRRoundRow[]>(`/api/stages/${stageId}/br/groups/${groupId}/rounds`);
+}
+
+export async function waitForRoundStatus(
+  organizer: ApiClient,
+  stageId: string,
+  groupId: string,
+  roundId: string,
+  status: string,
+  timeoutMs = 45_000,
+): Promise<BRRoundRow> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const rounds = await getGroupRounds(organizer, stageId, groupId);
+    const round = rounds.find((item) => item.id === roundId);
+    if (round?.status === status) return round;
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+  }
+
+  throw new Error(`Round ${roundId} did not reach status '${status}' within ${timeoutMs}ms`);
+}
+
 export async function resetRound(organizer: ApiClient, roundId: string): Promise<BRRoundRow> {
   return organizer.post<BRRoundRow>(`/api/br/rounds/${roundId}/reset`, {});
 }

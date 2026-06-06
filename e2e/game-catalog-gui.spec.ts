@@ -210,6 +210,8 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     const captainId = await getUserId(env!, env!.players[0].email, env!.players[0].password!);
     const player2Id = await getUserId(env!, env!.players[1].email, env!.players[1].password!);
     const stamp = Date.now();
+    const teamName = `E2E 2v2 Team ${stamp}`;
+    const rosterName = `E2E 2v2 ${stamp}`;
 
     await buildSkirmish2v2Roster(captainClient, captainId, player2Id, stamp);
 
@@ -223,10 +225,20 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
       isPublic: true,
     });
 
+    await waitForCaptainTeamInApi(captainClient, teamName);
+
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openTournamentRegistration(page, tournament.slug ?? tournament.id);
 
-    await expect(page.getByText(/Eligible/i).first()).toBeVisible({ timeout: 30_000 });
+    await waitForRegistrationTeamName(page, teamName);
+    const teamCard = getRegistrationTeamCard(page, teamName);
+    await expect(teamCard.getByText(/Eligible/i)).toBeVisible({ timeout: 45_000 });
+    await teamCard.click();
+
+    const dialog = getRegistrationDialog(page);
+    await dialog.getByRole('combobox').click();
+    await page.getByRole('option', { name: new RegExp(rosterName) }).click();
+    await expect(page.getByRole('button', { name: /Register Team/i })).toBeEnabled({ timeout: 30_000 });
     await page.getByRole('button', { name: /Register Team/i }).click();
     await expectToast(page, /Registered|Registration/i);
   });

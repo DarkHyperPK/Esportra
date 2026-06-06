@@ -153,9 +153,9 @@ export async function fillResultsGrid(page: Page, teamCount: number): Promise<vo
   await expect(saveButton).toBeEnabled({ timeout: 15_000 });
 }
 
-export async function expectRoundLiveBadge(page: Page, roundNumber = 1): Promise<void> {
+export async function expectRoundLiveBadge(page: Page, roundNumber = 1, timeoutMs = 30_000): Promise<void> {
   const roundButton = page.getByRole('button', { name: new RegExp(`Round\\s+${roundNumber}`, 'i') }).first();
-  await expect(roundButton).toContainText('Live', { timeout: 30_000 });
+  await expect(roundButton).toContainText('Live', { timeout: timeoutMs });
 }
 
 export async function waitForPlayerEvidenceUpload(page: Page, lobbyCode?: string, timeoutMs = 90_000): Promise<void> {

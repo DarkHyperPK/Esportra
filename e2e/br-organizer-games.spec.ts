@@ -14,7 +14,9 @@ import {
   setTournamentOngoing,
   setupBrRoundFixture,
   submitPlayerEvidence,
+  updateRound,
   waitForPlayerLobbyCodeApi,
+  waitForRoundStatus,
 } from './helpers/brSetup';
 import { expandFirstRound, fillResultsGrid, expectRoundLiveBadge, openOrganizerGames, openPlayerGameRoom, setRoundSettings } from './helpers/uiBR';
 import { assertNoOrphanLeaderboardZeros } from './helpers/uiLeaderboard';
@@ -66,9 +68,13 @@ test.describe('BR organizer games', () => {
       queueTimerMinutes: '5',
     });
 
-    await page.getByRole('button', { name: /^Start$/i }).click({ force: true });
-    await expect(page.getByRole('alertdialog', { name: /Start Round/i })).toBeVisible();
-    await page.getByRole('button', { name: /^Start Round$/i }).click({ force: true });
+    await page.getByRole('button', { name: /^Start$/i }).click();
+    const startDialog = page.getByRole('alertdialog', { name: /Start Round/i });
+    await expect(startDialog).toBeVisible();
+    await startDialog.getByRole('button', { name: /^Start Round$/i }).click();
+    await expectToast(page, /Round 1 started/i, { timeout: 45_000 });
+    await waitForRoundStatus(organizer, fixture.stageId, fixture.groupId, fixture.roundId, 'active');
+    await openOrganizerGames(page, fixture.slug);
     await expectRoundLiveBadge(page, 1);
     await expect(page.getByText(fixture.lobbyCode)).toBeVisible();
     await expectNoTechnicalCopy(page);
