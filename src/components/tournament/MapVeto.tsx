@@ -84,6 +84,11 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     onComplete,
   });
 
+  const { data: vetoHistory = [], isLoading: vetoHistoryLoading } = useVetoHistory(
+    matchId,
+    !loading && Boolean(veto),
+  );
+
   const isUserTurn = useMemo(() => {
     if (!veto) return false;
     // Use IDs from the veto object itself to ensure consistency
@@ -131,7 +136,6 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   const boText = `BO${currentBestOf}`;
 
   const currentTeamName = veto.current_team_id === veto.team1_id ? team1Name : team2Name;
-  const { data: vetoHistory = [], isLoading: vetoHistoryLoading } = useVetoHistory(matchId, Boolean(veto));
 
   return (
     <motion.div
