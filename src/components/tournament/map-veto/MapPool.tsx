@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Sword, Shield as ShieldIcon, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchMapVeto, GameMap, PickedMap, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService } from '@/hooks/useMapVetoMachine';
-import { vetoService } from '@/services/vetoService';
 
 interface MapPoolProps {
     veto: MatchMapVeto;
@@ -181,14 +180,10 @@ export const MapPool: React.FC<MapPoolProps> = ({
 
             // If still no sidePickerTeamId, check if it's the decider map
             if (!sidePickerTeamId) {
-                const finalPickSideActionNumber = vetoFormat === 1 ? 7 : (vetoFormat === 3 ? 9 : 11);
-                // We can use getSidePickerTeam directly for the decider action
-                const step = vetoService.getStep(vetoFormat, finalPickSideActionNumber);
-                if (step?.isDecider && step.action === 'pick_side') {
-                    // Check if this map is indeed the decider (leftover or in the picks but not from a 'pick' action)
-                    // A simple check: if it's in allPickedMaps but didn't match any 'pick' action above, it's the decider
+                const deciderStep = service.getSequence(vetoFormat).find((step) => step.isDecider && step.action === 'pick_side');
+                if (deciderStep) {
                     sidePickerTeamId = getSidePickerTeam(
-                        finalPickSideActionNumber,
+                        deciderStep.actionNumber,
                         vetoFormat,
                         effectiveTeam1Id!,
                         effectiveTeam2Id!,
@@ -239,13 +234,10 @@ export const MapPool: React.FC<MapPoolProps> = ({
 
                     const previousActionType = sequence[currentActionNum - 2]; // Action before the current side pick
 
-                    // Check for final pick_side (decider map) - bestOf is NUMBER now
-                    // Only treat as decider if the previous action wasn't a 'pick' (i.e. it was a ban sequence leading to a leftover)
+                    // Only treat as decider if the previous action wasn't a 'pick' (ban sequence → leftover map)
                     const isFinalPickSide =
                         previousActionType !== 'pick' &&
-                        ((vetoFormat === 3 && currentActionNum === 9) ||
-                            (vetoFormat === 5 && currentActionNum === 11) ||
-                            (vetoFormat === 1 && currentActionNum === 7));
+                        service.isDeciderAction(vetoFormat, currentActionNum);
 
                     const pickActionNumber = currentActionNum - 1;
 
@@ -259,17 +251,6 @@ export const MapPool: React.FC<MapPoolProps> = ({
 
                     let pickedMap: any = null;
                     let mapToShow: GameMap | null = null;
-
-                    console.log('[MapPool] pick_side debug:', {
-                        currentActionNum,
-                        previousActionType,
-                        isFinalPickSide,
-                        team1Picked: JSON.stringify(team1Picked),
-                        team2Picked: JSON.stringify(team2Picked),
-                        availableMapIds: availableMaps.map(m => m.id),
-                        effectiveTeam1Id,
-                        effectiveTeam2Id,
-                    });
 
                     if (isFinalPickSide) {
                         // For the final map (decider), it's the one that hasn't been banned or picked yet.
@@ -315,13 +296,6 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         }
 
                         mapToShow = pickedMap ? availableMaps.find(m => m.id === pickedMap.map_id) || null : null;
-                        console.log('[MapPool] pick_side result:', {
-                            pickedMap: JSON.stringify(pickedMap),
-                            mapToShow: mapToShow?.map_name,
-                            pickActionTeamId,
-                            isTeam1,
-                            teamPicksLength: teamPicks.length,
-                        });
                     }
 
                     if (!mapToShow) {

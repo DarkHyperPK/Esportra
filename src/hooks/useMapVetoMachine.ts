@@ -453,7 +453,7 @@ export const useMapVetoMachine = ({
                         team1Id: veto.team1_id || team1Id,
                         team2Id: veto.team2_id || team2Id,
                         bestOf: effectiveBestOf,
-                        game: 'valorant',
+                        game,
                     });
 
                     // Re-fetch to get the fresh state
@@ -487,7 +487,7 @@ export const useMapVetoMachine = ({
                             team1Id: veto.team1_id || team1Id,
                             team2Id: veto.team2_id || team2Id,
                             bestOf: targetBestOf,
-                            game: 'valorant',
+                            game,
                         });
 
                         const fresh = await apiClient.get<any>(`/api/veto/${matchId}`).catch(() => null);
@@ -505,7 +505,7 @@ export const useMapVetoMachine = ({
         };
 
         autoInitializeOrUpdateVeto();
-    }, [bestOf, dbBestOf, matchId, team1Id, team2Id, tournamentId, veto]);
+    }, [bestOf, dbBestOf, game, matchId, team1Id, team2Id, tournamentId, veto]);
 
     // Fetch Veto Data
     const fetchVetoData = useCallback(async () => {
@@ -557,7 +557,7 @@ export const useMapVetoMachine = ({
                         team1Id: team1Id,
                         team2Id: team2Id,
                         bestOf: initialBestOf,
-                        game: 'valorant',
+                        game,
                     };
 
                     try {

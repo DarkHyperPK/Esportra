@@ -122,6 +122,20 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
             }
         }
 
+        // Map veto games require an exact map pool size (e.g. Valorant/CS2 = 7, R6 = 9)
+        if (currentStep === 2 && data.game) {
+            const modeFeatures = getEffectiveGameFeatures(data.game, data.gameMode);
+            const mapVetoEnabled = modeFeatures.mapVeto && (data.mapVetoEnabled ?? true);
+            if (modeFeatures.mapPool && mapVetoEnabled) {
+                const requiredCount = modeFeatures.mapPoolSize ?? 7;
+                const selectedCount = data.mapPoolIds?.length ?? 0;
+                if (selectedCount !== requiredCount) {
+                    result.valid = false;
+                    result.errors.mapPoolIds = `Select exactly ${requiredCount} maps for the veto pool (${selectedCount} selected).`;
+                }
+            }
+        }
+
         setErrors(result.errors);
         setStepValidation(prev => ({ ...prev, [currentStep]: result.valid }));
         return result.valid;

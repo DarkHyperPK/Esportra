@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sword, Shield as ShieldIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MatchMapVeto, GameMap, PickedMap, VETO_SEQUENCES, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService } from '@/hooks/useMapVetoMachine';
+import { MatchMapVeto, GameMap, PickedMap, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService } from '@/hooks/useMapVetoMachine';
 
 interface VetoSelectedMapsProps {
     veto: MatchMapVeto;
@@ -87,18 +87,12 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                         pickActionNumber: number;
                     }> = [];
 
-                    // Use game-aware sequences
-                    const sequences = game?.toLowerCase() === 'cs2' || game === 'Counter-Strike 2'
-                        ? VETO_SEQUENCES
-                        : VETO_SEQUENCES; // Currently same, but logic is here
-                    const sequence = sequences[vetoFormat];
+                    const sequence = service.getSequence(vetoFormat);
 
                     const pickActions: Array<{ actionNumber: number; action: string; teamId: string }> = [];
-                    for (let actionIdx = 0; actionIdx < sequence.length; actionIdx++) {
-                        const action = sequence[actionIdx];
-                        const actionNumber = actionIdx + 1;
-
-                        if (action === 'pick') {
+                    for (const step of sequence) {
+                        if (step.action === 'pick') {
+                            const actionNumber = step.actionNumber;
                             const mapPickerTeamId = getTeamForAction(
                                 actionNumber,
                                 vetoFormat,
@@ -106,7 +100,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                 effectiveTeam2Id!,
                                 service
                             );
-                            pickActions.push({ actionNumber, action, teamId: mapPickerTeamId });
+                            pickActions.push({ actionNumber, action: step.action, teamId: mapPickerTeamId });
                         }
                     }
 
@@ -151,8 +145,9 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
 
                     // Add decider map for BO3 and BO5 ONLY (not BO1 - BO1 has active pick at action 6)
                     // BO1 doesn't have a decider - T1 actively picks from the remaining 2 maps
-                    if ((vetoFormat === 3 || vetoFormat === 5) && (veto.status === 'completed' || veto.status === 'in_progress')) {
-                        const finalPickSideActionNumber = vetoFormat === 3 ? 9 : 11;
+                    const deciderStep = sequence.find((step) => step.isDecider && step.action === 'pick_side');
+                    if (deciderStep && (vetoFormat === 3 || vetoFormat === 5) && (veto.status === 'completed' || veto.status === 'in_progress')) {
+                        const finalPickSideActionNumber = deciderStep.actionNumber;
                         const currentActionNum = veto.current_action_number || 0;
 
                         if (currentActionNum >= finalPickSideActionNumber || veto.status === 'completed') {

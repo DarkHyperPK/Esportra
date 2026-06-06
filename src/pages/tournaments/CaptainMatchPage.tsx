@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trophy, AlertCircle, Swords, Copy, MessageCircle, Clock, ShieldAlert, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Trophy, AlertCircle, Swords, Copy, MessageCircle, Clock, ShieldAlert, ExternalLink, ChevronDown } from 'lucide-react';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
@@ -33,6 +33,8 @@ import { useMatchRealtime } from '@/hooks/useMatchRealtime';
 import { useVetoRealtime } from '@/hooks/useVetoRealtime';
 import ServerConnectionCard from '@/components/match/ServerConnectionCard';
 import LiveScoreCard from '@/components/match/LiveScoreCard';
+import { VetoHistoryTimeline } from '@/components/tournament/map-veto/VetoHistoryTimeline';
+import { useVetoHistory } from '@/hooks/useVetoHistory';
 
 const repo = new MatchRepository();
 
@@ -78,6 +80,7 @@ const CaptainMatchPage = () => {
     const [mapVetoOpen, setMapVetoOpen] = useState(false);
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
     const [mapVetoMatchId, setMapVetoMatchId] = useState<string | null>(null);
+    const [vetoSummaryOpen, setVetoSummaryOpen] = useState(false);
 
     // Fetch all active bracket versions for tournament (via backend API)
     const { data: bracketVersions, isLoading: versionsLoading } = useQuery({
@@ -548,6 +551,10 @@ const CaptainMatchPage = () => {
 
     // SignalR realtime subscriptions (replaces Supabase postgres_changes)
     const rawMatchId = activeMatch?.id?.replace(/^(db-|wb-|lb-)/, '') ?? null;
+    const { data: vetoHistory = [], isLoading: vetoHistoryLoading } = useVetoHistory(
+        rawMatchId,
+        Boolean(vetoData) && isVetoEnabled,
+    );
 
     // Bracket updates → debounced invalidation (structural changes)
     useBracketRealtime({
@@ -845,6 +852,37 @@ const CaptainMatchPage = () => {
                                                 />
                                             );
                                         })()
+                                    )}
+
+                                    {/* Map veto summary — visible once veto record exists */}
+                                    {isVetoEnabled && vetoData && (
+                                        <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/50 overflow-hidden">
+                                            <button
+                                                type="button"
+                                                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-800/40 transition-colors"
+                                                onClick={() => setVetoSummaryOpen((open) => !open)}
+                                                aria-expanded={vetoSummaryOpen}
+                                            >
+                                                <div>
+                                                    <p className="text-sm font-semibold text-white">Map veto summary</p>
+                                                    <p className="text-xs text-zinc-500 mt-0.5">
+                                                        {vetoData.status === 'completed'
+                                                            ? `${vetoHistory.length} actions recorded`
+                                                            : `In progress — ${vetoHistory.length} actions so far`}
+                                                    </p>
+                                                </div>
+                                                <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform ${vetoSummaryOpen ? 'rotate-180' : ''}`} />
+                                            </button>
+                                            {vetoSummaryOpen && (
+                                                <div className="px-4 pb-4 border-t border-zinc-800/60">
+                                                    <VetoHistoryTimeline
+                                                        entries={vetoHistory}
+                                                        loading={vetoHistoryLoading}
+                                                        compact
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
 
                                     {/* Actions — progressively unlocked */}

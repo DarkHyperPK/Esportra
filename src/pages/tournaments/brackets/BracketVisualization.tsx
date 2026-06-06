@@ -86,6 +86,18 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   const queryClient = useQueryClient();
   const { data: graphData, refetch: refetchGraph } = useGraphBracket(versionId || '', tournamentId || undefined);
 
+  const { data: tournamentMeta } = useQuery({
+    queryKey: ['tournament-meta', tournamentId],
+    queryFn: async () => {
+      if (!tournamentId) return null;
+      return apiClient.get<{ game?: string }>(`/api/tournaments/${tournamentId}`);
+    },
+    enabled: !!tournamentId,
+    staleTime: 60_000,
+  });
+
+  const tournamentGame = tournamentMeta?.game ?? 'valorant';
+
   // Fetch match proofs (from both old tournament_match_results and new match_result_reports)
   const { data: proofs } = useQuery({
     queryKey: ['match-proofs', tournamentId],
@@ -934,7 +946,20 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       <Dialog open={mapVetoOpen} onOpenChange={setMapVetoOpen}>
         <DialogContent className="bg-slate-900/95 backdrop-blur-xl border-white/10 max-w-5xl max-h-[90vh] overflow-auto p-0">
           <DialogHeader className="p-4 border-b border-white/10"><DialogTitle><Swords className="w-5 h-5 inline mr-2 text-orange-500" />Map Veto</DialogTitle></DialogHeader>
-          {mapVetoMatch && tournamentId && <MapVeto matchId={getRawId(mapVetoMatch.id)} tournamentId={tournamentId} team1Id={mapVetoMatch.team1?.id} team2Id={mapVetoMatch.team2?.id} team1Name={mapVetoMatch.team1?.name} team2Name={mapVetoMatch.team2?.name} bestOf={3} matchStatus={mapVetoMatch.status as any} onComplete={() => { setMapVetoOpen(false); onRefresh?.(); }} />}
+          {mapVetoMatch && tournamentId && (
+            <MapVeto
+              matchId={getRawId(mapVetoMatch.id)}
+              tournamentId={tournamentId}
+              team1Id={mapVetoMatch.team1?.id}
+              team2Id={mapVetoMatch.team2?.id}
+              team1Name={mapVetoMatch.team1?.name}
+              team2Name={mapVetoMatch.team2?.name}
+              game={tournamentGame}
+              bestOf={mapVetoMatch.bestOf ?? stage?.best_of ?? stage?.bestOf ?? 1}
+              matchStatus={mapVetoMatch.status as 'pending' | 'in_progress' | 'completed'}
+              onComplete={() => { setMapVetoOpen(false); onRefresh?.(); }}
+            />
+          )}
         </DialogContent>
       </Dialog>
 

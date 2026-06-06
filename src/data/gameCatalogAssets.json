@@ -25,6 +25,19 @@
       ]
     },
     {
+      "slug": "rainbow-six-siege",
+      "name": "Rainbow Six Siege",
+      "logo": "/games/igdb/r6/cover.jpg",
+      "aliases": [
+        "r6",
+        "r6s",
+        "rainbow six siege",
+        "Rainbow Six Siege",
+        "rainbow six",
+        "siege"
+      ]
+    },
+    {
       "slug": "lol",
       "name": "League of Legends",
       "logo": "/games/lol-logo.png",

@@ -63,25 +63,27 @@ export async function waitForCaptainTeamInApi(
   }).toBe(true);
 }
 
-export async function createValorantRoster(
+async function createGameRoster(
   client: ApiClient,
   teamId: string,
   stamp: string,
+  game: string,
   options: { format?: string; teamSize?: number; name?: string } = {},
 ): Promise<RosterRow> {
   const format = options.format ?? '5v5';
+  const gameLower = game.toLowerCase();
   const existing = await client.get<RosterRow[]>(`/api/teams/${teamId}/rosters`);
   const match = (existing ?? []).find(
     (row) =>
       normalizeFormat(row.format) === normalizeFormat(format)
-      && row.game?.toLowerCase() === 'valorant',
+      && row.game?.toLowerCase() === gameLower,
   );
   if (match) return match;
 
   try {
     return await client.post<RosterRow>(`/api/teams/${teamId}/rosters`, {
-      name: options.name ?? `E2E Val Roster ${stamp}`,
-      game: 'Valorant',
+      name: options.name ?? `E2E ${game} Roster ${stamp}`,
+      game,
       format,
       teamSize: options.teamSize ?? 5,
     });
@@ -90,11 +92,67 @@ export async function createValorantRoster(
     const retry = (refreshed ?? []).find(
       (row) =>
         normalizeFormat(row.format) === normalizeFormat(format)
-        && row.game?.toLowerCase() === 'valorant',
+        && row.game?.toLowerCase() === gameLower,
     );
     if (retry) return retry;
     throw error;
   }
+}
+
+export async function createRosterForGame(
+  client: ApiClient,
+  teamId: string,
+  stamp: string,
+  game: string,
+  options: { format?: string; teamSize?: number; name?: string } = {},
+): Promise<RosterRow> {
+  return createGameRoster(client, teamId, stamp, game, options);
+}
+
+export async function createValorantRoster(
+  client: ApiClient,
+  teamId: string,
+  stamp: string,
+  options: { format?: string; teamSize?: number; name?: string } = {},
+): Promise<RosterRow> {
+  return createGameRoster(client, teamId, stamp, 'Valorant', options);
+}
+
+export async function createR6Roster(
+  client: ApiClient,
+  teamId: string,
+  stamp: string,
+  options: { format?: string; teamSize?: number; name?: string } = {},
+): Promise<RosterRow> {
+  return createGameRoster(client, teamId, stamp, 'Rainbow Six Siege', options);
+}
+
+export async function buildValorant5v5Roster(
+  captainClient: ApiClient,
+  stamp: string,
+  label = 'Valorant 5v5',
+): Promise<{ teamId: string; rosterId: string }> {
+  const team = await createDedicatedCaptainTeam(captainClient, stamp, label);
+  const roster = await createValorantRoster(captainClient, team.id, stamp, {
+    format: '5v5',
+    teamSize: 5,
+    name: `E2E ${label} ${stamp}`,
+  });
+  return { teamId: team.id, rosterId: roster.id };
+}
+
+export async function buildR65v5Roster(
+  captainClient: ApiClient,
+  stamp: string,
+  label = 'R6 5v5',
+): Promise<{ teamId: string; rosterId: string }> {
+  const team = await createDedicatedCaptainTeam(captainClient, stamp, label);
+  const roster = await createR6Roster(captainClient, team.id, stamp, {
+    format: '5v5',
+    teamSize: 5,
+    name: `E2E ${label} ${stamp}`,
+  });
+  return { teamId: team.id, rosterId: roster.id };
 }
 
 export async function addRosterStarter(

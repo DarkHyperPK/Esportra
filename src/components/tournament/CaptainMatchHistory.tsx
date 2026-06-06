@@ -2,12 +2,14 @@ import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, ChevronDown, Loader2 } from 'lucide-react';
+import { FileText, ChevronDown, Loader2, Swords } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { BracketMatch } from '@/types/bracketTypes';
 import { apiClient } from '@/lib/apiClient';
 import { FullScoreboard } from './FullScoreboard';
 import { MAP_THEMES, getMapSplash } from './fullScoreboardConstants';
+import { VetoHistoryTimeline } from './map-veto/VetoHistoryTimeline';
+import { useVetoHistory } from '@/hooks/useVetoHistory';
 
 interface Props {
     tournamentId: string;
@@ -98,6 +100,23 @@ const GameCard: React.FC<{
                     />
                 </div>
             )}
+        </div>
+    );
+};
+
+const MatchVetoSummary: React.FC<{ matchId: string; expanded: boolean }> = ({ matchId, expanded }) => {
+    const cleanedId = matchId.replace(/^(db-|wb-|lb-)/, '');
+    const { data: entries = [], isLoading } = useVetoHistory(cleanedId, expanded);
+    if (!expanded) return null;
+    if (!isLoading && entries.length === 0) return null;
+
+    return (
+        <div className="rounded-xl border border-white/5 bg-black/30 p-3">
+            <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <Swords className="w-3 h-3" />
+                Map Veto Summary
+            </p>
+            <VetoHistoryTimeline entries={entries} loading={isLoading} compact />
         </div>
     );
 };
@@ -203,6 +222,7 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches, i
                                             {isExpanded && (
                                                 <div className="px-4 pb-4 border-t border-white/5 bg-black/20">
                                                     <div className="pt-4 space-y-3">
+                                                        <MatchVetoSummary matchId={match.id} expanded={isExpanded} />
                                                         {games.length === 0 ? (
                                                             <p className="text-center text-xs text-zinc-600 italic py-2">No detailed game data available.</p>
                                                         ) : games.map(game => (

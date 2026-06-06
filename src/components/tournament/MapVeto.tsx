@@ -7,6 +7,8 @@ import { VetoSelectedMaps } from './map-veto/VetoSelectedMaps';
 import { VetoTurnIndicator } from './map-veto/VetoTurnIndicator';
 import { MapPool } from './map-veto/MapPool';
 import { VetoDialogs } from './map-veto/VetoDialogs';
+import { VetoHistoryTimeline } from './map-veto/VetoHistoryTimeline';
+import { useVetoHistory } from '@/hooks/useVetoHistory';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface MapVetoProps {
@@ -129,6 +131,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   const boText = `BO${currentBestOf}`;
 
   const currentTeamName = veto.current_team_id === veto.team1_id ? team1Name : team2Name;
+  const { data: vetoHistory = [], isLoading: vetoHistoryLoading } = useVetoHistory(matchId, Boolean(veto));
 
   return (
     <motion.div
@@ -177,6 +180,13 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         bestOf={currentBestOf}
       />
 
+      <div className="mb-8">
+        <div className="text-[10px] sm:text-xs md:text-sm font-black text-white uppercase tracking-widest mb-3 px-2 sm:px-0">
+          Veto History
+        </div>
+        <VetoHistoryTimeline entries={vetoHistory} loading={vetoHistoryLoading} />
+      </div>
+
       <MapPool
         veto={veto}
         availableMaps={availableMaps}
@@ -220,6 +230,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         setActionLoading={noOp} // Not used in dialog directly for setting loading, but passed for prop compatibility if needed
         team1Name={team1Name}
         team2Name={team2Name}
+        game={game}
         bestOf={currentBestOf}
       />
     </motion.div>

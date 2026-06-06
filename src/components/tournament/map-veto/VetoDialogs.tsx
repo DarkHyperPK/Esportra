@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Sword, Shield as ShieldIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MatchMapVeto, getVetoFormat, getSidePickerTeam, GameMap } from '@/hooks/useMapVetoMachine';
+import { MatchMapVeto, getVetoFormat, getSidePickerTeam, GameMap, VetoService } from '@/hooks/useMapVetoMachine';
 
 interface VetoDialogsProps {
     showRoleSwitchPrompt: boolean;
@@ -31,6 +31,7 @@ interface VetoDialogsProps {
 
     team1Name: string;
     team2Name: string;
+    game?: string;
 
     // Props for compatibility if passed from parent but unused
     dialogStep?: any;
@@ -60,6 +61,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
     team1Name,
     team2Name,
     bestOf,
+    game = 'valorant',
 }) => {
     return (
         <>
@@ -173,13 +175,8 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                         if (!veto) return null;
                         const currentActionNum = veto.current_action_number || 1;
                         const vetoFormat = getVetoFormat(bestOf || 1);
-
-                        // For decider side picks, use the current action number directly
-                        // because there's no preceding 'pick' action - the map is auto-determined
-                        const isFinalDecider =
-                            (vetoFormat === 1 && currentActionNum === 7) ||
-                            (vetoFormat === 3 && currentActionNum === 9) ||
-                            (vetoFormat === 5 && currentActionNum === 11);
+                        const service = new VetoService(game, availableMaps.length || undefined);
+                        const isFinalDecider = service.isDeciderAction(vetoFormat, currentActionNum);
 
                         const actionNumberForSidePicker = isFinalDecider
                             ? currentActionNum

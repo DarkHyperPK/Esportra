@@ -9,83 +9,16 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
-import { Trophy, Users, Target, Plus, Trash2, Layers, Map as MapIcon, Check, FileText } from 'lucide-react';
+import { Trophy, Users, Target, Plus, Trash2, Layers, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WizardStepProps } from '@/types/tournamentWizard';
-
+import TournamentMapPoolSelector, { MapPoolSectionLabel } from './TournamentMapPoolSelector';
 
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { getWebsiteAssetUrl } from '@/lib/storage';
 import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode, getGameModeGroups, getEffectiveGameFeatures, gameHasBRMaps } from '@/utils/gameFeatures';
 import type { BRMapMode } from '@/types/battleRoyale';
-
-/* ──────────────────────────────────────────────────────────────
-   Sub-components
-   ────────────────────────────────────────────────────────────── */
-
-interface MapCardProps {
-    map: { id: string; map_name: string; map_image_url?: string };
-    isSelected: boolean;
-    onToggle: (id: string) => void;
-    index: number;
-}
-
-const MapCard: React.FC<MapCardProps> = ({ map, isSelected, onToggle, index }) => {
-    const [isImgLoaded, setIsImgLoaded] = useState(false);
-
-    return (
-        <div
-            className={cn(
-                "group relative aspect-video rounded-none overflow-hidden border-2 cursor-pointer transition-all duration-200",
-                isSelected
-                    ? "border-rose-500 shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-500"
-                    : "border-white/10 hover:border-white/30 opacity-70 hover:opacity-100"
-            )}
-            onClick={() => onToggle(map.id)}
-        >
-            {/* Skeleton / Shimmer Overlay */}
-            {!isImgLoaded && (
-                <div className="absolute inset-0 bg-white/5 animate-pulse flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full border-2 border-rose-500/20 border-t-emerald-500/80 animate-spin" />
-                </div>
-            )}
-
-            <img
-                src={map.map_image_url || getWebsiteAssetUrl('Backgrounds/grid-pattern.png')}
-                alt={map.map_name}
-                loading={index < 8 ? "eager" : "lazy"}
-                onLoad={() => setIsImgLoaded(true)}
-                className={cn(
-                    "object-cover w-full h-full transition-all duration-700",
-                    isImgLoaded ? "opacity-100 scale-100" : "opacity-0 scale-110",
-                    isSelected && isImgLoaded ? "scale-105" : "scale-100 group-hover:scale-105"
-                )}
-            />
-            <div className={cn(
-                "absolute inset-0 bg-gradient-to-t transition-opacity duration-300",
-                isSelected ? "from-black/90 via-black/40 to-transparent" : "from-black/80 via-transparent to-transparent"
-            )} />
-
-            {/* Selection Badge */}
-            {isSelected && (
-                <div className="absolute top-2 right-2 z-20 bg-emerald-500 rounded-full p-1 shadow-lg">
-                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
-                </div>
-            )}
-
-            <div className="absolute bottom-2 left-2 right-2">
-                <span className={cn(
-                    "text-[10px] sm:text-xs font-bold uppercase tracking-wide drop-shadow-md transition-colors",
-                    isSelected ? "text-rose-400" : "text-white"
-                )}>
-                    {map.map_name}
-                </span>
-            </div>
-        </div>
-    );
-};
 
 /* ──────────────────────────────────────────────────────────────
    Main Component
@@ -107,7 +40,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
     const gameFeatures = getEffectiveGameFeatures(data.game || '', activeGameModeValue);
     const hasMapPool = gameFeatures.mapPool;
     const mapPoolSizeLimit = gameFeatures.mapPoolSize ?? 7;
-    const organizerMapPoolOnly = hasMapPool && !gameFeatures.mapVeto;
+    const mapVetoEnabled = gameFeatures.mapVeto && (data.mapVetoEnabled ?? true);
+    const organizerMapPoolOnly = hasMapPool && !mapVetoEnabled;
+    const exactMapPoolRequired = hasMapPool && mapVetoEnabled;
     const activeTeamSize = activeGameMode?.teamSize ?? data.teamSize ?? 1;
     const isGameModeLocked = Boolean(isEditMode || tournamentId);
 
@@ -238,8 +173,14 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
             setLoadingMaps(true);
             try {
                 // Normalize game name for DB query
-                const isCS2 = ['cs2', 'counter-strike 2'].includes(data.game.toLowerCase());
-                const dbGameName = isCS2 ? 'Counter-Strike 2' : data.game;
+                const gameLower = data.game.toLowerCase();
+                const isCS2 = ['cs2', 'counter-strike 2'].includes(gameLower);
+                const isR6 = ['r6', 'r6s', 'rainbow six siege', 'rainbow-six-siege'].includes(gameLower);
+                const dbGameName = isCS2
+                    ? 'Counter-Strike 2'
+                    : isR6
+                        ? 'Rainbow Six Siege'
+                        : data.game;
 
                 const maps = await apiClient.get<{ id: string; map_name: string; map_image_url?: string }[]>(
                     `/api/games/maps?game=${encodeURIComponent(dbGameName)}${activeGameModeValue ? `&mode=${encodeURIComponent(activeGameModeValue)}` : ''}`
@@ -264,38 +205,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         };
 
         fetchMaps();
-    }, [data.game, activeGameModeValue, hasMapPool, mapPoolSizeLimit]);
-
-
-    // Toggle map selection
-    const toggleMap = (mapId: string) => {
-        const currentIds = data.mapPoolIds || [];
-        if (currentIds.includes(mapId)) {
-            updateData({ mapPoolIds: currentIds.filter(id => id !== mapId) });
-        } else {
-            if (currentIds.length >= mapPoolSizeLimit) {
-                toast({
-                    title: "Map Limit Reached",
-                    description: `You can only select up to ${mapPoolSizeLimit} maps for the map pool.`,
-                    variant: "destructive"
-                });
-                return;
-            }
-            updateData({ mapPoolIds: [...currentIds, mapId] });
-        }
-    };
-
-    // Preload images
-    useEffect(() => {
-        if (availableMaps.length > 0) {
-            availableMaps.forEach(map => {
-                if (map.map_image_url) {
-                    const img = new Image();
-                    img.src = map.map_image_url;
-                }
-            });
-        }
-    }, [availableMaps]);
+    }, [data.game, activeGameModeValue, hasMapPool, mapPoolSizeLimit, exactMapPoolRequired]);
 
 
     return (
@@ -728,73 +638,26 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                     {hasMapPool && data.game && (
                         <div className="space-y-4">
                             <div className="w-full h-px bg-white/5 my-6" />
-                            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                <MapIcon className="w-4 h-4" />
-                                Map Pool
-                            </Label>
+                            <MapPoolSectionLabel />
                             <p className="text-sm text-gray-400">
                                 {organizerMapPoolOnly
                                     ? 'Select maps for this tournament. Skirmish uses an organizer-managed map pool — there is no captain map veto.'
-                                    : 'Select maps for this tournament. These will be used in map veto during matches.'}
+                                    : exactMapPoolRequired
+                                        ? `Select exactly ${mapPoolSizeLimit} maps for this tournament. These will be used in map veto during matches.`
+                                        : 'Select maps for this tournament. These will be used in map veto during matches.'}
                             </p>
-
-                            {loadingMaps ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500" />
-                                </div>
-                            ) : availableMaps.length === 0 ? (
-                                <div className="p-4 bg-amber-500/10 rounded-none border border-amber-500/30">
-                                    <p className="text-amber-400 text-sm">No maps found for {data.game}. Maps can be added to the database.</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <span className="text-sm text-gray-400">
-                                            {(data.mapPoolIds || []).length} of {availableMaps.length} maps selected
-                                        </span>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const mapsToSelect = availableMaps.slice(0, mapPoolSizeLimit);
-                                                    updateData({ mapPoolIds: mapsToSelect.map(m => m.id) });
-                                                    if (availableMaps.length > mapPoolSizeLimit) {
-                                                        toast({
-                                                            title: "Selection Limited",
-                                                            description: `Selected the first ${mapPoolSizeLimit} maps due to map pool limit.`,
-                                                        });
-                                                    }
-                                                }}
-                                                className="text-xs"
-                                            >
-                                                {availableMaps.length > mapPoolSizeLimit ? `Select Top ${mapPoolSizeLimit}` : 'Select All'}
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => updateData({ mapPoolIds: [] })}
-                                                className="text-xs"
-                                            >
-                                                Clear All
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                        {availableMaps.map((map, index) => (
-                                            <MapCard
-                                                key={map.id}
-                                                map={map}
-                                                index={index}
-                                                isSelected={(data.mapPoolIds || []).includes(map.id)}
-                                                onToggle={toggleMap}
-                                            />
-                                        ))}
-                                    </div>
-                                </>
+                            {errors.mapPoolIds && (
+                                <p className="text-sm text-rose-400">{errors.mapPoolIds}</p>
                             )}
+                            <TournamentMapPoolSelector
+                                game={data.game}
+                                requiredCount={mapPoolSizeLimit}
+                                availableMaps={availableMaps}
+                                selectedIds={data.mapPoolIds || []}
+                                onChange={(mapPoolIds) => updateData({ mapPoolIds })}
+                                mapVetoEnabled={exactMapPoolRequired}
+                                loading={loadingMaps}
+                            />
                         </div>
                     )}
                 </>

@@ -1,7 +1,8 @@
 {
-  "catalogVersion": "2026.06.19-staging-tournament-catalog",
+  "catalogVersion": "2026.06.07-r6-map-veto-catalog",
   "schemaVersion": 1,
-  "contentHash": "4a3a8a5cfe150a35d7467cfcd32f6118b2fd42c38ed5839b69b9888fc0f810dd",
+  "contentHash": "manual-r6-map-veto-frontend-overlay",
   "backendCatalogRelativePath": "src/Esportra.Api/GameCatalog/esportsGames.json",
-  "updatedAt": "2026-06-05"
+  "updatedAt": "2026-06-07",
+  "notes": "Manual overlay includes Rainbow Six Siege (mapPoolSize 9) until backend catalog sync is available."
 }
