@@ -44,7 +44,7 @@ test.describe('BR player game room', () => {
       await enterButton.click({ force: true });
       await page.waitForURL(/br-game-room|br-lobby/, { timeout: 30_000 });
     } else {
-      await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
+      await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath, fixture.tournamentName);
     }
 
     await waitForPlayerLobbyCode(page, fixture.lobbyCode);
@@ -58,7 +58,7 @@ test.describe('BR player game room', () => {
     await waitForPlayerLobbyCodeApi(players[0], fixture.tournamentId, fixture.lobbyCode);
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
-    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
+    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath, fixture.tournamentName);
     await waitForPlayerLobbyCode(page, fixture.lobbyCode);
     const lobbyCard = page.getByText('Lobby Code').locator('xpath=ancestor::div[contains(@class,"rounded-xl")]').first();
     await lobbyCard.locator('button').last().click();
@@ -72,7 +72,7 @@ test.describe('BR player game room', () => {
     await waitForPlayerLobbyCodeApi(players[0], fixture.tournamentId, fixture.lobbyCode);
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
-    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
+    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath, fixture.tournamentName);
     await submitPlayerEvidenceViaUI(page, evidencePath, fixture.lobbyCode);
     await expect.poll(
       () => getRoundEvidenceCount(organizer, fixture.roundId),
@@ -110,7 +110,7 @@ test.describe('BR player game room', () => {
     const fixture = await setupBrRoundFixture(organizer, players);
 
     await loginViaUi(page, env!.organizerEmail, env!.organizerPassword);
-    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
+    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath, fixture.tournamentName);
     await expect(page.getByText(/not assigned to a BR lobby/i)).toBeVisible();
     await expectNoTechnicalCopy(page);
   });
@@ -122,7 +122,7 @@ test.describe('BR player game room', () => {
     await publishRoundResultsDirect(organizer, fixture.stageId, fixture.groupId, fixture.roundId);
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
-    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
+    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath, fixture.tournamentName);
     await expect(page.getByText(/Round History|Your Standing|Waiting for Next Round/i).first()).toBeVisible({
       timeout: 45_000,
     });
@@ -136,7 +136,7 @@ test.describe('BR player game room', () => {
     const groupId = (await getBRGroups(organizer, fixture.stageId))[0].id;
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
-    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
+    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath, fixture.tournamentName);
     await expect(page.getByText(/Waiting for Next Round|not assigned/i).first()).toBeVisible({ timeout: 45_000 });
 
     await setTournamentOngoing(organizer, fixture.tournamentId);

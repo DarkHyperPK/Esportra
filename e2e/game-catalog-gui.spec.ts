@@ -10,6 +10,7 @@ import {
   createDedicatedCaptainTeam,
   ensureCaptainTeam,
   getUserId,
+  waitForCaptainTeamInApi,
 } from './helpers/teamCatalogSetup';
 import {
   completeBracketTournamentWizard,
@@ -151,10 +152,13 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
       isPublic: true,
     });
 
+    await waitForCaptainTeamInApi(captainClient, team.name);
+
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openTournamentRegistration(page, tournament.slug ?? tournament.id);
 
     const dialog = getRegistrationDialog(page);
+    await expect(page.getByText(/Select Your Team/i)).toBeVisible({ timeout: 30_000 });
     await expect(dialog.getByText(team.name, { exact: true })).toBeVisible({ timeout: 30_000 });
     const teamCard = getRegistrationTeamCard(page, team.name);
     await teamCard.scrollIntoViewIfNeeded();

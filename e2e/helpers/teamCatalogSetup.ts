@@ -1,4 +1,5 @@
 import type { ApiClient } from './api';
+import { expect } from '@playwright/test';
 import { signInWithPassword } from './auth';
 import type { E2eEnv } from './env';
 
@@ -46,6 +47,20 @@ export async function createDedicatedCaptainTeam(
     game: 'General',
     gameFormat: 'squad',
   });
+}
+
+export async function waitForCaptainTeamInApi(
+  client: ApiClient,
+  teamName: string,
+  timeoutMs = 30_000,
+): Promise<void> {
+  await expect.poll(async () => {
+    const teams = await client.get<TeamRow[]>('/api/teams/my-captain-teams');
+    return (teams ?? []).some((team) => team.name === teamName);
+  }, {
+    timeout: timeoutMs,
+    message: `Captain team "${teamName}" never appeared in /api/teams/my-captain-teams`,
+  }).toBe(true);
 }
 
 export async function createValorantRoster(

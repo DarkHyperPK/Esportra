@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
-import { dismissBetaModal, skipBetaModal } from './uiAuth';
+import { dismissBetaModal, skipBetaModal, waitForAuthenticatedSession } from './uiAuth';
 
 export async function openOrganizerTab(page: Page, slug: string, tab: 'stages' | 'games'): Promise<void> {
   await page.goto(`/organizer/tournament/${slug}?tab=${tab}`);
@@ -39,14 +39,34 @@ export async function openPublicLeaderboard(page: Page, slug: string): Promise<v
   });
 }
 
-export async function openPlayerGameRoom(page: Page, slug: string, path = 'br-game-room'): Promise<void> {
+const brGameRoomReadyPattern =
+  /not assigned to a BR lobby|Lobby Code|Round History|Your Standing|Waiting for Next Round|Report Your Results|Round Live|Waiting for lobby code/i;
+
+export async function waitForBrGameRoomReady(page: Page, tournamentName?: string): Promise<void> {
+  await waitForAuthenticatedSession(page);
+  await expect(page.getByText('This is not a Battle Royale tournament')).toBeHidden({ timeout: 10_000 });
+  await expect(page.getByText('Tournament not found.')).toBeHidden({ timeout: 5_000 });
+
+  const readyLocator = tournamentName
+    ? page.getByText(tournamentName).first()
+        .or(page.getByRole('heading', { level: 1 }).first())
+        .or(page.getByText(brGameRoomReadyPattern).first())
+    : page.getByRole('heading', { level: 1 }).first()
+        .or(page.getByText(brGameRoomReadyPattern).first());
+
+  await expect(readyLocator).toBeVisible({ timeout: 45_000 });
+}
+
+export async function openPlayerGameRoom(
+  page: Page,
+  slug: string,
+  path = 'br-game-room',
+  tournamentName?: string,
+): Promise<void> {
   await skipBetaModal(page);
   await page.goto(`/tournaments/${slug}/${path}`, { waitUntil: 'domcontentloaded' });
   await dismissBetaModal(page);
-  await expect(page.getByText('This is not a Battle Royale tournament')).toBeHidden({ timeout: 10_000 });
-  await expect(
-    page.getByRole('heading', { level: 1 }).first(),
-  ).toBeVisible({ timeout: 45_000 });
+  await waitForBrGameRoomReady(page, tournamentName);
 }
 
 export async function waitForPlayerLobbyCode(page: Page, lobbyCode: string, timeoutMs = 90_000): Promise<void> {
@@ -55,6 +75,11 @@ export async function waitForPlayerLobbyCode(page: Page, lobbyCode: string, time
 
   while (Date.now() < deadline) {
     await dismissBetaModal(page);
+    try {
+      await waitForAuthenticatedSession(page);
+    } catch (error) {
+      lastHint = `auth session not ready: ${error instanceof Error ? error.message : String(error)}`;
+    }
 
     if (await page.getByText('This is not a Battle Royale tournament').isVisible().catch(() => false)) {
       throw new Error('BR game room rejected tournament type before lobby code appeared');
@@ -71,6 +96,11 @@ export async function waitForPlayerLobbyCode(page: Page, lobbyCode: string, time
     await page.waitForTimeout(3_000);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await dismissBetaModal(page);
+    try {
+      await waitForBrGameRoomReady(page);
+    } catch (error) {
+      lastHint = `game room not ready: ${error instanceof Error ? error.message : String(error)}`;
+    }
   }
 
   throw new Error(`Timed out waiting for lobby code ${lobbyCode}: ${lastHint}`);
@@ -124,6 +154,7 @@ export async function waitForPlayerEvidenceUpload(page: Page, lobbyCode?: string
   if (lobbyCode) {
     await waitForPlayerLobbyCode(page, lobbyCode, timeoutMs);
   } else {
+    await waitForBrGameRoomReady(page);
     await expect(page.getByText(/Report Your Results|Round \d+/i).first()).toBeVisible({
       timeout: timeoutMs,
     });

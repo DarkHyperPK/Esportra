@@ -70,7 +70,7 @@ test.describe('BR game room — multi-player evidence flow', () => {
           await waitForPlayerLobbyCodeApi(playerClient, fixture.tournamentId, fixture.lobbyCode);
           const page = await context.newPage();
           await loginViaUi(page, player.email, player.password);
-          await openPlayerGameRoom(page, fixture.slug, env.brGameRoomPath);
+          await openPlayerGameRoom(page, fixture.slug, env.brGameRoomPath, fixture.tournamentName);
 
           await expect(page.getByText(fixture.tournamentName)).toBeVisible({ timeout: 45_000 });
           await submitPlayerEvidenceViaUI(page, evidencePath, fixture.lobbyCode);

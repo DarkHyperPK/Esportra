@@ -194,23 +194,45 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     if (!user?.id) return;
     setFetchingTeams(true);
     try {
+      const normalizeOwnerId = (value: unknown) => String(value ?? '').toLowerCase();
+      const currentUserId = normalizeOwnerId(user.id);
+      const mergeUniqueTeams = (base: TeamRow[], incoming: TeamRow[]) => {
+        const seen = new Set(base.map((team) => team.id));
+        const merged = [...base];
+        for (const team of incoming) {
+          if (!seen.has(team.id)) {
+            seen.add(team.id);
+            merged.push(team);
+          }
+        }
+        return merged;
+      };
+
       let teams: TeamRow[] = [];
 
       try {
         const ownedTeams = await apiClient.get<TeamRow[]>(`/api/teams?owner_id=${user.id}`);
-        teams = [...(ownedTeams || [])];
+        teams = mergeUniqueTeams(
+          teams,
+          (ownedTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
+        );
       } catch (ownedError) {
         console.warn('Owner team lookup failed:', ownedError);
       }
 
-      if (teams.length === 0) {
+      try {
         const captainTeamsResponse = await apiClient.get<TeamRow[]>('/api/teams/my-captain-teams');
-        teams = [...(captainTeamsResponse || [])];
+        teams = mergeUniqueTeams(teams, captainTeamsResponse || []);
+      } catch (captainError) {
+        console.warn('Captain team lookup failed:', captainError);
       }
 
       if (teams.length === 0) {
         const myTeams = await apiClient.get<TeamRow[]>('/api/teams/me');
-        teams = (myTeams || []).filter((team) => String(team.owner_id) === user.id);
+        teams = mergeUniqueTeams(
+          teams,
+          (myTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
+        );
       }
 
       const ids = new Set<string>();

@@ -182,7 +182,7 @@ export async function openTournamentRegistration(page: Page, slug: string): Prom
 }
 
 export function getRegistrationDialog(page: Page) {
-  return page.getByRole('dialog', { name: /INITIATE_REGISTRATION/i });
+  return page.getByRole('dialog', { name: /INITIATE_REGISTRATION|MODIFY_REGISTRATION/i });
 }
 
 export function getRegistrationTeamCard(page: Page, teamName: string) {

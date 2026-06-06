@@ -30,6 +30,12 @@ export async function waitForAuthenticatedNav(page: Page): Promise<void> {
   });
 }
 
+/** Wait until protected routes finish profile/role hydration. */
+export async function waitForAuthenticatedSession(page: Page): Promise<void> {
+  await waitForAuthenticatedNav(page);
+  await expect(page.getByText('Loading profile...')).toBeHidden({ timeout: 45_000 });
+}
+
 const NAV = { waitUntil: 'domcontentloaded' as const, timeout: 90_000 };
 
 async function gotoReliable(page: Page, url: string): Promise<void> {
@@ -64,7 +70,7 @@ export async function loginViaUi(page: Page, email: string, password: string): P
   }
 
   await dismissBetaModal(page);
-  await waitForAuthenticatedNav(page);
+  await waitForAuthenticatedSession(page);
 }
 
 /** Wait until organizer tournaments shell is ready (post auth + role load). */
