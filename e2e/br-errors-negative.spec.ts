@@ -11,8 +11,9 @@ import {
   saveRoundResultsDirect,
   setTournamentOngoing,
   setupBrRoundFixture,
+  submitPlayerEvidence,
 } from './helpers/brSetup';
-import { expandFirstRound, openOrganizerGames, openPlayerGameRoom, setRoundSettings, submitPlayerEvidenceViaUI } from './helpers/uiBR';
+import { expandFirstRound, openOrganizerGames, setRoundSettings } from './helpers/uiBR';
 import { expectFriendlyText, expectNoTechnicalCopy } from './helpers/assertCopy';
 import { expectToast } from './helpers/assertToast';
 
@@ -116,14 +117,12 @@ test.describe('BR negative paths and error UX', () => {
     expect(response.body).toMatch(/save round results|results/i);
   });
 
-  test('API rejects completing while evidence is unreviewed', async ({ page }) => {
+  test('API rejects completing while evidence is unreviewed', async () => {
     const organizer = await createOrganizerClient(env!);
     const players = await createPlayerClients(env!, 2);
     const fixture = await setupBrRoundFixture(organizer, players);
 
-    await loginViaUi(page, env!.players[0].email, env!.players[0].password);
-    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
-    await submitPlayerEvidenceViaUI(page, evidencePath, fixture.lobbyCode);
+    await submitPlayerEvidence(players[0], fixture.roundId, evidencePath, 1, 1);
     await expect.poll(
       () => getRoundEvidenceCount(organizer, fixture.roundId),
       { timeout: 30_000 },

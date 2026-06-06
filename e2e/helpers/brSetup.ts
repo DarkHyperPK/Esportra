@@ -1,3 +1,4 @@
+import { expect } from '@playwright/test';
 import type { ApiClient } from './api';
 
 export type BrTournamentFixture = {
@@ -490,6 +491,51 @@ export async function submitPlayerEvidence(
     placement,
     kills,
   });
+}
+
+type PlayerBrContextResponse = {
+  groupId?: string | null;
+  activeRound?: {
+    lobbyCode?: string | null;
+    lobby_code?: string | null;
+    status?: string;
+  } | null;
+};
+
+function readPlayerLobbyCode(context: PlayerBrContextResponse): string | null {
+  return context.activeRound?.lobbyCode ?? context.activeRound?.lobby_code ?? null;
+}
+
+export async function waitForPlayerBrAssignment(
+  player: ApiClient,
+  tournamentId: string,
+  timeoutMs = 60_000,
+): Promise<PlayerBrContextResponse> {
+  let latest: PlayerBrContextResponse = {};
+  await expect.poll(async () => {
+    latest = await player.get<PlayerBrContextResponse>(`/api/tournaments/${tournamentId}/br/player-context`);
+    return latest.groupId ?? null;
+  }, {
+    timeout: timeoutMs,
+    message: 'player-context never assigned the player to a BR group',
+  }).not.toBeNull();
+  return latest;
+}
+
+export async function waitForPlayerLobbyCodeApi(
+  player: ApiClient,
+  tournamentId: string,
+  lobbyCode: string,
+  timeoutMs = 60_000,
+): Promise<void> {
+  await waitForPlayerBrAssignment(player, tournamentId, timeoutMs);
+  await expect.poll(async () => {
+    const context = await player.get<PlayerBrContextResponse>(`/api/tournaments/${tournamentId}/br/player-context`);
+    return readPlayerLobbyCode(context);
+  }, {
+    timeout: timeoutMs,
+    message: `player-context never exposed lobby code ${lobbyCode}`,
+  }).toBe(lobbyCode);
 }
 
 export async function getRoundEvidenceCount(

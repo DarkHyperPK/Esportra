@@ -8,12 +8,13 @@ import {
   getRoundEvidenceCount,
   getStageCompletionStatus,
   publishRoundResultsFromEvidence,
+  waitForPlayerLobbyCodeApi,
 } from './helpers/brSetup';
 import { readE2eEnv, e2eSkipReason } from './helpers/env';
 import { loginViaUi } from './helpers/uiAuth';
 import { assertNoOrphanLeaderboardZeros, openOrganizerGamesTab } from './helpers/uiLeaderboard';
 import { assertNoManualStageStatusControls, assertDerivedStageProgressVisible, openOrganizerStagesTab } from './helpers/uiStages';
-import { submitPlayerEvidenceViaUI } from './helpers/uiBR';
+import { openPlayerGameRoom, submitPlayerEvidenceViaUI } from './helpers/uiBR';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const evidencePath = path.resolve(__dirname, 'fixtures/evidence.png');
@@ -66,9 +67,10 @@ test.describe('BR game room — multi-player evidence flow', () => {
         playerContexts.map(async (context, index) => {
           const player = activePlayers[index];
           const playerClient = playerClients[index];
+          await waitForPlayerLobbyCodeApi(playerClient, fixture.tournamentId, fixture.lobbyCode);
           const page = await context.newPage();
           await loginViaUi(page, player.email, player.password);
-          await page.goto(`/tournaments/${fixture.slug}/${env.brGameRoomPath}`);
+          await openPlayerGameRoom(page, fixture.slug, env.brGameRoomPath);
 
           await expect(page.getByText(fixture.tournamentName)).toBeVisible({ timeout: 45_000 });
           await submitPlayerEvidenceViaUI(page, evidencePath, fixture.lobbyCode);

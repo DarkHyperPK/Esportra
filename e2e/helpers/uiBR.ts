@@ -40,11 +40,40 @@ export async function openPublicLeaderboard(page: Page, slug: string): Promise<v
 }
 
 export async function openPlayerGameRoom(page: Page, slug: string, path = 'br-game-room'): Promise<void> {
-  await page.goto(`/tournaments/${slug}/${path}`);
+  await skipBetaModal(page);
+  await page.goto(`/tournaments/${slug}/${path}`, { waitUntil: 'domcontentloaded' });
   await dismissBetaModal(page);
-  await expect(page.getByText(/Battle Royale|Round|not assigned|Waiting for Next Round/i).first()).toBeVisible({
-    timeout: 45_000,
-  });
+  await expect(page.getByText('This is not a Battle Royale tournament')).toBeHidden({ timeout: 10_000 });
+  await expect(
+    page.getByRole('heading', { level: 1 }).first(),
+  ).toBeVisible({ timeout: 45_000 });
+}
+
+export async function waitForPlayerLobbyCode(page: Page, lobbyCode: string, timeoutMs = 90_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let lastHint = 'lobby code not visible yet';
+
+  while (Date.now() < deadline) {
+    await dismissBetaModal(page);
+
+    if (await page.getByText('This is not a Battle Royale tournament').isVisible().catch(() => false)) {
+      throw new Error('BR game room rejected tournament type before lobby code appeared');
+    }
+
+    if (await page.getByText(/not assigned to a BR lobby/i).isVisible().catch(() => false)) {
+      lastHint = 'player is not assigned to a BR lobby';
+    } else if (await page.getByText(/Waiting for lobby code/i).isVisible().catch(() => false)) {
+      lastHint = 'round is live but lobby code is still hidden';
+    } else if (await page.getByText(lobbyCode).isVisible().catch(() => false)) {
+      return;
+    }
+
+    await page.waitForTimeout(3_000);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await dismissBetaModal(page);
+  }
+
+  throw new Error(`Timed out waiting for lobby code ${lobbyCode}: ${lastHint}`);
 }
 
 export async function expandFirstRound(page: Page): Promise<Locator> {
@@ -89,22 +118,6 @@ export async function fillResultsGrid(page: Page, teamCount: number): Promise<vo
 export async function expectRoundLiveBadge(page: Page, roundNumber = 1): Promise<void> {
   const roundButton = page.getByRole('button', { name: new RegExp(`Round\\s+${roundNumber}`, 'i') }).first();
   await expect(roundButton).toContainText('Live', { timeout: 30_000 });
-}
-
-export async function waitForPlayerLobbyCode(page: Page, lobbyCode: string, timeoutMs = 90_000): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-
-  while (Date.now() < deadline) {
-    if (await page.getByText(lobbyCode).isVisible().catch(() => false)) {
-      return;
-    }
-
-    await page.waitForTimeout(5_000);
-    await page.reload();
-    await dismissBetaModal(page);
-  }
-
-  await expect(page.getByText(lobbyCode)).toBeVisible({ timeout: 1_000 });
 }
 
 export async function waitForPlayerEvidenceUpload(page: Page, lobbyCode?: string, timeoutMs = 90_000): Promise<void> {

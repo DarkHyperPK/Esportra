@@ -13,9 +13,10 @@ import {
   saveRoundResultsDirect,
   setTournamentOngoing,
   setupBrRoundFixture,
-  updateRound,
+  submitPlayerEvidence,
+  waitForPlayerLobbyCodeApi,
 } from './helpers/brSetup';
-import { expandFirstRound, fillResultsGrid, expectRoundLiveBadge, openOrganizerGames, openPlayerGameRoom, setRoundSettings, submitPlayerEvidenceViaUI } from './helpers/uiBR';
+import { expandFirstRound, fillResultsGrid, expectRoundLiveBadge, openOrganizerGames, openPlayerGameRoom, setRoundSettings } from './helpers/uiBR';
 import { assertNoOrphanLeaderboardZeros } from './helpers/uiLeaderboard';
 import { expectNoTechnicalCopy } from './helpers/assertCopy';
 import { expectToast } from './helpers/assertToast';
@@ -97,9 +98,7 @@ test.describe('BR organizer games', () => {
     const players = await createPlayerClients(env!, 2);
     const fixture = await setupBrRoundFixture(organizer, players);
 
-    await loginViaUi(page, env!.players[0].email, env!.players[0].password);
-    await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
-    await submitPlayerEvidenceViaUI(page, evidencePath, fixture.lobbyCode);
+    await submitPlayerEvidence(players[0], fixture.roundId, evidencePath, 1, 1);
     await expect.poll(
       () => getRoundEvidenceCount(organizer, fixture.roundId),
       { timeout: 30_000 },
@@ -179,6 +178,7 @@ test.describe('BR organizer games', () => {
     const organizer = await createOrganizerClient(env!);
     const players = await createPlayerClients(env!, 2);
     const fixture = await setupBrRoundFixture(organizer, players);
+    await waitForPlayerLobbyCodeApi(players[0], fixture.tournamentId, fixture.lobbyCode);
 
     const playerContext = await browser.newContext();
     const playerPage = await playerContext.newPage();

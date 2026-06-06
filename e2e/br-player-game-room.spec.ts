@@ -11,6 +11,8 @@ import {
   publishRoundResultsDirect,
   setTournamentOngoing,
   setupBrRoundFixture,
+  submitPlayerEvidence,
+  waitForPlayerLobbyCodeApi,
 } from './helpers/brSetup';
 import { openPlayerGameRoom, openPublicTournament, waitForPlayerLobbyCode, submitPlayerEvidenceViaUI } from './helpers/uiBR';
 import { expectNoTechnicalCopy } from './helpers/assertCopy';
@@ -32,6 +34,7 @@ test.describe('BR player game room', () => {
     const organizer = await createOrganizerClient(env!);
     const players = await createPlayerClients(env!, 2);
     const fixture = await setupBrRoundFixture(organizer, players);
+    await waitForPlayerLobbyCodeApi(players[0], fixture.tournamentId, fixture.lobbyCode);
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openPublicTournament(page, fixture.slug);
@@ -52,6 +55,7 @@ test.describe('BR player game room', () => {
     const organizer = await createOrganizerClient(env!);
     const players = await createPlayerClients(env!, 2);
     const fixture = await setupBrRoundFixture(organizer, players);
+    await waitForPlayerLobbyCodeApi(players[0], fixture.tournamentId, fixture.lobbyCode);
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
@@ -65,6 +69,7 @@ test.describe('BR player game room', () => {
     const organizer = await createOrganizerClient(env!);
     const players = await createPlayerClients(env!, 2);
     const fixture = await setupBrRoundFixture(organizer, players);
+    await waitForPlayerLobbyCodeApi(players[0], fixture.tournamentId, fixture.lobbyCode);
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openPlayerGameRoom(page, fixture.slug, env!.brGameRoomPath);
