@@ -49,7 +49,7 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
   });
 
   test('organizer completes wizard for Valorant 5v5 bracket tournament', async ({ page }) => {
-    const stamp = Date.now();
+    const stamp = String(Date.now());
     await loginOrganizerViaUi(page, env!.organizerEmail, env!.organizerPassword);
 
     const url = await completeBracketTournamentWizard(page, {
@@ -67,7 +67,7 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
   });
 
   test('organizer selects Valorant Skirmish 1v1 in wizard and creates solo tournament', async ({ page }) => {
-    const stamp = Date.now();
+    const stamp = String(Date.now());
     await loginOrganizerViaUi(page, env!.organizerEmail, env!.organizerPassword);
     await openCreateTournamentWizard(page);
 
@@ -91,7 +91,7 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
   });
 
   test('organizer creates Fortnite battle royale tournament through wizard', async ({ page }) => {
-    const stamp = Date.now();
+    const stamp = String(Date.now());
     await loginOrganizerViaUi(page, env!.organizerEmail, env!.organizerPassword);
     await openCreateTournamentWizard(page);
 
@@ -117,7 +117,7 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
 
   test('player registers solo through tournament page for solo catalog mode', async ({ page }) => {
     const organizer = await createOrganizerClient(env!);
-    const stamp = Date.now();
+    const stamp = String(Date.now());
     const tournament = await createCatalogTournament(organizer, {
       name: `E2E GUI Solo Reg ${stamp}`,
       game: 'Fortnite',
@@ -139,7 +139,7 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
   test('captain sees ineligible team when no matching roster exists for 5v5 Valorant', async ({ page }) => {
     const organizer = await createOrganizerClient(env!);
     const [captainClient] = await createPlayerClients(env!, 1);
-    const stamp = Date.now();
+    const stamp = String(Date.now());
 
     const team = await createDedicatedCaptainTeam(captainClient, stamp, 'Ineligible Gate');
 
@@ -175,7 +175,7 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     const organizer = await createOrganizerClient(env!);
     const [captainClient] = await createPlayerClients(env!, 1);
     const captainId = await getUserId(env!, env!.players[0].email, env!.players[0].password!);
-    const stamp = Date.now();
+    const stamp = String(Date.now());
 
     await buildUnderstaffedValorantRoster(captainClient, captainId, stamp);
     const teamName = `E2E Understaffed ${stamp}`;
@@ -209,7 +209,7 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
     const [captainClient] = await createPlayerClients(env!, 1);
     const captainId = await getUserId(env!, env!.players[0].email, env!.players[0].password!);
     const player2Id = await getUserId(env!, env!.players[1].email, env!.players[1].password!);
-    const stamp = Date.now();
+    const stamp = String(Date.now());
     const teamName = `E2E 2v2 Team ${stamp}`;
     const rosterName = `E2E 2v2 ${stamp}`;
 
@@ -246,28 +246,82 @@ test.describe('@staging-only Game catalog — GUI flows', () => {
   test('captain creates roster through Teams page GUI', async ({ page }) => {
     const [captainClient] = await createPlayerClients(env!, 1);
     const captainId = await getUserId(env!, env!.players[0].email, env!.players[0].password!);
-    const stamp = Date.now();
-    const team = await ensureCaptainTeam(captainClient, stamp, captainId);
-    const existing = await captainClient.get<Array<{ id: string; game?: string }>>(`/api/teams/${team.id}/rosters`);
-    for (const roster of existing ?? []) {
-      if ((roster.game ?? '').toLowerCase() === 'fortnite') {
-        await captainClient.request('DELETE', `/api/teams/${team.id}/rosters/${roster.id}`);
-      }
-    }
+    const stamp = String(Date.now());
+    await ensureCaptainTeam(captainClient, stamp, captainId);
 
     await loginViaUi(page, env!.players[0].email, env!.players[0].password);
     await openTeamsPage(page);
+    const createTeamButton = page.getByRole('button', { name: /^Create Team$/i }).first();
+    if (await createTeamButton.isVisible({ timeout: 1_000 }).catch(() => false)) {
+      const teamName = `E2E GUI Team ${stamp}`;
+      await createTeamButton.click();
+      const skipTour = page.getByRole('button', { name: /Skip tour/i });
+      if (await skipTour.isVisible({ timeout: 2_000 }).catch(() => false)) {
+        await skipTour.click();
+      }
+      const teamDialog = page.getByRole('dialog');
+      if (!await teamDialog.getByRole('heading', { name: /Create Your Team/i }).isVisible({ timeout: 2_000 }).catch(() => false)) {
+        await createTeamButton.click();
+      }
+      await expect(teamDialog.getByRole('heading', { name: /Create Your Team/i })).toBeVisible();
+      await teamDialog.getByPlaceholder('Enter team name').fill(teamName);
+      await teamDialog.getByPlaceholder('3-6 characters').fill(`G${stamp.slice(-5)}`);
+      await teamDialog.getByRole('button', { name: /^Create Team$/i }).click();
+      await expect(page.getByRole('heading', { name: teamName })).toBeVisible({ timeout: 45_000 });
+    }
+
+    const captainTeams = await captainClient.get<Array<{ id: string; name: string; owner_id?: string }>>('/api/teams/my-captain-teams');
+    const visibleTeamHeading = page.getByRole('heading', { level: 1 }).first();
+    await expect(visibleTeamHeading).toBeVisible();
+    const visibleTeamName = (await visibleTeamHeading.textContent())?.trim();
+    expect(visibleTeamName).toBeTruthy();
+    const visibleTeam = (captainTeams ?? []).find((team) => team.name === visibleTeamName);
+    expect(visibleTeam, `Could not resolve visible Teams page team "${visibleTeamName}"`).toBeTruthy();
+    const existing = await captainClient.get<Array<{ id: string; name?: string; game?: string }>>(`/api/teams/${visibleTeam!.id}/rosters`);
+    for (const roster of existing ?? []) {
+      const isFortnite = (roster.game ?? '').toLowerCase() === 'fortnite';
+      const isPriorE2eRoster = (roster.name ?? '').startsWith('E2E GUI Roster ');
+      if (isFortnite || isPriorE2eRoster) {
+        await captainClient.request('DELETE', `/api/teams/${visibleTeam!.id}/rosters/${roster.id}`);
+      }
+    }
+    await openTeamsPage(page);
 
     await page.getByRole('button', { name: /CREATE ROSTER/i }).click();
-    await expect(page.getByRole('heading', { name: /Create Roster/i })).toBeVisible();
+    const rosterDialog = page.getByRole('dialog', { name: /Create Roster/i });
+    await expect(rosterDialog.getByRole('heading', { name: /Create Roster/i })).toBeVisible();
 
     const rosterName = `E2E GUI Roster ${stamp}`;
-    await page.getByPlaceholder(/VALORANT MAIN/i).fill(rosterName);
-    await page.getByRole('combobox').filter({ hasText: /Select competitive game/i }).click();
+    await rosterDialog.getByPlaceholder(/VALORANT MAIN/i).fill(rosterName);
+    await rosterDialog.getByRole('combobox').filter({ hasText: /Select competitive game/i }).click();
     await page.getByRole('option', { name: 'Fortnite' }).click();
-    await page.getByRole('button', { name: /CREATE ROSTER/i }).click();
+    const createRosterResponse = page.waitForResponse((response) =>
+      response.url().includes(`/api/teams/${visibleTeam!.id}/rosters`)
+      && response.request().method() === 'POST',
+    );
 
-    await expect(page.getByRole('dialog')).toBeHidden({ timeout: 20_000 });
+    await rosterDialog.getByRole('button', { name: /CREATE ROSTER/i }).click();
+    const response = await createRosterResponse;
+    expect(response.status(), await response.text()).toBe(201);
+    await expect.poll(async () => {
+      const roster = await captainClient.get<Array<{
+        name?: string;
+        game?: string;
+        format?: string | null;
+        team_size?: number;
+      }>>(`/api/teams/${visibleTeam!.id}/rosters`);
+      return (roster ?? []).find((row) => row.name === rosterName);
+    }, {
+      timeout: 20_000,
+      message: `Roster "${rosterName}" was not persisted for visible team "${visibleTeamName}"`,
+    }).toMatchObject({
+      name: rosterName,
+      game: 'Fortnite',
+      format: 'solo',
+      team_size: 1,
+    });
+
+    await expect(rosterDialog).toBeHidden({ timeout: 20_000 });
     await expect(
       page.locator('div.font-heading').filter({ hasText: new RegExp(`^${rosterName}$`) }),
     ).toBeVisible({ timeout: 20_000 });

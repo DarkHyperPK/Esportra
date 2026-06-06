@@ -209,6 +209,6 @@ export async function openTeamsPage(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: /Teams|My Team|Rosters/i }).first()).toBeVisible({
     timeout: 45_000,
   }).catch(async () => {
-    await expect(page.getByText(/Active Rosters/i)).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByText(/Active Rosters|Start Your Legacy|Establish Your Team/i).first()).toBeVisible({ timeout: 45_000 });
   });
 }

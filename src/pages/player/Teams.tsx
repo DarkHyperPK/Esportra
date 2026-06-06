@@ -233,48 +233,46 @@ const TeamsPage = () => {
   }, [currentTeam?.id]);
 
   const fetchRosters = useCallback(async () => {
-    if (!userTeams || userTeams.length === 0) return;
+    if (!currentTeam?.id) {
+      setRosters([]);
+      return;
+    }
+
     try {
-      const allRosters: Roster[] = [];
-      for (const team of userTeams) {
-        try {
-          const data = await apiClient.get<any[]>(`/api/teams/${team.id}/rosters`);
-          const rosterList: Roster[] = (data || []).map((r: any) => {
-            const members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
-              .map((m: any) => ({
-                user_id: m.user_id,
-                username: m.username || 'Unknown',
-                avatar_url: m.avatar_url || null,
-                card_image_url: m.card_image_url || null,
-                is_starter: m.is_starter ?? true
-              }));
+      const data = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/rosters`);
+      const rosterList: Roster[] = (data || []).map((r: any) => {
+        const members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
+          .map((m: any) => ({
+            user_id: m.user_id,
+            username: m.username || 'Unknown',
+            avatar_url: m.avatar_url || null,
+            card_image_url: m.card_image_url || null,
+            is_starter: m.is_starter ?? true
+          }));
 
-            if (team.owner_id && !members.some(m => m.user_id === team.owner_id)) {
-              const ownerMember = team.members?.find((m: any) => m.id === team.owner_id || m.user_id === team.owner_id);
-              members.unshift({
-                user_id: team.owner_id,
-                username: ownerMember?.username || 'Captain',
-                avatar_url: ownerMember?.avatar_url || null,
-                card_image_url: ownerMember?.card_image_url || null
-              });
-            }
-
-            return {
-              id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
-              members, member_count: members.length
-            };
+        if (currentTeam.owner_id && !members.some(m => m.user_id === currentTeam.owner_id)) {
+          const ownerMember = currentTeam.members?.find((m: any) =>
+            m.id === currentTeam.owner_id || m.user_id === currentTeam.owner_id
+          ) as { username?: string; avatar_url?: string | null; card_image_url?: string | null } | undefined;
+          members.unshift({
+            user_id: currentTeam.owner_id,
+            username: ownerMember?.username || 'Captain',
+            avatar_url: ownerMember?.avatar_url || null,
+            card_image_url: ownerMember?.card_image_url || null
           });
-          allRosters.push(...rosterList);
-        } catch (err) {
-          console.error(`Error fetching rosters for team ${team.id}:`, err);
         }
-      }
-      setRosters(allRosters);
+
+        return {
+          id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
+          members, member_count: members.length
+        };
+      });
+      setRosters(rosterList);
     } catch (err) {
       console.error('Error in fetchRosters:', err);
       setRosters([]);
     }
-  }, [userTeams]);
+  }, [currentTeam]);
 
   const fetchTeamRegistrations = useCallback(async () => {
     if (!currentTeam || !currentTeam.id) {
@@ -584,8 +582,8 @@ const TeamsPage = () => {
         teamSize: newRosterTeamSize,
       });
       // Members can be added later through the Manage Roster dialog
-      await fetchRosters();
       setRosterModalOpen(false);
+      await fetchRosters();
     } catch (e) {
       console.error('Failed to create roster', e);
       toast({ title: 'Failed to create roster', variant: 'destructive' });

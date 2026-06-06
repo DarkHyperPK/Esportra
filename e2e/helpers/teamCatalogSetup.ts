@@ -20,16 +20,35 @@ export async function ensureCaptainTeam(
   stamp: string,
   ownerId: string,
 ): Promise<TeamRow> {
-  const owned = await client.get<TeamRow[]>(`/api/teams?owner_id=${ownerId}&limit=5`);
-  const match = (owned ?? []).find((team) => String(team.owner_id).toLowerCase() === ownerId.toLowerCase());
-  if (match) return match;
+  const owned = await client.get<TeamRow[]>('/api/teams/my-captain-teams');
+  const match = (owned ?? []).find((team) =>
+    String(team.owner_id).toLowerCase() === ownerId.toLowerCase()
+  ) ?? (owned ?? [])[0];
+  if (match) {
+    await expect.poll(async () => {
+      const visibleTeams = await client.get<TeamRow[]>('/api/teams/me');
+      return (visibleTeams ?? []).some((team) => team.id === match.id);
+    }, {
+      timeout: 30_000,
+      message: `Captain team "${match.name}" never appeared in /api/teams/me`,
+    }).toBe(true);
+    return match;
+  }
 
-  return client.post<TeamRow>('/api/teams', {
+  const created = await client.post<TeamRow>('/api/teams', {
     name: `E2E Catalog Team ${stamp}`,
     tag: `E2E${String(stamp).slice(-4)}`,
     game: 'General',
     gameFormat: 'squad',
   });
+  await expect.poll(async () => {
+    const visibleTeams = await client.get<TeamRow[]>('/api/teams/me');
+    return (visibleTeams ?? []).some((team) => team.id === created.id);
+  }, {
+    timeout: 30_000,
+    message: `Created captain team "${created.name}" never appeared in /api/teams/me`,
+  }).toBe(true);
+  return created;
 }
 
 function normalizeFormat(value?: string | null): string {
