@@ -103,7 +103,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         const checkBrackets = async () => {
             setBracketsLoading(true);
             try {
-                const stageIds = stages.map(s => s.id);
                 // Optimized: Check all stages in a single query instead of a loop
                 const versions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
 
@@ -128,7 +127,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         } else {
             setBracketsLoading(false);
         }
-    }, [stages]);
+    }, [stages, tournamentId]);
 
     // Fetch tournament winner from last stage's final match
     useEffect(() => {
@@ -171,7 +170,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         };
 
         fetchWinner();
-    }, [stages]);
+    }, [stages, tournamentId]);
 
     const handleAddStage = async () => {
         if (!tournamentId || !newStageName) return;
@@ -311,27 +310,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             toast({ title: 'Error', description: error.message || 'Failed to reset stages', variant: 'destructive' });
         } finally {
             setIsResetting(false);
-        }
-    };
-
-    const handleUpdateStage = async (stageId: string, updates: any) => {
-        try {
-            // Build full stages array with the update applied to the target stage
-            const stageDtos = stages.map(s => ({
-                id: s.id,
-                name: s.id === stageId ? (updates.name ?? s.name) : s.name,
-                format: s.id === stageId ? (updates.format ?? s.format) : s.format,
-                stageOrder: s.stage_order,
-                bestOf: s.id === stageId ? (updates.bestOf ?? updates.best_of ?? s.best_of ?? 1) : (s.best_of ?? 1),
-                capacity: s.id === stageId ? (updates.capacity ?? s.capacity) : s.capacity,
-                advancementCount: s.id === stageId ? (updates.advancementCount ?? updates.advancement_count ?? s.advancement_count) : s.advancement_count,
-            }));
-            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
-            toast({ title: 'Stage updated', description: 'The stage configuration has been saved.' });
-            onUpdate();
-        } catch (error: any) {
-            console.error('Error updating stage:', error);
-            toast({ title: 'Error', description: error.message || 'Failed to update stage', variant: 'destructive' });
         }
     };
 

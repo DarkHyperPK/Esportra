@@ -582,7 +582,7 @@ export const useMapVetoMachine = ({
         } finally {
             setLoading(false);
         }
-    }, [matchId, tournamentId, team1Id, team2Id, bestOf]);
+    }, [matchId, tournamentId, team1Id, team2Id, bestOf, game]);
 
     // Fetch all available maps (Tournament Pool)
     useEffect(() => {

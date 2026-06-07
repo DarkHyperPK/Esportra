@@ -147,15 +147,15 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
         } else {
             toast({ title: 'Validation Error', description: 'Please fix the errors before proceeding.', variant: 'destructive' });
         }
-    }, [validateCurrentStep, toast]);
+    }, [validateCurrentStep, toast, setCurrentStep]);
 
     const prevStep = useCallback(() => {
         setCurrentStep(prev => Math.max(prev - 1, 1));
-    }, []);
+    }, [setCurrentStep]);
 
     const goToStep = useCallback((step: number) => {
         if (step <= currentStep || stepValidation[step - 1]) setCurrentStep(step);
-    }, [currentStep, stepValidation]);
+    }, [currentStep, stepValidation, setCurrentStep]);
 
     const clearDraft = useCallback(() => {
         localStorage.removeItem(STORAGE_KEY);
@@ -435,7 +435,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
         } finally {
             setIsSubmitting(false);
         }
-    }, [user, data, toast, navigate, clearDraft, tournamentId, initialData]);
+    }, [user, data, toast, navigate, clearDraft, tournamentId, initialData, queryClient, seasonId]);
 
     return {
         currentStep,

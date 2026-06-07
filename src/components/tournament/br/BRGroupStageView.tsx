@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Users, Swords, Loader2, AlertCircle, Clock, MapPin } from 'lucide-react';
+import { Users, Swords, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import { getMapImageUrl } from '@/utils/gameCatalogBr';

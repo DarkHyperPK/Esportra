@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Calendar,
@@ -136,11 +136,7 @@ const OrganizationSettings: React.FC = () => {
       JSON.stringify(socialLinks) !== JSON.stringify(organization.social_links || {})
     : name.trim() !== '' || description.trim() !== '';
 
-  useEffect(() => {
-    if (user?.id) void fetchOrganization();
-  }, [user?.id]);
-
-  const fetchOrganization = async () => {
+  const fetchOrganization = useCallback(async () => {
     try {
       const data = await apiClient.get<Organization | null>('/api/organizations/mine');
       if (!data) return;
@@ -160,7 +156,11 @@ const OrganizationSettings: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (user?.id) void fetchOrganization();
+  }, [user?.id, fetchOrganization]);
 
   const fetchAlbums = async (orgId: string) => {
     try {

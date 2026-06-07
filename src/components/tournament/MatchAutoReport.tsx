@@ -5,9 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Trophy, Clock, Swords, CheckCircle2, AlertCircle, Check, ShieldAlert, Search, Info, SearchX, RefreshCcw, Zap, AlertTriangle, ImagePlus, X as XIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
-import { useAuth } from '@/hooks/useAuth';
 import { useMatchResultReport } from '@/hooks/useMatchResultReport';
 import { formatDistanceToNow, format } from 'date-fns';
 import { FullScoreboard } from './FullScoreboard';
@@ -70,8 +68,6 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     onSuccess,
     className
 }) => {
-    const { toast } = useToast();
-    const { user } = useAuth();
     const {
         activeReport,
         acceptedReport,

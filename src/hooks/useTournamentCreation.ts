@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
-import { getGameByName, getDefaultGameMode, getDefaultTeamSize } from '@/utils/gameFeatures';
+import { getGameByName, getDefaultGameMode } from '@/utils/gameFeatures';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 
 interface FormData {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
@@ -7,20 +7,19 @@ import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
 
 const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors }) => {
-    // Calculate default dates based on start date
-    const getDefaultRegistrationOpen = () => {
+    const getDefaultRegistrationOpen = useCallback(() => {
         return new Date().toISOString().split('T')[0] + 'T00:00';
-    };
+    }, []);
 
-    const getDefaultRegistrationClose = () => {
+    const getDefaultRegistrationClose = useCallback(() => {
         if (!data.startDate) return '';
         const startDate = new Date(`${data.startDate}T${data.startTime || '00:00'}`);
         startDate.setDate(startDate.getDate() - 1);
         return startDate.toISOString().slice(0, 16);
-    };
+    }, [data.startDate, data.startTime]);
 
     // Auto-set defaults and mandatory fields on mount
-    React.useEffect(() => {
+    useEffect(() => {
         const updates: Partial<any> = {};
 
         if (!data.registrationOpens) {
@@ -41,7 +40,7 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
         if (Object.keys(updates).length > 0) {
             updateData(updates);
         }
-    }, [data.startDate]);
+    }, [data.startDate, data.startTime, data.registrationOpens, data.registrationCloses, data.checkInRequired, data.autoRemoveUnchecked, updateData, getDefaultRegistrationOpen, getDefaultRegistrationClose]);
 
     return (
         <motion.div

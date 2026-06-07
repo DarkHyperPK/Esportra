@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { trackClick, trackImpression, useSponsors } from '@/hooks/useSponsors';
 import { getStorageUrl } from '@/lib/storage';
@@ -14,11 +14,11 @@ export const VerticalAdPlacement = ({ sponsorId: sponsorIdProp }: Props) => {
     const sponsorId = sponsorIdProp || dbSystemOptiX?.id || '';
 
     // Performance HUD State
-    const statsConfig = [
+    const statsConfig = useMemo(() => [
         { ping: '1.2ms', fps: '590 FPS' },
         { ping: '0.8ms', fps: '840 FPS' },
         { ping: '1.0ms', fps: '673 FPS' },
-    ];
+    ], []);
     const [currentStats, setCurrentStats] = useState(statsConfig[0]);
 
     useEffect(() => {
@@ -29,7 +29,7 @@ export const VerticalAdPlacement = ({ sponsorId: sponsorIdProp }: Props) => {
             });
         }, 2000);
         return () => clearInterval(interval);
-    }, []);
+    }, [statsConfig]);
 
     // Impression Tracking
     const adRef = useRef<HTMLDivElement>(null);

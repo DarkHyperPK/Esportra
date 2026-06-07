@@ -80,7 +80,7 @@ const DisputeCenter: React.FC = () => {
   const [liftingBan, setLiftingBan] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
     setLoading(true);
       
@@ -129,7 +129,7 @@ const DisputeCenter: React.FC = () => {
     } finally {
     setLoading(false);
     }
-  };
+  }, [toast, user?.id]);
 
   const fetchComments = useCallback(async (disputeId: string) => {
     try {
@@ -180,7 +180,7 @@ const DisputeCenter: React.FC = () => {
 
   useEffect(() => { 
     load(); 
-  }, []);
+  }, [load]);
 
   useEffect(() => {
     if (selectedDispute) {
@@ -252,7 +252,7 @@ const DisputeCenter: React.FC = () => {
           ? `${disputeId}/${disputeReason}/${user.id}-${Date.now()}.${fileExt}`
           : `${disputeId}/general_support/${user.id}-${Date.now()}.${fileExt}`;
         
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('tournaments.disputes.evidence')
           .upload(fileName, commentAttachment, { upsert: false });
 
@@ -495,7 +495,6 @@ const DisputeCenter: React.FC = () => {
               ) : (
                 filteredDisputes.map((d) => {
                   const meta = statusMeta[d.status] || defaultMeta;
-                  const StatusIcon = meta.icon;
                   const isSelected = selectedDispute?.id === d.id;
                   return (
                     <button

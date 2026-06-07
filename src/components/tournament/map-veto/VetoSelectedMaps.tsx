@@ -25,8 +25,8 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
     team2Name,
     team1Id,
     team2Id,
-    team1Logo,
-    team2Logo,
+    team1Logo: _team1Logo,
+    team2Logo: _team2Logo,
     imagesLoaded,
     setImagesLoaded,
     bestOf,
@@ -236,7 +236,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                         onLoad={() => {
                                             setImagesLoaded(prev => new Set([...prev, mapImageUrl]));
                                         }}
-                                        onError={(e) => {
+                                        onError={(_e) => {
                                             console.warn(`[MapVeto] Failed to load image: ${mapImageUrl}`);
                                             // Mark as "loaded" anyway to remove the loading spinner
                                             setImagesLoaded(prev => new Set([...prev, mapImageUrl]));

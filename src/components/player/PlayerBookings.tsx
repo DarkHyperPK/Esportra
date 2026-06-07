@@ -93,7 +93,7 @@ const PlayerBookings = () => {
     staleTime: 60_000,
   });
 
-  const bookings = bookingsQuery.data ?? [];
+  const bookings = useMemo(() => bookingsQuery.data ?? [], [bookingsQuery.data]);
   const upcomingBookings = useMemo(() => bookings.filter(isUpcomingBooking), [bookings]);
   const pastBookings = useMemo(() => bookings.filter((booking) => !isUpcomingBooking(booking)), [bookings]);
 

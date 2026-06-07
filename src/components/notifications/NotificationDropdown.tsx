@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -29,16 +29,16 @@ export const NotificationDropdown = () => {
 
     const recentNotifications = notifications.slice(0, 10);
 
-    const handleMarkAllRead = async () => {
+    const handleMarkAllRead = useCallback(async () => {
         setOptimisticReadIds(prev => [...prev, ...notifications.filter(n => !n.is_read).map(n => n.id)]);
         await markAllAsRead();
-    };
+    }, [notifications, markAllAsRead]);
 
     useEffect(() => {
         if (isOpen && unreadCount > 0) {
             handleMarkAllRead();
         }
-    }, [isOpen, unreadCount]);
+    }, [isOpen, unreadCount, handleMarkAllRead]);
 
     const handleNotificationClick = async (notification: any) => {
         // Don't navigate if it's a staff_invite — actions are inline

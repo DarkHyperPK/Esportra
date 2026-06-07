@@ -45,7 +45,7 @@ const MatchChat: React.FC<MatchChatProps> = ({
         if (messages && messages.length > 0) {
             setTimeout(scrollToBottom, 100);
         }
-    }, [messages?.length]);
+    }, [messages, scrollToBottom]);
 
     // Track scroll position for "scroll to bottom" button
     const handleScroll = () => {

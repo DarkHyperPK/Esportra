@@ -3,8 +3,8 @@ import {
   FramerDropdownRoot,
   FramerDropdownContent,
   FramerDropdownTrigger,
-  useFramerDropdown,
 } from "@/components/ui/FramerDropdown";
+import { useFramerDropdown } from "@/components/ui/framerDropdownContext";
 import { JackMenuItem, JackMenuDivider } from "@/components/ui/JackMenuItem";
 import { JackButton } from "@/components/ui/JackButton";
 import React, { useCallback, useEffect, useState } from "react";

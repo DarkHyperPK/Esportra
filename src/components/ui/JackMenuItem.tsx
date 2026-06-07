@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useFramerDropdown } from "@/components/ui/FramerDropdown";
+import { useFramerDropdown } from "@/components/ui/framerDropdownContext";
 
 /**
  * Sharp menu item used inside `FramerDropdownContent`.

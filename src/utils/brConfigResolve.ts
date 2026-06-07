@@ -172,8 +172,6 @@ export function resolveStageBRConfig(params: {
       ? Math.floor(catalog.playersPerLobby / Math.max(1, teamSize))
       : 20;
 
-  const lobbySize = stage.capacity ?? defaultLobbyUnits;
-
   return {
     scoringPreset,
     killCap,

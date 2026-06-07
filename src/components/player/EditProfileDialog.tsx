@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { apiClient } from "@/lib/apiClient";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -54,6 +54,24 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
         country_code: ""
     });
 
+    const handleAutodetect = useCallback(async () => {
+        setDetecting(true);
+        setDetectionFailed(false);
+        try {
+            const detected = await detectUserCountry();
+            if (detected) {
+                setFormData(prev => ({ ...prev, country_code: detected }));
+                setDetectionFailed(false);
+            } else {
+                setDetectionFailed(true);
+            }
+        } catch {
+            setDetectionFailed(true);
+        } finally {
+            setDetecting(false);
+        }
+    }, []);
+
     // Initialize form data when profile loads or dialog opens
     useEffect(() => {
         if (profile && open) {
@@ -76,29 +94,11 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
             });
 
             // Autodetect if empty
-            if (!profile.country_code && open && !formData.country_code) {
+            if (!profile.country_code && !formData.country_code) {
                 handleAutodetect();
             }
         }
-    }, [profile, open]);
-
-    const handleAutodetect = async () => {
-        setDetecting(true);
-        setDetectionFailed(false);
-        try {
-            const detected = await detectUserCountry();
-            if (detected) {
-                setFormData(prev => ({ ...prev, country_code: detected }));
-                setDetectionFailed(false);
-            } else {
-                setDetectionFailed(true);
-            }
-        } catch (e) {
-            setDetectionFailed(true);
-        } finally {
-            setDetecting(false);
-        }
-    };
+    }, [profile, open, formData.country_code, handleAutodetect]);
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));

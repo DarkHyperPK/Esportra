@@ -4,7 +4,7 @@ import { AlertTriangle, Calendar, Check, ChevronRight, Gamepad2, Settings, Targe
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ApiError, apiClient } from '@/lib/apiClient';
+import { ApiError } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 import { seasonApi } from '@/services/api';
 import { useCreateSeason } from '@/hooks/useSeasons';

@@ -73,7 +73,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
       setRoundSchedules({});
       setHasRoundsConfigured(false);
     }
-  }, [open, stage.id]);
+  }, [open, stage.id, stage.starts_at, stage.ends_at]);
 
   // Load stage scheduling context as soon as the dialog opens so the stepper
   // reflects whether round-level scheduling is actually available.

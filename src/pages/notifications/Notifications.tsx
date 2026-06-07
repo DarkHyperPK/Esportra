@@ -22,17 +22,7 @@ const NotificationsPage = () => {
   const { toast } = useToast();
 
   // Optimistic UI state
-  const [optimisticIds, setOptimisticIds] = useState<string[]>([]);
-
-  // Helper to hide notification instantly
-  const hideOptimistically = (id: string) => {
-    setOptimisticIds(prev => [...prev, id]);
-  };
-
-  // Helper to revert if failed
-  const revertOptimistic = (id: string) => {
-    setOptimisticIds(prev => prev.filter(i => i !== id));
-  };
+  const [optimisticIds, _setOptimisticIds] = useState<string[]>([]);
 
   // Delete single notification
   const handleDeleteNotification = async (notificationId: string) => {

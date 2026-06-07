@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, useMemo } from 'react';
+import { ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
 import { AuthContext } from '@/contexts/auth-context';
 import * as Sentry from '@sentry/react';
 import { UserProfile, AuthContextType, UserRole } from '@/types/auth';
@@ -31,8 +31,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Wrapper for signUp to ensure it returns void
-  const signUp = async (
+  const signUp = useCallback(async (
     email: string,
     password: string,
     username: string,
@@ -41,7 +40,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     dateOfBirth?: string
   ): Promise<void> => {
     await originalSignUp(email, password, username, fullName, role, dateOfBirth);
-  };
+  }, [originalSignUp]);
 
   // Set mounted state
   useEffect(() => {
@@ -125,7 +124,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [user?.id, authLoading, isMounted]);
+  }, [user, authLoading, isMounted, profile, fetchProfile, clearProfile]);
 
   // React to auth errors
   useEffect(() => {
@@ -136,7 +135,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     }
   }, [authError]);
 
-  const handleUpdateProfile = async (updates: Partial<UserProfile>): Promise<void> => {
+  const handleUpdateProfile = useCallback(async (updates: Partial<UserProfile>): Promise<void> => {
     if (!user) {
       console.error("No user is currently signed in.");
       return;
@@ -144,7 +143,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
 
     await updateProfile(updates, user.id);
     await fetchProfile(user.id);
-  };
+  }, [user, updateProfile, fetchProfile]);
 
   // Silent background country detection
   useEffect(() => {
@@ -172,26 +171,25 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     // Small delay to ensure core profile data is settled
     const timer = setTimeout(performSilentDetection, 2000);
     return () => clearTimeout(timer);
-  }, [profile?.id, profile?.country_code, user?.id, isMounted]);
+  }, [profile, profile?.country_code, user, isMounted, handleUpdateProfile]);
 
-  const handleSignOut = async (): Promise<void> => {
+  const handleSignOut = useCallback(async (): Promise<void> => {
     await signOut();
     clearProfile();
     Sentry.setUser(null);
-  };
+  }, [signOut, clearProfile]);
 
-  // Role-based utility functions
-  const isOrganizer = (): boolean => {
+  const isOrganizer = useCallback((): boolean => {
     return profile?.role === 'organizer';
-  };
+  }, [profile?.role]);
 
-  const isVenueOwner = (): boolean => {
+  const isVenueOwner = useCallback((): boolean => {
     return profile?.role === 'venue_owner';
-  };
+  }, [profile?.role]);
 
-  const isCasual = (): boolean => {
+  const isCasual = useCallback((): boolean => {
     return profile?.role === 'casual';
-  };
+  }, [profile?.role]);
 
   // Derive email verification status from Supabase user metadata
   const isEmailVerified = !!(user?.email_confirmed_at);
@@ -225,6 +223,11 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     signUp,
     signInWithGoogle,
     signInWithDiscord,
+    handleSignOut,
+    handleUpdateProfile,
+    isOrganizer,
+    isVenueOwner,
+    isCasual,
     isMounted
   ]);
 

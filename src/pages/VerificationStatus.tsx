@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -51,8 +51,8 @@ const VerificationStatus: React.FC = () => {
   const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [verifiedRoles, setVerifiedRoles] = useState<VerifiedRole[]>([]);
   const [assignedRoles, setAssignedRoles] = useState<{ role: 'organizer' | 'venue_owner'; is_active: boolean }[]>([]);
-  const [orgVerifiedByProfile, setOrgVerifiedByProfile] = useState(false);
-  const [venueVerifiedByProfile, setVenueVerifiedByProfile] = useState(false);
+  const [, setOrgVerifiedByProfile] = useState(false);
+  const [, setVenueVerifiedByProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showRequestForm, setShowRequestForm] = useState(false);
   const [requestFor, setRequestFor] = useState<'organizer' | 'venue_owner' | null>(null);
@@ -65,7 +65,7 @@ const VerificationStatus: React.FC = () => {
     }
   }, [profile?.role, currentRole, navigate]);
 
-  const fetchVerificationData = async () => {
+  const fetchVerificationData = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -95,11 +95,11 @@ const VerificationStatus: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast]);
 
   useEffect(() => {
     fetchVerificationData();
-  }, [user]);
+  }, [fetchVerificationData]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -133,10 +133,6 @@ const VerificationStatus: React.FC = () => {
       (req.requested_role || '').toLowerCase() === role &&
       (req.status || '').toLowerCase() === 'pending'
     );
-  };
-
-  const canRequestVerification = (role: 'organizer' | 'venue_owner') => {
-    return !hasVerifiedRole(role) && !hasPendingRequest(role);
   };
 
   // Show admin message if they somehow reach this page

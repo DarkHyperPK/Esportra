@@ -154,9 +154,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         if (data.gameMode !== activeGameMode.value || data.teamSize !== activeGameMode.teamSize) {
             updateData({ gameMode: activeGameMode.value, teamSize: activeGameMode.teamSize });
         }
-    }, [data.game, data.gameMode, data.teamSize]);
-
-    const isPowerOfTwo = (n: number) => n > 0 && (n & (n - 1)) === 0;
+    }, [selectedGame, activeGameMode, data.game, data.gameMode, data.teamSize, updateData]);
 
     // Map Pool State
     const [availableMaps, setAvailableMaps] = useState<{ id: string; map_name: string; map_image_url?: string }[]>([]);
@@ -205,7 +203,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         };
 
         fetchMaps();
-    }, [data.game, activeGameModeValue, hasMapPool, mapPoolSizeLimit, exactMapPoolRequired]);
+    }, [data.game, data.mapPoolIds, activeGameModeValue, hasMapPool, mapPoolSizeLimit, exactMapPoolRequired, updateData]);
 
 
     return (

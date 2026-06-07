@@ -71,7 +71,7 @@ const NAV: NavItem[] = [
 // ─── AccountSettings ──────────────────────────────────────────────────────────
 
 export default function AccountSettings() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('connected_accounts');
@@ -114,7 +114,7 @@ export default function AccountSettings() {
         toast({ title: 'Steam Linking Failed', description: (params.get('reason') || 'unknown').replace(/_/g, ' '), variant: 'destructive' });
       }
     }
-  }, []);
+  }, [queryClient, toast, user?.id]);
 
   const visibleNav = NAV.filter((n) => !n.venueOwnerOnly || ownsVenues);
   const activeItem = visibleNav.find((n) => n.key === activeTab) ?? visibleNav[0];

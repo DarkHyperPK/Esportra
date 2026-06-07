@@ -30,7 +30,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     label = 'Upload Image',
     helperText,
     customFileName,
-    useTimestamp = true,
+    useTimestamp: _useTimestamp = true,
 }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -62,7 +62,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         });
     };
 
-    const handleFileSelect = async (file: File) => {
+    const handleFileSelect = useCallback(async (file: File) => {
         if (!file.type.startsWith('image/')) {
             toast({
                 title: 'Invalid file',
@@ -87,7 +87,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         setImageSrc(imageDataUrl);
         setZoom(1);
         setBrightness(100);
-    };
+    }, [toast]);
 
     const handleCropSave = async () => {
         if (!imageSrc || !croppedAreaPixels) return;
@@ -101,7 +101,6 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
             }
 
             // Create a File from Blob
-            const fileExt = originalFile?.name.split('.').pop() || 'jpg';
             const croppedFile = new File([croppedImageBlob], originalFile?.name || 'image.jpg', {
                 type: 'image/jpeg', // getCroppedImg returns jpeg
             });
@@ -154,7 +153,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         setIsDragging(false);
         const file = e.dataTransfer.files[0];
         if (file) handleFileSelect(file);
-    }, []);
+    }, [handleFileSelect]);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();

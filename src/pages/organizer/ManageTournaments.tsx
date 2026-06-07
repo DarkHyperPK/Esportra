@@ -48,14 +48,6 @@ interface Tournament {
   currency?: string;
 }
 
-interface DeletedTournament {
-  id: string;
-  name: string;
-  game: string;
-  deleted_at: string;
-  days_remaining: number;
-}
-
 const normalizeTournamentRows = (value: any): any[] => {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.data)) return value.data;
@@ -358,7 +350,7 @@ const TournamentList = () => {
     }
   };
 
-  const handleBatchRestore = async () => {
+  const handleBatchRestore = useCallback(async () => {
     if (selectedDeletedIds.size === 0) return;
 
     try {
@@ -395,7 +387,7 @@ const TournamentList = () => {
       setRestoring(null);
       setBatchProgress(null);
     }
-  };
+  }, [selectedDeletedIds, toast, refreshLists]);
 
   const handlePermanentDelete = async (tournamentId: string, tournamentName: string) => {
     if (!confirm(`Are you sure you want to PERMANENTLY delete "${tournamentName}"? This cannot be undone.`)) {
@@ -430,7 +422,7 @@ const TournamentList = () => {
     }
   };
 
-  const handleBatchPermanentDelete = async () => {
+  const handleBatchPermanentDelete = useCallback(async () => {
     if (selectedDeletedIds.size === 0) return;
     const count = selectedDeletedIds.size;
     if (!confirm(`Permanently delete ${count} tournament${count === 1 ? '' : 's'}? This cannot be undone.`)) {
@@ -472,7 +464,7 @@ const TournamentList = () => {
       setRestoring(null);
       setBatchProgress(null);
     }
-  };
+  }, [selectedDeletedIds, toast, queryClient]);
 
   const selectionToolbar = useMemo(() => {
     if (activeTab === 'active' && tournaments.length > 0) {

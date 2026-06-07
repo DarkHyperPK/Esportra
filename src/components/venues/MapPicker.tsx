@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MapPin, Navigation, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,7 +76,7 @@ const MapPicker: React.FC<MapPickerProps> = ({
     );
   };
 
-  const handleSearch = async (query?: string) => {
+  const handleSearch = useCallback(async (query?: string) => {
     const q = (query || searchQuery).trim();
     if (!q) return;
     setSearching(true);
@@ -90,7 +90,7 @@ const MapPicker: React.FC<MapPickerProps> = ({
       }
     } catch { /* non-critical */ }
     setSearching(false);
-  };
+  }, [searchQuery, onChange]);
 
   // Auto-geocode from address prop on mount if no coordinates set
   const geocoded = useRef(false);
@@ -99,7 +99,7 @@ const MapPicker: React.FC<MapPickerProps> = ({
       geocoded.current = true;
       handleSearch(address);
     }
-  }, [address, hasPosition]);
+  }, [address, hasPosition, handleSearch]);
 
   return (
     <div className="space-y-2">

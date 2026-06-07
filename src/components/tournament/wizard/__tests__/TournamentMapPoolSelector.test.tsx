@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     canSelectAdditionalMap,
     filterTournamentMaps,
-} from '../TournamentMapPoolSelector';
+} from '../tournamentMapPoolUtils';
 
 const maps = [
     { id: 'm1', map_name: 'Bank', map_image_url: '/bank.avif' },

@@ -266,7 +266,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
             }
         }
         return errors;
-    }, [selectedTemplate, templateConfig, registeredTeamCount, maxLobbySize]);
+    }, [selectedTemplate, templateConfig, registeredTeamCount, maxLobbySize, unitsLabel]);
 
     const hasTemplateErrors = templateConfigErrors.some(e => e !== '');
 
@@ -437,7 +437,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
 
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
             onUpdate();
-        } catch (error: any) {
+        } catch {
             toast({ title: 'Error', description: 'Failed to reorder stages', variant: 'destructive' });
         }
     };
@@ -1430,7 +1430,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
                                     const groupCount = cfg?.groupCount || 1;
                                     // lobby size = ceil(teamsIn / groupCount), capped by cfg.capacity if set
                                     const autoLobbySize = groupCount > 0 ? Math.ceil(teamsIn / groupCount) : teamsIn;
-                                    const lobbySize = cfg?.capacity || autoLobbySize;
+                                    const _lobbySize = cfg?.capacity || autoLobbySize;
                                     const teamsPerGroup = groupCount > 0 ? Math.ceil(teamsIn / groupCount) : teamsIn;
                                     // Max groups = teamsIn (1 team per group is ridiculous but valid upper bound)
                                     const maxGroups = Math.min(teamsIn, 64);

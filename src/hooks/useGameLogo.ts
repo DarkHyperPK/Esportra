@@ -28,6 +28,7 @@ export const useGameLogo = (gameName: string | null | undefined): string | null 
  */
 export const useGameLogos = (gameNames: (string | null | undefined)[]): Record<string, string | null> => {
   const [logos, setLogos] = useState<Record<string, string | null>>({});
+  const gameNamesKey = gameNames.join(',');
 
   useEffect(() => {
     const uniqueGames = Array.from(new Set(
@@ -54,7 +55,7 @@ export const useGameLogos = (gameNames: (string | null | undefined)[]): Record<s
     });
 
     return () => { isMounted = false; };
-  }, [gameNames.join(',')]);
+  }, [gameNames, gameNamesKey]);
 
   return logos;
 };

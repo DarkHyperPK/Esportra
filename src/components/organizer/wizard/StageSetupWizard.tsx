@@ -236,8 +236,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     // Reset state when opening
     useEffect(() => {
         console.log('[StageWizard] Open changed:', open, 'Existing stages:', existingStages?.length);
-        console.log('[StageWizard] Current step:', step);
-        console.log('[StageWizard] Stages config:', stagesConfig.length);
 
         if (open) {
 
@@ -322,7 +320,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             setManualFormState(DEFAULT_STAGE_CONFIG);
             setEditingStageIndex(null);
         }
-    }, [open, tournamentId, game, existingStages]);
+    }, [open, tournamentId, game, existingStages, step, stagesConfig.length]);
 
 
     const handleTemplateSelect = (templateId: string) => {

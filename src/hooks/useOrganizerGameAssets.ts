@@ -155,7 +155,7 @@ export function useOrganizerGameAssetsPrefetch(
     unique.forEach((game) => {
       void ensureGameLoaded(game);
     });
-  }, [enabled, key]);
+  }, [enabled, key, gameNames]);
 }
 
 /**

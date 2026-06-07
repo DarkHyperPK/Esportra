@@ -28,7 +28,7 @@ export const TournamentSponsorSidebar: React.FC<Props> = ({ tournamentId }) => {
         tracked.current.add(l.sponsor_id);
       }
     });
-  }, [links, tournamentId]);
+  }, [sidebarSponsors, tournamentId]);
 
   if (sidebarSponsors.length === 0) return null;
 

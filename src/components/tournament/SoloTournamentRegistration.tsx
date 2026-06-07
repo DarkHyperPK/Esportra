@@ -75,13 +75,6 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
     }
   }, [profile?.username, riotAccount, isRiotGame]);
 
-  const handleInputChange = (field: keyof RegistrationData, value: string) => {
-    setRegistrationData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
   const validateRegistration = (): string | null => {
     if (!registrationData.gamer_tag.trim()) {
       return 'Gamer tag is required';
@@ -146,7 +139,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
       }
 
       // Create registration
-      const data = await apiClient.post<any>(`/api/tournaments/${tournament.id}/register`, {
+      await apiClient.post<any>(`/api/tournaments/${tournament.id}/register`, {
         participantType: 'solo',
         gamerTag: registrationData.gamer_tag.trim(),
         soloContactEmail: user.email,

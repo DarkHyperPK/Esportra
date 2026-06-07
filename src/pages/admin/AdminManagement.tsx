@@ -155,9 +155,8 @@ function AlertDropdownPanel({ onClose }: { onClose: () => void }) {
 
 const AdminManagement = () => {
   const { profile, signOut } = useAuth();
-  const { roles, hasPermission } = useAdmin();
+  const { hasPermission } = useAdmin();
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   // React Query hooks
   const statsQuery = useAdminStats();
@@ -168,7 +167,6 @@ const AdminManagement = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [auditSearch, setAuditSearch] = useState('');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'tournaments' | 'venues' | 'audit' | 'analytics'>('overview');
   const { data: alertSummary } = useAdminAlertSummary();
   const [showAlertPanel, setShowAlertPanel] = useState(false);
 

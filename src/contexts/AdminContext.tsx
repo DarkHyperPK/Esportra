@@ -69,7 +69,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setPermissions([]);
       }
 
-    } catch (error) {
+    } catch {
       setRoles([]);
       setPermissions([]);
     } finally {
@@ -77,7 +77,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setLoadingAdmin(false);
       }
     }
-  }, [user?.id]);
+  }, [user]);
 
   useEffect(() => {
     load();

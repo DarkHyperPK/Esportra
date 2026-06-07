@@ -30,7 +30,6 @@ import {
     History,
 } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments, useAdminUserSuspend, useAdminUserUnsuspend, useAdminBulkUserAction } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/apiClient";
@@ -53,12 +52,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 interface UserRole {
     role: string;
-}
-
-interface AdminRole {
-    id: string;
-    name: string;
-    key?: string;
 }
 
 interface User {
@@ -118,7 +111,6 @@ const USERS_PER_PAGE = 25;
 const UserManagementTool = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
-    const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -178,7 +170,7 @@ const UserManagementTool = () => {
     }, [page, searchTerm, roleFilter, statusFilter, sortBy, sortDir]);
 
     // Derive enriched users from the three queries
-    const profiles = usersQuery.data?.users ?? [];
+    const profiles = useMemo(() => usersQuery.data?.users ?? [], [usersQuery.data?.users]);
     const totalUsers = usersQuery.data?.total ?? profiles.length;
     const roleCounts: Record<string, number> = usersQuery.data?.roleCounts ?? {};
     const adminCount = usersQuery.data?.adminCount ?? 0;
@@ -372,24 +364,6 @@ const UserManagementTool = () => {
             return ['casual'];
         }
         return user.user_roles.map(ur => ur.role);
-    };
-
-    // Check if user has a specific role
-    const userHasRole = (user: User, role: string): boolean => {
-        const regularRoles = getUserRoles(user);
-        const adminRoles = user.admin_roles || [];
-
-        // Check regular roles
-        if (role === 'casual') {
-            return regularRoles.includes('casual') || (regularRoles.length === 0 && adminRoles.length === 0);
-        }
-        if (regularRoles.includes(role)) return true;
-
-        // Check admin roles
-        // We treat "admin" filter as "has any admin role"
-        if (role === 'admin' && adminRoles.length > 0) return true;
-
-        return adminRoles.includes(role);
     };
 
     const filteredUsers = users;
