@@ -1,16 +1,16 @@
 /**
- * gameContext.ts — Maps games to genre metadata, default configs, and suggested season templates.
- *
- * This drives the template-selection step in season creation.
+ * gameContext.ts — Derives season-wizard metadata from the backend game catalog cache.
  */
+
+import { getGameByName, getDefaultTeamSize, listCatalogGames } from '@/utils/gameFeatures';
 
 export type GameGenre = 'fps' | 'moba' | 'br' | 'fighter' | 'sports' | 'rts';
 
 export interface GameContext {
   genre: GameGenre;
   defaultTeamSize: number;
-  defaultFormat: string;            // e.g. 'single_elimination', 'swiss'
-  suggestedTemplateIds: string[];   // IDs from seasonTemplates.ts
+  defaultFormat: string;
+  suggestedTemplateIds: string[];
   hasMapVeto: boolean;
   hasPickBan: boolean;
   scoringType: 'placement' | 'match_wins' | 'kill_based';
@@ -18,150 +18,73 @@ export interface GameContext {
   isBattleRoyale: boolean;
 }
 
-const GAME_CONTEXT: Record<string, GameContext> = {
-  'Valorant': {
-    genre: 'fps',
-    defaultTeamSize: 5,
-    defaultFormat: 'double_elimination',
-    suggestedTemplateIds: ['team-bracket-safe'],
-    hasMapVeto: true,
-    hasPickBan: false,
-    scoringType: 'match_wins',
-    isTeamGame: true,
-    isBattleRoyale: false,
-  },
-  'Counter-Strike 2': {
-    genre: 'fps',
-    defaultTeamSize: 5,
-    defaultFormat: 'double_elimination',
-    suggestedTemplateIds: ['team-bracket-safe'],
-    hasMapVeto: true,
-    hasPickBan: false,
-    scoringType: 'match_wins',
-    isTeamGame: true,
-    isBattleRoyale: false,
-  },
-  'League of Legends': {
-    genre: 'moba',
-    defaultTeamSize: 5,
-    defaultFormat: 'double_elimination',
-    suggestedTemplateIds: ['team-bracket-safe'],
-    hasMapVeto: false,
-    hasPickBan: true,
-    scoringType: 'match_wins',
-    isTeamGame: true,
-    isBattleRoyale: false,
-  },
-  'Dota 2': {
-    genre: 'moba',
-    defaultTeamSize: 5,
-    defaultFormat: 'double_elimination',
-    suggestedTemplateIds: ['team-bracket-safe'],
-    hasMapVeto: false,
-    hasPickBan: true,
-    scoringType: 'match_wins',
-    isTeamGame: true,
-    isBattleRoyale: false,
-  },
-  'Fortnite': {
-    genre: 'br',
-    defaultTeamSize: 1,
-    defaultFormat: 'battle_royale',
-    suggestedTemplateIds: ['br-safe'],
-    hasMapVeto: false,
-    hasPickBan: false,
-    scoringType: 'placement',
-    isTeamGame: false,
-    isBattleRoyale: true,
-  },
-  'Apex Legends': {
-    genre: 'br',
-    defaultTeamSize: 3,
-    defaultFormat: 'battle_royale',
-    suggestedTemplateIds: ['br-safe'],
-    hasMapVeto: false,
-    hasPickBan: false,
-    scoringType: 'placement',
-    isTeamGame: true,
-    isBattleRoyale: true,
-  },
-  'PUBG': {
-    genre: 'br',
-    defaultTeamSize: 4,
-    defaultFormat: 'battle_royale',
-    suggestedTemplateIds: ['br-safe'],
-    hasMapVeto: false,
-    hasPickBan: false,
-    scoringType: 'placement',
-    isTeamGame: true,
-    isBattleRoyale: true,
-  },
-  'Rocket League': {
-    genre: 'sports',
-    defaultTeamSize: 3,
-    defaultFormat: 'swiss',
-    suggestedTemplateIds: ['sports-bracket-safe'],
-    hasMapVeto: false,
-    hasPickBan: false,
-    scoringType: 'match_wins',
-    isTeamGame: true,
-    isBattleRoyale: false,
-  },
-  'Tekken 8': {
-    genre: 'fighter',
-    defaultTeamSize: 1,
-    defaultFormat: 'double_elimination',
-    suggestedTemplateIds: ['fighter-safe'],
-    hasMapVeto: false,
-    hasPickBan: false,
-    scoringType: 'match_wins',
-    isTeamGame: false,
-    isBattleRoyale: false,
-  },
-  'EA FC': {
-    genre: 'sports',
-    defaultTeamSize: 1,
-    defaultFormat: 'single_elimination',
-    suggestedTemplateIds: ['sports-bracket-safe'],
-    hasMapVeto: false,
-    hasPickBan: false,
-    scoringType: 'match_wins',
-    isTeamGame: false,
-    isBattleRoyale: false,
-  },
+const CATEGORY_GENRE: Record<string, GameGenre> = {
+  fps: 'fps',
+  moba: 'moba',
+  fighting: 'fighter',
+  sports: 'sports',
+  rts: 'rts',
 };
 
-/** Get context for a game by name (case-insensitive) */
-export function getGameContext(gameName: string): GameContext | undefined {
-  const key = Object.keys(GAME_CONTEXT).find(
-    (k) => k.toLowerCase() === gameName.toLowerCase()
-  );
-  return key ? GAME_CONTEXT[key] : undefined;
+const TEMPLATE_BY_GENRE: Record<GameGenre, string[]> = {
+  fps: ['team-bracket-safe'],
+  moba: ['team-bracket-safe'],
+  br: ['br-safe'],
+  fighter: ['sports-bracket-safe'],
+  sports: ['sports-bracket-safe'],
+  rts: ['team-bracket-safe'],
+};
+
+function resolveGenre(category: string, isBr: boolean): GameGenre {
+  if (isBr) return 'br';
+  const normalized = category.trim().toLowerCase();
+  return CATEGORY_GENRE[normalized] ?? 'fps';
 }
 
-/** Get genre for a game */
+function buildContextFromCatalog(gameName: string): GameContext | undefined {
+  const game = getGameByName(gameName);
+  if (!game) return undefined;
+
+  const isBr = game.type === 'battle_royale';
+  const genre = resolveGenre(game.category, isBr);
+  const teamSize = getDefaultTeamSize(gameName);
+  const defaultStructure = game.tournamentCapabilities?.defaultStructure ?? 'single_elimination';
+
+  return {
+    genre,
+    defaultTeamSize: teamSize,
+    defaultFormat: defaultStructure,
+    suggestedTemplateIds: TEMPLATE_BY_GENRE[genre],
+    hasMapVeto: Boolean(game.features?.mapVeto),
+    hasPickBan: false,
+    scoringType: isBr ? 'placement' : 'match_wins',
+    isTeamGame: teamSize > 1,
+    isBattleRoyale: isBr,
+  };
+}
+
+export function getGameContext(gameName: string): GameContext | undefined {
+  return buildContextFromCatalog(gameName);
+}
+
 export function getGameGenre(gameName: string): GameGenre | undefined {
   return getGameContext(gameName)?.genre;
 }
 
-/** Get suggested template IDs for a game */
 export function getSuggestedTemplates(gameName: string): string[] {
   return getGameContext(gameName)?.suggestedTemplateIds ?? [];
 }
 
-/** Check if a game is Battle Royale */
 export function isBattleRoyaleGame(gameName: string): boolean {
   return getGameContext(gameName)?.isBattleRoyale ?? false;
 }
 
-/** Get all games that match a genre */
 export function getGamesByGenre(genre: GameGenre): string[] {
-  return Object.entries(GAME_CONTEXT)
-    .filter(([, ctx]) => ctx.genre === genre)
-    .map(([name]) => name);
+  return listCatalogGames()
+    .filter((game) => resolveGenre(game.category, game.type === 'battle_royale') === genre)
+    .map((game) => game.name);
 }
 
-/** Genre labels for display */
 export const GENRE_LABELS: Record<GameGenre, string> = {
   fps: 'FPS',
   moba: 'MOBA',
@@ -170,5 +93,3 @@ export const GENRE_LABELS: Record<GameGenre, string> = {
   sports: 'Sports',
   rts: 'RTS',
 };
-
-export default GAME_CONTEXT;

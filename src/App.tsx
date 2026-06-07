@@ -8,6 +8,8 @@ import { PageTransition } from "@/components/PageTransition";
 import { AdminProvider } from "@/contexts/AdminContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { RoleProvider } from "@/contexts/RoleContext";
+import { GameCatalogProvider } from "@/contexts/GameCatalogContext";
+import { useGameCatalogContext } from "@/hooks/useGameCatalogContext";
 import { SignalRProvider } from "@/contexts/SignalRContext";
 import { TransitionLayout } from "@/components/TransitionLayout";
 import { SuspensionGuard } from "@/components/auth/SuspensionGuard";
@@ -75,6 +77,7 @@ const IpAllowlistTool = lazyWithRetry(() => import("./pages/admin/tools/IpAllowl
 const ScheduledReports = lazyWithRetry(() => import("./pages/admin/tools/ScheduledReports"));
 const GdprCompliance = lazyWithRetry(() => import("./pages/admin/tools/GdprCompliance"));
 const AnomalyDetection = lazyWithRetry(() => import("./pages/admin/tools/AnomalyDetection"));
+const GameCatalogManagement = lazyWithRetry(() => import("./pages/admin/tools/GameCatalogManagement"));
 
 // Venue Owner
 const VenueOwnerDashboard = lazyWithRetry(() => import("./pages/venue-owner/Dashboard"));
@@ -125,6 +128,7 @@ const ADMIN_ROLE_SETS = {
   systemSettings: ['super_admin', 'ops_admin', 'finance_admin'],
   disputes: ['super_admin', 'moderator', 'ops_admin'],
   superAdmin: ['super_admin'],
+  gamesCatalog: ['super_admin', 'ops_admin'],
 };
 
 // Venues
@@ -401,6 +405,17 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <SponsorManagementTool />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+
+                <Route path="/admin/tools/game-catalog" element={
+                  <AdminProtectedRoute
+                    requiredPermission="games:manage"
+                    requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}
+                  >
+                    <AdminLayout>
+                      <GameCatalogManagement />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />
@@ -797,21 +812,46 @@ const AppContent = React.memo(() => {
 
 AppContent.displayName = 'AppContent';
 
+function CatalogBootstrapGate({ children }: { children: React.ReactNode }) {
+  const { isReady, isLoading, isUnavailable } = useGameCatalogContext();
+
+  if (isLoading && !isReady) return <PremiumLoadingScreen />;
+
+  if (isUnavailable) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#050507] text-white p-6">
+        <div className="max-w-md text-center space-y-3">
+          <h1 className="text-xl font-semibold">Game catalog unavailable</h1>
+          <p className="text-zinc-400 text-sm">
+            The platform could not load the authoritative game catalog from the backend.
+            Tournament and game features require this data. Please retry once the API is reachable.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isReady) return <PremiumLoadingScreen />;
+  return <>{children}</>;
+}
+
 const App = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
         <SignalRProvider>
           <RoleProvider>
-
-            <TooltipProvider>
-              <NotificationProvider>
-                <AdminProvider>
-                  <AppContent />
-                </AdminProvider>
-              </NotificationProvider>
-            </TooltipProvider>
-
+            <GameCatalogProvider>
+              <CatalogBootstrapGate>
+                <TooltipProvider>
+                  <NotificationProvider>
+                    <AdminProvider>
+                      <AppContent />
+                    </AdminProvider>
+                  </NotificationProvider>
+                </TooltipProvider>
+              </CatalogBootstrapGate>
+            </GameCatalogProvider>
           </RoleProvider>
         </SignalRProvider>
       </AuthProvider>

@@ -5,6 +5,9 @@ import {
   getCatalogGames,
   getCatalogMeta,
   getCatalogSyncManifest,
+  getLocalFallbackGames,
+  getLocalFallbackMeta,
+  readStoredCatalogSnapshot,
   setGameCatalogFromApi,
 } from '@/utils/gameCatalogCache';
 import type { EsportsGame } from '@/utils/gameFeatures';
@@ -19,11 +22,14 @@ export type GameCatalogData = {
 
 function offlineCatalogSnapshot(): GameCatalogData {
   const manifest = getCatalogSyncManifest();
+  const fallbackMeta = getLocalFallbackMeta();
+  const fallbackGames = getLocalFallbackGames();
+
   return {
-    catalogVersion: manifest.catalogVersion,
-    schemaVersion: manifest.schemaVersion,
-    contentHash: manifest.contentHash,
-    games: [],
+    catalogVersion: fallbackMeta?.catalogVersion ?? manifest.catalogVersion,
+    schemaVersion: fallbackMeta?.schemaVersion ?? manifest.schemaVersion,
+    contentHash: fallbackMeta?.contentHash ?? manifest.contentHash,
+    games: fallbackGames,
     source: 'offline',
   };
 }
@@ -40,8 +46,13 @@ async function fetchGameCatalog(): Promise<GameCatalogData> {
       source: 'api',
     };
   } catch (error) {
-    console.warn('[GameCatalog] API unavailable; catalog data requires backend.', error);
-    return offlineCatalogSnapshot();
+    console.warn('[GameCatalog] API unavailable; using offline snapshot if present.', error);
+    const offline = offlineCatalogSnapshot();
+    if (offline.games.length) {
+      const snapshot = readStoredCatalogSnapshot();
+      if (snapshot) setGameCatalogFromApi(snapshot);
+    }
+    return offline;
   }
 }
 
@@ -54,12 +65,17 @@ export function useGameCatalog() {
     placeholderData: () => {
       const cached = getCatalogGames();
       const meta = getCatalogMeta();
-      if (!cached?.length || !meta) return undefined;
-      return {
-        ...meta,
-        games: cached,
-        source: 'api' as const,
-      };
+      if (cached?.length && meta) {
+        return {
+          ...meta,
+          games: cached,
+          source: 'api' as const,
+        };
+      }
+
+      const offline = offlineCatalogSnapshot();
+      if (offline.games.length) return offline;
+      return undefined;
     },
   });
 }
@@ -67,5 +83,6 @@ export function useGameCatalog() {
 export function getGameCatalogGames(fallbackOnEmpty = true): EsportsGame[] {
   const cached = getCatalogGames();
   if (cached?.length) return cached;
-  return fallbackOnEmpty ? [] : [];
+  if (!fallbackOnEmpty) return [];
+  return getLocalFallbackGames();
 }

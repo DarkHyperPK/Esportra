@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { buildSeasonTemplatePlan } from '@/components/season/builder/seasonTemplateHydration';
 import { getTemplatesForGame, type SeasonTemplate } from '@/data/seasonTemplates';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
-import { getLocalLogo } from '@/utils/gameCatalogCache';
 import type { CreateSeasonRequest, CreateSeasonResponse, SeasonParticipantMode } from '@/types/season';
 import { useSeasonSmoothScroll } from './useSeasonSmoothScroll';
 
@@ -123,7 +122,7 @@ const SeasonWizard = () => {
       slug: game.slug,
       name: game.name,
       category: game.category,
-      logo: game.logo || getLocalLogo(game.slug) || null,
+      logo: game.logo || null,
       defaultModeKey: game.defaultMode ?? game.defaultFormat,
       modes: (game.modes ?? game.formats).map((mode) => ({
         modeKey: mode.key || mode.value,

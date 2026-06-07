@@ -76,6 +76,9 @@ export type CatalogGame = {
   defaultModeKey: string;
   features: Record<string, unknown>;
   brConfig: Record<string, unknown> | null;
+  logo?: string | null;
+  sortOrder?: number;
+  aliases?: string[];
   modes: CatalogMode[];
   tournamentStructures: CatalogStructure[];
 };

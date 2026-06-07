@@ -26,6 +26,11 @@ export type CatalogGameApi = {
   defaultModeKey: string;
   features: Record<string, unknown>;
   brConfig: unknown;
+  logo?: string | null;
+  icon?: string | null;
+  cover?: string | null;
+  sortOrder?: number;
+  aliases?: string[];
   modes: CatalogModeApi[];
   tournamentStructures: CatalogStructureApi[];
 };
@@ -35,6 +40,34 @@ export type GameCatalogApiResponse = {
   schemaVersion: number;
   contentHash: string;
   games: CatalogGameApi[];
+};
+
+export type GameCatalogVersionSummary = {
+  id: string;
+  catalogVersion: string;
+  schemaVersion: number;
+  contentHash: string;
+  status: string;
+  source: string;
+  isActive: boolean;
+  importedAt?: string | null;
+  publishedAt?: string | null;
+};
+
+export type UpsertDraftGameRequest = {
+  name: string;
+  category?: string | null;
+  gameType: string;
+  defaultModeKey: string;
+  features: Record<string, unknown>;
+  brConfig?: unknown;
+  logoUrl?: string | null;
+  iconUrl?: string | null;
+  coverUrl?: string | null;
+  sortOrder: number;
+  modes: CatalogModeApi[];
+  tournamentStructures: CatalogStructureApi[];
+  aliases?: string[];
 };
 
 export type ParsedCatalogGame = {

@@ -86,6 +86,16 @@ test.describe('@staging-only Game catalog — backend robustness', () => {
     }
   });
 
+  test('catalog games expose backend logo field in API shape', async () => {
+    const catalog = await fetchCatalog(env!.apiUrl);
+    expect(catalog.games.length).toBeGreaterThan(0);
+    for (const game of catalog.games) {
+      expect(game).toHaveProperty('logo');
+      expect(game).toHaveProperty('sortOrder');
+      expect(game).toHaveProperty('aliases');
+    }
+  });
+
   test('unknown catalog alias returns 404', async () => {
     const { status, body } = await fetchCatalogGame(env!.apiUrl, 'not-a-real-game-xyz');
     expect(status).toBe(404);

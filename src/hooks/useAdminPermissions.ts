@@ -148,6 +148,22 @@ export const ADMIN_PERMISSIONS: Record<string, AdminPermission> = {
     description: 'View platform analytics and reports',
     resource: 'analytics',
     action: 'read'
+  },
+
+  // Games catalog
+  'games:view': {
+    key: 'games:view',
+    name: 'View Game Catalog',
+    description: 'View platform game catalog versions and draft',
+    resource: 'games',
+    action: 'view'
+  },
+  'games:manage': {
+    key: 'games:manage',
+    name: 'Manage Game Catalog',
+    description: 'Edit, publish, and manage the platform game catalog',
+    resource: 'games',
+    action: 'manage'
   }
 };
 
@@ -161,7 +177,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     'system:audit',
     'disputes:resolve',
     'sponsors:view',
-    'analytics:view'
+    'analytics:view',
+    'games:view', 'games:manage'
   ],
   'finance_admin': [
     'users:view', 'users:edit',

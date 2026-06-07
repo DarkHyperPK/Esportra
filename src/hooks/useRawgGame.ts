@@ -85,7 +85,10 @@ function toPublicAssetPath(path: string | undefined): string | null {
     return path.startsWith('/') ? path : `/${path}`;
 }
 
-/** Local bundled IGDB art (public/games/igdb) — works when RAWG/IGDB APIs fail. */
+/**
+ * Offline IGDB art from igdb-manifest.json.
+ * Prefer remote heroUrl/coverUrl — local public/games/igdb/* files are not shipped in the app bundle.
+ */
 export function getBundledGameAssets(gameName: string): CachedGame | null {
     const catalogGame = resolveCatalogGame(gameName);
     const normalized = gameName.trim().toLowerCase();
@@ -93,22 +96,33 @@ export function getBundledGameAssets(gameName: string): CachedGame | null {
         (catalogGame ? bundledIgdbBySlug.get(catalogGame.slug.toLowerCase()) : undefined)
         ?? bundledIgdbByName.get(normalized);
 
-    const cover = toPublicAssetPath(igdbEntry?.cover) ?? igdbEntry?.coverUrl ?? null;
-    const hero = toPublicAssetPath(igdbEntry?.hero) ?? igdbEntry?.heroUrl ?? null;
-    const header = toPublicAssetPath(igdbEntry?.header) ?? igdbEntry?.heroUrl ?? null;
-    const catalogLogo = toPublicAssetPath(catalogGame?.logo);
+    if (!igdbEntry) return null;
 
-    const banner = hero ?? header ?? cover ?? catalogLogo;
+    const cover = igdbEntry.coverUrl ?? null;
+    const hero = igdbEntry.heroUrl ?? null;
+    const header = igdbEntry.heroUrl ?? null;
+
+    const banner = hero ?? header ?? cover;
     if (!banner) return null;
 
     const rawgScreenshots = [hero, header].filter(Boolean) as string[];
     return {
-        gameLogo: cover ?? catalogLogo ?? banner,
+        gameLogo: cover ?? banner,
         gameBanner: banner,
         cover,
         screenshots: rawgScreenshots.length > 0 ? rawgScreenshots : [banner],
         rawgScreenshots: rawgScreenshots.length > 0 ? rawgScreenshots : [banner],
         videos: [],
+    };
+}
+
+/** Lightweight banner/cover pair for landing cards and other static surfaces. */
+export function getManifestGameAssets(gameName: string): { banner: string | null; cover: string | null } {
+    const bundled = getBundledGameAssets(gameName);
+    if (!bundled) return { banner: null, cover: null };
+    return {
+        banner: bundled.gameBanner,
+        cover: bundled.cover ?? bundled.gameLogo,
     };
 }
 
