@@ -186,7 +186,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
 
                 setAvailableMaps(maps || []);
 
-                // Auto-select when pool is empty (e.g. after mode switch)
+                // Auto-select only on initial load for this game/mode (not when user toggles maps).
                 if (maps && maps.length > 0) {
                     if (!data.mapPoolIds || data.mapPoolIds.length === 0) {
                         updateData({ mapPoolIds: maps.slice(0, mapPoolSizeLimit).map(m => m.id) });
@@ -203,7 +203,8 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         };
 
         fetchMaps();
-    }, [data.game, data.mapPoolIds, activeGameModeValue, hasMapPool, mapPoolSizeLimit, exactMapPoolRequired, updateData]);
+        // Intentionally omit data.mapPoolIds — selection changes must not re-fetch the catalog.
+    }, [data.game, activeGameModeValue, hasMapPool, mapPoolSizeLimit, updateData]);
 
 
     return (
