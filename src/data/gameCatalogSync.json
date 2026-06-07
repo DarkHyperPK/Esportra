@@ -1,7 +1,7 @@
 {
-  "catalogVersion": "2026.06.07-r6s-veto-catalog",
+  "catalogVersion": "2026.06.08-mode-overlays-catalog",
   "schemaVersion": 1,
-  "contentHash": "e250f3b86c6915c2b0794282b6b5236d18d014fc43d473ac7abea8ee51f56d7f",
+  "contentHash": "f27571f6bbdb8f59322fcaa3a168064c0e18862298777544c28d4741ab09bd3d",
   "backendCatalogRelativePath": "src/Esportra.Api/GameCatalog/esportsGames.json",
   "updatedAt": "2026-06-07"
 }

@@ -10,6 +10,8 @@ export type CatalogModeApi = {
   aliases?: string[];
   modeGroup?: string | null;
   variantLabel?: string | null;
+  mapPoolFilter?: 'standard' | 'skirmish' | null;
+  features?: Partial<Record<string, unknown>> | null;
 };
 
 export type CatalogStructureApi = {

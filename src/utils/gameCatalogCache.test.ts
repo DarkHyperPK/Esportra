@@ -33,6 +33,38 @@ describe('catalogGameToEsportsGame', () => {
     expect(mapped.aliases).toEqual(['valorant', 'Valorant', 'vct']);
     expect(mapped.slug).toBe('valorant');
   });
+
+  it('maps skirmish mode overlays from the API', () => {
+    const apiGame: CatalogGameApi = {
+      slug: 'valorant',
+      name: 'Valorant',
+      category: 'FPS',
+      gameType: 'bracket',
+      defaultModeKey: '5v5',
+      features: { mapVeto: true, mapPool: true, mapPoolSize: 7 },
+      brConfig: null,
+      modes: [{
+        modeKey: 'skirmish_1v1',
+        name: 'Skirmish 1v1',
+        teamSize: 1,
+        participantMode: 'solo',
+        allowsSubstitutes: false,
+        modeGroup: 'Skirmish',
+        mapPoolFilter: 'skirmish',
+        features: { mapVeto: false, mapPool: false, mapPoolSize: 0 },
+      }],
+      tournamentStructures: [{
+        structureKey: 'single_elimination',
+        name: 'Single Elimination',
+        isDefault: true,
+      }],
+    };
+
+    const mapped = catalogGameToEsportsGame(apiGame);
+    const skirmish = mapped.modes?.find((mode) => mode.key === 'skirmish_1v1');
+    expect(skirmish?.mapPoolFilter).toBe('skirmish');
+    expect(skirmish?.features).toEqual({ mapVeto: false, mapPool: false, mapPoolSize: 0 });
+  });
 });
 
 describe('readStoredCatalogSnapshot validation', () => {

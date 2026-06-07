@@ -18,6 +18,8 @@ function gameToCatalogResponse(game: NonNullable<ReturnType<typeof getGameByName
     aliases: mode.aliases ?? [],
     modeGroup: mode.modeGroup ?? null,
     variantLabel: mode.variantLabel ?? null,
+    mapPoolFilter: mode.mapPoolFilter ?? null,
+    features: mode.features ?? null,
   }));
 
   const tournamentStructures = (game.tournamentCapabilities?.supportedStructures ?? []).map((structure, index) => ({

@@ -77,6 +77,10 @@ export function getLocalFallbackMeta(): Pick<GameCatalogApiResponse, 'catalogVer
 }
 
 function mapCatalogMode(mode: CatalogGameApi['modes'][number]): GameMode {
+  const features = mode.features && Object.keys(mode.features).length > 0
+    ? (mode.features as Partial<GameFeatures>)
+    : undefined;
+
   return {
     name: mode.name,
     key: mode.modeKey,
@@ -88,6 +92,10 @@ function mapCatalogMode(mode: CatalogGameApi['modes'][number]): GameMode {
     aliases: mode.aliases ?? [],
     modeGroup: mode.modeGroup ?? undefined,
     variantLabel: mode.variantLabel ?? undefined,
+    mapPoolFilter: mode.mapPoolFilter === 'skirmish' || mode.mapPoolFilter === 'standard'
+      ? mode.mapPoolFilter
+      : undefined,
+    features,
   };
 }
 
