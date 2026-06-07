@@ -14,7 +14,7 @@
     "lint": "eslint src --max-warnings 9999",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "test:e2e:staging": "playwright test --grep-invert @flaky",
+    "test:e2e:staging": "playwright test --project=chromium --grep-invert @flaky",
     "test:e2e:flaky": "playwright test --grep @flaky",
     "test:e2e:promotion": "playwright test --grep @promotion",
     "test:e2e:br": "playwright test e2e/br-errors-negative.spec.ts e2e/br-organizer-games.spec.ts e2e/br-organizer-stages.spec.ts e2e/br-player-game-room.spec.ts e2e/br-public-leaderboard.spec.ts e2e/br-round-evidence.spec.ts --workers=1",
