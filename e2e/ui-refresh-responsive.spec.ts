@@ -88,7 +88,7 @@ test.describe('@ui-refresh @ui-refresh-responsive Site UI refresh — responsive
       await gotoShellPage(page, route);
       await assertNavbarMounted(page);
       await waitForShellSettled(page);
-      await assertNoHorizontalOverflow(page);
+      await assertNoHorizontalOverflow(page, route);
       assertNoNewConsoleErrors(errors, start, route);
     }
   });

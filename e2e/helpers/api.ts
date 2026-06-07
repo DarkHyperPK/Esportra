@@ -22,6 +22,38 @@ export function getErrorText(body: string): string {
   return parsed.error || parsed.message || parsed.detail || parsed.title || body;
 }
 
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Retry a request that may be rate-limited (429).
+ * Waits `retryAfterSeconds` from the response body, then retries up to `maxRetries` times.
+ */
+export async function withRateLimitRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 5,
+): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const is429 = message.includes('(429)') || message.includes('Too many requests');
+      if (!is429 || attempt >= maxRetries) throw error;
+
+      let waitMs = 35_000;
+      const retryMatch = message.match(/"retryAfterSeconds"\s*:\s*(\d+)/);
+      if (retryMatch) {
+        waitMs = (parseInt(retryMatch[1], 10) + 2) * 1_000;
+      }
+      await sleep(waitMs);
+      attempt += 1;
+    }
+  }
+}
+
 export class ApiClient {
   constructor(
     private readonly baseUrl: string,
@@ -37,39 +69,47 @@ export class ApiClient {
   }
 
   async get<T>(path: string): Promise<T> {
-    const res = await fetch(`${this.baseUrl}${path}`, { headers: this.headers() });
-    if (!res.ok) throw new Error(`GET ${path} failed (${res.status}): ${await res.text()}`);
-    return res.json() as Promise<T>;
+    return withRateLimitRetry(async () => {
+      const res = await fetch(`${this.baseUrl}${path}`, { headers: this.headers() });
+      if (!res.ok) throw new Error(`GET ${path} failed (${res.status}): ${await res.text()}`);
+      return res.json() as Promise<T>;
+    });
   }
 
   async post<T>(path: string, body?: unknown): Promise<T> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method: 'POST',
-      headers: this.headers(),
-      body: body === undefined ? undefined : JSON.stringify(body),
+    return withRateLimitRetry(async () => {
+      const res = await fetch(`${this.baseUrl}${path}`, {
+        method: 'POST',
+        headers: this.headers(),
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`POST ${path} failed (${res.status}): ${await res.text()}`);
+      return res.json() as Promise<T>;
     });
-    if (!res.ok) throw new Error(`POST ${path} failed (${res.status}): ${await res.text()}`);
-    return res.json() as Promise<T>;
   }
 
   async patch<T>(path: string, body: unknown): Promise<T> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method: 'PATCH',
-      headers: this.headers(),
-      body: JSON.stringify(body),
+    return withRateLimitRetry(async () => {
+      const res = await fetch(`${this.baseUrl}${path}`, {
+        method: 'PATCH',
+        headers: this.headers(),
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`PATCH ${path} failed (${res.status}): ${await res.text()}`);
+      return res.json() as Promise<T>;
     });
-    if (!res.ok) throw new Error(`PATCH ${path} failed (${res.status}): ${await res.text()}`);
-    return res.json() as Promise<T>;
   }
 
   async put<T>(path: string, body: unknown): Promise<T> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method: 'PUT',
-      headers: this.headers(),
-      body: JSON.stringify(body),
+    return withRateLimitRetry(async () => {
+      const res = await fetch(`${this.baseUrl}${path}`, {
+        method: 'PUT',
+        headers: this.headers(),
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`PUT ${path} failed (${res.status}): ${await res.text()}`);
+      return res.json() as Promise<T>;
     });
-    if (!res.ok) throw new Error(`PUT ${path} failed (${res.status}): ${await res.text()}`);
-    return res.json() as Promise<T>;
   }
 
   async request(

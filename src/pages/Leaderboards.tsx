@@ -192,8 +192,9 @@ const Leaderboards: React.FC = () => {
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="space-y-3"
+                        className="overflow-x-auto -mx-4 px-4"
                     >
+                        <div className="min-w-[32rem] space-y-3">
                         {/* Header Row */}
                         <div className="grid grid-cols-[60px,1fr,repeat(4,minmax(60px,100px)),100px] gap-2 px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">
                             <span>Rank</span>
@@ -283,6 +284,7 @@ const Leaderboards: React.FC = () => {
                                 );
                             })}
                         </AnimatePresence>
+                        </div>
                     </motion.div>
                 )}
             </div>

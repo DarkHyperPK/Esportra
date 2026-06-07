@@ -218,12 +218,12 @@ export async function assertScrollWorks(page: Page): Promise<void> {
   ).toBe(true);
 }
 
-export async function assertNoHorizontalOverflow(page: Page): Promise<void> {
+export async function assertNoHorizontalOverflow(page: Page, context?: string): Promise<void> {
   const overflow = await page.evaluate(() => {
     const doc = document.documentElement;
     return doc.scrollWidth > doc.clientWidth + 2;
   });
-  expect(overflow).toBe(false);
+  expect(overflow, context ? `Horizontal overflow on ${context}` : undefined).toBe(false);
 }
 
 export async function captureUiArtifact(
