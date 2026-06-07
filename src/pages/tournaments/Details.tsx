@@ -66,7 +66,6 @@ const TournamentDetails = () => {
   const { user } = useAuth();
   const { currentRole } = useRole();
   const admin = useAdmin();
-  const requireVerification = useRequireVerification();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
   const [, setCheckInCount] = useState(0);
