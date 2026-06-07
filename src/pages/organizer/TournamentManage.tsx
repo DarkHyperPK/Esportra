@@ -213,7 +213,10 @@ const TournamentDashboard = () => {
     () => (dashboardData?.participants || []) as Participant[],
     [dashboardData?.participants],
   );
-  const stages = dashboardData?.stages || [];
+  const stages = useMemo(
+    () => dashboardData?.stages ?? [],
+    [dashboardData?.stages],
+  );
   const isOrganizer = dashboardData?.isOrganizer || false;
 
   const stageCompletionQueries = useQueries({

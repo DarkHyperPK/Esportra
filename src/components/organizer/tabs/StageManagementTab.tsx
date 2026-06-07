@@ -20,6 +20,7 @@ import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import { getStageProgressFromStage } from '@/components/tournament/getStageProgressFromStage';
 import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
+import { buildStageSyncPayload } from '@/utils/stageSync';
 // import { useStageRealtime } from '@/hooks/useStageRealtime';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
@@ -93,11 +94,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         }
     });
     */
-
-    // Refetch parent data on mount to pick up status changes made in bracket views
-    useEffect(() => {
-        onUpdate();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         const checkBrackets = async () => {
@@ -175,16 +171,15 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const handleAddStage = async () => {
         if (!tournamentId || !newStageName) return;
         try {
-            const newOrder = stages.length + 1;
-            await apiClient.post(`/api/tournaments/${tournamentId}/stages`, {
-                    tournament_id: tournamentId,
-                    name: newStageName,
-                    format: newStageFormat,
-                    stage_order: newOrder,
-                    capacity: newStageCapacity === '' ? null : Number(newStageCapacity),
-                    advancement_count: newStageAdvancement === '' ? null : Number(newStageAdvancement),
-                    status: 'upcoming'
-                });
+            const stageDtos = buildStageSyncPayload(sortedStages, {
+                name: newStageName,
+                format: newStageFormat,
+                capacity: newStageCapacity === '' ? null : Number(newStageCapacity),
+                advancementCount: newStageAdvancement === '' ? null : Number(newStageAdvancement),
+                bestOf: 1,
+            });
+
+            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
 
             toast({ title: 'Stage added', description: `${newStageName} has been added to the tournament.` });
             setAddStageDialogOpen(false);

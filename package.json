@@ -13,20 +13,8 @@
     "seed:game-logos": "node scripts/seed-game-logos.mjs",
     "sync:game-catalog": "node scripts/sync-game-catalog-manifest.mjs",
     "lint": "eslint src --max-warnings 0",
-    "preview": "vite preview",
-    "test:e2e": "playwright test",
-    "test:e2e:staging": "playwright test --project=chromium --grep-invert \"@flaky|ineligible team when no matching|understaffed 5v5 roster|creates roster through Teams\"",
-    "test:e2e:flaky": "playwright test --grep @flaky",
-    "test:e2e:promotion": "playwright test --grep @promotion",
-    "test:e2e:br": "playwright test e2e/br-errors-negative.spec.ts e2e/br-organizer-games.spec.ts e2e/br-organizer-stages.spec.ts e2e/br-player-game-room.spec.ts e2e/br-public-leaderboard.spec.ts e2e/br-round-evidence.spec.ts --workers=1",
-    "test:e2e:catalog": "playwright test e2e/game-catalog-robustness.spec.ts e2e/game-catalog-gui.spec.ts --workers=1",
-    "test:e2e:veto": "playwright test e2e/map-veto-r6-valorant.spec.ts --workers=1",
-    "test:e2e:ui-refresh": "playwright test --grep @ui-refresh --grep-invert @ui-refresh-live --project=chromium-desktop --project=firefox-desktop --project=webkit-desktop --project=tablet --project=mobile",
-    "test:e2e:ui-refresh:live": "playwright test --grep @ui-refresh-live --project=live-smoke",
-    "test:staging-qa": "playwright test e2e/staging-manual-plan.spec.ts e2e/tournament-browse-promotion.spec.ts e2e/promotion-organizer.spec.ts e2e/stage-status-simplification.spec.ts e2e/br-player-game-room.spec.ts e2e/br-round-evidence.spec.ts e2e/br-public-leaderboard.spec.ts e2e/game-catalog-gui.spec.ts --grep-invert \"@flaky|creates roster through Teams|ineligible team when no matching|understaffed 5v5 roster\" --workers=1",
-    "test:e2e:tournament-ui": "playwright test --project=staging-ui e2e/tournament-experience-ui-single-elim.spec.ts e2e/tournament-experience-ui-formats.spec.ts e2e/tournament-experience-ui-standings.spec.ts --workers=1",
-    "test:e2e:tournament-ui:smoke": "playwright test --project=staging-ui e2e/tournament-experience-ui-single-elim.spec.ts --grep \"Valorant BO1 SE\" --workers=1",
-    "test:e2e:tournament-sim:api": "playwright test --grep @api-simulation --workers=1"
+    "test": "vitest run",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@capacitor/android": "^7.2.0",
@@ -117,8 +105,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
-    "@playwright/test": "^1.58.2",
     "@tailwindcss/typography": "^0.5.15",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@types/he": "^1.2.3",
     "@types/node": "^22.5.5",

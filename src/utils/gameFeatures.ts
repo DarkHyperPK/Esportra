@@ -3,6 +3,7 @@
 import type { BRConfig } from '@/types/battleRoyale';
 import { catalogGameHasBRMaps, getCatalogMapPool } from '@/utils/gameCatalogBr';
 import { getCatalogGames, getLocalFallbackGames } from '@/utils/gameCatalogCache';
+import { resolveGameLogoUrl } from '@/utils/gameLogoResolver';
 
 export interface GameFeatures {
   mapVeto: boolean;
@@ -101,9 +102,10 @@ export function listCatalogGames(): EsportsGame[] {
   return getAllGames();
 }
 
-/** Logo path for a game (from catalog cache or bundled fallback). */
+/** Logo path for a game (catalog → static assets → IGDB manifest → placeholder). */
 export function getGameLogo(gameName: string): string {
-  return getGameByName(gameName)?.logo ?? '';
+  const game = getGameByName(gameName);
+  return resolveGameLogoUrl(gameName, game?.logo);
 }
 
 /** Get feature flags for a game (returns defaults if game not found) */

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Calendar, Check, ChevronRight, Gamepad2, Settings, Target, Trophy } from 'lucide-react';
+import { AlertTriangle, Calendar, Check, ChevronRight, Settings, Target, Trophy } from 'lucide-react';
+import { GameLogoImage } from '@/components/games/GameLogoImage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -445,19 +446,12 @@ const SeasonWizard = () => {
                         >
                           <div className="flex items-center gap-3">
                             <div className="flex h-12 w-12 items-center justify-center border border-white/10 bg-black p-2">
-                              {game.logo ? (
-                                <img
-                                  src={game.logo}
-                                  alt={`${game.name} logo`}
-                                  className="h-full w-full object-contain"
-                                  loading="lazy"
-                                  onError={(event) => {
-                                    event.currentTarget.style.display = 'none';
-                                    event.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                  }}
-                                />
-                              ) : null}
-                              <Gamepad2 className={cn('h-5 w-5 text-rose-400', game.logo ? 'hidden' : '')} />
+                              <GameLogoImage
+                                gameName={game.name}
+                                catalogLogo={game.logo}
+                                alt={`${game.name} logo`}
+                                className="h-full w-full object-contain"
+                              />
                             </div>
                             <div>
                               <p className="text-sm font-bold text-white">{game.name}</p>

@@ -15,6 +15,7 @@ import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import { getGameByName, getDefaultGameMode, getDefaultTeamSize, getGameModes, getGameModeGroups, isBattleRoyale, getBRConfig, EsportsGame, getEffectiveGameFeatures, listCatalogGames } from '@/utils/gameFeatures';
+import { GameLogoImageFromCatalog } from '@/components/games/GameLogoImage';
 
 const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode }) => {
     useGameCatalog();
@@ -136,7 +137,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                                 className="focus:bg-green-600 focus:text-white cursor-pointer"
                             >
                                 <div className="flex items-center gap-2">
-                                    <img src={game.logo} alt="" className="w-5 h-5 rounded object-cover" />
+                                    <GameLogoImageFromCatalog game={game} className="w-5 h-5 rounded object-cover" />
                                     <span>{game.name}</span>
                                 </div>
                             </SelectItem>
@@ -156,7 +157,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                         className="p-4 bg-white/[0.02] rounded-none border border-white/10 space-y-3"
                     >
                         <div className="flex items-center gap-3">
-                            <img src={selectedGame.logo} alt={selectedGame.name} className="w-10 h-10 object-cover rounded" />
+                            <GameLogoImageFromCatalog game={selectedGame} alt={selectedGame.name} className="w-10 h-10 object-cover rounded" />
                             <div>
                                 <div className="font-semibold text-white">{selectedGame.name}</div>
                                 <div className="text-sm text-gray-400">

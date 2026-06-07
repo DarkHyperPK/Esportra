@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Gamepad2, Upload, Trash2, RefreshCw, Rocket, XCircle, Loader2 } from 'lucide-react';
+import { GameLogoImage } from '@/components/games/GameLogoImage';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -27,13 +28,12 @@ function GameRow({
 
   return (
     <div className="flex items-center gap-4 p-4 rounded-xl border border-zinc-800 bg-[#0a0a0c]">
-      {game.logo ? (
-        <img src={game.logo} alt={game.name} className="w-12 h-12 rounded-lg object-contain bg-zinc-900" />
-      ) : (
-        <div className="w-12 h-12 rounded-lg bg-zinc-900 flex items-center justify-center text-zinc-500">
-          <Gamepad2 className="w-5 h-5" />
-        </div>
-      )}
+      <GameLogoImage
+        gameName={game.name}
+        catalogLogo={game.logo}
+        alt={game.name}
+        className="w-12 h-12 rounded-lg object-contain bg-zinc-900"
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold text-white truncate">{game.name}</h3>

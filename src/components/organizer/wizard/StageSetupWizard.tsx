@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { StageGuidelineModal } from './StageGuidelineModal';
 import { cn } from '@/lib/utils';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import { getGameByName } from '@/utils/gameFeatures';
+import { buildStageConfigPayload, normalizeStageBestOf } from '@/utils/stageSync';
 
 // Maps series format strings from catalog game features to display labels and numeric best_of values
 const SERIES_FORMAT_MAP: Record<string, { label: string; value: number }> = {
@@ -232,95 +233,87 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
         format: 'single_elimination'
     });
     const [editingStageIndex, setEditingStageIndex] = useState<number | null>(null);
+    const prevOpenRef = useRef(false);
 
-    // Reset state when opening
+    // Initialize wizard state only when the dialog opens (not on step/stage navigation).
     useEffect(() => {
-        console.log('[StageWizard] Open changed:', open, 'Existing stages:', existingStages?.length);
+        const justOpened = open && !prevOpenRef.current;
+        prevOpenRef.current = open;
 
-        if (open) {
+        if (!open || !justOpened) {
+            return;
+        }
 
-            // Fetch participants count for validation
-            const fetchParticipants = async () => {
-                const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
-                if (participants) setParticipantsCount(participants.length);
-            };
-            fetchParticipants();
+        const fetchParticipants = async () => {
+            const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
+            if (participants) setParticipantsCount(participants.length);
+        };
+        fetchParticipants();
 
-            // Fetch tournament settings (check-in enabled, max participants)
-            const fetchTournamentSettings = async () => {
-                const response = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
-                const data = response?.tournament || response;
-                if (data) {
-                    const d = data as any;
-                    setCheckInEnabled(d.check_in_required);
-                    // Treat 0 as unlimited (null) since column is not nullable
-                    const maxTeams = d.max_teams === 0 ? null : d.max_teams;
-                    setTournamentMaxParticipants(maxTeams);
+        const fetchTournamentSettings = async () => {
+            const response = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
+            const data = response?.tournament || response;
+            if (!data) return;
 
-                    if (game) {
-                        setGameData(getGameByName(game) || null);
-                    }
+            const d = data as any;
+            setCheckInEnabled(d.check_in_required);
+            const maxTeams = d.max_teams === 0 ? null : d.max_teams;
+            setTournamentMaxParticipants(maxTeams);
 
-                    // Auto-set manual form capacity if creating new and max teams is set
-                    const initialCapacity = maxTeams || '';
-                    if (!existingStages || existingStages.length === 0) {
-                        setManualFormState(prev => ({
-                            ...prev,
-                            capacity: initialCapacity
-                        }));
-                    }
-                }
-            };
-            fetchTournamentSettings();
-
-            if (existingStages && existingStages.length > 0) {
-                // Edit Mode
-                console.log('[StageWizard] Loading existing stages:', existingStages.map(s => ({ id: s.id, name: s.name })));
-                setStagesConfig(existingStages.map(s => {
-                    // Use new columns directly instead of config JSONB
-
-                    // Read bestOf from new column
-                    const stageAny = s as any;
-                    const bestOf = stageAny.best_of || 1;
-
-                    // Load settings from config JSON
-                    const stageConfig = typeof stageAny.config === 'string'
-                        ? (() => { try { return JSON.parse(stageAny.config); } catch { return {}; } })()
-                        : (stageAny.config || {});
-                    const result: StageConfig = {
-                        id: s.id,
-                        name: s.name,
-                        format: s.format,
-                        capacity: s.capacity || '',
-                        advancement_count: s.advancement_count || '',
-                        best_of: bestOf,
-                        settings: {
-                            ...(stageConfig.swiss_groups != null && { swiss_groups: stageConfig.swiss_groups }),
-                            ...(stageConfig.swiss_rounds != null && { swiss_rounds: stageConfig.swiss_rounds }),
-                            ...(stageConfig.group_count != null && { group_count: stageConfig.group_count }),
-                            ...(stageConfig.points_per_win != null && { points_per_win: stageConfig.points_per_win }),
-                            ...(stageConfig.points_per_draw != null && { points_per_draw: stageConfig.points_per_draw }),
-                            ...(stageConfig.points_per_loss != null && { points_per_loss: stageConfig.points_per_loss }),
-                            ...(stageConfig.use_check_in_only != null && { use_check_in_only: stageConfig.use_check_in_only }),
-                        },
-                    };
-                    console.log('[StageWizard] Mapped stage:', result);
-                    return result;
-                }));
-                setDeletedStageIds([]);
-                setStep('manual-config');
-            } else {
-                // Create Mode
-                setStep('mode-select');
-                setStagesConfig([]);
+            if (game) {
+                setGameData(getGameByName(game) || null);
             }
 
-            setSelectedTemplateId(null);
-            setCurrentStageIndex(0);
+            if (!existingStages || existingStages.length === 0) {
+                setManualFormState(prev => ({
+                    ...prev,
+                    capacity: maxTeams || '',
+                }));
+            }
+        };
+        fetchTournamentSettings();
+
+        const isEditMode = Boolean(existingStages && existingStages.length > 0);
+
+        if (isEditMode) {
+            setStagesConfig(existingStages.map(s => {
+                const stageAny = s as any;
+                const bestOf = stageAny.best_of || 1;
+                const stageConfig = typeof stageAny.config === 'string'
+                    ? (() => { try { return JSON.parse(stageAny.config); } catch { return {}; } })()
+                    : (stageAny.config || {});
+                const result: StageConfig = {
+                    id: s.id,
+                    name: s.name,
+                    format: s.format,
+                    capacity: s.capacity || '',
+                    advancement_count: s.advancement_count || '',
+                    best_of: bestOf,
+                    settings: {
+                        ...(stageConfig.swiss_groups != null && { swiss_groups: stageConfig.swiss_groups }),
+                        ...(stageConfig.swiss_rounds != null && { swiss_rounds: stageConfig.swiss_rounds }),
+                        ...(stageConfig.group_count != null && { group_count: stageConfig.group_count }),
+                        ...(stageConfig.points_per_win != null && { points_per_win: stageConfig.points_per_win }),
+                        ...(stageConfig.points_per_draw != null && { points_per_draw: stageConfig.points_per_draw }),
+                        ...(stageConfig.points_per_loss != null && { points_per_loss: stageConfig.points_per_loss }),
+                        ...(stageConfig.use_check_in_only != null && { use_check_in_only: stageConfig.use_check_in_only }),
+                    },
+                };
+                return result;
+            }));
+            setDeletedStageIds([]);
+            setStep('manual-config');
             setManualFormState(DEFAULT_STAGE_CONFIG);
-            setEditingStageIndex(null);
+        } else {
+            setStep('mode-select');
+            setStagesConfig([]);
+            setManualFormState({ ...DEFAULT_STAGE_CONFIG, format: 'single_elimination' });
         }
-    }, [open, tournamentId, game, existingStages, step, stagesConfig.length]);
+
+        setSelectedTemplateId(null);
+        setCurrentStageIndex(0);
+        setEditingStageIndex(null);
+    }, [open, tournamentId, game, existingStages]);
 
 
     const handleTemplateSelect = (templateId: string) => {
@@ -405,8 +398,28 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     };
 
     const handleSaveStages = async () => {
+        if (stagesConfig.length === 0 && deletedStageIds.length === 0) {
+            toast({
+                title: 'No stages to save',
+                description: 'Add at least one stage before saving your tournament setup.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
         try {
             setLoading(true);
+
+            if (stagesConfig.length === 0 && deletedStageIds.length > 0) {
+                await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds: deletedStageIds });
+                toast({
+                    title: 'Stages Removed',
+                    description: 'All tournament stages have been deleted.',
+                });
+                onComplete();
+                onOpenChange(false);
+                return;
+            }
 
             // 0. Validate all stages
             for (const stage of stagesConfig) {
@@ -427,22 +440,8 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                 await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds: deletedStageIds });
             }
 
-            // 2. Batch sync all remaining stages via PUT (upsert)
-            console.log('[StageWizard] Saving stages:', stagesConfig.map(s => ({ id: s.id, name: s.name, capacity: s.capacity })));
             const stageDtos = stagesConfig.map((stage, i) => {
-                const validBestOfValues = [1, 2, 3, 5, 7, 9];
-                const normalizedBestOf = validBestOfValues.includes(stage.best_of) ? stage.best_of : 1;
-                // Build config from settings for format-specific parameters
-                const config = stage.settings ? {
-                    ...(stage.settings.swiss_groups != null && { swiss_groups: stage.settings.swiss_groups }),
-                    ...(stage.settings.swiss_rounds != null && { swiss_rounds: stage.settings.swiss_rounds }),
-                    ...(stage.settings.group_count != null && { group_count: stage.settings.group_count }),
-                    ...(stage.settings.points_per_win != null && { points_per_win: stage.settings.points_per_win }),
-                    ...(stage.settings.points_per_draw != null && { points_per_draw: stage.settings.points_per_draw }),
-                    ...(stage.settings.points_per_loss != null && { points_per_loss: stage.settings.points_per_loss }),
-                    ...(stage.settings.use_check_in_only != null && { use_check_in_only: stage.settings.use_check_in_only }),
-                } : undefined;
-                const hasConfig = config && Object.keys(config).length > 0;
+                const config = buildStageConfigPayload(stage.settings);
                 return {
                     id: stage.id || null,
                     name: stage.name,
@@ -450,12 +449,11 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     stageOrder: i + 1,
                     capacity: stage.capacity === '' ? null : Number(stage.capacity),
                     advancementCount: stage.advancement_count === '' ? null : Number(stage.advancement_count),
-                    bestOf: normalizedBestOf,
-                    ...(hasConfig && { config }),
+                    bestOf: normalizeStageBestOf(stage.best_of),
+                    ...(config && { config }),
                 };
             });
 
-            console.log('[StageWizard] Batch sync stages:', stageDtos);
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
 
             toast({
@@ -1490,7 +1488,11 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         )}
 
                         {step === 'review' && (
-                            <Button onClick={handleSaveStages} disabled={loading} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+                            <Button
+                                onClick={handleSaveStages}
+                                disabled={loading || (stagesConfig.length === 0 && deletedStageIds.length === 0)}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            >
                                 {loading ? 'Saving...' : (stagesConfig.some(s => s.id) ? 'Update Stages' : 'Create Stages')}
                             </Button>
                         )}
