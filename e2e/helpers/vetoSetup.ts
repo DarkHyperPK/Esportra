@@ -329,6 +329,7 @@ export async function completeVetoViaApi(
 
   let state: VetoState | null = null;
   let guard = 0;
+  let lastPickedMapId: string | null = null;
 
   while (guard++ < 40) {
     state = await getVetoState(actor, fixture.matchId);
@@ -344,14 +345,17 @@ export async function completeVetoViaApi(
       state = action === 'ban'
         ? await banMap(actor, fixture.matchId, mapId)
         : await pickMap(actor, fixture.matchId, mapId);
+      if (action === 'pick') lastPickedMapId = mapId;
       continue;
     }
 
     if (action === 'pick_side') {
-      const remaining = fixture.mapPoolIds.find((id) => !used.has(id))
+      const mapId = lastPickedMapId
+        ?? fixture.mapPoolIds.find((id) => !used.has(id))
         ?? fixture.mapPoolIds[fixture.mapPoolIds.length - 1];
-      used.add(remaining);
-      state = await pickSide(actor, fixture.matchId, remaining, 'attack');
+      if (!lastPickedMapId) used.add(mapId);
+      lastPickedMapId = null;
+      state = await pickSide(actor, fixture.matchId, mapId, 'attack');
     }
   }
 
