@@ -39,10 +39,26 @@ export async function waitForAuthenticatedSession(page: Page): Promise<void> {
 const NAV = { waitUntil: 'domcontentloaded' as const, timeout: 90_000 };
 
 async function gotoReliable(page: Page, url: string): Promise<void> {
-  try {
-    await page.goto(url, { waitUntil: 'commit', timeout: 45_000 });
-  } catch {
-    await page.goto(url, NAV);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await page.goto(url, { waitUntil: 'commit', timeout: 45_000 });
+      break;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const interrupted =
+        message.includes('interrupted') ||
+        message.includes('NS_BINDING_ABORTED') ||
+        message.includes('frame was detached');
+      if (!interrupted || attempt === 1) {
+        try {
+          await page.goto(url, NAV);
+        } catch (innerError) {
+          if (attempt === 1) throw innerError;
+        }
+        break;
+      }
+      await page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => undefined);
+    }
   }
   await page.waitForLoadState('domcontentloaded', { timeout: 30_000 }).catch(() => undefined);
 }
@@ -78,8 +94,7 @@ export async function ensureOrganizerRole(page: Page): Promise<void> {
   await page.evaluate(() => {
     localStorage.setItem('sessionRole', 'organizer');
   });
-  await page.goto('/organizer/tournaments', { waitUntil: 'commit', timeout: 45_000 });
-  await page.waitForLoadState('domcontentloaded', { timeout: 30_000 }).catch(() => undefined);
+  await gotoReliable(page, '/organizer/tournaments');
   await dismissBetaModal(page);
   if (page.url().includes('/unauthorized')) {
     throw new Error('Organizer session role not active — check E2E organizer account roles');
@@ -112,4 +127,13 @@ export async function loginOrganizerViaUi(page: Page, email: string, password: s
   });
   await loginViaUi(page, email, password);
   await ensureOrganizerRole(page);
+}
+
+/** Sign in as player (casual role) through the app UI. */
+export async function loginPlayerViaUi(page: Page, email: string, password: string): Promise<void> {
+  await skipBetaModal(page);
+  await page.addInitScript(() => {
+    localStorage.setItem('sessionRole', 'casual');
+  });
+  await loginViaUi(page, email, password);
 }

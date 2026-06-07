@@ -43,7 +43,9 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       setNotifications(merged);
       setUnreadCount(merged.filter(n => !n.is_read).length);
     } catch (error) {
-      console.error('[Notifications] Fetch failed:', error);
+      if (import.meta.env.DEV) {
+        console.warn('[Notifications] Fetch failed:', error);
+      }
     }
   }, [user]);
 
