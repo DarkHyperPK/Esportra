@@ -130,6 +130,10 @@ const TournamentDetails = () => {
   const checkInStartTime = checkInDeadlineDate ? new Date(checkInDeadlineDate.getTime() - (checkInWindowMinutes * 60 * 1000)) : null;
   const tournamentRegistrationType = tournament?.registration_type ?? (tournament?.settings as any)?.registrationType ?? 'open';
   const tournamentReservedInviteSlots = tournament?.reserved_invite_slots ?? (tournament?.settings as any)?.reservedInviteSlots ?? 0;
+  const tournamentMaxTeams = tournament?.max_participants ?? tournament?.max_teams ?? 0;
+  const openRegistrationCapacity = tournamentMaxTeams > 0 && tournamentReservedInviteSlots > 0
+    ? Math.max(tournamentMaxTeams - tournamentReservedInviteSlots, 0)
+    : null;
   const shouldShowInviteCode = !isOrganizer && !isRegistered && (tournamentRegistrationType === 'invite_only' || tournamentReservedInviteSlots > 0);
 
   const canSelfCheckIn =
@@ -615,6 +619,16 @@ const TournamentDetails = () => {
         awaitingApproval={awaitingApproval}
       />
 
+      {openRegistrationCapacity !== null && !isOrganizer && (
+        <div className="container mx-auto px-4 relative z-30 -mt-4 mb-6">
+          <p className="mx-auto max-w-3xl text-center text-xs text-gray-500">
+            {openRegistrationCapacity > 0
+              ? `${openRegistrationCapacity} open registration slot${openRegistrationCapacity === 1 ? '' : 's'} available · ${tournamentReservedInviteSlots} reserved for invited teams`
+              : `All ${tournamentMaxTeams} slots are reserved for invited teams`}
+          </p>
+        </div>
+      )}
+
       {shouldShowInviteCode && (
         <div className="container mx-auto px-4 relative z-30 -mt-6 mb-10">
           <Card className="mx-auto max-w-3xl border border-purple-500/20 bg-[#0d0d10] shadow-2xl shadow-purple-950/20">
@@ -628,6 +642,14 @@ const TournamentDetails = () => {
               <p className="text-sm text-gray-400">
                 Enter the code from your email. The code must match your logged-in email and you must be captain of a team.
               </p>
+              {openRegistrationCapacity !== null && (
+                <p className="text-xs text-gray-500">
+                  This tournament reserves {tournamentReservedInviteSlots} slot{tournamentReservedInviteSlots === 1 ? '' : 's'} for invited teams
+                  {openRegistrationCapacity > 0
+                    ? ` and has ${openRegistrationCapacity} open registration slot${openRegistrationCapacity === 1 ? '' : 's'} for everyone else.`
+                    : '. Open registration is full — only invited teams can join.'}
+                </p>
+              )}
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Input
                   value={inviteCode}

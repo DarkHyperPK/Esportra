@@ -80,6 +80,14 @@ import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTo
 import { MockModePanel } from '@/components/tournament/MockModePanel';
 import { useMockTournament } from '@/hooks/useMockTournament';
 import { useTournamentInvitations } from '@/hooks/useTournamentInvitations';
+import { EMPTY_INVITATION_SUMMARY } from '@/types/invitation';
+import {
+  buildInviteSettingsPayload,
+  canConfigureInvitedTeams,
+  defaultReservedInviteSlots,
+  getInviteExpiryDaysFromTournament,
+  getReservedInviteSlotsFromTournament,
+} from '@/utils/tournamentInviteUtils';
 import { StageGuidelineModal } from '@/components/organizer/wizard/StageGuidelineModal';
 import { CommandButton, CommandTabButton } from '@/components/management/CommandSurface';
 
@@ -302,6 +310,10 @@ const TournamentDashboard = () => {
   const [draftInviteEmails, setDraftInviteEmails] = useState<string[]>([]);
   const [csvImportText, setCsvImportText] = useState('');
   const [showCsvImport, setShowCsvImport] = useState(false);
+  const [inviteSettingsEnabled, setInviteSettingsEnabled] = useState(false);
+  const [inviteSettingsReservedSlots, setInviteSettingsReservedSlots] = useState(0);
+  const [inviteSettingsExpiryDays, setInviteSettingsExpiryDays] = useState(7);
+  const [savingInviteSettings, setSavingInviteSettings] = useState(false);
   const openedParticipantParamRef = React.useRef<string | null>(null);
 
   const {
@@ -313,19 +325,25 @@ const TournamentDashboard = () => {
     importCsv,
   } = useTournamentInvitations(tournament?.id);
 
-  const invitationRows = invitationQuery.data ?? [];
+  const invitationResult = invitationQuery.data;
+  const invitationRows = invitationResult?.invitations ?? [];
+  const inviteSummary = invitationResult?.summary ?? EMPTY_INVITATION_SUMMARY;
   const registrationType = tournament?.registration_type ?? (tournament?.settings as any)?.registrationType ?? 'open';
   const maxTeams = tournament?.max_teams ?? tournament?.max_participants ?? 0;
-  const configuredReservedInviteSlots = tournament?.reserved_invite_slots ?? (tournament?.settings as any)?.reservedInviteSlots ?? 0;
-  const effectiveReservedInviteSlots = configuredReservedInviteSlots > 0
-    ? configuredReservedInviteSlots
-    : registrationType === 'invite_only'
-      ? maxTeams
-      : 0;
-  const allocatedInvitationCount = invitationRows.filter((invite) => ['draft', 'sent', 'redeemed'].includes(invite.status)).length;
-  const inviteParticipantCount = participants.filter((participant) => participant.source === 'invite').length;
-  const usedInviteSlots = Math.max(allocatedInvitationCount, inviteParticipantCount) + draftInviteEmails.length;
-  const remainingInviteSlots = Math.max(0, effectiveReservedInviteSlots - usedInviteSlots);
+  const configuredReservedInviteSlots = getReservedInviteSlotsFromTournament(tournament);
+  const effectiveReservedInviteSlots = inviteSummary.reservedSlots > 0
+    ? inviteSummary.reservedSlots
+    : configuredReservedInviteSlots > 0
+      ? configuredReservedInviteSlots
+      : registrationType === 'invite_only'
+        ? maxTeams
+        : 0;
+  const usedInviteSlots = inviteSummary.activeSlots + draftInviteEmails.length;
+  const remainingInviteSlots = Math.max(0, inviteSummary.remainingSlots - draftInviteEmails.length);
+  const showInvitedTeamsFeature = canConfigureInvitedTeams(tournament?.team_size ?? 1, isBR);
+  const openRegistrationSlots = maxTeams > 0
+    ? Math.max(maxTeams - effectiveReservedInviteSlots, 0)
+    : null;
 
   const { clear: clearMockForPublish } = useMockTournament({
     tournamentId: tournament?.id ?? '',
@@ -351,6 +369,14 @@ const TournamentDashboard = () => {
   useEffect(() => {
     setHasStaffAccess(staffPermissions.length > 0);
   }, [staffPermissions]);
+
+  useEffect(() => {
+    if (!tournament) return;
+    const reserved = getReservedInviteSlotsFromTournament(tournament);
+    setInviteSettingsEnabled(reserved > 0);
+    setInviteSettingsReservedSlots(reserved > 0 ? reserved : defaultReservedInviteSlots(maxTeams));
+    setInviteSettingsExpiryDays(getInviteExpiryDaysFromTournament(tournament));
+  }, [tournament?.id, tournament?.reserved_invite_slots, tournament?.invite_expiry_days, tournament?.settings, maxTeams]);
 
   // Overdue Check & Auto-Extension Effect
   useEffect(() => {
@@ -647,6 +673,70 @@ const TournamentDashboard = () => {
       toast({ title: 'Rejection Failed', description: error.message, variant: 'destructive' });
     } finally {
       setRejectingPayment(null);
+    }
+  };
+
+  const handleSaveInviteSettings = async () => {
+    if (!tournament?.id) return;
+
+    if (inviteSettingsEnabled) {
+      if (inviteSettingsReservedSlots < 1) {
+        toast({ title: 'Invalid configuration', description: 'Reserve at least 1 slot for invited teams.', variant: 'destructive' });
+        return;
+      }
+      if (maxTeams > 0 && inviteSettingsReservedSlots > maxTeams) {
+        toast({ title: 'Invalid configuration', description: 'Reserved invite slots cannot exceed max teams.', variant: 'destructive' });
+        return;
+      }
+      if (inviteSettingsReservedSlots < inviteSummary.activeSlots) {
+        toast({
+          title: 'Cannot reduce slots',
+          description: `${inviteSummary.activeSlots} active invitation${inviteSummary.activeSlots === 1 ? '' : 's'} — revoke some before lowering reserved slots.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else if (inviteSummary.activeSlots > 0) {
+      toast({
+        title: 'Cannot disable invited teams',
+        description: 'Revoke all active invitations before disabling reserved invite slots.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSavingInviteSettings(true);
+    try {
+      const currentSettings = typeof tournament.settings === 'object' && tournament.settings
+        ? tournament.settings as Record<string, unknown>
+        : {};
+      const payload = buildInviteSettingsPayload(
+        inviteSettingsEnabled,
+        inviteSettingsReservedSlots,
+        inviteSettingsExpiryDays,
+        currentSettings,
+      );
+      await apiClient.put(`/api/tournaments/${tournament.id}`, {
+        reservedInviteSlots: payload.reservedInviteSlots,
+        inviteExpiryDays: payload.inviteExpiryDays,
+        settings: payload.settings,
+      });
+      toast({
+        title: inviteSettingsEnabled ? 'Invited teams configured' : 'Invited teams disabled',
+        description: inviteSettingsEnabled
+          ? `${payload.reservedInviteSlots} slot${payload.reservedInviteSlots === 1 ? '' : 's'} reserved. Send codes from the Participants tab.`
+          : 'Reserved invite slots have been cleared.',
+      });
+      refetchDashboard();
+      invitationQuery.refetch();
+    } catch (error: any) {
+      toast({
+        title: 'Failed to update invite settings',
+        description: error.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingInviteSettings(false);
     }
   };
 
@@ -1552,7 +1642,7 @@ const TournamentDashboard = () => {
                         </CardContent>
                       </Card>
                     )}
-                    {canManageTeams && (
+                    {canManageTeams && showInvitedTeamsFeature && (
                       <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
                         <CardHeader className="p-0 border-b border-white/5 pb-4 mb-6 relative z-10">
                           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1563,6 +1653,9 @@ const TournamentDashboard = () => {
                               </CardTitle>
                               <p className="mt-1 text-sm text-gray-400">
                                 Email-locked codes let invited captains register their team into this tournament.
+                                {openRegistrationSlots !== null && effectiveReservedInviteSlots > 0 && (
+                                  <> {openRegistrationSlots} open registration slot{openRegistrationSlots === 1 ? '' : 's'} remain alongside {effectiveReservedInviteSlots} reserved.</>
+                                )}
                               </p>
                             </div>
                             <div className="grid grid-cols-3 gap-2 text-center text-xs">
@@ -1601,7 +1694,7 @@ const TournamentDashboard = () => {
                           )}
                           {effectiveReservedInviteSlots <= 0 && (
                             <div className="rounded-none border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
-                              Reserved invite slots are not configured for this tournament. Add reserved slots in tournament settings before sending guaranteed invite codes.
+                              Reserved invite slots are not configured. Enable invited teams in the Settings tab before sending guaranteed invite codes.
                             </div>
                           )}
                           <div className="flex flex-col gap-3 sm:flex-row">
@@ -1666,6 +1759,7 @@ const TournamentDashboard = () => {
                               variant="outline"
                               size="sm"
                               onClick={() => setShowCsvImport(!showCsvImport)}
+                              disabled={effectiveReservedInviteSlots <= 0 || remainingInviteSlots <= 0}
                               className="border-white/10 bg-white/5 text-white hover:bg-white/10 text-xs"
                             >
                               {showCsvImport ? 'Hide' : 'CSV Import'}
@@ -1696,7 +1790,7 @@ const TournamentDashboard = () => {
                                     onError: (err: any) => toast({ title: 'CSV import failed', description: err.message || 'Try again.', variant: 'destructive' }),
                                   });
                                 }}
-                                disabled={importCsv.isPending || !csvImportText.trim()}
+                                disabled={importCsv.isPending || !csvImportText.trim() || effectiveReservedInviteSlots <= 0 || remainingInviteSlots <= 0}
                                 className="bg-purple-600 hover:bg-rose-500 text-white"
                               >
                                 {importCsv.isPending ? 'Importing...' : 'Import Emails'}
@@ -1975,6 +2069,93 @@ const TournamentDashboard = () => {
                           </div>
                         </CardContent>
                       </Card>
+
+                      {showInvitedTeamsFeature && (
+                        <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
+                          <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
+                            <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+                              <Mail className="w-5 h-5 text-rose-300" />
+                              Invited Teams
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-0 space-y-4">
+                            <div className="flex items-start gap-4 p-4 rounded-none bg-white/[0.02] border border-white/5">
+                              <Switch
+                                checked={inviteSettingsEnabled}
+                                onCheckedChange={(enabled) => {
+                                  if (!enabled && inviteSummary.activeSlots > 0) {
+                                    toast({
+                                      title: 'Cannot disable',
+                                      description: 'Revoke all active invitations before disabling reserved invite slots.',
+                                      variant: 'destructive',
+                                    });
+                                    return;
+                                  }
+                                  setInviteSettingsEnabled(enabled);
+                                  if (enabled && inviteSettingsReservedSlots < 1) {
+                                    setInviteSettingsReservedSlots(defaultReservedInviteSlots(maxTeams));
+                                  }
+                                }}
+                                disabled={savingInviteSettings || inviteSummary.activeSlots > 0}
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium text-white text-sm">
+                                  {savingInviteSettings ? 'Saving...' : 'Reserve slots for invited teams'}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  Hold guaranteed spots for email invites. Send codes from the Participants tab after saving.
+                                  {maxTeams > 0 && inviteSettingsEnabled && (
+                                    <> {Math.max(maxTeams - inviteSettingsReservedSlots, 0)} slot{Math.max(maxTeams - inviteSettingsReservedSlots, 0) === 1 ? '' : 's'} remain for open registration.</>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            {inviteSettingsEnabled && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-none bg-white/[0.02] border border-white/5">
+                                <div className="space-y-2">
+                                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Reserved slots</p>
+                                  <Input
+                                    type="number"
+                                    min={Math.max(1, inviteSummary.activeSlots)}
+                                    max={maxTeams > 0 ? maxTeams : 1024}
+                                    value={inviteSettingsReservedSlots}
+                                    onChange={(event) => setInviteSettingsReservedSlots(Math.max(0, parseInt(event.target.value, 10) || 0))}
+                                    className="border-white/10 bg-black/30 text-white"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Code expiry (days)</p>
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    max={365}
+                                    value={inviteSettingsExpiryDays}
+                                    onChange={(event) => setInviteSettingsExpiryDays(Math.min(365, Math.max(1, parseInt(event.target.value, 10) || 7)))}
+                                    className="border-white/10 bg-black/30 text-white"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {inviteSummary.activeSlots > 0 && (
+                              <p className="text-xs text-amber-300 px-4">
+                                {inviteSummary.activeSlots} active invitation{inviteSummary.activeSlots === 1 ? '' : 's'} — reserved slots cannot go below this count.
+                              </p>
+                            )}
+
+                            <div className="flex justify-end px-4 pb-2">
+                              <Button
+                                onClick={handleSaveInviteSettings}
+                                disabled={savingInviteSettings}
+                                className="bg-purple-600 hover:bg-rose-500 text-white"
+                              >
+                                {savingInviteSettings ? 'Saving...' : 'Save Invite Settings'}
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
 
                       {/* Assisted Match Reporting — games with API integration */}
                       {tournamentModeFeatures.assistedReporting && (

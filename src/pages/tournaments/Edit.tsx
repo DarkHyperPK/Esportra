@@ -14,6 +14,7 @@ const EditTournament = () => {
   const [wizardData, setWizardData] = useState<TournamentWizardData | null>(null);
   const [tournamentId, setTournamentId] = useState<string | null>(null);
   const [participantCount, setParticipantCount] = useState<number>(0);
+  const [activeInvitationCount, setActiveInvitationCount] = useState<number>(0);
 
   const fetchTournamentData = useCallback(async () => {
     try {
@@ -48,6 +49,19 @@ const EditTournament = () => {
       const participantCountVal = response.participants?.length || 0;
 
       setParticipantCount(participantCountVal);
+
+      let activeInvites = 0;
+      try {
+        const inviteResponse = await apiClient.get<any>(`/api/tournaments/${tournamentData.id}/invitations`);
+        activeInvites = inviteResponse?.summary?.activeSlots
+          ?? inviteResponse?.summary?.active_slots
+          ?? 0;
+      } catch {
+        activeInvites = 0;
+      }
+      setActiveInvitationCount(activeInvites);
+
+      const persistedFormat = (tournamentData.format || tournamentData.tournament_type || '').toString().toLowerCase();
 
       // 3. Map to Wizard Data
       // Use local time helpers to avoid UTC↔local timezone drift on each save cycle.
@@ -92,6 +106,8 @@ const EditTournament = () => {
         status: tournamentData.status || 'draft',
 
         // Step 2: Format & Rules
+        tournamentType: persistedFormat === 'battle_royale' ? 'battle_royale' : 'bracket',
+        gameMode: tournamentData.game_mode || '',
         bracketType: (stages.length > 0 ? stages[0].format : 'single_elimination') as any, // Derive from first stage
         stages: stages.map(s => ({
           id: s.id,
@@ -136,6 +152,21 @@ const EditTournament = () => {
         autoRemoveUnchecked: tournamentData.auto_remove_unchecked ?? false,
         waitlistEnabled: false, // Default
         waitlistMax: 10, // Default
+        invitedTeamsEnabled: (() => {
+          const reserved = tournamentData.reserved_invite_slots
+            ?? tournamentData.reservedInviteSlots
+            ?? (tournamentData.settings as any)?.reservedInviteSlots
+            ?? 0;
+          return Number(reserved) > 0;
+        })(),
+        reservedInviteSlots: tournamentData.reserved_invite_slots
+          ?? tournamentData.reservedInviteSlots
+          ?? (tournamentData.settings as any)?.reservedInviteSlots
+          ?? 0,
+        inviteExpiryDays: tournamentData.invite_expiry_days
+          ?? tournamentData.inviteExpiryDays
+          ?? (tournamentData.settings as any)?.inviteExpiryDays
+          ?? 7,
 
         // Game-specific settings
         assistedMatchReporting: !!(tournamentData.settings as any)?.assistedMatchReporting,
@@ -181,6 +212,7 @@ const EditTournament = () => {
       initialData={wizardData}
       tournamentId={tournamentId}
       participantsCount={participantCount}
+      activeInvitationCount={activeInvitationCount}
     />
   );
 };

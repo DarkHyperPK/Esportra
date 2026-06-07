@@ -19,9 +19,15 @@ interface WizardContainerProps {
     initialData?: TournamentWizardData;
     tournamentId?: string;
     participantsCount?: number;
+    activeInvitationCount?: number;
 }
 
-const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tournamentId, participantsCount }) => {
+const WizardContainer: React.FC<WizardContainerProps> = ({
+    initialData,
+    tournamentId,
+    participantsCount,
+    activeInvitationCount,
+}) => {
     useGameCatalog();
     const {
         currentStep,
@@ -35,7 +41,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
         goToStep,
         clearDraft,
         submitTournament,
-    } = useTournamentWizard(initialData, tournamentId);
+    } = useTournamentWizard(initialData, tournamentId, { activeInvitationCount });
 
     const renderStep = () => {
         switch (currentStep) {
@@ -46,7 +52,15 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
             case 3:
                 return <StepBranding data={data} updateData={updateData} errors={errors} />;
             case 4:
-                return <StepRegistration data={data} updateData={updateData} errors={errors} />;
+                return (
+                    <StepRegistration
+                        data={data}
+                        updateData={updateData}
+                        errors={errors}
+                        isEditMode={!!tournamentId}
+                        activeInvitationCount={activeInvitationCount}
+                    />
+                );
             case 5:
                 return <StepSettings data={data} updateData={updateData} errors={errors} />;
             case 6:

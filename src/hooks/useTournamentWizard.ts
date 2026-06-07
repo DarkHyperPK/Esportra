@@ -26,7 +26,11 @@ import slugify from 'slugify';
 const STORAGE_KEY = 'tournament_wizard_draft';
 const STEP_KEY = 'tournament_wizard_step';
 
-export const useTournamentWizard = (initialData?: TournamentWizardData, tournamentId?: string) => {
+export const useTournamentWizard = (
+    initialData?: TournamentWizardData,
+    tournamentId?: string,
+    options?: { activeInvitationCount?: number },
+) => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
@@ -171,10 +175,19 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
             return;
         }
 
-        const allValid = validateStep(5, data);
+        const allValid = validateStep(6, data);
         if (!allValid.valid) {
             setErrors(allValid.errors);
             toast({ title: 'Validation Error', description: 'Please fix the errors before submitting.', variant: 'destructive' });
+            return;
+        }
+
+        const activeInvitationCount = options?.activeInvitationCount ?? 0;
+        const reservedSlots = data.invitedTeamsEnabled ? data.reservedInviteSlots : 0;
+        if (tournamentId && activeInvitationCount > 0 && reservedSlots < activeInvitationCount) {
+            const message = `Reserved slots cannot be less than ${activeInvitationCount} active invitation${activeInvitationCount === 1 ? '' : 's'}. Revoke invitations first.`;
+            setErrors({ reservedInviteSlots: message });
+            toast({ title: 'Validation Error', description: message, variant: 'destructive' });
             return;
         }
 
@@ -226,10 +239,14 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     paymentInstructions:  data.paymentInstructions || null,
                     region:               data.region || null,
                     currency:             data.currency || 'USD',
+                    reservedInviteSlots:  data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
+                    inviteExpiryDays:     data.inviteExpiryDays || 7,
                     settings:             {
                         assistedMatchReporting: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
                         checkInWindowMinutes: data.checkInWindowMinutes || 30,
                         mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
+                        reservedInviteSlots: data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
+                        inviteExpiryDays: data.inviteExpiryDays || 7,
                         ...(data.tournamentType === 'battle_royale' ? {
                             brGameCount: data.brGameCount,
                             brScoringPreset: data.brScoringPreset,
@@ -350,10 +367,14 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     currency:             data.currency || 'USD',
                     tournamentType:       data.tournamentType || 'bracket',
                     serverRegion:         data.serverRegion || null,
+                    reservedInviteSlots:  data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
+                    inviteExpiryDays:     data.inviteExpiryDays || 7,
                     settings: {
                         assistedMatchReporting: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
                         checkInWindowMinutes: data.checkInWindowMinutes || 30,
                         mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
+                        reservedInviteSlots: data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
+                        inviteExpiryDays: data.inviteExpiryDays || 7,
                         // BR-specific settings
                         ...(data.tournamentType === 'battle_royale' ? {
                             brGameCount: data.brGameCount,
@@ -428,7 +449,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
         } finally {
             setIsSubmitting(false);
         }
-    }, [user, data, toast, navigate, clearDraft, tournamentId, initialData, queryClient]);
+    }, [user, data, toast, navigate, clearDraft, tournamentId, initialData, queryClient, options?.activeInvitationCount]);
 
     return {
         currentStep,

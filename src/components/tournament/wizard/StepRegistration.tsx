@@ -2,11 +2,39 @@ import React, { useCallback, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, UserCheck, Bell } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Calendar, Clock, UserCheck, Bell, Mail } from 'lucide-react';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
 
-const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors }) => {
+const StepRegistration: React.FC<WizardStepProps> = ({
+    data,
+    updateData,
+    errors,
+    isEditMode,
+    activeInvitationCount = 0,
+}) => {
+    const showInvitedTeams = data.tournamentType === 'bracket' && data.teamSize > 1;
+    const openRegistrationSlots = data.maxTeams > 0
+        ? Math.max(data.maxTeams - (data.invitedTeamsEnabled ? data.reservedInviteSlots : 0), 0)
+        : null;
+
+    const handleInvitedTeamsToggle = (enabled: boolean) => {
+        if (!enabled) {
+            if (isEditMode && activeInvitationCount > 0) return;
+            updateData({ invitedTeamsEnabled: false, reservedInviteSlots: 0 });
+            return;
+        }
+
+        const defaultSlots = data.maxTeams > 0
+            ? Math.min(Math.max(2, Math.floor(data.maxTeams / 4)), data.maxTeams)
+            : 4;
+
+        updateData({
+            invitedTeamsEnabled: true,
+            reservedInviteSlots: data.reservedInviteSlots > 0 ? data.reservedInviteSlots : defaultSlots,
+        });
+    };
     const getDefaultRegistrationOpen = useCallback(() => {
         return new Date().toISOString().split('T')[0] + 'T00:00';
     }, []);
@@ -136,7 +164,96 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
                 </div>
             </div>
 
+            {showInvitedTeams && (
+                <>
+                    <div className="w-full h-px bg-white/5 my-6" />
+                    <div className="p-4 bg-white/[0.02] rounded-lg border border-white/10 space-y-4">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                                <Mail className="w-5 h-5 text-rose-400 mt-0.5" />
+                                <div>
+                                    <div className="font-medium text-white">Reserved slots for invited teams</div>
+                                    <div className="text-sm text-gray-400">
+                                        Hold guaranteed spots for email invites. You send invite codes from tournament management after creation.
+                                    </div>
+                                </div>
+                            </div>
+                            <Switch
+                                checked={data.invitedTeamsEnabled}
+                                onCheckedChange={handleInvitedTeamsToggle}
+                                disabled={isEditMode && activeInvitationCount > 0}
+                                aria-label="Enable reserved invite slots"
+                            />
+                        </div>
+                        {isEditMode && activeInvitationCount > 0 && (
+                            <p className="text-xs text-amber-300">
+                                {activeInvitationCount} active invitation{activeInvitationCount === 1 ? '' : 's'} — revoke them before disabling invited teams or lowering reserved slots below this count.
+                            </p>
+                        )}
 
+                        {data.invitedTeamsEnabled && (
+                            <div className="space-y-4 pt-4 border-t border-white/10">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="reservedInviteSlots" className="text-sm text-gray-400">
+                                            Reserved invite slots *
+                                        </Label>
+                                        <Input
+                                            id="reservedInviteSlots"
+                                            type="number"
+                                            min={Math.max(1, activeInvitationCount)}
+                                            max={data.maxTeams > 0 ? data.maxTeams : 1024}
+                                            value={data.reservedInviteSlots}
+                                            onChange={(e) => updateData({
+                                                reservedInviteSlots: Math.max(0, parseInt(e.target.value, 10) || 0),
+                                            })}
+                                            className={cn(errors.reservedInviteSlots && 'border-red-500', 'font-bold tracking-tight')}
+                                        />
+                                        {errors.reservedInviteSlots && (
+                                            <p className="text-sm text-red-500">{errors.reservedInviteSlots}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="inviteExpiryDays" className="text-sm text-gray-400">
+                                            Invite code expiry (days)
+                                        </Label>
+                                        <Input
+                                            id="inviteExpiryDays"
+                                            type="number"
+                                            min={1}
+                                            max={365}
+                                            value={data.inviteExpiryDays}
+                                            onChange={(e) => updateData({
+                                                inviteExpiryDays: Math.min(365, Math.max(1, parseInt(e.target.value, 10) || 7)),
+                                            })}
+                                            className={cn(errors.inviteExpiryDays && 'border-red-500', 'font-bold tracking-tight')}
+                                        />
+                                        {errors.inviteExpiryDays && (
+                                            <p className="text-sm text-red-500">{errors.inviteExpiryDays}</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <p className="text-xs text-gray-500">
+                                    {data.maxTeams > 0 ? (
+                                        <>
+                                            <span className="text-rose-400">{data.reservedInviteSlots}</span> invite slots reserved,{' '}
+                                            <span className="text-emerald-400">{openRegistrationSlots}</span> open registration slots
+                                            {' '}(max {data.maxTeams} teams).
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-rose-400">{data.reservedInviteSlots}</span> invite slots reserved.
+                                            Set max teams in Format &amp; Rules to cap open registration.
+                                        </>
+                                    )}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
 
             {/* Summary Info */}
             {data.startDate && data.startTime && (
@@ -150,6 +267,9 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors 
                                 <li>• Registration closes: {data.registrationCloses ? new Date(data.registrationCloses).toLocaleString() : 'Not set'}</li>
                                 {data.checkInRequired && (
                                     <li>• Check-in starts: {data.checkInWindowMinutes} min before tournament</li>
+                                )}
+                                {showInvitedTeams && data.invitedTeamsEnabled && (
+                                    <li>• Invited teams: {data.reservedInviteSlots} reserved slot{data.reservedInviteSlots === 1 ? '' : 's'} (codes expire in {data.inviteExpiryDays} days)</li>
                                 )}
                                 <li>• Tournament starts: {new Date(`${data.startDate}T${data.startTime}`).toLocaleString()}</li>
                             </ul>

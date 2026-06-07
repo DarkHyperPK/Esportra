@@ -6,7 +6,10 @@ import type {
   RedeemInvitationResponse,
   SendInvitationsRequest,
   TournamentInvitation,
+  TournamentInvitationSummary,
+  TournamentInvitationsResult,
 } from '@/types/invitation';
+import { EMPTY_INVITATION_SUMMARY } from '@/types/invitation';
 
 const mapInvitation = (value: any): TournamentInvitation => ({
   id: value.id,
@@ -33,16 +36,30 @@ const extractInvitations = (response: any): TournamentInvitation[] => {
   return rows.map(mapInvitation);
 };
 
+const mapSummary = (raw: any): TournamentInvitationSummary => ({
+  reservedSlots: raw?.reservedSlots ?? raw?.reserved_slots ?? 0,
+  activeSlots: raw?.activeSlots ?? raw?.active_slots ?? 0,
+  usedSlots: raw?.usedSlots ?? raw?.used_slots ?? 0,
+  remainingSlots: raw?.remainingSlots ?? raw?.remaining_slots ?? 0,
+});
+
+const parseInvitationsResponse = (response: any): TournamentInvitationsResult => ({
+  invitations: extractInvitations(response),
+  summary: response?.summary ? mapSummary(response.summary) : EMPTY_INVITATION_SUMMARY,
+});
+
 export function useTournamentInvitations(tournamentId?: string | null, options: { list?: boolean } = {}) {
   const queryClient = useQueryClient();
   const queryKey = ['tournament-invitations', tournamentId];
 
   const invitations = useQuery({
     queryKey,
-    queryFn: async () => {
-      if (!tournamentId) return [];
+    queryFn: async (): Promise<TournamentInvitationsResult> => {
+      if (!tournamentId) {
+        return { invitations: [], summary: EMPTY_INVITATION_SUMMARY };
+      }
       const response = await apiClient.get(`/api/tournaments/${tournamentId}/invitations`);
-      return extractInvitations(response);
+      return parseInvitationsResponse(response);
     },
     enabled: Boolean(tournamentId) && options.list !== false,
   });

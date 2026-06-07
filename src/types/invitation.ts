@@ -14,6 +14,25 @@ export interface TournamentInvitation {
   createdAt: string;
 }
 
+export interface TournamentInvitationSummary {
+  reservedSlots: number;
+  activeSlots: number;
+  usedSlots: number;
+  remainingSlots: number;
+}
+
+export interface TournamentInvitationsResult {
+  invitations: TournamentInvitation[];
+  summary: TournamentInvitationSummary;
+}
+
+export const EMPTY_INVITATION_SUMMARY: TournamentInvitationSummary = {
+  reservedSlots: 0,
+  activeSlots: 0,
+  usedSlots: 0,
+  remainingSlots: 0,
+};
+
 export interface CreateInvitationsRequest {
   emails: string[];
 }

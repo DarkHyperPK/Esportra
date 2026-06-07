@@ -67,6 +67,9 @@ export interface TournamentWizardData {
     autoRemoveUnchecked: boolean;
     waitlistEnabled: boolean;
     waitlistMax: number;
+    invitedTeamsEnabled: boolean;
+    reservedInviteSlots: number;
+    inviteExpiryDays: number;
 
     // Game-specific settings
     assistedMatchReporting: boolean;
@@ -80,6 +83,7 @@ export interface WizardStepProps {
     isEditMode?: boolean;
     tournamentId?: string;
     participantsCount?: number;
+    activeInvitationCount?: number;
 }
 
 export interface WizardStep {
@@ -151,6 +155,9 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     autoRemoveUnchecked: true,
     waitlistEnabled: false,
     waitlistMax: 10,
+    invitedTeamsEnabled: false,
+    reservedInviteSlots: 0,
+    inviteExpiryDays: 7,
 
     // Game-specific
     assistedMatchReporting: false,

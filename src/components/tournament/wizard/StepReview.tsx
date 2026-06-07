@@ -116,6 +116,20 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 { label: 'Check-in', value: `${data.checkInWindowMinutes} min before start` },
                 { label: 'Auto-remove no-shows', value: 'Enabled' },
                 { label: 'Waitlist', value: data.waitlistEnabled ? `Yes (max ${data.waitlistMax})` : 'Disabled' },
+                ...(data.tournamentType === 'bracket' && data.teamSize > 1 && data.invitedTeamsEnabled
+                    ? [
+                        {
+                            label: 'Invited teams',
+                            value: `${data.reservedInviteSlots} reserved slot${data.reservedInviteSlots === 1 ? '' : 's'} (${data.inviteExpiryDays}-day codes)`,
+                        },
+                        ...(data.maxTeams > 0
+                            ? [{
+                                label: 'Open registration',
+                                value: `${Math.max(data.maxTeams - data.reservedInviteSlots, 0)} of ${data.maxTeams} team slots`,
+                            }]
+                            : []),
+                    ]
+                    : []),
             ]
         },
         {
