@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { rawgSearchGames, rawgGetScreenshots } from '@/lib/rawgProxy';
 import { apiClient } from '@/lib/apiClient';
-import esportsGames from '@/data/esportsGames.json';
-import igdbManifest from '../../public/games/igdb/manifest.json';
+import { getGameByName } from '@/utils/gameFeatures';
+import igdbManifest from '@/data/igdb-manifest.json';
 
 type IgdbManifestEntry = {
     slug: string;
@@ -10,6 +10,8 @@ type IgdbManifestEntry = {
     cover?: string;
     hero?: string;
     header?: string;
+    coverUrl?: string;
+    heroUrl?: string;
 };
 
 const bundledIgdbBySlug = new Map(
@@ -75,13 +77,7 @@ const gameCache = loadPersistedCache();
 const pendingFetches = new Map<string, Promise<CachedGame>>();
 
 function resolveCatalogGame(gameName: string) {
-    const normalized = gameName.trim().toLowerCase();
-    return (esportsGames.games as Array<{ name: string; slug: string; logo?: string; aliases?: string[] }>).find(
-        (g) =>
-            g.name.toLowerCase() === normalized
-            || g.slug === normalized
-            || (g.aliases ?? []).some((alias) => alias.toLowerCase() === normalized),
-    );
+    return getGameByName(gameName);
 }
 
 function toPublicAssetPath(path: string | undefined): string | null {
@@ -97,9 +93,9 @@ export function getBundledGameAssets(gameName: string): CachedGame | null {
         (catalogGame ? bundledIgdbBySlug.get(catalogGame.slug.toLowerCase()) : undefined)
         ?? bundledIgdbByName.get(normalized);
 
-    const cover = toPublicAssetPath(igdbEntry?.cover);
-    const hero = toPublicAssetPath(igdbEntry?.hero);
-    const header = toPublicAssetPath(igdbEntry?.header);
+    const cover = toPublicAssetPath(igdbEntry?.cover) ?? igdbEntry?.coverUrl ?? null;
+    const hero = toPublicAssetPath(igdbEntry?.hero) ?? igdbEntry?.heroUrl ?? null;
+    const header = toPublicAssetPath(igdbEntry?.header) ?? igdbEntry?.heroUrl ?? null;
     const catalogLogo = toPublicAssetPath(catalogGame?.logo);
 
     const banner = hero ?? header ?? cover ?? catalogLogo;
@@ -116,7 +112,7 @@ export function getBundledGameAssets(gameName: string): CachedGame | null {
     };
 }
 
-/** Logo path from esportsGames.json (may 404 if asset missing). */
+/** Logo path from the active game catalog (may 404 if asset missing). */
 function getCatalogLogo(gameName: string): string | null {
     return toPublicAssetPath(resolveCatalogGame(gameName)?.logo);
 }
