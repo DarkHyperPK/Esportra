@@ -15,15 +15,13 @@ import { RulesTab } from '@/components/tournament/details/RulesTab';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import { usePublicBracketData } from '@/hooks/usePublicBracketData';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Swords, Loader2, Mail } from 'lucide-react';
+import { Trophy, Swords } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
 import { formatDate, formatTime } from '@/utils/dateFormat';
-import { useRequireVerification } from '@/hooks/useRequireVerification';
 import { Tournament, BaseTournament, TournamentRegistration } from '@/types/tournament';
 import TournamentRegistrationForm from '@/components/TournamentRegistration';
 import {
@@ -56,7 +54,8 @@ import BRGroupStageView from '@/components/tournament/br/BRGroupStageView';
 import { useBRGroupStage } from '@/hooks/useBRGroupLeaderboard';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 import { SEO } from '@/components/SEO';
-import { useTournamentInvitations } from '@/hooks/useTournamentInvitations';
+import InviteCodeRedemption from '@/components/tournament/InviteCodeRedemption';
+import { normalizeInviteCode } from '@/utils/inviteCodeUtils';
 
 const TournamentDetails = () => {
   useGameCatalog();
@@ -91,8 +90,7 @@ const TournamentDetails = () => {
   const requestedBRStageId = detailsSearchParams?.get('brStage') ?? null;
   const competitorTabValue = terminology.competitorLabelPlural.toLowerCase();
   const [activeTab, setActiveTab] = useState(requestedDetailsTab || 'overview');
-  const [inviteCode, setInviteCode] = useState('');
-  const { redeemCode } = useTournamentInvitations(tournament?.id, { list: false });
+  const initialInviteCode = normalizeInviteCode(detailsSearchParams?.get('code') || '');
 
   useEffect(() => {
     setActiveTab(requestedDetailsTab || 'overview');
@@ -498,29 +496,6 @@ const TournamentDetails = () => {
     }
   };
 
-  const handleRedeemInviteCode = async () => {
-    if (!requireVerification()) return;
-    if (!tournament?.id) return;
-    const code = inviteCode.trim();
-    if (!code) {
-      toast({ title: 'Code required', description: 'Enter the invitation code from your email.', variant: 'destructive' });
-      return;
-    }
-    try {
-      await redeemCode.mutateAsync({ code });
-      setInviteCode('');
-      await checkRegistration(true);
-      await fetchTournamentData();
-      toast({ title: 'Invitation redeemed', description: 'Your team has joined this tournament.' });
-    } catch (error: any) {
-      toast({
-        title: 'Unable to redeem code',
-        description: error.message || 'Check that the code belongs to your email and that you are a team captain.',
-        variant: 'destructive',
-      });
-    }
-  };
-
   const handleBannerUpdate = async (url: string | null) => {
     if (!tournament?.id) return;
 
@@ -629,19 +604,15 @@ const TournamentDetails = () => {
         </div>
       )}
 
-      {shouldShowInviteCode && (
+      {shouldShowInviteCode && tournament && (
         <div className="container mx-auto px-4 relative z-30 -mt-6 mb-10">
           <Card className="mx-auto max-w-3xl border border-purple-500/20 bg-[#0d0d10] shadow-2xl shadow-purple-950/20">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-white">
-                <Mail className="h-5 w-5 text-purple-300" />
                 Have an invitation code?
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm text-gray-400">
-                Enter the code from your email. The code must match your logged-in email and you must be captain of a team.
-              </p>
               {openRegistrationCapacity !== null && (
                 <p className="text-xs text-gray-500">
                   This tournament reserves {tournamentReservedInviteSlots} slot{tournamentReservedInviteSlots === 1 ? '' : 's'} for invited teams
@@ -650,29 +621,25 @@ const TournamentDetails = () => {
                     : '. Open registration is full — only invited teams can join.'}
                 </p>
               )}
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Input
-                  value={inviteCode}
-                  onChange={(event) => setInviteCode(event.target.value.toUpperCase())}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault();
-                      handleRedeemInviteCode();
-                    }
-                  }}
-                  placeholder="XKDL-MQP2"
-                  className="border-white/10 bg-black/40 font-mono tracking-widest text-white"
-                />
-                <Button
-                  type="button"
-                  onClick={handleRedeemInviteCode}
-                  disabled={redeemCode.isPending}
-                  className="bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider"
-                >
-                  {redeemCode.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Join with Code
-                </Button>
-              </div>
+              <InviteCodeRedemption
+                compact
+                showTitle={false}
+                initialCode={initialInviteCode}
+                returnPath={`/tournaments/${slug}${initialInviteCode ? `?code=${encodeURIComponent(initialInviteCode)}` : ''}`}
+                tournament={{
+                  id: tournament.id,
+                  slug: tournament.slug,
+                  name: tournament.name,
+                  game: tournament.game,
+                  game_mode: tournament.game_mode,
+                  team_size: tournament.max_participants,
+                  status: tournament.status,
+                }}
+                onSuccess={async () => {
+                  await checkRegistration(true);
+                  await fetchTournamentData();
+                }}
+              />
             </CardContent>
           </Card>
         </div>

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import type {
   CreateInvitationsRequest,
+  InvitationPreview,
   RedeemInvitationRequest,
   RedeemInvitationResponse,
   SendInvitationsRequest,
@@ -97,7 +98,9 @@ export function useTournamentInvitations(tournamentId?: string | null, options: 
     },
     onSuccess: () => {
       invalidate();
+      queryClient.invalidateQueries({ queryKey: ['invitation-preview'] });
       queryClient.invalidateQueries({ queryKey: ['tournament-participants'] });
+      queryClient.invalidateQueries({ queryKey: ['tournament-registration'] });
     },
   });
 
@@ -134,4 +137,17 @@ export function useTournamentInvitations(tournamentId?: string | null, options: 
     importCsv,
     fetchStats,
   };
+}
+
+export function useInvitationPreview(code: string, enabled = true) {
+  const normalizedCode = code.trim();
+  return useQuery({
+    queryKey: ['invitation-preview', normalizedCode],
+    queryFn: async (): Promise<InvitationPreview> => {
+      return apiClient.get<InvitationPreview>(`/api/invitations/preview?code=${encodeURIComponent(normalizedCode)}`);
+    },
+    enabled: enabled && Boolean(normalizedCode),
+    staleTime: 30_000,
+    retry: false,
+  });
 }

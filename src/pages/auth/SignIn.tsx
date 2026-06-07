@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,8 @@ const SignIn = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { signIn, signInWithGoogle, signInWithDiscord, loading: authLoading, user, profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect');
   const { toast } = useToast();
   const [isAlreadySignedIn, setIsAlreadySignedIn] = useState(false);
 
@@ -56,14 +58,14 @@ const SignIn = () => {
         description: `You are already signed in as ${profile.username || profile.full_name || user.email}`,
       });
       setTimeout(() => {
-        navigate("/");
+        navigate(redirectTo || "/");
       }, 2000);
     }
-  }, [user, profile, navigate, toast]);
+  }, [user, profile, navigate, toast, redirectTo]);
 
   const handleSubmit = async (values: SignInFormValues) => {
     if (isAlreadySignedIn) {
-      navigate("/");
+      navigate(redirectTo || "/");
       return;
     }
 
@@ -74,7 +76,7 @@ const SignIn = () => {
         title: "Welcome back!",
         description: "You have successfully signed in.",
       });
-      navigate('/');
+      navigate(redirectTo || '/');
     } catch (error: any) {
       console.error("Sign in error:", error);
       setError(error.message);
