@@ -112,6 +112,15 @@ export function getBundledGameAssets(gameName: string): CachedGame | null {
     };
 }
 
+export function getManifestGameAssets(gameName: string): { banner: string | null; cover: string | null } {
+    const bundled = getBundledGameAssets(gameName);
+    if (!bundled) return { banner: null, cover: null };
+    return {
+        banner: bundled.gameBanner,
+        cover: bundled.cover ?? bundled.gameLogo,
+    };
+}
+
 /** Logo path from the active game catalog (may 404 if asset missing). */
 function getCatalogLogo(gameName: string): string | null {
     return toPublicAssetPath(resolveCatalogGame(gameName)?.logo);

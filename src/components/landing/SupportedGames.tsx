@@ -1,8 +1,9 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import esportsData from "@/data/esportsGames.json";
+import { getManifestGameAssets } from "@/hooks/useRawgGame";
 import { apiClient } from "@/lib/apiClient";
 import { getWebsiteAssetUrl } from "@/lib/storage";
 
@@ -10,7 +11,6 @@ interface Game {
   name: string;
   slug: string;
   category: string;
-  logo: string;
 }
 
 interface GameAssets {
@@ -23,15 +23,65 @@ interface IgdbBatchItem {
   cover?: string | null;
 }
 
+const PLACEHOLDER_IMAGE = '/placeholder.svg';
+
 // Use a different IGDB artwork index for games where the default looks bad
 const BANNER_INDEX_OVERRIDES: Record<string, number> = {
   cs2: 3,
   tekken8: 1,
 };
 
-const GameCard = ({ game, assets }: { game: Game; assets: GameAssets | undefined }) => {
-  const banner = assets?.banner;
-  const cover = assets?.cover;
+function resolveSeedAssets(game: Game): GameAssets {
+  return getManifestGameAssets(game.name);
+}
+
+function buildSeedAssetsMap(games: Game[]): Record<string, GameAssets> {
+  return Object.fromEntries(
+    games.map((game) => [game.slug, resolveSeedAssets(game)]),
+  );
+}
+
+function pickBanner(banners: string[] | undefined, slug: string, fallback: string | null): string | null {
+  if (!banners?.length) return fallback;
+  const idx = BANNER_INDEX_OVERRIDES[slug] ?? 0;
+  return banners[idx] ?? banners[0] ?? fallback;
+}
+
+const GameCard = ({
+  game,
+  assets,
+  seedAssets,
+}: {
+  game: Game;
+  assets: GameAssets | undefined;
+  seedAssets: GameAssets;
+}) => {
+  const banner = assets?.banner ?? seedAssets.banner;
+  const cover = assets?.cover ?? seedAssets.cover;
+
+  const [bannerSrc, setBannerSrc] = useState(banner);
+  const [coverSrc, setCoverSrc] = useState(cover);
+
+  useEffect(() => {
+    setBannerSrc(banner);
+    setCoverSrc(cover);
+  }, [banner, cover]);
+
+  const handleBannerError = useCallback(() => {
+    setBannerSrc((current) => {
+      if (current !== cover && cover) return cover;
+      if (current !== seedAssets.banner && seedAssets.banner) return seedAssets.banner;
+      return PLACEHOLDER_IMAGE;
+    });
+  }, [cover, seedAssets.banner]);
+
+  const handleCoverError = useCallback(() => {
+    setCoverSrc((current) => {
+      if (current !== banner && banner) return banner;
+      if (current !== seedAssets.cover && seedAssets.cover) return seedAssets.cover;
+      return PLACEHOLDER_IMAGE;
+    });
+  }, [banner, seedAssets.cover]);
 
   return (
     <Link
@@ -39,28 +89,27 @@ const GameCard = ({ game, assets }: { game: Game; assets: GameAssets | undefined
       className="group relative block h-[340px] md:h-[400px] overflow-hidden"
       aria-label={`Browse ${game.name} tournaments`}
     >
-      {/* IGDB banner with Ken Burns zoom on hover */}
-      {banner ? (
+      {bannerSrc ? (
         <img
-          src={banner}
+          src={bannerSrc}
           alt=""
           aria-hidden
           loading="lazy"
+          onError={handleBannerError}
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-[8s] ease-out group-hover:scale-110"
         />
       ) : (
         <div className="absolute inset-0 bg-zinc-900 animate-pulse" />
       )}
 
-      {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
 
-      {/* Card content — IGDB cover art as logo */}
       <div className="absolute inset-x-0 bottom-0 p-5 md:p-6 flex items-end gap-3">
-        {cover ? (
+        {coverSrc ? (
           <img
-            src={cover}
+            src={coverSrc}
             alt={`${game.name} cover`}
+            onError={handleCoverError}
             className="h-20 md:h-24 w-auto object-cover flex-shrink-0 border border-white/10"
           />
         ) : (
@@ -80,18 +129,41 @@ const GameCard = ({ game, assets }: { game: Game; assets: GameAssets | undefined
 const SupportedGames = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: true, margin: "300px" });
-  const games = esportsData.games as Game[];
+  const isInView = useInView(sectionRef, { once: true, margin: "200px" });
+  const games = useMemo(
+    () => (esportsData.games as Array<Game & { logo?: string }>).map(({ name, slug, category }) => ({
+      name,
+      slug,
+      category,
+    })),
+    [],
+  );
+
+  const seedAssetsMap = useMemo(() => buildSeedAssetsMap(games), [games]);
 
   const [gameAssets, setGameAssets] = useState<Record<string, GameAssets>>({});
   const [assetsRequested, setAssetsRequested] = useState(false);
 
+  // Instant seed from manifest — no API call, cards are never blank while waiting
   useEffect(() => {
-    if (!isInView || assetsRequested) return;
+    if (games.length === 0) return;
+    setGameAssets((prev) => {
+      const next = { ...prev };
+      for (const game of games) {
+        if (next[game.slug]?.banner) continue;
+        next[game.slug] = seedAssetsMap[game.slug] ?? { banner: null, cover: null };
+      }
+      return next;
+    });
+  }, [games, seedAssetsMap]);
+
+  // Deferred upgrade via batch IGDB API — only when section nears viewport
+  useEffect(() => {
+    if (!isInView || assetsRequested || games.length === 0) return;
 
     let cancelled = false;
-
     setAssetsRequested(true);
+
     apiClient
       .post<Record<string, IgdbBatchItem>>("/api/games/igdb-assets/batch", {
         games: games.map((game) => game.name),
@@ -99,27 +171,25 @@ const SupportedGames = () => {
       .then((response) => {
         if (cancelled) return;
 
-        const nextAssets: Record<string, GameAssets> = {};
-        games.forEach((game) => {
-          const data = response?.[game.name];
-          const idx = BANNER_INDEX_OVERRIDES[game.slug] ?? 0;
-          nextAssets[game.slug] = {
-            banner: data?.banners?.[idx] || data?.banners?.[0] || game.logo,
-            cover: data?.cover || game.logo,
-          };
+        setGameAssets((prev) => {
+          const next = { ...prev };
+          games.forEach((game) => {
+            const data = response?.[game.name];
+            const seed = seedAssetsMap[game.slug] ?? { banner: null, cover: null };
+            next[game.slug] = {
+              banner: pickBanner(data?.banners, game.slug, seed.banner),
+              cover: data?.cover ?? seed.cover,
+            };
+          });
+          return next;
         });
-
-        setGameAssets(nextAssets);
       })
       .catch(() => {
-        if (cancelled) return;
-        setGameAssets(Object.fromEntries(
-          games.map((game) => [game.slug, { banner: game.logo, cover: game.logo }]),
-        ));
+        // Keep manifest-seeded assets — do not overwrite with missing catalog logos
       });
 
     return () => { cancelled = true; };
-  }, [assetsRequested, games, isInView]);
+  }, [assetsRequested, games, isInView, seedAssetsMap]);
 
   const scrollGames = (direction: -1 | 1) => {
     const node = scrollRef.current;
@@ -134,7 +204,6 @@ const SupportedGames = () => {
 
   return (
     <section ref={sectionRef} className="py-32 bg-[#0a0a0a] relative overflow-hidden">
-      {/* Arena background image — blurred and darkened */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         <img
           src={getWebsiteAssetUrl('landing-page-assets/enter-arena.jpg')}
@@ -146,7 +215,6 @@ const SupportedGames = () => {
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -164,7 +232,6 @@ const SupportedGames = () => {
           </p>
         </motion.div>
 
-        {/* Carousel */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
@@ -181,7 +248,11 @@ const SupportedGames = () => {
                   key={game.slug}
                   className="min-w-full snap-start sm:min-w-[calc(50%-0.5rem)] lg:min-w-[calc(33.333%-0.75rem)] xl:min-w-[calc(25%-0.75rem)]"
                 >
-                  <GameCard game={game} assets={gameAssets[game.slug]} />
+                  <GameCard
+                    game={game}
+                    assets={gameAssets[game.slug]}
+                    seedAssets={seedAssetsMap[game.slug] ?? { banner: null, cover: null }}
+                  />
                 </div>
               ))}
             </div>
@@ -204,7 +275,6 @@ const SupportedGames = () => {
           </div>
         </motion.div>
 
-        {/* Footer */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : {}}
