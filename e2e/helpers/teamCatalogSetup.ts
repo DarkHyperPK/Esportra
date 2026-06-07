@@ -62,7 +62,7 @@ export async function createDedicatedCaptainTeam(
 ): Promise<TeamRow> {
   return client.post<TeamRow>('/api/teams', {
     name: `E2E ${label} ${stamp}`,
-    tag: `E${String(stamp).slice(-3)}`,
+    tag: `E${String(stamp).slice(-5)}`,
     game: 'General',
     gameFormat: 'squad',
   });

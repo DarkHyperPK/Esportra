@@ -26,9 +26,27 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function isRetriableStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+function isRetriableApiError(message: string): boolean {
+  return (
+    message.includes('(429)')
+    || message.includes('Too many requests')
+    || /\((500|502|503|504)\)/.test(message)
+  );
+}
+
+function getRetryWaitMs(message: string, attempt: number): number {
+  const retryMatch = message.match(/"retryAfterSeconds"\s*:\s*(\d+)/);
+  if (retryMatch) return (parseInt(retryMatch[1], 10) + 2) * 1_000;
+  if (message.includes('(429)')) return 35_000;
+  return Math.min(2_000 * 2 ** attempt, 15_000);
+}
+
 /**
- * Retry a request that may be rate-limited (429).
- * Waits `retryAfterSeconds` from the response body, then retries up to `maxRetries` times.
+ * Retry staging API calls that fail due to rate limits (429) or transient server errors.
  */
 export async function withRateLimitRetry<T>(
   fn: () => Promise<T>,
@@ -40,15 +58,8 @@ export async function withRateLimitRetry<T>(
       return await fn();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const is429 = message.includes('(429)') || message.includes('Too many requests');
-      if (!is429 || attempt >= maxRetries) throw error;
-
-      let waitMs = 35_000;
-      const retryMatch = message.match(/"retryAfterSeconds"\s*:\s*(\d+)/);
-      if (retryMatch) {
-        waitMs = (parseInt(retryMatch[1], 10) + 2) * 1_000;
-      }
-      await sleep(waitMs);
+      if (!isRetriableApiError(message) || attempt >= maxRetries) throw error;
+      await sleep(getRetryWaitMs(message, attempt));
       attempt += 1;
     }
   }
@@ -117,12 +128,18 @@ export class ApiClient {
     path: string,
     body?: unknown,
   ): Promise<{ status: number; body: string }> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method,
-      headers: this.headers(),
-      body: body === undefined ? undefined : JSON.stringify(body),
+    return withRateLimitRetry(async () => {
+      const res = await fetch(`${this.baseUrl}${path}`, {
+        method,
+        headers: this.headers(),
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      const responseBody = await res.text();
+      if (isRetriableStatus(res.status)) {
+        throw new Error(`${method} ${path} failed (${res.status}): ${responseBody}`);
+      }
+      return { status: res.status, body: responseBody };
     });
-    return { status: res.status, body: await res.text() };
   }
 
   async expectFailure(
