@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   Trophy,
   Users,
-  Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Footer from "@/components/Footer";
@@ -73,7 +72,7 @@ const tabTitles: Record<string, { eyebrow: string; title: string; description: s
   organization: {
     eyebrow: "Organization",
     title: "Manage Organization",
-    description: "Edit profile, branding, media, seasons, staff, and advanced organization controls.",
+    description: "Edit profile, branding, media, staff, and advanced organization controls.",
   },
   staff: {
     eyebrow: "Access",
@@ -205,10 +204,6 @@ const OrganizerDashboard = () => {
           description={activeMeta.description}
           actions={
             <>
-              <CommandButton variant="secondary" onClick={() => navigate("/organizer/seasons")}>
-                <Workflow className="h-4 w-4" />
-                Seasons
-              </CommandButton>
               <CommandButton variant="secondary" onClick={() => navigate("/organizer/tournaments")}>
                 <Trophy className="h-4 w-4" />
                 Tournaments

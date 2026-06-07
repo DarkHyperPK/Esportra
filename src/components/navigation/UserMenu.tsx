@@ -349,7 +349,6 @@ const UserMenu = ({
                       Manage Organization
                     </JackMenuItem>
                     <JackMenuItem to="/tournaments/create">Create Tournament</JackMenuItem>
-                    <JackMenuItem to="/seasons/create">Create Season</JackMenuItem>
                   </>
                 ) : (
                   <JackMenuItem to="/organizer/setup-organization" trailing={dot("amber")}>

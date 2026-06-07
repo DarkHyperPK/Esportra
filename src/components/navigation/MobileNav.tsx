@@ -121,8 +121,6 @@ const MobileNav = ({
                     isActive([
                       "/tournaments",
                       "/organizer/tournaments",
-                      "/organizer/seasons",
-                      "/season",
                     ])
                   )}
                 >
@@ -145,8 +143,6 @@ const MobileNav = ({
                           <>
                             <JackSubItem to="/organizer/tournaments">Manage Tournaments</JackSubItem>
                             <JackSubItem to="/tournaments/create">Create Tournament</JackSubItem>
-                            <JackSubItem to="/organizer/seasons">Manage Seasons</JackSubItem>
-                            <JackSubItem to="/tournaments/create?mode=season">Create Season</JackSubItem>
                           </>
                         )}
                       </div>

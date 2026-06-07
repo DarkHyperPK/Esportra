@@ -81,11 +81,6 @@ const VenueOwnerDashboard = lazyWithRetry(() => import("./pages/venue-owner/Dash
 
 // Tournament Organizer
 const OrganizerDashboard = lazyWithRetry(() => import("./pages/organizer/Dashboard"));
-const ManageSeasons = lazyWithRetry(() => import("./pages/organizer/ManageSeasons"));
-const CreateSeason = lazyWithRetry(() => import("./pages/organizer/CreateSeason"));
-const SeasonSetupPlan = lazyWithRetry(() => import("./pages/organizer/SeasonSetupPlan"));
-const SeasonSetupReview = lazyWithRetry(() => import("./pages/organizer/SeasonSetupReview"));
-const SeasonManage = lazyWithRetry(() => import("./pages/organizer/SeasonManage"));
 const _TournamentList = lazyWithRetry(() => import("./pages/organizer/TournamentList"));
 const ManageTournaments = lazyWithRetry(() => import("./pages/organizer/ManageTournaments"));
 const TournamentManage = lazyWithRetry(() => import("./pages/organizer/TournamentManage"));
@@ -100,20 +95,6 @@ const FullscreenBracketPage = lazyWithRetry(() => import("./pages/tournaments/br
 const OrganizationPublicProfile = lazyWithRetry(() => import("./pages/org/PublicProfile"));
 const OrganizationWizard = lazyWithRetry(() => import("./pages/organizer/OrganizationWizard"));
 const _OrganizationSettings = lazyWithRetry(() => import("./pages/organizer/OrganizationSettings"));
-const AdminSeasonAudit = lazyWithRetry(() => import("./pages/admin/AdminSeasonAudit"));
-const AdminSeasonOverride = lazyWithRetry(() => import("./pages/admin/AdminSeasonOverride"));
-const AdminSeasonAnalytics = lazyWithRetry(() => import("./pages/admin/AdminSeasonAnalytics"));
-
-const LegacySeasonManageRedirect = () => {
-  const { id } = useParams<{ id: string }>();
-  return <Navigate to={id ? `/season/manage/${id}` : '/organizer/seasons'} replace />;
-};
-
-const LegacySeasonPublicRedirect = () => {
-  const { slug } = useParams<{ slug: string }>();
-  return <Navigate to={slug ? `/season/${slug}` : '/seasons'} replace />;
-};
-
 const ADMIN_ROLE_SETS = {
   anyAdmin: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
   userManagement: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
@@ -138,10 +119,6 @@ const EditVenue = lazyWithRetry(() => import("./pages/venues/EditVenue"));
 // Tournaments
 const BrowseTournaments = lazyWithRetry(() => import("./pages/tournaments/List"));
 const CreateTournament = lazyWithRetry(() => import("./pages/tournaments/Create"));
-const SeasonsList = lazyWithRetry(() => import("./pages/seasons/List"));
-const _SeasonsDetails = lazyWithRetry(() => import("./pages/seasons/Details"));
-const SeasonPublic = lazyWithRetry(() => import("./pages/seasons/SeasonPublic"));
-
 // About
 const ContactPage = lazyWithRetry(() => import("./pages/about/Contact"));
 const FAQPage = lazyWithRetry(() => import("./pages/about/FAQ"));
@@ -620,17 +597,6 @@ const AppContent = React.memo(() => {
                     <ManageTournaments />
                   </ProtectedRoute>
                 } />
-                <Route path="/organizer/seasons" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <ManageSeasons />
-                  </ProtectedRoute>
-                } />
-                <Route path="/organizer/seasons/create" element={<Navigate to="/seasons/create" replace />} />
-                <Route path="/organizer/seasons/:id" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <LegacySeasonManageRedirect />
-                  </ProtectedRoute>
-                } />
                 <Route path="/organizer/tournament/:slug" element={
                   <ProtectedRoute>
                     <TournamentManage />
@@ -657,29 +623,6 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
                 <Route path="/tournaments" element={<BrowseTournaments />} />
-                <Route path="/seasons" element={<SeasonsList />} />
-                <Route path="/seasons/create" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <CreateSeason />
-                  </ProtectedRoute>
-                } />
-                <Route path="/season/setup/:id/plan" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <SeasonSetupPlan />
-                  </ProtectedRoute>
-                } />
-                <Route path="/season/setup/:id/review" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <SeasonSetupReview />
-                  </ProtectedRoute>
-                } />
-                <Route path="/season/manage/:id" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <SeasonManage />
-                  </ProtectedRoute>
-                } />
-                <Route path="/season/:slug" element={<SeasonPublic />} />
-                <Route path="/seasons/:slug" element={<LegacySeasonPublicRedirect />} />
                 <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
                 <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
                 <Route path="/player/:username" element={<PlayerProfile />} />
@@ -758,11 +701,6 @@ const AppContent = React.memo(() => {
 
                 {/* Admin Protected Route for TournamentDetails */}
                 <Route path="/admin/tournaments/:id" element={<AdminProtectedRoute><TournamentDetails /></AdminProtectedRoute>} />
-
-                {/* Admin Season Routes */}
-                <Route path="/admin/seasons/:id/audit" element={<AdminProtectedRoute><AdminSeasonAudit /></AdminProtectedRoute>} />
-                <Route path="/admin/seasons/:id/override" element={<AdminProtectedRoute><AdminSeasonOverride /></AdminProtectedRoute>} />
-                <Route path="/admin/seasons/analytics" element={<AdminProtectedRoute><AdminSeasonAnalytics /></AdminProtectedRoute>} />
 
                 {/* Tournament History Route */}
                 <Route path="/tournament-history" element={<TournamentHistoryPage />} />

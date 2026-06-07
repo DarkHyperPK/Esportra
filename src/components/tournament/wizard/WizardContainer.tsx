@@ -18,10 +18,9 @@ interface WizardContainerProps {
     initialData?: TournamentWizardData;
     tournamentId?: string;
     participantsCount?: number;
-    seasonId?: string;
 }
 
-const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tournamentId, participantsCount, seasonId }) => {
+const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tournamentId, participantsCount }) => {
     const {
         currentStep,
         data,
@@ -34,7 +33,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({ initialData, tourname
         goToStep,
         clearDraft,
         submitTournament,
-    } = useTournamentWizard(initialData, tournamentId, seasonId);
+    } = useTournamentWizard(initialData, tournamentId);
 
     const renderStep = () => {
         switch (currentStep) {

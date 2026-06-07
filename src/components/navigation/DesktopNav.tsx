@@ -95,8 +95,6 @@ const DesktopNav = ({
                 isActive([
                   "/tournaments",
                   "/organizer/tournaments",
-                  "/organizer/seasons",
-                  "/season",
                 ])
               )}
             >
@@ -113,9 +111,6 @@ const DesktopNav = ({
                   <JackDivider />
                   <JackItem to="/organizer/tournaments">Manage Tournaments</JackItem>
                   <JackItem to="/tournaments/create">Create Tournament</JackItem>
-                  <JackDivider />
-                  <JackItem to="/organizer/seasons">Manage Seasons</JackItem>
-                  <JackItem to="/tournaments/create?mode=season">Create Season</JackItem>
                 </>
               )}
             </div>

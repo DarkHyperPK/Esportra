@@ -1,7 +1,7 @@
 import { JackButton } from "@/components/ui/JackButton";
 import { Link, useParams } from "react-router-dom";
 
-const sampleCards = ["Tournament Control", "Venue Booking", "Season Builder"];
+const sampleCards = ["Tournament Control", "Venue Booking", "Match Operations"];
 
 const textureOptions = [
   {
