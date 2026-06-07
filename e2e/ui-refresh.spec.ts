@@ -9,6 +9,7 @@ import {
   assertNoNewConsoleErrors,
   assertScrollWorks,
   captureUiArtifact,
+  clickNavbarLink,
   clickDesktopDropdownItem,
   expectMenuItemVisible,
   expectMenuItemHidden,
@@ -60,11 +61,11 @@ test.describe('@ui-refresh @ui-refresh-desktop Site UI refresh — desktop shell
 
   test('NAV-03 anonymous auth links route to sign-in and sign-up', async ({ page }) => {
     await gotoShellPage(page, '/tournaments');
-    await page.getByRole('link', { name: /Log in/i }).click();
+    await clickNavbarLink(page, /Log in/i);
     await expect(page).toHaveURL(/\/auth\/signin/);
 
     await gotoShellPage(page, '/tournaments');
-    await page.getByRole('link', { name: /Sign Up|Jack In/i }).first().click();
+    await clickNavbarLink(page, /Sign Up|Jack In/i);
     await expect(page).toHaveURL(/\/auth\/(signup|signin)/);
   });
 

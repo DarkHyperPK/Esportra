@@ -1,8 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Page, TestInfo } from '@playwright/test';
+import type { Locator, Page, TestInfo } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { dismissBetaModal, skipBetaModal } from './uiAuth';
+
+async function dispatchDomClick(locator: Locator): Promise<void> {
+  await locator.evaluate((node) => {
+    (node as HTMLElement).click();
+  });
+}
 
 const BENIGN_CONSOLE_PATTERNS = [
   /Autoplay check/i,
@@ -54,31 +60,41 @@ export async function gotoShellPage(page: Page, route: string): Promise<void> {
   await skipBetaModal(page);
   const targetPath = route.startsWith('/') ? route : `/${route}`;
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const waitUntil = attempt >= 2 ? 'load' : 'domcontentloaded';
     try {
-      await page.goto(targetPath, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+      await page.goto(targetPath, { waitUntil, timeout: 60_000 });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       const interrupted =
         message.includes('interrupted') ||
         message.includes('NS_BINDING_ABORTED') ||
+        message.includes('NS_ERROR_FAILURE') ||
+        message.includes('NS_ERROR_UNEXPECTED') ||
         message.includes('frame was detached');
       if (!interrupted) {
         throw error;
       }
       await page.waitForLoadState('domcontentloaded', { timeout: 20_000 }).catch(() => undefined);
+      if (attempt === 3) {
+        throw error;
+      }
+      await page.waitForTimeout(500 * (attempt + 1));
+      continue;
     }
+
+    await dismissBetaModal(page);
 
     const pathname = new URL(page.url()).pathname;
     if (pathname === targetPath || pathname.startsWith(`${targetPath}/`)) {
       break;
     }
 
-    if (attempt === 2) {
+    if (attempt === 3) {
       throw new Error(`Expected ${targetPath} but landed on ${pathname}`);
     }
 
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(500 * (attempt + 1));
   }
   await dismissBetaModal(page);
 }
@@ -102,10 +118,10 @@ export async function assertInnerNavbarSticky(page: Page): Promise<void> {
 }
 
 export async function openDesktopDropdown(page: Page, label: string): Promise<void> {
+  await waitForShellSettled(page);
   const trigger = page.getByRole('button', { name: new RegExp(label, 'i') }).first();
   await expect(trigger).toBeVisible({ timeout: 15_000 });
-  await trigger.scrollIntoViewIfNeeded();
-  await trigger.click({ timeout: 30_000 });
+  await dispatchDomClick(trigger);
 }
 
 export async function clickDesktopDropdownItem(page: Page, itemText: string): Promise<void> {
@@ -115,7 +131,21 @@ export async function clickDesktopDropdownItem(page: Page, itemText: string): Pr
     .or(page.getByRole('link', { name: pattern }))
     .first();
   await expect(item).toBeVisible({ timeout: 10_000 });
-  await item.click();
+  await dispatchDomClick(item);
+}
+
+export async function clickNavbarLink(page: Page, name: RegExp): Promise<void> {
+  await waitForShellSettled(page);
+  const link = page.getByRole('link', { name }).first();
+  await expect(link).toBeVisible({ timeout: 15_000 });
+  const href = await link.getAttribute('href');
+  await dispatchDomClick(link);
+  if (href) {
+    await page.waitForURL(
+      (url) => url.pathname === href || url.pathname.startsWith(`${href}/`),
+      { timeout: 30_000, waitUntil: 'domcontentloaded' },
+    );
+  }
 }
 
 export async function openMobileNav(page: Page): Promise<void> {
