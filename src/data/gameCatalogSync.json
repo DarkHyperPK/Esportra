@@ -1,8 +1,7 @@
 {
   "catalogVersion": "2026.06.07-r6s-veto-catalog",
   "schemaVersion": 1,
-  "contentHash": "manual-r6s-veto-frontend-overlay",
+  "contentHash": "e250f3b86c6915c2b0794282b6b5236d18d014fc43d473ac7abea8ee51f56d7f",
   "backendCatalogRelativePath": "src/Esportra.Api/GameCatalog/esportsGames.json",
-  "updatedAt": "2026-06-07",
-  "notes": "Frontend overlay pins to backend catalog 2026.06.07-r6s-veto-catalog (R6 9-map veto + skirmish mode overlays)."
+  "updatedAt": "2026-06-07"
 }

@@ -187,7 +187,7 @@
         }
       ],
       "defaultFormat": "5v5",
-      "logo": "/games/igdb/r6/cover.jpg",
+      "logo": "/games/r6s-logo.png",
       "features": {
         "mapVeto": true,
         "mapPool": true,
@@ -220,9 +220,8 @@
       "aliases": [
         "r6",
         "r6s",
-        "rainbow six siege",
-        "Rainbow Six Siege",
         "rainbow six",
+        "rainbow six siege",
         "siege"
       ],
       "tournamentCapabilities": {
