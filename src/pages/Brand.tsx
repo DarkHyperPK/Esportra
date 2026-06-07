@@ -186,12 +186,6 @@ const capabilities = [
     title: "Be there when matches happen.",
     body: "Esportra Spaces is where players book gaming venues and arenas. Your brand can sponsor seats, equipment, or entire tournaments at the locations where the competition actually happens.",
   },
-  {
-    n: "04",
-    label: "Seasons",
-    title: "Long-term presence, structured.",
-    body: "Multi-stage seasons with qualifiers, group stages, and finals — all under one banner. Months of continuous exposure, not one-offs.",
-  },
 ];
 
 const CapabilityBlock = ({

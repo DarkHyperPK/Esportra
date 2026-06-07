@@ -47,12 +47,6 @@ const runMigrations = () => {
   if (typeof window === 'undefined') return;
   if (safeGet(MIGRATION_FLAG) === '1') return;
 
-  try {
-    // Season feature removed - no migrations needed
-  } catch {
-    /* ignore */
-  }
-
   safeSet(MIGRATION_FLAG, '1');
 };
 

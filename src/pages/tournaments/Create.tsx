@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -15,7 +15,6 @@ const CreateTournament = () => {
   const { canCreateTournaments, currentRole } = useRole();
   const admin = useAdmin();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [hasOrganization, setHasOrganization] = useState(false);
 
@@ -131,10 +130,6 @@ const CreateTournament = () => {
         <Footer />
       </div>
     );
-  }
-
-  if (searchParams.get('mode') === 'season') {
-    return <Navigate to="/organizer/seasons/create" replace />;
   }
 
   return (

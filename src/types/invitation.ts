@@ -29,5 +29,4 @@ export interface RedeemInvitationRequest {
 export interface RedeemInvitationResponse {
   success: boolean;
   tournamentId: string;
-  seasonId?: string | null;
 }

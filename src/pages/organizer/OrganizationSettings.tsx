@@ -1,11 +1,10 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
   CheckCircle,
-  ExternalLink,
   ImageIcon,
   Loader2,
   Plus,
@@ -70,24 +69,10 @@ interface OrgStats {
   activeTournaments: number;
 }
 
-interface Season {
-  id: string;
-  name: string;
-  slug: string;
-  game: string;
-  status: string;
-  participant_mode: string;
-  is_public: boolean;
-  start_date: string | null;
-  end_date: string | null;
-  created_at: string;
-}
-
 const tabs = [
   { value: 'profile', label: 'Profile' },
   { value: 'branding', label: 'Branding' },
   { value: 'staff', label: 'Staff' },
-  { value: 'seasons', label: 'Seasons' },
   { value: 'media', label: 'Media' },
   { value: 'advanced', label: 'Advanced' },
 ];
@@ -125,8 +110,6 @@ const OrganizationSettings: React.FC = () => {
   const [pendingBannerPreview, setPendingBannerPreview] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
-  const [seasons, setSeasons] = useState<Season[]>([]);
-
   const hasUnsavedChanges = organization
     ? name !== organization.name ||
       slug !== organization.slug ||
@@ -150,7 +133,6 @@ const OrganizationSettings: React.FC = () => {
       void fetchAlbums(data.id);
       void fetchMedia(data.id, null);
       void fetchStats(data.id);
-      void fetchSeasons(data.id);
     } catch (error) {
       console.error('Error fetching organization:', error);
     } finally {
@@ -176,15 +158,6 @@ const OrganizationSettings: React.FC = () => {
       setStats((await apiClient.get<OrgStats>(`/api/organizations/${orgId}/stats`)) || { totalTournaments: 0, totalParticipants: 0, activeTournaments: 0 });
     } catch (error) {
       console.error('Error fetching stats:', error);
-    }
-  };
-
-  const fetchSeasons = async (orgId: string) => {
-    try {
-      setSeasons((await apiClient.get<Season[]>(`/api/seasons?organizationId=${orgId}`)) || []);
-    } catch (error) {
-      console.error('Error fetching seasons:', error);
-      setSeasons([]);
     }
   };
 
@@ -545,37 +518,6 @@ const OrganizationSettings: React.FC = () => {
       {activeSection === 'staff' && organization && user?.id && (
         <CommandSection>
           <OrganizationStaffManager organizationId={organization.id} ownerId={user.id} />
-        </CommandSection>
-      )}
-
-      {activeSection === 'seasons' && (
-        <CommandSection>
-          <SectionTitle title="Seasons" description="Competitive seasons linked to this organization." />
-          <div className="mt-6">
-            {seasons.length === 0 ? (
-              <CommandEmptyState
-                title="No seasons created yet"
-                description="When season management resumes, created seasons will appear here."
-                icon={<Trophy className="h-5 w-5" />}
-                action={<CommandButton asChild><Link to="/seasons/create"><Plus className="h-4 w-4" />Create Season</Link></CommandButton>}
-              />
-            ) : (
-              <div className="grid gap-3">
-                {seasons.map((season) => (
-                  <CommandPanel key={season.id} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h3 className="font-semibold text-white">{season.name}</h3>
-                      <p className="mt-1 text-sm text-zinc-500">{season.game} / {season.participant_mode}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="border border-white/10 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-zinc-400">{season.status}</span>
-                      <CommandButton asChild size="sm" variant="secondary"><Link to={`/season/manage/${season.id}`}><ExternalLink className="h-4 w-4" />Open</Link></CommandButton>
-                    </div>
-                  </CommandPanel>
-                ))}
-              </div>
-            )}
-          </div>
         </CommandSection>
       )}
 

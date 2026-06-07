@@ -37,7 +37,6 @@ export interface MeRolesResponse {
   hasOrganization?: boolean;
   hasApprovedLicense?: boolean;
   canCreateTournament?: boolean;
-  canCreateSeason?: boolean;
 }
 
 export const meRolesQueryKey = ['me-roles'] as const;
@@ -66,6 +65,3 @@ export function deriveCanCreateTournament(roles: MeRolesResponse | null | undefi
   return roles?.canCreateTournament ?? (deriveHasOrganization(roles) && deriveHasApprovedLicense(roles));
 }
 
-export function deriveCanCreateSeason(roles: MeRolesResponse | null | undefined): boolean {
-  return roles?.canCreateSeason ?? deriveCanCreateTournament(roles);
-}

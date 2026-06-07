@@ -26,7 +26,7 @@ import slugify from 'slugify';
 const STORAGE_KEY = 'tournament_wizard_draft';
 const STEP_KEY = 'tournament_wizard_step';
 
-export const useTournamentWizard = (initialData?: TournamentWizardData, tournamentId?: string, seasonId?: string) => {
+export const useTournamentWizard = (initialData?: TournamentWizardData, tournamentId?: string) => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
@@ -417,25 +417,18 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         }));
                     })(),
                     mapPoolIds: data.mapPoolIds ?? [],
-                    seasonId: seasonId || undefined,
-                    seasonRole: seasonId ? 'event' : undefined,
-                    seasonStageOrder: seasonId ? 1 : undefined,
                 });
 
                 clearDraft();
-                toast({ title: 'Tournament Created!', description: seasonId ? 'Tournament created and linked to season.' : 'Your tournament has been created successfully.' });
-                if (seasonId) {
-                    navigate(`/season/manage/${seasonId}`);
-                } else {
-                    navigate(`/organizer/tournament/${tournament.slug}`);
-                }
+                toast({ title: 'Tournament Created!', description: 'Your tournament has been created successfully.' });
+                navigate(`/organizer/tournament/${tournament.slug}`);
             }
         } catch (err: any) {
             toast({ title: 'Error', description: err.message || 'Failed to save tournament', variant: 'destructive' });
         } finally {
             setIsSubmitting(false);
         }
-    }, [user, data, toast, navigate, clearDraft, tournamentId, initialData, queryClient, seasonId]);
+    }, [user, data, toast, navigate, clearDraft, tournamentId, initialData, queryClient]);
 
     return {
         currentStep,
