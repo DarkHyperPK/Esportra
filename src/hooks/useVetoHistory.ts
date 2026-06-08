@@ -54,6 +54,6 @@ export function useVetoHistory(matchId?: string | null, enabled = true, vetoToke
         },
         enabled: Boolean(matchId) && enabled,
         staleTime: 0,
-        refetchInterval: vetoToken ? 1000 : false,
+        refetchInterval: false,
     });
 }

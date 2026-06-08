@@ -18,6 +18,7 @@ interface VetoSelectedMapsProps {
     bestOf: number;
     game?: string;
     compact?: boolean;
+    rail?: boolean;
     className?: string;
 }
 
@@ -36,6 +37,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
     bestOf,
     game = 'valorant',
     compact = false,
+    rail = false,
     className,
 }) => {
     const service = React.useMemo(() => new VetoService(game, availableMaps.length || undefined), [game, availableMaps.length]);
@@ -84,7 +86,9 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
 
             <div className={cn(
                 'grid gap-3 sm:gap-4',
-                compact
+                rail
+                    ? 'grid-cols-1'
+                    : compact
                     ? 'grid-cols-2 sm:grid-cols-3 2xl:grid-cols-5'
                     : 'grid-cols-[repeat(auto-fit,minmax(240px,1fr))]',
             )}>

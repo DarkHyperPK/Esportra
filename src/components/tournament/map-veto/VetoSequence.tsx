@@ -211,7 +211,7 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
                         key={`${item.actionNumber}-${item.action}-${item.mapName || item.status}`}
                         initial={reduceMotion ? false : { opacity: 0, y: 8 }}
                         animate={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-                        transition={{ delay: reduceMotion ? 0 : index * 0.025 }}
+                        transition={{ type: 'spring', stiffness: 380, damping: 32, delay: reduceMotion ? 0 : index * 0.015 }}
                         aria-current={isCurrent ? 'step' : undefined}
                         className={cn(
                             'group relative overflow-hidden rounded-xl border bg-[#09090b]/80',

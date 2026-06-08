@@ -153,6 +153,25 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     : veto.current_team_id === veto.team2_id
       ? 'team2'
       : null;
+  const showSelectedMapsInRail = layout === 'fullscreen' && !isComplete;
+  const renderSelectedMapsPanel = (compact = ui.selectedMapsCompact, className = 'mb-0', rail = false) => (
+    <VetoSelectedMaps
+      veto={veto}
+      availableMaps={availableMaps}
+      allAvailableMaps={allAvailableMaps}
+      team1Name={team1Name}
+      team2Name={team2Name}
+      team1Id={team1Id}
+      team2Id={team2Id}
+      imagesLoaded={imagesLoaded}
+      setImagesLoaded={setImagesLoaded}
+      bestOf={currentBestOf}
+      game={game}
+      compact={compact}
+      rail={rail}
+      className={className}
+    />
+  );
 
   const leftRail = (
     <>
@@ -171,6 +190,16 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         compact={ui.headerCompact}
       />
 
+      {showSelectedMapsInRail && (
+        <div className="hidden lg:block">
+          {renderSelectedMapsPanel(true, 'mb-0', true)}
+        </div>
+      )}
+    </>
+  );
+
+  const teamRow = (
+    <div className="mb-3 flex justify-center sm:mb-4">
       <VetoTeamDisplay
         team1Name={team1Name}
         team1Logo={team1Logo}
@@ -180,9 +209,9 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         currentAction={veto.current_action}
         completed={isComplete}
         bestOf={currentBestOf}
-        compact={ui.teamCompact}
+        compact={layout === 'modal'}
       />
-    </>
+    </div>
   );
 
   const mapPoolPanel = (
@@ -208,23 +237,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     />
   );
 
-  const selectedMapsPanel = (
-    <VetoSelectedMaps
-      veto={veto}
-      availableMaps={availableMaps}
-      allAvailableMaps={allAvailableMaps}
-      team1Name={team1Name}
-      team2Name={team2Name}
-      team1Id={team1Id}
-      team2Id={team2Id}
-      imagesLoaded={imagesLoaded}
-      setImagesLoaded={setImagesLoaded}
-      bestOf={currentBestOf}
-      game={game}
-      compact={ui.selectedMapsCompact}
-      className="mb-0"
-    />
-  );
+  const selectedMapsPanel = renderSelectedMapsPanel();
 
   const sequencePanel = (
     <div className={cn(
@@ -275,7 +288,13 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   );
 
   const turnBar = !isComplete && vetoLive && veto.current_action ? (
-    <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 sm:px-4">
+    <motion.div
+      key={`${veto.current_action_number}-${veto.current_team_id}-${veto.current_action}`}
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+      className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 sm:px-4"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-[10px] font-black uppercase tracking-widest text-white/50">Current Turn</div>
@@ -292,7 +311,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           </span>
         )}
       </div>
-    </div>
+    </motion.div>
   ) : null;
 
   const stageContent = isComplete ? (
@@ -307,7 +326,11 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         <div className="min-w-0">{mapPoolPanel}</div>
         <div className="min-w-0">{sequencePanel}</div>
       </div>
-      <div className="min-w-0">{selectedMapsPanel}</div>
+      {showSelectedMapsInRail ? (
+        <div className="min-w-0 lg:hidden">{selectedMapsPanel}</div>
+      ) : (
+        <div className="min-w-0">{selectedMapsPanel}</div>
+      )}
     </>
   );
 
@@ -315,8 +338,10 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
+      transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
       className={ui.shell}
     >
+      {teamRow}
       <div className={ui.grid}>
         <aside className={ui.rail}>
           {leftRail}

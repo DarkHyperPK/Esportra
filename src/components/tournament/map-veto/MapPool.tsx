@@ -1,8 +1,57 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { MatchMapVeto, GameMap, PickedMap, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService, isVetoLive } from '@/hooks/useMapVetoMachine';
-import { getSideFullLabel, getSideShortLabel, getVetoActionHoverClasses, getVetoActionNoun } from './vetoActionPresentation';
+import { getVetoActionHoverClasses, getVetoActionNoun } from './vetoActionPresentation';
 import { getVetoLayoutConfig, type VetoLayoutMode } from './vetoLayoutConfig';
+import {
+    MAP_FLASH_MS,
+    mapOverlayMotion,
+    type MapTransitionAction,
+    type MapTransitionState,
+} from './mapPoolAnimations';
+
+function normalizeBannedMaps(bannedMaps: unknown): string[] {
+    if (!bannedMaps) return [];
+    if (Array.isArray(bannedMaps)) return bannedMaps.map(String);
+    if (typeof bannedMaps === 'string') {
+        try {
+            const parsed = JSON.parse(bannedMaps);
+            return Array.isArray(parsed) ? parsed.map(String) : [bannedMaps];
+        } catch {
+            return [bannedMaps];
+        }
+    }
+    return [String(bannedMaps)];
+}
+
+function normalizePickedMaps(pickedMaps: unknown): PickedMap[] {
+    if (!pickedMaps) return [];
+    if (Array.isArray(pickedMaps)) {
+        return pickedMaps
+            .map((pick) => {
+                if (typeof pick === 'string') return { map_id: pick };
+                if (pick && typeof pick === 'object') {
+                    const typedPick = pick as { map_id?: string; mapId?: string; side?: PickedMap['side'] };
+                    return {
+                        map_id: typedPick.map_id ?? typedPick.mapId ?? '',
+                        side: typedPick.side,
+                    };
+                }
+                return null;
+            })
+            .filter((pick): pick is PickedMap => Boolean(pick?.map_id));
+    }
+    if (typeof pickedMaps === 'string') {
+        try {
+            const parsed = JSON.parse(pickedMaps);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+    return [];
+}
 
 interface MapPoolProps {
     veto: MatchMapVeto;
@@ -47,43 +96,120 @@ export const MapPool: React.FC<MapPoolProps> = ({
 }) => {
     const service = React.useMemo(() => new VetoService(game, availableMaps.length || undefined), [game, availableMaps.length]);
     const mapLookup = allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps;
+    const reduceMotion = useReducedMotion();
 
-    // Optimistic UI: immediately reflect user's ban/pick before DB confirms
-    const [optimisticBanned, setOptimisticBanned] = useState<Set<string>>(new Set());
-    const [optimisticPicked, setOptimisticPicked] = useState<Set<string>>(new Set());
+    const [transitioning, setTransitioning] = useState<Record<string, MapTransitionState>>({});
+    const transitionTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+    const prevUsedMapsRef = useRef<Set<string>>(new Set());
+    const hasSeededUsedMapsRef = useRef(false);
 
-    // Clear optimistic state when the in-flight action completes (success or failure)
-    useEffect(() => {
-        if (actionLoading === null) {
-            setOptimisticBanned(new Set());
-            setOptimisticPicked(new Set());
+    const clearTransitionTimer = useCallback((mapId: string) => {
+        const timer = transitionTimersRef.current.get(mapId);
+        if (timer) {
+            clearTimeout(timer);
+            transitionTimersRef.current.delete(mapId);
         }
-    }, [actionLoading]);
+    }, []);
 
-    // Drop stale optimistic overlays after organizer reset / fresh veto start
-    useEffect(() => {
-        setOptimisticBanned(new Set());
-        setOptimisticPicked(new Set());
-    }, [
-        veto.status,
-        veto.current_action_number,
-        veto.team1_banned_maps,
-        veto.team2_banned_maps,
-        veto.team1_picked_maps,
-        veto.team2_picked_maps,
-    ]);
+    const startMapTransition = useCallback((mapId: string, action: MapTransitionAction) => {
+        const normalizedId = String(mapId);
+        clearTransitionTimer(normalizedId);
 
-    // Wrap handleMapAction to apply optimistic update before the async call
-    const handleMapActionWithOptimistic = (mapId: string) => {
-        if (veto.current_action === 'ban') {
-            setOptimisticBanned(prev => new Set([...prev, mapId]));
-        } else if (veto.current_action === 'pick') {
-            setOptimisticPicked(prev => new Set([...prev, mapId]));
-        }
-        handleMapAction(mapId);
-    };
+        setTransitioning((prev) => ({
+            ...prev,
+            [normalizedId]: { action, startedAt: Date.now() },
+        }));
+
+        const timer = setTimeout(() => {
+            setTransitioning((prev) => {
+                if (!prev[normalizedId]) return prev;
+                const next = { ...prev };
+                delete next[normalizedId];
+                return next;
+            });
+            transitionTimersRef.current.delete(normalizedId);
+        }, MAP_FLASH_MS);
+
+        transitionTimersRef.current.set(normalizedId, timer);
+    }, [clearTransitionTimer]);
+
+    useEffect(() => () => {
+        transitionTimersRef.current.forEach((timer) => clearTimeout(timer));
+        transitionTimersRef.current.clear();
+    }, []);
 
     const vetoLive = isVetoLive(veto);
+
+    const team1Banned = useMemo(
+        () => normalizeBannedMaps(veto.team1_banned_maps),
+        [veto.team1_banned_maps],
+    );
+    const team2Banned = useMemo(
+        () => normalizeBannedMaps(veto.team2_banned_maps),
+        [veto.team2_banned_maps],
+    );
+    const team1Picked = useMemo(
+        () => normalizePickedMaps(veto.team1_picked_maps),
+        [veto.team1_picked_maps],
+    );
+    const team2Picked = useMemo(
+        () => normalizePickedMaps(veto.team2_picked_maps),
+        [veto.team2_picked_maps],
+    );
+
+    const allPickedMapIds = useMemo(
+        () => [
+            ...team1Picked.map((p) => String(p?.map_id || p)).filter(Boolean),
+            ...team2Picked.map((p) => String(p?.map_id || p)).filter(Boolean),
+        ],
+        [team1Picked, team2Picked],
+    );
+
+    const usedMapsKey = useMemo(
+        () => [...team1Banned, ...team2Banned, ...allPickedMapIds].sort().join('|'),
+        [team1Banned, team2Banned, allPickedMapIds],
+    );
+
+    const bannedMapIdSet = useMemo(
+        () => new Set([...team1Banned, ...team2Banned].map(String)),
+        [team1Banned, team2Banned],
+    );
+
+    useEffect(() => {
+        if (!vetoLive) return;
+
+        if (usedMapsKey === '') {
+            hasSeededUsedMapsRef.current = false;
+            prevUsedMapsRef.current = new Set();
+            return;
+        }
+
+        const currentUsed = new Set([...team1Banned, ...team2Banned, ...allPickedMapIds].map(String));
+
+        if (!hasSeededUsedMapsRef.current) {
+            prevUsedMapsRef.current = currentUsed;
+            hasSeededUsedMapsRef.current = true;
+            return;
+        }
+
+        currentUsed.forEach((mapId) => {
+            if (prevUsedMapsRef.current.has(mapId) || transitionTimersRef.current.has(mapId)) return;
+            const action: MapTransitionAction = bannedMapIdSet.has(mapId) ? 'ban' : 'pick';
+            startMapTransition(mapId, action);
+        });
+
+        prevUsedMapsRef.current = currentUsed;
+    }, [allPickedMapIds, bannedMapIdSet, startMapTransition, team1Banned, team2Banned, usedMapsKey, vetoLive]);
+
+    const handleMapActionWithTransition = useCallback((mapId: string) => {
+        const normalizedId = String(mapId);
+        const action: MapTransitionAction = veto.current_action === 'pick' ? 'pick' : 'ban';
+        if (veto.current_action === 'ban' || veto.current_action === 'pick') {
+            startMapTransition(normalizedId, action);
+            prevUsedMapsRef.current = new Set([...prevUsedMapsRef.current, normalizedId]);
+        }
+        handleMapAction(mapId);
+    }, [handleMapAction, startMapTransition, veto.current_action]);
 
     if (!vetoLive) {
         return null;
@@ -95,61 +221,16 @@ export const MapPool: React.FC<MapPoolProps> = ({
     const currentBestOf = bestOf || 1;
     const vetoFormat = getVetoFormat(currentBestOf);
 
-    // Normalize helpers
-    const normalizeBannedMaps = (bannedMaps: any): string[] => {
-        if (!bannedMaps) return [];
-        if (Array.isArray(bannedMaps)) return bannedMaps;
-        if (typeof bannedMaps === 'string') {
-            try {
-                const parsed = JSON.parse(bannedMaps);
-                return Array.isArray(parsed) ? parsed : [];
-            } catch {
-                return [bannedMaps];
-            }
-        }
-        return [bannedMaps];
-    };
-
-    const normalizePickedMaps = (pickedMaps: any): PickedMap[] => {
-        if (!pickedMaps) return [];
-        if (Array.isArray(pickedMaps)) return pickedMaps;
-        if (typeof pickedMaps === 'string') {
-            try {
-                const parsed = JSON.parse(pickedMaps);
-                return Array.isArray(parsed) ? parsed : [];
-            } catch {
-                return [];
-            }
-        }
-        return [pickedMaps];
-    };
-
-    const team1Banned = normalizeBannedMaps(veto.team1_banned_maps);
-    const team2Banned = normalizeBannedMaps(veto.team2_banned_maps);
     const allBannedMaps = [...team1Banned, ...team2Banned];
-
-    const team1Picked = normalizePickedMaps(veto.team1_picked_maps);
-    const team2Picked = normalizePickedMaps(veto.team2_picked_maps);
 
     const allPickedMaps = [
         ...team1Picked.map((p: PickedMap) => ({ ...p, team: 'team1', teamName: team1Name })),
         ...team2Picked.map((p: PickedMap) => ({ ...p, team: 'team2', teamName: team2Name })),
     ];
 
-    const allPickedMapIds = [
-        ...team1Picked.map((p: PickedMap) => p?.map_id || p).filter(Boolean),
-        ...team2Picked.map((p: PickedMap) => p?.map_id || p).filter(Boolean),
-    ];
+    const allUsedMaps = [...allBannedMaps, ...allPickedMapIds].map(String);
 
-    const allUsedMaps = [
-        ...allBannedMaps.map(id => String(id)),
-        ...allPickedMapIds.map(id => String(id))
-    ];
-
-    const availableMapsToShow = availableMaps.filter((m) => {
-        const mapId = String(m.id);
-        return !allUsedMaps.includes(mapId) && !optimisticBanned.has(mapId) && !optimisticPicked.has(mapId);
-    });
+    const availableMapsToShow = availableMaps;
 
     const getMapStatus = (mapId: string) => {
         const mapIdStr = String(mapId);
@@ -238,6 +319,9 @@ export const MapPool: React.FC<MapPoolProps> = ({
     const { gridCols, tileHeight, minHeight, gap, mapNameSize } = layout.mapPool;
     const isModalLayout = layoutMode === 'modal';
     const currentAction = veto.current_action || 'ban';
+    const tileTransition = reduceMotion
+        ? { duration: 0 }
+        : { type: 'spring' as const, stiffness: 340, damping: 32, mass: 0.9 };
 
     return (
         <div>
@@ -414,8 +498,14 @@ export const MapPool: React.FC<MapPoolProps> = ({
                 })()
             ) : (
                 // Map Grid View
+                <LayoutGroup>
                 <div className={cn('grid', gap, gridCols)}>
+                    <AnimatePresence mode="popLayout" initial={false}>
                     {availableMapsToShow.map((map) => {
+                        const mapId = String(map.id);
+                        const transitionState = transitioning[mapId];
+                        const isFlashing = Boolean(transitionState);
+                        const flashAction = transitionState?.action;
                         const mapStatus = getMapStatus(map.id);
                         const canInteract = !mapStatus.isBanned && !mapStatus.isPicked && isUserTurn && !actionLoading && (vetoLive);
 
@@ -430,24 +520,32 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         const isImageLoaded = imagesLoaded.has(mapImageUrl);
 
                         return (
-                            <div
+                            <motion.div
                                 key={map.id}
+                                layout={!reduceMotion}
+                                initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={undefined}
+                                transition={tileTransition}
                                 className={cn(
-                                    'relative group rounded-lg overflow-hidden border transition-all duration-200 motion-reduce:transition-none',
-                                    mapStatus.isBanned
-                                        ? 'border-rose-500/50 cursor-not-allowed opacity-60'
-                                        : mapStatus.isPicked
-                                            ? 'border-emerald-500/40'
-                                            : canInteract
-                                                ? `${getVetoActionHoverClasses(currentAction)} hover:shadow-lg cursor-pointer`
-                                                : 'border-white/15',
-                                    actionLoading === map.id && 'opacity-50 pointer-events-none'
+                                    'relative isolate group overflow-hidden rounded-lg border bg-black bg-clip-padding',
+                                    isFlashing
+                                        ? 'pointer-events-none z-10 border-white/25'
+                                        : mapStatus.isBanned
+                                            ? 'border-rose-500/60'
+                                            : mapStatus.isPicked
+                                                ? 'border-emerald-500/50'
+                                        : canInteract
+                                            ? `${getVetoActionHoverClasses(currentAction)} hover:shadow-lg cursor-pointer`
+                                            : 'border-white/15',
+                                    actionLoading === map.id && !isFlashing && 'opacity-70 pointer-events-none',
                                 )}
                                 style={{
                                     backgroundImage: isImageLoaded ? `url(${mapImageUrl})` : 'none',
                                     backgroundSize: 'cover',
                                     backgroundPosition: 'center',
                                     backgroundRepeat: 'no-repeat',
+                                    backgroundClip: 'padding-box',
                                     minHeight: minHeight,
                                     backgroundColor: isImageLoaded ? 'transparent' : '#1a1a1a'
                                 }}
@@ -457,10 +555,10 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                 onKeyDown={(e) => {
                                     if (canInteract && (e.key === 'Enter' || e.key === ' ')) {
                                         e.preventDefault();
-                                        handleMapActionWithOptimistic(map.id);
+                                        handleMapActionWithTransition(map.id);
                                     }
                                 }}
-                                onClick={() => canInteract && handleMapActionWithOptimistic(map.id)}
+                                onClick={() => canInteract && handleMapActionWithTransition(map.id)}
                             >
                                 {!isImageLoaded && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
@@ -476,9 +574,43 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                         onError={() => console.warn(`[MapPool] Failed to load image: ${mapImageUrl}`)}
                                     />
                                 )}
-                                {!mapStatus.isBanned && !mapStatus.isPicked && (
+                                {!mapStatus.isBanned && !mapStatus.isPicked && !isFlashing && (
                                     <div className="absolute inset-0 bg-black/40 z-0" />
                                 )}
+
+                                <AnimatePresence>
+                                    {isFlashing && flashAction && (
+                                        <motion.div
+                                            key={`${mapId}-${flashAction}-overlay`}
+                                            initial={mapOverlayMotion[flashAction].initial}
+                                            animate={mapOverlayMotion[flashAction].animate}
+                                            exit={{ opacity: 0 }}
+                                            transition={mapOverlayMotion[flashAction].transition}
+                                            className={cn(
+                                                'absolute inset-0 z-30 flex items-center justify-center',
+                                                flashAction === 'ban'
+                                                    ? 'bg-rose-950/60'
+                                                    : 'bg-emerald-950/55',
+                                            )}
+                                        >
+                                            <motion.div
+                                                initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.92 }}
+                                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                transition={{ delay: 0.08, duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                                                className={cn(
+                                                    'rounded-lg border px-5 py-3 text-center shadow-2xl backdrop-blur-sm',
+                                                    flashAction === 'ban'
+                                                        ? 'border-rose-400/60 bg-rose-500/25 text-rose-100'
+                                                        : 'border-emerald-400/60 bg-emerald-500/25 text-emerald-100',
+                                                )}
+                                            >
+                                                <div className="text-sm font-black uppercase tracking-[0.2em] sm:text-base">
+                                                    {flashAction === 'ban' ? 'Banned' : 'Picked'}
+                                                </div>
+                                            </motion.div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
 
                                 <div className={cn('relative w-full', tileHeight)}>
                                     {!mapStatus.isPicked && !mapStatus.isBanned && (
@@ -496,70 +628,55 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                     )}
                                 </div>
 
-                                {mapStatus.isBanned && (
-                                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10 border border-rose-500/50 rounded-lg">
+                                {mapStatus.isBanned && !isFlashing && (
+                                    <motion.div
+                                        initial={reduceMotion ? false : { opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ duration: reduceMotion ? 0 : 0.18 }}
+                                        className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-black/80"
+                                    >
                                         <div className="rounded-lg border border-rose-500/50 bg-rose-500/15 px-4 py-3 text-center shadow-xl">
                                             <div className="text-xs font-black uppercase tracking-widest text-rose-200">BANNED</div>
                                             <div className="mt-1 text-[10px] font-semibold text-white/70">
                                                 {mapStatus.isTeam1Ban ? team1Name : team2Name}
                                             </div>
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 )}
 
-                                {mapStatus.isPicked && (
-                                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10 border border-white/40 rounded-lg">
-                                        <div className="w-full flex flex-col items-center justify-center space-y-2 sm:space-y-3 px-4">
-                                            <div className="text-sm sm:text-base lg:text-lg font-black text-white text-center" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9)' }}>
-                                                {map.map_name}
+                                {mapStatus.isPicked && !isFlashing && (
+                                    <motion.div
+                                        initial={reduceMotion ? false : { opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ duration: reduceMotion ? 0 : 0.18 }}
+                                        className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-black/80"
+                                    >
+                                        <div className="flex w-full flex-col items-center justify-center px-4 text-center">
+                                            <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-2 shadow-xl">
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-emerald-200">PICKED</div>
+                                                {mapStatus.pickedBy && (
+                                                    <div className="mt-1 text-[10px] font-semibold text-white/75">
+                                                        {mapStatus.pickedBy}
+                                                    </div>
+                                                )}
+                                                {mapStatus.pickedSide && (
+                                                    <div className="mt-1 text-[9px] font-bold uppercase tracking-wider text-white/60">
+                                                        {mapStatus.pickedSide}
+                                                    </div>
+                                                )}
                                             </div>
-
-                                            {(() => {
-                                                const pickedTeamLogo = mapStatus.pickedByTeamLogo;
-                                                const pickedTeamName = mapStatus.pickedBy || '';
-
-                                                return (
-                                                    <div className="flex flex-col items-center justify-center gap-1 sm:gap-2">
-                                                        {pickedTeamLogo ? (
-                                                            <img
-                                                                src={pickedTeamLogo}
-                                                                alt={pickedTeamName}
-                                                                className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 object-contain flex-shrink-0"
-                                                            />
-                                                        ) : (
-                                                            <span className="text-[10px] sm:text-xs font-bold text-white/80 uppercase tracking-wide text-center">
-                                                                {pickedTeamName}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })()}
-
-                                            {mapStatus.pickedSide && (
-                                                <div className={cn(
-                                                    "rounded-lg border px-3 py-2 text-center shadow-xl",
-                                                    mapStatus.pickedSide === 'attack'
-                                                        ? "border-rose-500/50 bg-rose-500/15 text-rose-200"
-                                                        : "border-white/30 bg-white/10 text-white"
-                                                )}>
-                                                    <div className="text-sm font-black tracking-widest">{getSideShortLabel(mapStatus.pickedSide)}</div>
-                                                    <div className="text-[9px] font-semibold uppercase tracking-wide opacity-75">
-                                                        {getSideFullLabel(mapStatus.pickedSide)}
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 )}
 
-                                {canInteract && (
+                                {canInteract && !isFlashing && (
                                     <div className={cn(
-                                        "absolute inset-0 flex items-center justify-center z-20 border-2 transition-all",
+                                        "absolute inset-0 flex items-center justify-center z-20 border-2 transition-all duration-200",
                                         veto.current_action === 'ban'
                                             ? "bg-rose-500/0 group-hover:bg-rose-500/30 border-rose-500/50 group-hover:border-rose-500"
                                             : "bg-emerald-500/0 group-hover:bg-emerald-500/25 border-emerald-500/50 group-hover:border-emerald-400"
                                     )}>
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                             <div className={cn(
                                                 "px-6 py-4 rounded-lg text-lg font-black border-2 shadow-xl",
                                                 veto.current_action === 'ban'
@@ -571,10 +688,12 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                         </div>
                                     </div>
                                 )}
-                            </div>
+                            </motion.div>
                         );
                     })}
+                    </AnimatePresence>
                 </div>
+                </LayoutGroup>
             )}
 
             {availableMapsToShow.length === 0 && veto.current_action !== 'pick_side' && (
