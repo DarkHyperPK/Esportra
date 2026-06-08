@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock } from 'lucide-react';
+import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { JackButton } from '@/components/ui/JackButton';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +20,9 @@ interface TournamentHeaderProps {
     onRegister: () => void;
     onWithdraw: () => void;
     onCheckIn: () => void;
+    showOpenRegistration?: boolean;
+    showInviteRedemption?: boolean;
+    onRedeemInvite?: () => void;
 
     isLoading?: boolean; // New prop
     checkInStartTime?: Date | null;
@@ -37,6 +40,9 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
     onRegister,
     onWithdraw,
     onCheckIn,
+    showOpenRegistration = false,
+    showInviteRedemption = false,
+    onRedeemInvite,
     isLoading = false, // Default to false
     checkInStartTime,
     awaitingApproval = false
@@ -177,7 +183,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                             </div>
 
                             {/* Primary Action Button */}
-                            <div className="mt-12 md:mt-16 mb-24 flex justify-center relative z-50 h-[64px]">
+                            <div className="mt-12 md:mt-16 mb-24 flex justify-center relative z-50 min-h-[64px]">
                                 {isLoading ? (
                                     <div className="h-14 md:h-16 w-64 bg-white/5 animate-pulse rounded-none border border-white/10" />
                                 ) : isOrganizer ? (
@@ -190,11 +196,24 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                     </JackButton>
                                 ) : (
                                     <>
-                                        {!isRegistered && !hasMissedCheckIn && (tournament.status === 'published' || tournament.status === 'open') && (
-                                            <Button onClick={onRegister} className="h-14 md:h-16 px-8 md:px-12 bg-green-600 hover:bg-green-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(22,163,74,0.3)]">
-                                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none" />
-                                                <span className="relative z-10 flex items-center gap-2">INITIATE REGISTRATION <ChevronRight className="w-5 h-5" /></span>
-                                            </Button>
+                                        {!isRegistered && !hasMissedCheckIn && (showOpenRegistration || showInviteRedemption) && (
+                                            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                                                {showOpenRegistration && (
+                                                    <Button onClick={onRegister} className="h-14 md:h-16 px-8 md:px-12 bg-green-600 hover:bg-green-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(22,163,74,0.3)]">
+                                                        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none" />
+                                                        <span className="relative z-10 flex items-center gap-2">INITIATE REGISTRATION <ChevronRight className="w-5 h-5" /></span>
+                                                    </Button>
+                                                )}
+                                                {showInviteRedemption && onRedeemInvite && (
+                                                    <Button
+                                                        onClick={onRedeemInvite}
+                                                        variant="outline"
+                                                        className="h-14 md:h-16 px-8 md:px-12 border border-purple-500/40 bg-purple-600/20 hover:bg-purple-600/40 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none shadow-[0_0_30px_rgba(147,51,234,0.15)]"
+                                                    >
+                                                        <span className="flex items-center gap-2">HAVE INVITATION? <Mail className="w-5 h-5" /></span>
+                                                    </Button>
+                                                )}
+                                            </div>
                                         )}
                                         {isRegistered && awaitingApproval && (
                                             <div className="flex gap-4">

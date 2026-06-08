@@ -15,7 +15,6 @@ import { RulesTab } from '@/components/tournament/details/RulesTab';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import { usePublicBracketData } from '@/hooks/usePublicBracketData';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy, Swords } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,6 +26,7 @@ import TournamentRegistrationForm from '@/components/TournamentRegistration';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -56,6 +56,12 @@ import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 import { SEO } from '@/components/SEO';
 import InviteCodeRedemption from '@/components/tournament/InviteCodeRedemption';
 import { normalizeInviteCode } from '@/utils/inviteCodeUtils';
+import {
+  canShowInviteRedemption,
+  canShowOpenRegistration,
+  getOpenRegistrationCapacity,
+  getReservedInviteSlotsFromTournament,
+} from '@/utils/tournamentInviteUtils';
 
 const TournamentDetails = () => {
   useGameCatalog();
@@ -71,6 +77,7 @@ const TournamentDetails = () => {
   const [, setCheckInCount] = useState(0);
   const [isRegistered, setIsRegistered] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [registrationDetails, setRegistrationDetails] = useState<TournamentRegistration | null>(null);
   const [isCaptain, setIsCaptain] = useState(false);
   const [checkInSubmitting, setCheckInSubmitting] = useState(false);
@@ -126,12 +133,37 @@ const TournamentDetails = () => {
   const checkInWindowMinutes = (tournament?.settings as any)?.checkInWindowMinutes || 60; // Default to 60 if not set
   const checkInStartTime = checkInDeadlineDate ? new Date(checkInDeadlineDate.getTime() - (checkInWindowMinutes * 60 * 1000)) : null;
   const tournamentRegistrationType = tournament?.registration_type ?? (tournament?.settings as any)?.registrationType ?? 'open';
-  const tournamentReservedInviteSlots = tournament?.reserved_invite_slots ?? (tournament?.settings as any)?.reservedInviteSlots ?? 0;
-  const tournamentMaxTeams = tournament?.max_participants ?? tournament?.max_teams ?? 0;
-  const openRegistrationCapacity = tournamentMaxTeams > 0 && tournamentReservedInviteSlots > 0
-    ? Math.max(tournamentMaxTeams - tournamentReservedInviteSlots, 0)
-    : null;
-  const shouldShowInviteCode = !isOrganizer && !isRegistered && (tournamentRegistrationType === 'invite_only' || tournamentReservedInviteSlots > 0);
+  const tournamentReservedInviteSlots = getReservedInviteSlotsFromTournament(tournament);
+  const tournamentMaxTeams = tournament?.max_participants ?? (tournament as { max_teams?: number })?.max_teams ?? 0;
+  const openRegistrationCapacity = getOpenRegistrationCapacity(tournamentMaxTeams, tournamentReservedInviteSlots);
+  const tournamentIsPublic = tournament?.is_public !== false;
+
+  const registrationVisibilityInput = useMemo(() => ({
+    isOrganizer,
+    isRegistered,
+    registrationType: tournamentRegistrationType,
+    reservedSlots: tournamentReservedInviteSlots,
+    maxTeams: tournamentMaxTeams,
+    isPublic: tournamentIsPublic,
+    status: tournament?.status,
+  }), [
+    isOrganizer,
+    isRegistered,
+    tournamentRegistrationType,
+    tournamentReservedInviteSlots,
+    tournamentMaxTeams,
+    tournamentIsPublic,
+    tournament?.status,
+  ]);
+
+  const showInviteRedemption = canShowInviteRedemption(registrationVisibilityInput);
+  const showOpenRegistration = canShowOpenRegistration(registrationVisibilityInput);
+
+  useEffect(() => {
+    if (initialInviteCode && showInviteRedemption) {
+      setShowInviteDialog(true);
+    }
+  }, [initialInviteCode, showInviteRedemption]);
 
   const canSelfCheckIn =
     requiresCheckIn &&
@@ -243,14 +275,16 @@ const TournamentDetails = () => {
 
       const baseTournament: BaseTournament = {
         id: t.id,
+        slug: t.slug,
         name: t.name,
         game: t.game,
         date: t.start_date ? formatDate(t.start_date) : '',
         time: t.start_date ? formatTime(t.start_date) : '',
         venue: t.venue_name || '',
         is_online: !t.venue_id,
+        is_public: t.is_public ?? t.isPublic ?? true,
         max_participants: t.max_teams,
-        reserved_invite_slots: t.reserved_invite_slots ?? t.reservedInviteSlots ?? parsedSettings?.reservedInviteSlots ?? 0,
+        reserved_invite_slots: getReservedInviteSlotsFromTournament({ ...t, settings: parsedSettings }),
         invite_expiry_days: t.invite_expiry_days ?? t.inviteExpiryDays ?? parsedSettings?.inviteExpiryDays ?? 7,
         registration_type: t.registration_type ?? t.registrationType ?? parsedSettings?.registrationType ?? null,
         team_size: t.team_size ?? t.teamSize ?? parsedSettings?.teamSize ?? 1,
@@ -588,59 +622,21 @@ const TournamentDetails = () => {
         onRegister={() => setShowEditDialog(true)}
         onWithdraw={() => setShowWithdrawDialog(true)}
         onCheckIn={handleSelfCheckIn}
+        showOpenRegistration={showOpenRegistration}
+        showInviteRedemption={showInviteRedemption}
+        onRedeemInvite={() => setShowInviteDialog(true)}
         isLoading={registrationLoading}
         checkInStartTime={checkInStartTime}
         awaitingApproval={awaitingApproval}
       />
 
-      {openRegistrationCapacity !== null && !isOrganizer && (
+      {tournamentReservedInviteSlots > 0 && tournamentMaxTeams > 0 && !isOrganizer && (
         <div className="container mx-auto px-4 relative z-30 -mt-4 mb-6">
           <p className="mx-auto max-w-3xl text-center text-xs text-gray-500">
-            {openRegistrationCapacity > 0
+            {openRegistrationCapacity !== null && openRegistrationCapacity > 0
               ? `${openRegistrationCapacity} open registration slot${openRegistrationCapacity === 1 ? '' : 's'} available · ${tournamentReservedInviteSlots} reserved for invited teams`
               : `All ${tournamentMaxTeams} slots are reserved for invited teams`}
           </p>
-        </div>
-      )}
-
-      {shouldShowInviteCode && tournament && (
-        <div className="container mx-auto px-4 relative z-30 -mt-6 mb-10">
-          <Card className="mx-auto max-w-3xl border border-purple-500/20 bg-[#0d0d10] shadow-2xl shadow-purple-950/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-white">
-                Have an invitation code?
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {openRegistrationCapacity !== null && (
-                <p className="text-xs text-gray-500">
-                  This tournament reserves {tournamentReservedInviteSlots} slot{tournamentReservedInviteSlots === 1 ? '' : 's'} for invited teams
-                  {openRegistrationCapacity > 0
-                    ? ` and has ${openRegistrationCapacity} open registration slot${openRegistrationCapacity === 1 ? '' : 's'} for everyone else.`
-                    : '. Open registration is full — only invited teams can join.'}
-                </p>
-              )}
-              <InviteCodeRedemption
-                compact
-                showTitle={false}
-                initialCode={initialInviteCode}
-                returnPath={`/tournaments/${slug}${initialInviteCode ? `?code=${encodeURIComponent(initialInviteCode)}` : ''}`}
-                tournament={{
-                  id: tournament.id,
-                  slug: tournament.slug,
-                  name: tournament.name,
-                  game: tournament.game,
-                  game_mode: tournament.game_mode,
-                  team_size: tournament.max_participants,
-                  status: tournament.status,
-                }}
-                onSuccess={async () => {
-                  await checkRegistration(true);
-                  await fetchTournamentData();
-                }}
-              />
-            </CardContent>
-          </Card>
         </div>
       )}
 
@@ -802,6 +798,53 @@ const TournamentDetails = () => {
       </div>
 
       <Footer />
+
+      {/* Invite Redemption Dialog */}
+      <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+        <DialogContent
+          className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0a0a0c] border border-white/10"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-white font-heading text-2xl tracking-wide">
+              REDEEM INVITATION
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Enter the code from your invite email. Codes are locked to your account email and can only be redeemed by a team captain.
+              {openRegistrationCapacity !== null && tournamentReservedInviteSlots > 0 && (
+                <>
+                  {' '}This tournament reserves {tournamentReservedInviteSlots} slot{tournamentReservedInviteSlots === 1 ? '' : 's'} for invited teams
+                  {openRegistrationCapacity > 0
+                    ? ` and has ${openRegistrationCapacity} open registration slot${openRegistrationCapacity === 1 ? '' : 's'} for everyone else.`
+                    : '. Open registration is full — only invited teams can join.'}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {tournament && (
+            <InviteCodeRedemption
+              compact
+              showTitle={false}
+              initialCode={initialInviteCode}
+              returnPath={`/tournaments/${slug}${initialInviteCode ? `?code=${encodeURIComponent(initialInviteCode)}` : ''}`}
+              tournament={{
+                id: tournament.id,
+                slug: tournament.slug ?? slug,
+                name: tournament.name,
+                game: tournament.game,
+                game_mode: tournament.game_mode,
+                team_size: tournament.team_size,
+                status: tournament.status,
+              }}
+              onSuccess={async () => {
+                setShowInviteDialog(false);
+                await checkRegistration(true);
+                await fetchTournamentData();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Registration Dialog */}
       <Dialog open={showEditDialog} onOpenChange={(open) => {

@@ -36,6 +36,47 @@ export function canConfigureInvitedTeams(teamSize: number, isBrTournament: boole
   return !isBrTournament && teamSize > 1;
 }
 
+export interface TournamentRegistrationVisibilityInput {
+  isOrganizer: boolean;
+  isRegistered: boolean;
+  registrationType?: string | null;
+  reservedSlots: number;
+  maxTeams: number;
+  isPublic?: boolean;
+  status?: string;
+}
+
+export function getOpenRegistrationCapacity(maxTeams: number, reservedSlots: number): number | null {
+  if (maxTeams <= 0) return null;
+  if (reservedSlots <= 0) return maxTeams;
+  return Math.max(maxTeams - reservedSlots, 0);
+}
+
+export function isTournamentRegistrationOpen(status?: string): boolean {
+  return status === 'published' || status === 'open';
+}
+
+export function canShowInviteRedemption(input: TournamentRegistrationVisibilityInput): boolean {
+  if (input.isOrganizer || input.isRegistered) return false;
+  if (!isTournamentRegistrationOpen(input.status)) return false;
+  const isInviteOnly = input.registrationType === 'invite_only';
+  const isPrivate = input.isPublic === false;
+  return isInviteOnly || input.reservedSlots > 0 || isPrivate;
+}
+
+export function canShowOpenRegistration(input: TournamentRegistrationVisibilityInput): boolean {
+  if (input.isOrganizer || input.isRegistered) return false;
+  if (input.isPublic === false) return false;
+  if (input.registrationType === 'invite_only') return false;
+  if (!isTournamentRegistrationOpen(input.status)) return false;
+
+  const openCapacity = getOpenRegistrationCapacity(input.maxTeams, input.reservedSlots);
+  if (input.reservedSlots > 0 && input.maxTeams > 0) {
+    return openCapacity !== null && openCapacity > 0;
+  }
+  return true;
+}
+
 export function buildInviteSettingsPayload(
   enabled: boolean,
   reservedSlots: number,
