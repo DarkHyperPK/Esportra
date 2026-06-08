@@ -11,6 +11,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
+import { getInviteExpiryDaysFromTournament, getReservedInviteSlotsFromTournament } from '@/utils/tournamentInviteUtils';
 
 export interface DashboardTournament {
     id: string;
@@ -136,8 +137,8 @@ export function useTournamentDashboard(slug: string | undefined) {
                 venue:                 t.venue_id ? `Venue ${t.venue_id}` : 'Online',
                 is_online:             !t.venue_id,
                 max_participants:      t.max_teams ?? 0,
-                reserved_invite_slots: t.reserved_invite_slots ?? t.reservedInviteSlots ?? parsedSettings?.reservedInviteSlots ?? 0,
-                invite_expiry_days:    t.invite_expiry_days ?? t.inviteExpiryDays ?? parsedSettings?.inviteExpiryDays ?? 7,
+                reserved_invite_slots: getReservedInviteSlotsFromTournament({ ...t, settings: parsedSettings }),
+                invite_expiry_days:    getInviteExpiryDaysFromTournament({ ...t, settings: parsedSettings }),
                 registration_type:     t.registration_type ?? t.registrationType ?? parsedSettings?.registrationType ?? null,
                 registration_open:     t.status === 'open',
                 current_participants:  t.current_participants ?? result.participants.length,

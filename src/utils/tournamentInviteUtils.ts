@@ -1,19 +1,30 @@
 export function getReservedInviteSlotsFromTournament(tournament: {
   reserved_invite_slots?: number;
+  reservedInviteSlots?: number;
   settings?: unknown;
 } | null | undefined): number {
   if (!tournament) return 0;
-  const settings = tournament.settings as { reservedInviteSlots?: number } | null | undefined;
-  return tournament.reserved_invite_slots ?? settings?.reservedInviteSlots ?? 0;
+
+  const settings = tournament.settings as { reservedInviteSlots?: number; reserved_invite_slots?: number } | null | undefined;
+  const columnValue = tournament.reserved_invite_slots ?? tournament.reservedInviteSlots;
+  const settingsValue = settings?.reservedInviteSlots ?? settings?.reserved_invite_slots;
+
+  // Column 0 is valid (disabled) but when settings still hold slots, prefer settings
+  // (wizard/dashboard may have written settings before the column synced).
+  if (typeof columnValue === 'number' && columnValue > 0) return columnValue;
+  if (typeof settingsValue === 'number' && settingsValue > 0) return settingsValue;
+  if (typeof columnValue === 'number') return columnValue;
+  return settingsValue ?? 0;
 }
 
 export function getInviteExpiryDaysFromTournament(tournament: {
   invite_expiry_days?: number;
+  inviteExpiryDays?: number;
   settings?: unknown;
 } | null | undefined): number {
   if (!tournament) return 7;
   const settings = tournament.settings as { inviteExpiryDays?: number } | null | undefined;
-  return tournament.invite_expiry_days ?? settings?.inviteExpiryDays ?? 7;
+  return tournament.invite_expiry_days ?? tournament.inviteExpiryDays ?? settings?.inviteExpiryDays ?? 7;
 }
 
 export function defaultReservedInviteSlots(maxTeams: number): number {
