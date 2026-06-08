@@ -324,9 +324,10 @@ export const useMapVetoMachine = ({
     const initInProgressRef = useRef(false); // Guard against duplicate init calls
 
     const hasAdminTournamentPerm = adminCtx.hasPermission('tournaments:edit');
+    const isTokenSimulation = Boolean(vetoToken || forcedTeamId);
 
     // Derived State
-    const [isOrganizer, setIsOrganizer] = useState(currentRole === 'organizer' || hasAdminTournamentPerm);
+    const [isOrganizer, setIsOrganizer] = useState(!isTokenSimulation && (currentRole === 'organizer' || hasAdminTournamentPerm));
     const [isCaptain, setIsCaptain] = useState(false);
     const [userTeamId, setUserTeamId] = useState<string | null>(null);
     const [isTeam1Captain, setIsTeam1Captain] = useState(false);
@@ -334,8 +335,12 @@ export const useMapVetoMachine = ({
 
     // Sync isOrganizer with context
     useEffect(() => {
+        if (isTokenSimulation) {
+            setIsOrganizer(false);
+            return;
+        }
         setIsOrganizer(currentRole === 'organizer' || hasAdminTournamentPerm);
-    }, [currentRole, hasAdminTournamentPerm]);
+    }, [currentRole, hasAdminTournamentPerm, isTokenSimulation]);
 
     // Check user permissions
     useEffect(() => {
@@ -721,7 +726,7 @@ export const useMapVetoMachine = ({
 
     // Dialog Auto-Show Logic
     useEffect(() => {
-        const effectiveIsOrganizer = isOrganizer || currentRole === 'organizer';
+        const effectiveIsOrganizer = !isTokenSimulation && (isOrganizer || currentRole === 'organizer');
 
         if (!veto) return;
 
@@ -740,10 +745,15 @@ export const useMapVetoMachine = ({
             setDialogStep('bo');
             setShowBODialog(true);
         }
-    }, [bestOf, currentRole, dialogManuallyClosed, isOrganizer, showBODialog, veto]);
+    }, [bestOf, currentRole, dialogManuallyClosed, isOrganizer, isTokenSimulation, showBODialog, veto]);
 
     // Role Switch Prompt Logic
     useEffect(() => {
+        if (isTokenSimulation) {
+            setShowRoleSwitchPrompt(false);
+            return;
+        }
+
         const effectiveIsOrganizer = isOrganizer || currentRole === 'organizer';
         const organizerIsCaptain = effectiveIsOrganizer && isCaptain && userTeamId;
 
@@ -755,7 +765,7 @@ export const useMapVetoMachine = ({
         } else {
             setShowRoleSwitchPrompt(false);
         }
-    }, [isOrganizer, currentRole, isCaptain, userTeamId, veto]);
+    }, [isOrganizer, currentRole, isCaptain, isTokenSimulation, userTeamId, veto]);
 
     // Actions
     const handleSetBO = async (bo: number) => {
