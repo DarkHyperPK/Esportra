@@ -15,6 +15,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { readGhostModeSession } from '@/lib/ghostModeSession';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 if (!API_BASE_URL) {
@@ -110,6 +111,12 @@ async function fetchWithAuth(
 
   if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+
+  const ghost = readGhostModeSession();
+  if (ghost) {
+    headers['Authorization'] = `Bearer ${ghost.token}`;
+    headers['X-Impersonated-By'] = ghost.adminId;
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -214,6 +221,12 @@ export const apiClient = {
     const headers: Record<string, string> = {};
     if (session?.access_token) {
       headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    const ghost = readGhostModeSession();
+    if (ghost) {
+      headers['Authorization'] = `Bearer ${ghost.token}`;
+      headers['X-Impersonated-By'] = ghost.adminId;
     }
 
     const response = await fetch(`${API_BASE_URL}${path}`, {

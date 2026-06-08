@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "
 import { PageTransition } from "@/components/PageTransition";
 import { AdminProvider } from "@/contexts/AdminContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { GhostModeProvider } from "@/contexts/GhostModeProvider";
+import { GhostModeBanner } from "@/components/admin/GhostModeBanner";
 import { RoleProvider } from "@/contexts/RoleContext";
 import { GameCatalogProvider } from "@/contexts/GameCatalogContext";
 import { useGameCatalogContext } from "@/hooks/useGameCatalogContext";
@@ -74,6 +76,7 @@ const AlertsManagementTool = lazyWithRetry(() => import("./pages/admin/tools/Ale
 const RoleBuilderTool = lazyWithRetry(() => import("./pages/admin/tools/RoleBuilder"));
 const ContentModerationTool = lazyWithRetry(() => import("./pages/admin/tools/ContentModeration"));
 const SessionManagementTool = lazyWithRetry(() => import("./pages/admin/tools/SessionManagement"));
+const KillSwitchConfig = lazyWithRetry(() => import("./pages/admin/tools/KillSwitchConfig"));
 const IpAllowlistTool = lazyWithRetry(() => import("./pages/admin/tools/IpAllowlist"));
 const ScheduledReports = lazyWithRetry(() => import("./pages/admin/tools/ScheduledReports"));
 const GdprCompliance = lazyWithRetry(() => import("./pages/admin/tools/GdprCompliance"));
@@ -172,10 +175,12 @@ const AppContent = React.memo(() => {
     scrollTo(0, { immediate: true });
   }, [location.pathname, scrollTo]);
 
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
   return (
     <>
       {/* Global Background */}
-      {!location.pathname.endsWith('/brackets/fullscreen') && (
+      {!location.pathname.endsWith('/brackets/fullscreen') && !isAdminRoute && (
         <div
           className="fixed inset-0 w-full h-full z-0 bg-[#0a0a0c]"
           aria-hidden="true"
@@ -191,7 +196,8 @@ const AppContent = React.memo(() => {
 
       <Toaster />
       <Sonner />
-      {!location.pathname.endsWith('/brackets/fullscreen') && (
+      <GhostModeBanner />
+      {!location.pathname.endsWith('/brackets/fullscreen') && !isAdminRoute && (
         <>
           <Navbar />
           <BetaNoticeBanner />
@@ -318,7 +324,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/team-management" element={
                   <AdminProtectedRoute
-                    requiredPermission="users:view"
+                    requiredPermission="teams:view"
                     requiredRoles={ADMIN_ROLE_SETS.superAdmin}
                   >
                     <AdminLayout>
@@ -328,7 +334,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/alerts" element={
                   <AdminProtectedRoute
-                    requiredPermission="system:audit"
+                    requiredPermission="alerts:view"
                     requiredRoles={ADMIN_ROLE_SETS.auditAccess}
                   >
                     <AdminLayout>
@@ -348,7 +354,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/verification-system" element={
                   <AdminProtectedRoute
-                    requiredPermission="users:view"
+                    requiredPermission="verification:view"
                     requiredRoles={ADMIN_ROLE_SETS.verification}
                   >
                     <AdminLayout>
@@ -358,7 +364,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/audit-logs" element={
                   <AdminProtectedRoute
-                    requiredPermission="system:audit"
+                    requiredPermission="audit:view"
                     requiredRoles={ADMIN_ROLE_SETS.auditAccess}
                   >
                     <AdminLayout>
@@ -368,7 +374,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/analytics" element={
                   <AdminProtectedRoute
-                    requiredPermission="system:audit"
+                    requiredPermission="analytics:view"
                     requiredRoles={ADMIN_ROLE_SETS.analytics}
                   >
                     <AdminLayout>
@@ -378,7 +384,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/tools/sponsor-management" element={
                   <AdminProtectedRoute
-                    requiredPermission="system:settings"
+                    requiredPermission="sponsors:view"
                     requiredRoles={ADMIN_ROLE_SETS.systemSettings}
                   >
                     <AdminLayout>
@@ -400,7 +406,7 @@ const AppContent = React.memo(() => {
 
                 <Route path="/admin/tools/license-management" element={
                   <AdminProtectedRoute
-                    requiredPermission="users:view"
+                    requiredPermission="licenses:view"
                     requiredRoles={ADMIN_ROLE_SETS.anyAdmin}
                   >
                     <AdminLayout>
@@ -435,7 +441,7 @@ const AppContent = React.memo(() => {
                 {/* Role Builder - Super Admin Only */}
                 <Route path="/admin/tools/role-builder" element={
                   <AdminProtectedRoute
-                    requiredPermission="system:settings"
+                    requiredPermission="rbac:view"
                     requiredRoles={['super_admin']}
                   >
                     <AdminLayout>
@@ -447,7 +453,7 @@ const AppContent = React.memo(() => {
                 {/* Content Moderation - Moderators + Admins */}
                 <Route path="/admin/tools/moderation" element={
                   <AdminProtectedRoute
-                    requiredPermission="users:view"
+                    requiredPermission="moderation:view"
                     requiredRoles={ADMIN_ROLE_SETS.anyAdmin}
                   >
                     <AdminLayout>
@@ -459,8 +465,7 @@ const AppContent = React.memo(() => {
                 {/* Session Management - Super Admin + Ops */}
                 <Route path="/admin/tools/sessions" element={
                   <AdminProtectedRoute
-                    requiredPermission="users:view"
-                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
+                    requiredPermission="security:view_sessions"
                   >
                     <AdminLayout>
                       <SessionManagementTool />
@@ -468,10 +473,21 @@ const AppContent = React.memo(() => {
                   </AdminProtectedRoute>
                 } />
 
+                <Route path="/admin/tools/kill-switches" element={
+                  <AdminProtectedRoute
+                    requiredPermission="system:config_view"
+                    requiredRoles={ADMIN_ROLE_SETS.systemSettings}
+                  >
+                    <AdminLayout>
+                      <KillSwitchConfig />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+
                 {/* IP Allowlist - Super Admin */}
                 <Route path="/admin/tools/ip-allowlist" element={
                   <AdminProtectedRoute
-                    requiredPermission="users:view"
+                    requiredPermission="security:manage_ip_allowlist"
                     requiredRoles={ADMIN_ROLE_SETS.superAdmin}
                   >
                     <AdminLayout>
@@ -482,7 +498,7 @@ const AppContent = React.memo(() => {
 
                 <Route path="/admin/tools/scheduled-reports" element={
                   <AdminProtectedRoute
-                    requiredPermission="system:audit"
+                    requiredPermission="reports:view"
                     requiredRoles={ADMIN_ROLE_SETS.superAdmin}
                   >
                     <AdminLayout>
@@ -493,7 +509,7 @@ const AppContent = React.memo(() => {
 
                 <Route path="/admin/tools/gdpr" element={
                   <AdminProtectedRoute
-                    requiredPermission="system:audit"
+                    requiredPermission="gdpr:view"
                     requiredRoles={ADMIN_ROLE_SETS.superAdmin}
                   >
                     <AdminLayout>
@@ -518,7 +534,7 @@ const AppContent = React.memo(() => {
                 {/* Legacy Admin Routes (for backward compatibility) */}
                 <Route path="/admin/access" element={
                   <AdminProtectedRoute
-                    requiredPermission="system:settings"
+                    requiredPermission="admin_users:view"
                     requiredRoles={['super_admin']}
                   >
                     <AdminLayout>
@@ -528,10 +544,12 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/disputes" element={
                   <AdminProtectedRoute
-                    requiredPermission="disputes:resolve"
+                    requiredPermission="disputes:view"
                     requiredRoles={ADMIN_ROLE_SETS.disputes}
                   >
-                    <DisputeCenter />
+                    <AdminLayout>
+                      <DisputeCenter />
+                    </AdminLayout>
                   </AdminProtectedRoute>
                 } />
                 <Route path="/admin/settings" element={
@@ -546,7 +564,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/verification" element={
                   <AdminProtectedRoute
-                    requiredPermission="users:view"
+                    requiredPermission="verification:view"
                     requiredRoles={ADMIN_ROLE_SETS.verification}
                   >
                     <AdminLayout>
@@ -556,7 +574,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/admin/audit" element={
                   <AdminProtectedRoute
-                    requiredPermission="system:audit"
+                    requiredPermission="audit:view"
                     requiredRoles={ADMIN_ROLE_SETS.auditAccess}
                   >
                     <AdminLayout>
@@ -786,7 +804,9 @@ const App = () => {
                 <TooltipProvider>
                   <NotificationProvider>
                     <AdminProvider>
-                      <AppContent />
+                      <GhostModeProvider>
+                        <AppContent />
+                      </GhostModeProvider>
                     </AdminProvider>
                   </NotificationProvider>
                 </TooltipProvider>
