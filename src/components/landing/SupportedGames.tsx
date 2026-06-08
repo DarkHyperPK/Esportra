@@ -1,12 +1,18 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
-import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import { listCatalogGames } from '@/utils/gameFeatures';
 import { getManifestGameAssets } from '@/hooks/useRawgGame';
 import { apiClient } from "@/lib/apiClient";
 import { getWebsiteAssetUrl } from "@/lib/storage";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from "@/components/ui/carousel";
 
 interface Game {
   name: string;
@@ -129,7 +135,6 @@ const GameCard = ({
 
 const SupportedGames = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "200px" });
   const { data: catalogData } = useGameCatalog();
   const games = useMemo(
@@ -193,16 +198,7 @@ const SupportedGames = () => {
     return () => { cancelled = true; };
   }, [assetsRequested, games, isInView, seedAssetsMap]);
 
-  const scrollGames = (direction: -1 | 1) => {
-    const node = scrollRef.current;
-    if (!node) return;
-    node.scrollBy({
-      left: direction * Math.min(node.clientWidth * 0.85, 520),
-      behavior: "smooth",
-    });
-  };
-
-  const navClass = "border border-white/10 bg-white/5 p-3 text-white transition-colors hover:border-rose-500/60 hover:bg-rose-500 disabled:opacity-30";
+  const navClass = "bg-white/5 border-white/10 hover:bg-white/10 text-white disabled:opacity-30";
 
   return (
     <section ref={sectionRef} className="py-32 bg-[#0a0a0a] relative overflow-hidden">
@@ -239,42 +235,27 @@ const SupportedGames = () => {
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, delay: 0.2 }}
         >
-          <div className="relative mx-auto max-w-[1400px]">
-            <div
-              ref={scrollRef}
-              className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-              aria-label="Supported games"
-            >
+          <Carousel
+            opts={{ align: "start", loop: true, duration: 35 }}
+            className="mx-auto max-w-[1400px]"
+          >
+            <CarouselContent className="-ml-4">
               {games.map((game) => (
-                <div
+                <CarouselItem
                   key={game.slug}
-                  className="min-w-full snap-start sm:min-w-[calc(50%-0.5rem)] lg:min-w-[calc(33.333%-0.75rem)] xl:min-w-[calc(25%-0.75rem)]"
+                  className="pl-4 basis-full sm:basis-1/2 md:basis-1/2 lg:basis-1/3 xl:basis-1/4"
                 >
                   <GameCard
                     game={game}
                     assets={gameAssets[game.slug]}
                     seedAssets={seedAssetsMap[game.slug] ?? { banner: null, cover: null }}
                   />
-                </div>
+                </CarouselItem>
               ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => scrollGames(-1)}
-              className={`${navClass} absolute -left-3 top-1/2 hidden -translate-y-1/2 md:block`}
-              aria-label="Previous games"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollGames(1)}
-              className={`${navClass} absolute -right-3 top-1/2 hidden -translate-y-1/2 md:block`}
-              aria-label="Next games"
-            >
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
+            </CarouselContent>
+            <CarouselPrevious className={navClass} />
+            <CarouselNext className={navClass} />
+          </Carousel>
         </motion.div>
 
         <motion.p
