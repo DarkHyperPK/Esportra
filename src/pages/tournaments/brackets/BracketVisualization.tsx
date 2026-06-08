@@ -1081,14 +1081,14 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       </Dialog>
 
       <Dialog open={canUseMapVeto && mapVetoOpen} onOpenChange={setMapVetoOpen}>
-        <DialogContent className="bg-[#09090b] border-zinc-800/80 max-w-[min(96vw,1500px)] h-[min(92dvh,900px)] overflow-hidden p-0 flex flex-col">
+        <DialogContent className="bg-[#09090b] border-zinc-800/80 max-w-[min(96vw,1280px)] h-[min(86dvh,780px)] overflow-hidden p-0 flex flex-col gap-0">
           <DialogHeader className="px-4 py-3 border-b border-zinc-800 bg-[#18181b] flex-shrink-0">
             <DialogTitle className="text-white flex items-center gap-2 text-base font-semibold">
               <Swords className="w-4 h-4 text-rose-500" />
               Map Veto
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" data-lenis-prevent>
             {mapVetoMatch && tournamentId && (
               <MapVeto
                 matchId={getRawId(mapVetoMatch.id)}

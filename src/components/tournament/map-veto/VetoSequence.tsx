@@ -107,6 +107,9 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
         const service = new VetoService(game, mapLookup.length || undefined);
         const currentBestOf = getBestOf(bestOf || veto.best_of);
         const sequence = service.getSequence(getVetoFormat(currentBestOf));
+        const resolvedThrough = veto.status === 'completed'
+            ? Number.MAX_SAFE_INTEGER
+            : Math.max(0, (veto.current_action_number ?? 1) - 1);
         const effectiveTeam1Id = veto.team1_id || team1Id || 'team1';
         const effectiveTeam2Id = veto.team2_id || team2Id || 'team2';
         const usedMapIds = new Set([
@@ -118,7 +121,7 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
 
         return sequence.map((step) => {
             const historyEntry = getEntryForStep(entries, step.actionNumber);
-            if (historyEntry) {
+            if (historyEntry && historyEntry.actionNumber <= resolvedThrough) {
                 return {
                     actionNumber: historyEntry.actionNumber,
                     action: historyEntry.action,

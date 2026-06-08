@@ -11,6 +11,7 @@ import { useVetoHistory } from '@/hooks/useVetoHistory';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { getVetoActionClasses, getVetoActionNoun } from './map-veto/vetoActionPresentation';
+import { getVetoLayoutConfig } from './map-veto/vetoLayoutConfig';
 
 interface MapVetoProps {
   matchId: string;
@@ -109,24 +110,17 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     return false;
   }, [veto, isTeam1Captain, isTeam2Captain, readOnly]);
 
-  const isModal = layout === 'modal';
-  const isFullscreen = layout === 'fullscreen';
-  const isEmbedded = layout === 'embedded';
-  const isWideLayout = isModal || isFullscreen;
+
+  const layoutConfig = getVetoLayoutConfig(layout, false);
 
   if (loading) {
     return (
-      <div className={cn(
-        'w-full',
-        isFullscreen && 'min-h-screen px-4 py-4 lg:px-8 lg:py-6',
-        isModal && 'h-full min-h-0 p-3 lg:p-4',
-        isEmbedded && 'max-w-7xl mx-auto p-4 sm:p-6 lg:p-8',
-      )}>
-        <div className="space-y-6">
-          <Skeleton className="h-10 w-48 bg-white/10" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-36 w-full rounded-lg bg-white/10" />
+      <div className={layoutConfig.shell}>
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-40 bg-white/10" />
+          <div className={cn('grid gap-2.5', layoutConfig.mapPool.gridCols)}>
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className={cn('w-full rounded-lg bg-white/10', layoutConfig.mapPool.tileHeight)} />
             ))}
           </div>
         </div>
@@ -147,6 +141,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
   const effectiveIsOrganizer = isOrganizer && !readOnly;
   const isComplete = veto.status === 'completed';
+  const ui = getVetoLayoutConfig(layout, isComplete);
   const currentBestOf = veto.best_of || bestOf || 1;
   const boText = `BO${currentBestOf}`;
   const currentTeamName = veto.current_team_id === veto.team1_id ? team1Name : team2Name;
@@ -158,10 +153,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       : null;
 
   const leftRail = (
-    <div className={cn(
-      'flex flex-col gap-3 min-h-0',
-      isWideLayout && 'lg:overflow-y-auto lg:pr-1',
-    )}>
+    <>
       <VetoHeader
         boText={boText}
         vetoStatus={veto.status}
@@ -174,7 +166,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         team1Name={team1Name}
         team2Name={team2Name}
         showShareLinks={showShareLinks && !readOnly}
-        compact={isWideLayout}
+        compact={ui.headerCompact}
       />
 
       <VetoTeamDisplay
@@ -186,9 +178,32 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         currentAction={veto.current_action}
         completed={isComplete}
         bestOf={currentBestOf}
-        compact={isWideLayout}
+        compact={ui.teamCompact}
       />
-    </div>
+    </>
+  );
+
+  const mapPoolPanel = (
+    <MapPool
+      veto={veto}
+      availableMaps={availableMaps}
+      allAvailableMaps={allAvailableMaps}
+      isUserTurn={isUserTurn}
+      actionLoading={readOnly ? null : actionLoading}
+      handleMapAction={noopMapAction}
+      imagesLoaded={imagesLoaded}
+      setImagesLoaded={setImagesLoaded}
+      currentTeamName={currentTeamName}
+      team1Name={team1Name}
+      team2Name={team2Name}
+      team1Id={team1Id}
+      team2Id={team2Id}
+      team1Logo={team1Logo}
+      team2Logo={team2Logo}
+      bestOf={currentBestOf}
+      game={game}
+      layoutMode={layout}
+    />
   );
 
   const selectedMapsPanel = (
@@ -204,37 +219,35 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       setImagesLoaded={setImagesLoaded}
       bestOf={currentBestOf}
       game={game}
-      compact={isWideLayout && !isComplete}
+      compact={ui.selectedMapsCompact}
       className="mb-0"
     />
   );
 
-  const sequencePanel = (variant: 'side' | 'recap') => (
+  const sequencePanel = (
     <div className={cn(
-      'min-h-0 rounded-xl border border-white/10 bg-black/30 p-3 sm:p-4',
-      variant === 'recap' && 'bg-gradient-to-b from-white/[0.04] to-black/30',
+      'min-h-0 rounded-xl border border-white/10 bg-black/30 p-2.5 sm:p-3',
+      isComplete && 'bg-gradient-to-b from-white/[0.04] to-black/30',
     )}>
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3 sm:gap-3">
         <div>
           <div className="text-[10px] font-black text-white/60 uppercase tracking-widest">
             Veto Sequence
           </div>
-          <div className="mt-1 text-xs text-zinc-500">
+          <div className="mt-0.5 text-[11px] text-zinc-500 sm:mt-1 sm:text-xs">
             {isComplete ? 'Final ban/pick recap' : 'Live turn order'}
           </div>
         </div>
         {!isComplete && veto.current_action && (
           <span className={cn(
-            'rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest',
+            'rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest sm:px-2.5 sm:py-1 sm:text-[10px]',
             getVetoActionClasses(veto.current_action),
           )}>
             {getVetoActionNoun(veto.current_action)}
           </span>
         )}
       </div>
-      <div className={cn(
-        variant === 'side' && isWideLayout && 'max-h-[calc(100vh-260px)] overflow-y-auto pr-1',
-      )}>
+      <div className={ui.sequenceScroll} data-lenis-prevent>
         <VetoSequence
           veto={veto}
           entries={vetoHistory}
@@ -247,106 +260,63 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           availableMaps={availableMaps}
           allAvailableMaps={allAvailableMaps}
           game={game}
-          compact={variant === 'side'}
-          columns={variant === 'recap'}
+          compact={ui.sequenceCompact}
+          columns={ui.sequenceColumns}
         />
       </div>
     </div>
   );
 
-  const mapPanel = (
-    <div className={cn(
-      'flex flex-col gap-4 min-h-0 min-w-0',
-      isModal && 'pb-2',
-    )}>
-      {!isComplete && (
-        <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 sm:px-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-white/50">Current Turn</div>
-              <div className={cn('mt-0.5 text-sm font-black', isUserTurn ? 'text-rose-200' : 'text-white')}>
-                {isUserTurn ? 'Your turn' : `${currentTeamName}'s turn`}
-              </div>
-            </div>
-            {veto.current_action && (
-              <span className={cn(
-                'rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest',
-                getVetoActionClasses(veto.current_action),
-              )}>
-                {getVetoActionNoun(veto.current_action)}
-              </span>
-            )}
+  const turnBar = !isComplete ? (
+    <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 sm:px-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-widest text-white/50">Current Turn</div>
+          <div className={cn('mt-0.5 text-sm font-black', isUserTurn ? 'text-rose-200' : 'text-white')}>
+            {isUserTurn ? 'Your turn' : `${currentTeamName}'s turn`}
           </div>
         </div>
-      )}
-      {isComplete ? (
-        <div className="flex min-h-0 flex-col gap-4">
-          <div className="min-w-0">{selectedMapsPanel}</div>
-          <div className="min-w-0">{sequencePanel('recap')}</div>
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px] 2xl:grid-cols-[minmax(0,1fr)_430px]">
-            <MapPool
-              veto={veto}
-              availableMaps={availableMaps}
-              allAvailableMaps={allAvailableMaps}
-              isUserTurn={isUserTurn}
-              actionLoading={readOnly ? null : actionLoading}
-              handleMapAction={noopMapAction}
-              imagesLoaded={imagesLoaded}
-              setImagesLoaded={setImagesLoaded}
-              currentTeamName={currentTeamName}
-              team1Name={team1Name}
-              team2Name={team2Name}
-              team1Id={team1Id}
-              team2Id={team2Id}
-              team1Logo={team1Logo}
-              team2Logo={team2Logo}
-              bestOf={currentBestOf}
-              game={game}
-              layoutMode={layout}
-            />
-            <div className="min-w-0">{sequencePanel('side')}</div>
-          </div>
-          <div className="min-w-0">
-            <div className="min-w-0">{selectedMapsPanel}</div>
-          </div>
-        </>
-      )}
+        {veto.current_action && (
+          <span className={cn(
+            'rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest',
+            getVetoActionClasses(veto.current_action),
+          )}>
+            {getVetoActionNoun(veto.current_action)}
+          </span>
+        )}
+      </div>
     </div>
+  ) : null;
+
+  const stageContent = isComplete ? (
+    <>
+      <div className="min-w-0">{selectedMapsPanel}</div>
+      <div className="min-w-0">{sequencePanel}</div>
+    </>
+  ) : (
+    <>
+      {turnBar}
+      <div className={ui.stageGrid}>
+        <div className="min-w-0">{mapPoolPanel}</div>
+        <div className="min-w-0">{sequencePanel}</div>
+      </div>
+      <div className="min-w-0">{selectedMapsPanel}</div>
+    </>
   );
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className={cn(
-        'w-full font-heading bg-[#09090b]',
-        isFullscreen && 'min-h-screen px-4 py-4 lg:px-8 lg:py-6',
-        isModal && 'flex h-full min-h-0 flex-col overflow-hidden p-3 lg:p-4',
-        isEmbedded && 'max-w-[1400px] mx-auto p-2 sm:p-4 lg:p-6',
-      )}
+      className={ui.shell}
     >
-      <div className={cn(
-        'min-h-0 flex-1',
-        isModal && 'overflow-y-auto overscroll-contain pr-1',
-        isWideLayout && 'grid lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)] gap-4 lg:gap-6',
-        isEmbedded && 'flex flex-col xl:grid xl:grid-cols-[320px_minmax(0,1fr)] xl:gap-5 gap-4',
-        !isWideLayout && isEmbedded && 'overflow-y-auto',
-      )}>
-        <div className={cn(
-          isWideLayout && 'order-2 lg:order-1 lg:sticky lg:top-0 lg:self-start',
-          isEmbedded && 'order-2 xl:order-1',
-        )}>
+      <div className={ui.grid}>
+        <aside className={ui.rail}>
           {leftRail}
-        </div>
-        <div className={cn(
-          isWideLayout && 'order-1 lg:order-2 min-w-0',
-          isEmbedded && 'order-1 xl:order-2',
-        )}>
-          {mapPanel}
-        </div>
+        </aside>
+        <main className={ui.stage}>
+          {stageContent}
+        </main>
       </div>
 
       {!readOnly && (

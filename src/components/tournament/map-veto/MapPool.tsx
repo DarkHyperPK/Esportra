@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { MatchMapVeto, GameMap, PickedMap, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService } from '@/hooks/useMapVetoMachine';
 import { getSideFullLabel, getSideShortLabel, getVetoActionHoverClasses, getVetoActionNoun } from './vetoActionPresentation';
+import { getVetoLayoutConfig, type VetoLayoutMode } from './vetoLayoutConfig';
 
 interface MapPoolProps {
     veto: MatchMapVeto;
@@ -21,7 +22,7 @@ interface MapPoolProps {
     team2Logo?: string | null;
     bestOf: number;
     game?: string;
-    layoutMode?: 'modal' | 'fullscreen' | 'embedded';
+    layoutMode?: VetoLayoutMode;
 }
 
 export const MapPool: React.FC<MapPoolProps> = ({
@@ -58,6 +59,19 @@ export const MapPool: React.FC<MapPoolProps> = ({
             setOptimisticPicked(new Set());
         }
     }, [actionLoading]);
+
+    // Drop stale optimistic overlays after organizer reset / fresh veto start
+    useEffect(() => {
+        setOptimisticBanned(new Set());
+        setOptimisticPicked(new Set());
+    }, [
+        veto.status,
+        veto.current_action_number,
+        veto.team1_banned_maps,
+        veto.team2_banned_maps,
+        veto.team1_picked_maps,
+        veto.team2_picked_maps,
+    ]);
 
     // Wrap handleMapAction to apply optimistic update before the async call
     const handleMapActionWithOptimistic = (mapId: string) => {
@@ -218,12 +232,9 @@ export const MapPool: React.FC<MapPoolProps> = ({
         };
     };
 
-    const actionNum = veto.current_action_number || 1;
-    const gridColsClass = layoutMode === 'fullscreen'
-        ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6'
-        : layoutMode === 'modal'
-            ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
-            : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5';
+    const layout = getVetoLayoutConfig(layoutMode, false);
+    const { gridCols, tileHeight, minHeight, gap, mapNameSize } = layout.mapPool;
+    const isModalLayout = layoutMode === 'modal';
     const currentAction = veto.current_action || 'ban';
 
     return (
@@ -374,7 +385,10 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                     }
                                 }}
                             >
-                                <div className="relative h-48 sm:h-56 lg:h-64 overflow-hidden">
+                                <div className={cn(
+                                    'relative overflow-hidden',
+                                    isModalLayout ? 'h-36 sm:h-40 md:h-44' : 'h-48 sm:h-56 lg:h-64',
+                                )}>
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
                                     <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 lg:p-6">
                                         <h3 className="text-lg sm:text-xl lg:text-2xl font-black text-white mb-1 sm:mb-2" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9)' }}>{mapToShow.map_name}</h3>
@@ -398,7 +412,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                 })()
             ) : (
                 // Map Grid View
-                <div className={cn('grid gap-2.5 sm:gap-3', gridColsClass)}>
+                <div className={cn('grid', gap, gridCols)}>
                     {availableMapsToShow.map((map) => {
                         const mapStatus = getMapStatus(map.id);
                         const canInteract = !mapStatus.isBanned && !mapStatus.isPicked && isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined));
@@ -432,7 +446,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                     backgroundSize: 'cover',
                                     backgroundPosition: 'center',
                                     backgroundRepeat: 'no-repeat',
-                                    minHeight: '8rem',
+                                    minHeight: minHeight,
                                     backgroundColor: isImageLoaded ? 'transparent' : '#1a1a1a'
                                 }}
                                 role="button"
@@ -464,12 +478,13 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                     <div className="absolute inset-0 bg-black/40 z-0" />
                                 )}
 
-                                <div className="relative w-full h-28 sm:h-36 md:h-40 lg:h-44">
+                                <div className={cn('relative w-full', tileHeight)}>
                                     {!mapStatus.isPicked && !mapStatus.isBanned && (
                                         <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3">
                                             <div className="space-y-0.5 sm:space-y-1 text-center">
                                                 <span className={cn(
-                                                    "text-lg sm:text-xl md:text-2xl font-bold block text-white mb-1 sm:mb-1.5"
+                                                    'font-bold block text-white mb-1 sm:mb-1.5',
+                                                    mapNameSize,
                                                 )}
                                                     style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9)' }}>
                                                     {map.map_name}
