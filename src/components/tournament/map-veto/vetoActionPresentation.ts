@@ -5,14 +5,21 @@ import type { MatchMapVeto } from '@/hooks/useMapVetoMachine';
 export type VetoActionKind = VetoHistoryAction | NonNullable<MatchMapVeto['current_action']>;
 export type VetoSide = 'attack' | 'defend';
 
-export function getVetoActionLabel(action: VetoActionKind | string, side?: VetoSide | null) {
+export function getVetoActionLabel(
+    action: VetoActionKind | string,
+    side?: VetoSide | null,
+    tense: 'past' | 'present' = 'past',
+) {
     switch (action) {
         case 'ban':
-            return 'banned';
+            return tense === 'present' ? 'banning' : 'banned';
         case 'pick':
-            return 'picked';
+            return tense === 'present' ? 'picking' : 'picked';
         case 'pick_side':
-            return side ? `chose ${getSideShortLabel(side)}` : 'chose side';
+            if (tense === 'present') {
+                return side ? `choosing ${getSideShortLabel(side)} on` : 'choosing side for';
+            }
+            return side ? `chose ${getSideShortLabel(side)} on` : 'chose side for';
         case 'auto_decider':
             return 'decider';
         default:

@@ -262,12 +262,17 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           game={game}
           compact={ui.sequenceCompact}
           columns={ui.sequenceColumns}
+          emptyMessage={
+            veto.status === 'pending'
+              ? 'Veto has not started yet.'
+              : 'No veto actions recorded yet.'
+          }
         />
       </div>
     </div>
   );
 
-  const turnBar = !isComplete ? (
+  const turnBar = !isComplete && veto.status === 'in_progress' && veto.current_action ? (
     <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 sm:px-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>

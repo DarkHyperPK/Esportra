@@ -69,6 +69,12 @@ function getEntryForStep(entries: VetoHistoryEntry[], actionNumber: number) {
     return entries.find((entry) => entry.actionNumber === actionNumber);
 }
 
+function isVetoActive(veto: MatchMapVeto): boolean {
+    return veto.status === 'in_progress'
+        && (veto.current_action_number ?? 0) >= 1
+        && veto.current_action != null;
+}
+
 export const VetoSequence: React.FC<VetoSequenceProps> = ({
     veto,
     entries,
@@ -103,13 +109,16 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
             return entryItems;
         }
 
+        if (!isVetoActive(veto)) {
+            return [];
+        }
+
         const mapLookup = allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps;
         const service = new VetoService(game, mapLookup.length || undefined);
         const currentBestOf = getBestOf(bestOf || veto.best_of);
         const sequence = service.getSequence(getVetoFormat(currentBestOf));
-        const resolvedThrough = veto.status === 'completed'
-            ? Number.MAX_SAFE_INTEGER
-            : Math.max(0, (veto.current_action_number ?? 1) - 1);
+        const resolvedThrough = Math.max(0, (veto.current_action_number ?? 1) - 1);
+        const trustedEntries = entries.filter((entry) => entry.actionNumber <= resolvedThrough);
         const effectiveTeam1Id = veto.team1_id || team1Id || 'team1';
         const effectiveTeam2Id = veto.team2_id || team2Id || 'team2';
         const usedMapIds = new Set([
@@ -120,8 +129,8 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
         ]);
 
         return sequence.map((step) => {
-            const historyEntry = getEntryForStep(entries, step.actionNumber);
-            if (historyEntry && historyEntry.actionNumber <= resolvedThrough) {
+            const historyEntry = getEntryForStep(trustedEntries, step.actionNumber);
+            if (historyEntry) {
                 return {
                     actionNumber: historyEntry.actionNumber,
                     action: historyEntry.action,
@@ -136,7 +145,7 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
             const teamId = step.action === 'pick_side'
                 ? getSidePickerTeam(step.actionNumber, currentBestOf, effectiveTeam1Id, effectiveTeam2Id, service)
                 : getTeamForAction(step.actionNumber, currentBestOf, effectiveTeam1Id, effectiveTeam2Id, service);
-            const previousEntry = entries.find((entry) => entry.actionNumber === step.actionNumber - 1);
+            const previousEntry = getEntryForStep(trustedEntries, step.actionNumber - 1);
             const deciderMap = step.isDecider
                 ? mapLookup.find((map) => !usedMapIds.has(map.id))
                 : undefined;
@@ -187,8 +196,12 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
             {sequenceItems.map((item, index) => {
                 const isResolved = item.status === 'done';
                 const isCurrent = item.status === 'current';
-                const actionText = getVetoActionLabel(item.action, item.side);
-                const mapName = item.mapName || (item.status === 'upcoming' ? 'map pending' : 'selected map');
+                const actionText = getVetoActionLabel(
+                    item.action,
+                    item.side,
+                    isResolved || item.side ? 'past' : 'present',
+                );
+                const mapName = item.mapName || (item.status === 'upcoming' ? 'map pending' : 'map TBD');
                 const imageUrl = item.mapImageUrl || (isResolved ? fallbackMapImage : null);
 
                 return (
