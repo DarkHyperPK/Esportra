@@ -91,7 +91,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                 src={bannerSrc}
                                 alt={tournament.name}
                                 decoding="async"
-                                fetchPriority="high"
+                                fetchpriority="high"
                                 className="w-full h-full object-cover contrast-110"
                             />
                         )}

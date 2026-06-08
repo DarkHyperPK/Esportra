@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useRole } from "@/hooks/useRole";
@@ -18,17 +18,19 @@ const ProtectedRoute = ({
   allowedRoles,
   requiresAuth = true
 }: ProtectedRouteProps) => {
-  const { user, profile, loading } = useAuth();
+  const location = useLocation();
+  const { user, profile, loading, error: authError } = useAuth();
   const admin = useAdmin();
   const { currentRole, isLoading: roleLoading } = useRole();
 
   if (loading || roleLoading) {
-    return <ProfileLoading />;
+    return <ProfileLoading error={authError} />;
   }
 
   // If auth is required and user is not logged in, redirect to sign in
   if (requiresAuth && !user) {
-    return <Navigate to={redirectTo} />;
+    const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
+    return <Navigate to={`${redirectTo}?returnTo=${returnTo}`} replace />;
   }
 
   // If roles are specified, check if user has permission (public roles)

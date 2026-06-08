@@ -66,11 +66,8 @@ describe('tournamentVisibilityUtils', () => {
   });
 
   describe('canPublicViewTournament', () => {
-    it('blocks draft from public view', () => {
-      expect(canPublicViewTournament('draft', false)).toBe(false);
-    });
-
-    it('allows private and public published tournaments', () => {
+    it('allows direct-link access for draft, private, and public tournaments', () => {
+      expect(canPublicViewTournament('draft', false)).toBe(true);
       expect(canPublicViewTournament('published', false)).toBe(true);
       expect(canPublicViewTournament('open', true)).toBe(true);
       expect(canPublicViewTournament('ongoing', false)).toBe(true);

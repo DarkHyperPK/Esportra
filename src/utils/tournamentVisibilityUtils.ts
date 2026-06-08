@@ -9,8 +9,8 @@ export const LAUNCH_STATE_LABELS: Record<LaunchState, string> = {
 };
 
 export const LAUNCH_STATE_DESCRIPTIONS: Record<LaunchState, string> = {
-  draft: 'Only you and staff can view. Not listed or joinable.',
-  private: 'Accessible via direct link. Hidden from browse and search.',
+  draft: 'Accessible via direct link (slug or ID). Hidden from browse and search.',
+  private: 'Accessible via direct link (slug or ID). Hidden from browse and search.',
   public: 'Listed in discovery. Anyone can find and join.',
 };
 
@@ -71,9 +71,9 @@ export function makePrivateUpdatePayload(currentStatus?: string | null): { statu
   };
 }
 
-/** Whether a tournament can be viewed by non-organizer via direct link. */
-export function canPublicViewTournament(status: string, _isPublic?: boolean): boolean {
-  return status !== 'draft';
+/** Whether a tournament can be viewed via direct link (slug or tournament ID). */
+export function canPublicViewTournament(_status: string, _isPublic?: boolean): boolean {
+  return true;
 }
 
 /** Whether user is organizer, org owner, assigned staff, or admin. */

@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -34,6 +35,7 @@ import {
   GamepadIcon,
   Globe,
   Layers,
+  Copy,
   Loader2,
   Mail,
   MapPin,
@@ -1150,6 +1152,24 @@ const TournamentDashboard = () => {
     navigate(`/tournaments/edit/${slug}`);
   };
 
+  const tournamentSlugUrl = slug ? `${window.location.origin}/tournaments/${slug}` : '';
+  const tournamentIdUrl = tournament?.id ? `${window.location.origin}/tournaments/${tournament.id}` : '';
+  const showDirectLinks = Boolean(tournament && (!tournament.is_public || tournament.status === 'draft'));
+
+  const copyTournamentLink = async (url: string, label: string) => {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ title: 'Link copied', description: `${label} copied to clipboard.` });
+    } catch {
+      toast({
+        title: 'Copy failed',
+        description: 'Could not copy the link. Copy it manually from the address bar.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="esportra-ambient-page relative min-h-screen overflow-hidden font-sans text-white">
       <main className="container mx-auto px-4 py-8 relative z-10 font-heading">
@@ -1392,8 +1412,29 @@ const TournamentDashboard = () => {
                   size="sm"
                 >
                   <Eye className="w-4 h-4 mr-2 transition-transform group-hover:scale-110" />
-                  View Public Page
+                  View Page
                 </CommandButton>
+
+                {showDirectLinks && (
+                  <>
+                    <CommandButton
+                      onClick={() => void copyTournamentLink(tournamentSlugUrl, 'Slug link')}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copy Slug Link
+                    </CommandButton>
+                    <CommandButton
+                      onClick={() => void copyTournamentLink(tournamentIdUrl, 'ID link')}
+                      variant="secondary"
+                      size="sm"
+                    >
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copy ID Link
+                    </CommandButton>
+                  </>
+                )}
               </div>
             </div>
           </div>

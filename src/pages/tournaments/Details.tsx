@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import slugify from 'slugify';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, ApiError } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import {
   TournamentHeader
@@ -15,7 +15,7 @@ import { RulesTab } from '@/components/tournament/details/RulesTab';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import { usePublicBracketData } from '@/hooks/usePublicBracketData';
 import { Button } from '@/components/ui/button';
-import { Trophy, Swords } from 'lucide-react';
+import { Trophy, Swords, EyeOff, LogIn } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
@@ -83,6 +83,7 @@ const TournamentDetails = () => {
   const [checkInSubmitting, setCheckInSubmitting] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accessState, setAccessState] = useState<'none' | 'unavailable' | 'sign_in_required'>('none');
   const [registrationLoading, setRegistrationLoading] = useState(true);
   const [showBannerDialog, setShowBannerDialog] = useState(false);
   const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
@@ -265,9 +266,10 @@ const TournamentDetails = () => {
       return;
     }
     setLoading(true);
+    setAccessState('none');
     try {
       const data = await apiClient.get<any>(`/api/tournaments/${encodeURIComponent(slug)}`);
-      if (!data?.tournament) throw new Error('Tournament not found');
+      if (!data?.tournament) throw new ApiError(404, null, 'Tournament not found');
 
       const t = data.tournament;
       const parsedSettings = typeof t.settings === 'string' ? (() => { try { return JSON.parse(t.settings); } catch { return t.settings; } })() : (t.settings || {});
@@ -324,18 +326,29 @@ const TournamentDetails = () => {
       };
       setTournament(newTournament);
       setError(null);
+      setAccessState('none');
     } catch (error) {
+      setTournament(null);
+
+      if (error instanceof ApiError && error.status === 401) {
+        setAccessState('sign_in_required');
+        setError('Sign in to view this tournament.');
+        return;
+      }
+
+      if (error instanceof ApiError && error.status === 404) {
+        setAccessState('unavailable');
+        setError('This tournament could not be found. Check that the slug or tournament ID in the link is correct.');
+        return;
+      }
+
       const errorMessage = error instanceof Error ? error.message : 'Failed to load tournament details';
+      setAccessState('unavailable');
       setError(errorMessage);
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
     } finally {
       setLoading(false);
     }
-  }, [slug, toast]);
+  }, [slug, user]);
 
   const hasCheckedRegistration = React.useRef(false);
 
@@ -411,11 +424,10 @@ const TournamentDetails = () => {
         setIsCaptain(false);
       }
       setError(null);
-    } catch (error) {
+    } catch {
       setIsRegistered(false);
       setRegistrationDetails(null);
       setIsCaptain(false);
-      setError(error instanceof Error ? error.message : 'Error checking registration');
     } finally {
       setRegistrationLoading(false);
       hasCheckedRegistration.current = true;
@@ -425,31 +437,27 @@ const TournamentDetails = () => {
   // Captain status is set within checkRegistration via my-status response
 
   useEffect(() => {
-    let isMounted = true;
-
-    const initializeData = async () => {
-      if (!slug || !isMounted) return;
-      setLoading(true);
-      setRegistrationLoading(true); // Ensure loading state is set before fetching
-      // Fetch tournament data first, then registration status (which depends on tournament.id)
-      await fetchTournamentData();
-      // Only check registration if we have tournament data
-      if (isMounted) {
-        await checkRegistration();
-      }
-    };
-
-    initializeData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [slug, checkRegistration, fetchTournamentData]);
+    hasCheckedRegistration.current = false;
+    void fetchTournamentData();
+  }, [fetchTournamentData]);
 
   // Check registration when tournament or user becomes available
   useEffect(() => {
-    if (tournament?.id && user?.id && !hasCheckedRegistration.current) {
-      checkRegistration();
+    if (!tournament?.id) {
+      setRegistrationLoading(false);
+      return;
+    }
+
+    if (!user?.id) {
+      setRegistrationLoading(false);
+      setIsRegistered(false);
+      setRegistrationDetails(null);
+      setIsCaptain(false);
+      return;
+    }
+
+    if (!hasCheckedRegistration.current) {
+      void checkRegistration();
     }
   }, [tournament?.id, user?.id, checkRegistration]);
 
@@ -565,19 +573,46 @@ const TournamentDetails = () => {
   }
 
   if (error || !tournament) {
+    const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-[#050505] text-white">
         <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col items-center justify-center h-[60vh]">
-            <h1 className="text-2xl font-bold text-red-500 mb-4">Error</h1>
-            <p className="text-muted-foreground">{error || 'Tournament not found'}</p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => navigate('/tournaments')}
-            >
-              Back to Tournaments
-            </Button>
+          <div className="flex flex-col items-center justify-center h-[60vh] max-w-lg mx-auto text-center">
+            {accessState === 'sign_in_required' ? (
+              <LogIn className="w-12 h-12 text-rose-400 mb-4" />
+            ) : (
+              <EyeOff className="w-12 h-12 text-amber-400 mb-4" />
+            )}
+            <h1 className="text-2xl font-bold mb-3">
+              {accessState === 'sign_in_required' ? 'Sign in required' : 'Tournament unavailable'}
+            </h1>
+            <p className="text-gray-400 leading-relaxed">
+              {error || 'This tournament could not be loaded.'}
+            </p>
+            {accessState === 'unavailable' && (
+              <p className="text-sm text-gray-500 mt-3 leading-relaxed">
+                Direct links use <span className="text-gray-300">/tournaments/your-slug</span> or{' '}
+                <span className="text-gray-300">/tournaments/tournament-id</span>.
+                Draft and private tournaments work via link but do not appear in browse.
+              </p>
+            )}
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              {accessState === 'sign_in_required' && (
+                <Button
+                  className="bg-rose-500 hover:bg-rose-600"
+                  onClick={() => navigate(`/auth/signin?returnTo=${returnTo}`)}
+                >
+                  Sign in
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                className="border-white/10"
+                onClick={() => navigate('/tournaments')}
+              >
+                Browse tournaments
+              </Button>
+            </div>
           </div>
         </div>
         <Footer />
