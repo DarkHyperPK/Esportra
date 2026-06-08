@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { MatchMapVeto, GameMap, PickedMap, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService } from '@/hooks/useMapVetoMachine';
+import { MatchMapVeto, GameMap, PickedMap, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService, isVetoLive } from '@/hooks/useMapVetoMachine';
 import { getSideFullLabel, getSideShortLabel, getVetoActionHoverClasses, getVetoActionNoun } from './vetoActionPresentation';
 import { getVetoLayoutConfig, type VetoLayoutMode } from './vetoLayoutConfig';
 
@@ -83,7 +83,9 @@ export const MapPool: React.FC<MapPoolProps> = ({
         handleMapAction(mapId);
     };
 
-    if (!((veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined)))) {
+    const vetoLive = isVetoLive(veto);
+
+    if (!vetoLive) {
         return null;
     }
 
@@ -350,7 +352,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         return <div className="text-center py-8 text-zinc-400">Waiting for selected map...</div>;
                     }
 
-                    const canInteract = isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined));
+                    const canInteract = isUserTurn && !actionLoading && (vetoLive);
 
                     const mapImageUrl = mapToShow.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
 
@@ -415,7 +417,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                 <div className={cn('grid', gap, gridCols)}>
                     {availableMapsToShow.map((map) => {
                         const mapStatus = getMapStatus(map.id);
-                        const canInteract = !mapStatus.isBanned && !mapStatus.isPicked && isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined));
+                        const canInteract = !mapStatus.isBanned && !mapStatus.isPicked && isUserTurn && !actionLoading && (vetoLive);
 
                         const mapImageUrl = map.map_image_url || `https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80`;
                         // Revert: Do not replace system.assets.website with system.assets.games as it might be breaking images

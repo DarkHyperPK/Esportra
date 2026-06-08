@@ -156,10 +156,10 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                         }
                     }
 
-                    // Add decider map for BO3 and BO5 ONLY (not BO1 - BO1 has active pick at action 6)
-                    // BO1 doesn't have a decider - T1 actively picks from the remaining 2 maps
+                    // Add decider map for formats that end with a side pick on the leftover map.
+                    // This includes R6/CS2 BO1 pure-ban; Valorant BO1 has an explicit pick instead.
                     const deciderStep = sequence.find((step) => step.isDecider && step.action === 'pick_side');
-                    if (deciderStep && (vetoFormat === 3 || vetoFormat === 5) && (veto.status === 'completed' || veto.status === 'in_progress')) {
+                    if (deciderStep && (veto.status === 'completed' || veto.status === 'in_progress')) {
                         const finalPickSideActionNumber = deciderStep.actionNumber;
                         const currentActionNum = veto.current_action_number || 0;
 
@@ -192,10 +192,11 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                             const team2Bans = normalizeBannedMaps(veto.team2_banned_maps);
                             const allBannedMapIds = new Set([...team1Bans, ...team2Bans]);
 
-                            // Find the decider: the map that's not banned and not already in usedMapIds
-                            const deciderMap = mapLookup.find(m => !allBannedMapIds.has(m.id) && !usedMapIds.has(m.id));
+                            // Prefer the server-selected map, then fall back to the leftover map.
+                            const deciderMap = mapLookup.find(m => m.id === veto.selected_map_id)
+                                || mapLookup.find(m => !allBannedMapIds.has(m.id) && !usedMapIds.has(m.id));
 
-                            if (deciderMap) {
+                            if (deciderMap && !usedMapIds.has(deciderMap.id)) {
                                 // Find the side selection from the finalSidePickerTeamId's picks
                                 const finalSidePickerPicks = finalSidePickerTeamId === effectiveTeam1Id ? team1Picks : team2Picks;
                                 const deciderPickData = finalSidePickerPicks.find((p: any) => p.map_id === deciderMap.id) as any;

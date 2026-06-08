@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useMapVetoMachine } from '@/hooks/useMapVetoMachine';
+import { isVetoLive, useMapVetoMachine } from '@/hooks/useMapVetoMachine';
 import { VetoHeader } from './map-veto/VetoHeader';
 import { VetoTeamDisplay } from './map-veto/VetoTeamDisplay';
 import { VetoSelectedMaps } from './map-veto/VetoSelectedMaps';
@@ -105,10 +105,11 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
   const isUserTurn = useMemo(() => {
     if (readOnly || !veto) return false;
+    if (forcedTeamId) return veto.current_team_id === forcedTeamId;
     if (veto.current_team_id === veto.team1_id && isTeam1Captain) return true;
     if (veto.current_team_id === veto.team2_id && isTeam2Captain) return true;
     return false;
-  }, [veto, isTeam1Captain, isTeam2Captain, readOnly]);
+  }, [forcedTeamId, veto, isTeam1Captain, isTeam2Captain, readOnly]);
 
 
   const layoutConfig = getVetoLayoutConfig(layout, false);
@@ -141,6 +142,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
   const effectiveIsOrganizer = isOrganizer && !readOnly;
   const isComplete = veto.status === 'completed';
+  const vetoLive = isVetoLive(veto);
   const ui = getVetoLayoutConfig(layout, isComplete);
   const currentBestOf = veto.best_of || bestOf || 1;
   const boText = `BO${currentBestOf}`;
@@ -263,7 +265,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           compact={ui.sequenceCompact}
           columns={ui.sequenceColumns}
           emptyMessage={
-            veto.status === 'pending'
+            !vetoLive
               ? 'Veto has not started yet.'
               : 'No veto actions recorded yet.'
           }
@@ -272,7 +274,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     </div>
   );
 
-  const turnBar = !isComplete && veto.status === 'in_progress' && veto.current_action ? (
+  const turnBar = !isComplete && vetoLive && veto.current_action ? (
     <div className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 sm:px-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>

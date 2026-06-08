@@ -90,16 +90,21 @@ const MapVetoToken: React.FC = () => {
   }
 
   const { veto, match, tournament, teamId, isTeam1: _isTeam1 } = vetoData;
+  const vetoTeam1Id = veto.team1_id || match?.team1?.id || null;
+  const vetoTeam2Id = veto.team2_id || match?.team2?.id || null;
+  const matchTeams = [match?.team1, match?.team2].filter(Boolean);
+  const vetoTeam1 = matchTeams.find((team: any) => team.id === vetoTeam1Id) || match?.team1;
+  const vetoTeam2 = matchTeams.find((team: any) => team.id === vetoTeam2Id) || match?.team2;
 
   return (
     <div className="min-h-screen bg-[#050505]">
       <MapVeto
         matchId={veto.match_id}
         tournamentId={veto.tournament_id}
-        team1Id={match?.team1?.id || null}
-        team2Id={match?.team2?.id || null}
-        team1Name={match?.team1?.name || 'Team 1'}
-        team2Name={match?.team2?.name || 'Team 2'}
+        team1Id={vetoTeam1Id}
+        team2Id={vetoTeam2Id}
+        team1Name={vetoTeam1?.name || 'Team 1'}
+        team2Name={vetoTeam2?.name || 'Team 2'}
         game={tournament?.game}
         bestOf={match?.effectiveBestOf || veto.best_of}
         forcedTeamId={teamId}

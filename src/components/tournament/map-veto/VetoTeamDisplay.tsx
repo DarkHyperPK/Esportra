@@ -51,10 +51,13 @@ export const VetoTeamDisplay: React.FC<VetoTeamDisplayProps> = ({
                         <span className="text-white font-bold text-sm">{team1Name.charAt(0)}</span>
                     </div>
                 )}
-                <span className={cn(
-                    'font-bold text-white text-center truncate w-full',
-                    compact ? 'text-xs' : 'text-xs sm:text-sm md:text-base lg:text-lg',
-                )}>{team1Name}</span>
+                <span
+                    className={cn(
+                        'w-full font-bold text-white text-center',
+                        compact ? 'truncate text-xs' : 'break-words text-xs leading-tight sm:text-sm md:text-base lg:text-lg',
+                    )}
+                    title={team1Name}
+                >{team1Name}</span>
             </div>
             <div className="flex shrink-0 flex-col items-center gap-2">
                 <div className={cn('text-white/30 font-light', compact ? 'text-sm' : 'text-base sm:text-lg md:text-xl')}>VS</div>
@@ -82,10 +85,13 @@ export const VetoTeamDisplay: React.FC<VetoTeamDisplayProps> = ({
                         <span className="text-white font-bold text-sm">{team2Name.charAt(0)}</span>
                     </div>
                 )}
-                <span className={cn(
-                    'font-bold text-white text-center truncate w-full',
-                    compact ? 'text-xs' : 'text-xs sm:text-sm md:text-base lg:text-lg',
-                )}>{team2Name}</span>
+                <span
+                    className={cn(
+                        'w-full font-bold text-white text-center',
+                        compact ? 'truncate text-xs' : 'break-words text-xs leading-tight sm:text-sm md:text-base lg:text-lg',
+                    )}
+                    title={team2Name}
+                >{team2Name}</span>
             </div>
         </div>
     );

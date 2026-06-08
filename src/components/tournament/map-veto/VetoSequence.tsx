@@ -10,6 +10,7 @@ import {
     getVetoFormat,
     MatchMapVeto,
     VetoService,
+    isVetoLive,
     type GameMap,
 } from '@/hooks/useMapVetoMachine';
 import {
@@ -69,11 +70,6 @@ function getEntryForStep(entries: VetoHistoryEntry[], actionNumber: number) {
     return entries.find((entry) => entry.actionNumber === actionNumber);
 }
 
-function isVetoActive(veto: MatchMapVeto): boolean {
-    return veto.status === 'in_progress'
-        && (veto.current_action_number ?? 0) >= 1
-        && veto.current_action != null;
-}
 
 export const VetoSequence: React.FC<VetoSequenceProps> = ({
     veto,
@@ -109,7 +105,7 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
             return entryItems;
         }
 
-        if (!isVetoActive(veto)) {
+        if (!isVetoLive(veto)) {
             return [];
         }
 
@@ -146,10 +142,16 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
                 ? getSidePickerTeam(step.actionNumber, currentBestOf, effectiveTeam1Id, effectiveTeam2Id, service)
                 : getTeamForAction(step.actionNumber, currentBestOf, effectiveTeam1Id, effectiveTeam2Id, service);
             const previousEntry = getEntryForStep(trustedEntries, step.actionNumber - 1);
-            const deciderMap = step.isDecider
-                ? mapLookup.find((map) => !usedMapIds.has(map.id))
-                : undefined;
             const status = veto.current_action_number === step.actionNumber ? 'current' : 'upcoming';
+            const remainingMaps = step.isDecider
+                ? mapLookup.filter((map) => !usedMapIds.has(map.id))
+                : [];
+            const canResolveDeciderMap = step.isDecider && (
+                status === 'current'
+                || resolvedThrough >= step.actionNumber - 1
+                || remainingMaps.length === 1
+            );
+            const deciderMap = canResolveDeciderMap ? remainingMaps[0] : undefined;
 
             return {
                 actionNumber: step.actionNumber,

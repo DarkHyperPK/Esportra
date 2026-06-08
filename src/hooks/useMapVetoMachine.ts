@@ -52,6 +52,14 @@ export interface MatchMapVeto {
 
 // Normalize picked map objects: backend sends { mapId, side }, frontend expects { map_id, side }
 function normalizePickedArray(arr: any): PickedMap[] {
+    if (!arr) return [];
+    if (typeof arr === 'string') {
+        try {
+            return normalizePickedArray(JSON.parse(arr));
+        } catch {
+            return [];
+        }
+    }
     if (!Array.isArray(arr)) return [];
     return arr.map((p: any) => ({
         map_id: p.map_id ?? p.mapId ?? p,
@@ -86,6 +94,14 @@ export function mapApiVetoToLocal(apiVeto: any): MatchMapVeto {
         completed_at:          apiVeto.completedAt ?? apiVeto.completed_at ?? null,
         game:                  apiVeto.game ?? null,
     } as MatchMapVeto;
+}
+
+
+export function isVetoLive(veto?: MatchMapVeto | null): boolean {
+    return Boolean(veto && (
+        veto.status === 'in_progress'
+        || (veto.status === 'pending' && Boolean(veto.current_team_id) && Boolean(veto.current_action) && (veto.current_action_number ?? 0) >= 1)
+    ));
 }
 
 // Helper Functions
@@ -361,12 +377,14 @@ export const useMapVetoMachine = ({
     // Check user permissions
     useEffect(() => {
         if (!forcedTeamId) return;
+        const effectiveTeam1Id = veto?.team1_id || team1Id;
+        const effectiveTeam2Id = veto?.team2_id || team2Id;
         setIsCaptain(true);
         setUserTeamId(forcedTeamId);
         setIsOrganizer(false);
-        setIsTeam1Captain(forcedTeamId === team1Id);
-        setIsTeam2Captain(forcedTeamId === team2Id);
-    }, [forcedTeamId, team1Id, team2Id]);
+        setIsTeam1Captain(forcedTeamId === effectiveTeam1Id);
+        setIsTeam2Captain(forcedTeamId === effectiveTeam2Id);
+    }, [forcedTeamId, team1Id, team2Id, veto?.team1_id, veto?.team2_id]);
 
     useEffect(() => {
         const checkPermissions = async () => {
