@@ -226,6 +226,12 @@ img {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+
+  /* Keep short hover feedback on signature CTAs (rose slide-up) */
+  .jack-button-motion,
+  .jack-button-motion * {
+    transition-duration: 300ms !important;
+  }
 }
 
 @keyframes fadeIn {
