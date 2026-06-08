@@ -17,6 +17,8 @@ interface VetoHeaderProps {
     team2LinkToken?: string | null;
     team1Name?: string;
     team2Name?: string;
+    showShareLinks?: boolean;
+    compact?: boolean;
 }
 
 export const VetoHeader: React.FC<VetoHeaderProps> = ({
@@ -30,6 +32,8 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
     team2LinkToken,
     team1Name = 'Team 1',
     team2Name = 'Team 2',
+    showShareLinks = true,
+    compact = false,
 }) => {
     const { toast } = useToast();
     const [copiedTeam, setCopiedTeam] = useState<'team1' | 'team2' | null>(null);
@@ -43,20 +47,25 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
     };
 
     return (
-        <div className="mb-6 sm:mb-8 lg:mb-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3 sm:gap-5">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tighter">MAP VETO</h1>
-                <Badge className="bg-white/10 text-white px-3 py-1 text-xs font-bold border border-white/20 rounded-full">{boText}</Badge>
+        <div className={cn(
+            'flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3',
+            compact ? 'mb-2' : 'mb-6 sm:mb-8 lg:mb-10',
+        )}>
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                <h1 className={cn(
+                    'font-black text-white tracking-tighter',
+                    compact ? 'text-lg sm:text-xl' : 'text-2xl sm:text-3xl lg:text-4xl',
+                )}>MAP VETO</h1>
+                <Badge className="bg-white/10 text-white px-2.5 py-0.5 text-[10px] font-bold border border-white/20 rounded-full">{boText}</Badge>
                 {vetoStatus === 'in_progress' && (
-                    <Badge className="bg-rose-500/15 text-rose-300 px-3 py-1 text-xs font-bold border border-rose-500/30 rounded-full animate-pulse">
+                    <Badge className="bg-rose-500/15 text-rose-300 px-2.5 py-0.5 text-[10px] font-bold border border-rose-500/30 rounded-full animate-pulse">
                         ● LIVE
                     </Badge>
                 )}
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-                {/* Team link buttons — visible to organizer for testing/sharing */}
-                {effectiveIsOrganizer && team1LinkToken && (
+                {effectiveIsOrganizer && showShareLinks && team1LinkToken && (
                     <Button
                         onClick={() => copyLink(team1LinkToken, 'team1', team1Name)}
                         variant="outline"
@@ -67,7 +76,7 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
                         {team1Name} Link
                     </Button>
                 )}
-                {effectiveIsOrganizer && team2LinkToken && (
+                {effectiveIsOrganizer && showShareLinks && team2LinkToken && (
                     <Button
                         onClick={() => copyLink(team2LinkToken, 'team2', team2Name)}
                         variant="outline"

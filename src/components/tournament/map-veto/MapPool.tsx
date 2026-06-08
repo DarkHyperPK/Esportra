@@ -21,6 +21,7 @@ interface MapPoolProps {
     team2Logo?: string | null;
     bestOf: number;
     game?: string;
+    layoutMode?: 'modal' | 'fullscreen' | 'embedded';
 }
 
 export const MapPool: React.FC<MapPoolProps> = ({
@@ -41,6 +42,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
     team2Logo,
     bestOf,
     game = 'valorant',
+    layoutMode = 'embedded',
 }) => {
     const service = React.useMemo(() => new VetoService(game, availableMaps.length || undefined), [game, availableMaps.length]);
     const mapLookup = allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps;
@@ -216,9 +218,17 @@ export const MapPool: React.FC<MapPoolProps> = ({
         };
     };
 
+    const actionNum = veto.current_action_number || 1;
+    const gridColsClass = layoutMode === 'fullscreen'
+        ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6'
+        : layoutMode === 'modal'
+            ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
+            : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5';
+
     return (
         <div>
-            <div className="text-[10px] sm:text-xs md:text-sm font-black text-white uppercase tracking-widest mb-2 sm:mb-3 lg:mb-4 px-2 sm:px-0">
+            <div className="text-[10px] sm:text-xs font-black text-white uppercase tracking-widest mb-2 sm:mb-3 px-2 sm:px-0">
+                <span className="text-rose-400/80 mr-2">Action {actionNum}</span>
                 {isUserTurn
                     ? (veto.current_action === 'ban'
                         ? 'SELECT MAP TO BAN'
@@ -377,7 +387,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                 })()
             ) : (
                 // Map Grid View
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3 lg:gap-4">
+                <div className={cn('grid gap-2.5 sm:gap-3', gridColsClass)}>
                     {availableMapsToShow.map((map) => {
                         const mapStatus = getMapStatus(map.id);
                         const canInteract = !mapStatus.isBanned && !mapStatus.isPicked && isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined));

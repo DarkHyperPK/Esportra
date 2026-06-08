@@ -29,11 +29,8 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
     const team2Won = match.winner?.id && match.winner.id === match.team2?.id;
     const isCompleted = match.status === 'completed';
     const isLive = match.status === 'live';
-    const hasAnyResults = hasAutomatedResults || hasProofs;
     const team1Highlighted = hoveredTeamId && hoveredTeamId === match.team1?.id;
     const team2Highlighted = hoveredTeamId && hoveredTeamId === match.team2?.id;
-    const containsHoveredTeam = Boolean(team1Highlighted || team2Highlighted);
-    const dimForHoveredPath = Boolean(hoveredTeamId && !containsHoveredTeam);
 
     const style: React.CSSProperties = x !== undefined && y !== undefined ? {
         position: 'absolute',
@@ -50,33 +47,19 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
     return (
         <div
             className={cn(
-                'transition-all duration-300',
+                'transition-colors duration-200',
                 className,
-                hasAnyResults && 'cursor-pointer group',
-                containsHoveredTeam && 'scale-[1.02] drop-shadow-[0_0_18px_rgba(244,63,94,0.28)]',
-                dimForHoveredPath && 'opacity-35 grayscale',
+                onClick && 'cursor-pointer',
             )}
             style={style}
-            onClick={hasAnyResults ? onClick : undefined}
+            onClick={onClick}
             onMouseLeave={() => onTeamHover?.(null)}
         >
-            <div className={`
-                relative w-full h-full rounded overflow-hidden
-                bg-slate-800 border-l-4
-                ${isLive ? 'border-red-500' : isCompleted ? 'border-zinc-600' : 'border-slate-700'}
-                ${hasAnyResults ? 'hover:bg-slate-700/80 transition-colors' : ''}
-                shadow-md
-            `}>
-                {/* Live indicator (moved to footer) */}
-
-                {/* Hover Overlay: Show Match Details */}
-                {hasAnyResults && (
-                    <div className="absolute inset-0 z-10 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                        <span className="text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                            Show match details
-                        </span>
-                    </div>
-                )}
+            <div className={cn(
+                'relative w-full h-full rounded overflow-hidden bg-zinc-900 border-l-4 shadow-md',
+                isLive ? 'border-rose-500' : isCompleted ? 'border-zinc-600' : 'border-zinc-700',
+                onClick && 'hover:bg-zinc-800/80 transition-colors',
+            )}>
 
                 {/* Team 1 */}
                 <div

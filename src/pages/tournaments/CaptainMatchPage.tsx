@@ -1105,11 +1105,11 @@ const CaptainMatchPage = () => {
 
                 {/* Modals */}
                 <Dialog open={isVetoEnabled && mapVetoOpen} onOpenChange={setMapVetoOpen}>
-                    <DialogContent className="max-w-5xl w-full max-h-[90vh] flex flex-col bg-[#09090b] border-zinc-800 p-0 overflow-hidden">
-                        <DialogHeader className="p-6 border-b border-zinc-800 bg-[#18181b] flex-shrink-0">
-                            <DialogTitle>Map Veto</DialogTitle>
+                    <DialogContent className="bg-[#09090b] border-zinc-800/80 max-w-[min(96vw,1500px)] h-[min(92dvh,900px)] overflow-hidden p-0 flex flex-col">
+                        <DialogHeader className="px-4 py-3 border-b border-zinc-800 bg-[#18181b] flex-shrink-0">
+                            <DialogTitle className="text-white text-base font-semibold">Map Veto</DialogTitle>
                         </DialogHeader>
-                        <div className="flex-1 overflow-y-auto p-0 min-h-0">
+                        <div className="flex-1 min-h-0 overflow-hidden">
                             {mapVetoMatch && mapVetoMatchId && (
                                 <MapVeto
                                     matchId={mapVetoMatchId.replace(/^(db-|wb-|lb-)/, '')}
@@ -1120,6 +1120,8 @@ const CaptainMatchPage = () => {
                                     team2Name={mapVetoMatch.team2?.name}
                                     bestOf={mapVetoMatch.bestOf}
                                     game={tournament.game}
+                                    layout="embedded"
+                                    showShareLinks={false}
                                     onComplete={() => {
                                         setMapVetoOpen(false);
                                         toast({ title: "Veto Completed", description: "Map veto process has been finalized." });

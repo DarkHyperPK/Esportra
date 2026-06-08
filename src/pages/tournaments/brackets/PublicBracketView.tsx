@@ -11,7 +11,7 @@ import { Download, AlertCircle, Maximize2, Network, List } from 'lucide-react';
 import { SwissView } from '@/components/bracket/SwissView';
 import { GroupStageView } from '@/components/bracket/GroupStageView';
 import { ReadOnlyMatchCard } from '@/components/bracket/ReadOnlyMatchCard';
-import { MatchResultsDialog } from './dialogs/MatchResultsDialog';
+import { PublicMatchDetailsDialog } from './dialogs/PublicMatchDetailsDialog';
 import { cn } from '@/lib/utils';
 import type { BracketMatch } from '@/types/bracketTypes';
 import { CommandButton, CommandSegmentedButton } from '@/components/management/CommandSurface';
@@ -470,9 +470,10 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                 {renderContent()}
             </div>
 
-            <MatchResultsDialog
+            <PublicMatchDetailsDialog
                 open={resultsDialogOpen}
                 onOpenChange={setResultsDialogOpen}
+                match={resultsDialogMatch}
                 results={resultsDialogMatch ? (proofs?.[getRawId(resultsDialogMatch.id)] || []).map((url: string) => ({
                     image_url: url,
                     comment: null,
@@ -480,9 +481,6 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                     reporter_user_id: ''
                 })) : []}
                 automatedResults={resultsDialogMatch ? (automatedGames?.[getRawId(resultsDialogMatch.id)] || []) : []}
-                team1Name={resultsDialogMatch?.team1?.name}
-                team2Name={resultsDialogMatch?.team2?.name}
-                team1Id={resultsDialogMatch?.team1?.id}
             />
         </div>
     );

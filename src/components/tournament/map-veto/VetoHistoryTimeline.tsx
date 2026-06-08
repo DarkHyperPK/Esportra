@@ -102,7 +102,7 @@ export const VetoHistoryTimeline: React.FC<VetoHistoryTimelineProps> = ({
 
                         <div className="min-w-0 flex-1">
                             <p className={cn('font-semibold text-white', compact ? 'text-xs' : 'text-sm')}>
-                                <span className="text-white/70">#{entry.actionNumber}</span>{' '}
+                                <span className="text-white/50">Action {entry.actionNumber}</span>{' '}
                                 {entry.teamName}{' '}
                                 <span className="text-white/60">{actionLabel(entry)}</span>{' '}
                                 <span className="text-rose-300">{entry.mapName}</span>

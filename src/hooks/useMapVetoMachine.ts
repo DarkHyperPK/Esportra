@@ -326,6 +326,7 @@ export const useMapVetoMachine = ({
     const copiedLinkTimeoutRef = useRef<NodeJS.Timeout>();
     const lastResetBestOfRef = useRef<number | null>(null);
     const initInProgressRef = useRef(false); // Guard against duplicate init calls
+    const resetInProgressRef = useRef(false); // Ignore VetoReset SignalR race during controlled reset
 
     const hasAdminTournamentPerm = adminCtx.hasPermission('tournaments:edit');
     const isTokenSimulation = Boolean(vetoToken || forcedTeamId);
@@ -705,9 +706,10 @@ export const useMapVetoMachine = ({
             });
         });
 
-        // Handle veto reset
+        // Handle veto reset (skip during controlled reset+re-init to avoid stale state race)
         connection.on('VetoReset', () => {
             if (!mounted) return;
+            if (resetInProgressRef.current) return;
             setVeto(null);
             fetchVetoData();
         });
@@ -862,23 +864,26 @@ export const useMapVetoMachine = ({
         if (!confirm('Are you sure you want to reset the map veto?')) return;
 
         setResetting(true);
+        resetInProgressRef.current = true;
         try {
             await apiClient.post(`/api/veto/${matchId}/reset`, {});
 
             const configuredBestOfSource = dbBestOf || bestOf || veto.best_of;
             if (configuredBestOfSource) {
                 const configuredBestOf = getBestOf(configuredBestOfSource);
-                await apiClient.post(`/api/veto/${matchId}/init`, {
+                const initResult = await apiClient.post<Record<string, unknown>>(`/api/veto/${matchId}/init`, {
                     tournamentId: veto.tournament_id || tournamentId,
                     team1Id: veto.team1_id || team1Id,
                     team2Id: veto.team2_id || team2Id,
                     bestOf: configuredBestOf,
                     game: veto.game || game,
                 });
+                setVeto(mapApiVetoToLocal(initResult));
                 setSelectedBO(configuredBestOf);
                 setShowBODialog(false);
                 toast({ title: 'Veto Reset', description: `Map veto reset to BO${configuredBestOf}.` });
             } else {
+                setVeto(null);
                 setSelectedBO(null);
                 setShowBODialog(true);
                 toast({ title: 'Veto Reset', description: 'Please select Best Of format.' });
@@ -892,6 +897,7 @@ export const useMapVetoMachine = ({
         } catch (error: any) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         } finally {
+            resetInProgressRef.current = false;
             setResetting(false);
         }
     }, [bestOf, dbBestOf, fetchVetoData, game, isCaptain, isOrganizer, matchId, queryClient, team1Id, team2Id, toast, tournamentId, userTeamId, veto, vetoToken]);

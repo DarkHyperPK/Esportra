@@ -1078,22 +1078,31 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       </Dialog>
 
       <Dialog open={canUseMapVeto && mapVetoOpen} onOpenChange={setMapVetoOpen}>
-        <DialogContent className="bg-slate-900/95 backdrop-blur-xl border-white/10 max-w-5xl max-h-[90vh] overflow-auto p-0">
-          <DialogHeader className="p-4 border-b border-white/10"><DialogTitle><Swords className="w-5 h-5 inline mr-2 text-orange-500" />Map Veto</DialogTitle></DialogHeader>
-          {mapVetoMatch && tournamentId && (
-            <MapVeto
-              matchId={getRawId(mapVetoMatch.id)}
-              tournamentId={tournamentId}
-              team1Id={mapVetoMatch.team1?.id}
-              team2Id={mapVetoMatch.team2?.id}
-              team1Name={mapVetoMatch.team1?.name}
-              team2Name={mapVetoMatch.team2?.name}
-              game={tournamentGame}
-              bestOf={mapVetoMatch.bestOf ?? stage?.best_of ?? stage?.bestOf ?? 1}
-              matchStatus={mapVetoMatch.status as 'pending' | 'in_progress' | 'completed'}
-              onComplete={() => { setMapVetoOpen(false); onRefresh?.(); }}
-            />
-          )}
+        <DialogContent className="bg-[#09090b] border-zinc-800/80 max-w-[min(96vw,1500px)] h-[min(92dvh,900px)] overflow-hidden p-0 flex flex-col">
+          <DialogHeader className="px-4 py-3 border-b border-zinc-800 bg-[#18181b] flex-shrink-0">
+            <DialogTitle className="text-white flex items-center gap-2 text-base font-semibold">
+              <Swords className="w-4 h-4 text-rose-500" />
+              Map Veto
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {mapVetoMatch && tournamentId && (
+              <MapVeto
+                matchId={getRawId(mapVetoMatch.id)}
+                tournamentId={tournamentId}
+                team1Id={mapVetoMatch.team1?.id}
+                team2Id={mapVetoMatch.team2?.id}
+                team1Name={mapVetoMatch.team1?.name}
+                team2Name={mapVetoMatch.team2?.name}
+                game={tournamentGame}
+                bestOf={mapVetoMatch.bestOf ?? stage?.best_of ?? stage?.bestOf ?? 1}
+                matchStatus={mapVetoMatch.status as 'pending' | 'in_progress' | 'completed'}
+                layout="modal"
+                showShareLinks
+                onComplete={() => { setMapVetoOpen(false); onRefresh?.(); }}
+              />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 

@@ -16,7 +16,7 @@ export interface VetoHistoryEntry {
     createdAt: string;
 }
 
-function normalizeHistoryEntry(raw: Record<string, unknown>): VetoHistoryEntry {
+export function normalizeHistoryEntry(raw: Record<string, unknown>): VetoHistoryEntry {
     const teamSideRaw = String(raw.teamSide ?? raw.team_side ?? 'team1').toLowerCase();
     const teamSide: 'team1' | 'team2' = teamSideRaw === 'team2' ? 'team2' : 'team1';
 

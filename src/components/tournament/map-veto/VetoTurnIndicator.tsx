@@ -20,6 +20,7 @@ export const VetoTurnIndicator: React.FC<VetoTurnIndicatorProps> = ({
         return null;
     }
 
+    const actionNum = veto.current_action_number || 1;
     const actionLabel = veto.current_action === 'ban' ? 'BAN' : veto.current_action === 'pick_side' ? 'SIDE' : 'PICK';
     const actionColorClass = veto.current_action === 'ban'
         ? 'bg-rose-500 text-white'
@@ -48,6 +49,7 @@ export const VetoTurnIndicator: React.FC<VetoTurnIndicatorProps> = ({
                 'text-xs sm:text-sm font-black truncate',
                 isUserTurn ? 'text-rose-300' : 'text-white'
             )}>
+                <span className="text-white/50 mr-1.5">Action {actionNum}</span>
                 {isUserTurn ? 'YOUR TURN' : `${currentTeamName.toUpperCase()}'S TURN`}
             </span>
 

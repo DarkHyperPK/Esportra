@@ -10,6 +10,7 @@ import { VetoDialogs } from './map-veto/VetoDialogs';
 import { VetoHistoryTimeline } from './map-veto/VetoHistoryTimeline';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 interface MapVetoProps {
   matchId: string;
@@ -24,6 +25,9 @@ interface MapVetoProps {
   forcedTeamId?: string | null;
   vetoToken?: string | null;
   matchStatus?: 'pending' | 'in_progress' | 'completed';
+  layout?: 'modal' | 'fullscreen' | 'embedded';
+  showShareLinks?: boolean;
+  readOnly?: boolean;
 }
 const noOp = () => { };
 
@@ -39,6 +43,9 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   onComplete,
   forcedTeamId,
   vetoToken,
+  layout = 'embedded',
+  showShareLinks = true,
+  readOnly = false,
 }) => {
   const {
     veto,
@@ -94,27 +101,30 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   );
 
   const isUserTurn = useMemo(() => {
-    if (!veto) return false;
-    // Use IDs from the veto object itself to ensure consistency
+    if (readOnly || !veto) return false;
     if (veto.current_team_id === veto.team1_id && isTeam1Captain) return true;
     if (veto.current_team_id === veto.team2_id && isTeam2Captain) return true;
     return false;
-  }, [veto, isTeam1Captain, isTeam2Captain]);
+  }, [veto, isTeam1Captain, isTeam2Captain, readOnly]);
 
-  // Loading State
+  const isModal = layout === 'modal';
+  const isFullscreen = layout === 'fullscreen';
+  const isEmbedded = layout === 'embedded';
+  const isWideLayout = isModal || isFullscreen;
+
   if (loading) {
     return (
-      <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <div className="space-y-8">
-          <Skeleton className="h-12 w-48 bg-white/10" />
-          <div className="flex justify-between items-center px-12">
-            <Skeleton className="h-24 w-24 rounded-full bg-white/10" />
-            <Skeleton className="h-8 w-12 bg-white/10" />
-            <Skeleton className="h-24 w-24 rounded-full bg-white/10" />
-          </div>
-          <div className="grid grid-cols-5 gap-4">
+      <div className={cn(
+        'w-full',
+        isFullscreen && 'min-h-screen px-4 py-4 lg:px-8 lg:py-6',
+        isModal && 'h-full min-h-0 p-3 lg:p-4',
+        isEmbedded && 'max-w-7xl mx-auto p-4 sm:p-6 lg:p-8',
+      )}>
+        <div className="space-y-6">
+          <Skeleton className="h-10 w-48 bg-white/10" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-48 w-full rounded-lg bg-white/10" />
+              <Skeleton key={i} className="h-36 w-full rounded-lg bg-white/10" />
             ))}
           </div>
         </div>
@@ -122,43 +132,41 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     );
   }
 
-  // Error State (No Veto Found)
   if (!veto) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold text-white">No Veto Found</h2>
-          <p className="text-gray-400">Waiting for organizer to initialize the veto...</p>
+      <div className="flex items-center justify-center min-h-[280px]">
+        <div className="text-center space-y-3">
+          <h2 className="text-xl font-bold text-white">No Veto Found</h2>
+          <p className="text-zinc-500 text-sm">Waiting for organizer to initialize the veto...</p>
         </div>
       </div>
     );
   }
 
-  const effectiveIsOrganizer = isOrganizer; // Simplify for prop passing
-  // Use best_of from DB (now INTEGER) as source of truth, fallback to prop, then default to 1
+  const effectiveIsOrganizer = isOrganizer && !readOnly;
   const currentBestOf = veto.best_of || bestOf || 1;
   const boText = `BO${currentBestOf}`;
-
   const currentTeamName = veto.current_team_id === veto.team1_id ? team1Name : team2Name;
+  const noopMapAction = readOnly ? noOp : handleMapAction;
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="w-full max-w-[1400px] mx-auto p-2 sm:p-4 lg:p-6 xl:p-8 font-heading"
-    >
-
+  const leftRail = (
+    <div className={cn(
+      'flex flex-col gap-3 min-h-0',
+      isWideLayout && 'lg:overflow-y-auto lg:pr-1',
+    )}>
       <VetoHeader
         boText={boText}
         vetoStatus={veto.status}
         effectiveIsOrganizer={effectiveIsOrganizer}
         handleResetVeto={handleResetVeto}
         resetting={resetting}
-        vetoId={veto.id}
+        vetoId={readOnly ? undefined : veto.id}
         team1LinkToken={veto.team1_link_token}
         team2LinkToken={veto.team2_link_token}
         team1Name={team1Name}
         team2Name={team2Name}
+        showShareLinks={showShareLinks && !readOnly}
+        compact={isWideLayout}
       />
 
       <VetoTeamDisplay
@@ -166,6 +174,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         team1Logo={team1Logo}
         team2Name={team2Name}
         team2Logo={team2Logo}
+        compact={isWideLayout}
       />
 
       <VetoSelectedMaps
@@ -182,27 +191,48 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         game={game}
       />
 
-      <VetoTurnIndicator
-        veto={veto}
-        isUserTurn={isUserTurn}
-        currentTeamName={currentTeamName}
-        bestOf={currentBestOf}
-      />
-
-      <div className="mb-8">
-        <div className="text-[10px] sm:text-xs md:text-sm font-black text-white uppercase tracking-widest mb-3 px-2 sm:px-0">
-          Veto History
-        </div>
-        <VetoHistoryTimeline entries={vetoHistory} loading={vetoHistoryLoading} />
+      <div className={cn(isWideLayout ? 'hidden lg:block' : 'block')}>
+        <VetoTurnIndicator
+          veto={veto}
+          isUserTurn={isUserTurn}
+          currentTeamName={currentTeamName}
+          bestOf={currentBestOf}
+        />
       </div>
 
+      <div className="min-h-0 flex-1">
+        <div className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-2">
+          Veto History
+        </div>
+        <VetoHistoryTimeline
+          entries={vetoHistory}
+          loading={vetoHistoryLoading}
+          compact={isWideLayout}
+        />
+      </div>
+    </div>
+  );
+
+  const mapPanel = (
+    <div className={cn(
+      'flex flex-col min-h-0 min-w-0',
+      isWideLayout && 'lg:overflow-y-auto',
+    )}>
+      <div className={cn(isWideLayout ? 'lg:hidden' : 'hidden')}>
+        <VetoTurnIndicator
+          veto={veto}
+          isUserTurn={isUserTurn}
+          currentTeamName={currentTeamName}
+          bestOf={currentBestOf}
+        />
+      </div>
       <MapPool
         veto={veto}
         availableMaps={availableMaps}
         allAvailableMaps={allAvailableMaps}
         isUserTurn={isUserTurn}
-        actionLoading={actionLoading}
-        handleMapAction={handleMapAction}
+        actionLoading={readOnly ? null : actionLoading}
+        handleMapAction={noopMapAction}
         imagesLoaded={imagesLoaded}
         setImagesLoaded={setImagesLoaded}
         currentTeamName={currentTeamName}
@@ -214,37 +244,71 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         team2Logo={team2Logo}
         bestOf={currentBestOf}
         game={game}
+        layoutMode={layout}
       />
+    </div>
+  );
 
-      <VetoDialogs
-        showRoleSwitchPrompt={showRoleSwitchPrompt}
-        setShowRoleSwitchPrompt={setShowRoleSwitchPrompt}
-        handleRoleSwitch={handleRoleSwitch}
-        showBODialog={showBODialog}
-        setShowBODialog={setShowBODialog}
-        dialogStep={dialogStep}
-        setDialogStep={setDialogStep}
-        availableMaps={availableMaps}
-        allAvailableMaps={allAvailableMaps}
-        imagesLoaded={imagesLoaded}
-        setImagesLoaded={setImagesLoaded}
-        selectedBO={selectedBO}
-        handleSetBO={handleSetBO}
-        setDialogManuallyClosed={setDialogManuallyClosed}
-        veto={veto}
-        showSideDialog={showSideDialog}
-        setShowSideDialog={setShowSideDialog}
-        pendingMapId={pendingMapId}
-        setPendingMapId={setPendingMapId}
-        performMapAction={performMapAction}
-        setActionLoading={noOp} // Not used in dialog directly for setting loading, but passed for prop compatibility if needed
-        team1Name={team1Name}
-        team2Name={team2Name}
-        game={game}
-        bestOf={currentBestOf}
-      />
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className={cn(
+        'w-full font-heading bg-[#09090b]',
+        isFullscreen && 'min-h-screen px-4 py-4 lg:px-8 lg:py-6',
+        isModal && 'h-full min-h-0 overflow-hidden p-3 lg:p-4',
+        isEmbedded && 'max-w-[1400px] mx-auto p-2 sm:p-4 lg:p-6',
+      )}
+    >
+      <div className={cn(
+        'h-full min-h-0',
+        isWideLayout && 'grid lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[420px_minmax(0,1fr)] gap-4 lg:gap-6',
+        isEmbedded && 'flex flex-col xl:grid xl:grid-cols-[320px_minmax(0,1fr)] xl:gap-5 gap-4',
+        !isWideLayout && isEmbedded && 'overflow-y-auto',
+      )}>
+        <div className={cn(
+          isWideLayout && 'order-2 lg:order-1',
+          isEmbedded && 'order-2 xl:order-1',
+        )}>
+          {leftRail}
+        </div>
+        <div className={cn(
+          isWideLayout && 'order-1 lg:order-2',
+          isEmbedded && 'order-1 xl:order-2',
+        )}>
+          {mapPanel}
+        </div>
+      </div>
+
+      {!readOnly && (
+        <VetoDialogs
+          showRoleSwitchPrompt={showRoleSwitchPrompt}
+          setShowRoleSwitchPrompt={setShowRoleSwitchPrompt}
+          handleRoleSwitch={handleRoleSwitch}
+          showBODialog={showBODialog}
+          setShowBODialog={setShowBODialog}
+          dialogStep={dialogStep}
+          setDialogStep={setDialogStep}
+          availableMaps={availableMaps}
+          allAvailableMaps={allAvailableMaps}
+          imagesLoaded={imagesLoaded}
+          setImagesLoaded={setImagesLoaded}
+          selectedBO={selectedBO}
+          handleSetBO={handleSetBO}
+          setDialogManuallyClosed={setDialogManuallyClosed}
+          veto={veto}
+          showSideDialog={showSideDialog}
+          setShowSideDialog={setShowSideDialog}
+          pendingMapId={pendingMapId}
+          setPendingMapId={setPendingMapId}
+          performMapAction={performMapAction}
+          setActionLoading={noOp}
+          team1Name={team1Name}
+          team2Name={team2Name}
+          game={game}
+          bestOf={currentBestOf}
+        />
+      )}
     </motion.div>
   );
 };
-
-

@@ -29,7 +29,8 @@ export const BracketExporter: React.FC<BracketExporterProps> = ({
                     style: { transform: 'scale(1)' }, // Ensure no scaling issues
                     cacheBust: true,
                     pixelRatio: 3, // High quality export
-                });
+                    fontEmbedCSS: '', // Skip cross-origin stylesheet crawl (Google Fonts)
+                } as Parameters<typeof toPng>[1]);
 
                 const link = document.createElement('a');
                 link.download = `tournament-bracket-${Date.now()}.png`;
