@@ -61,6 +61,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     setDialogStep,
     selectedBO,
     handleSetBO,
+    showRoleSwitchPrompt,
     setShowRoleSwitchPrompt,
     handleRoleSwitch,
     imagesLoaded,
