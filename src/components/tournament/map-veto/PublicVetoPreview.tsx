@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { getVetoActionClasses, getVetoActionNoun } from './vetoActionPresentation';
+import { buildVetoSelectedMapEntries } from './buildVetoSelectedMapEntries';
 
 interface PublicVetoPreviewProps {
     matchId: string;
@@ -89,7 +90,28 @@ export const PublicVetoPreview: React.FC<PublicVetoPreviewProps> = ({
                 : veto.status;
 
     const currentTeam = veto.current_team_id === veto.team1_id ? team1Name : team2Name;
-    const selectedEntries = history.filter((entry) => entry.action === 'pick' || entry.action === 'auto_decider');
+
+    const mapLookup = Array.from(
+        history.reduce((lookup, entry) => {
+            if (entry.mapId && !lookup.has(entry.mapId)) {
+                lookup.set(entry.mapId, {
+                    id: entry.mapId,
+                    map_name: entry.mapName,
+                    map_image_url: entry.mapImageUrl,
+                });
+            }
+            return lookup;
+        }, new Map<string, { id: string; map_name: string; map_image_url?: string | null }>()).values(),
+    );
+
+    const selectedEntries = buildVetoSelectedMapEntries({
+        veto,
+        bestOf: veto.best_of || 1,
+        game: veto.game || 'valorant',
+        mapLookup,
+        team1Name,
+        team2Name,
+    });
 
     return (
         <div className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-4" data-testid="public-veto-preview">
@@ -117,17 +139,17 @@ export const PublicVetoPreview: React.FC<PublicVetoPreviewProps> = ({
 
             {selectedEntries.length > 0 && (
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
-                    {selectedEntries.map((entry, index) => (
-                        <div key={`${entry.actionNumber}-${entry.mapId}`} className="overflow-hidden rounded-lg border border-emerald-500/30 bg-black">
+                    {selectedEntries.map((entry) => (
+                        <div key={`${entry.mapNumber}-${entry.map_id}`} className="overflow-hidden rounded-lg border border-emerald-500/30 bg-black">
                             <div
                                 className="h-24 bg-cover bg-center"
                                 style={{
-                                    backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.2)), url(${entry.mapImageUrl || 'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80'})`,
+                                    backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.2)), url(${entry.map_image_url || 'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80'})`,
                                 }}
                             >
                                 <div className="flex h-full flex-col justify-end p-3">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-200">Map {index + 1}</span>
-                                    <span className="text-sm font-black text-white">{entry.mapName}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-200">Map {entry.mapNumber}</span>
+                                    <span className="text-sm font-black text-white">{entry.map_name}</span>
                                 </div>
                             </div>
                         </div>
