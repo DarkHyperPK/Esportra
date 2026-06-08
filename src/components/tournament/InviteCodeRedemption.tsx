@@ -86,6 +86,8 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
     };
   }, [preview, tournament]);
 
+  const isSoloInvite = (previewTournament?.team_size ?? preview?.tournamentTeamSize ?? 2) === 1;
+
   const {
     captainTeams,
     eligibleTeamIds,
@@ -105,7 +107,7 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
       team_size: previewTournament?.team_size ?? tournament?.team_size,
     },
     userId: user?.id,
-    enabled: Boolean(user && preview?.canRedeem && previewTournament),
+    enabled: Boolean(user && preview?.canRedeem && previewTournament && !isSoloInvite),
   });
 
   useEffect(() => {
@@ -142,31 +144,39 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
       return;
     }
 
-    if (captainTeams.length === 0) {
-      setSubmitError('Create a team and return here to redeem your invitation.');
-      return;
-    }
+    if (!isSoloInvite) {
+      if (captainTeams.length === 0) {
+        setSubmitError('Create a team and return here to redeem your invitation.');
+        return;
+      }
 
-    if (!selectedTeamId || !eligibleTeamIds.has(selectedTeamId)) {
-      setSubmitError('Select an eligible team before redeeming this invitation.');
-      return;
-    }
+      if (!selectedTeamId || !eligibleTeamIds.has(selectedTeamId)) {
+        setSubmitError('Select an eligible team before redeeming this invitation.');
+        return;
+      }
 
-    if (!selectedRosterId) {
-      setSubmitError('Select a roster that matches this tournament.');
-      return;
+      if (!selectedRosterId) {
+        setSubmitError('Select a roster that matches this tournament.');
+        return;
+      }
     }
 
     try {
-      const result = await redeemCode.mutateAsync({
-        code: normalizedCode,
-        teamId: selectedTeamId,
-        rosterId: selectedRosterId,
-      });
+      const result = await redeemCode.mutateAsync(
+        isSoloInvite
+          ? { code: normalizedCode }
+          : {
+              code: normalizedCode,
+              teamId: selectedTeamId,
+              rosterId: selectedRosterId,
+            },
+      );
 
       toast({
         title: 'Invitation redeemed',
-        description: 'Your team has joined this tournament.',
+        description: isSoloInvite
+          ? 'You have joined this tournament with your invited player slot.'
+          : 'Your team has joined this tournament.',
       });
 
       if (onSuccess) {
@@ -178,7 +188,9 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
     } catch (error: unknown) {
       const message = getApiErrorMessage(
         error,
-        'Check that the code belongs to your email and that you are a team captain.',
+        isSoloInvite
+          ? 'Check that the code belongs to your email and that registration is still open.'
+          : 'Check that the code belongs to your email and that you are a team captain.',
       );
       if (message.toLowerCase().includes('already registered')) {
         setAlreadyRegistered(true);
@@ -187,14 +199,16 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
     }
   };
 
-  const showTeamSelection = Boolean(user && preview?.canRedeem && previewTournament);
+  const showTeamSelection = Boolean(user && preview?.canRedeem && previewTournament && !isSoloInvite);
   const redeemDisabled = redeemCode.isPending
     || previewQuery.isLoading
     || !preview?.canRedeem
-    || fetchingTeams
-    || !selectedTeamId
-    || !selectedRosterId
-    || !eligibleTeamIds.has(selectedTeamId);
+    || (!isSoloInvite && (
+      fetchingTeams
+      || !selectedTeamId
+      || !selectedRosterId
+      || !eligibleTeamIds.has(selectedTeamId)
+    ));
 
   const content = (
     <div className="space-y-4">
@@ -239,7 +253,9 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
           </Button>
         </div>
         <p className="text-xs text-gray-500">
-          Codes are locked to your account email and can only be redeemed by a team captain.
+          {isSoloInvite
+            ? 'Codes are locked to your account email. This invite is for your player slot.'
+            : 'Codes are locked to your account email and can only be redeemed by a team captain.'}
         </p>
       </div>
 
@@ -256,7 +272,9 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
           <AlertDescription className="text-emerald-100">
             Valid invitation for <span className="font-semibold">{previewTournament.name}</span>
             {preview.expiresAt ? ` · expires ${new Date(preview.expiresAt).toLocaleDateString()}` : ''}.
-            Invited teams join with guaranteed slots and do not require entry-fee payment.
+            {isSoloInvite
+              ? ' Invited players join with guaranteed slots and do not require entry-fee payment.'
+              : ' Invited teams join with guaranteed slots and do not require entry-fee payment.'}
           </AlertDescription>
         </Alert>
       )}

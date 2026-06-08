@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Calendar, Clock, UserCheck, Bell, Mail } from 'lucide-react';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
+import { getInviteParticipantLabel } from '@/utils/tournamentInviteUtils';
 
 const StepRegistration: React.FC<WizardStepProps> = ({
     data,
@@ -14,7 +15,7 @@ const StepRegistration: React.FC<WizardStepProps> = ({
     isEditMode,
     activeInvitationCount = 0,
 }) => {
-    const showInvitedTeams = data.teamSize > 1;
+    const inviteParticipantLabel = getInviteParticipantLabel(data.teamSize);
     const openRegistrationSlots = data.maxTeams > 0
         ? Math.max(data.maxTeams - (data.invitedTeamsEnabled ? data.reservedInviteSlots : 0), 0)
         : null;
@@ -164,35 +165,33 @@ const StepRegistration: React.FC<WizardStepProps> = ({
                 </div>
             </div>
 
-            {showInvitedTeams && (
-                <>
-                    <div className="w-full h-px bg-white/5 my-6" />
-                    <div className="p-4 bg-white/[0.02] rounded-lg border border-white/10 space-y-4">
-                        <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-start gap-3">
-                                <Mail className="w-5 h-5 text-rose-400 mt-0.5" />
-                                <div>
-                                    <div className="font-medium text-white">Reserved slots for invited teams</div>
-                                    <div className="text-sm text-gray-400">
-                                        Hold guaranteed spots for email invites. You send invite codes from tournament management after creation.
-                                    </div>
-                                </div>
+            <div className="w-full h-px bg-white/5 my-6" />
+            <div className="p-4 bg-white/[0.02] rounded-lg border border-white/10 space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                        <Mail className="w-5 h-5 text-rose-400 mt-0.5" />
+                        <div>
+                            <div className="font-medium text-white">Reserved slots for invited participants</div>
+                            <div className="text-sm text-gray-400">
+                                Hold guaranteed spots for email invites. You send invite codes from tournament management after creation.
                             </div>
-                            <Switch
-                                checked={data.invitedTeamsEnabled}
-                                onCheckedChange={handleInvitedTeamsToggle}
-                                disabled={isEditMode && activeInvitationCount > 0}
-                                aria-label="Enable reserved invite slots"
-                            />
                         </div>
-                        {isEditMode && activeInvitationCount > 0 && (
-                            <p className="text-xs text-amber-300">
-                                {activeInvitationCount} active invitation{activeInvitationCount === 1 ? '' : 's'} — revoke them before disabling invited teams or lowering reserved slots below this count.
-                            </p>
-                        )}
+                    </div>
+                    <Switch
+                        checked={data.invitedTeamsEnabled}
+                        onCheckedChange={handleInvitedTeamsToggle}
+                        disabled={isEditMode && activeInvitationCount > 0}
+                        aria-label="Enable reserved invite slots"
+                    />
+                </div>
+                {isEditMode && activeInvitationCount > 0 && (
+                    <p className="text-xs text-amber-300">
+                        {activeInvitationCount} active invitation{activeInvitationCount === 1 ? '' : 's'} — revoke them before disabling invited participants or lowering reserved slots below this count.
+                    </p>
+                )}
 
-                        {data.invitedTeamsEnabled && (
-                            <div className="space-y-4 pt-4 border-t border-white/10">
+                {data.invitedTeamsEnabled && (
+                    <div className="space-y-4 pt-4 border-t border-white/10">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="reservedInviteSlots" className="text-sm text-gray-400">
@@ -235,25 +234,23 @@ const StepRegistration: React.FC<WizardStepProps> = ({
                                     </div>
                                 </div>
 
-                                <p className="text-xs text-gray-500">
-                                    {data.maxTeams > 0 ? (
-                                        <>
-                                            <span className="text-rose-400">{data.reservedInviteSlots}</span> invite slots reserved,{' '}
-                                            <span className="text-emerald-400">{openRegistrationSlots}</span> open registration slots
-                                            {' '}(max {data.maxTeams} teams).
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span className="text-rose-400">{data.reservedInviteSlots}</span> invite slots reserved.
-                                            Set max teams in Format &amp; Rules to cap open registration.
-                                        </>
-                                    )}
-                                </p>
-                            </div>
-                        )}
+                        <p className="text-xs text-gray-500">
+                            {data.maxTeams > 0 ? (
+                                <>
+                                    <span className="text-rose-400">{data.reservedInviteSlots}</span> invite slots reserved,{' '}
+                                    <span className="text-emerald-400">{openRegistrationSlots}</span> open registration slots
+                                    {' '}(max {data.maxTeams} {inviteParticipantLabel}).
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-rose-400">{data.reservedInviteSlots}</span> invite slots reserved.
+                                    Set max {inviteParticipantLabel} in Format &amp; Rules to cap open registration.
+                                </>
+                            )}
+                        </p>
                     </div>
-                </>
-            )}
+                )}
+            </div>
 
             {/* Summary Info */}
             {data.startDate && data.startTime && (
@@ -268,8 +265,8 @@ const StepRegistration: React.FC<WizardStepProps> = ({
                                 {data.checkInRequired && (
                                     <li>• Check-in starts: {data.checkInWindowMinutes} min before tournament</li>
                                 )}
-                                {showInvitedTeams && data.invitedTeamsEnabled && (
-                                    <li>• Invited teams: {data.reservedInviteSlots} reserved slot{data.reservedInviteSlots === 1 ? '' : 's'} (codes expire in {data.inviteExpiryDays} days)</li>
+                                {data.invitedTeamsEnabled && (
+                                    <li>• Invited participants: {data.reservedInviteSlots} reserved slot{data.reservedInviteSlots === 1 ? '' : 's'} (codes expire in {data.inviteExpiryDays} days)</li>
                                 )}
                                 <li>• Tournament starts: {new Date(`${data.startDate}T${data.startTime}`).toLocaleString()}</li>
                             </ul>

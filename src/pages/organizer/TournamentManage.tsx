@@ -434,7 +434,7 @@ const TournamentDashboard = () => {
     setInviteSettingsEnabled(reserved > 0);
     setInviteSettingsReservedSlots(reserved > 0 ? reserved : defaultReservedInviteSlots(maxTeams));
     setInviteSettingsExpiryDays(getInviteExpiryDaysFromTournament(tournament));
-  }, [tournament?.id, tournament?.reserved_invite_slots, tournament?.invite_expiry_days, tournament?.settings, maxTeams]);
+  }, [tournament, maxTeams]);
 
   // Overdue Check & Auto-Extension Effect
   useEffect(() => {
@@ -739,7 +739,7 @@ const TournamentDashboard = () => {
 
     if (inviteSettingsEnabled) {
       if (inviteSettingsReservedSlots < 1) {
-        toast({ title: 'Invalid configuration', description: 'Reserve at least 1 slot for invited teams.', variant: 'destructive' });
+        toast({ title: 'Invalid configuration', description: `Reserve at least 1 slot for invited ${inviteParticipantLabel}.`, variant: 'destructive' });
         return;
       }
       if (maxTeams > 0 && inviteSettingsReservedSlots > maxTeams) {
@@ -756,7 +756,7 @@ const TournamentDashboard = () => {
       }
     } else if (inviteSummary.activeSlots > 0) {
       toast({
-        title: 'Cannot disable invited teams',
+        title: `Cannot disable invited ${inviteParticipantLabel}`,
         description: 'Revoke all active invitations before disabling reserved invite slots.',
         variant: 'destructive',
       });
@@ -1152,15 +1152,19 @@ const TournamentDashboard = () => {
     navigate(`/tournaments/edit/${slug}`);
   };
 
-  const tournamentSlugUrl = slug ? `${window.location.origin}/tournaments/${slug}` : '';
-  const tournamentIdUrl = tournament?.id ? `${window.location.origin}/tournaments/${tournament.id}` : '';
+  const tournamentLinkUrl = slug
+    ? `${window.location.origin}/tournaments/${slug}`
+    : tournament?.id
+      ? `${window.location.origin}/tournaments/${tournament.id}`
+      : '';
   const showDirectLinks = Boolean(tournament && (!tournament.is_public || tournament.status === 'draft'));
+  const inviteParticipantLabel = (tournament?.team_size ?? 1) > 1 ? 'teams' : 'players';
 
-  const copyTournamentLink = async (url: string, label: string) => {
+  const copyTournamentLink = async (url: string) => {
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
-      toast({ title: 'Link copied', description: `${label} copied to clipboard.` });
+      toast({ title: 'Link copied', description: 'Tournament link copied to clipboard.' });
     } catch {
       toast({
         title: 'Copy failed',
@@ -1416,24 +1420,14 @@ const TournamentDashboard = () => {
                 </CommandButton>
 
                 {showDirectLinks && (
-                  <>
-                    <CommandButton
-                      onClick={() => void copyTournamentLink(tournamentSlugUrl, 'Slug link')}
-                      variant="secondary"
-                      size="sm"
-                    >
-                      <Copy className="w-4 h-4 mr-2" />
-                      Copy Slug Link
-                    </CommandButton>
-                    <CommandButton
-                      onClick={() => void copyTournamentLink(tournamentIdUrl, 'ID link')}
-                      variant="secondary"
-                      size="sm"
-                    >
-                      <Copy className="w-4 h-4 mr-2" />
-                      Copy ID Link
-                    </CommandButton>
-                  </>
+                  <CommandButton
+                    onClick={() => void copyTournamentLink(tournamentLinkUrl)}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Tournament Link
+                  </CommandButton>
                 )}
               </div>
             </div>
@@ -1785,10 +1779,10 @@ const TournamentDashboard = () => {
                             <div>
                               <CardTitle className="text-lg font-bold text-white tracking-wide flex items-center gap-2">
                                 <Mail className="h-5 w-5 text-rose-300" />
-                                Invite Teams
+                                Invite Participants
                               </CardTitle>
                               <p className="mt-1 text-sm text-gray-400">
-                                Email-locked codes let invited captains register their team into this tournament.
+                                Email-locked codes let invited {inviteParticipantLabel} register into this tournament.
                                 {openRegistrationSlots !== null && effectiveReservedInviteSlots > 0 && (
                                   <> {openRegistrationSlots} open registration slot{openRegistrationSlots === 1 ? '' : 's'} remain alongside {effectiveReservedInviteSlots} reserved.</>
                                 )}
@@ -1830,7 +1824,7 @@ const TournamentDashboard = () => {
                           )}
                           {effectiveReservedInviteSlots <= 0 && (
                             <div className="rounded-none border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
-                              Reserved invite slots are not configured. Enable invited teams in the Settings tab before sending guaranteed invite codes.
+                              Reserved invite slots are not configured. Enable invited participants in the Settings tab before sending guaranteed invite codes.
                             </div>
                           )}
                           <div className="flex flex-col gap-3 sm:flex-row">
@@ -1844,7 +1838,7 @@ const TournamentDashboard = () => {
                                   handleAddInviteEmail();
                                 }
                               }}
-                              placeholder="captain@team.com"
+                              placeholder={(tournament?.team_size ?? 1) > 1 ? 'captain@team.com' : 'player@email.com'}
                               className="border-white/10 bg-black/30 text-white"
                             />
                             <Button
@@ -2211,7 +2205,7 @@ const TournamentDashboard = () => {
                           <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
                               <Mail className="w-5 h-5 text-rose-300" />
-                              Invited Teams
+                              Invited Participants
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="p-0 space-y-4">
@@ -2236,7 +2230,7 @@ const TournamentDashboard = () => {
                               />
                               <div className="flex-1">
                                 <p className="font-medium text-white text-sm">
-                                  {savingInviteSettings ? 'Saving...' : 'Reserve slots for invited teams'}
+                                  {savingInviteSettings ? 'Saving...' : `Reserve slots for invited ${inviteParticipantLabel}`}
                                 </p>
                                 <p className="text-xs text-gray-400 mt-1">
                                   Hold guaranteed spots for email invites. Send codes from the Participants tab after saving.

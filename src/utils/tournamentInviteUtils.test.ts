@@ -52,14 +52,10 @@ describe('tournamentInviteUtils', () => {
   });
 
   describe('canConfigureInvitedTeams', () => {
-    it('allows any team-based format, including battle royale games', () => {
+    it('allows reserved invite slots for solo and team formats', () => {
+      expect(canConfigureInvitedTeams(1, false)).toBe(true);
       expect(canConfigureInvitedTeams(2, false)).toBe(true);
       expect(canConfigureInvitedTeams(4, true)).toBe(true);
-    });
-
-    it('hides team invites for solo formats', () => {
-      expect(canConfigureInvitedTeams(1, false)).toBe(false);
-      expect(canConfigureInvitedTeams(1, true)).toBe(false);
     });
   });
 
