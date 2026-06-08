@@ -21,6 +21,7 @@ import { getStageProgressFromStage } from '@/components/tournament/getStageProgr
 import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 import { buildStageSyncPayload } from '@/utils/stageSync';
+import { runInChunks } from '@/utils/runInChunks';
 // import { useStageRealtime } from '@/hooks/useStageRealtime';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
@@ -241,10 +242,9 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             const versions = (allVersions || []).filter((v: any) => stageIds.includes(v.stage_id));
 
             if (versions && versions.length > 0) {
-                // Delete each version (cascades to matches/advancements on backend)
-                for (const v of versions) {
+                await runInChunks(versions, 5, async (v) => {
                     await apiClient.delete(`/api/brackets/${v.id}`);
-                }
+                });
             }
 
             // Delete all stages
@@ -255,7 +255,14 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             onUpdate();
         } catch (error: any) {
             console.error('Error deleting all stages:', error);
-            toast({ title: 'Error', description: error.message || 'Failed to delete stages', variant: 'destructive' });
+            const isRateLimited = error?.status === 429 || String(error?.message ?? '').includes('Too many requests');
+            toast({
+                title: 'Error',
+                description: isRateLimited
+                    ? 'Too many requests. Please wait a minute and try again.'
+                    : error.message || 'Failed to delete stages',
+                variant: 'destructive',
+            });
         } finally {
             setIsDeleting(false);
         }
@@ -276,23 +283,21 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             const versions = (allVersions || []).filter((v: any) => stageIds.includes(v.stage_id));
 
             if (versions && versions.length > 0) {
-                // Reset each version (cascades to layout, edges, matches on backend)
-                for (const v of versions) {
+                await runInChunks(versions, 5, async (v) => {
                     await apiClient.post(`/api/brackets/${v.id}/reset`, {});
-                }
-                // Delete the versions themselves
-                for (const v of versions) {
+                });
+                await runInChunks(versions, 5, async (v) => {
                     await apiClient.delete(`/api/brackets/${v.id}`);
-                }
+                });
             }
 
             // Reset all stage statuses to 'upcoming'
-            for (const stageId of stageIds) {
+            await runInChunks(stageIds, 5, async (stageId) => {
                 await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
                     stage_id: stageId,
-                    status: 'upcoming'
+                    status: 'upcoming',
                 });
-            }
+            });
 
             // Clear hasBrackets state
             setHasBrackets({});
@@ -302,7 +307,14 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             onUpdate();
         } catch (error: any) {
             console.error('Error resetting all stages:', error);
-            toast({ title: 'Error', description: error.message || 'Failed to reset stages', variant: 'destructive' });
+            const isRateLimited = error?.status === 429 || String(error?.message ?? '').includes('Too many requests');
+            toast({
+                title: 'Error',
+                description: isRateLimited
+                    ? 'Too many requests. Please wait a minute and try again.'
+                    : error.message || 'Failed to reset stages',
+                variant: 'destructive',
+            });
         } finally {
             setIsResetting(false);
         }

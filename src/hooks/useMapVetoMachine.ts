@@ -8,6 +8,11 @@ import { useToast } from '@/hooks/use-toast';
 import { vetoService, VetoService } from '@/services/vetoService';
 import type { HubConnection } from '@microsoft/signalr';
 import { useQueryClient } from '@tanstack/react-query';
+import {
+    fetchCaptainUserIdsForTeams,
+    isValidNotificationUserId,
+    sendVetoNotifications,
+} from '@/utils/vetoNotifications';
 export { VetoService };
 
 // Types
@@ -1106,40 +1111,35 @@ export const useMapVetoMachine = ({
             if (!vetoToken && !isComplete && nextStep && dbVeto.team1_id && dbVeto.team2_id) {
                 const nextTeamId = nextStep.team === 'T1' ? dbVeto.team1_id : dbVeto.team2_id;
                 apiClient
-                    .get<{ user_id: string } | null>(`/api/teams/${nextTeamId}/captain`)
+                    .get<{ user_id?: string; userId?: string } | null>(`/api/teams/${nextTeamId}/captain`)
                     .then((cap) => {
-                        if (cap?.user_id) {
-                            const actionLabel = nextStep.action === 'ban' ? 'ban'
-                                : nextStep.action === 'pick' ? 'pick'
-                                : 'pick a side for';
-                            apiClient.post('/api/notifications', {
-                                userId: cap.user_id,
-                                type: 'veto_your_turn',
-                                title: 'Your Veto Turn',
-                                message: `It's your turn to ${actionLabel} a map.`,
-                                link: `/tournaments/${tournamentId}/captain-match`,
-                                data: { match_id: matchId },
-                            }).catch(() => {});
-                        }
+                        const userId = cap?.user_id ?? cap?.userId;
+                        if (!isValidNotificationUserId(userId)) return;
+
+                        sendVetoNotifications([userId], {
+                            type: 'veto_your_turn',
+                            title: 'Your Veto Turn',
+                            message: `It's your turn to ${
+                                nextStep.action === 'ban' ? 'ban'
+                                    : nextStep.action === 'pick' ? 'pick'
+                                    : 'pick a side for'
+                            } a map.`,
+                            link: `/tournaments/${tournamentId}/captain-match`,
+                            data: { match_id: matchId },
+                        });
                     })
                     .catch(() => {});
             }
             if (!vetoToken && isComplete && dbVeto.team1_id && dbVeto.team2_id) {
-                apiClient
-                    .get<{ user_id: string }[]>(`/api/teams/captains?team_ids=${[dbVeto.team1_id, dbVeto.team2_id].join(',')}`)
-                    .then((caps) => {
-                        if (caps?.length) {
-                            Promise.all(caps.map(c =>
-                                apiClient.post('/api/notifications', {
-                                    userId: c.user_id,
-                                    type: 'veto_completed',
-                                    title: 'Map Veto Complete',
-                                    message: 'The map veto has finished. Good luck in your match!',
-                                    link: `/tournaments/${tournamentId}/captain-match`,
-                                    data: { match_id: matchId },
-                                }).catch(() => {})
-                            ));
-                        }
+                void fetchCaptainUserIdsForTeams([dbVeto.team1_id, dbVeto.team2_id])
+                    .then((userIds) => {
+                        sendVetoNotifications(userIds, {
+                            type: 'veto_completed',
+                            title: 'Map Veto Complete',
+                            message: 'The map veto has finished. Good luck in your match!',
+                            link: `/tournaments/${tournamentId}/captain-match`,
+                            data: { match_id: matchId },
+                        });
                     })
                     .catch(() => {});
             }

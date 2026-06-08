@@ -59,11 +59,12 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[760px] bg-[#09090b] border border-zinc-800 max-h-[85vh] overflow-y-auto p-0">
-                <DialogHeader className="px-6 pt-6 pb-4 border-b border-zinc-800">
+            <DialogContent className="sm:max-w-[760px] bg-[#09090b] border border-zinc-800 h-[min(85dvh,760px)] max-h-[85vh] overflow-hidden p-0 flex flex-col gap-0">
+                <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-zinc-800">
                     <DialogTitle className="text-white text-lg font-semibold">Match Details</DialogTitle>
                 </DialogHeader>
 
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" data-lenis-prevent>
                 <div className="p-6 space-y-6">
                     {/* Teams & score */}
                     <div className="rounded-lg border border-white/10 bg-black/30 p-4 space-y-3">
@@ -209,6 +210,7 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
                     ) : (
                         <p className="text-sm text-zinc-500">No match results recorded yet.</p>
                     )}
+                </div>
                 </div>
             </DialogContent>
         </Dialog>
