@@ -1,16 +1,45 @@
 import { BarChart3, Trophy, Users, Wallet } from "lucide-react";
-import { CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  type TooltipProps,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { useOrganizerStats } from "@/hooks/useOrganizerStats";
 import { CommandEmptyState, CommandMetric, CommandPanel, CommandToolbar } from "@/components/management/CommandSurface";
 
 const CHART_COLORS = ["#f43f5e", "#ffffff", "#9f1239", "#71717a", "#fecdd3"];
 
-const tooltipStyle = {
-  backgroundColor: "#0a0a0c",
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: 0,
-  color: "white",
-};
+const axisStyle = { fill: "#a1a1aa", fontSize: 12 };
+const gridStyle = { stroke: "rgba(255,255,255,0.08)" };
+
+function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="border border-white/20 bg-[#0a0a0c] px-3 py-2 shadow-xl">
+      {label ? (
+        <p className="mb-1 font-mono text-[10px] uppercase tracking-wider text-zinc-400">{label}</p>
+      ) : null}
+      <div className="space-y-1">
+        {payload.map((entry) => (
+          <p key={String(entry.dataKey)} className="text-sm text-white">
+            <span className="text-rose-400">{entry.name ?? entry.dataKey}: </span>
+            <span className="font-semibold text-white">{entry.value}</span>
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const TournamentAnalytics = () => {
   const { data, isLoading } = useOrganizerStats();
@@ -67,16 +96,16 @@ const TournamentAnalytics = () => {
             <p className="text-sm text-zinc-500">Participants over the last six months</p>
           </div>
           <div className="h-72">
-            {analyticsData.monthlyParticipation.length === 0 ? (
-              <CommandEmptyState title="Not enough data yet" description="Participation trends will appear after more registrations are recorded." />
+            {analyticsData.totalTournaments === 0 && analyticsData.totalParticipants === 0 ? (
+              <CommandEmptyState title="Not enough data yet" description="Participation trends will appear after your organization hosts tournaments and registrations are recorded." />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={analyticsData.monthlyParticipation} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                  <XAxis dataKey="month" stroke="#71717a" />
-                  <YAxis stroke="#71717a" />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Line type="monotone" dataKey="participants" stroke="#f43f5e" strokeWidth={2} activeDot={{ r: 6, fill: "#fff" }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStyle.stroke} />
+                  <XAxis dataKey="name" tick={axisStyle} axisLine={{ stroke: "rgba(255,255,255,0.12)" }} tickLine={{ stroke: "rgba(255,255,255,0.12)" }} />
+                  <YAxis tick={axisStyle} axisLine={{ stroke: "rgba(255,255,255,0.12)" }} tickLine={{ stroke: "rgba(255,255,255,0.12)" }} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Line type="monotone" dataKey="participants" name="Participants" stroke="#f43f5e" strokeWidth={2} activeDot={{ r: 6, fill: "#fff" }} />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -94,13 +123,20 @@ const TournamentAnalytics = () => {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={analyticsData.gameDistribution} cx="45%" cy="50%" innerRadius={58} outerRadius={82} paddingAngle={4} dataKey="value">
+                  <Pie data={analyticsData.gameDistribution} cx="45%" cy="50%" innerRadius={58} outerRadius={82} paddingAngle={4} dataKey="value" nameKey="name">
                     {analyticsData.gameDistribution.map((entry, index) => (
                       <Cell key={`cell-${entry.name || index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Legend verticalAlign="middle" align="right" layout="vertical" iconType="square" />
-                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend
+                    verticalAlign="middle"
+                    align="right"
+                    layout="vertical"
+                    iconType="square"
+                    wrapperStyle={{ color: "#d4d4d8" }}
+                    formatter={(value) => <span className="text-zinc-300">{value}</span>}
+                  />
+                  <Tooltip content={<ChartTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
             )}
