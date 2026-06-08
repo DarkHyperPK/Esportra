@@ -6,6 +6,7 @@ import { MatchMapVeto, GameMap, PickedMap, getVetoFormat, getTeamForAction, getS
 interface VetoSelectedMapsProps {
     veto: MatchMapVeto;
     availableMaps: GameMap[];
+    allAvailableMaps: GameMap[];
     team1Name: string;
     team2Name: string;
     team1Id?: string | null;
@@ -21,6 +22,7 @@ interface VetoSelectedMapsProps {
 export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
     veto,
     availableMaps,
+    allAvailableMaps,
     team1Name,
     team2Name,
     team1Id,
@@ -33,6 +35,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
     game = 'valorant',
 }) => {
     const service = React.useMemo(() => new VetoService(game, availableMaps.length || undefined), [game, availableMaps.length]);
+    const mapLookup = allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps;
     const currentBestOf = bestOf || 1;
     const vetoFormat = getVetoFormat(currentBestOf);
 
@@ -108,7 +111,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                     const usedMapIds = new Set<string>();
 
                     for (const pickAction of pickActions) {
-                        const pickerTeamPicks = pickAction.teamId === veto.team1_id ? team1Picks : team2Picks;
+                        const pickerTeamPicks = pickAction.teamId === effectiveTeam1Id ? team1Picks : team2Picks;
 
                         for (const pickedMapData of pickerTeamPicks) {
                             const mapId = (pickedMapData as any)?.map_id;
@@ -123,21 +126,19 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                     service
                                 );
 
-                                const map = availableMaps.find(m => m.id === mapId);
-                                if (map) {
-                                    mapsWithSides.push({
-                                        map_id: mapId,
-                                        map_name: map.map_name,
-                                        map_image_url: map.map_image_url,
-                                        side: (pickedMapData as any).side,
-                                        sidePickerTeamId,
-                                        sidePickerTeamName: sidePickerTeamId === effectiveTeam1Id ? team1Name : team2Name,
-                                        mapPickerTeamId: pickAction.teamId,
-                                        mapPickerTeamName: pickAction.teamId === effectiveTeam1Id ? team1Name : team2Name,
-                                        mapNumber: mapNumber++,
-                                        pickActionNumber: pickAction.actionNumber
-                                    });
-                                }
+                                const map = mapLookup.find(m => m.id === mapId);
+                                mapsWithSides.push({
+                                    map_id: mapId,
+                                    map_name: map?.map_name || 'Selected map',
+                                    map_image_url: map?.map_image_url,
+                                    side: (pickedMapData as any).side,
+                                    sidePickerTeamId,
+                                    sidePickerTeamName: sidePickerTeamId === effectiveTeam1Id ? team1Name : team2Name,
+                                    mapPickerTeamId: pickAction.teamId,
+                                    mapPickerTeamName: pickAction.teamId === effectiveTeam1Id ? team1Name : team2Name,
+                                    mapNumber: mapNumber++,
+                                    pickActionNumber: pickAction.actionNumber
+                                });
                                 break;
                             }
                         }
@@ -180,7 +181,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                             const allBannedMapIds = new Set([...team1Bans, ...team2Bans]);
 
                             // Find the decider: the map that's not banned and not already in usedMapIds
-                            const deciderMap = availableMaps.find(m => !allBannedMapIds.has(m.id) && !usedMapIds.has(m.id));
+                            const deciderMap = mapLookup.find(m => !allBannedMapIds.has(m.id) && !usedMapIds.has(m.id));
 
                             if (deciderMap) {
                                 // Find the side selection from the finalSidePickerTeamId's picks
@@ -260,7 +261,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                                 {mapData.side === 'attack' ? (
                                                     <Sword className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4 text-white flex-shrink-0" />
                                                 ) : (
-                                                    <ShieldIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4 text-white flex-shrink-0" />
+                                                    <ShieldIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4 text-black flex-shrink-0" />
                                                 )}
                                             </div>
                                         )}

@@ -59,14 +59,17 @@ export const VetoHistoryTimeline: React.FC<VetoHistoryTimelineProps> = ({
 
     return (
         <div className={cn('relative', compact ? 'space-y-2' : 'space-y-3')} data-testid="veto-history-timeline">
-            <div className="absolute left-[1.15rem] top-2 bottom-2 w-px bg-white/10" aria-hidden />
+            <div className={cn(
+                'absolute top-0 bottom-0 w-px bg-white/10',
+                compact ? 'left-[1.625rem]' : 'left-[1.875rem]',
+            )} aria-hidden />
             {entries.map((entry) => {
                 const imageUrl = entry.mapImageUrl || undefined;
                 return (
                     <div
                         key={`${entry.actionNumber}-${entry.mapId}-${entry.action}`}
                         className={cn(
-                            'relative flex items-start gap-3 rounded-lg border border-white/10 bg-black/30',
+                            'relative flex items-center gap-3 rounded-lg border border-white/10 bg-black/30',
                             compact ? 'p-2' : 'p-3',
                         )}
                     >

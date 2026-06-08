@@ -171,6 +171,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       <VetoSelectedMaps
         veto={veto}
         availableMaps={availableMaps}
+        allAvailableMaps={allAvailableMaps}
         team1Name={team1Name}
         team2Name={team2Name}
         team1Id={team1Id}
@@ -198,6 +199,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       <MapPool
         veto={veto}
         availableMaps={availableMaps}
+        allAvailableMaps={allAvailableMaps}
         isUserTurn={isUserTurn}
         actionLoading={actionLoading}
         handleMapAction={handleMapAction}

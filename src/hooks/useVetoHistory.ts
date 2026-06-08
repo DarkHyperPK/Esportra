@@ -53,6 +53,7 @@ export function useVetoHistory(matchId?: string | null, enabled = true, vetoToke
                 .sort((a, b) => a.actionNumber - b.actionNumber);
         },
         enabled: Boolean(matchId) && enabled,
-        staleTime: 15_000,
+        staleTime: 0,
+        refetchInterval: vetoToken ? 1000 : false,
     });
 }

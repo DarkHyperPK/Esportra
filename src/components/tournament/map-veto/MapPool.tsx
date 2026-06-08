@@ -6,6 +6,7 @@ import { MatchMapVeto, GameMap, PickedMap, getVetoFormat, getTeamForAction, getS
 interface MapPoolProps {
     veto: MatchMapVeto;
     availableMaps: GameMap[];
+    allAvailableMaps: GameMap[];
     isUserTurn: boolean;
     actionLoading: string | null;
     handleMapAction: (mapId: string) => void;
@@ -25,6 +26,7 @@ interface MapPoolProps {
 export const MapPool: React.FC<MapPoolProps> = ({
     veto,
     availableMaps,
+    allAvailableMaps,
     isUserTurn,
     actionLoading,
     handleMapAction,
@@ -41,6 +43,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
     game = 'valorant',
 }) => {
     const service = React.useMemo(() => new VetoService(game, availableMaps.length || undefined), [game, availableMaps.length]);
+    const mapLookup = allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps;
 
     // Optimistic UI: immediately reflect user's ban/pick before DB confirms
     const [optimisticBanned, setOptimisticBanned] = useState<Set<string>>(new Set());
@@ -156,7 +159,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                         service
                     );
 
-                    const pickerTeamPicks = mapPickerTeamId === veto.team1_id ? team1Picked : team2Picked;
+                    const pickerTeamPicks = mapPickerTeamId === effectiveTeam1Id ? team1Picked : team2Picked;
 
                     let pickCount = 0;
                     for (let i = 0; i < actionIdx; i++) {
@@ -255,7 +258,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                     if (isFinalPickSide) {
                         // For the final map (decider), it's the one that hasn't been banned or picked yet.
                         // It's not in the picked list, so we find it by exclusion.
-                        const leftoverMap = availableMaps.find(m => !allUsedMaps.includes(String(m.id)));
+                        const leftoverMap = mapLookup.find(m => !allUsedMaps.includes(String(m.id)));
                         if (leftoverMap) {
                             pickedMap = { map_id: leftoverMap.id }; // Mock picked map object
                             mapToShow = leftoverMap;
@@ -295,11 +298,24 @@ export const MapPool: React.FC<MapPoolProps> = ({
                             }
                         }
 
-                        mapToShow = pickedMap ? availableMaps.find(m => m.id === pickedMap.map_id) || null : null;
+                        mapToShow = pickedMap ? mapLookup.find(m => m.id === pickedMap.map_id) || null : null;
                     }
 
                     if (!mapToShow) {
-                        return <div className="text-center py-8 text-zinc-400">Map not found</div>;
+                        const fallbackMapId = pickedMap?.map_id || veto.selected_map_id;
+                        if (fallbackMapId) {
+                            mapToShow = {
+                                id: fallbackMapId,
+                                game,
+                                map_name: 'Selected map',
+                                map_image_url: null,
+                                is_active: true,
+                            };
+                        }
+                    }
+
+                    if (!mapToShow) {
+                        return <div className="text-center py-8 text-zinc-400">Waiting for selected map...</div>;
                     }
 
                     const canInteract = isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined));
@@ -508,7 +524,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                                 "px-6 py-4 rounded-lg text-lg font-black border-2 shadow-xl",
                                                 veto.current_action === 'ban'
                                                     ? "bg-rose-500 text-white border-white"
-                                                    : "bg-white text-black border-white"
+                                                    : "bg-rose-500 text-white border-rose-400"
                                             )}>
                                                 {veto.current_action === 'ban' ? 'BAN' : 'PICK'}
                                             </div>

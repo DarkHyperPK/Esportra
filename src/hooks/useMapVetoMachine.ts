@@ -7,6 +7,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { useToast } from '@/hooks/use-toast';
 import { vetoService, VetoService } from '@/services/vetoService';
 import type { HubConnection } from '@microsoft/signalr';
+import { useQueryClient } from '@tanstack/react-query';
 export { VetoService };
 
 // Types
@@ -46,6 +47,7 @@ export interface MatchMapVeto {
     selected_map_pool?: string[];
     started_at: string | null;
     completed_at: string | null;
+    game?: string | null;
 }
 
 // Normalize picked map objects: backend sends { mapId, side }, frontend expects { map_id, side }
@@ -82,6 +84,7 @@ export function mapApiVetoToLocal(apiVeto: any): MatchMapVeto {
         selected_map_pool:     Array.isArray(apiVeto.selectedMapPool ?? apiVeto.selected_map_pool) ? (apiVeto.selectedMapPool ?? apiVeto.selected_map_pool) : [],
         started_at:            apiVeto.startedAt ?? apiVeto.started_at ?? null,
         completed_at:          apiVeto.completedAt ?? apiVeto.completed_at ?? null,
+        game:                  apiVeto.game ?? null,
     } as MatchMapVeto;
 }
 
@@ -293,6 +296,7 @@ export const useMapVetoMachine = ({
     const { currentRole, switchRole } = useRole();
     const adminCtx = useAdmin();
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
     // State
     const [veto, setVeto] = useState<MatchMapVeto | null>(null);
@@ -687,6 +691,18 @@ export const useMapVetoMachine = ({
         connection.on('VetoAction', (rawVeto: any) => {
             if (!mounted) return;
             setVeto(mapApiVetoToLocal(rawVeto));
+            queryClient.invalidateQueries({
+                queryKey: ['veto-history', matchId, vetoToken],
+                exact: true,
+            });
+        });
+
+        connection.on('VetoHistoryUpdated', () => {
+            if (!mounted) return;
+            queryClient.invalidateQueries({
+                queryKey: ['veto-history', matchId, vetoToken],
+                exact: true,
+            });
         });
 
         // Handle veto reset
@@ -699,6 +715,10 @@ export const useMapVetoMachine = ({
         // Handle veto complete
         connection.on('VetoComplete', (_pickedMaps: PickedMap[]) => {
             if (!mounted) return;
+            queryClient.invalidateQueries({
+                queryKey: ['veto-history', matchId, vetoToken],
+                exact: true,
+            });
             // Refetch to get final state
             fetchVetoData();
         });
@@ -714,13 +734,13 @@ export const useMapVetoMachine = ({
             connection.stop();
             vetoConnectionRef.current = null;
         };
-    }, [matchId, fetchVetoData, vetoToken]);
+    }, [fetchVetoData, matchId, queryClient, vetoToken]);
 
     useEffect(() => {
         if (!vetoToken) return;
         const interval = window.setInterval(() => {
             fetchVetoData();
-        }, 3000);
+        }, 1000);
         return () => window.clearInterval(interval);
     }, [fetchVetoData, vetoToken]);
 
@@ -845,16 +865,36 @@ export const useMapVetoMachine = ({
         try {
             await apiClient.post(`/api/veto/${matchId}/reset`, {});
 
-            toast({ title: 'Veto Reset', description: 'Please select Best Of format.' });
+            const configuredBestOfSource = dbBestOf || bestOf || veto.best_of;
+            if (configuredBestOfSource) {
+                const configuredBestOf = getBestOf(configuredBestOfSource);
+                await apiClient.post(`/api/veto/${matchId}/init`, {
+                    tournamentId: veto.tournament_id || tournamentId,
+                    team1Id: veto.team1_id || team1Id,
+                    team2Id: veto.team2_id || team2Id,
+                    bestOf: configuredBestOf,
+                    game: veto.game || game,
+                });
+                setSelectedBO(configuredBestOf);
+                setShowBODialog(false);
+                toast({ title: 'Veto Reset', description: `Map veto reset to BO${configuredBestOf}.` });
+            } else {
+                setSelectedBO(null);
+                setShowBODialog(true);
+                toast({ title: 'Veto Reset', description: 'Please select Best Of format.' });
+            }
+
+            await queryClient.invalidateQueries({
+                queryKey: ['veto-history', matchId, vetoToken],
+                exact: true,
+            });
             await fetchVetoData();
-            setShowBODialog(true);
-            setSelectedBO(null);
         } catch (error: any) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         } finally {
             setResetting(false);
         }
-    }, [veto, matchId, fetchVetoData, toast, isOrganizer, userTeamId, isCaptain]);
+    }, [bestOf, dbBestOf, fetchVetoData, game, isCaptain, isOrganizer, matchId, queryClient, team1Id, team2Id, toast, tournamentId, userTeamId, veto, vetoToken]);
 
     const performMapAction = useCallback(async (mapId: string, actionType: 'ban' | 'pick' | 'pick_side', side: 'attack' | 'defend' | null) => {
         if (!veto) return;
@@ -951,6 +991,12 @@ export const useMapVetoMachine = ({
                 setVeto(typedVeto);
             }
 
+            await queryClient.invalidateQueries({
+                queryKey: ['veto-history', matchId, vetoToken],
+                exact: true,
+            });
+            await fetchVetoData();
+
             const nextActionNumber = currentActionNum + 1;
             const nextStep = service.getStep(currentBestOf, nextActionNumber);
             const isComplete = !nextStep;
@@ -1012,7 +1058,7 @@ export const useMapVetoMachine = ({
         } finally {
             setActionLoading(null);
         }
-    }, [fetchVetoData, isCaptain, isOrganizer, matchId, onComplete, service, toast, tournamentId, userTeamId, veto, vetoToken]);
+    }, [fetchVetoData, isCaptain, isOrganizer, matchId, onComplete, queryClient, service, toast, tournamentId, userTeamId, veto, vetoToken]);
 
     const handleMapAction = useCallback(async (mapId: string) => {
         if (!veto) return;

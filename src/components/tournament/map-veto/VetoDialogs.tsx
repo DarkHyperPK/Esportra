@@ -153,7 +153,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                         <Button
                             onClick={() => setShowBODialog(false)}
                             variant="outline"
-                            className="bg-transparent border-white/20 text-white/80 hover:bg-white/10 hover:text-white hover:border-white/30 px-6"
+                            className="bg-transparent border-white/20 text-white/80 hover:bg-rose-500 hover:text-white hover:border-rose-400 px-6"
                         >
                             Cancel
                         </Button>
@@ -221,7 +221,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                     setPendingMapId(null);
                                 }
                             }}
-                            className="w-full h-20 bg-white hover:bg-zinc-200 text-black text-lg font-black gap-3 border-2 border-white/20 flex items-center justify-center"
+                            className="w-full h-20 bg-white hover:bg-rose-500 text-black hover:text-white text-lg font-black gap-3 border-2 border-white/20 hover:border-rose-400 flex items-center justify-center"
                         >
                             <ShieldIcon className="h-8 w-8" />
                             <span className="text-xl">DEFEND</span>
@@ -235,6 +235,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                 setPendingMapId(null);
                                 setActionLoading(null);
                             }}
+                            className="border-white/20 text-white/80 hover:bg-rose-500 hover:text-white hover:border-rose-400"
                         >
                             Cancel
                         </Button>
