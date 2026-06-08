@@ -118,7 +118,7 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 { label: 'Check-in', value: `${data.checkInWindowMinutes} min before start` },
                 { label: 'Auto-remove no-shows', value: 'Enabled' },
                 { label: 'Waitlist', value: data.waitlistEnabled ? `Yes (max ${data.waitlistMax})` : 'Disabled' },
-                ...(data.tournamentType === 'bracket' && data.teamSize > 1 && data.invitedTeamsEnabled
+                ...(data.teamSize > 1 && data.invitedTeamsEnabled
                     ? [
                         {
                             label: 'Invited teams',

@@ -32,8 +32,8 @@ export function defaultReservedInviteSlots(maxTeams: number): number {
   return Math.min(Math.max(2, Math.floor(maxTeams / 4)), maxTeams);
 }
 
-export function canConfigureInvitedTeams(teamSize: number, isBrTournament: boolean): boolean {
-  return !isBrTournament && teamSize > 1;
+export function canConfigureInvitedTeams(teamSize: number, _isBrTournament?: boolean): boolean {
+  return teamSize > 1;
 }
 
 export interface TournamentRegistrationVisibilityInput {

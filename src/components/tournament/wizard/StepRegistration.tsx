@@ -14,7 +14,7 @@ const StepRegistration: React.FC<WizardStepProps> = ({
     isEditMode,
     activeInvitationCount = 0,
 }) => {
-    const showInvitedTeams = data.tournamentType === 'bracket' && data.teamSize > 1;
+    const showInvitedTeams = data.teamSize > 1;
     const openRegistrationSlots = data.maxTeams > 0
         ? Math.max(data.maxTeams - (data.invitedTeamsEnabled ? data.reservedInviteSlots : 0), 0)
         : null;

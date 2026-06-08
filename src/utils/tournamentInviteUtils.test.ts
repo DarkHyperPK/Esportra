@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canConfigureInvitedTeams,
   canShowInviteRedemption,
   canShowOpenRegistration,
   getOpenRegistrationCapacity,
@@ -47,6 +48,18 @@ describe('tournamentInviteUtils', () => {
     it('rejects closed or draft statuses', () => {
       expect(isTournamentRegistrationOpen('draft')).toBe(false);
       expect(isTournamentRegistrationOpen('completed')).toBe(false);
+    });
+  });
+
+  describe('canConfigureInvitedTeams', () => {
+    it('allows any team-based format, including battle royale games', () => {
+      expect(canConfigureInvitedTeams(2, false)).toBe(true);
+      expect(canConfigureInvitedTeams(4, true)).toBe(true);
+    });
+
+    it('hides team invites for solo formats', () => {
+      expect(canConfigureInvitedTeams(1, false)).toBe(false);
+      expect(canConfigureInvitedTeams(1, true)).toBe(false);
     });
   });
 
