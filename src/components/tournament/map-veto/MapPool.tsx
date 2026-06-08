@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Sword, Shield as ShieldIcon, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchMapVeto, GameMap, PickedMap, getVetoFormat, getTeamForAction, getSidePickerTeam, VetoService } from '@/hooks/useMapVetoMachine';
+import { getSideFullLabel, getSideShortLabel, getVetoActionHoverClasses, getVetoActionNoun } from './vetoActionPresentation';
 
 interface MapPoolProps {
     veto: MatchMapVeto;
@@ -224,19 +224,30 @@ export const MapPool: React.FC<MapPoolProps> = ({
         : layoutMode === 'modal'
             ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
             : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5';
+    const currentAction = veto.current_action || 'ban';
 
     return (
         <div>
-            <div className="text-[10px] sm:text-xs font-black text-white uppercase tracking-widest mb-2 sm:mb-3 px-2 sm:px-0">
-                <span className="text-rose-400/80 mr-2">Action {actionNum}</span>
-                {isUserTurn
-                    ? (veto.current_action === 'ban'
-                        ? 'SELECT MAP TO BAN'
-                        : veto.current_action === 'pick_side'
-                            ? 'SELECT SIDE FOR LAST PICKED MAP'
-                            : 'SELECT MAP TO PICK')
-                    : `WAITING FOR ${currentTeamName.toUpperCase()}`
-                }
+            <div className="mb-3 flex flex-wrap items-center gap-2 px-2 sm:px-0">
+                <span className={cn(
+                    'rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest',
+                    currentAction === 'pick'
+                        ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
+                        : currentAction === 'pick_side'
+                            ? 'border-white/25 bg-white/10 text-white'
+                            : 'border-rose-500/40 bg-rose-500/15 text-rose-200',
+                )}>
+                    {getVetoActionNoun(currentAction)}
+                </span>
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-white/80">
+                    {isUserTurn
+                        ? (veto.current_action === 'ban'
+                            ? 'Select a map to ban'
+                            : veto.current_action === 'pick_side'
+                                ? 'Select the starting side'
+                                : 'Select a map to pick')
+                        : `Waiting for ${currentTeamName}`}
+                </span>
             </div>
 
             {veto.current_action === 'pick_side' ? (
@@ -375,7 +386,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                         <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-all duration-200">
                                             <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                                 <div className="bg-white/10 backdrop-blur-sm rounded-lg px-6 py-3 border-2 border-white/50">
-                                                    <p className="text-white font-black text-lg uppercase tracking-wider">SELECT SIDE</p>
+                                                    <p className="text-white font-black text-lg uppercase tracking-wider">Select Side</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -410,9 +421,9 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                     mapStatus.isBanned
                                         ? 'border-rose-500/50 cursor-not-allowed opacity-60'
                                         : mapStatus.isPicked
-                                            ? 'border-white/40'
+                                            ? 'border-emerald-500/40'
                                             : canInteract
-                                                ? 'border-rose-500/50 hover:border-rose-400 hover:shadow-lg hover:shadow-rose-500/20 cursor-pointer'
+                                                ? `${getVetoActionHoverClasses(currentAction)} hover:shadow-lg cursor-pointer`
                                                 : 'border-white/15',
                                     actionLoading === map.id && 'opacity-50 pointer-events-none'
                                 )}
@@ -470,8 +481,11 @@ export const MapPool: React.FC<MapPoolProps> = ({
 
                                 {mapStatus.isBanned && (
                                     <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10 border border-rose-500/50 rounded-lg">
-                                        <div className="bg-rose-500 rounded-full p-3 sm:p-4 lg:p-5 border-4 border-white shadow-xl">
-                                            <XCircle className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-white" strokeWidth={2.5} />
+                                        <div className="rounded-lg border border-rose-500/50 bg-rose-500/15 px-4 py-3 text-center shadow-xl">
+                                            <div className="text-xs font-black uppercase tracking-widest text-rose-200">BANNED</div>
+                                            <div className="mt-1 text-[10px] font-semibold text-white/70">
+                                                {mapStatus.isTeam1Ban ? team1Name : team2Name}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -506,16 +520,15 @@ export const MapPool: React.FC<MapPoolProps> = ({
 
                                             {mapStatus.pickedSide && (
                                                 <div className={cn(
-                                                    "w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg border-2 border-white shadow-xl flex items-center justify-center",
+                                                    "rounded-lg border px-3 py-2 text-center shadow-xl",
                                                     mapStatus.pickedSide === 'attack'
-                                                        ? "bg-rose-500 text-white"
-                                                        : "bg-white text-black"
+                                                        ? "border-rose-500/50 bg-rose-500/15 text-rose-200"
+                                                        : "border-white/30 bg-white/10 text-white"
                                                 )}>
-                                                    {mapStatus.pickedSide === 'attack' ? (
-                                                        <Sword className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
-                                                    ) : (
-                                                        <ShieldIcon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
-                                                    )}
+                                                    <div className="text-sm font-black tracking-widest">{getSideShortLabel(mapStatus.pickedSide)}</div>
+                                                    <div className="text-[9px] font-semibold uppercase tracking-wide opacity-75">
+                                                        {getSideFullLabel(mapStatus.pickedSide)}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -527,14 +540,14 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                         "absolute inset-0 flex items-center justify-center z-20 border-2 transition-all",
                                         veto.current_action === 'ban'
                                             ? "bg-rose-500/0 group-hover:bg-rose-500/30 border-rose-500/50 group-hover:border-rose-500"
-                                            : "bg-white/0 group-hover:bg-white/20 border-white/50 group-hover:border-white"
+                                            : "bg-emerald-500/0 group-hover:bg-emerald-500/25 border-emerald-500/50 group-hover:border-emerald-400"
                                     )}>
                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                             <div className={cn(
                                                 "px-6 py-4 rounded-lg text-lg font-black border-2 shadow-xl",
                                                 veto.current_action === 'ban'
                                                     ? "bg-rose-500 text-white border-white"
-                                                    : "bg-rose-500 text-white border-rose-400"
+                                                    : "bg-emerald-500 text-white border-emerald-300"
                                             )}>
                                                 {veto.current_action === 'ban' ? 'BAN' : 'PICK'}
                                             </div>

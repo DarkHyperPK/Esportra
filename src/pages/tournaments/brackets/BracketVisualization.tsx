@@ -1088,7 +1088,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
               Map Veto
             </DialogTitle>
           </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {mapVetoMatch && tournamentId && (
               <MapVeto
                 matchId={getRawId(mapVetoMatch.id)}

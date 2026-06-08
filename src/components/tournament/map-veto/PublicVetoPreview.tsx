@@ -3,10 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { mapApiVetoToLocal } from '@/hooks/useMapVetoMachine';
 import { normalizeHistoryEntry, type VetoHistoryEntry } from '@/hooks/useVetoHistory';
-import { VetoHistoryTimeline } from './VetoHistoryTimeline';
+import { VetoSequence } from './VetoSequence';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { getVetoActionClasses, getVetoActionNoun } from './vetoActionPresentation';
 
 interface PublicVetoPreviewProps {
     matchId: string;
@@ -88,9 +89,10 @@ export const PublicVetoPreview: React.FC<PublicVetoPreviewProps> = ({
                 : veto.status;
 
     const currentTeam = veto.current_team_id === veto.team1_id ? team1Name : team2Name;
+    const selectedEntries = history.filter((entry) => entry.action === 'pick' || entry.action === 'auto_decider');
 
     return (
-        <div className="rounded-lg border border-white/10 bg-black/30 p-4 space-y-3" data-testid="public-veto-preview">
+        <div className="rounded-xl border border-white/10 bg-black/30 p-4 space-y-4" data-testid="public-veto-preview">
             <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-black text-white uppercase tracking-widest">Map Veto</span>
                 <Badge className="bg-white/10 text-white text-[10px] border border-white/20">{boText}</Badge>
@@ -103,21 +105,48 @@ export const PublicVetoPreview: React.FC<PublicVetoPreviewProps> = ({
             </div>
 
             {veto.status === 'in_progress' && veto.current_action && (
-                <p className="text-xs text-zinc-400">
-                    Action {veto.current_action_number}: {currentTeam} — {veto.current_action.replace('_', ' ')}
-                </p>
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-3 py-2">
+                    <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest', getVetoActionClasses(veto.current_action))}>
+                        {getVetoActionNoun(veto.current_action)}
+                    </span>
+                    <span className="text-xs font-semibold text-zinc-300">
+                        {currentTeam}'s turn
+                    </span>
+                </div>
             )}
 
-            {veto.status === 'completed' && veto.selected_map_id && (
-                <p className="text-xs text-zinc-300">
-                    Decider map selected.
-                </p>
+            {selectedEntries.length > 0 && (
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
+                    {selectedEntries.map((entry, index) => (
+                        <div key={`${entry.actionNumber}-${entry.mapId}`} className="overflow-hidden rounded-lg border border-emerald-500/30 bg-black">
+                            <div
+                                className="h-24 bg-cover bg-center"
+                                style={{
+                                    backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.2)), url(${entry.mapImageUrl || 'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop&q=80'})`,
+                                }}
+                            >
+                                <div className="flex h-full flex-col justify-end p-3">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-200">Map {index + 1}</span>
+                                    <span className="text-sm font-black text-white">{entry.mapName}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             )}
 
-            <VetoHistoryTimeline
+            <VetoSequence
+                veto={veto}
                 entries={history}
                 loading={historyLoading}
-                compact
+                bestOf={veto.best_of || 1}
+                team1Name={team1Name}
+                team2Name={team2Name}
+                team1Id={veto.team1_id}
+                team2Id={veto.team2_id}
+                game={veto.game || 'valorant'}
+                compact={false}
+                doneOnly={veto.status === 'completed'}
                 emptyMessage="No veto actions recorded yet."
             />
         </div>

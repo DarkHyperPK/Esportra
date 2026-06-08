@@ -1,7 +1,6 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Sword, Shield as ShieldIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MatchMapVeto, getVetoFormat, getSidePickerTeam, GameMap, VetoService } from '@/hooks/useMapVetoMachine';
 
@@ -127,10 +126,10 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                             "relative p-6 sm:p-8 rounded-xl border-2 transition-all duration-200",
                                             "hover:scale-[1.02] hover:shadow-xl",
                                             isSelected
-                                                ? "bg-rose-500 border-rose-400 text-white shadow-xl shadow-rose-500/30"
+                                                ? "bg-emerald-500/15 border-emerald-400 text-white shadow-xl shadow-emerald-500/20"
                                                 : isDisabled
                                                     ? "bg-black/30 border-white/10 text-white/30 cursor-not-allowed opacity-50"
-                                                    : "bg-black/50 border-white/20 text-white hover:border-rose-500/50 hover:bg-white/5"
+                                                    : "bg-black/50 border-white/20 text-white hover:border-emerald-500/50 hover:bg-white/5"
                                         )}
                                     >
                                         <div className="text-center">
@@ -139,11 +138,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                                 {bo === 1 ? 'Pick 1 map' : bo === 3 ? '7 actions' : '11 actions'}
                                             </div>
                                         </div>
-                                        {isSelected && (
-                                            <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
-                                                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                                            </div>
-                                        )}
+                                        {isSelected && <div className="absolute inset-2 rounded-lg border border-emerald-300/60" aria-hidden />}
                                     </button>
                                 );
                             })}
@@ -193,7 +188,9 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
 
                         return (
                             <div className="flex items-center justify-center gap-2 py-4 border-y border-white/10">
-                                <CheckCircle className="h-6 w-6 text-rose-300" />
+                                <span className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white/70">
+                                    Side choice
+                                </span>
                                 <span className="text-white font-bold text-lg">{sidePickerTeamName}</span>
                             </div>
                         );
@@ -210,7 +207,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                             }}
                             className="w-full h-20 bg-rose-500 hover:bg-rose-600 text-white text-lg font-black gap-3 border-2 border-white/20 flex items-center justify-center"
                         >
-                            <Sword className="h-8 w-8" />
+                            <span className="rounded border border-white/30 bg-white/10 px-2 py-1 text-xs tracking-widest">ATK</span>
                             <span className="text-xl">ATTACK</span>
                         </Button>
                         <Button
@@ -223,7 +220,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                             }}
                             className="w-full h-20 bg-white hover:bg-rose-500 text-black hover:text-white text-lg font-black gap-3 border-2 border-white/20 hover:border-rose-400 flex items-center justify-center"
                         >
-                            <ShieldIcon className="h-8 w-8" />
+                            <span className="rounded border border-black/20 bg-black/10 px-2 py-1 text-xs tracking-widest">DEF</span>
                             <span className="text-xl">DEFEND</span>
                         </Button>
                     </div>

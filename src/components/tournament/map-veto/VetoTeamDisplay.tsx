@@ -1,11 +1,17 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
+import type { MatchMapVeto } from '@/hooks/useMapVetoMachine';
+import { getVetoActionClasses, getVetoActionNoun } from './vetoActionPresentation';
 
 interface VetoTeamDisplayProps {
     team1Name: string;
     team1Logo?: string | null;
     team2Name: string;
     team2Logo?: string | null;
+    activeSide?: 'team1' | 'team2' | null;
+    currentAction?: MatchMapVeto['current_action'];
+    completed?: boolean;
+    bestOf?: number;
     compact?: boolean;
 }
 
@@ -14,6 +20,10 @@ export const VetoTeamDisplay: React.FC<VetoTeamDisplayProps> = ({
     team1Logo,
     team2Name,
     team2Logo,
+    activeSide = null,
+    currentAction = null,
+    completed = false,
+    bestOf,
     compact = false,
 }) => {
     const logoSize = compact
@@ -25,10 +35,15 @@ export const VetoTeamDisplay: React.FC<VetoTeamDisplayProps> = ({
 
     return (
         <div className={cn(
-            'flex items-center justify-center gap-3 px-2 py-2 rounded-lg border border-white/10 bg-black/40',
+            'flex items-center justify-center gap-3 px-2 py-2 rounded-xl border border-white/10 bg-black/40',
             compact ? 'mb-2 gap-2' : 'mb-4 sm:mb-6 lg:mb-10 gap-3 sm:gap-6 lg:gap-12 px-2 sm:px-4 lg:px-8 py-3 sm:py-4 lg:py-6',
         )}>
-            <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+            <div className={cn(
+                'flex flex-col items-center gap-1 flex-1 min-w-0 rounded-lg border px-2 py-2 transition-colors',
+                activeSide === 'team1'
+                    ? 'border-rose-500/50 bg-rose-500/10 shadow-lg shadow-rose-500/10'
+                    : 'border-transparent bg-transparent',
+            )}>
                 {team1Logo ? (
                     <img src={team1Logo} alt={team1Name} className={cn(logoSize, 'w-auto h-auto object-contain')} />
                 ) : (
@@ -41,8 +56,25 @@ export const VetoTeamDisplay: React.FC<VetoTeamDisplayProps> = ({
                     compact ? 'text-xs' : 'text-xs sm:text-sm md:text-base lg:text-lg',
                 )}>{team1Name}</span>
             </div>
-            <div className={cn('text-white/30 font-light shrink-0', compact ? 'text-sm' : 'text-base sm:text-lg md:text-xl')}>VS</div>
-            <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+            <div className="flex shrink-0 flex-col items-center gap-2">
+                <div className={cn('text-white/30 font-light', compact ? 'text-sm' : 'text-base sm:text-lg md:text-xl')}>VS</div>
+                <div className={cn(
+                    'rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest',
+                    completed
+                        ? 'border border-emerald-500/40 bg-emerald-500/15 text-emerald-200'
+                        : currentAction
+                            ? getVetoActionClasses(currentAction)
+                            : 'border border-white/10 bg-white/5 text-white/60',
+                )}>
+                    {completed ? `BO${bestOf || 1} Complete` : currentAction ? getVetoActionNoun(currentAction) : 'Ready'}
+                </div>
+            </div>
+            <div className={cn(
+                'flex flex-col items-center gap-1 flex-1 min-w-0 rounded-lg border px-2 py-2 transition-colors',
+                activeSide === 'team2'
+                    ? 'border-rose-500/50 bg-rose-500/10 shadow-lg shadow-rose-500/10'
+                    : 'border-transparent bg-transparent',
+            )}>
                 {team2Logo ? (
                     <img src={team2Logo} alt={team2Name} className={cn(logoSize, 'w-auto h-auto object-contain')} />
                 ) : (

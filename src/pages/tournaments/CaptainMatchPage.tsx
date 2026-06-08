@@ -1109,7 +1109,7 @@ const CaptainMatchPage = () => {
                         <DialogHeader className="px-4 py-3 border-b border-zinc-800 bg-[#18181b] flex-shrink-0">
                             <DialogTitle className="text-white text-base font-semibold">Map Veto</DialogTitle>
                         </DialogHeader>
-                        <div className="flex-1 min-h-0 overflow-hidden">
+                        <div className="flex-1 min-h-0 overflow-y-auto">
                             {mapVetoMatch && mapVetoMatchId && (
                                 <MapVeto
                                     matchId={mapVetoMatchId.replace(/^(db-|wb-|lb-)/, '')}
