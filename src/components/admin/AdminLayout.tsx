@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { useAdmin } from '@/hooks/useAdmin';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { ProfileLoading } from '@/components/profile/ProfileLoading';
 import { motion } from 'framer-motion';
 import {
@@ -91,19 +91,14 @@ const adminNavGroups: AdminNavGroup[] = [
 ];
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
-  const admin = useAdmin();
   const {
     isAdmin,
     isSuperAdmin,
     roles = [],
     permissions = [],
     loading,
-  } = admin;
-  const hasPermission = (permission: string) => {
-    if (typeof admin.can === 'function') return admin.can(permission);
-    if (isSuperAdmin || roles.includes('super_admin')) return true;
-    return permissions.includes(permission);
-  };
+    can,
+  } = useAdminAccess();
 
   if (loading) {
     return (
@@ -136,7 +131,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       ...group,
       items: group.items.filter((item) => {
         if (item.superOnly && !isSuperAdmin) return false;
-        return !item.permission || hasPermission(item.permission);
+        return !item.permission || can(item.permission);
       }),
     }))
     .filter((group) => group.items.length > 0);

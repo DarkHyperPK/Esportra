@@ -32,7 +32,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments, useAdminUserSuspend, useAdminUserUnsuspend, useAdminBulkUserAction, useRevokeSession } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
-import { useAdmin } from "@/hooks/useAdmin";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { useAuth } from "@/hooks/useAuth";
 import { useGhostMode } from "@/hooks/useGhostMode";
 import { apiClient } from "@/lib/apiClient";
@@ -110,7 +110,7 @@ const USERS_PER_PAGE = 25;
 const UserManagementTool = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
-    const { can } = useAdmin();
+    const { can } = useAdminAccess();
     const { profile } = useAuth();
     const { start: startGhostMode } = useGhostMode();
     const revokeSessionMutation = useRevokeSession();

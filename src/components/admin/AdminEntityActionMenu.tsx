@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useAdmin } from '@/hooks/useAdmin';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 export type AdminEntityAction = {
   id: string;
@@ -32,7 +32,7 @@ const variantClasses: Record<NonNullable<AdminEntityAction['variant']>, string> 
 };
 
 export function AdminEntityActionMenu({ actions, align = 'end' }: AdminEntityActionMenuProps) {
-  const { can } = useAdmin();
+  const { can } = useAdminAccess();
 
   const visibleActions = actions.filter((action) => (
     !action.permission || can(action.permission)

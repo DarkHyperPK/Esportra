@@ -4,7 +4,7 @@ import { AlertTriangle, Lock, RefreshCw, ShieldAlert, ToggleLeft, ToggleRight } 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { useAdmin } from '@/hooks/useAdmin';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 import {
   useOperationsSystemConfig,
   useUpdateOperationsSystemConfig,
@@ -16,7 +16,7 @@ function asBoolean(value: OperationsSystemConfig['value']): boolean {
 }
 
 export default function KillSwitchConfig() {
-  const { can } = useAdmin();
+  const { can } = useAdminAccess();
   const canToggleKillSwitch = can('system:kill-switch');
   const { data = [], isLoading, refetch } = useOperationsSystemConfig();
   const updateConfig = useUpdateOperationsSystemConfig();
