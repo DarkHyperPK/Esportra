@@ -330,7 +330,8 @@ const CaptainMatchPage = () => {
             const urlMatch = matches.find(m =>
                 m.id === urlMatchId || m.id.replace(/^(db-|wb-|lb-)/, '') === urlMatchId
             );
-            if (urlMatch && (isOrganizer || urlMatch.status !== 'completed')) {
+            const isUsersMatch = !!userTeamId && (urlMatch?.team1?.id === userTeamId || urlMatch?.team2?.id === userTeamId);
+            if (urlMatch && (isOrganizer || isUsersMatch)) {
                 return urlMatch;
             }
         }

@@ -243,11 +243,9 @@ export const useTournamentWizard = (
                     data.launchState,
                     data.status || initialData?.status,
                 );
-
-                await apiClient.put(`/api/tournaments/${tournamentId}`, {
+                const updatePayload: Record<string, unknown> = {
                     name:                 data.name,
                     description:          data.description,
-                    status:               launchPayload.status,
                     maxTeams:             data.maxTeams,
                     teamSize:             data.teamSize,
                     gameMode:             resolvedGameMode,
@@ -292,7 +290,13 @@ export const useTournamentWizard = (
                             } : {}),
                         } : {}),
                     },
-                });
+                };
+
+                if (launchPayload.status && launchPayload.status !== initialData?.status) {
+                    updatePayload.status = launchPayload.status;
+                }
+
+                await apiClient.put(`/api/tournaments/${tournamentId}`, updatePayload);
 
                 // Stage sync — single PUT replaces 3 sequential Supabase calls (delete/upsert/insert)
                 const stagesToSync = (() => {

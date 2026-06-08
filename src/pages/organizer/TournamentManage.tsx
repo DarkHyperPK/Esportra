@@ -1622,14 +1622,15 @@ const TournamentDashboard = () => {
               {activeTab === 'stages' && (
                 <TabsContent value="stages" forceMount key="stages">
                   <TabTransition direction={direction}>
-                    {/* Mock Mode panel pinned above stages when in draft — easy access from here */}
-                    {isOrganizer && tournament.status === 'draft' && !tournament.is_public && (
+                    {/* Mock Mode panel pinned above stages; always show clear controls while mocks exist. */}
+                    {isOrganizer && ((tournament.status === 'draft' && !tournament.is_public) || mockCount > 0) && (
                       <div className="mb-4">
                         <MockModePanel
                           tournamentId={tournament.id}
                           slug={slug ?? ''}
                           maxTeams={tournament.max_teams}
                           mockCount={mockCount}
+                          canGenerate={tournament.status === 'draft' && !tournament.is_public}
                         />
                       </div>
                     )}

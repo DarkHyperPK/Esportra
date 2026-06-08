@@ -272,6 +272,7 @@ interface UseMapVetoMachineProps {
     bestOf?: number;
     game?: string;
     forcedTeamId?: string | null;
+    vetoToken?: string | null;
     onComplete?: () => void;
 }
 
@@ -285,6 +286,7 @@ export const useMapVetoMachine = ({
     bestOf,
     game = 'valorant',
     forcedTeamId,
+    vetoToken,
     onComplete,
 }: UseMapVetoMachineProps) => {
     const { user } = useAuth();
@@ -337,7 +339,17 @@ export const useMapVetoMachine = ({
 
     // Check user permissions
     useEffect(() => {
+        if (!forcedTeamId) return;
+        setIsCaptain(true);
+        setUserTeamId(forcedTeamId);
+        setIsOrganizer(false);
+        setIsTeam1Captain(forcedTeamId === team1Id);
+        setIsTeam2Captain(forcedTeamId === team2Id);
+    }, [forcedTeamId, team1Id, team2Id]);
+
+    useEffect(() => {
         const checkPermissions = async () => {
+            if (forcedTeamId) return;
             if (!user || !team1Id || !team2Id) return;
 
             // Check if user is captain/owner of either team via team_members table
@@ -511,12 +523,13 @@ export const useMapVetoMachine = ({
     const fetchVetoData = useCallback(async () => {
         try {
             // 1. Fetch the veto record
-            const vetoData = await apiClient.get<any | null>(`/api/veto/${matchId}`).catch(() => null);
+            const vetoStateUrl = vetoToken ? `/api/veto/token/${vetoToken}` : `/api/veto/${matchId}`;
+            const vetoData = await apiClient.get<any | null>(vetoStateUrl).catch(() => null);
 
             // 2. Fetch the stage's best_of as the ultimate source of truth
             let stageBestOf = bestOf;
 
-            if (matchId) {
+            if (matchId && !vetoToken) {
                 try {
                     const brktMatch = await apiClient.get<any>(`/api/brackets/matches/${matchId}`);
 
@@ -546,7 +559,7 @@ export const useMapVetoMachine = ({
                 }
             } else {
                 // Create new veto if none exists — guarded against duplicate calls
-                if (matchId && tournamentId && team1Id && team2Id && !initInProgressRef.current) {
+                if (!vetoToken && matchId && tournamentId && team1Id && team2Id && !initInProgressRef.current) {
                     initInProgressRef.current = true;
 
 
@@ -582,7 +595,7 @@ export const useMapVetoMachine = ({
         } finally {
             setLoading(false);
         }
-    }, [matchId, tournamentId, team1Id, team2Id, bestOf, game]);
+    }, [matchId, tournamentId, team1Id, team2Id, bestOf, game, vetoToken]);
 
     // Fetch all available maps (Tournament Pool)
     useEffect(() => {
@@ -652,6 +665,7 @@ export const useMapVetoMachine = ({
 
     // Real-time Subscription via SignalR VetoHub
     useEffect(() => {
+        if (vetoToken) return;
         if (!matchId) return;
 
         let mounted = true;
@@ -695,7 +709,15 @@ export const useMapVetoMachine = ({
             connection.stop();
             vetoConnectionRef.current = null;
         };
-    }, [matchId, fetchVetoData]);
+    }, [matchId, fetchVetoData, vetoToken]);
+
+    useEffect(() => {
+        if (!vetoToken) return;
+        const interval = window.setInterval(() => {
+            fetchVetoData();
+        }, 3000);
+        return () => window.clearInterval(interval);
+    }, [fetchVetoData, vetoToken]);
 
     // Dialog Auto-Show Logic
     useEffect(() => {
@@ -857,7 +879,8 @@ export const useMapVetoMachine = ({
 
         try {
             // 1. Fetch latest veto to get current_action_number
-            const latestVeto = await apiClient.get<any>(`/api/veto/${matchId}`);
+            const vetoStateUrl = vetoToken ? `/api/veto/token/${vetoToken}` : `/api/veto/${matchId}`;
+            const latestVeto = await apiClient.get<any>(vetoStateUrl);
 
             if (!latestVeto) throw new Error('Veto not found');
 
@@ -902,7 +925,10 @@ export const useMapVetoMachine = ({
 
             let updatedVetoResponse: any;
             try {
-                updatedVetoResponse = await apiClient.post(`/api/veto/${matchId}/${endpoint}`, payload);
+                const actionUrl = vetoToken
+                    ? `/api/veto/token/${vetoToken}/${endpoint}`
+                    : `/api/veto/${matchId}/${endpoint}`;
+                updatedVetoResponse = await apiClient.post(actionUrl, payload);
             } catch (err: any) {
                 // Duplicate action (race condition) — silently ignore
                 if (err.status === 409 || err.message?.includes('duplicate')) return;
@@ -922,7 +948,7 @@ export const useMapVetoMachine = ({
             toast({ title: 'Success', description: 'Action completed' });
 
             // Fire-and-forget veto notifications (non-blocking — don't await)
-            if (!isComplete && nextStep && dbVeto.team1_id && dbVeto.team2_id) {
+            if (!vetoToken && !isComplete && nextStep && dbVeto.team1_id && dbVeto.team2_id) {
                 const nextTeamId = nextStep.team === 'T1' ? dbVeto.team1_id : dbVeto.team2_id;
                 apiClient
                     .get<{ user_id: string } | null>(`/api/teams/${nextTeamId}/captain`)
@@ -943,7 +969,7 @@ export const useMapVetoMachine = ({
                     })
                     .catch(() => {});
             }
-            if (isComplete && dbVeto.team1_id && dbVeto.team2_id) {
+            if (!vetoToken && isComplete && dbVeto.team1_id && dbVeto.team2_id) {
                 apiClient
                     .get<{ user_id: string }[]>(`/api/teams/captains?team_ids=${[dbVeto.team1_id, dbVeto.team2_id].join(',')}`)
                     .then((caps) => {
@@ -976,7 +1002,7 @@ export const useMapVetoMachine = ({
         } finally {
             setActionLoading(null);
         }
-    }, [fetchVetoData, isCaptain, isOrganizer, matchId, onComplete, service, toast, tournamentId, userTeamId, veto]);
+    }, [fetchVetoData, isCaptain, isOrganizer, matchId, onComplete, service, toast, tournamentId, userTeamId, veto, vetoToken]);
 
     const handleMapAction = useCallback(async (mapId: string) => {
         if (!veto) return;

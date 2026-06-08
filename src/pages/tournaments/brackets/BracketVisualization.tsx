@@ -23,6 +23,7 @@ import { MapVeto } from '@/components/tournament/MapVeto';
 import { useGraphBracket } from '@/hooks/useGraphBracket';
 import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
@@ -48,6 +49,7 @@ export interface BracketVisualizationProps {
   versionId?: string | null;
   teamCount?: number;
   tournamentId?: string | null;
+  tournamentSlug?: string;
   isOrganizer?: boolean;
   isCaptain?: boolean;
   userTeamId?: string;
@@ -77,6 +79,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   versionId,
   teamCount: propTeamCount = 0,
   tournamentId,
+  tournamentSlug,
   isOrganizer = false,
   onOpenMapVeto,
   onRefresh,
@@ -85,6 +88,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 }) => {
   // Data Fetching Logic with Realtime subscriptions
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { data: graphData, refetch: refetchGraph } = useGraphBracket(versionId || '', tournamentId || undefined);
 
   const { data: tournamentMeta } = useQuery({
@@ -525,7 +529,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
   // Handlers
   const toggleExpand = useCallback((id: string) => setExpandedMatch(p => p === id ? null : id), []);
-  const handleGoLive = useCallback(async (matchOverride?: BracketMatch, codeOverride?: string) => {
+  const handleGoLive = useCallback(async (matchOverride?: BracketMatch, codeOverride?: string, force = false) => {
     const match = matchOverride || goLiveMatch;
     const code = codeOverride || partyCodeInput;
 
@@ -549,7 +553,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     }
     // -------------------------
 
-    const r = await GraphMatchService.goLive(getRawId(match.id), code.trim());
+    const r = await GraphMatchService.goLive(getRawId(match.id), code.trim(), force);
     setIsProcessing(false);
 
     if (r.success) {
@@ -564,9 +568,9 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     }
   }, [goLiveMatch, partyCodeInput, toast, queryClient, versionId]);
 
-  const openGoLive = useCallback((m: BracketMatch, code?: string) => {
+  const openGoLive = useCallback((m: BracketMatch, code?: string, force = false) => {
     if (code) {
-      handleGoLive(m, code);
+      handleGoLive(m, code, force);
     } else {
       setGoLiveMatch(m);
       setPartyCodeInput('');
@@ -581,6 +585,10 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     if (onOpenMapVeto) onOpenMapVeto(m, String(m.id)); else { setMapVetoMatch(m); setMapVetoOpen(true); }
   }, [canUseMapVeto, onOpenMapVeto, toast]);
   const openPartyCode = useCallback((m: BracketMatch) => { setPartyCodeMatch(m); setPartyCodeOpen(true); setCopiedCode(false); }, []);
+  const openMatchRoom = useCallback((m: BracketMatch) => {
+    if (!tournamentSlug) return;
+    navigate(`/tournaments/${tournamentSlug}/captain-match/${getRawId(m.id)}`);
+  }, [navigate, tournamentSlug]);
   const copyPartyCode = async () => { if (!partyCodeMatch?.partyCode) return; await navigator.clipboard.writeText(partyCodeMatch.partyCode); setCopiedCode(true); toast({ title: '📋 Copied!' }); setTimeout(() => setCopiedCode(false), 2000); };
   const getMatchLabel = useCallback((m: BracketMatch) => (
     m.bracketSide === 'final'
@@ -680,6 +688,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       onMapVeto={canUseMapVeto ? openMapVeto : undefined}
       onPartyCode={openPartyCode}
       onSaveScore={saveScore}
+      onMatchRoom={isOrganizer && tournamentSlug ? openMatchRoom : undefined}
       scoreDraftRef={scoreDraftRef}
       proofs={proofs?.[getRawId(match.id)]}
       onByeAdvance={onByeAdvance}
@@ -689,11 +698,27 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
         setResultsDialogOpen(true);
       }}
     />
-  ), [expandedMatch, isOrganizer, isProcessing, versionId, tournamentId, handleScoreChange, toggleExpand, openGoLive, canUseMapVeto, openMapVeto, openPartyCode, saveScore, proofs, onByeAdvance]);
+  ), [expandedMatch, isOrganizer, isProcessing, versionId, tournamentId, handleScoreChange, toggleExpand, openGoLive, canUseMapVeto, openMapVeto, openPartyCode, saveScore, proofs, onByeAdvance, tournamentSlug, openMatchRoom]);
+
+  const filteredMatchesForList = useMemo(() => {
+    if (activeFilter.type === 'all') return matches;
+    return matches.filter((match) => {
+      if (activeFilter.type === 'winners') {
+        return (!match.bracketSide || match.bracketSide === 'winners') && match.round === activeFilter.round;
+      }
+      if (activeFilter.type === 'losers') {
+        return match.bracketSide === 'losers' && match.round === activeFilter.round;
+      }
+      if (activeFilter.type === 'final') {
+        return match.bracketSide === 'final';
+      }
+      return true;
+    });
+  }, [activeFilter, matches]);
 
   const matchListGroups = useMemo(() => {
     const grouped = new Map<string, BracketMatch[]>();
-    const sorted = [...matches].sort((a, b) => {
+    const sorted = [...filteredMatchesForList].sort((a, b) => {
       const sideOrder = (side?: string) => side === 'winners' ? 0 : side === 'losers' ? 1 : side === 'final' ? 2 : 0;
       return sideOrder(a.bracketSide) - sideOrder(b.bracketSide)
         || (a.round ?? 0) - (b.round ?? 0)
@@ -708,7 +733,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     });
 
     return Array.from(grouped.entries());
-  }, [matches]);
+  }, [filteredMatchesForList]);
 
   const renderViewToggle = () => (
     <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-zinc-950/80 p-1">
@@ -735,6 +760,41 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     </div>
   );
 
+  const renderRoundTabs = () => {
+    const isDoubleElim = Object.keys(losersRounds).length > 0;
+    const roundTabs: { label: string; filter: FilterState }[] = [
+      { label: 'All', filter: { type: 'all' } },
+      ...Object.keys(winnersRounds).map(Number).sort((a, b) => a - b).map(r => ({
+        label: isDoubleElim ? `WB R${r}` : `Round ${r}`,
+        filter: { type: 'winners' as const, round: r },
+      })),
+      ...Object.keys(losersRounds).map(Number).sort((a, b) => a - b).map(r => ({
+        label: `LB R${r}`,
+        filter: { type: 'losers' as const, round: r },
+      })),
+      ...(finalsMatches.length > 0 ? [{ label: 'Grand Final', filter: { type: 'final' as const } }] : []),
+    ];
+    const isTabActive = (f: FilterState) => JSON.stringify(f) === JSON.stringify(activeFilter);
+    return (
+      <div className="sticky top-0 z-40 flex items-center gap-1 overflow-x-auto border-b border-white/5 bg-zinc-950/90 px-4 py-2 backdrop-blur">
+        {roundTabs.map(tab => (
+          <button
+            key={tab.label}
+            onClick={() => setActiveFilter(tab.filter)}
+            className={cn(
+              'shrink-0 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all',
+              isTabActive(tab.filter)
+                ? 'border border-rose-500/30 bg-rose-500/20 text-rose-400'
+                : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   // Render Alternative Views
   if (format === 'round_robin') {
     return (
@@ -746,10 +806,12 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
           onMatchUpdate={handleRefresh}
           teamsMap={teamsMap}
           tournamentId={tournamentId}
+          game={tournamentGame}
           onByeAdvance={onByeAdvance}
           stage={stage}
           advancementCount={stage?.advancement_count}
           canUseMapVeto={canUseMapVeto}
+          onMatchRoom={isOrganizer && tournamentSlug ? openMatchRoom : undefined}
         />
       </div>
     );
@@ -766,16 +828,18 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
           isOrganizer={isOrganizer}
           onMatchUpdate={handleRefresh}
           tournamentId={tournamentId}
+          game={tournamentGame}
           onByeAdvance={onByeAdvance}
           stage={stage}
           canUseMapVeto={canUseMapVeto}
+          onMatchRoom={isOrganizer && tournamentSlug ? openMatchRoom : undefined}
         />
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-white/5 bg-zinc-950/70 px-4 py-3">
         <div>
           <p className="text-sm font-semibold text-white">Match View</p>
@@ -784,8 +848,10 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
         {renderViewToggle()}
       </div>
       {viewMode === 'matches' ? (
-        <div className="h-[calc(100vh-190px)] overflow-auto bg-zinc-950/30 p-4">
-          <div className="mx-auto max-w-6xl space-y-5">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-950/30">
+          {renderRoundTabs()}
+          <div className="min-h-0 flex-1 overflow-auto p-4">
+          <div className="space-y-5">
             {matchListGroups.map(([group, groupMatches]) => (
               <section key={group} className="rounded-xl border border-white/10 bg-zinc-900/40 p-4">
                 <div className="mb-3 flex items-center justify-between">
@@ -803,9 +869,10 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
             ))}
             {matchListGroups.length === 0 && (
               <div className="rounded-xl border border-dashed border-white/10 p-12 text-center text-sm text-zinc-500">
-                No matches generated yet.
+                No matches match this filter.
               </div>
             )}
+          </div>
           </div>
         </div>
       ) : (
@@ -833,41 +900,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
         {/* Bracket - Container Free (Like Battlefy) */}
         <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-zinc-950/30">
-          {/* Round Tabs */}
-          {(() => {
-            const isDoubleElim = Object.keys(losersRounds).length > 0;
-            const roundTabs: { label: string; filter: FilterState }[] = [
-              { label: 'All', filter: { type: 'all' } },
-              ...Object.keys(winnersRounds).map(Number).sort((a, b) => a - b).map(r => ({
-                label: isDoubleElim ? `WB R${r}` : `Round ${r}`,
-                filter: { type: 'winners' as const, round: r },
-              })),
-              ...Object.keys(losersRounds).map(Number).sort((a, b) => a - b).map(r => ({
-                label: `LB R${r}`,
-                filter: { type: 'losers' as const, round: r },
-              })),
-              ...(finalsMatches.length > 0 ? [{ label: 'Grand Final', filter: { type: 'final' as const } }] : []),
-            ];
-            const isTabActive = (f: FilterState) => JSON.stringify(f) === JSON.stringify(activeFilter);
-            return (
-              <div className="sticky top-0 z-40 bg-zinc-950/90 backdrop-blur border-b border-white/5 flex items-center gap-1 px-4 py-2 overflow-x-auto">
-                {roundTabs.map(tab => (
-                  <button
-                    key={tab.label}
-                    onClick={() => setActiveFilter(tab.filter)}
-                    className={cn(
-                      'shrink-0 px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap',
-                      isTabActive(tab.filter)
-                        ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                        : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                    )}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            );
-          })()}
+          {renderRoundTabs()}
           <div
             ref={bracketScroll.scrollRef}
             onWheel={bracketScroll.onWheel}

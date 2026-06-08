@@ -34,13 +34,15 @@ function normalizeHistoryEntry(raw: Record<string, unknown>): VetoHistoryEntry {
     };
 }
 
-export function useVetoHistory(matchId?: string | null, enabled = true) {
+export function useVetoHistory(matchId?: string | null, enabled = true, vetoToken?: string | null) {
     return useQuery({
-        queryKey: ['veto-history', matchId],
+        queryKey: ['veto-history', matchId, vetoToken],
         queryFn: async (): Promise<VetoHistoryEntry[]> => {
             if (!matchId) return [];
             const cleanedId = matchId.replace(/^(db-|wb-|lb-)/, '');
-            const data = await apiClient.get<unknown>(`/api/veto/${cleanedId}/history`);
+            const data = await apiClient.get<unknown>(
+                vetoToken ? `/api/veto/token/${vetoToken}/history` : `/api/veto/${cleanedId}/history`
+            );
             const rows = Array.isArray(data)
                 ? data
                 : Array.isArray((data as { actions?: unknown[] })?.actions)

@@ -2,6 +2,16 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, PlayCircle, Swords, Eye, ChevronDown, X, Bot, MessageCircle, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import ManualAdjustmentMenu from '@/components/tournament/ManualAdjustmentMenu';
 
@@ -23,7 +33,7 @@ interface MatchCardProps {
     isOrganizer?: boolean;
     isProcessing?: boolean;
     onScoreChange?: (id: string, t: 't1' | 't2', v: string) => void;
-    onGoLive?: (m: any, code?: string) => Promise<void> | void;
+    onGoLive?: (m: any, code?: string, force?: boolean) => Promise<void> | void;
     onMapVeto?: (m: any) => void;
     onPartyCode?: (m: any) => void;
     onSaveScore?: (m: any) => void;
@@ -95,6 +105,8 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     const [partyCode, setPartyCode] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [confirmEarlyLiveOpen, setConfirmEarlyLiveOpen] = useState(false);
+    const [pendingEarlyLiveCode, setPendingEarlyLiveCode] = useState('');
 
     // Scoring Hints based on BestOf
     const bestOf = match.bestOf || (match as any).best_of || 1;
@@ -127,11 +139,30 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
     const handleStart = async () => {
         if (!partyCode.trim()) return;
+        if (isTooEarlyForLive) {
+            setPendingEarlyLiveCode(partyCode.trim());
+            setConfirmEarlyLiveOpen(true);
+            return;
+        }
         setIsSubmitting(true);
         try {
             await onGoLive?.(match, partyCode.trim());
         } finally {
             setIsSubmitting(false);
+            setActionMode('default');
+            setPartyCode('');
+        }
+    };
+
+    const handleConfirmEarlyLive = async () => {
+        if (!pendingEarlyLiveCode.trim()) return;
+        setIsSubmitting(true);
+        try {
+            await onGoLive?.(match, pendingEarlyLiveCode.trim(), true);
+        } finally {
+            setIsSubmitting(false);
+            setConfirmEarlyLiveOpen(false);
+            setPendingEarlyLiveCode('');
             setActionMode('default');
             setPartyCode('');
         }
@@ -423,14 +454,14 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                                 className={cn(
                                                                     "flex-1 min-w-[80px] h-8",
                                                                     isTooEarlyForLive
-                                                                        ? "bg-zinc-900/20 border-zinc-700/30 text-zinc-500 cursor-not-allowed"
+                                                                        ? "bg-rose-500/10 border-rose-500/20 text-rose-300 hover:bg-rose-500/20 hover:text-rose-200"
                                                                         : "bg-green-900/20 border-green-900/30 text-green-400 hover:bg-green-900/40 hover:text-green-300"
                                                                 )}
-                                                                onClick={(e) => { e.stopPropagation(); if (!isTooEarlyForLive) setActionMode('party_code'); }}
-                                                                disabled={isTooEarlyForLive}
-                                                                title={isTooEarlyForLive ? 'Cannot go live before scheduled time' : undefined}
+                                                                onClick={(e) => { e.stopPropagation(); setActionMode('party_code'); }}
+                                                                disabled={isProcessing}
+                                                                title={isTooEarlyForLive ? 'Requires confirmation to go live ahead of schedule' : undefined}
                                                             >
-                                                                <PlayCircle className="w-3.5 h-3.5 mr-1.5" /> {isTooEarlyForLive ? 'Not Yet' : 'Go Live'}
+                                                                <PlayCircle className="w-3.5 h-3.5 mr-1.5" /> {isTooEarlyForLive ? 'Go Live Early' : 'Go Live'}
                                                             </Button>
                                                         )}
 
@@ -532,6 +563,28 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                         </motion.div>
                     )}
                 </AnimatePresence>
+                <AlertDialog open={confirmEarlyLiveOpen} onOpenChange={setConfirmEarlyLiveOpen}>
+                    <AlertDialogContent className="border-white/10 bg-zinc-950 text-white">
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Go live ahead of schedule?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-zinc-400">
+                                This match has a future scheduled time. Confirming will immediately mark it live and share the party code with both teams.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel className="border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-white">
+                                Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                                className="bg-rose-500 text-white hover:bg-rose-600"
+                                onClick={handleConfirmEarlyLive}
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? 'Starting...' : 'Go Live Now'}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </div >
     );

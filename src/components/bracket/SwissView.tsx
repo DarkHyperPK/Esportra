@@ -25,6 +25,7 @@ interface SwissViewProps {
     isOrganizer?: boolean;
     onMatchUpdate?: () => void;
     tournamentId?: string;
+    game?: string;
     onByeAdvance?: (matchId: string) => void;
     stage?: any;
     activeFilter?: FilterState;
@@ -71,7 +72,7 @@ const SwissGroupPanel = React.memo(({
     expandedMatch: string | null,
     toggleExpand: (id: string) => void,
     handleScoreChange: (id: string, t: 't1' | 't2', v: string) => void,
-    openGoLive: (m: BracketMatch) => void,
+    openGoLive: (m: BracketMatch, code?: string, force?: boolean) => void,
     openMapVeto: (m: BracketMatch) => void,
     openPartyCode: (m: BracketMatch) => void,
     saveScore: (m: BracketMatch) => void,
@@ -189,6 +190,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
     isOrganizer,
     onMatchUpdate,
     tournamentId,
+    game = 'valorant',
     onByeAdvance,
     stage,
     activeFilter,
@@ -382,7 +384,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
     // --- Match Handlers ---
     const toggleExpand = useCallback((id: string) => setExpandedMatch(p => p === id ? null : id), []);
 
-    const handleGoLive = useCallback(async (matchOverride?: BracketMatch, codeOverride?: string) => {
+    const handleGoLive = useCallback(async (matchOverride?: BracketMatch, codeOverride?: string, force = false) => {
         const match = matchOverride || goLiveMatch;
         const code = codeOverride || partyCodeInput;
 
@@ -391,10 +393,10 @@ export const SwissView: React.FC<SwissViewProps> = ({
             return;
         }
         setIsProcessing(true);
-        const r = await GraphMatchService.goLive(getRawId(match.id), code.trim());
+        const r = await GraphMatchService.goLive(getRawId(match.id), code.trim(), force);
         setIsProcessing(false);
         if (r.success) {
-            toast({ title: '🎮 Match is LIVE!' });
+            toast({ title: 'Match is live' });
             setGoLiveDialogOpen(false);
             onMatchUpdate?.();
         } else {
@@ -402,9 +404,9 @@ export const SwissView: React.FC<SwissViewProps> = ({
         }
     }, [goLiveMatch, partyCodeInput, toast, onMatchUpdate]);
 
-    const openGoLive = useCallback((m: BracketMatch, code?: string) => {
+    const openGoLive = useCallback((m: BracketMatch, code?: string, force = false) => {
         if (code) {
-            handleGoLive(m, code);
+            handleGoLive(m, code, force);
         } else {
             setGoLiveMatch(m);
             setPartyCodeInput('');
@@ -662,7 +664,20 @@ export const SwissView: React.FC<SwissViewProps> = ({
             <Dialog open={canUseMapVeto && mapVetoOpen} onOpenChange={setMapVetoOpen}>
                 <DialogContent className="bg-slate-900/95 backdrop-blur-xl border-white/10 max-w-5xl max-h-[90vh] overflow-auto p-0">
                     <DialogHeader className="p-4 border-b border-white/10"><DialogTitle><Swords className="w-5 h-5 inline mr-2 text-orange-500" />Map Veto</DialogTitle></DialogHeader>
-                    {mapVetoMatch && tournamentId && <MapVeto matchId={getRawId(mapVetoMatch.id)} tournamentId={tournamentId} team1Id={mapVetoMatch.team1?.id} team2Id={mapVetoMatch.team2?.id} team1Name={mapVetoMatch.team1?.name} team2Name={mapVetoMatch.team2?.name} bestOf={3} matchStatus={mapVetoMatch.status as any} onComplete={() => { setMapVetoOpen(false); onMatchUpdate?.(); }} />}
+                    {mapVetoMatch && tournamentId && (
+                        <MapVeto
+                            matchId={getRawId(mapVetoMatch.id)}
+                            tournamentId={tournamentId}
+                            team1Id={mapVetoMatch.team1?.id}
+                            team2Id={mapVetoMatch.team2?.id}
+                            team1Name={mapVetoMatch.team1?.name}
+                            team2Name={mapVetoMatch.team2?.name}
+                            game={game}
+                            bestOf={mapVetoMatch.bestOf ?? (mapVetoMatch as any).best_of ?? stage?.best_of ?? stage?.bestOf ?? 1}
+                            matchStatus={mapVetoMatch.status as any}
+                            onComplete={() => { setMapVetoOpen(false); onMatchUpdate?.(); }}
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
         </div>

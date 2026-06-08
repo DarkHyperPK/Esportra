@@ -261,8 +261,8 @@ const ManageBracketPage = () => {
 
     return (
         <div className="min-h-screen text-white">
-            <main className="relative flex min-h-[calc(100vh-5rem)] w-full flex-col px-4 py-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <main className="relative flex min-h-[calc(100vh-5rem)] w-full flex-col px-2 py-6 md:px-3">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 px-2">
                     <div className="flex items-center gap-4">
                         <Button
                             variant="ghost"

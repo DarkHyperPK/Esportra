@@ -242,11 +242,11 @@ export const MapPool: React.FC<MapPoolProps> = ({
                     const pickActionNumber = currentActionNum - 1;
 
                     if (pickActionNumber < 1 || pickActionNumber > sequence.length) {
-                        return <div className="text-center py-8 text-gray-400">Invalid action number</div>;
+                        return <div className="text-center py-8 text-zinc-400">Invalid action number</div>;
                     }
 
                     if (previousActionType !== 'pick' && !isFinalPickSide) {
-                        return <div className="text-center py-8 text-gray-400">Expected pick action before side selection</div>;
+                        return <div className="text-center py-8 text-zinc-400">Expected pick action before side selection</div>;
                     }
 
                     let pickedMap: any = null;
@@ -299,7 +299,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
                     }
 
                     if (!mapToShow) {
-                        return <div className="text-center py-8 text-gray-400">Map not found</div>;
+                        return <div className="text-center py-8 text-zinc-400">Map not found</div>;
                     }
 
                     const canInteract = isUserTurn && !actionLoading && (veto.status === 'in_progress' || (veto.status === 'pending' && bestOf !== null && bestOf !== undefined));
@@ -382,12 +382,12 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                 className={cn(
                                     'relative group rounded-lg overflow-hidden border transition-all duration-200 motion-reduce:transition-none',
                                     mapStatus.isBanned
-                                        ? 'border-red-500 cursor-not-allowed opacity-60'
+                                        ? 'border-rose-500/50 cursor-not-allowed opacity-60'
                                         : mapStatus.isPicked
-                                            ? 'border-green-500'
+                                            ? 'border-white/40'
                                             : canInteract
-                                                ? 'border-red-500 hover:border-red-400 hover:shadow-lg hover:shadow-red-500/20 cursor-pointer'
-                                                : 'border-red-500',
+                                                ? 'border-rose-500/50 hover:border-rose-400 hover:shadow-lg hover:shadow-rose-500/20 cursor-pointer'
+                                                : 'border-white/15',
                                     actionLoading === map.id && 'opacity-50 pointer-events-none'
                                 )}
                                 style={{
@@ -443,15 +443,15 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                 </div>
 
                                 {mapStatus.isBanned && (
-                                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10 border border-red-500 rounded-lg">
-                                        <div className="bg-red-500 rounded-full p-3 sm:p-4 lg:p-5 border-4 border-white shadow-xl">
+                                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10 border border-rose-500/50 rounded-lg">
+                                        <div className="bg-rose-500 rounded-full p-3 sm:p-4 lg:p-5 border-4 border-white shadow-xl">
                                             <XCircle className="h-6 w-6 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-white" strokeWidth={2.5} />
                                         </div>
                                     </div>
                                 )}
 
                                 {mapStatus.isPicked && (
-                                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10 border border-green-500 rounded-lg">
+                                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10 border border-white/40 rounded-lg">
                                         <div className="w-full flex flex-col items-center justify-center space-y-2 sm:space-y-3 px-4">
                                             <div className="text-sm sm:text-base lg:text-lg font-black text-white text-center" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.9)' }}>
                                                 {map.map_name}
@@ -482,8 +482,8 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                                 <div className={cn(
                                                     "w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-lg border-2 border-white shadow-xl flex items-center justify-center",
                                                     mapStatus.pickedSide === 'attack'
-                                                        ? "bg-orange-500 text-white"
-                                                        : "bg-blue-500 text-white"
+                                                        ? "bg-rose-500 text-white"
+                                                        : "bg-white text-black"
                                                 )}>
                                                     {mapStatus.pickedSide === 'attack' ? (
                                                         <Sword className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
@@ -500,15 +500,15 @@ export const MapPool: React.FC<MapPoolProps> = ({
                                     <div className={cn(
                                         "absolute inset-0 flex items-center justify-center z-20 border-2 transition-all",
                                         veto.current_action === 'ban'
-                                            ? "bg-red-500/0 group-hover:bg-red-500/30 border-red-500/50 group-hover:border-red-500"
-                                            : "bg-green-500/0 group-hover:bg-green-500/30 border-green-500/50 group-hover:border-green-500"
+                                            ? "bg-rose-500/0 group-hover:bg-rose-500/30 border-rose-500/50 group-hover:border-rose-500"
+                                            : "bg-white/0 group-hover:bg-white/20 border-white/50 group-hover:border-white"
                                     )}>
                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                                             <div className={cn(
                                                 "px-6 py-4 rounded-lg text-lg font-black border-2 shadow-xl",
                                                 veto.current_action === 'ban'
-                                                    ? "bg-red-500 text-white border-white"
-                                                    : "bg-green-500 text-white border-white"
+                                                    ? "bg-rose-500 text-white border-white"
+                                                    : "bg-white text-black border-white"
                                             )}>
                                                 {veto.current_action === 'ban' ? 'BAN' : 'PICK'}
                                             </div>
@@ -522,7 +522,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
             )}
 
             {availableMapsToShow.length === 0 && veto.current_action !== 'pick_side' && (
-                <div className="text-center py-12 text-gray-400">
+                <div className="text-center py-12 text-zinc-400">
                     <p className="text-lg font-semibold">All maps have been banned or picked.</p>
                 </div>
             )}

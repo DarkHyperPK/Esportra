@@ -104,6 +104,7 @@ const MapVetoToken: React.FC = () => {
           game={tournament?.game}
           bestOf={match?.effectiveBestOf || veto.best_of}
           forcedTeamId={teamId}
+          vetoToken={token}
           onComplete={() => {
             // Optionally redirect or show completion message
           }}

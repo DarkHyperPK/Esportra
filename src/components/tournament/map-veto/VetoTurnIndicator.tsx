@@ -22,20 +22,20 @@ export const VetoTurnIndicator: React.FC<VetoTurnIndicatorProps> = ({
 
     const actionLabel = veto.current_action === 'ban' ? 'BAN' : veto.current_action === 'pick_side' ? 'SIDE' : 'PICK';
     const actionColorClass = veto.current_action === 'ban'
-        ? 'bg-red-500 text-white'
+        ? 'bg-rose-500 text-white'
         : veto.current_action === 'pick_side'
             ? 'bg-white text-black'
-            : 'bg-green-500 text-white';
+            : 'bg-rose-500 text-white';
 
     return (
         <div className={cn(
             "mb-3 px-3 py-2 rounded-lg border flex items-center gap-2 sm:gap-3",
-            isUserTurn ? "bg-black border-green-500 shadow-md shadow-green-500/10" : "bg-black border-white/20"
+            isUserTurn ? "bg-black border-rose-500 shadow-md shadow-rose-500/10" : "bg-black border-white/20"
         )}>
             {/* Status icon */}
             <div className={cn(
                 "p-1.5 rounded-md border flex-shrink-0",
-                isUserTurn ? "bg-green-500 border-green-400" : "bg-white/10 border-white/20"
+                isUserTurn ? "bg-rose-500 border-rose-400" : "bg-white/10 border-white/20"
             )}>
                 {isUserTurn
                     ? <Play className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white" fill="white" />
@@ -46,7 +46,7 @@ export const VetoTurnIndicator: React.FC<VetoTurnIndicatorProps> = ({
             {/* Turn label */}
             <span className={cn(
                 'text-xs sm:text-sm font-black truncate',
-                isUserTurn ? 'text-green-500' : 'text-white'
+                isUserTurn ? 'text-rose-300' : 'text-white'
             )}>
                 {isUserTurn ? 'YOUR TURN' : `${currentTeamName.toUpperCase()}'S TURN`}
             </span>

@@ -21,9 +21,10 @@ interface MockModePanelProps {
     slug: string;
     maxTeams: number;
     mockCount: number;
+    canGenerate?: boolean;
 }
 
-export function MockModePanel({ tournamentId, slug, maxTeams, mockCount }: MockModePanelProps) {
+export function MockModePanel({ tournamentId, slug, maxTeams, mockCount, canGenerate = true }: MockModePanelProps) {
     const { user } = useAuth();
     const { generate, clear } = useMockTournament({ tournamentId, slug, userId: user?.id });
     const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
@@ -52,20 +53,22 @@ export function MockModePanel({ tournamentId, slug, maxTeams, mockCount }: MockM
                     </p>
 
                     <div className="mt-4 flex items-center gap-2 flex-wrap">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-amber-500/30 text-amber-300 hover:bg-amber-500/10 h-8 text-xs"
-                            disabled={generate.isPending}
-                            onClick={() => generate.mutate(maxTeams)}
-                        >
-                            <Bot className="mr-1.5 h-3.5 w-3.5" />
-                            {generate.isPending
-                                ? 'Generating…'
-                                : hasMock
-                                    ? 'Regenerate mock teams'
-                                    : `Generate ${maxTeams} mock teams`}
-                        </Button>
+                        {canGenerate && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-amber-500/30 text-amber-300 hover:bg-amber-500/10 h-8 text-xs"
+                                disabled={generate.isPending}
+                                onClick={() => generate.mutate(maxTeams)}
+                            >
+                                <Bot className="mr-1.5 h-3.5 w-3.5" />
+                                {generate.isPending
+                                    ? 'Generating...'
+                                    : hasMock
+                                        ? 'Regenerate mock teams'
+                                        : `Generate ${maxTeams} mock teams`}
+                            </Button>
+                        )}
 
                         {hasMock && (
                             <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>

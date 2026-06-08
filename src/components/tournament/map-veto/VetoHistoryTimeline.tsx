@@ -51,7 +51,7 @@ export const VetoHistoryTimeline: React.FC<VetoHistoryTimelineProps> = ({
 
     if (entries.length === 0) {
         return (
-            <p className="text-sm text-gray-500 py-4 text-center" data-testid="veto-history-empty">
+            <p className="text-sm text-zinc-500 py-4 text-center" data-testid="veto-history-empty">
                 {emptyMessage}
             </p>
         );
@@ -77,9 +77,9 @@ export const VetoHistoryTimeline: React.FC<VetoHistoryTimelineProps> = ({
                                     ? 'border-rose-500/50 bg-rose-500/20 text-rose-300'
                                     : entry.action === 'pick_side'
                                         ? entry.side === 'attack'
-                                            ? 'border-orange-500/50 bg-orange-500/20 text-orange-300'
-                                            : 'border-blue-500/50 bg-blue-500/20 text-blue-300'
-                                        : 'border-emerald-500/50 bg-emerald-500/20 text-emerald-300',
+                                            ? 'border-rose-500/50 bg-rose-500/20 text-rose-300'
+                                            : 'border-white/40 bg-white/10 text-white'
+                                        : 'border-rose-500/50 bg-rose-500/20 text-rose-300',
                             )}
                         >
                             {actionIcon(entry)}
@@ -105,7 +105,7 @@ export const VetoHistoryTimeline: React.FC<VetoHistoryTimelineProps> = ({
                                 <span className="text-rose-300">{entry.mapName}</span>
                             </p>
                             {!compact && (
-                                <p className="text-[11px] text-gray-500 mt-0.5">
+                                <p className="text-[11px] text-zinc-500 mt-0.5">
                                     {new Date(entry.createdAt).toLocaleString()}
                                 </p>
                             )}

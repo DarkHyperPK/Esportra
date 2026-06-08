@@ -48,7 +48,7 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tighter">MAP VETO</h1>
                 <Badge className="bg-white/10 text-white px-3 py-1 text-xs font-bold border border-white/20 rounded-full">{boText}</Badge>
                 {vetoStatus === 'in_progress' && (
-                    <Badge className="bg-green-500/20 text-green-400 px-3 py-1 text-xs font-bold border border-green-500/30 rounded-full animate-pulse">
+                    <Badge className="bg-rose-500/15 text-rose-300 px-3 py-1 text-xs font-bold border border-rose-500/30 rounded-full animate-pulse">
                         ● LIVE
                     </Badge>
                 )}
@@ -61,7 +61,7 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
                         onClick={() => copyLink(team1LinkToken, 'team1', team1Name)}
                         variant="outline"
                         size="sm"
-                        className="gap-1.5 px-3 py-1.5 text-xs font-semibold border-blue-500/30 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/50 transition-all"
+                        className="gap-1.5 px-3 py-1.5 text-xs font-semibold border-white/20 text-white/80 hover:bg-white/10 hover:border-white/30 transition-all"
                     >
                         {copiedTeam === 'team1' ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
                         {team1Name} Link

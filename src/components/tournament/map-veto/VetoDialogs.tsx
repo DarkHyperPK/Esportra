@@ -67,16 +67,16 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
         <>
             {/* Role Switch Prompt */}
             <Dialog open={showRoleSwitchPrompt} onOpenChange={setShowRoleSwitchPrompt}>
-                <DialogContent className="bg-gray-900 border-gray-700">
+                <DialogContent className="bg-zinc-950 border-white/10">
                     <DialogHeader>
                         <DialogTitle className="text-white text-xl font-black">Switch Role Required</DialogTitle>
-                        <DialogDescription className="text-gray-400">
+                        <DialogDescription className="text-zinc-400">
                             You are currently in organizer mode, but you are also the captain of one of the teams in this match.
                             To participate in the map veto process, you need to switch to player role.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                        <p className="text-gray-300 mb-4">
+                        <p className="text-zinc-300 mb-4">
                             As an organizer, you can only view the veto process. To make picks/bans, switch to player role.
                         </p>
                     </div>
@@ -84,13 +84,13 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                         <Button
                             onClick={() => setShowRoleSwitchPrompt(false)}
                             variant="outline"
-                            className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                            className="bg-zinc-900 border-white/10 text-zinc-300 hover:bg-zinc-800 hover:text-white"
                         >
                             Stay as Organizer (View Only)
                         </Button>
                         <Button
                             onClick={handleRoleSwitch}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            className="bg-rose-500 hover:bg-rose-600 text-white"
                         >
                             Switch to Player Role
                         </Button>
@@ -127,10 +127,10 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                             "relative p-6 sm:p-8 rounded-xl border-2 transition-all duration-200",
                                             "hover:scale-[1.02] hover:shadow-xl",
                                             isSelected
-                                                ? "bg-blue-600 border-blue-500 text-white shadow-xl shadow-blue-500/30"
+                                                ? "bg-rose-500 border-rose-400 text-white shadow-xl shadow-rose-500/30"
                                                 : isDisabled
                                                     ? "bg-black/30 border-white/10 text-white/30 cursor-not-allowed opacity-50"
-                                                    : "bg-black/50 border-white/20 text-white hover:border-blue-500/50 hover:bg-white/5"
+                                                    : "bg-black/50 border-white/20 text-white hover:border-rose-500/50 hover:bg-white/5"
                                         )}
                                     >
                                         <div className="text-center">
@@ -193,7 +193,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
 
                         return (
                             <div className="flex items-center justify-center gap-2 py-4 border-y border-white/10">
-                                <CheckCircle className="h-6 w-6 text-green-500" />
+                                <CheckCircle className="h-6 w-6 text-rose-300" />
                                 <span className="text-white font-bold text-lg">{sidePickerTeamName}</span>
                             </div>
                         );
@@ -208,7 +208,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                     setPendingMapId(null);
                                 }
                             }}
-                            className="w-full h-20 bg-orange-600 hover:bg-orange-700 text-white text-lg font-black gap-3 border-2 border-white/20 flex items-center justify-center"
+                            className="w-full h-20 bg-rose-500 hover:bg-rose-600 text-white text-lg font-black gap-3 border-2 border-white/20 flex items-center justify-center"
                         >
                             <Sword className="h-8 w-8" />
                             <span className="text-xl">ATTACK</span>
@@ -221,7 +221,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                     setPendingMapId(null);
                                 }
                             }}
-                            className="w-full h-20 bg-blue-600 hover:bg-blue-700 text-white text-lg font-black gap-3 border-2 border-white/20 flex items-center justify-center"
+                            className="w-full h-20 bg-white hover:bg-zinc-200 text-black text-lg font-black gap-3 border-2 border-white/20 flex items-center justify-center"
                         >
                             <ShieldIcon className="h-8 w-8" />
                             <span className="text-xl">DEFEND</span>

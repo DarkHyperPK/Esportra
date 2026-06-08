@@ -22,6 +22,7 @@ interface MapVetoProps {
   bestOf?: number;
   onComplete?: () => void;
   forcedTeamId?: string | null;
+  vetoToken?: string | null;
   matchStatus?: 'pending' | 'in_progress' | 'completed';
 }
 const noOp = () => { };
@@ -37,6 +38,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   game = 'valorant',
   onComplete,
   forcedTeamId,
+  vetoToken,
 }) => {
   const {
     veto,
@@ -81,12 +83,14 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     bestOf,
     game,
     forcedTeamId,
+    vetoToken,
     onComplete,
   });
 
   const { data: vetoHistory = [], isLoading: vetoHistoryLoading } = useVetoHistory(
     matchId,
     !loading && Boolean(veto),
+    vetoToken,
   );
 
   const isUserTurn = useMemo(() => {

@@ -212,7 +212,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                         return (
                             <div
                                 key={idx}
-                                className="group relative bg-black border border-green-500 rounded-lg overflow-hidden shadow-xl transition-all duration-300 hover:border-green-400"
+                                className="group relative bg-black border border-rose-500/50 rounded-lg overflow-hidden shadow-xl transition-all duration-300 hover:border-rose-400"
                             >
                                 <div
                                     className="relative w-full h-[160px] sm:h-[180px] md:h-[200px] lg:h-[220px]"
@@ -226,7 +226,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                 >
                                     {!isImageLoaded && (
                                         <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-                                            <div className="animate-pulse text-gray-500 text-xs">Loading map...</div>
+                                            <div className="animate-pulse text-zinc-500 text-xs">Loading map...</div>
                                         </div>
                                     )}
                                     <img
@@ -246,7 +246,7 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 via-black/40 to-transparent" />
 
                                     <div className="absolute top-2 left-2 right-2 sm:top-3 sm:left-3 sm:right-3 flex items-center justify-between z-20 gap-2">
-                                        <div className="px-2 py-1 sm:px-3 sm:py-1.5 bg-green-500 rounded-md shadow-lg">
+                                        <div className="px-2 py-1 sm:px-3 sm:py-1.5 bg-rose-500 rounded-md shadow-lg">
                                             <span className="text-[10px] sm:text-xs font-black text-white tracking-tight">MAP {mapData.mapNumber}</span>
                                         </div>
 
@@ -254,8 +254,8 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                             <div className={cn(
                                                 "p-1.5 sm:p-2 rounded-md flex items-center justify-center shadow-lg",
                                                 mapData.side === 'attack'
-                                                    ? "bg-orange-500"
-                                                    : "bg-blue-500"
+                                                    ? "bg-rose-500"
+                                                    : "bg-white text-black"
                                             )}>
                                                 {mapData.side === 'attack' ? (
                                                     <Sword className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4 text-white flex-shrink-0" />
@@ -273,9 +273,9 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                         {mapData.side && mapData.sidePickerTeamId && (
                                             <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs md:text-sm text-white/90 mt-1 sm:mt-1.5">
                                                 {mapData.side === 'attack' ? (
-                                                    <Sword className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-orange-400 flex-shrink-0" />
+                                                    <Sword className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-300 flex-shrink-0" />
                                                 ) : (
-                                                    <ShieldIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-400 flex-shrink-0" />
+                                                    <ShieldIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white flex-shrink-0" />
                                                 )}
                                                 <span className="font-semibold">{mapData.sidePickerTeamName}</span>
                                             </div>

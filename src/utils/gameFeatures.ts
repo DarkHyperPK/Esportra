@@ -80,10 +80,51 @@ const DEFAULT_FEATURES: GameFeatures = {
   isBattleRoyale: false,
 };
 
+const R6_FALLBACK_GAME: EsportsGame = {
+  name: 'Rainbow Six Siege',
+  slug: 'rainbow-six-siege',
+  category: 'Tactical Shooter',
+  type: 'team',
+  formats: [{ name: '5v5', value: 'standard', teamSize: 5 }],
+  defaultFormat: 'standard',
+  modes: [{
+    name: '5v5',
+    key: 'standard',
+    value: 'standard',
+    teamSize: 5,
+    participantMode: 'team',
+    allowsSubstitutes: true,
+    maxRosterSize: 7,
+  }],
+  defaultMode: 'standard',
+  aliases: ['r6', 'r6s', 'siege', 'rainbow six', 'rainbow six siege'],
+  tournamentCapabilities: {
+    defaultStructure: 'single_elimination',
+    supportedStructures: [
+      { key: 'single_elimination', name: 'Single Elimination' },
+      { key: 'double_elimination', name: 'Double Elimination' },
+      { key: 'swiss', name: 'Swiss' },
+      { key: 'round_robin', name: 'Round Robin' },
+    ],
+  },
+  logo: '/games/r6s-logo.png',
+  features: {
+    ...DEFAULT_FEATURES,
+    mapVeto: true,
+    mapPool: true,
+    mapPoolSize: 9,
+    hasSidePick: true,
+    isTeamGame: true,
+    seriesFormats: ['bo1', 'bo3', 'bo5'],
+  },
+};
+
 const normalize = (value: string | undefined | null) => (value || '').trim().toLowerCase();
 
 function getAllGames(): EsportsGame[] {
-  return getCatalogGames() ?? getLocalFallbackGames();
+  const games = getCatalogGames() ?? getLocalFallbackGames();
+  const hasR6 = games.some(game => normalize(game.slug) === R6_FALLBACK_GAME.slug || normalize(game.name) === normalize(R6_FALLBACK_GAME.name));
+  return hasR6 ? games : [...games, R6_FALLBACK_GAME];
 }
 
 /** Find a game by name, slug, or alias (case-insensitive) */
