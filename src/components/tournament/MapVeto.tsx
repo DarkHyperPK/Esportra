@@ -112,7 +112,6 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   const isFullscreen = layout === 'fullscreen';
   const isEmbedded = layout === 'embedded';
   const isWideLayout = isModal || isFullscreen;
-  const isComplete = veto.status === 'completed';
 
   if (loading) {
     return (
@@ -146,6 +145,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   }
 
   const effectiveIsOrganizer = isOrganizer && !readOnly;
+  const isComplete = veto.status === 'completed';
   const currentBestOf = veto.best_of || bestOf || 1;
   const boText = `BO${currentBestOf}`;
   const currentTeamName = veto.current_team_id === veto.team1_id ? team1Name : team2Name;
