@@ -91,7 +91,19 @@ const adminNavGroups: AdminNavGroup[] = [
 ];
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
-  const { isAdmin, isSuperAdmin, roles, permissions, loading, can } = useAdmin();
+  const admin = useAdmin();
+  const {
+    isAdmin,
+    isSuperAdmin,
+    roles = [],
+    permissions = [],
+    loading,
+  } = admin;
+  const hasPermission = (permission: string) => {
+    if (typeof admin.can === 'function') return admin.can(permission);
+    if (isSuperAdmin || roles.includes('super_admin')) return true;
+    return permissions.includes(permission);
+  };
 
   if (loading) {
     return (
@@ -124,7 +136,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       ...group,
       items: group.items.filter((item) => {
         if (item.superOnly && !isSuperAdmin) return false;
-        return !item.permission || can(item.permission);
+        return !item.permission || hasPermission(item.permission);
       }),
     }))
     .filter((group) => group.items.length > 0);
