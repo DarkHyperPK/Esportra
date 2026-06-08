@@ -95,13 +95,14 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     queryKey: ['tournament-meta', tournamentId],
     queryFn: async () => {
       if (!tournamentId) return null;
-      return apiClient.get<{ game?: string; game_mode?: string | null; settings?: unknown; tournament?: any }>(`/api/tournaments/${tournamentId}`);
+      return apiClient.get<{ game?: string; game_mode?: string | null; settings?: unknown; tournament?: any; mockCount?: number }>(`/api/tournaments/${tournamentId}`);
     },
     enabled: !!tournamentId,
     staleTime: 60_000,
   });
 
   const tournamentDetails = tournamentMeta?.tournament ?? tournamentMeta;
+  const suppressMockVetoRolePrompt = isOrganizer && (tournamentMeta?.mockCount ?? 0) > 0;
   const tournamentGame = tournamentDetails?.game ?? '';
   const tournamentGameMode = tournamentDetails?.game_mode ?? tournamentDetails?.gameMode ?? null;
   const tournamentSettings = useMemo(() => {
@@ -811,6 +812,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
           stage={stage}
           advancementCount={stage?.advancement_count}
           canUseMapVeto={canUseMapVeto}
+          suppressVetoRoleSwitchPrompt={suppressMockVetoRolePrompt}
           onMatchRoom={isOrganizer && tournamentSlug ? openMatchRoom : undefined}
         />
       </div>
@@ -832,6 +834,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
           onByeAdvance={onByeAdvance}
           stage={stage}
           canUseMapVeto={canUseMapVeto}
+          suppressVetoRoleSwitchPrompt={suppressMockVetoRolePrompt}
           onMatchRoom={isOrganizer && tournamentSlug ? openMatchRoom : undefined}
         />
       </div>
@@ -1099,6 +1102,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
                 matchStatus={mapVetoMatch.status as 'pending' | 'in_progress' | 'completed'}
                 layout="modal"
                 showShareLinks
+                suppressRoleSwitchPrompt={suppressMockVetoRolePrompt}
                 onComplete={() => { setMapVetoOpen(false); onRefresh?.(); }}
               />
             )}

@@ -34,6 +34,7 @@ interface SwissViewProps {
     hasResultsMap?: Record<string, any[]>;
     hasProofsMap?: Record<string, string[]>;
     canUseMapVeto?: boolean;
+    suppressVetoRoleSwitchPrompt?: boolean;
     hoveredTeamId?: string | null;
     onTeamHover?: (teamId: string | null) => void;
 }
@@ -62,6 +63,7 @@ const SwissGroupPanel = React.memo(({
     hasResultsMap = {},
     hasProofsMap = {},
     canUseMapVeto = false,
+    suppressVetoRoleSwitchPrompt = false,
     hoveredTeamId,
     onTeamHover
 }: {
@@ -87,6 +89,7 @@ const SwissGroupPanel = React.memo(({
     hasResultsMap?: Record<string, any[]>,
     hasProofsMap?: Record<string, string[]>,
     canUseMapVeto?: boolean,
+    suppressVetoRoleSwitchPrompt?: boolean,
     hoveredTeamId?: string | null,
     onTeamHover?: (teamId: string | null) => void
 }) => {
@@ -199,6 +202,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
     hasResultsMap,
     hasProofsMap,
     canUseMapVeto = false,
+    suppressVetoRoleSwitchPrompt = false,
     hoveredTeamId,
     onTeamHover
 }) => {
@@ -592,6 +596,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
                                     hasResultsMap={hasResultsMap}
                                     hasProofsMap={hasProofsMap}
                                     canUseMapVeto={canUseMapVeto}
+                                    suppressVetoRoleSwitchPrompt={suppressVetoRoleSwitchPrompt}
                                     hoveredTeamId={hoveredTeamId}
                                     onTeamHover={onTeamHover}
                                 />
@@ -623,6 +628,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
                     hasResultsMap={hasResultsMap}
                     hasProofsMap={hasProofsMap}
                     canUseMapVeto={canUseMapVeto}
+                    suppressVetoRoleSwitchPrompt={suppressVetoRoleSwitchPrompt}
                     hoveredTeamId={hoveredTeamId}
                     onTeamHover={onTeamHover}
                 />
@@ -683,6 +689,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
                                 matchStatus={mapVetoMatch.status as any}
                                 layout="modal"
                                 showShareLinks
+                                suppressRoleSwitchPrompt={suppressVetoRoleSwitchPrompt}
                                 onComplete={() => { setMapVetoOpen(false); onMatchUpdate?.(); }}
                             />
                         )}

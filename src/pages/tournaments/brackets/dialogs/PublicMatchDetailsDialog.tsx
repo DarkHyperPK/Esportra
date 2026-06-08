@@ -35,11 +35,23 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
     if (!match) return null;
 
     const getRawId = (id: string | number) => String(id).replace(/^(db-|wb-|lb-|source-)/, '');
+    const getMapName = (game: any) => game.map_name || game.mapName || '';
+    const hasScoreData = (game: any) => game.team1_score !== null && game.team1_score !== undefined
+        && game.team2_score !== null && game.team2_score !== undefined;
+    const hasPlayerData = (game: any) => Array.isArray(game.match_details?.players) && game.match_details.players.length > 0;
+    const hasMeaningfulGameData = (game: any) => {
+        const mapName = getMapName(game).trim();
+        return hasPlayerData(game)
+            || Boolean(game.map_id || game.mapId)
+            || (Boolean(mapName) && mapName.toLowerCase() !== 'unknown map')
+            || (hasScoreData(game) && Boolean(game.game_number || game.gameNumber));
+    };
+    const visibleAutomatedResults = automatedResults.filter(hasMeaningfulGameData);
     const isLive = match.status === 'live';
     const isCompleted = match.status === 'completed';
     const team1Won = match.winner?.id && match.winner.id === match.team1?.id;
     const team2Won = match.winner?.id && match.winner.id === match.team2?.id;
-    const hasResults = results.length > 0 || automatedResults.length > 0;
+    const hasResults = results.length > 0 || visibleAutomatedResults.length > 0;
 
     const toggleGame = (gameId: string) => {
         setExpandedGames(prev => ({ ...prev, [gameId]: !prev[gameId] }));
@@ -116,19 +128,19 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
                     {/* Match results */}
                     {hasResults ? (
                         <div className="space-y-4">
-                            {automatedResults.length > 0 && (
+                            {visibleAutomatedResults.length > 0 && (
                                 <div className="space-y-3">
                                     <h3 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
-                                        {automatedResults.some(g => g.match_details?.players) ? (
+                                        {visibleAutomatedResults.some(hasPlayerData) ? (
                                             <><Bot className="w-4 h-4 text-rose-400" />Official Game Data</>
                                         ) : (
                                             <><Swords className="w-4 h-4 text-zinc-400" />Manual Breakdown</>
                                         )}
                                     </h3>
                                     <div className="grid grid-cols-1 gap-3">
-                                        {automatedResults.map((game: any, idx: number) => {
+                                        {visibleAutomatedResults.map((game: any, idx: number) => {
                                             const gameId = game.id || `game-${idx}`;
-                                            const mapName = game.map_name || game.mapName || 'Unknown Map';
+                                            const mapName = getMapName(game) || `Game ${idx + 1}`;
                                             const theme = MAP_THEMES[mapName] || MAP_THEMES.default;
                                             const splash = getMapSplash(mapName);
                                             const isExpanded = expandedGames[gameId];

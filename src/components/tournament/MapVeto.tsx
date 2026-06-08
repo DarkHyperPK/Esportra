@@ -28,6 +28,7 @@ interface MapVetoProps {
   layout?: 'modal' | 'fullscreen' | 'embedded';
   showShareLinks?: boolean;
   readOnly?: boolean;
+  suppressRoleSwitchPrompt?: boolean;
 }
 const noOp = () => { };
 
@@ -46,6 +47,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   layout = 'embedded',
   showShareLinks = true,
   readOnly = false,
+  suppressRoleSwitchPrompt = false,
 }) => {
   const {
     veto,
@@ -59,7 +61,6 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     setDialogStep,
     selectedBO,
     handleSetBO,
-    showRoleSwitchPrompt,
     setShowRoleSwitchPrompt,
     handleRoleSwitch,
     imagesLoaded,
@@ -111,6 +112,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   const isFullscreen = layout === 'fullscreen';
   const isEmbedded = layout === 'embedded';
   const isWideLayout = isModal || isFullscreen;
+  const isComplete = veto.status === 'completed';
 
   if (loading) {
     return (
@@ -177,20 +179,6 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         compact={isWideLayout}
       />
 
-      <VetoSelectedMaps
-        veto={veto}
-        availableMaps={availableMaps}
-        allAvailableMaps={allAvailableMaps}
-        team1Name={team1Name}
-        team2Name={team2Name}
-        team1Id={team1Id}
-        team2Id={team2Id}
-        imagesLoaded={imagesLoaded}
-        setImagesLoaded={setImagesLoaded}
-        bestOf={currentBestOf}
-        game={game}
-      />
-
       <div className={cn(isWideLayout ? 'hidden lg:block' : 'block')}>
         <VetoTurnIndicator
           veto={veto}
@@ -199,11 +187,33 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           bestOf={currentBestOf}
         />
       </div>
+    </div>
+  );
 
-      <div className="min-h-0 flex-1">
-        <div className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-2">
-          Veto History
-        </div>
+  const selectedMapsPanel = (
+    <VetoSelectedMaps
+      veto={veto}
+      availableMaps={availableMaps}
+      allAvailableMaps={allAvailableMaps}
+      team1Name={team1Name}
+      team2Name={team2Name}
+      team1Id={team1Id}
+      team2Id={team2Id}
+      imagesLoaded={imagesLoaded}
+      setImagesLoaded={setImagesLoaded}
+      bestOf={currentBestOf}
+      game={game}
+      compact={isWideLayout || isComplete}
+      className="mb-0"
+    />
+  );
+
+  const historyPanel = (
+    <div className="min-h-0 rounded-lg border border-white/10 bg-black/30 p-3">
+      <div className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-2">
+        Veto History
+      </div>
+      <div className={cn(isWideLayout && 'max-h-[320px] overflow-y-auto pr-1')}>
         <VetoHistoryTimeline
           entries={vetoHistory}
           loading={vetoHistoryLoading}
@@ -215,7 +225,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
   const mapPanel = (
     <div className={cn(
-      'flex flex-col min-h-0 min-w-0',
+      'flex flex-col gap-4 min-h-0 min-w-0',
       isWideLayout && 'lg:overflow-y-auto',
     )}>
       <div className={cn(isWideLayout ? 'lg:hidden' : 'hidden')}>
@@ -226,26 +236,39 @@ export const MapVeto: React.FC<MapVetoProps> = ({
           bestOf={currentBestOf}
         />
       </div>
-      <MapPool
-        veto={veto}
-        availableMaps={availableMaps}
-        allAvailableMaps={allAvailableMaps}
-        isUserTurn={isUserTurn}
-        actionLoading={readOnly ? null : actionLoading}
-        handleMapAction={noopMapAction}
-        imagesLoaded={imagesLoaded}
-        setImagesLoaded={setImagesLoaded}
-        currentTeamName={currentTeamName}
-        team1Name={team1Name}
-        team2Name={team2Name}
-        team1Id={team1Id}
-        team2Id={team2Id}
-        team1Logo={team1Logo}
-        team2Logo={team2Logo}
-        bestOf={currentBestOf}
-        game={game}
-        layoutMode={layout}
-      />
+      {isComplete ? (
+        <div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="min-w-0">{selectedMapsPanel}</div>
+          <div className="min-w-0">{historyPanel}</div>
+        </div>
+      ) : (
+        <>
+          <MapPool
+            veto={veto}
+            availableMaps={availableMaps}
+            allAvailableMaps={allAvailableMaps}
+            isUserTurn={isUserTurn}
+            actionLoading={readOnly ? null : actionLoading}
+            handleMapAction={noopMapAction}
+            imagesLoaded={imagesLoaded}
+            setImagesLoaded={setImagesLoaded}
+            currentTeamName={currentTeamName}
+            team1Name={team1Name}
+            team2Name={team2Name}
+            team1Id={team1Id}
+            team2Id={team2Id}
+            team1Logo={team1Logo}
+            team2Logo={team2Logo}
+            bestOf={currentBestOf}
+            game={game}
+            layoutMode={layout}
+          />
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <div className="min-w-0">{selectedMapsPanel}</div>
+            <div className="min-w-0">{historyPanel}</div>
+          </div>
+        </>
+      )}
     </div>
   );
 
@@ -282,7 +305,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
       {!readOnly && (
         <VetoDialogs
-          showRoleSwitchPrompt={showRoleSwitchPrompt}
+          showRoleSwitchPrompt={showRoleSwitchPrompt && !suppressRoleSwitchPrompt}
           setShowRoleSwitchPrompt={setShowRoleSwitchPrompt}
           handleRoleSwitch={handleRoleSwitch}
           showBODialog={showBODialog}

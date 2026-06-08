@@ -35,6 +35,7 @@ interface GroupStageViewProps {
     hasResultsMap?: Record<string, any[]>;
     hasProofsMap?: Record<string, string[]>;
     canUseMapVeto?: boolean;
+    suppressVetoRoleSwitchPrompt?: boolean;
     hoveredTeamId?: string | null;
     onTeamHover?: (teamId: string | null) => void;
 }
@@ -86,6 +87,7 @@ const GroupPanel = React.memo(({
     hasResultsMap = {},
     hasProofsMap = {},
     canUseMapVeto = false,
+    suppressVetoRoleSwitchPrompt = false,
     hoveredTeamId,
     onTeamHover
 }: {
@@ -108,6 +110,7 @@ const GroupPanel = React.memo(({
     hasResultsMap?: Record<string, any[]>,
     hasProofsMap?: Record<string, string[]>,
     canUseMapVeto?: boolean,
+    suppressVetoRoleSwitchPrompt?: boolean,
     hoveredTeamId?: string | null,
     onTeamHover?: (teamId: string | null) => void
 }) => {
@@ -219,6 +222,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
     hasResultsMap,
     hasProofsMap,
     canUseMapVeto = false,
+    suppressVetoRoleSwitchPrompt = false,
     hoveredTeamId,
     onTeamHover
 }) => {
@@ -564,6 +568,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                                 hasResultsMap={hasResultsMap}
                                 hasProofsMap={hasProofsMap}
                                 canUseMapVeto={canUseMapVeto}
+                                suppressVetoRoleSwitchPrompt={suppressVetoRoleSwitchPrompt}
                                 hoveredTeamId={hoveredTeamId}
                                 onTeamHover={onTeamHover}
                             />
@@ -627,6 +632,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                                 matchStatus={mapVetoMatch.status as any}
                                 layout="modal"
                                 showShareLinks
+                                suppressRoleSwitchPrompt={suppressVetoRoleSwitchPrompt}
                                 onComplete={() => { setMapVetoOpen(false); onMatchUpdate?.(); }}
                             />
                         )}

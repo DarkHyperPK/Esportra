@@ -17,6 +17,8 @@ interface VetoSelectedMapsProps {
     setImagesLoaded: React.Dispatch<React.SetStateAction<Set<string>>>;
     bestOf: number;
     game?: string;
+    compact?: boolean;
+    className?: string;
 }
 
 export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
@@ -33,6 +35,8 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
     setImagesLoaded,
     bestOf,
     game = 'valorant',
+    compact = false,
+    className,
 }) => {
     const service = React.useMemo(() => new VetoService(game, availableMaps.length || undefined), [game, availableMaps.length]);
     const mapLookup = allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps;
@@ -70,12 +74,20 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
     }
 
     return (
-        <div className="mb-10">
-            <div className="text-sm sm:text-base font-bold text-white uppercase tracking-widest mb-6">
+        <div className={cn('rounded-lg border border-white/10 bg-black/30 p-3', className)}>
+            <div className={cn(
+                'font-black text-white/80 uppercase tracking-widest',
+                compact ? 'mb-3 text-[10px]' : 'mb-5 text-xs sm:text-sm',
+            )}>
                 SELECTED MAPS
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-5 xl:gap-6">
+            <div className={cn(
+                'grid gap-2.5 sm:gap-3',
+                compact
+                    ? 'grid-cols-2 sm:grid-cols-3 2xl:grid-cols-5'
+                    : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
+            )}>
                 {(() => {
                     const mapsWithSides: Array<{
                         map_id: string;
@@ -213,10 +225,13 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                         return (
                             <div
                                 key={idx}
-                                className="group relative bg-black border border-rose-500/50 rounded-lg overflow-hidden shadow-xl transition-all duration-300 hover:border-rose-400"
+                                className="group relative bg-black border border-rose-500/40 rounded-lg overflow-hidden shadow-lg transition-colors duration-200 hover:border-rose-400"
                             >
                                 <div
-                                    className="relative w-full h-[160px] sm:h-[180px] md:h-[200px] lg:h-[220px]"
+                                    className={cn(
+                                        'relative w-full',
+                                        compact ? 'h-32 sm:h-36 lg:h-40' : 'h-[160px] sm:h-[180px] md:h-[200px] lg:h-[220px]',
+                                    )}
                                     style={{
                                         backgroundImage: isImageLoaded ? `url(${mapImageUrl})` : 'none',
                                         backgroundSize: 'cover',
@@ -246,33 +261,39 @@ export const VetoSelectedMaps: React.FC<VetoSelectedMapsProps> = ({
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 via-black/40 to-transparent" />
 
-                                    <div className="absolute top-2 left-2 right-2 sm:top-3 sm:left-3 sm:right-3 flex items-center justify-between z-20 gap-2">
-                                        <div className="px-2 py-1 sm:px-3 sm:py-1.5 bg-rose-500 rounded-md shadow-lg">
-                                            <span className="text-[10px] sm:text-xs font-black text-white tracking-tight">MAP {mapData.mapNumber}</span>
+                                    <div className="absolute top-2 left-2 right-2 flex items-center justify-between z-20 gap-2">
+                                        <div className="px-2 py-1 bg-rose-500 rounded-md shadow-lg">
+                                            <span className="text-[9px] sm:text-[10px] font-black text-white tracking-tight">MAP {mapData.mapNumber}</span>
                                         </div>
 
                                         {mapData.side && (
                                             <div className={cn(
-                                                "p-1.5 sm:p-2 rounded-md flex items-center justify-center shadow-lg",
+                                                "p-1.5 rounded-md flex items-center justify-center shadow-lg",
                                                 mapData.side === 'attack'
                                                     ? "bg-rose-500"
                                                     : "bg-white text-black"
                                             )}>
                                                 {mapData.side === 'attack' ? (
-                                                    <Sword className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4 text-white flex-shrink-0" />
+                                                    <Sword className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white flex-shrink-0" />
                                                 ) : (
-                                                    <ShieldIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-4 lg:w-4 text-black flex-shrink-0" />
+                                                    <ShieldIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-black flex-shrink-0" />
                                                 )}
                                             </div>
                                         )}
                                     </div>
 
-                                    <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 pb-4 sm:pb-5 md:pb-6 lg:pb-7 z-20 text-center">
-                                        <div className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1 sm:mb-1.5" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>
+                                    <div className="absolute bottom-0 left-0 right-0 p-3 z-20 text-center">
+                                        <div
+                                            className={cn(
+                                                'font-black text-white leading-tight',
+                                                compact ? 'text-sm sm:text-base' : 'text-lg sm:text-xl md:text-2xl',
+                                            )}
+                                            style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}
+                                        >
                                             {mapData.map_name}
                                         </div>
                                         {mapData.side && mapData.sidePickerTeamId && (
-                                            <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs md:text-sm text-white/90 mt-1 sm:mt-1.5">
+                                            <div className="flex items-center justify-center gap-1 text-[10px] sm:text-xs text-white/85 mt-1">
                                                 {mapData.side === 'attack' ? (
                                                     <Sword className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-300 flex-shrink-0" />
                                                 ) : (
