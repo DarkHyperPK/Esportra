@@ -27,7 +27,7 @@ export function launchStateToCreatePayload(launchState: LaunchState): { status: 
     case 'draft':
       return { status: 'draft', isPublic: false };
     case 'private':
-      return { status: 'published', isPublic: false };
+      return { status: 'draft', isPublic: false };
     case 'public':
       return { status: 'open', isPublic: true };
   }

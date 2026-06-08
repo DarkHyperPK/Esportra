@@ -657,6 +657,14 @@ const CaptainMatchPage = () => {
 
     // Actions handlers
     const handleOpenVeto = (match: BracketMatch) => {
+        if (!isVetoEnabled) {
+            toast({
+                title: 'Map veto unavailable',
+                description: 'This tournament does not use map veto.',
+                variant: 'destructive'
+            });
+            return;
+        }
         // Block veto access until match is live
         if (match.status !== 'in_progress') {
             toast({
@@ -1095,7 +1103,7 @@ const CaptainMatchPage = () => {
                 </div>
 
                 {/* Modals */}
-                <Dialog open={mapVetoOpen} onOpenChange={setMapVetoOpen}>
+                <Dialog open={isVetoEnabled && mapVetoOpen} onOpenChange={setMapVetoOpen}>
                     <DialogContent className="max-w-5xl w-full max-h-[90vh] flex flex-col bg-[#09090b] border-zinc-800 p-0 overflow-hidden">
                         <DialogHeader className="p-6 border-b border-zinc-800 bg-[#18181b] flex-shrink-0">
                             <DialogTitle>Map Veto</DialogTitle>

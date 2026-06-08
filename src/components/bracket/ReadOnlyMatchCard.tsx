@@ -1,5 +1,6 @@
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import { formatLocalTime } from '@/lib/timeUtils';
+import { cn } from '@/lib/utils';
 
 interface ReadOnlyMatchCardProps {
     match: any;
@@ -9,6 +10,8 @@ interface ReadOnlyMatchCardProps {
     onClick?: () => void;
     hasAutomatedResults?: boolean;
     hasProofs?: boolean;
+    hoveredTeamId?: string | null;
+    onTeamHover?: (teamId: string | null) => void;
 }
 
 export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
@@ -18,13 +21,19 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
     className,
     onClick,
     hasAutomatedResults,
-    hasProofs
+    hasProofs,
+    hoveredTeamId,
+    onTeamHover
 }) => {
     const team1Won = match.winner?.id && match.winner.id === match.team1?.id;
     const team2Won = match.winner?.id && match.winner.id === match.team2?.id;
     const isCompleted = match.status === 'completed';
     const isLive = match.status === 'live';
     const hasAnyResults = hasAutomatedResults || hasProofs;
+    const team1Highlighted = hoveredTeamId && hoveredTeamId === match.team1?.id;
+    const team2Highlighted = hoveredTeamId && hoveredTeamId === match.team2?.id;
+    const containsHoveredTeam = Boolean(team1Highlighted || team2Highlighted);
+    const dimForHoveredPath = Boolean(hoveredTeamId && !containsHoveredTeam);
 
     const style: React.CSSProperties = x !== undefined && y !== undefined ? {
         position: 'absolute',
@@ -40,9 +49,16 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
 
     return (
         <div
-            className={`transition-all duration-300 ${className || ''} ${hasAnyResults ? 'cursor-pointer group' : ''}`}
+            className={cn(
+                'transition-all duration-300',
+                className,
+                hasAnyResults && 'cursor-pointer group',
+                containsHoveredTeam && 'scale-[1.02] drop-shadow-[0_0_18px_rgba(244,63,94,0.28)]',
+                dimForHoveredPath && 'opacity-35 grayscale',
+            )}
             style={style}
             onClick={hasAnyResults ? onClick : undefined}
+            onMouseLeave={() => onTeamHover?.(null)}
         >
             <div className={`
                 relative w-full h-full rounded overflow-hidden
@@ -64,11 +80,13 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
 
                 {/* Team 1 */}
                 <div
-                    className={`
-                    flex items-center justify-between h-[35px] px-3
-                    ${team1Won ? 'bg-slate-700/50' : ''}
-                    border-b border-slate-700/50
-                `}>
+                    className={cn(
+                        'flex items-center justify-between h-[35px] px-3 border-b border-slate-700/50 transition-colors',
+                        team1Won && 'bg-slate-700/50',
+                        team1Highlighted && 'bg-rose-500/20 text-white ring-1 ring-inset ring-rose-500/40',
+                    )}
+                    onMouseEnter={() => match.team1?.id && onTeamHover?.(match.team1.id)}
+                >
                     <div className="flex items-center gap-2 overflow-hidden">
                         <EntityAvatar
                             src={match.team1?.logo_url}
@@ -78,7 +96,7 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
                             size="w-6 h-6"
                             className="rounded-sm"
                         />
-                        <span className={`text-xs font-medium truncate ${team1Won ? 'text-white' : 'text-slate-400'}`}>
+                        <span className={cn('text-xs font-medium truncate', team1Won || team1Highlighted ? 'text-white' : 'text-slate-400')}>
                             {match.team1?.name || (isCompleted ? 'BYE' : 'TBD')}
                         </span>
                     </div>
@@ -92,10 +110,13 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
 
                 {/* Team 2 */}
                 <div
-                    className={`
-                    flex items-center justify-between h-[35px] px-3
-                    ${team2Won ? 'bg-slate-700/50' : ''}
-                `}>
+                    className={cn(
+                        'flex items-center justify-between h-[35px] px-3 transition-colors',
+                        team2Won && 'bg-slate-700/50',
+                        team2Highlighted && 'bg-rose-500/20 text-white ring-1 ring-inset ring-rose-500/40',
+                    )}
+                    onMouseEnter={() => match.team2?.id && onTeamHover?.(match.team2.id)}
+                >
                     <div className="flex items-center gap-2 overflow-hidden">
                         <EntityAvatar
                             src={match.team2?.logo_url}
@@ -105,7 +126,7 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
                             size="w-6 h-6"
                             className="rounded-sm"
                         />
-                        <span className={`text-xs font-medium truncate ${team2Won ? 'text-white' : 'text-slate-400'}`}>
+                        <span className={cn('text-xs font-medium truncate', team2Won || team2Highlighted ? 'text-white' : 'text-slate-400')}>
                             {match.team2?.name || (isCompleted ? 'BYE' : 'TBD')}
                         </span>
                     </div>

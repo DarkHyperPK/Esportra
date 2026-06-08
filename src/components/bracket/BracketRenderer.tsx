@@ -20,6 +20,8 @@ interface BracketRendererProps {
     bracketSpacing?: number;
     disableAnimations?: boolean;
     isSingleElimination?: boolean;
+    hoveredTeamId?: string | null;
+    onTeamHover?: (teamId: string | null) => void;
 }
 
 export const BracketRenderer: React.FC<BracketRendererProps> = ({
@@ -39,6 +41,8 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
     bracketSpacing = 80,
     disableAnimations = false,
     isSingleElimination = false,
+    hoveredTeamId,
+    onTeamHover,
 }) => {
     // Helper to get raw ID (remove 'db-', 'wb-', 'lb-' prefixes if present)
     const getRawId = (id: string) => id.replace(/^(db-|wb-|lb-|source-)/, '');
@@ -241,6 +245,8 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
                 onClick={() => onMatchClick?.(match)}
                 hasAutomatedResults={hasResultsMap[getRawId(String(match.id))]?.length > 0}
                 hasProofs={hasProofsMap[getRawId(String(match.id))]?.length > 0}
+                hoveredTeamId={hoveredTeamId}
+                onTeamHover={onTeamHover}
             />
         );
 

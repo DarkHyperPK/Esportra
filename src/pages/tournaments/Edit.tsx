@@ -5,6 +5,7 @@ import { apiClient } from '@/lib/apiClient';
 import { WizardContainer } from '@/components/tournament/wizard';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA } from '@/types/tournamentWizard';
 import { apiToLaunchState } from '@/utils/tournamentVisibilityUtils';
+import { getEffectiveGameFeatures } from '@/utils/gameFeatures';
 import { Loader2 } from 'lucide-react';
 
 const EditTournament = () => {
@@ -63,6 +64,7 @@ const EditTournament = () => {
       setActiveInvitationCount(activeInvites);
 
       const persistedFormat = (tournamentData.format || tournamentData.tournament_type || '').toString().toLowerCase();
+      const effectiveFeatures = getEffectiveGameFeatures(tournamentData.game, tournamentData.game_mode);
 
       // 3. Map to Wizard Data
       // Use local time helpers to avoid UTC↔local timezone drift on each save cycle.
@@ -171,7 +173,9 @@ const EditTournament = () => {
 
         // Game-specific settings
         assistedMatchReporting: !!(tournamentData.settings as any)?.assistedMatchReporting,
-        mapVetoEnabled: (tournamentData.settings as any)?.mapVetoEnabled ?? true,
+        mapVetoEnabled: effectiveFeatures.mapVeto
+          ? ((tournamentData.settings as any)?.mapVetoEnabled ?? true)
+          : false,
       };
 
       console.log('[EditTournament] Mapped assistedMatchReporting:', mappedData.assistedMatchReporting);

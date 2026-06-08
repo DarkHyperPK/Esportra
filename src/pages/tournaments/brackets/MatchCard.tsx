@@ -54,6 +54,7 @@ const areMatchPropsEqual = (prev: MatchCardProps, next: MatchCardProps) => {
         prev.expandedMatchId === next.expandedMatchId &&
         prev.isProcessing === next.isProcessing &&
         prev.isOrganizer === next.isOrganizer &&
+        prev.onMapVeto === next.onMapVeto &&
         prev.onMatchRoom === next.onMatchRoom &&
         prev.proofs?.length === next.proofs?.length
     );
@@ -433,14 +434,16 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                             </Button>
                                                         )}
 
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="flex-1 min-w-[80px] h-8 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300"
-                                                            onClick={(e) => { e.stopPropagation(); onMapVeto?.(match); }}
-                                                        >
-                                                            <Swords className="w-3.5 h-3.5 mr-1.5" /> Veto
-                                                        </Button>
+                                                        {onMapVeto && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="flex-1 min-w-[80px] h-8 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300"
+                                                                onClick={(e) => { e.stopPropagation(); onMapVeto(match); }}
+                                                            >
+                                                                <Swords className="w-3.5 h-3.5 mr-1.5" /> Veto
+                                                            </Button>
+                                                        )}
 
                                                         {canOpenMatchRoom && (
                                                             <Button

@@ -33,6 +33,9 @@ interface GroupStageViewProps {
     onMatchRoom?: (match: BracketMatch) => void;
     hasResultsMap?: Record<string, any[]>;
     hasProofsMap?: Record<string, string[]>;
+    canUseMapVeto?: boolean;
+    hoveredTeamId?: string | null;
+    onTeamHover?: (teamId: string | null) => void;
 }
 
 // Helpers
@@ -80,7 +83,10 @@ const GroupPanel = React.memo(({
     onMatchClick,
     onMatchRoom,
     hasResultsMap = {},
-    hasProofsMap = {}
+    hasProofsMap = {},
+    canUseMapVeto = false,
+    hoveredTeamId,
+    onTeamHover
 }: {
     groupMatches: BracketMatch[],
     groupStandings: TeamStanding[],
@@ -99,7 +105,10 @@ const GroupPanel = React.memo(({
     onMatchClick?: (match: BracketMatch) => void,
     onMatchRoom?: (match: BracketMatch) => void,
     hasResultsMap?: Record<string, any[]>,
-    hasProofsMap?: Record<string, string[]>
+    hasProofsMap?: Record<string, string[]>,
+    canUseMapVeto?: boolean,
+    hoveredTeamId?: string | null,
+    onTeamHover?: (teamId: string | null) => void
 }) => {
     // Group matches by round
     const matchesByRound = useMemo(() => {
@@ -144,7 +153,7 @@ const GroupPanel = React.memo(({
                                                     onToggleExpand={toggleExpand}
                                                     onScoreChange={handleScoreChange}
                                                     onGoLive={openGoLive}
-                                                    onMapVeto={openMapVeto}
+                                                    onMapVeto={canUseMapVeto ? openMapVeto : undefined}
                                                     onPartyCode={openPartyCode}
                                                     onSaveScore={saveScore}
                                                     scoreDraftRef={scoreDraftRef}
@@ -158,6 +167,8 @@ const GroupPanel = React.memo(({
                                                     onClick={() => onMatchClick?.(match)}
                                                     hasAutomatedResults={hasResultsMap[getRawId(match.id)]?.length > 0}
                                                     hasProofs={hasProofsMap[getRawId(match.id)]?.length > 0}
+                                                    hoveredTeamId={hoveredTeamId}
+                                                    onTeamHover={onTeamHover}
                                                 />
                                             )}
                                         </div>
@@ -204,7 +215,10 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
     onMatchClick,
     onMatchRoom,
     hasResultsMap,
-    hasProofsMap
+    hasProofsMap,
+    canUseMapVeto = false,
+    hoveredTeamId,
+    onTeamHover
 }) => {
     const { toast } = useToast();
     const [standingsByGroup, setStandingsByGroup] = useState<Record<string, TeamStanding[]>>({});
@@ -364,9 +378,13 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
     }, [handleGoLive]);
 
     const openMapVeto = useCallback((m: BracketMatch) => {
+        if (!canUseMapVeto) {
+            toast({ title: 'Map veto unavailable', description: 'This tournament does not use map veto.', variant: 'destructive' });
+            return;
+        }
         setMapVetoMatch(m);
         setMapVetoOpen(true);
-    }, []);
+    }, [canUseMapVeto, toast]);
 
     const openPartyCode = useCallback((m: BracketMatch) => {
         setPartyCodeMatch(m);
@@ -543,6 +561,9 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                                 onMatchRoom={onMatchRoom}
                                 hasResultsMap={hasResultsMap}
                                 hasProofsMap={hasProofsMap}
+                                canUseMapVeto={canUseMapVeto}
+                                hoveredTeamId={hoveredTeamId}
+                                onTeamHover={onTeamHover}
                             />
                         </TabsContent>
                     );
@@ -582,7 +603,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={mapVetoOpen} onOpenChange={setMapVetoOpen}>
+            <Dialog open={canUseMapVeto && mapVetoOpen} onOpenChange={setMapVetoOpen}>
                 <DialogContent className="bg-slate-900/95 backdrop-blur-xl border-white/10 max-w-5xl max-h-[90vh] overflow-auto p-0">
                     <DialogHeader className="p-4 border-b border-white/10"><DialogTitle><Swords className="w-5 h-5 inline mr-2 text-orange-500" />Map Veto</DialogTitle></DialogHeader>
                     {mapVetoMatch && tournamentId && <MapVeto matchId={getRawId(mapVetoMatch.id)} tournamentId={tournamentId} team1Id={mapVetoMatch.team1?.id} team2Id={mapVetoMatch.team2?.id} team1Name={mapVetoMatch.team1?.name} team2Name={mapVetoMatch.team2?.name} bestOf={3} matchStatus={mapVetoMatch.status as any} onComplete={() => { setMapVetoOpen(false); onMatchUpdate?.(); }} />}

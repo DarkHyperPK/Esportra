@@ -120,6 +120,13 @@ export const useTournamentWizard = (
                     }
                 }
             }
+            if (updates.gameMode !== undefined && updates.gameMode !== prev.gameMode) {
+                const modeFeatures = getEffectiveGameFeatures(newData.game, updates.gameMode);
+                newData.mapVetoEnabled = modeFeatures.mapVeto ? newData.mapVetoEnabled : false;
+                if (!modeFeatures.mapPool) {
+                    newData.mapPoolIds = [];
+                }
+            }
             return newData;
         });
         Object.keys(updates).forEach(key => {

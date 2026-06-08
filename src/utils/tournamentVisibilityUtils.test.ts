@@ -31,7 +31,7 @@ describe('tournamentVisibilityUtils', () => {
     });
 
     it('creates private payload', () => {
-      expect(launchStateToCreatePayload('private')).toEqual({ status: 'published', isPublic: false });
+      expect(launchStateToCreatePayload('private')).toEqual({ status: 'draft', isPublic: false });
     });
 
     it('creates public payload', () => {

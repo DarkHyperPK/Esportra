@@ -4,14 +4,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, CheckCircle, Calendar, Settings, GitBranch, Globe, Eye, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Globe, Eye, Loader2 } from 'lucide-react';
 import BracketVisualization from '@/pages/tournaments/brackets/BracketVisualization';
 import Footer from '@/components/Footer';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
-import RoundSchedulingPanel from '@/components/tournament/RoundSchedulingPanel';
-import StageSchedulingConfig from '@/components/tournament/StageSchedulingConfig';
 import { useQueryClient } from '@tanstack/react-query';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 
@@ -316,62 +313,18 @@ const ManageBracketPage = () => {
                     </div>
                 </div>
 
-                {/* Tabs for Bracket vs Scheduling */}
                 {isOrganizer && (
-                    <Tabs defaultValue="bracket" className="flex min-h-0 w-full flex-1 flex-col">
-                        <div className="flex items-center justify-between mb-6">
-                            <TabsList className="bg-[#0d0d10] border border-white/10 p-1 h-auto rounded-xl">
-                                <TabsTrigger value="bracket" className="data-[state=active]:bg-white/10 data-[state=active]:text-white py-2 px-4 rounded-lg capitalize">
-                                    <GitBranch className="w-4 h-4 mr-2" />
-                                    Visualizer
-                                </TabsTrigger>
-                                <TabsTrigger value="scheduling" className="data-[state=active]:bg-white/10 data-[state=active]:text-white py-2 px-4 rounded-lg capitalize">
-                                    <Calendar className="w-4 h-4 mr-2" />
-                                    Round Scheduling
-                                </TabsTrigger>
-                                <TabsTrigger value="settings" className="data-[state=active]:bg-white/10 data-[state=active]:text-white py-2 px-4 rounded-lg capitalize">
-                                    <Settings className="w-4 h-4 mr-2" />
-                                    Settings
-                                </TabsTrigger>
-                            </TabsList>
-                        </div>
-
-                        <TabsContent value="bracket" className="mt-4 min-h-0 flex-1">
-                            <BracketVisualization
-                                versionId={versionId}
-                                tournamentId={tournament.id}
-                                tournamentSlug={slug}
-                                isOrganizer={isOrganizer}
-                                onRefresh={() => fetchData(true)}
-                                onByeAdvance={handleByeAdvance}
-                                stage={stage}
-                            />
-                        </TabsContent>
-
-                        <TabsContent value="scheduling" className="mt-4">
-                            <div className="max-w-xl mx-auto">
-                                <RoundSchedulingPanel
-                                    stageId={stageId!}
-                                    stageFormat={stage?.format || 'single_elimination'}
-                                    tournamentStartDate={tournament?.start_date || null}
-                                    tournamentEndDate={tournament?.end_date || null}
-                                    selfPlayEnabled={stage?.scheduling_config?.self_play_enabled || false}
-                                    onScheduleApplied={() => fetchData(true)}
-                                />
-                            </div>
-                        </TabsContent>
-
-                        <TabsContent value="settings" className="mt-4">
-                            <div className="max-w-xl mx-auto">
-                                <StageSchedulingConfig
-                                    stageId={stageId!}
-                                    stageFormat={stage?.format || 'single_elimination'}
-                                    gameName={tournament?.game}
-                                    onConfigChange={() => fetchData(true)}
-                                />
-                            </div>
-                        </TabsContent>
-                    </Tabs>
+                    <div className="min-h-0 w-full flex-1">
+                        <BracketVisualization
+                            versionId={versionId}
+                            tournamentId={tournament.id}
+                            tournamentSlug={slug}
+                            isOrganizer={isOrganizer}
+                            onRefresh={() => fetchData(true)}
+                            onByeAdvance={handleByeAdvance}
+                            stage={stage}
+                        />
+                    </div>
                 )}
 
                 {/* Non-organizer view - just the bracket */}
