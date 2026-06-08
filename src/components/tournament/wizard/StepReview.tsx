@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { TournamentWizardData } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS, SEEDING_TYPE_LABELS } from '@/schemas/tournamentSchema';
+import { LAUNCH_STATE_LABELS } from '@/utils/tournamentVisibilityUtils';
 import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig, gameHasBRMaps } from '@/utils/gameFeatures';
 
 interface StepReviewProps {
@@ -42,10 +43,11 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
         });
     };
 
-    const getVisibilityIcon = () => {
-        switch (data.visibility) {
+    const getLaunchStateIcon = () => {
+        switch (data.launchState) {
             case 'public': return <Eye className="w-4 h-4" />;
-            case 'unlisted': return <EyeOff className="w-4 h-4" />;
+            case 'private': return <EyeOff className="w-4 h-4" />;
+            case 'draft': return <EyeOff className="w-4 h-4" />;
         }
     };
 
@@ -58,7 +60,7 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 { label: 'Tournament Name', value: data.name || 'Not set' },
                 { label: 'Game', value: data.game || 'Not selected' },
                 { label: 'Type', value: data.isOnline ? 'Online' : 'LAN', icon: data.isOnline ? <Globe className="w-4 h-4" /> : <MapPin className="w-4 h-4" /> },
-                { label: 'Visibility', value: data.visibility, icon: getVisibilityIcon() },
+                { label: 'Launch State', value: LAUNCH_STATE_LABELS[data.launchState] ?? data.launchState, icon: getLaunchStateIcon() },
                 { label: 'Start', value: formatDate(data.startDate, data.startTime) },
                 ...(data.endDate ? [{ label: 'End', value: formatDate(data.endDate, data.endTime) }] : []),
                 ...(!data.isOnline && data.venue ? [{ label: 'Venue', value: data.venue }] : []),

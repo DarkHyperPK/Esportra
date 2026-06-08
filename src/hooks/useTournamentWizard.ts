@@ -22,6 +22,22 @@ import { getGameByName, getDefaultGameMode, getDefaultTeamSize, isBattleRoyale, 
 import { catalogGameHasBRMaps } from '@/utils/gameCatalogBr';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import slugify from 'slugify';
+import {
+    launchStateToCreatePayload,
+    launchStateToUpdatePayload,
+    type LaunchState,
+} from '@/utils/tournamentVisibilityUtils';
+
+function migrateWizardDraft(parsed: Record<string, unknown>): TournamentWizardData {
+    const merged = { ...DEFAULT_WIZARD_DATA, ...parsed } as TournamentWizardData & { visibility?: string };
+    if (!merged.launchState && merged.visibility) {
+        merged.launchState = merged.visibility === 'public' ? 'public' : 'draft';
+    }
+    if (!merged.launchState) {
+        merged.launchState = 'draft';
+    }
+    return merged;
+}
 
 const STORAGE_KEY = 'tournament_wizard_draft';
 const STEP_KEY = 'tournament_wizard_step';
@@ -55,7 +71,7 @@ export const useTournamentWizard = (
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
-                try { return { ...DEFAULT_WIZARD_DATA, ...JSON.parse(saved) }; } catch { /* ignore corrupt draft */ }
+                try { return migrateWizardDraft(JSON.parse(saved)); } catch { /* ignore corrupt draft */ }
             }
         }
         return DEFAULT_WIZARD_DATA;
@@ -216,10 +232,15 @@ export const useTournamentWizard = (
                 // ── UPDATE path ─────────────────────────────────────────────────
 
                 // Tournament-level fields → .NET API
+                const launchPayload = launchStateToUpdatePayload(
+                    data.launchState,
+                    data.status || initialData?.status,
+                );
+
                 await apiClient.put(`/api/tournaments/${tournamentId}`, {
                     name:                 data.name,
                     description:          data.description,
-                    status:               data.status || undefined,
+                    status:               launchPayload.status,
                     maxTeams:             data.maxTeams,
                     teamSize:             data.teamSize,
                     gameMode:             resolvedGameMode,
@@ -230,7 +251,7 @@ export const useTournamentWizard = (
                     registrationDeadline: registrationCloses.toISOString(),
                     bannerUrl:            data.bannerUrl,
                     logoUrl:              data.logoUrl,
-                    isPublic:             data.visibility === 'public',
+                    isPublic:             launchPayload.isPublic,
                     checkInRequired:      data.checkInRequired,
                     checkInDeadline:      new Date(startDateTime.getTime() - (data.checkInWindowMinutes || 30) * 60000).toISOString(),
                     rewards:              data.rewards,
@@ -338,13 +359,15 @@ export const useTournamentWizard = (
                 const slug = slugify(data.name, { lower: true, strict: true });
                 const organizationId = await fetchCurrentOrganizationId();
 
+                const createLaunch = launchStateToCreatePayload(data.launchState as LaunchState);
+
                 const tournament = await apiClient.post<{ slug: string; name?: string }>('/api/tournaments', {
                     name:                 data.name,
                     description:          data.description,
                     slug,
                     game:                 data.game,
                     gameMode:             resolvedGameMode,
-                    status:               data.status || 'open',
+                    status:               createLaunch.status,
                     maxTeams:             data.maxTeams,
                     teamSize:             data.teamSize,
                     entryFee:             toMoney(data.entryFee),
@@ -354,7 +377,7 @@ export const useTournamentWizard = (
                     registrationDeadline: registrationCloses.toISOString(),
                     bannerUrl:            data.bannerUrl,
                     logoUrl:              data.logoUrl,
-                    isPublic:             data.visibility === 'public',
+                    isPublic:             createLaunch.isPublic,
                     organizationId:       organizationId ?? undefined,
                     checkInRequired:      data.checkInRequired,
                     checkInDeadline:      new Date(startDateTime.getTime() - (data.checkInWindowMinutes || 30) * 60000).toISOString(),

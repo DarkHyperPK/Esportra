@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { WizardContainer } from '@/components/tournament/wizard';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA } from '@/types/tournamentWizard';
+import { apiToLaunchState } from '@/utils/tournamentVisibilityUtils';
 import { Loader2 } from 'lucide-react';
 
 const EditTournament = () => {
@@ -96,7 +97,7 @@ const EditTournament = () => {
         name: tournamentData.name,
         game: tournamentData.game,
         isOnline: tournamentData.is_online ?? true, // Default to true if null
-        visibility: tournamentData.is_public ? 'public' : 'unlisted',
+        launchState: apiToLaunchState(tournamentData.status, tournamentData.is_public),
         startDate: toLocalDate(startDate),
         startTime: toLocalTime(startDate),
         endDate: toLocalDate(endDate),

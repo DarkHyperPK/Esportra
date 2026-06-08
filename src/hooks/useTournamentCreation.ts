@@ -134,7 +134,8 @@ export const useTournamentCreation = () => {
         entryFee:    toMoney(formData.entryFee, true),
         prizePool:   toMoney(formData.prizePool),
         startDate:   startDateTime.toISOString(),
-        isPublic:    true,
+        status:      'draft',
+        isPublic:    false,
         organizationId: organizationId ?? undefined,
       });
 

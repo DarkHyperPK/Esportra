@@ -5,6 +5,9 @@ import type { BRScoringPreset } from './battleRoyale';
 export type BracketType = 'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin';
 export type TournamentType = 'bracket' | 'battle_royale';
 export type SeedingType = 'random' | 'manual' | 'skill_based';
+import type { LaunchState } from '@/utils/tournamentVisibilityUtils';
+
+/** @deprecated Use LaunchState — kept for localStorage draft migration only */
 export type Visibility = 'public' | 'unlisted';
 
 export interface TournamentStage {
@@ -21,7 +24,7 @@ export interface TournamentWizardData {
     game: string;
     gameMode: string;
     isOnline: boolean;
-    visibility: Visibility;
+    launchState: LaunchState;
     startDate: string;
     startTime: string;
     endDate: string;
@@ -109,7 +112,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     game: '',
     gameMode: '',
     isOnline: true,
-    visibility: 'unlisted',
+    launchState: 'draft',
     startDate: '',
     startTime: '',
     endDate: '',

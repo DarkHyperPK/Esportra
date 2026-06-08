@@ -10,7 +10,9 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, MapPin, Calendar, Clock, EyeOff, Lock, Target } from 'lucide-react';
+import { Globe, MapPin, Calendar, Clock, Eye, EyeOff, Lock, Target } from 'lucide-react';
+import type { LaunchState } from '@/utils/tournamentVisibilityUtils';
+import { LAUNCH_STATE_DESCRIPTIONS, LAUNCH_STATE_LABELS } from '@/utils/tournamentVisibilityUtils';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
@@ -330,36 +332,56 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                 {errors.region && <p className="text-sm text-red-500">{errors.region}</p>}
             </div>
 
-            {/* Visibility - Simplified to Draft only */}
+            {/* Launch state: Draft / Private / Public */}
             <div className="w-full h-px bg-white/5 my-6" />
             <div className="space-y-4">
                 <div>
-                    <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Visibility</Label>
-                    <p className="text-sm text-gray-400 mt-1">Tournaments start as unlisted drafts and can be published after setup.</p>
+                    <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Launch State</Label>
+                    <p className="text-sm text-gray-400 mt-1">
+                        Choose how this tournament is discovered. Registration rules are configured separately in Step 4.
+                    </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div
-                        className={cn(
-                            "flex flex-col items-center p-6 rounded-none border-2 transition-all text-center",
-                            "border-rose-500 bg-rose-500/10"
-                        )}
-                    >
-                        <EyeOff className="w-8 h-8 mb-3 text-rose-400" />
-                        <div className="text-base font-bold text-white uppercase tracking-tight">Unlisted (Draft)</div>
-                        <div className="text-xs text-rose-400/70 mt-1 font-medium">Only you can see this right now</div>
-                    </div>
-
-                    <div className="flex flex-col justify-center p-4 rounded-none border border-white/5 bg-white/[0.01] text-left">
-                        <div className="flex items-center gap-2 mb-2 text-white/40">
-                            <Globe className="w-4 h-4" />
-                            <span className="text-xs font-bold uppercase tracking-widest">Go Public Later</span>
-                        </div>
-                        <p className="text-xs text-gray-500 leading-relaxed">
-                            Once your tournament details and bracket are ready, you can publish it to the public listing with one click from the dashboard.
-                        </p>
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {([
+                        { value: 'draft' as LaunchState, icon: EyeOff, accent: 'rose' },
+                        { value: 'private' as LaunchState, icon: Eye, accent: 'purple' },
+                        { value: 'public' as LaunchState, icon: Globe, accent: 'emerald' },
+                    ]).map(({ value, icon: Icon, accent }) => {
+                        const selected = data.launchState === value;
+                        return (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => updateData({ launchState: value })}
+                                className={cn(
+                                    'flex flex-col items-center p-5 rounded-none border-2 transition-all text-center cursor-pointer',
+                                    selected
+                                        ? accent === 'rose'
+                                            ? 'border-rose-500 bg-rose-500/10'
+                                            : accent === 'purple'
+                                                ? 'border-purple-500/60 bg-purple-500/10'
+                                                : 'border-emerald-500/60 bg-emerald-500/10'
+                                        : 'border-white/10 bg-white/[0.02] hover:border-white/25',
+                                )}
+                            >
+                                <Icon className={cn(
+                                    'w-7 h-7 mb-3',
+                                    selected
+                                        ? accent === 'rose' ? 'text-rose-400' : accent === 'purple' ? 'text-purple-400' : 'text-emerald-400'
+                                        : 'text-gray-500',
+                                )} />
+                                <div className="text-sm font-bold text-white uppercase tracking-tight">
+                                    {LAUNCH_STATE_LABELS[value]}
+                                </div>
+                                <div className="text-xs text-gray-500 mt-2 leading-relaxed">
+                                    {LAUNCH_STATE_DESCRIPTIONS[value]}
+                                </div>
+                            </button>
+                        );
+                    })}
                 </div>
+                {errors.launchState && <p className="text-sm text-red-500">{errors.launchState}</p>}
             </div>
 
             {/* Date and Time */}

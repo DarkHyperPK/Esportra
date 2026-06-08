@@ -10,7 +10,7 @@ const basicInfoBase = z.object({
         .max(100, 'Tournament name cannot exceed 100 characters'),
     game: z.string().min(1, 'Please select a game'),
     isOnline: z.boolean(),
-    visibility: z.enum(['public', 'unlisted']),
+    launchState: z.enum(['draft', 'private', 'public']),
     startDate: z.string().min(1, 'Start date is required'),
     startTime: z.string().min(1, 'Start time is required'),
     endDate: z.string().optional(),

@@ -4,13 +4,11 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
-import { cn } from '@/lib/utils';
 import { OrganizerTeamCard } from '@/components/organizer/OrganizerTeamCard';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,6 +30,7 @@ import {
   CheckCircle,
   Edit2,
   Eye,
+  EyeOff,
   GamepadIcon,
   Globe,
   Layers,
@@ -42,7 +41,6 @@ import {
   ShieldCheck,
   Swords,
   Trophy,
-  X,
   Zap,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
@@ -88,6 +86,7 @@ import {
   getInviteExpiryDaysFromTournament,
   getReservedInviteSlotsFromTournament,
 } from '@/utils/tournamentInviteUtils';
+import { makePrivateUpdatePayload } from '@/utils/tournamentVisibilityUtils';
 import { StageGuidelineModal } from '@/components/organizer/wizard/StageGuidelineModal';
 import { CommandButton, CommandTabButton } from '@/components/management/CommandSurface';
 
@@ -305,6 +304,8 @@ const TournamentDashboard = () => {
   const [now, setNow] = useState(Date.now());
   const [participantsPage, setParticipantsPage] = useState(1);
   const [publishMockGuardOpen, setPublishMockGuardOpen] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [pendingPublishMode, setPendingPublishMode] = useState<'private' | 'public' | null>(null);
   const [showGuidelines, setShowGuidelines] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [draftInviteEmails, setDraftInviteEmails] = useState<string[]>([]);
@@ -350,6 +351,61 @@ const TournamentDashboard = () => {
     slug: slug ?? '',
     userId: user?.id,
   });
+
+  const executePublish = useCallback(async (mode: 'private' | 'public', clearMocksFirst = false) => {
+    if (!tournament?.id) return;
+    try {
+      if (clearMocksFirst) {
+        await clearMockForPublish.mutateAsync();
+      }
+      const payload = mode === 'private'
+        ? { status: tournament.status === 'draft' ? 'published' : tournament.status, isPublic: false }
+        : { status: 'open', isPublic: true };
+      await apiClient.put(`/api/tournaments/${tournament.id}`, payload);
+      refetchDashboard();
+      toast({
+        title: mode === 'private' ? 'Published privately' : 'Published publicly',
+        description: mode === 'private'
+          ? 'Your tournament is live via direct link. It will not appear in public listings.'
+          : 'Your tournament is now discoverable and open for registration.',
+      });
+      setPublishDialogOpen(false);
+    } catch (err: unknown) {
+      toast({
+        title: 'Publish failed',
+        description: getApiErrorMessage(err, 'We could not publish this tournament. Check required settings and try again.'),
+        variant: 'destructive',
+      });
+    }
+  }, [tournament?.id, tournament?.status, clearMockForPublish, refetchDashboard, toast]);
+
+  const requestPublish = useCallback((mode: 'private' | 'public') => {
+    if (mockCount > 0) {
+      setPendingPublishMode(mode);
+      setPublishMockGuardOpen(true);
+      return;
+    }
+    void executePublish(mode);
+  }, [mockCount, executePublish]);
+
+  const handleMakePrivate = useCallback(async () => {
+    if (!tournament?.id) return;
+    try {
+      const payload = makePrivateUpdatePayload(tournament.status);
+      await apiClient.put(`/api/tournaments/${tournament.id}`, payload);
+      refetchDashboard();
+      toast({
+        title: 'Tournament is now private',
+        description: 'It remains accessible via direct link but is hidden from public listings.',
+      });
+    } catch (err: unknown) {
+      toast({
+        title: 'Update failed',
+        description: getApiErrorMessage(err, 'We could not make this tournament private. Try again.'),
+        variant: 'destructive',
+      });
+    }
+  }, [tournament?.id, tournament?.status, refetchDashboard, toast]);
 
   const activeParticipants = useMemo(
     () => participants.filter((participant) => !['rejected', 'cancelled', 'disqualified'].includes(participant.status)),
@@ -1171,81 +1227,120 @@ const TournamentDashboard = () => {
             {/* Right: Actions & Status */}
             <div className="flex flex-col items-end gap-3 self-end sm:self-auto">
               <div className="flex flex-wrap items-center justify-end gap-3 mt-auto">
-                {isOrganizer && (tournament.status === 'draft' || !tournament.is_public) && (
-                  <>
-                    <CommandButton
-                      onClick={() => {
-                        if (mockCount > 0) {
-                          setPublishMockGuardOpen(true);
-                        } else {
-                          (async () => {
-                            try {
-                              await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open', isPublic: true });
-                              refetchDashboard();
-                              toast({ title: 'Tournament Published!', description: 'Your tournament is now live and public.' });
-                            } catch (err: unknown) {
-                              toast({
-                                title: 'Publish failed',
-                                description: getApiErrorMessage(err, 'We could not publish this tournament. Check required settings and try again.'),
-                                variant: 'destructive'
-                              });
-                            }
-                          })();
-                        }
-                      }}
-                      variant="primary"
-                      size="sm"
-                    >
-                      <Globe className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
-                      Publish Tournament
-                    </CommandButton>
-
-                    {/* Mock-participants-exist guard before publish */}
-                    <AlertDialog open={publishMockGuardOpen} onOpenChange={setPublishMockGuardOpen}>
-                      <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="flex items-center gap-2">
-                            <AlertTriangle className="h-5 w-5 text-amber-400" />
-                            Mock teams detected
-                          </AlertDialogTitle>
-                          <AlertDialogDescription className="text-zinc-400">
-                            This tournament has {mockCount} mock team{mockCount !== 1 ? 's' : ''} from simulation
-                            mode. They must be removed before publishing. Click "Clear & Publish" to remove
-                            them and publish immediately.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel asChild>
-                            <CommandButton variant="secondary" size="sm">Cancel</CommandButton>
-                          </AlertDialogCancel>
-                          <AlertDialogAction asChild>
-                            <CommandButton
-                              variant="primary"
-                              size="sm"
-                              onClick={async () => {
-                                try {
-                                  await clearMockForPublish.mutateAsync();
-                                  await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open', isPublic: true });
-                                  refetchDashboard();
-                                  toast({ title: 'Tournament Published!', description: 'Mock data cleared and tournament is now live.' });
-                                } catch (err: unknown) {
-                                  toast({
-                                    title: 'Publish failed',
-                                    description: getApiErrorMessage(err, 'We could not clear mock data and publish. Try clearing mocks from Mock Mode first, then publish again.'),
-                                    variant: 'destructive'
-                                  });
-                                }
-                                setPublishMockGuardOpen(false);
-                              }}
-                            >
-                              Clear & Publish
-                            </CommandButton>
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </>
+                {isOrganizer && tournament.status === 'draft' && (
+                  <CommandButton
+                    onClick={() => setPublishDialogOpen(true)}
+                    variant="primary"
+                    size="sm"
+                  >
+                    <Globe className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
+                    Publish Tournament
+                  </CommandButton>
                 )}
+
+                {isOrganizer && tournament.status !== 'draft' && !tournament.is_public && (
+                  <CommandButton
+                    onClick={() => requestPublish('public')}
+                    variant="primary"
+                    size="sm"
+                  >
+                    <Globe className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
+                    Make Public
+                  </CommandButton>
+                )}
+
+                {isOrganizer && tournament.status !== 'draft' && tournament.is_public && (
+                  <CommandButton
+                    onClick={() => void handleMakePrivate()}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    <EyeOff className="w-4 h-4 mr-2" />
+                    Make Private
+                  </CommandButton>
+                )}
+
+                <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+                  <DialogContent className="bg-[#0a0a0c] border-white/10 max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="text-white">Publish Tournament</DialogTitle>
+                      <DialogDescription className="text-gray-400">
+                        Choose how players can discover this tournament. You can change visibility later from the dashboard.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-3 py-2">
+                      <CommandButton
+                        variant="secondary"
+                        size="sm"
+                        className="w-full justify-start h-auto py-4 px-4"
+                        onClick={() => requestPublish('private')}
+                      >
+                        <EyeOff className="w-5 h-5 mr-3 shrink-0 text-purple-400" />
+                        <div className="text-left">
+                          <div className="font-bold text-white">Publish privately</div>
+                          <div className="text-xs text-gray-500 font-normal mt-0.5">Link-only access. Hidden from browse and search.</div>
+                        </div>
+                      </CommandButton>
+                      <CommandButton
+                        variant="primary"
+                        size="sm"
+                        className="w-full justify-start h-auto py-4 px-4"
+                        onClick={() => requestPublish('public')}
+                      >
+                        <Globe className="w-5 h-5 mr-3 shrink-0" />
+                        <div className="text-left">
+                          <div className="font-bold">Publish publicly</div>
+                          <div className="text-xs opacity-80 font-normal mt-0.5">Listed in discovery. Open for registration.</div>
+                        </div>
+                      </CommandButton>
+                    </div>
+                    <DialogFooter>
+                      <CommandButton variant="ghost" size="sm" onClick={() => setPublishDialogOpen(false)}>
+                        Cancel
+                      </CommandButton>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <AlertDialog
+                  open={publishMockGuardOpen}
+                  onOpenChange={(open) => {
+                    setPublishMockGuardOpen(open);
+                    if (!open) setPendingPublishMode(null);
+                  }}
+                >
+                  <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-amber-400" />
+                        Mock teams detected
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="text-zinc-400">
+                        This tournament has {mockCount} mock team{mockCount !== 1 ? 's' : ''} from simulation
+                        mode. They must be removed before publishing.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel asChild>
+                        <CommandButton variant="secondary" size="sm">Cancel</CommandButton>
+                      </AlertDialogCancel>
+                      <AlertDialogAction asChild>
+                        <CommandButton
+                          variant="primary"
+                          size="sm"
+                          onClick={async () => {
+                            const mode = pendingPublishMode ?? 'public';
+                            await executePublish(mode, true);
+                            setPublishMockGuardOpen(false);
+                            setPendingPublishMode(null);
+                          }}
+                        >
+                          Clear &amp; Publish
+                        </CommandButton>
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
 
                 {isOrganizer && tournament.status !== 'completed' && tournament.status !== 'draft' && (
                   <CommandButton
