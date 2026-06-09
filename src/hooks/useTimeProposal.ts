@@ -14,7 +14,11 @@ interface TimeProposal {
     responded_at: string | null;
 }
 
-export const useTimeProposal = (matchId: string | undefined) => {
+export const useTimeProposal = (
+    matchId: string | undefined,
+    options?: { subscribeRealtime?: boolean },
+) => {
+    const subscribeRealtime = options?.subscribeRealtime !== false;
     const queryClient = useQueryClient();
     const { toast } = useToast();
     const { user } = useAuth();
@@ -30,10 +34,10 @@ export const useTimeProposal = (matchId: string | undefined) => {
     const activeProposal = proposals?.find(p => p.status === 'pending') ?? null;
     const acceptedProposal = proposals?.find(p => p.status === 'accepted') ?? null;
 
-    // Live updates via SignalR MatchHub
+    // Live updates via SignalR MatchHub (skip when parent owns MatchHub subscription)
     useMatchRealtime({
         matchId,
-        enabled: !!matchId,
+        enabled: subscribeRealtime && !!matchId,
         onStatusChanged: () => queryClient.invalidateQueries({ queryKey: ['match-time-proposals', matchId] }),
     });
 

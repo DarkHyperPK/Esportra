@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ArrowRightLeft, Building2, Gamepad2, Trophy } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { useAuth } from '@/hooks/useAuth';
-import { apiClient } from '@/lib/apiClient';
+import { useMeRoles } from '@/hooks/useMeRoles';
 import { useToast } from "@/hooks/use-toast";
 import VerificationRequestForm from '@/components/VerificationRequestForm';
 import { JackButton } from '@/components/ui/JackButton';
@@ -88,40 +88,30 @@ export const RoleSwitcherDialog: React.FC<{
   }>({ organizer: false, venue_owner: false });
   const [verificationSystemReady, setVerificationSystemReady] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const { data: rolesData, isLoading: rolesLoading } = useMeRoles(open && !!user);
 
-  // Check verification status for organizer and venue_owner roles using multi-role system
-  const checkVerificationStatus = useCallback(async () => {
-    if (!user) return;
+  useEffect(() => {
+    if (!open || !user) return;
+    if (rolesLoading) return;
+
     try {
-      const rolesData = await apiClient.get<{
-        userRoles: Array<{ role: string; is_active: boolean }>;
-        verifiedRoles: Array<{ role: string; status: string; is_active: boolean }>;
-      }>('/api/me/roles');
-
       const isAdmin = profile?.is_admin;
-      const hasOrganizerRole = rolesData.userRoles?.some(r => r.role === 'organizer' && r.is_active) || false;
-      const hasVenueOwnerRole = rolesData.userRoles?.some(r => r.role === 'venue_owner' && r.is_active) || false;
-      const isOrganizerVerified = rolesData.verifiedRoles?.some(r => r.role === 'organizer' && r.status === 'approved' && r.is_active) || false;
-      const isVenueOwnerVerified = rolesData.verifiedRoles?.some(r => r.role === 'venue_owner' && r.status === 'approved' && r.is_active) || false;
+      const hasOrganizerRole = rolesData?.userRoles?.some(r => r.role === 'organizer' && r.is_active) || false;
+      const hasVenueOwnerRole = rolesData?.userRoles?.some(r => r.role === 'venue_owner' && r.is_active) || false;
+      const isOrganizerVerified = rolesData?.verifiedRoles?.some(r => r.role === 'organizer' && r.status === 'approved' && r.is_active) || false;
+      const isVenueOwnerVerified = rolesData?.verifiedRoles?.some(r => r.role === 'venue_owner' && r.status === 'approved' && r.is_active) || false;
 
       setVerificationSystemReady(true);
       setVerificationStatus({
         organizer: isAdmin || (hasOrganizerRole && isOrganizerVerified),
-        venue_owner: isAdmin || (hasVenueOwnerRole && isVenueOwnerVerified)
+        venue_owner: isAdmin || (hasVenueOwnerRole && isVenueOwnerVerified),
       });
-
     } catch (error) {
       console.error('Error checking verification status:', error);
       setVerificationSystemReady(false);
       setVerificationStatus({ organizer: false, venue_owner: false });
     }
-  }, [profile?.is_admin, user]);
-
-  useEffect(() => {
-    if (open) {
-      void checkVerificationStatus();
-    }
-  }, [checkVerificationStatus, open]);
+  }, [open, user, profile?.is_admin, rolesData, rolesLoading]);
 
   const handleRoleSwitch = async (newRole: 'casual' | 'organizer' | 'venue_owner') => {
     if (currentRole === 'admin' || isLoading) {

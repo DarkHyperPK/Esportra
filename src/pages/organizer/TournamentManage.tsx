@@ -67,7 +67,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { getEffectiveGameFeatures, getParticipantMode, isBattleRoyaleTournament, getBRConfig, getGameByName, getPersistedTournamentFormat } from '@/utils/gameFeatures';
-import { useGameCatalog } from '@/hooks/useGameCatalog';
 import BanManagement from '@/components/organizer/BanManagement';
 import PaymentManagement from '@/components/organizer/PaymentManagement';
 import DisputeCenter from '@/components/organizer/DisputeCenter';
@@ -204,7 +203,6 @@ const TabTransition = ({ children, direction, className }: { children: React.Rea
 };
 
 const TournamentDashboard = () => {
-  useGameCatalog();
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -232,6 +230,13 @@ const TournamentDashboard = () => {
   );
   const isOrganizer = dashboardData?.isOrganizer || false;
 
+  const needsStageCompletionCheck = useMemo(() => {
+    if (!isOrganizer || !tournament?.end_date || stages.length === 0) return false;
+    const start = tournament.start_date ? new Date(tournament.start_date) : null;
+    if (!start || Number.isNaN(start.getTime())) return false;
+    return Date.now() >= start.getTime();
+  }, [isOrganizer, tournament?.end_date, tournament?.start_date, stages.length]);
+
   const stageCompletionQueries = useQueries({
     queries: stages.map((stage) => ({
       queryKey: ['stage-completion', stage.id],
@@ -239,7 +244,7 @@ const TournamentDashboard = () => {
         const raw = await apiClient.get<{ isComplete?: boolean }>(`/api/stages/${stage.id}/completion-status`);
         return Boolean(raw.isComplete);
       },
-      enabled: Boolean(stage.id) && isOrganizer,
+      enabled: Boolean(stage.id) && needsStageCompletionCheck,
       staleTime: 60_000,
     })),
   });

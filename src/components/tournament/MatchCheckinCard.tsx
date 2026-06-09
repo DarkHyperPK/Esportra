@@ -22,6 +22,8 @@ interface MatchCheckinCardProps {
     selfPlayEnabled: boolean;
     checkInWindowMinutes?: number;
     onPartyCodeGenerated?: (code: string) => void;
+    /** When false, parent page handles MatchHub realtime (avoids duplicate JoinMatch). */
+    subscribeRealtime?: boolean;
 }
 
 const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
@@ -36,13 +38,14 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
     selfPlayEnabled,
     checkInWindowMinutes = 15, // Default to 15 if not provided
     onPartyCodeGenerated,
+    subscribeRealtime = true,
 }) => {
     const {
         checkinStatus,
         checkIn,
         isCheckinWindowOpen,
         isCheckinWindowClosed,
-    } = useMatchCheckin(matchId, team1Id, team2Id);
+    } = useMatchCheckin(matchId, team1Id, team2Id, { subscribeRealtime });
     const { toast } = useToast();
     const [manualCode, setManualCode] = useState('');
     const [isSubmittingCode, setIsSubmittingCode] = useState(false);

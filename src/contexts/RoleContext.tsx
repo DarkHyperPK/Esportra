@@ -1,7 +1,9 @@
 import React, { useState, useEffect, ReactNode } from 'react';
-import { apiClient } from '@/lib/apiClient';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useMeRoles } from '@/hooks/useMeRoles';
+import { fetchMeRoles, meRolesQueryKey } from '@/lib/meRoles';
 import { RoleContext, type RoleContextType, type UserRole } from '@/contexts/role-context';
 
 export type { UserRole };
@@ -13,8 +15,10 @@ interface RoleProviderProps {
 export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [currentRole, setCurrentRole] = useState<UserRole>('casual');
   const [isLoading, setIsLoading] = useState(true);
+  const { data: rolesData, isLoading: rolesQueryLoading } = useMeRoles(!!user);
 
   // Load user's current role (session role takes priority over database role)
   const loadCurrentRole = React.useCallback(async () => {
@@ -24,13 +28,13 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
       return;
     }
 
+    if (rolesQueryLoading) return;
+
     try {
-      // Use profile from AuthContext instead of querying the DB again
       const isAdmin = profile?.is_admin || false;
       const adminRoles = (profile?.admin_roles as string[]) || [];
       const isSuperAdmin = adminRoles.includes('super_admin');
 
-      // If user is admin, set role based on admin type
       if (isAdmin) {
         const adminRole: UserRole = isSuperAdmin ? 'admin' : 'casual';
         setCurrentRole(adminRole);
@@ -39,21 +43,11 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
         return;
       }
 
-      // Check for session role first (from localStorage) - only for non-admins
       const sessionRole = localStorage.getItem('sessionRole') as UserRole;
-
-      // Fetch roles from API once for both checks
-      let rolesList: Array<{ role: string }> = [];
-      try {
-        const rolesData = await apiClient.get<{ userRoles: Array<{ role: string; is_active: boolean }>; verifiedRoles: any[] }>('/api/me/roles');
-        rolesList = rolesData.userRoles || [];
-      } catch {
-        rolesList = [];
-      }
+      const rolesList = rolesData?.userRoles || [];
 
       if (sessionRole && ['casual', 'organizer', 'venue_owner'].includes(sessionRole)) {
         const hasRole = rolesList.some(r => r.role === sessionRole);
-
         if (hasRole || sessionRole === 'casual') {
           setCurrentRole(sessionRole);
           setIsLoading(false);
@@ -61,27 +55,23 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
         }
       }
 
-      // Fallback to user's active roles or base role
       if (rolesList.length > 0) {
         const activeRole = rolesList[0].role as UserRole;
         setCurrentRole(activeRole);
         localStorage.setItem('sessionRole', activeRole);
       } else {
-        // Fallback to base role from the already-loaded profile
         const userBaseRole = (profile?.base_role as UserRole) || (profile?.role as UserRole) || 'casual';
         setCurrentRole(userBaseRole);
         localStorage.setItem('sessionRole', userBaseRole);
       }
-
     } catch (error) {
       console.error('Error in loadCurrentRole:', error);
-      // Fallback to cached profile
       const userBaseRole = (profile?.role as UserRole) || 'casual';
       setCurrentRole(userBaseRole);
     } finally {
       setIsLoading(false);
     }
-  }, [user, profile]);
+  }, [user, profile, rolesData, rolesQueryLoading]);
 
   // Update role when profile changes (but don't override session role)
   // Use ref to track previous profile role to avoid unnecessary updates
@@ -157,9 +147,13 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
       // Check if user has this role in the multi-role system
       if (newRole !== 'casual') {
-        let rolesData: { userRoles: Array<{ role: string }>; verifiedRoles: Array<{ role: string; status: string; is_active: boolean }> };
+        let rolesData: Awaited<ReturnType<typeof fetchMeRoles>>;
         try {
-          rolesData = await apiClient.get<typeof rolesData>('/api/me/roles');
+          rolesData = await queryClient.fetchQuery({
+            queryKey: meRolesQueryKey,
+            queryFn: fetchMeRoles,
+            staleTime: 5 * 60_000,
+          });
         } catch {
           rolesData = { userRoles: [], verifiedRoles: [] };
         }
@@ -215,7 +209,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, profile, currentRole, toast]);
+  }, [user, profile, currentRole, toast, queryClient]);
 
   // Reset to base role (clear session, return to database role)
   const resetToBaseRole = React.useCallback(async () => {

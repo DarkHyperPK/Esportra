@@ -23,7 +23,9 @@ export const useMatchCheckin = (
   matchId: string | undefined,
   team1Id: string | undefined,
   team2Id: string | undefined,
+  options?: { subscribeRealtime?: boolean },
 ) => {
+  const subscribeRealtime = options?.subscribeRealtime !== false;
   const queryClient = useQueryClient();
   const { toast }   = useToast();
   const { user }    = useAuth();
@@ -44,10 +46,10 @@ export const useMatchCheckin = (
   };
   checkinStatus.bothCheckedIn = checkinStatus.team1CheckedIn && checkinStatus.team2CheckedIn;
 
-  // Live check-in updates via SignalR MatchHub
+  // Live check-in updates via SignalR MatchHub (skip when parent owns MatchHub subscription)
   useMatchRealtime({
     matchId,
-    enabled: !!matchId,
+    enabled: subscribeRealtime && !!matchId,
     onCheckInUpdated: () =>
       queryClient.invalidateQueries({ queryKey: ['match-checkins', matchId] }),
   });

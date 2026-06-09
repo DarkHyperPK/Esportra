@@ -5,7 +5,7 @@ import { ROLE_PERMISSIONS } from '@/hooks/useAdminPermissions';
 import { AdminContext, type AdminContextValue } from '@/contexts/admin-context';
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [roles, setRoles] = useState<string[]>([]);
   const [permissions, setPermissions] = useState<string[]>([]);
@@ -26,22 +26,19 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
+    if (!profile) {
+      return;
+    }
+
     try {
       const normalizeRole = (role?: string | null) =>
         role ? role.toLowerCase().replace(/\s+/g, '_') : null;
 
-      // Fetch profile for is_admin flag
-      const profile = await apiClient.get<{
-        is_admin: boolean;
-        admin_roles: string[] | null;
-      }>('/api/profiles/me');
-
-      const isUserAdmin = !!profile?.is_admin;
+      const isUserAdmin = !!profile.is_admin;
       setIsAdmin(isUserAdmin);
 
       if (isUserAdmin) {
         try {
-          // Primary source: backend resolves roles + permissions from DB (plural resource names)
           const ctx = await apiClient.get<{
             adminRoles: string[];
             permissions: string[];
@@ -50,8 +47,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setRoles(ctx.adminRoles || []);
           setPermissions(ctx.permissions || []);
         } catch {
-          // Fallback: derive from profile's admin_roles + hardcoded ROLE_PERMISSIONS map
-          const profileRoles = (profile?.admin_roles || [])
+          const profileRoles = (profile.admin_roles || [])
             .map(normalizeRole)
             .filter((role): role is string => !!role);
 
@@ -77,7 +73,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setLoadingAdmin(false);
       }
     }
-  }, [user]);
+  }, [user, profile]);
 
   useEffect(() => {
     load();

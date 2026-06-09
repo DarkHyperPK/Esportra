@@ -18,6 +18,8 @@ interface TimeProposalCardProps {
     team1Id: string | undefined;
     isCaptain: boolean;
     onTimeAccepted?: () => void;
+    /** When false, parent page handles MatchHub realtime (avoids duplicate JoinMatch). */
+    subscribeRealtime?: boolean;
 }
 
 const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
@@ -29,9 +31,10 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
     team1Id: _team1Id,
     isCaptain,
     onTimeAccepted,
+    subscribeRealtime = true,
 }) => {
     const { user } = useAuth();
-    const { activeProposal, acceptedProposal, proposeTime, acceptProposal, rejectProposal, counterProposal } = useTimeProposal(matchId);
+    const { activeProposal, acceptedProposal, proposeTime, acceptProposal, rejectProposal, counterProposal } = useTimeProposal(matchId, { subscribeRealtime });
 
     const [showPicker, setShowPicker] = useState(false);
     const [proposedDate, setProposedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));

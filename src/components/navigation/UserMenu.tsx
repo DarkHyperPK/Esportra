@@ -7,12 +7,19 @@ import {
 import { useFramerDropdown } from "@/components/ui/framerDropdownContext";
 import { JackMenuItem, JackMenuDivider } from "@/components/ui/JackMenuItem";
 import { JackButton } from "@/components/ui/JackButton";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { useAdmin } from "@/hooks/useAdmin";
-import { apiClient } from "@/lib/apiClient";
-import { deriveHasApprovedLicense, deriveHasOrganization, fetchMeRoles } from "@/lib/meRoles";
+import { useMeRoles } from "@/hooks/useMeRoles";
+import {
+  useMyTeamsSummary,
+  useMyTeamInvitesSummary,
+  useStaffInvitesSummary,
+  useStaffAssignmentsSummary,
+} from "@/hooks/useNavTeamStatus";
+import { deriveHasApprovedLicense, deriveHasOrganization, meRolesQueryKey } from "@/lib/meRoles";
 import { RoleSwitcherDialog } from "@/components/RoleSwitcher";
 
 // Pill row showing current role + a JACK IN-style switch button
@@ -59,136 +66,53 @@ const UserMenu = ({
   const { user, profile, isEmailVerified } = useAuth();
   const { currentRole: userRole } = useRole();
   const admin = useAdmin();
-  const [hasTeam, setHasTeam] = useState(false);
-  const [hasPendingInvite, setHasPendingInvite] = useState(false);
-  const [hasStaffInvites, setHasStaffInvites] = useState(false);
-  const [hasStaffAssignments, setHasStaffAssignments] = useState(false);
-  const [hasOrganization, setHasOrganization] = useState(false);
+  const queryClient = useQueryClient();
+  const { data: meRoles } = useMeRoles(!!user?.id);
+  const { data: teams = [] } = useMyTeamsSummary();
+  const { data: teamInvites = [] } = useMyTeamInvitesSummary();
+  const { data: staffInvites = [] } = useStaffInvitesSummary();
+  const { data: staffAssignments = [] } = useStaffAssignmentsSummary();
   const [avatarFailed, setAvatarFailed] = useState(false);
-
-  // Track if user has any approved license (for role switcher visibility)
-  const [hasApprovedLicense, setHasApprovedLicense] = useState(false);
-
-  // State for Role Switcher Dialog (Lifted up so it persists after menu close)
   const [isRoleSwitcherOpen, setIsRoleSwitcherOpen] = useState(false);
 
-  // Check if organizer has an organization
-  const checkOrganization = useCallback(async () => {
-    if (!user?.id || userRole !== 'organizer') {
-      setHasOrganization(false);
-      return;
-    }
-    try {
-      const roles = await fetchMeRoles();
-      setHasOrganization(deriveHasOrganization(roles));
-    } catch {
-      setHasOrganization(false);
-    }
-  }, [user?.id, userRole]);
-
-  useEffect(() => {
-    checkOrganization();
-    // Listen for organization created event
-    const handleOrgCreated = () => checkOrganization();
-    window.addEventListener('organizationCreated', handleOrgCreated);
-    return () => window.removeEventListener('organizationCreated', handleOrgCreated);
-  }, [checkOrganization]);
+  const hasTeam = teams.length > 0;
+  const hasPendingInvite = teamInvites.length > 0;
+  const hasStaffInvites = staffInvites.length > 0;
+  const hasStaffAssignments = staffAssignments.length > 0;
+  const hasApprovedLicense = deriveHasApprovedLicense(meRoles);
+  const hasOrganization = userRole === 'organizer' && deriveHasOrganization(meRoles);
 
   useEffect(() => {
     setAvatarFailed(false);
   }, [profile?.avatar_url]);
 
-  // Check if user has any approved licenses (organizer or venue_owner)
   useEffect(() => {
-    const checkApprovedLicenses = async () => {
-      if (!user?.id) {
-        setHasApprovedLicense(false);
-        return;
-      }
-      try {
-        const roles = await fetchMeRoles();
-        setHasApprovedLicense(deriveHasApprovedLicense(roles));
-      } catch {
-        setHasApprovedLicense(false);
-      }
+    const handleOrgCreated = () => {
+      queryClient.invalidateQueries({ queryKey: meRolesQueryKey });
     };
-    checkApprovedLicenses();
-  }, [user?.id]);
-
-
-  const checkTeamStatus = useCallback(async () => {
-    if (!user) { setHasTeam(false); return; }
-    try {
-      const teams = await apiClient.get<any[]>('/api/teams/me');
-      setHasTeam(!!(teams && teams.length > 0));
-    } catch {
-      setHasTeam(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    checkTeamStatus();
-  }, [checkTeamStatus]);
-
-  // Check for pending team invitations for the current user (for badge indicator)
-  useEffect(() => {
-    const checkInvites = async () => {
-      if (!user?.id) { setHasPendingInvite(false); return; }
-      try {
-        const invites = await apiClient.get<any[]>('/api/teams/me/invites');
-        setHasPendingInvite(!!(invites && invites.length > 0));
-      } catch {
-        setHasPendingInvite(false);
-      }
-    };
-    checkInvites();
-  }, [user?.id, user?.email]);
-
-  useEffect(() => {
-    const checkStaffInvites = async () => {
-      if (!user?.id) {
-        setHasStaffInvites(false);
-        setHasStaffAssignments(false);
-        return;
-      }
-      try {
-        const invites = await apiClient.get<any[]>('/api/organizations/staff/invites');
-        setHasStaffInvites(!!(invites && invites.length > 0));
-        const assignments = await apiClient.get<any[]>('/api/organizations/staff/assignments');
-        setHasStaffAssignments(!!(assignments && assignments.length > 0));
-      } catch {
-        setHasStaffInvites(false);
-        setHasStaffAssignments(false);
-      }
-    };
-
-    checkStaffInvites();
-    const handle = () => checkStaffInvites();
-    window.addEventListener('staffInviteUpdated', handle);
-    return () => {
-      window.removeEventListener('staffInviteUpdated', handle);
-    };
-  }, [user?.id]);
-
-  // Listen for team changes (when user creates/joins/leaves a team)
-  useEffect(() => {
     const handleTeamChange = () => {
-      checkTeamStatus();
-      // Clear the badge once user joins a team
-      setHasPendingInvite(false);
+      queryClient.invalidateQueries({ queryKey: ['my-teams'] });
+      queryClient.invalidateQueries({ queryKey: ['my-team-invites'] });
+    };
+    const handleStaffInviteUpdated = () => {
+      queryClient.invalidateQueries({ queryKey: ['organizations', 'staff', 'invites'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', 'staff', 'assignments'] });
     };
 
-    // Listen for custom events that indicate team changes
+    window.addEventListener('organizationCreated', handleOrgCreated);
     window.addEventListener('teamCreated', handleTeamChange);
     window.addEventListener('teamJoined', handleTeamChange);
     window.addEventListener('teamLeft', handleTeamChange);
+    window.addEventListener('staffInviteUpdated', handleStaffInviteUpdated);
 
     return () => {
+      window.removeEventListener('organizationCreated', handleOrgCreated);
       window.removeEventListener('teamCreated', handleTeamChange);
       window.removeEventListener('teamJoined', handleTeamChange);
       window.removeEventListener('teamLeft', handleTeamChange);
+      window.removeEventListener('staffInviteUpdated', handleStaffInviteUpdated);
     };
-  }, [checkTeamStatus]);
+  }, [queryClient]);
 
   const roleLabel = admin.isAdmin
     ? admin.roles.includes('super_admin')

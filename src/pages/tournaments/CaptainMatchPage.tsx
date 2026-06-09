@@ -25,7 +25,6 @@ import MatchChat from '@/components/tournament/MatchChat';
 import TournamentEndScreen from '@/components/tournament/TournamentEndScreen';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 
-import { useMatchCheckin } from '@/hooks/useMatchCheckin';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useTimeProposal } from '@/hooks/useTimeProposal';
 import { useMatchResultReport } from '@/hooks/useMatchResultReport';
@@ -51,20 +50,23 @@ const CaptainMatchPage = () => {
     const queryClient = useQueryClient();
     const { userTeams, loading: teamsLoading } = useTeamManagement();
 
-    const [tournament, setTournament] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
     const [participants, setParticipants] = useState<Participant[]>([]);
     const [userTeamId, setUserTeamId] = useState<string | undefined>(undefined);
     const [isCaptain, setIsCaptain] = useState(false);
-    const [isOrganizer, setIsOrganizer] = useState(false);
     const [staffPermissions, setStaffPermissions] = useState<string[]>([]);
     const stageFormat = 'single_elimination';
     const roundDeadline: string | null = null;
     const [participantStatus, setParticipantStatus] = useState<string | null>(null);
     const [stageConfigs, setStageConfigs] = useState<Record<string, any>>({});
     const terminology = useGameTerminology(tournament?.game);
-    // Keep schedulingConfig as a derived value or helper for backward compatibility if needed, 
-    // but better to use lookups. We'll leave the state for now but ignore it in favor of the map.
+
+    // Match actions state
+    const [uploadOpen, setUploadOpen] = useState(false);
+    const [uploadMatchId, setUploadMatchId] = useState<string | undefined>(undefined);
+    const [mapVetoOpen, setMapVetoOpen] = useState(false);
+    const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
+    const [mapVetoMatchId, setMapVetoMatchId] = useState<string | null>(null);
+    const [vetoSummaryOpen, setVetoSummaryOpen] = useState(false);
 
     // Debounced bracket refetch to prevent rapid cascading re-renders from realtime events
     const bracketRefetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -76,88 +78,57 @@ const CaptainMatchPage = () => {
     }, [queryClient]);
     useEffect(() => () => { if (bracketRefetchTimer.current) clearTimeout(bracketRefetchTimer.current); }, []);
 
-    // Match actions state
-    const [uploadOpen, setUploadOpen] = useState(false);
-    const [uploadMatchId, setUploadMatchId] = useState<string | undefined>(undefined);
-    const [mapVetoOpen, setMapVetoOpen] = useState(false);
-    const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
-    const [mapVetoMatchId, setMapVetoMatchId] = useState<string | null>(null);
-    const [vetoSummaryOpen, setVetoSummaryOpen] = useState(false);
-
-    // Fetch all active bracket versions for tournament (via backend API)
-    const { data: bracketVersions, isLoading: versionsLoading } = useQuery({
-        queryKey: ['captain-bracket-versions', tournament?.id],
+    const { data: tournamentResponse, isLoading: tournamentLoading, isError: tournamentError } = useQuery({
+        queryKey: ['tournament-captain-room', slug],
         queryFn: async () => {
-            if (!tournament?.id) {
-                return [];
+            const response = await apiClient.get<any>(`/api/tournaments/${slug}`);
+            if (!response?.tournament) throw new Error('Tournament not found');
+            const tourney = response.tournament;
+            if (typeof tourney.settings === 'string') {
+                try { tourney.settings = JSON.parse(tourney.settings); } catch { /* keep as-is */ }
             }
-            const data = await apiClient.get<any[]>(`/api/brackets/versions/tournament/${tournament.id}`);
-            return data || [];
+            return response;
         },
-        enabled: !!tournament?.id,
+        enabled: !!slug,
     });
 
-    // Fetch all matches from all bracket versions
-    const { data: allGraphData, isLoading: graphLoading, refetch: refetchBracket } = useQuery({
-        queryKey: ['captain-all-matches', bracketVersions?.map((v: any) => v.id).join(',')],
-        queryFn: async () => {
-            if (!bracketVersions || bracketVersions.length === 0) return { nodes: [], edges: [] };
-            const results = await Promise.all(
-                bracketVersions.map((version: any) => repo.getGraphStructure(version.id))
-            );
-            const allNodes: any[] = [];
-            const allEdges: any[] = [];
-            for (const { nodes, edges } of results) {
-                allNodes.push(...nodes);
-                allEdges.push(...edges);
-            }
-            return { nodes: allNodes, edges: allEdges };
-        },
-        enabled: bracketVersions && bracketVersions.length > 0,
-    });
+    const tournament = tournamentResponse?.tournament ?? null;
+
+    const isOrganizer = useMemo(() => {
+        if (!tournamentResponse || !user) return false;
+        const tourney = tournamentResponse.tournament;
+        const perms: string[] = tournamentResponse.staffPermissions || [];
+        const ownsOrg = user.id === tourney.organization?.owner_id;
+        const isOrganizerUser = user.id === tourney.organizer_id;
+        const hasMatchRoomStaffPerm =
+            perms.includes('bracket:edit') || perms.includes('disputes:assist');
+        return Boolean(
+            tournamentResponse.isOrganizer || ownsOrg || isOrganizerUser || hasMatchRoomStaffPerm,
+        );
+    }, [tournamentResponse, user]);
 
     useEffect(() => {
-        if (bracketVersions && bracketVersions.length > 0 && tournament?.id) {
-            // Get unique stage IDs
-            const stageIds = Array.from(new Set(bracketVersions.map((v: any) => v.stage_id).filter(Boolean))) as string[];
-
-            if (stageIds.length > 0) {
-                apiClient.get<any[]>(`/api/tournaments/${tournament.id}/stages`)
-                    .then((stages) => {
-                        const configs: Record<string, any> = {};
-                        (stages || []).forEach((stage: any) => {
-                            let sc = stage.scheduling_config;
-                            if (typeof sc === 'string') {
-                                try { sc = JSON.parse(sc); } catch { sc = null; }
-                            }
-                            configs[stage.id] = {
-                                format: stage.format,
-                                scheduling_config: sc,
-                            };
-                        });
-                        setStageConfigs(configs);
-                    })
-                    .catch((error) => {
-                        console.error('Error fetching stage configs:', error);
-                    });
-            }
+        if (tournamentResponse?.participants) {
+            setParticipants(tournamentResponse.participants);
         }
-    }, [bracketVersions, tournament?.id]);
+    }, [tournamentResponse?.participants]);
 
-    // Build competitor map from graph nodes (includes solo participant slots — not /api/teams ids)
-    const teamsMap = useMemo(() => {
-        if (!allGraphData?.nodes) return new Map<string, { id: string; name: string; logo_url?: string | null }>();
-        return buildCompetitorMapFromNodes(allGraphData.nodes);
-    }, [allGraphData?.nodes]);
-
-    // Convert graph data to BracketMatch format
-    const matches = useMemo<BracketMatch[]>(() => {
-        if (!allGraphData?.nodes || !allGraphData?.edges) {
-            return [];
+    useEffect(() => {
+        if (tournamentResponse?.staffPermissions) {
+            setStaffPermissions(tournamentResponse.staffPermissions);
         }
-        const adapted = adaptGraphToBracketMatches(allGraphData.nodes, allGraphData.edges, teamsMap);
-        return adapted;
-    }, [allGraphData?.nodes, allGraphData?.edges, teamsMap]);
+    }, [tournamentResponse?.staffPermissions]);
+
+    useEffect(() => {
+        if (tournamentError) {
+            toast({
+                title: 'Error',
+                description: 'Failed to load tournament data',
+                variant: 'destructive',
+            });
+        }
+    }, [tournamentError, toast]);
+
     const canManageMatchRoom = useMemo(
         () =>
             isOrganizer
@@ -166,6 +137,8 @@ const CaptainMatchPage = () => {
         [isOrganizer, staffPermissions],
     );
 
+    const isOrganizerMatchView = !!urlMatchId && canManageMatchRoom;
+
     const { data: organizerMatch } = useQuery({
         queryKey: ['organizer-match', urlMatchId],
         queryFn: async () => {
@@ -173,7 +146,6 @@ const CaptainMatchPage = () => {
             try {
                 const data = await apiClient.get<any>(`/api/brackets/matches/${urlMatchId}`);
                 if (!data) return null;
-                // Convert backend match format to BracketMatch format directly
                 const team1: BracketTeam | null = data.team1_id ? {
                     id: data.team1_id,
                     name: data.team1_name || 'TBD',
@@ -219,56 +191,93 @@ const CaptainMatchPage = () => {
         enabled: !!urlMatchId && canManageMatchRoom,
     });
 
-    const isOrganizerMatchView = !!urlMatchId && canManageMatchRoom;
-    const bracketLoading = versionsLoading || graphLoading;
-    const organizerMatchLoading = isOrganizerMatchView && !organizerMatch;
-    const pageLoading = loading || bracketLoading || organizerMatchLoading;
+    const organizerVersionId = organizerMatch?.stageId;
 
-    // Fetch tournament details
-    const fetchTournamentData = useCallback(async () => {
-        if (!slug) return;
-        try {
-            setLoading(true);
+    // Captain path: scan all bracket versions to locate the user's active match
+    const { data: bracketVersions, isLoading: versionsLoading } = useQuery({
+        queryKey: ['captain-bracket-versions', tournament?.id],
+        queryFn: async () => {
+            if (!tournament?.id) return [];
+            const data = await apiClient.get<any[]>(`/api/brackets/versions/tournament/${tournament.id}`);
+            return data || [];
+        },
+        enabled: !!tournament?.id && !isOrganizerMatchView,
+    });
 
-            // Get tournament — returns wrapped { tournament, participants, stages, ... }
-            const response = await apiClient.get<any>(`/api/tournaments/${slug}`);
-            if (!response?.tournament) throw new Error('Tournament not found');
-
-            const tourney = response.tournament;
-            if (typeof tourney.settings === 'string') {
-                try { tourney.settings = JSON.parse(tourney.settings); } catch { /* keep as-is */ }
-            }
-            setTournament(tourney);
-
-            // Get participants from wrapped response
-            setParticipants(response.participants || []);
-
-            const perms: string[] = response.staffPermissions || [];
-            const ownsOrg = user?.id === tourney.organization?.owner_id;
-            const isOrganizerUser = user?.id === tourney.organizer_id;
-            const hasMatchRoomStaffPerm =
-                perms.includes('bracket:edit') || perms.includes('disputes:assist');
-
-            setStaffPermissions(perms);
-            setIsOrganizer(
-                response.isOrganizer || ownsOrg || isOrganizerUser || hasMatchRoomStaffPerm,
+    const { data: captainGraphData, isLoading: captainGraphLoading, refetch: refetchCaptainGraph } = useQuery({
+        queryKey: ['captain-all-matches', bracketVersions?.map((v: any) => v.id).join(',')],
+        queryFn: async () => {
+            if (!bracketVersions || bracketVersions.length === 0) return { nodes: [], edges: [] };
+            const results = await Promise.all(
+                bracketVersions.map((version: any) => repo.getGraphStructure(version.id))
             );
+            const allNodes: any[] = [];
+            const allEdges: any[] = [];
+            for (const { nodes, edges } of results) {
+                allNodes.push(...nodes);
+                allEdges.push(...edges);
+            }
+            return { nodes: allNodes, edges: allEdges };
+        },
+        enabled: !isOrganizerMatchView && !!bracketVersions && bracketVersions.length > 0,
+    });
 
-        } catch (error: any) {
-            console.error('Error fetching tournament:', error);
-            toast({
-                title: 'Error',
-                description: 'Failed to load tournament data',
-                variant: 'destructive',
-            });
-        } finally {
-            setLoading(false);
-        }
-    }, [slug, toast, user?.id]);
+    // Organizer deep-link: one version graph for match history (not every bracket version)
+    const { data: organizerVersionMeta } = useQuery({
+        queryKey: ['bracket-version', organizerVersionId],
+        queryFn: () => apiClient.get<any>(`/api/brackets/versions/${organizerVersionId}`),
+        enabled: isOrganizerMatchView && !!organizerVersionId,
+    });
+
+    const { data: organizerGraphData, isLoading: organizerGraphLoading, refetch: refetchOrganizerGraph } = useQuery({
+        queryKey: ['captain-organizer-graph', organizerVersionId],
+        queryFn: () => repo.getGraphStructure(organizerVersionId!),
+        enabled: isOrganizerMatchView && !!organizerVersionId,
+    });
+
+    const allGraphData = isOrganizerMatchView ? organizerGraphData : captainGraphData;
+    const graphLoading = isOrganizerMatchView ? organizerGraphLoading : (versionsLoading || captainGraphLoading);
+    const refetchBracket = isOrganizerMatchView ? refetchOrganizerGraph : refetchCaptainGraph;
+
+    const { data: stagesData } = useQuery({
+        queryKey: ['tournament-stages', tournament?.id],
+        queryFn: () => apiClient.get<any[]>(`/api/tournaments/${tournament!.id}/stages`),
+        enabled: !!tournament?.id,
+    });
 
     useEffect(() => {
-        fetchTournamentData();
-    }, [fetchTournamentData]);
+        if (!stagesData?.length) return;
+        const configs: Record<string, any> = {};
+        stagesData.forEach((stage: any) => {
+            let sc = stage.scheduling_config;
+            if (typeof sc === 'string') {
+                try { sc = JSON.parse(sc); } catch { sc = null; }
+            }
+            configs[stage.id] = {
+                format: stage.format,
+                scheduling_config: sc,
+            };
+        });
+        setStageConfigs(configs);
+    }, [stagesData]);
+
+    // Build competitor map from graph nodes (includes solo participant slots — not /api/teams ids)
+    const teamsMap = useMemo(() => {
+        if (!allGraphData?.nodes) return new Map<string, { id: string; name: string; logo_url?: string | null }>();
+        return buildCompetitorMapFromNodes(allGraphData.nodes);
+    }, [allGraphData?.nodes]);
+
+    // Convert graph data to BracketMatch format
+    const matches = useMemo<BracketMatch[]>(() => {
+        if (!allGraphData?.nodes || !allGraphData?.edges) {
+            return [];
+        }
+        const adapted = adaptGraphToBracketMatches(allGraphData.nodes, allGraphData.edges, teamsMap);
+        return adapted;
+    }, [allGraphData?.nodes, allGraphData?.edges, teamsMap]);
+
+    const organizerMatchLoading = isOrganizerMatchView && !organizerMatch;
+    const pageLoading = tournamentLoading || graphLoading || organizerMatchLoading;
 
     // Identify captain and team
     useEffect(() => {
@@ -388,8 +397,11 @@ const CaptainMatchPage = () => {
     const historyIncludeLiveMatchId =
         activeMatch?.status === 'in_progress' ? activeMatch.id : undefined;
 
-    // Lifted Proposal state for higher-level visibility
-    const { acceptedProposal } = useTimeProposal(activeMatch?.id?.replace(/^(db-|wb-|lb-)/, ''));
+    // Lifted Proposal state for higher-level visibility (page owns MatchHub subscription)
+    const { acceptedProposal } = useTimeProposal(
+        activeMatch?.id?.replace(/^(db-|wb-|lb-)/, ''),
+        { subscribeRealtime: false },
+    );
 
     // The source of truth for "When is this match?"
     // If the database has it, use it. Otherwise, if there's an accepted proposal on this page, use that.
@@ -505,10 +517,12 @@ const CaptainMatchPage = () => {
     }, [activeMatch, isTournamentWinner, isTournamentRunnerUp, lastCompletedMatch, userTeamId, isDE, matches, tournament?.status]);
 
     // Derive scheduling config for the current active match
-    const activeMatchVersion = useMemo(() =>
-        bracketVersions?.find((v: any) => v.id === activeMatch?.stageId),
-        [bracketVersions, activeMatch?.stageId]
-    );
+    const activeMatchVersion = useMemo(() => {
+        if (isOrganizerMatchView && organizerVersionMeta) {
+            return organizerVersionMeta;
+        }
+        return bracketVersions?.find((v: any) => v.id === activeMatch?.stageId);
+    }, [isOrganizerMatchView, organizerVersionMeta, bracketVersions, activeMatch?.stageId]);
 
     const schedulingConfig = useMemo(() => {
         if (!activeMatchVersion?.stage_id) return null;
@@ -536,25 +550,25 @@ const CaptainMatchPage = () => {
     const [nextGameNumber, setNextGameNumber] = useState(1);
     const [nextGameMap, setNextGameMap] = useState<{ id: string, name: string } | null>(null);
 
-    // Fetch games AND determine next map in one call to avoid race conditions.
-    // brkt_match_games (populated by backend on veto completion) is the single source of truth.
-    const fetchMatchGamesAndMap = useCallback(async () => {
-        if (!activeMatch) return;
-        const realMatchId = activeMatch.id.replace(/^(db-|wb-|lb-)/, '');
+    const { refetch: refetchMatchGames } = useQuery({
+        queryKey: ['match-games', activeMatchRawId],
+        queryFn: async () => {
+            if (!activeMatchRawId) return [];
+            try {
+                return await apiClient.get<any[]>(`/api/matches/${activeMatchRawId}/games`) || [];
+            } catch {
+                return [];
+            }
+        },
+        enabled: !!activeMatchRawId,
+    });
 
-        let games: any[] = [];
-        try {
-            games = await apiClient.get<any[]>(`/api/matches/${realMatchId}/games`) || [];
-        } catch {
-            // Games not yet created (veto still in progress)
-        }
+    const applyMatchGames = useCallback((games: any[]) => {
         setMatchGames(games);
-
         const completed = games.filter((g: any) => g.status === 'completed').length;
         const gameNum = completed + 1;
         setNextGameNumber(gameNum);
 
-        // Find the game row for the next game number
         const targetGame = games.find((g: any) => {
             const gn = g.game_number ?? g.gameNumber;
             return gn == gameNum;
@@ -569,11 +583,18 @@ const CaptainMatchPage = () => {
 
         setNextGameMap(null);
         queryClient.invalidateQueries({ queryKey: ['match-history-games'] });
-    }, [activeMatch, queryClient]);
+    }, [queryClient]);
+
+    const fetchMatchGamesAndMap = useCallback(async () => {
+        if (!activeMatchRawId) return;
+        const { data: games } = await refetchMatchGames();
+        applyMatchGames(games || []);
+    }, [activeMatchRawId, refetchMatchGames, applyMatchGames]);
 
     useEffect(() => {
-        fetchMatchGamesAndMap();
-    }, [fetchMatchGamesAndMap]);
+        if (!activeMatchRawId) return;
+        void refetchMatchGames().then(({ data: games }) => applyMatchGames(games || []));
+    }, [activeMatchRawId, refetchMatchGames, applyMatchGames]);
 
     // Legacy aliases for SignalR handlers
     const fetchMatchGames = fetchMatchGamesAndMap;
@@ -588,7 +609,9 @@ const CaptainMatchPage = () => {
 
     // Bracket updates → debounced invalidation (structural changes)
     useBracketRealtime({
-        versionId: bracketVersions?.[0]?.id ?? null,
+        versionId: isOrganizerMatchView
+            ? (organizerVersionId ?? null)
+            : (bracketVersions?.[0]?.id ?? null),
         enabled: !!activeMatch?.id,
         onMatchUpdated: () => {
             debouncedBracketInvalidate();
@@ -637,13 +660,6 @@ const CaptainMatchPage = () => {
             determineMap();
         },
     });
-
-    // Check-in hooks (server handles auto-walkovers via background job)
-    useMatchCheckin(
-        activeMatch?.id.replace(/^(db-|wb-|lb-)/, ''),
-        activeMatch?.team1?.id,
-        activeMatch?.team2?.id
-    );
 
     const getRoundName = (round: number, bracketSide?: string) => {
         // Format-aware round naming
@@ -867,6 +883,7 @@ const CaptainMatchPage = () => {
                                                 refetchBracket();
                                                 toast({ title: 'Match Started', description: `Party Code: ${code}` });
                                             }}
+                                            subscribeRealtime={false}
                                         />
                                     )}
 
@@ -890,6 +907,7 @@ const CaptainMatchPage = () => {
                                                         refetchBracket();
                                                         toast({ title: 'Match Scheduled!', description: 'Now proceed to check-in.' });
                                                     }}
+                                                    subscribeRealtime={false}
                                                 />
                                             );
                                         })()
