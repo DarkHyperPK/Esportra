@@ -632,22 +632,22 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/tournament/:slug" element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['organizer']} allowStaffAssignments>
                     <TournamentManage />
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/tournament/:slug/edit" element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['organizer']} allowStaffAssignments>
                     <EditTournament />
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/tournament/:slug/brackets" element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['organizer']} allowStaffAssignments>
                     <TournamentBrackets />
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/tournament/:slug/manage-bracket/:stageId" element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['organizer']} allowStaffAssignments>
                     <ManageBracketPage />
                   </ProtectedRoute>
                 } />

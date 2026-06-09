@@ -2,6 +2,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useRole } from "@/hooks/useRole";
+import { useStaffAssignmentsSummary } from "@/hooks/useNavTeamStatus";
 import { ProfileLoading } from "./profile/ProfileLoading";
 import { UserRole } from "@/types/auth";
 
@@ -9,6 +10,8 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   redirectTo?: string;
   allowedRoles?: UserRole[];
+  /** Allow approved staff (any assignment) to enter organizer routes while in player mode. */
+  allowStaffAssignments?: boolean;
   requiresAuth?: boolean;
 }
 
@@ -16,12 +19,14 @@ const ProtectedRoute = ({
   children,
   redirectTo = "/auth/signin",
   allowedRoles,
+  allowStaffAssignments = false,
   requiresAuth = true
 }: ProtectedRouteProps) => {
   const location = useLocation();
   const { user, profile, loading, error: authError } = useAuth();
   const admin = useAdmin();
   const { currentRole, isLoading: roleLoading } = useRole();
+  const { data: staffAssignments = [] } = useStaffAssignmentsSummary();
 
   if (loading || roleLoading) {
     return <ProfileLoading error={authError} />;
@@ -48,7 +53,9 @@ const ProtectedRoute = ({
       return false;
     });
 
-    if (!isSuperAdmin && !hasRole && !hasAdminPerm) {
+    const hasStaffRouteAccess = allowStaffAssignments && staffAssignments.length > 0;
+
+    if (!isSuperAdmin && !hasRole && !hasAdminPerm && !hasStaffRouteAccess) {
       return <Navigate to="/unauthorized" />;
     }
   }

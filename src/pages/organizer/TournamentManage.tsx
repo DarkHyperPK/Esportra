@@ -55,6 +55,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useRole } from '@/hooks/useRole';
+import { useAdmin } from '@/hooks/useAdmin';
 import type { StaffPermission } from '@/lib/tournamentStaff';
 import {
   AlertDialog,
@@ -209,6 +211,8 @@ const TournamentDashboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { currentRole, isLoading: roleLoading } = useRole();
+  const admin = useAdmin();
 
   const {
     data: dashboardData,
@@ -229,13 +233,17 @@ const TournamentDashboard = () => {
     [dashboardData?.stages],
   );
   const isOrganizer = dashboardData?.isOrganizer || false;
+  const isSuperAdmin = admin.isAdmin && admin.roles.includes('super_admin');
+  const inOrganizerSession = currentRole === 'organizer' || isSuperAdmin;
+  /** Owner powers only when session role is Organizer (not Player mode). */
+  const canActAsOwner = isOrganizer && inOrganizerSession;
 
   const needsStageCompletionCheck = useMemo(() => {
-    if (!isOrganizer || !tournament?.end_date || stages.length === 0) return false;
+    if (!canActAsOwner || !tournament?.end_date || stages.length === 0) return false;
     const start = tournament.start_date ? new Date(tournament.start_date) : null;
     if (!start || Number.isNaN(start.getTime())) return false;
     return Date.now() >= start.getTime();
-  }, [isOrganizer, tournament?.end_date, tournament?.start_date, stages.length]);
+  }, [canActAsOwner, tournament?.end_date, tournament?.start_date, stages.length]);
 
   const stageCompletionQueries = useQueries({
     queries: stages.map((stage) => ({
@@ -253,6 +261,30 @@ const TournamentDashboard = () => {
     () => (dashboardData?.staffPermissions || []) as StaffPermission[],
     [dashboardData?.staffPermissions],
   );
+  const hasTournamentStaffAccess = staffPermissions.length > 0;
+
+  // Player session: leave organizer dashboard unless staff on this tournament
+  useEffect(() => {
+    if (dashboardLoading || roleLoading) return;
+    if (inOrganizerSession || hasTournamentStaffAccess) return;
+    if (slug) {
+      toast({
+        title: 'Organizer mode required',
+        description: 'Switch to Organizer role to manage this tournament.',
+      });
+      navigate(`/tournaments/${slug}`, { replace: true });
+      return;
+    }
+    navigate('/unauthorized', { replace: true });
+  }, [
+    dashboardLoading,
+    roleLoading,
+    inOrganizerSession,
+    hasTournamentStaffAccess,
+    slug,
+    navigate,
+    toast,
+  ]);
   const mockCount = dashboardData?.mockCount ?? 0;
 
   // BR game results management
@@ -440,7 +472,7 @@ const TournamentDashboard = () => {
   // Overdue Check & Auto-Extension Effect
   useEffect(() => {
     const checkOverdue = async () => {
-      if (!tournament || !isOrganizer || stages.length === 0) return;
+      if (!tournament || !canActAsOwner || stages.length === 0) return;
 
       const startDate = tournament.start_date ? new Date(tournament.start_date) : null;
       const endDate = tournament.end_date ? new Date(tournament.end_date) : null;
@@ -480,7 +512,7 @@ const TournamentDashboard = () => {
     };
 
     checkOverdue();
-  }, [tournament, isOrganizer, stages.length, stageCompletionQueries, refetchDashboard, toast]);
+  }, [tournament, canActAsOwner, stages.length, stageCompletionQueries, refetchDashboard, toast]);
 
 
   const handleTeamClick = useCallback(async (participant: Participant) => {
@@ -943,16 +975,16 @@ const TournamentDashboard = () => {
     effectiveDeadlineMs && !isCheckInClosed
       ? formatCountdown(effectiveDeadlineMs - now)
       : null;
-  const showCheckInSummary = Boolean((effectiveCheckInRequired || isOrganizer) && teamParticipants.length > 0);
+  const showCheckInSummary = Boolean((effectiveCheckInRequired || canActAsOwner) && teamParticipants.length > 0);
 
   const staffPermissionSummary =
     staffPermissions.map((perm) => STAFF_PERMISSION_LABELS[perm] || perm).join(', ') || 'Limited access';
 
-  const canManageStaff = isOrganizer;
-  const canAssistDisputes = isOrganizer || staffPermissions.includes('disputes:assist');
-  const canManageTeams = isOrganizer || staffPermissions.includes('teams:manage');
-  const canEditBracket = isOrganizer || staffPermissions.includes('bracket:edit');
-  const canSendAnnouncements = isOrganizer || staffPermissions.includes('announcements:send');
+  const canManageStaff = canActAsOwner;
+  const canAssistDisputes = canActAsOwner || staffPermissions.includes('disputes:assist');
+  const canManageTeams = canActAsOwner || staffPermissions.includes('teams:manage');
+  const canEditBracket = canActAsOwner || staffPermissions.includes('bracket:edit');
+  const canSendAnnouncements = canActAsOwner || staffPermissions.includes('announcements:send');
 
   const PermissionNotice = ({ message }: { message: string }) => (
     <Card className="bg-[#080d18] border border-white/5">
@@ -1263,7 +1295,7 @@ const TournamentDashboard = () => {
             {/* Right: Actions & Status */}
             <div className="flex flex-col items-end gap-3 self-end sm:self-auto">
               <div className="flex flex-wrap items-center justify-end gap-3 mt-auto">
-                {isOrganizer && tournament.status === 'draft' && (
+                {canActAsOwner && tournament.status === 'draft' && (
                   <CommandButton
                     onClick={() => setPublishDialogOpen(true)}
                     variant="primary"
@@ -1274,7 +1306,7 @@ const TournamentDashboard = () => {
                   </CommandButton>
                 )}
 
-                {isOrganizer && tournament.status !== 'draft' && !tournament.is_public && (
+                {canActAsOwner && tournament.status !== 'draft' && !tournament.is_public && (
                   <CommandButton
                     onClick={() => requestPublish('public')}
                     variant="primary"
@@ -1285,7 +1317,7 @@ const TournamentDashboard = () => {
                   </CommandButton>
                 )}
 
-                {isOrganizer && tournament.status !== 'draft' && tournament.is_public && (
+                {canActAsOwner && tournament.status !== 'draft' && tournament.is_public && (
                   <CommandButton
                     onClick={() => void handleMakePrivate()}
                     variant="secondary"
@@ -1378,7 +1410,7 @@ const TournamentDashboard = () => {
                   </AlertDialogContent>
                 </AlertDialog>
 
-                {isOrganizer && tournament.status !== 'completed' && tournament.status !== 'draft' && (
+                {canActAsOwner && tournament.status !== 'completed' && tournament.status !== 'draft' && (
                   <CommandButton
                     onClick={handleCompleteTournament}
                     variant="secondary"
@@ -1389,7 +1421,7 @@ const TournamentDashboard = () => {
                   </CommandButton>
                 )}
 
-                {isOrganizer && tournament.status === 'completed' && (
+                {canActAsOwner && tournament.status === 'completed' && (
                   <CommandButton
                     onClick={() => handleStatusChange('published')}
                     variant="warning"
@@ -1400,7 +1432,7 @@ const TournamentDashboard = () => {
                   </CommandButton>
                 )}
 
-                {isOrganizer && (
+                {canActAsOwner && (
                   <CommandButton
                     onClick={() => setShowGuidelines(true)}
                     variant="secondary"
@@ -1411,7 +1443,7 @@ const TournamentDashboard = () => {
                   </CommandButton>
                 )}
 
-                {isOrganizer && (
+                {canActAsOwner && (
                   <CommandButton
                     onClick={handleEditTournament}
                     variant="warning"
@@ -1509,7 +1541,7 @@ const TournamentDashboard = () => {
                     if (tab === 'announcements' && !canSendAnnouncements) return null;
                     if (tab === 'schedule' && !canEditBracket) return null;
                     if (tab === 'staff' && !canManageStaff) return null;
-                    if (tab === 'settings' && !isOrganizer) return null;
+                    if (tab === 'settings' && !canActAsOwner) return null;
 
                     return (
                       <SelectItem key={tab} value={tab} className="capitalize font-medium focus:bg-white/10 focus:text-white cursor-pointer py-3">
@@ -1558,7 +1590,7 @@ const TournamentDashboard = () => {
                   if (tab === 'disputes' && !canAssistDisputes) return null;
                   if (tab === 'schedule' && !canEditBracket) return null;
                   if (tab === 'staff' && !canManageStaff) return null;
-                  if (tab === 'settings' && !isOrganizer) return null;
+                  if (tab === 'settings' && !canActAsOwner) return null;
 
                   return (
                     <TabsTrigger
@@ -1632,7 +1664,7 @@ const TournamentDashboard = () => {
                 <TabsContent value="stages" forceMount key="stages">
                   <TabTransition direction={direction}>
                     {/* Mock Mode panel pinned above stages; always show clear controls while mocks exist. */}
-                    {isOrganizer && ((tournament.status === 'draft' && !tournament.is_public) || mockCount > 0) && (
+                    {canActAsOwner && ((tournament.status === 'draft' && !tournament.is_public) || mockCount > 0) && (
                       <div className="mb-4">
                         <MockModePanel
                           tournamentId={tournament.id}
@@ -1828,7 +1860,7 @@ const TournamentDashboard = () => {
                             </div>
                           </div>
 
-                          {isOrganizer && (
+                          {canActAsOwner && (
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
                               <div className="flex gap-2">
                                 <Button
@@ -2242,7 +2274,7 @@ const TournamentDashboard = () => {
               {activeTab === 'settings' && (
                 <TabsContent value="settings" forceMount key="settings">
                   <TabTransition direction={direction}>
-                    {!isOrganizer ? (
+                    {!canActAsOwner ? (
                       <PermissionNotice message="Tournament settings are available only to the organizer." />
                     ) : (
                       <>
