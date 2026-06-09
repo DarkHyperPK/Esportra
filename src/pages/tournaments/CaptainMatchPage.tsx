@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { MatchAutoReport } from '@/components/tournament/MatchAutoReport';
 import { BracketMatch, BracketTeam, BracketSide, Participant } from '@/types/bracketTypes';
 import CaptainMatchHistory from '@/components/tournament/CaptainMatchHistory';
-import { gameHasMapVeto, isBattleRoyale } from '@/utils/gameFeatures';
+import { gameHasMapVeto, isAssistedMatchReportingEnabled, isBattleRoyale } from '@/utils/gameFeatures';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
 import MatchCheckinCard from '@/components/tournament/MatchCheckinCard';
 import TimeProposalCard from '@/components/tournament/TimeProposalCard';
@@ -949,9 +949,12 @@ const CaptainMatchPage = () => {
 
                                         {/* Valorant Auto-Report — only when veto completed (or veto disabled) */}
                                         {(() => {
-                                            const isValorant = tournament?.game?.toLowerCase() === 'valorant';
-                                            const assistedEnabled = tournament?.settings?.assistedMatchReporting === true;
-                                            if (!isValorant || !assistedEnabled) return null;
+                                            const assistedEnabled = isAssistedMatchReportingEnabled(
+                                                tournament?.game || '',
+                                                tournament?.game_mode,
+                                                tournament?.settings as { assistedMatchReporting?: boolean },
+                                            );
+                                            if (!assistedEnabled) return null;
                                             const bestOf = activeMatch.bestOf || 1;
                                             const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
                                             const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;

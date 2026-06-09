@@ -66,7 +66,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { getEffectiveGameFeatures, isBattleRoyaleTournament, getBRConfig, getGameByName, getPersistedTournamentFormat } from '@/utils/gameFeatures';
+import { getEffectiveGameFeatures, getParticipantMode, isBattleRoyaleTournament, getBRConfig, getGameByName, getPersistedTournamentFormat } from '@/utils/gameFeatures';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import BanManagement from '@/components/organizer/BanManagement';
 import PaymentManagement from '@/components/organizer/PaymentManagement';
@@ -221,6 +221,7 @@ const TournamentDashboard = () => {
 
   const tournament = dashboardData?.tournament;
   const tournamentModeFeatures = getEffectiveGameFeatures(tournament?.game || '', tournament?.game_mode);
+  const registrationParticipantMode = getParticipantMode(tournament?.game || '', tournament?.game_mode);
   const participants = useMemo(
     () => (dashboardData?.participants || []) as Participant[],
     [dashboardData?.participants],
@@ -552,9 +553,9 @@ const TournamentDashboard = () => {
             });
             if (areUuids) {
               const mapTok = new Map<string, string>();
-              const isVal = tournament?.game?.toLowerCase() === 'valorant';
+              const preferRiotTag = tournamentModeFeatures.assistedReporting;
               (resolved || []).forEach((p: any) => {
-                const tag = isVal ? p.riot_tag : (p.riot_tag || p.steam_tag);
+                const tag = preferRiotTag ? p.riot_tag : (p.riot_tag || p.steam_tag);
                 mapTok.set(p.id, tag || p.username || p.full_name || `player_${String(p.id).substring(0, 8)}`);
               });
               namesResolved = tokens.map(id => mapTok.get(id) || `player_${String(id).substring(0, 8)}`);
@@ -2085,7 +2086,7 @@ const TournamentDashboard = () => {
                     <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
                       <CardHeader className="p-0 border-b border-white/5 pb-4 mb-6 relative z-10">
                         <CardTitle className="text-lg font-bold text-white tracking-wide">
-                          {tournament.team_size === 1 ? 'Registered Participants' : 'Registered Teams'}
+                          {registrationParticipantMode === 'solo' ? 'Registered Participants' : 'Registered Teams'}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-0 relative z-10">

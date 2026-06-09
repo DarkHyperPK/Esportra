@@ -7,7 +7,7 @@ import { AlertTriangle, Ban as BanIcon, Upload, DollarSign, CheckCircle, FileTex
 import { RegistrationDetails } from '@/types/tournament';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
-import { Button } from '@/components/ui/button';
+import { isTeamRegistrationMode } from '@/utils/gameFeatures';
 
 interface TournamentRegistrationProps {
   tournamentId: string;
@@ -15,6 +15,7 @@ interface TournamentRegistrationProps {
   game?: string;
   gameMode?: string | null;
   teamSize?: number;
+  participantMode?: 'solo' | 'team' | string | null;
   structure?: string;
   settings?: any;
   entryFee?: number | string | null;
@@ -33,6 +34,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   game = '',
   gameMode,
   teamSize = 1,
+  participantMode,
   settings,
   entryFee,
   currency = 'USD',
@@ -60,8 +62,8 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
     : (entryFee ?? 0);
   const isPaid = parsedFee > 0;
 
-  // Check if this is a team tournament
-  const isTeamTournament = (teamSize || 1) > 1 || game?.toLowerCase() === 'valorant';
+  // Check if this is a team tournament (catalog/tournament mode, not game-name heuristics)
+  const isTeamTournament = isTeamRegistrationMode(game, gameMode, participantMode);
 
   // Check for ban on mount
   useEffect(() => {

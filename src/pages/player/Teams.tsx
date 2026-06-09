@@ -25,6 +25,7 @@ import {
   getDefaultGameMode,
   getGameLogo as resolveGameLogo,
   getGameModes,
+  getRosterLimits,
   listCatalogGames,
 } from '@/utils/gameFeatures';
 import EditTeamDialog from '@/components/player/EditTeamDialog';
@@ -67,6 +68,7 @@ const TeamsPage = () => {
     removeMemberFromTeam,
     transferCaptaincy,
     changeRole,
+    updateRosterMemberRole,
     disbandTeam,
     leaveTeam,
     revokeTeamInvite,
@@ -113,7 +115,15 @@ const TeamsPage = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   // Rosters
-  type RosterMember = { user_id: string; username: string; avatar_url: string | null; card_image_url?: string | null; is_starter?: boolean };
+  type RosterLineupRole = 'starter' | 'substitute' | 'coach';
+  type RosterMember = {
+    user_id: string;
+    username: string;
+    avatar_url: string | null;
+    card_image_url?: string | null;
+    is_starter?: boolean;
+    roster_role?: RosterLineupRole;
+  };
   type Roster = {
     id: string;
     name: string;
@@ -133,7 +143,7 @@ const TeamsPage = () => {
   const [manageRosterModalOpen, setManageRosterModalOpen] = useState(false);
   const [manageRoster, setManageRoster] = useState<Roster | null>(null);
   const [manageMembers, setManageMembers] = useState<string[]>([]);
-  const [manageMemberStatuses, setManageMemberStatuses] = useState<Record<string, boolean>>({});
+  const [manageMemberRoles, setManageMemberRoles] = useState<Record<string, RosterLineupRole>>({});
   const [editRosterName, setEditRosterName] = useState('');
   const [inviteSearch, setInviteSearch] = useState('');
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
@@ -144,6 +154,25 @@ const TeamsPage = () => {
   const [teamStats, setTeamStats] = useState({ matches: 0, wins: 0, winRate: 0, tournamentWins: 0 });
   const [selectedTournament, setSelectedTournament] = useState<any>(null);
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
+
+  const resolveMemberRosterRole = (member: RosterMember): RosterLineupRole => {
+    if (member.roster_role === 'starter' || member.roster_role === 'substitute' || member.roster_role === 'coach') {
+      return member.roster_role;
+    }
+    return member.is_starter === false ? 'substitute' : 'starter';
+  };
+
+  const getRosterCapacity = (roster: Pick<Roster, 'game' | 'format' | 'team_size'>) =>
+    getRosterLimits(roster.game, roster.format, roster.team_size);
+
+  const countRosterRoles = (memberIds: string[], roles: Record<string, RosterLineupRole>) => {
+    const counts = { starter: 0, substitute: 0, coach: 0 };
+    memberIds.forEach((uid) => {
+      const role = roles[uid] ?? 'starter';
+      counts[role] += 1;
+    });
+    return counts;
+  };
 
   const getGameLogo = useCallback((gameName: string): string => {
     if (!gameName) return '';
@@ -247,7 +276,8 @@ const TeamsPage = () => {
             username: m.username || 'Unknown',
             avatar_url: m.avatar_url || null,
             card_image_url: m.card_image_url || null,
-            is_starter: m.is_starter ?? true
+            is_starter: m.is_starter ?? true,
+            roster_role: m.roster_role,
           }));
 
         if (currentTeam.owner_id && !members.some(m => m.user_id === currentTeam.owner_id)) {
@@ -599,11 +629,11 @@ const TeamsPage = () => {
     // Load roster members from the roster data we already have
     const rosterMembers = (r.members || []).filter((m: any) => m.user_id !== currentTeam?.owner_id);
     setManageMembers(rosterMembers.map((x: any) => x.user_id));
-    const statusMap: Record<string, boolean> = {};
-    rosterMembers.forEach((x: any) => {
-      statusMap[x.user_id] = x.is_starter ?? true;
+    const roleMap: Record<string, RosterLineupRole> = {};
+    rosterMembers.forEach((x: RosterMember) => {
+      roleMap[x.user_id] = resolveMemberRosterRole(x);
     });
-    setManageMemberStatuses(statusMap);
+    setManageMemberRoles(roleMap);
 
     // Fetch roster-specific invites
     try {
@@ -771,30 +801,61 @@ const TeamsPage = () => {
     }
   };
 
-  const handleToggleStarter = async (userId: string, currentStatus: boolean) => {
+  const handleSetRosterRole = async (userId: string, rosterRole: RosterLineupRole) => {
     if (!manageRoster || !currentTeam) return;
-    try {
-      const newStatus = !currentStatus;
-      await apiClient.put(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members/${userId}/starter`, { isStarter: newStatus });
+    const teamMemberRole = teamMembers.find(m => m.user_id === userId)?.role;
+    if ((rosterRole === 'starter' || rosterRole === 'substitute') && teamMemberRole === 'coach') {
+      toast({ title: 'Invalid lineup role', description: 'Change the team role from coach before assigning starter or substitute.', variant: 'destructive' });
+      return;
+    }
+    if (rosterRole === 'coach' && teamMemberRole !== 'coach') {
+      toast({ title: 'Invalid lineup role', description: 'Only team-level coaches can be assigned as lineup coaches.', variant: 'destructive' });
+      return;
+    }
 
-      // Update local state
-      setManageMemberStatuses(prev => ({ ...prev, [userId]: newStatus }));
+    const limits = getRosterCapacity(manageRoster);
+    const nextRoles = { ...manageMemberRoles, [userId]: rosterRole };
+    const counts = countRosterRoles(manageMembers, nextRoles);
+    if (rosterRole === 'substitute' && !limits.maxSubstitutes && limits.maxRoster <= limits.starters) {
+      toast({ title: 'Substitutes not allowed', description: 'This game mode does not allow substitutes.', variant: 'destructive' });
+      return;
+    }
+    if (counts.substitute > limits.maxSubstitutes) {
+      toast({ title: 'Substitute limit reached', description: `Max ${limits.maxSubstitutes} substitute(s) for this mode.`, variant: 'destructive' });
+      return;
+    }
+    if (counts.coach > limits.maxCoaches) {
+      toast({ title: 'Coach limit reached', description: `Max ${limits.maxCoaches} coach(es) for this mode.`, variant: 'destructive' });
+      return;
+    }
+    if ((counts.starter + counts.substitute) > limits.maxRoster) {
+      toast({ title: 'Player limit reached', description: `Max ${limits.maxRoster} players (starters + substitutes).`, variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const ok = await updateRosterMemberRole(currentTeam.id, manageRoster.id, userId, rosterRole);
+      if (!ok) return;
+
+      setManageMemberRoles(nextRoles);
       setRosters(prev => prev.map(r => {
         if (r.id === manageRoster.id) {
           return {
             ...r,
-            members: r.members?.map(m => m.user_id === userId ? { ...m, is_starter: newStatus } : m)
+            members: r.members?.map(m => m.user_id === userId
+              ? { ...m, roster_role: rosterRole, is_starter: rosterRole === 'starter' }
+              : m),
           };
         }
         return r;
       }));
 
       toast({
-        title: "Status Updated",
-        description: `Player is now ${newStatus ? 'Active' : 'Benched'}`
+        title: 'Lineup Updated',
+        description: `Player is now ${rosterRole === 'starter' ? 'a starter' : rosterRole === 'substitute' ? 'a substitute' : 'a coach'}.`,
       });
     } catch (e: any) {
-      toast({ title: "Update Failed", description: e.message, variant: "destructive" });
+      toast({ title: 'Update Failed', description: e.message, variant: 'destructive' });
     }
   };
 
@@ -1287,30 +1348,48 @@ const TeamsPage = () => {
                 <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(e, r)}>
                   <SortableContext items={(r.members || []).map((m: any) => m.user_id)} strategy={rectSortingStrategy}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                      {r.members?.map((member) => (
+                      {r.members?.map((member) => {
+                        const lineupRole = resolveMemberRosterRole(member);
+                        return (
                         <SortablePlayerCard
                           key={`${r.id}-${member.user_id}`}
                           id={member.user_id}
                           disabled={member.user_id === currentTeam?.owner_id}
                         >
-                          <PlayerCard
-                            member={{
-                              user_id: member.user_id,
-                              username: member.username,
-                              avatar_url: member.avatar_url || undefined,
-                              card_image_url: member.card_image_url || undefined,
-                              role: member.user_id === currentTeam?.owner_id ? 'captain' : (teamMembers.find(tm => tm?.user_id === member.user_id)?.role || 'member'),
-                              stats: teamMembers.find(tm => tm?.user_id === member.user_id)?.stats,
-                              game: r.game
-                            }}
-                            isOwner={member.user_id === currentTeam?.owner_id}
-                            isCurrentUser={member.user_id === user?.id}
-                            className="transition-all duration-500 hover:scale-[1.05] hover:z-10"
-                          />
+                          <div className="relative">
+                            <PlayerCard
+                              member={{
+                                user_id: member.user_id,
+                                username: member.username,
+                                avatar_url: member.avatar_url || undefined,
+                                card_image_url: member.card_image_url || undefined,
+                                role: member.user_id === currentTeam?.owner_id ? 'captain' : (teamMembers.find(tm => tm?.user_id === member.user_id)?.role || 'member'),
+                                stats: teamMembers.find(tm => tm?.user_id === member.user_id)?.stats,
+                                game: r.game
+                              }}
+                              isOwner={member.user_id === currentTeam?.owner_id}
+                              isCurrentUser={member.user_id === user?.id}
+                              className="transition-all duration-500 hover:scale-[1.05] hover:z-10"
+                            />
+                            {member.user_id !== currentTeam?.owner_id && (
+                              <Badge
+                                variant="outline"
+                                className={`absolute top-2 right-2 text-[8px] uppercase tracking-wider ${
+                                  lineupRole === 'starter'
+                                    ? 'border-emerald-500/40 text-emerald-400'
+                                    : lineupRole === 'substitute'
+                                      ? 'border-yellow-500/40 text-yellow-400'
+                                      : 'border-cyan-500/40 text-cyan-400'
+                                }`}
+                              >
+                                {lineupRole}
+                              </Badge>
+                            )}
+                          </div>
                         </SortablePlayerCard>
-                      ))}
+                      );})}
                       {/* Vacant Slots */}
-                      {Array.from({ length: Math.max(0, (r.team_size === 5 ? 5 : r.team_size) - (r.members?.length || 0)) }).map((_, i) => (
+                      {Array.from({ length: Math.max(0, getRosterCapacity(r).starters - (r.members?.filter((m) => resolveMemberRosterRole(m) === 'starter').length || 0)) }).map((_, i) => (
                         <div
                           key={`vacant-${r.id}-${i}`}
                           className="relative w-full aspect-[3/4] rounded-2xl border border-dashed border-white/5 bg-white/[0.02] flex flex-col items-center justify-center group/vacant hover:bg-white/[0.04] transition-all duration-500"
@@ -1355,7 +1434,7 @@ const TeamsPage = () => {
                   <div className="flex items-center justify-between mb-4">
                     <div className="font-heading font-medium text-white tracking-wide">{r.name}</div>
                     <Badge variant="secondary" className="bg-white/5 text-white/60 border-0 font-mono text-xs">
-                      {r.member_count || 0}/{r.team_size === 5 ? 7 : r.team_size}
+                      {r.member_count || 0}/{getRosterCapacity(r).totalSlots}
                     </Badge>
                   </div>
 
@@ -1829,7 +1908,7 @@ const TeamsPage = () => {
                       {newRosterTeamSize} Members
                     </div>
                     <p className="text-[9px] text-white/20 mt-2 uppercase tracking-widest leading-relaxed">
-                      {newRosterTeamSize === 5 ? 'Includes 2 Substitutes/Reserves' : 'Fixed size recruitment'}
+                      {newRosterTeamSize > 0 ? `${newRosterTeamSize} starters` : 'Select format first'}
                     </p>
                   </div>
                 </motion.div>
@@ -1908,7 +1987,12 @@ const TeamsPage = () => {
                   <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 flex items-center gap-2">
                     <div className="flex flex-col">
                       <span className="text-[9px] uppercase tracking-widest text-white/30 leading-none mb-0.5">Size</span>
-                      <span className="text-xs font-medium text-white/80 leading-none">{manageRoster.team_size === 5 ? '7 (5+2)' : manageRoster.team_size}</span>
+                      <span className="text-xs font-medium text-white/80 leading-none">
+                        {(() => {
+                          const limits = getRosterCapacity(manageRoster);
+                          return `${limits.starters} starters · ${limits.maxSubstitutes} subs${limits.allowsCoaches ? ` · ${limits.maxCoaches} coaches` : ''}`;
+                        })()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1923,9 +2007,10 @@ const TeamsPage = () => {
                   </div>
                   <Badge variant="outline" className="bg-white/5 border-white/10 text-white/60 font-mono py-1 px-3">
                     {(() => {
-                      const uniqueMembers = new Set([currentTeam?.owner_id, ...manageMembers].filter(Boolean));
-                      return uniqueMembers.size;
-                    })()} / {manageRoster.team_size === 5 ? 7 : manageRoster.team_size}
+                      const limits = getRosterCapacity(manageRoster);
+                      const counts = countRosterRoles(manageMembers, manageMemberRoles);
+                      return `${counts.starter + counts.substitute + counts.coach} / ${limits.totalSlots}`;
+                    })()}
                   </Badge>
                 </div>
 
@@ -1986,19 +2071,35 @@ const TeamsPage = () => {
                               </div>
                               <div>
                                 <span className="text-sm font-heading font-medium text-white/90 group-hover:text-white transition-colors block">{member.username || 'Unknown User'}</span>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleStarter(uid, manageMemberStatuses[uid] ?? true);
-                                    }}
-                                    className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border transition-all ${(manageMemberStatuses[uid] ?? true)
-                                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
-                                      : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20'
-                                      }`}
-                                  >
-                                    {(manageMemberStatuses[uid] ?? true) ? 'STARTER' : 'BENCH'}
-                                  </button>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  {(['starter', 'substitute', 'coach'] as RosterLineupRole[]).map((role) => {
+                                    const teamMemberRole = teamMembers.find(m => m.user_id === uid)?.role;
+                                    const activeRole = manageMemberRoles[uid] ?? 'starter';
+                                    const disabled =
+                                      (role !== 'coach' && teamMemberRole === 'coach') ||
+                                      (role === 'coach' && teamMemberRole !== 'coach');
+                                    return (
+                                      <button
+                                        key={role}
+                                        disabled={disabled}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (!disabled) void handleSetRosterRole(uid, role);
+                                        }}
+                                        className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+                                          activeRole === role
+                                            ? role === 'starter'
+                                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                              : role === 'substitute'
+                                                ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                                                : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                                            : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10 hover:text-white/50'
+                                        }`}
+                                      >
+                                        {role}
+                                      </button>
+                                    );
+                                  })}
                                   {isCaptain && uid !== currentTeam?.owner_id && (
                                     <button
                                       onClick={async (e) => {
@@ -2009,6 +2110,11 @@ const TeamsPage = () => {
                                           const ok = await changeRole(currentTeam.id, uid, newRole);
                                           if (ok) {
                                             setTeamMembers(prev => prev.map(m => m.user_id === uid ? { ...m, role: newRole } : m));
+                                            if (newRole === 'coach') {
+                                              await handleSetRosterRole(uid, 'coach');
+                                            } else if (manageMemberRoles[uid] === 'coach') {
+                                              await handleSetRosterRole(uid, 'starter');
+                                            }
                                           }
                                         }
                                       }}
@@ -2018,7 +2124,7 @@ const TeamsPage = () => {
                                           : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10 hover:text-white/50'
                                       }`}
                                     >
-                                      {teamMembers.find(m => m.user_id === uid)?.role === 'coach' ? 'COACH' : 'SET COACH'}
+                                      {teamMembers.find(m => m.user_id === uid)?.role === 'coach' ? 'TEAM COACH' : 'SET TEAM COACH'}
                                     </button>
                                   )}
                                 </div>
@@ -2149,7 +2255,12 @@ const TeamsPage = () => {
 
                 <div className="flex justify-between items-center bg-white/[0.02] border border-white/[0.05] p-4 rounded-xl">
                   <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-medium">
-                    Lineup Capacity: <span className="text-indigo-400">{manageRoster.team_size === 5 ? '7 Slots' : `${manageRoster.team_size} Slots`}</span>
+                    Lineup Capacity: <span className="text-indigo-400">
+                      {(() => {
+                        const limits = getRosterCapacity(manageRoster);
+                        return `${limits.starters} starters, ${limits.maxSubstitutes} subs${limits.allowsCoaches ? `, ${limits.maxCoaches} coaches` : ''}`;
+                      })()}
+                    </span>
                   </p>
                   <Button
                     size="sm"

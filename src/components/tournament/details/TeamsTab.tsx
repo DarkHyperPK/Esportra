@@ -20,11 +20,15 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({ participants, isSolo = false
     const [page, setPage] = useState(1);
     const visibleParticipants = useMemo(
         () => participants.filter((participant) => {
+            const entryKind = String(participant.entry_kind || '').toLowerCase();
+            if (entryKind === 'solo_player' || entryKind === 'mock') {
+                return isSolo ? entryKind === 'solo_player' : entryKind === 'mock';
+            }
             const type = String(participant.participant_type || '').toLowerCase();
             if (isSolo) {
-                return type === 'solo' || (!participant.team_id && !!participant.user_id);
+                return type === 'solo';
             }
-            return type === 'team' || !!participant.team_id;
+            return type === 'team' && entryKind !== 'solo_player';
         }),
         [participants, isSolo]
     );

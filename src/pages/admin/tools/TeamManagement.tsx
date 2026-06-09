@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, UsersRound, Search, Eye, MoreVertical,
   Users, RefreshCw, Trash2, UserMinus, ArrowRightLeft,
-  Pencil, Loader2, Gamepad2, Crown, Download
+  Pencil, Loader2, Gamepad2, Crown, Download, Upload, X
 } from "lucide-react";
 import { csvEscape } from "@/lib/exportUtils";
 import { Link } from "react-router-dom";
@@ -20,6 +20,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -33,6 +34,7 @@ interface TeamRow {
   is_active: boolean;
   country_code: string | null;
   created_at: string;
+  team_kind?: string;
   member_count: number;
   tournament_count: number;
   wins: number;
@@ -44,7 +46,14 @@ interface TeamRow {
 interface TeamListResponse {
   teams: TeamRow[];
   total: number;
-  stats: { total_teams: number; active_teams: number; avg_members: number };
+  stats: {
+    total_teams: number;
+    active_teams: number;
+    solo_adapters?: number;
+    mock_teams?: number;
+    orphan_mock_teams?: number;
+    avg_members: number;
+  };
 }
 
 interface TeamMember {
@@ -107,6 +116,10 @@ const TeamManagementTool = () => {
   const [transferTarget, setTransferTarget] = useState<{ teamId: string; member: TeamMember } | null>(null);
   const [editTeam, setEditTeam] = useState<TeamRow | null>(null);
   const [editForm, setEditForm] = useState({ name: '', tag: '', game: '', description: '' });
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [removeLogo, setRemoveLogo] = useState(false);
+  const [isSavingTeam, setIsSavingTeam] = useState(false);
 
   // ── Queries ──
   const { data, isLoading, refetch } = useQuery<TeamListResponse>({
@@ -167,16 +180,81 @@ const TeamManagementTool = () => {
   });
 
   const editMutation = useMutation({
-    mutationFn: ({ id, ...body }: { id: string; name?: string; tag?: string; game?: string; description?: string }) =>
-      apiClient.put(`/api/admin/teams/${id}`, body),
-    onSuccess: () => {
+    mutationFn: (body: {
+      id: string;
+      name?: string;
+      tag?: string;
+      game?: string;
+      description?: string;
+      logoUrl?: string;
+      removeLogo?: boolean;
+    }) => apiClient.put(`/api/admin/teams/${body.id}`, body),
+    onSuccess: (_data, variables) => {
       toast({ title: 'Team updated' });
       queryClient.invalidateQueries({ queryKey: ['admin-teams'] });
       queryClient.invalidateQueries({ queryKey: ['admin-team-detail'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'entity-history', 'Team', variables.id] });
       setEditTeam(null);
+      setLogoFile(null);
+      setLogoPreview(null);
+      setRemoveLogo(false);
     },
     onError: (e: Error) => toast({ title: 'Update failed', description: e.message, variant: 'destructive' }),
   });
+
+  const openEditTeam = (team: TeamRow) => {
+    setEditTeam(team);
+    setEditForm({ name: team.name, tag: team.tag, game: team.game, description: '' });
+    setLogoPreview(team.logo_url || null);
+    setLogoFile(null);
+    setRemoveLogo(false);
+  };
+
+  const uploadTeamLogo = async (file: File, teamName: string): Promise<string | null> => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: 'Invalid file type', description: 'Use JPG, PNG, GIF, or WebP.', variant: 'destructive' });
+      return null;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Logo must be under 5MB.', variant: 'destructive' });
+      return null;
+    }
+
+    const folder = teamName.replace(/[^a-z0-9]/gi, '-').toLowerCase();
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('bucket', 'teams.logos');
+    formData.append('folder', folder);
+
+    const result = await apiClient.upload<{ url: string }>('/api/storage/upload', formData);
+    return result.url;
+  };
+
+  const handleSaveTeamEdit = async () => {
+    if (!editTeam) return;
+    setIsSavingTeam(true);
+    try {
+      let logoUrl: string | undefined;
+      if (logoFile) {
+        const uploaded = await uploadTeamLogo(logoFile, editForm.name || editTeam.name);
+        if (!uploaded) return;
+        logoUrl = uploaded;
+      }
+
+      await editMutation.mutateAsync({
+        id: editTeam.id,
+        name: editForm.name || undefined,
+        tag: editForm.tag || undefined,
+        game: editForm.game || undefined,
+        description: editForm.description || undefined,
+        ...(logoUrl ? { logoUrl } : {}),
+        ...(removeLogo ? { removeLogo: true } : {}),
+      });
+    } finally {
+      setIsSavingTeam(false);
+    }
+  };
 
   const totalPages = Math.ceil(total / limit);
 
@@ -230,11 +308,14 @@ const TeamManagementTool = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
-          { label: 'Total Teams', value: stats.total_teams, icon: UsersRound, color: 'cyan' },
+          { label: 'Real Teams', value: stats.total_teams, icon: UsersRound, color: 'cyan' },
           { label: 'Active Teams', value: stats.active_teams, icon: Users, color: 'emerald' },
           { label: 'Avg Members', value: stats.avg_members || 0, icon: Users, color: 'amber' },
+          { label: 'Solo Adapters', value: stats.solo_adapters ?? 0, icon: Gamepad2, color: 'violet' },
+          { label: 'Mock Teams', value: stats.mock_teams ?? 0, icon: Gamepad2, color: 'orange' },
+          { label: 'Orphan Mocks', value: stats.orphan_mock_teams ?? 0, icon: Gamepad2, color: 'rose' },
         ].map(s => (
           <div key={s.label} className="rounded-xl border border-white/5 bg-[#0a0a0c] p-4">
             <div className="flex items-center gap-3">
@@ -347,7 +428,7 @@ const TeamManagementTool = () => {
                           <DropdownMenuItem onClick={() => { setSelectedTeamId(team.id); setDetailTab('members'); }} className="text-zinc-300">
                             <Eye className="w-4 h-4 mr-2" /> View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => { setEditTeam(team); setEditForm({ name: team.name, tag: team.tag, game: team.game, description: '' }); }} className="text-zinc-300">
+                          <DropdownMenuItem onClick={() => openEditTeam(team)} className="text-zinc-300">
                             <Pencil className="w-4 h-4 mr-2" /> Edit Team
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-white/5" />
@@ -589,12 +670,66 @@ const TeamManagementTool = () => {
       </Dialog>
 
       {/* ── Edit Team Dialog ── */}
-      <Dialog open={!!editTeam} onOpenChange={open => { if (!open) setEditTeam(null); }}>
+      <Dialog open={!!editTeam} onOpenChange={open => {
+        if (!open) {
+          setEditTeam(null);
+          setLogoFile(null);
+          setLogoPreview(null);
+          setRemoveLogo(false);
+        }
+      }}>
         <DialogContent className="bg-[#0a0a0c] border-white/10 text-white">
           <DialogHeader>
             <DialogTitle>Edit Team</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs text-zinc-500 uppercase">Team Logo</label>
+              <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16 border border-white/10">
+                  {logoPreview && !removeLogo ? (
+                    <AvatarImage src={logoPreview} alt={editForm.name || editTeam?.name || 'Team logo'} />
+                  ) : null}
+                  <AvatarFallback className="bg-zinc-800 text-zinc-400">
+                    {(editForm.tag || editTeam?.tag || 'T').slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-wrap gap-2">
+                  <label className="inline-flex cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setLogoFile(file);
+                        setLogoPreview(URL.createObjectURL(file));
+                        setRemoveLogo(false);
+                      }}
+                    />
+                    <Button type="button" variant="outline" size="sm" className="border-white/10 text-white" asChild>
+                      <span><Upload className="w-4 h-4 mr-2" />Upload Logo</span>
+                    </Button>
+                  </label>
+                  {(logoPreview || editTeam?.logo_url) && !removeLogo && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-white/10 text-red-400 hover:text-red-300"
+                      onClick={() => {
+                        setLogoFile(null);
+                        setLogoPreview(null);
+                        setRemoveLogo(true);
+                      }}
+                    >
+                      <X className="w-4 h-4 mr-2" />Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
             <div className="space-y-2">
               <label className="text-xs text-zinc-500 uppercase">Name</label>
               <Input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="bg-black/40 border-white/10 text-white" />
@@ -611,15 +746,11 @@ const TeamManagementTool = () => {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setEditTeam(null)} className="border-white/10 text-white">Cancel</Button>
             <Button
-              onClick={() => editTeam && editMutation.mutate({
-                id: editTeam.id,
-                name: editForm.name || undefined,
-                tag: editForm.tag || undefined,
-                game: editForm.game || undefined,
-              })}
-              disabled={editMutation.isPending}
+              onClick={handleSaveTeamEdit}
+              disabled={isSavingTeam || editMutation.isPending}
               className="bg-cyan-500 hover:bg-cyan-600 text-white"
             >
+              {(isSavingTeam || editMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Save Changes
             </Button>
           </DialogFooter>

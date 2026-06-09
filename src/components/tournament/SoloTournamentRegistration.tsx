@@ -6,6 +6,7 @@ import { useRiotAccount } from '@/hooks/useRiotAccount';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { gameSupportsRiotAccountLink } from '@/utils/gameFeatures';
 import {
   User,
   Gamepad2,
@@ -23,6 +24,8 @@ interface SoloTournamentRegistrationProps {
     id: string;
     name: string;
     game: string;
+    game_mode?: string | null;
+    gameMode?: string | null;
     start_date: string;
     entry_fee?: number;
     prize_pool?: number;
@@ -55,8 +58,9 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
     gamer_tag: profile?.username || ''
   });
 
-  // Riot games require linked Riot account
-  const isRiotGame = ['valorant', 'league of legends'].includes(tournament.game?.toLowerCase() || '');
+  // Riot-linked games require linked Riot account (catalog-driven)
+  const tournamentModeKey = tournament.gameMode ?? tournament.game_mode ?? null;
+  const isRiotGame = gameSupportsRiotAccountLink(tournament.game, tournamentModeKey);
   const requiresRiotLink = isRiotGame && !!riotAccount;
 
   // Auto-fill gamer tag: Riot tag for Riot games, otherwise username

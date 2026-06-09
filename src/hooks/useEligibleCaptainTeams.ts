@@ -1,15 +1,32 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/apiClient';
-import { getGameMode } from '@/utils/gameFeatures';
+import { getGameMode, isTeamRegistrationMode } from '@/utils/gameFeatures';
 
 export type CaptainTeamRow = {
   id: string;
   name: string;
+  tag?: string | null;
+  team_kind?: string | null;
+  is_solo?: boolean | null;
   games: Record<string, unknown> | string[] | string | null;
   owner_id: string;
   created_at?: string | null;
   createdAt?: string | null;
 };
+
+const CAPTAIN_TEAMS_PAGE_LIMIT = 50;
+const MAX_ELIGIBILITY_TEAMS = 100;
+
+const resolveTeamKind = (team: CaptainTeamRow): 'team' | 'solo' | 'mock' => {
+  if (team.team_kind === 'team' || team.team_kind === 'solo' || team.team_kind === 'mock') {
+    return team.team_kind;
+  }
+  if (team.is_solo === true) return 'solo';
+  if ((team.tag ?? '').toLowerCase().startsWith('mock-')) return 'mock';
+  return 'team';
+};
+
+const isRealTeamRow = (team: CaptainTeamRow) => resolveTeamKind(team) === 'team';
 
 export type TeamRosterRow = {
   id: string;
@@ -98,9 +115,12 @@ export function useEligibleCaptainTeams({
         });
 
       let teams: CaptainTeamRow[] = [];
+      const gameQuery = tournament.game
+        ? `?game=${encodeURIComponent(tournament.game)}&limit=${CAPTAIN_TEAMS_PAGE_LIMIT}`
+        : `?limit=${CAPTAIN_TEAMS_PAGE_LIMIT}`;
 
       try {
-        const captainTeamsResponse = await apiClient.get<CaptainTeamRow[]>('/api/teams/my-captain-teams');
+        const captainTeamsResponse = await apiClient.get<CaptainTeamRow[]>(`/api/teams/my-captain-teams${gameQuery}`);
         teams = mergeUniqueTeams(teams, captainTeamsResponse || []);
       } catch {
         // optional lookup
@@ -108,7 +128,10 @@ export function useEligibleCaptainTeams({
 
       if (teams.length === 0) {
         try {
-          const ownedTeams = await apiClient.get<CaptainTeamRow[]>(`/api/teams?owner_id=${userId}&limit=25`);
+          const ownedQuery = tournament.game
+            ? `owner_id=${userId}&game=${encodeURIComponent(tournament.game)}&limit=${CAPTAIN_TEAMS_PAGE_LIMIT}`
+            : `owner_id=${userId}&limit=${CAPTAIN_TEAMS_PAGE_LIMIT}`;
+          const ownedTeams = await apiClient.get<CaptainTeamRow[]>(`/api/teams?${ownedQuery}`);
           teams = mergeUniqueTeams(
             teams,
             (ownedTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
@@ -126,17 +149,27 @@ export function useEligibleCaptainTeams({
         );
       }
 
-      teams = sortTeamsNewestFirst(teams);
+      teams = sortTeamsNewestFirst(teams.filter(isRealTeamRow));
+      if (teams.length > MAX_ELIGIBILITY_TEAMS) {
+        setCaptainTeams(teams);
+        setEligibleTeamIds(new Set());
+        setIneligibleReasons({});
+        setSelectedTeamId('');
+        return;
+      }
+
       setCaptainTeams(teams);
 
       const ids = new Set<string>();
       const reasons: Record<string, string[]> = {};
       const tournamentGameNormalized = normalize(tournament.game || '');
       const eligibilityBatchSize = 12;
+      const teamsForEligibility = teams.filter(isRealTeamRow);
 
-      for (let index = 0; index < teams.length; index += eligibilityBatchSize) {
-        const batch = teams.slice(index, index + eligibilityBatchSize);
+      for (let index = 0; index < teamsForEligibility.length; index += eligibilityBatchSize) {
+        const batch = teamsForEligibility.slice(index, index + eligibilityBatchSize);
         await Promise.all(batch.map(async (team) => {
+          if (!isRealTeamRow(team)) return;
           const errs: string[] = [];
           try {
             const rosters = await apiClient.get<RosterApiRow[]>(`/api/teams/${team.id}/rosters`);
@@ -186,7 +219,7 @@ export function useEligibleCaptainTeams({
       setIneligibleReasons(reasons);
 
       if (teams.length > 0) {
-        const firstEligible = teams.find((t) => ids.has(t.id))?.id || '';
+        const firstEligible = teams.find((t) => ids.has(t.id) && isRealTeamRow(t))?.id || '';
         setSelectedTeamId(firstEligible);
       } else {
         setSelectedTeamId('');

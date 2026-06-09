@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
-import { isBattleRoyaleTournament, getBRConfig, getDefaultGameMode, getGameByName, getPersistedTournamentFormat } from '@/utils/gameFeatures';
+import { isBattleRoyaleTournament, getBRConfig, getGameByName, getGameMode, getPersistedTournamentFormat } from '@/utils/gameFeatures';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import { cn } from '@/lib/utils';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
@@ -82,12 +82,13 @@ const TournamentDetails = () => {
   const [isCaptain, setIsCaptain] = useState(false);
   const [checkInSubmitting, setCheckInSubmitting] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
+  const [participantMode, setParticipantMode] = useState<'solo' | 'team'>('team');
   const [error, setError] = useState<string | null>(null);
   const [accessState, setAccessState] = useState<'none' | 'unavailable' | 'sign_in_required'>('none');
   const [registrationLoading, setRegistrationLoading] = useState(true);
   const [showBannerDialog, setShowBannerDialog] = useState(false);
   const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
-  const terminology = useGameTerminology(tournament?.game);
+  const terminology = useGameTerminology(tournament?.game, tournament?.game_mode, participantMode);
   const isBR = isBattleRoyaleTournament(
     tournament?.game || '',
     getPersistedTournamentFormat(tournament),
@@ -211,17 +212,16 @@ const TournamentDetails = () => {
       const participants = await apiClient.get<any[]>(`/api/tournaments/${tournament!.id}/participants`);
       if (!participants) return [];
 
-      const gameKey = tournament?.game?.toLowerCase();
-      const isValorant = gameKey === 'valorant';
-
       return participants.map(p => {
-        const display_name = (isValorant && p.solo_riot_tag)
-          ? p.solo_riot_tag
-          : p.solo_username || p.solo_full_name || 'Anonymous';
+        const entryKind = p.entry_kind as string | undefined;
+        const isSoloEntry = entryKind === 'solo_player' || p.participant_type === 'solo';
+        const display_name = p.display_name
+          || (isSoloEntry ? (p.solo_username || p.solo_full_name) : p.team_name)
+          || 'Anonymous';
 
         return {
           ...p,
-          team_logo: p.team_logo_url,
+          team_logo: p.display_logo_url || p.team_logo_url,
           display_name,
           user: {
             id: p.user_id,
@@ -325,6 +325,7 @@ const TournamentDetails = () => {
         winner_team_name: t.winner_team_name || null,
       };
       setTournament(newTournament);
+      setParticipantMode(data.participantMode === 'solo' ? 'solo' : 'team');
       setError(null);
       setAccessState('none');
     } catch (error) {
@@ -481,10 +482,14 @@ const TournamentDetails = () => {
     };
   }, [checkRegistration]);
 
-  const handleRegistrationSuccess = useCallback(async () => {
+  const handleRegistrationSuccess = useCallback(() => {
     setShowEditDialog(false);
-    await checkRegistration(true);
-    await fetchTournamentData();
+    void Promise.race([
+      Promise.all([checkRegistration(true), fetchTournamentData()]),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Post-registration refresh timed out')), 15000)),
+    ]).catch((error) => {
+      console.warn('Post-registration refresh failed or timed out:', error);
+    });
   }, [checkRegistration, fetchTournamentData]);
 
   const handleWithdraw = async () => {
@@ -566,7 +571,7 @@ const TournamentDetails = () => {
   }, [showEditDialog, slug, user?.id, checkRegistration]);
 
   const selectedGame = tournament ? getGameByName(tournament.game) : null;
-  const selectedGameMode = selectedGame ? getDefaultGameMode(selectedGame.name) : undefined;
+  const selectedGameMode = tournament ? getGameMode(tournament.game, tournament.game_mode) : undefined;
 
   if (loading) {
     return <PremiumLoadingScreen text="LOADING TOURNAMENT DATA" />;
@@ -889,7 +894,7 @@ const TournamentDetails = () => {
           setShowEditDialog(false);
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0a0a0c] border border-white/10" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0a0a0c] border border-white/10">
           <DialogHeader>
             <DialogTitle className="text-white font-heading text-2xl tracking-wide">
               {isRegistered ? 'MODIFY_REGISTRATION' : 'INITIATE_REGISTRATION'}
@@ -911,6 +916,7 @@ const TournamentDetails = () => {
             isEdit={!!registrationDetails}
             structure={selectedGameMode?.value || selectedGame?.defaultFormat || ''}
             teamSize={tournament.team_size || selectedGameMode?.teamSize || 1}
+            participantMode={participantMode}
           />
         </DialogContent>
       </Dialog>

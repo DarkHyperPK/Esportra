@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { TournamentWizardData } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS, SEEDING_TYPE_LABELS } from '@/schemas/tournamentSchema';
 import { LAUNCH_STATE_LABELS } from '@/utils/tournamentVisibilityUtils';
-import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig, gameHasBRMaps } from '@/utils/gameFeatures';
+import { getEffectiveGameFeatures, getGameMode, getParticipantMode, isBattleRoyale, getBRConfig, gameHasBRMaps } from '@/utils/gameFeatures';
 
 interface StepReviewProps {
     data: TournamentWizardData;
@@ -27,6 +27,16 @@ interface StepReviewProps {
 const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
     const hasErrors = Object.keys(errors).length > 0;
     const features = getEffectiveGameFeatures(data.game || '', data.gameMode);
+    const participantMode = getParticipantMode(data.game || '', data.gameMode);
+    const isSoloMode = participantMode === 'solo';
+    const teamSizeLabel = isSoloMode
+        ? 'Solo (Individual)'
+        : data.teamSize === 2
+            ? 'Duo (2 players)'
+            : data.teamSize === 3
+                ? 'Trio (3 players)'
+                : `${data.teamSize} players`;
+    const maxParticipantsUnit = isSoloMode ? 'Players' : data.teamSize === 2 ? 'Duos' : data.teamSize === 3 ? 'Trios' : 'Squads';
     const isBR = isBattleRoyale(data.game || '');
     const brConfig = getBRConfig(data.game || '');
 
@@ -76,10 +86,10 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 { label: data.brMultiStage ? 'Group Stage Games' : 'Lobby Games', value: `${data.brGameCount} games` },
                 { label: 'Scoring', value: data.brScoringPreset === 'custom' ? 'Custom' : (brConfig?.scoringPresets?.[data.brScoringPreset]?.name || data.brScoringPreset) },
                 { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
-                { label: 'Max Participants', value: data.maxTeams ? `${data.maxTeams} ${data.teamSize === 1 ? 'Players' : data.teamSize === 2 ? 'Duos' : data.teamSize === 3 ? 'Trios' : 'Squads'}` : 'Unlimited' },
+                { label: 'Max Participants', value: data.maxTeams ? `${data.maxTeams} ${maxParticipantsUnit}` : 'Unlimited' },
                 { label: 'Default Lobby Size', value: `${data.brDefaultLobbySize} per lobby` },
                 ...(gameHasBRMaps(data.game) ? [{ label: 'Default Map Mode', value: data.brDefaultMapMode.replace('_', ' ') }] : []),
-                { label: 'Team Size', value: data.teamSize === 1 ? 'Solo (Individual)' : data.teamSize === 2 ? 'Duo (2 players)' : data.teamSize === 3 ? 'Trio (3 players)' : `${data.teamSize} players` },
+                { label: 'Team Size', value: teamSizeLabel },
                 ...(data.brMultiStage ? [
                     { label: 'Lobby Size', value: `${data.brLobbySize} teams per group` },
                     { label: 'Groups', value: data.maxTeams ? `${Math.ceil(data.maxTeams / data.brLobbySize)} groups` : 'TBD' },

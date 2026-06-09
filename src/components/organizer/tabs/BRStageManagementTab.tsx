@@ -17,7 +17,7 @@ import { resolveStageBRConfig, parseStageConfig } from '@/utils/brConfigResolve'
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
-import { getBRConfig, getDefaultGameMode, getDefaultTeamSize } from '@/utils/gameFeatures';
+import { getBRConfig, getDefaultGameMode, getDefaultTeamSize, getParticipantMode } from '@/utils/gameFeatures';
 import { getBRTemplates, type BRStageTemplate } from '@/config/brPresets';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 
@@ -74,6 +74,7 @@ function buildNewBrStageDto(params: {
 
 interface Participant {
     team_id?: string | null;
+    participant_type?: string | null;
     status?: string;
 }
 
@@ -173,20 +174,20 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({ tour
     }, [sortedStages, stageCompletionQueries]);
 
     const acceptedTeamCount = useMemo(() => {
-        if (teamSize === 1) {
-            // Solo: participants compete individually, no team_id
-            return participants.filter(
-                p => !p.team_id && (p.status === 'accepted' || p.status === 'approved')
-            ).length;
+        const approved = participants.filter(
+            p => p.status === 'accepted' || p.status === 'approved',
+        );
+        const isSoloMode = getParticipantMode(game || '') === 'solo'
+            || approved.every(p => p.participant_type === 'solo');
+        if (isSoloMode) {
+            return approved.length;
         }
         const teamIds = new Set<string>();
-        for (const p of participants) {
-            if (p.team_id && (p.status === 'accepted' || p.status === 'approved')) {
-                teamIds.add(p.team_id);
-            }
+        for (const p of approved) {
+            if (p.team_id) teamIds.add(p.team_id);
         }
         return teamIds.size;
-    }, [participants, teamSize]);
+    }, [participants, game]);
 
     // Always use tournament max_participants for stage config — accepted count is display-only
     const registeredTeamCount = maxParticipants || 0;

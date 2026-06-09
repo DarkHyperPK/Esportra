@@ -7,6 +7,9 @@ export type CatalogModeApi = {
   participantMode: string;
   allowsSubstitutes: boolean;
   maxRosterSize?: number | null;
+  maxSubstitutes?: number | null;
+  allowsCoaches?: boolean;
+  maxCoaches?: number | null;
   aliases?: string[];
   modeGroup?: string | null;
   variantLabel?: string | null;

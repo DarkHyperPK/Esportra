@@ -14,6 +14,7 @@ import { useInvitationPreview, useTournamentInvitations } from '@/hooks/useTourn
 import { useEligibleCaptainTeams } from '@/hooks/useEligibleCaptainTeams';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { normalizeInviteCode, isLikelyInviteCode } from '@/utils/inviteCodeUtils';
+import { isTeamRegistrationMode } from '@/utils/gameFeatures';
 import type { InvitationPreview, RedeemInvitationResponse } from '@/types/invitation';
 
 export interface InviteRedemptionTournament {
@@ -86,7 +87,10 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
     };
   }, [preview, tournament]);
 
-  const isSoloInvite = (previewTournament?.team_size ?? preview?.tournamentTeamSize ?? 2) === 1;
+  const isSoloInvite = !isTeamRegistrationMode(
+    previewTournament?.game || tournament?.game || '',
+    previewTournament?.game_mode ?? previewTournament?.gameMode ?? tournament?.game_mode ?? tournament?.gameMode,
+  );
 
   const {
     captainTeams,

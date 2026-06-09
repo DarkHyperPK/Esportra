@@ -29,6 +29,9 @@ export interface GameMode extends GameFormat {
   participantMode?: ParticipantMode;
   allowsSubstitutes?: boolean;
   maxRosterSize?: number;
+  maxSubstitutes?: number;
+  allowsCoaches?: boolean;
+  maxCoaches?: number;
   aliases?: string[];
   modeGroup?: string;
   variantLabel?: string;
@@ -242,6 +245,57 @@ export function getGameMode(gameName: string, modeKey?: string | null): GameMode
 export function getDefaultTeamSize(gameName: string, modeKey?: string | null): number {
   const mode = getGameMode(gameName, modeKey);
   return mode?.teamSize ?? 5;
+}
+
+/** Catalog-driven roster capacity for starters, substitutes, and coaches. */
+export function getRosterLimits(gameName: string, modeKey?: string | null, fallbackTeamSize = 5) {
+  const mode = getGameMode(gameName, modeKey);
+  const starters = mode?.teamSize ?? fallbackTeamSize;
+  const maxRoster = mode?.maxRosterSize ?? starters;
+  const maxSubstitutes = mode?.maxSubstitutes ?? Math.max(maxRoster - starters, 0);
+  const allowsCoaches = mode?.allowsCoaches !== false;
+  const maxCoaches = allowsCoaches ? (mode?.maxCoaches ?? 2) : 0;
+  return {
+    starters,
+    maxRoster,
+    maxSubstitutes,
+    allowsCoaches,
+    maxCoaches,
+    totalSlots: maxRoster + maxCoaches,
+  };
+}
+
+/** Catalog participant mode for a game/mode pair. */
+export function getParticipantMode(gameName: string, modeKey?: string | null): ParticipantMode {
+  const mode = getGameMode(gameName, modeKey);
+  return mode?.participantMode ?? ((mode?.teamSize ?? getDefaultTeamSize(gameName, modeKey)) > 1 ? 'team' : 'solo');
+}
+
+/** Whether registration should use the team flow (vs solo). */
+export function isTeamRegistrationMode(
+  gameName: string,
+  modeKey?: string | null,
+  participantMode?: ParticipantMode | string | null,
+): boolean {
+  if (participantMode === 'team' || participantMode === 'solo') {
+    return participantMode === 'team';
+  }
+  return getParticipantMode(gameName, modeKey) === 'team';
+}
+
+/** Catalog indicates this game/mode integrates with Riot account linking. */
+export function gameSupportsRiotAccountLink(gameName: string, modeKey?: string | null): boolean {
+  return getEffectiveGameFeatures(gameName, modeKey).assistedReporting;
+}
+
+/** Tournament has assisted reporting enabled and catalog supports it. */
+export function isAssistedMatchReportingEnabled(
+  gameName: string,
+  modeKey?: string | null,
+  tournamentSettings?: { assistedMatchReporting?: boolean } | null,
+): boolean {
+  return tournamentSettings?.assistedMatchReporting === true
+    && getEffectiveGameFeatures(gameName, modeKey).assistedReporting;
 }
 
 /** Check if a game is a Battle Royale type */

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getEffectiveGameFeatures } from '@/utils/gameFeatures';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,19 +37,25 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
         return [];
     };
 
-    const isSolo = participant.participant_type === 'solo';
-    const isValorant = participant.tournament?.game?.toLowerCase() === 'valorant';
+    const isSolo = participant.entry_kind === 'solo_player' || participant.participant_type === 'solo';
+    const preferRiotTag = getEffectiveGameFeatures(
+        participant.tournament?.game || '',
+        participant.tournament?.game_mode ?? participant.tournament?.gameMode,
+    ).assistedReporting;
     const userTag = isSolo ? (
-        (isValorant && participant.user?.riot_tag) ||
+        (preferRiotTag && participant.user?.riot_tag) ||
         participant.user?.riot_tag ||
         participant.user?.steam_tag ||
         participant.gamer_tag ||
         participant.user?.username ||
+        participant.display_name ||
         'Solo Player'
     ) : null;
 
-    const displayName = isSolo ? userTag : (participant.team_name || 'Unknown Team');
-    const displayLogo = isSolo ? participant.user?.avatar_url : participant.team_logo;
+    const displayName = isSolo ? userTag : (participant.display_name || participant.team_name || 'Unknown Team');
+    const displayLogo = isSolo
+        ? (participant.display_logo_url || participant.user?.avatar_url)
+        : (participant.display_logo_url || participant.team_logo);
     const members = isSolo ? [displayName] : getMembers(participant.team_members);
 
     return (

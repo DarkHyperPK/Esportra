@@ -108,7 +108,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                             <div className="text-xs opacity-70 mt-1">
                                 {group.modes.length > 1
                                     ? `${group.modes.length} variants`
-                                    : group.modes[0].teamSize === 1 ? 'Individual' : `${group.modes[0].teamSize} players`}
+                                    : group.modes[0].participantMode === 'solo' || group.modes[0].teamSize === 1
+                                        ? 'Individual'
+                                        : `${group.modes[0].teamSize} players`}
                             </div>
                         </button>
                     );
@@ -139,7 +141,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                 </div>
             )}
             <p className="text-sm text-gray-400">
-                {activeTeamSize === 1
+                {activeGameMode?.participantMode === 'solo' || activeTeamSize === 1
                     ? 'This mode registers participants individually.'
                     : `This mode requires ${activeTeamSize} starters${activeGameMode?.maxRosterSize ? ` with a max roster of ${activeGameMode.maxRosterSize}` : ''}.`}
             </p>
