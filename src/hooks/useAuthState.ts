@@ -22,7 +22,13 @@ export const useAuthState = () => {
           setSession(null);
           return;
         }
-        setUser(newSession?.user || null);
+        const nextUser = newSession?.user || null;
+        // Token refresh emits a new session/user object with the same id.
+        // Keep the previous user reference to avoid refetch cascades across the app.
+        setUser((prev) => {
+          if (prev?.id && nextUser?.id && prev.id === nextUser.id) return prev;
+          return nextUser;
+        });
         setSession(newSession);
 
         // Only set loading to false if we have a definitive session 

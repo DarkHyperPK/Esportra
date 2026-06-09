@@ -44,7 +44,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import { isBattleRoyaleTournament, getBRConfig, getGameByName, getGameMode, getPersistedTournamentFormat } from '@/utils/gameFeatures';
-import { useGameCatalog } from '@/hooks/useGameCatalog';
 import { cn } from '@/lib/utils';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
 import { useBRGameResults } from '@/hooks/useBRGameResults';
@@ -64,7 +63,6 @@ import {
 } from '@/utils/tournamentInviteUtils';
 
 const TournamentDetails = () => {
-  useGameCatalog();
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -99,6 +97,8 @@ const TournamentDetails = () => {
   const competitorTabValue = terminology.competitorLabelPlural.toLowerCase();
   const [activeTab, setActiveTab] = useState(requestedDetailsTab || 'overview');
   const initialInviteCode = normalizeInviteCode(detailsSearchParams?.get('code') || '');
+  const needsBracketVersions = activeTab === 'brackets' || (isBR && activeTab === 'leaderboard');
+  const needsStageMetadata = activeTab === 'overview' || activeTab === 'stages' || needsBracketVersions;
 
   useEffect(() => {
     setActiveTab(requestedDetailsTab || 'overview');
@@ -186,7 +186,10 @@ const TournamentDetails = () => {
   }, []);
 
   // Public Bracket View State - Refactored to Hook
-  const { stages, activeVersionsMap } = usePublicBracketData(tournament?.id);
+  const { stages, activeVersionsMap } = usePublicBracketData(tournament?.id, {
+    enabled: !!tournament?.id && needsStageMetadata,
+    includeVersions: needsBracketVersions,
+  });
   const [selectedStageId, setSelectedStageId] = useState<string | null>(requestedBRStageId);
 
   // Multi-group stage detection — check first stage for groups
@@ -258,14 +261,16 @@ const TournamentDetails = () => {
     enabled: shouldLoadLegacyBRLeaderboard,
   });
 
-  const fetchTournamentData = useCallback(async () => {
+  const fetchTournamentData = useCallback(async (options?: { silent?: boolean }) => {
     if (!slug || slug === 'undefined') {
       console.error('Invalid slug provided:', slug);
       setError('Invalid tournament identifier');
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!options?.silent) {
+      setLoading(true);
+    }
     setAccessState('none');
     try {
       const data = await apiClient.get<any>(`/api/tournaments/${encodeURIComponent(slug)}`);
@@ -347,9 +352,11 @@ const TournamentDetails = () => {
       setAccessState('unavailable');
       setError(errorMessage);
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
-  }, [slug, user]);
+  }, [slug]);
 
   const hasCheckedRegistration = React.useRef(false);
 
@@ -563,12 +570,6 @@ const TournamentDetails = () => {
       });
     }
   };
-
-  useEffect(() => {
-    if (!showEditDialog && slug && user?.id) {
-      checkRegistration();
-    }
-  }, [showEditDialog, slug, user?.id, checkRegistration]);
 
   const selectedGame = tournament ? getGameByName(tournament.game) : null;
   const selectedGameMode = tournament ? getGameMode(tournament.game, tournament.game_mode) : undefined;
@@ -823,7 +824,7 @@ const TournamentDetails = () => {
 
               <TabsContent value="stages">
                 <div className="container mx-auto px-4">
-                  <StagesTab tournamentId={tournament.id} />
+                  <StagesTab tournamentId={tournament.id} stages={stages} />
                 </div>
               </TabsContent>
             </>
@@ -886,7 +887,8 @@ const TournamentDetails = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Registration Dialog */}
+      {/* Registration Dialog — mount form only while open to avoid eager team lookups */}
+      {showEditDialog && (
       <Dialog open={showEditDialog} onOpenChange={(open) => {
         if (!open) {
           // Dialog is closing — just close it. The TournamentRegistration 
@@ -920,6 +922,7 @@ const TournamentDetails = () => {
           />
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Withdraw Dialog */}
       <AlertDialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>

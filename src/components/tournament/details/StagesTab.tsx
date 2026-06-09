@@ -15,9 +15,11 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Trophy, Layers, Lock, ArrowDown, Shield, Swords, Map as MapIcon, ChevronRight, Users } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
 
 interface StagesTabProps {
     tournamentId: string;
+    stages?: Stage[];
 }
 
 interface Stage {
@@ -34,28 +36,34 @@ interface Stage {
     config: any;
 }
 
-export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId }) => {
-    const { data: stages, isLoading } = useQuery({
+const normalizeStages = (rawStages: Stage[] | undefined) =>
+    (rawStages || []).map((stage) => ({
+        ...stage,
+        config: typeof stage.config === 'string'
+            ? (() => { try { return JSON.parse(stage.config); } catch { return stage.config; } })()
+            : (stage.config || null),
+    }));
+
+export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId, stages: stagesProp }) => {
+    const { data: fetchedStages, isLoading } = useQuery({
         queryKey: ['tournament-stages-public', tournamentId],
         queryFn: async () => {
             const raw = await apiClient.get<Stage[]>(
                 `/api/tournaments/${tournamentId}/stages`
             );
-            // Parse config if API returns it as JSON string
-            const stages = Array.isArray(raw) ? raw : (raw as any)?.items || [];
-            return stages.map((s: any) => ({
-                ...s,
-                config: typeof s.config === 'string'
-                    ? (() => { try { return JSON.parse(s.config); } catch { return s.config; } })()
-                    : (s.config || null),
-            }));
-        }
+            const items = Array.isArray(raw) ? raw : (raw as any)?.items || [];
+            return normalizeStages(items);
+        },
+        enabled: !stagesProp,
+        staleTime: 2 * 60_000,
     });
+
+    const stages = stagesProp ? normalizeStages(stagesProp) : fetchedStages;
 
     const [selectedStage, setSelectedStage] = React.useState<Stage | null>(null);
     const [detailsOpen, setDetailsOpen] = React.useState(false);
 
-    if (isLoading) {
+    if (!stagesProp && isLoading) {
         return (
             <div className="flex flex-col items-center justify-center p-12 space-y-4">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

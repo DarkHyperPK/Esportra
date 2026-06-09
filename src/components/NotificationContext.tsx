@@ -15,8 +15,10 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const listenersAttached = useRef(false);
 
+  const userId = user?.id;
+
   const fetchNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
 
     try {
       const data = await apiClient.get<{
@@ -27,7 +29,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       const base: Notification[] = data.notifications || [];
       const synthetic: Notification[] = (data.invites || []).map((inv) => ({
         id: `invite-${inv.id}`,
-        user_id: user.id,
+        user_id: userId,
         type: 'team_invite',
         title: 'Team Invitation',
         message: inv.message || 'You have been invited to join a team',
@@ -47,15 +49,15 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         console.warn('[Notifications] Fetch failed:', error);
       }
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
-    if (!user || !hub || authLoading || listenersAttached.current) return;
+    if (!userId || !hub || authLoading || listenersAttached.current) return;
 
     const onNewNotification = (payload: Record<string, string>) => {
       const stub: Notification = {
         id: payload.id ?? crypto.randomUUID(),
-        user_id: user.id,
+        user_id: userId,
         type: payload.type ?? 'general',
         title: payload.title ?? 'New Notification',
         message: payload.message ?? '',
@@ -91,17 +93,17 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       hub.off('AllRead', onAllRead);
       listenersAttached.current = false;
     };
-  }, [user, hub, authLoading]);
+  }, [userId, hub, authLoading]);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    if (!userId) {
       setNotifications([]);
       setUnreadCount(0);
       return;
     }
     fetchNotifications();
-  }, [user, fetchNotifications, authLoading]);
+  }, [userId, fetchNotifications, authLoading]);
 
   const markAsRead = async (id: string) => {
     setNotifications(prev => {

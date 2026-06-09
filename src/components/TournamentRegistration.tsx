@@ -88,7 +88,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
       }
     };
     checkBan();
-  }, [user, tournamentId]);
+  }, [user?.id, tournamentId]);
 
   const handleRegistrationComplete = () => {
     if (isPaid) {
