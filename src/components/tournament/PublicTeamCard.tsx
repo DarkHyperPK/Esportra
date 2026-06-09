@@ -52,8 +52,11 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({ participant, isS
                 participant.solo_full_name,
                 participant.solo_riot_tag,
                 participant.solo_username || participant.user?.username,
-            ].filter(Boolean);
-            return details.length > 0 ? details : getMembers(participant.team_members);
+            ].filter(Boolean) as string[];
+            const uniqueDetails = [...new Set(details.map(d => d.trim().toLowerCase()))]
+                .map(key => details.find(d => d.trim().toLowerCase() === key)!)
+                .filter(Boolean);
+            return uniqueDetails.length > 0 ? uniqueDetails : [];
         }
         return getMembers(participant.team_members);
     }, [isSolo, participant.solo_full_name, participant.solo_riot_tag, participant.solo_username, participant.user?.username, participant.team_members]);

@@ -287,9 +287,12 @@ const CaptainMatchPage = () => {
             if (userParticipant) {
 
                 let isCap = false;
-                const teamId = userParticipant.team_id || userParticipant.user_id || undefined;
+                const teamId = userParticipant.participant_type === 'solo'
+                    || userParticipant.entry_kind === 'solo_player'
+                    ? userParticipant.id
+                    : (userParticipant.team_id || undefined);
 
-                if (userParticipant.participant_type === 'solo') {
+                if (userParticipant.participant_type === 'solo' || userParticipant.entry_kind === 'solo_player') {
                     isCap = true; // Solo players are captains
                 } else if (userParticipant.team_id) {
                     // Find the team in userTeams to check ownership/role

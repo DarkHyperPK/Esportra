@@ -358,7 +358,9 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 console.log('[StageManagement] Found participants raw count:', participants?.length || 0);
 
                 teams = (participants || []).map((p: any) => {
-                    const isTeam = p.participant_type === 'team' || p.registration_type === 'team' || !!p.team_id;
+                    const isTeam = p.participant_type === 'team'
+                        || p.registration_type === 'team'
+                        || p.entry_kind === 'real_team';
 
                     if (isTeam) {
                         return {
