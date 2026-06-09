@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { apiClient } from '@/lib/apiClient';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -112,7 +112,8 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
   // Use global game logo hooks
   const gameLogo = useGameLogo(tournament.game);
-  const rosterGameLogos = useGameLogos(teamRosters.map(r => r.game));
+  const rosterGameNames = useMemo(() => teamRosters.map((r) => r.game), [teamRosters]);
+  const rosterGameLogos = useGameLogos(rosterGameNames);
 
   const normalize = (value: string | null | undefined) => (value || '').trim().toLowerCase();
   const tournamentGameMode = (tournament.gameMode || tournament.game_mode || '').trim();
@@ -554,8 +555,11 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
       onRegistrationComplete?.();
     } catch (e: unknown) {
-      const err = e as Error;
-      toast({ title: 'Registration Failed', description: err.message || 'Please try again.', variant: 'destructive' });
+      toast({
+        title: 'Registration Failed',
+        description: getApiErrorMessage(e, 'Please try again.'),
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }

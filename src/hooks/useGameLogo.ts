@@ -28,18 +28,15 @@ export const useGameLogo = (gameName: string | null | undefined): string | null 
  */
 export const useGameLogos = (gameNames: (string | null | undefined)[]): Record<string, string | null> => {
   const [logos, setLogos] = useState<Record<string, string | null>>({});
-  const gameNamesKey = gameNames.join(',');
+  const gameNamesKey = [...new Set(gameNames.filter((name): name is string => Boolean(name)))].sort().join('|');
 
   useEffect(() => {
-    const uniqueGames = Array.from(new Set(
-      gameNames.filter(Boolean) as string[]
-    ));
-
-    if (uniqueGames.length === 0) {
-      setLogos({});
+    if (!gameNamesKey) {
+      setLogos((prev) => (Object.keys(prev).length === 0 ? prev : {}));
       return;
     }
 
+    const uniqueGames = gameNamesKey.split('|');
     let isMounted = true;
     Promise.all(
       uniqueGames.map(async (name) => {
@@ -47,15 +44,24 @@ export const useGameLogos = (gameNames: (string | null | undefined)[]): Record<s
         return [name, cached.gameLogo] as const;
       })
     ).then(results => {
-      if (isMounted) {
-        const newLogos: Record<string, string | null> = {};
-        results.forEach(([name, url]) => { newLogos[name] = url; });
-        setLogos(newLogos);
-      }
+      if (!isMounted) return;
+      const newLogos: Record<string, string | null> = {};
+      results.forEach(([name, url]) => { newLogos[name] = url; });
+      setLogos((prev) => {
+        const prevKeys = Object.keys(prev);
+        const nextKeys = Object.keys(newLogos);
+        if (
+          prevKeys.length === nextKeys.length &&
+          nextKeys.every((key) => prev[key] === newLogos[key])
+        ) {
+          return prev;
+        }
+        return newLogos;
+      });
     });
 
     return () => { isMounted = false; };
-  }, [gameNames, gameNamesKey]);
+  }, [gameNamesKey]);
 
   return logos;
 };
