@@ -27,6 +27,9 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     if (!profile) {
+      if (!silent) {
+        setLoadingAdmin(true);
+      }
       return;
     }
 

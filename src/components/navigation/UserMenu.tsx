@@ -67,7 +67,7 @@ const UserMenu = ({
   const { currentRole: userRole } = useRole();
   const admin = useAdmin();
   const queryClient = useQueryClient();
-  const { data: meRoles } = useMeRoles(!!user?.id);
+  const { data: meRoles, isSuccess: meRolesReady } = useMeRoles(!!user?.id);
   const { data: teams = [] } = useMyTeamsSummary();
   const { data: teamInvites = [] } = useMyTeamInvitesSummary();
   const { data: staffInvites = [] } = useStaffInvitesSummary();
@@ -79,7 +79,12 @@ const UserMenu = ({
   const hasPendingInvite = teamInvites.length > 0;
   const hasStaffInvites = staffInvites.length > 0;
   const hasStaffAssignments = staffAssignments.length > 0;
-  const hasApprovedLicense = deriveHasApprovedLicense(meRoles);
+  const sessionRoleHint = typeof localStorage !== 'undefined'
+    ? localStorage.getItem('sessionRole')
+    : null;
+  const hasApprovedLicense = meRolesReady
+    ? deriveHasApprovedLicense(meRoles)
+    : sessionRoleHint === 'organizer' || sessionRoleHint === 'venue_owner';
   const hasOrganization = userRole === 'organizer' && deriveHasOrganization(meRoles);
 
   useEffect(() => {

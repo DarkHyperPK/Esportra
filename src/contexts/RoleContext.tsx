@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useMeRoles } from '@/hooks/useMeRoles';
-import { fetchMeRoles, meRolesQueryKey } from '@/lib/meRoles';
+import { fetchMeRoles, meRolesQueryKey, isApprovedVerifiedRole } from '@/lib/meRoles';
 import { RoleContext, type RoleContextType, type UserRole } from '@/contexts/role-context';
 
 export type { UserRole };
@@ -21,14 +21,12 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const { data: rolesData, isLoading: rolesQueryLoading } = useMeRoles(!!user);
 
   // Load user's current role (session role takes priority over database role)
-  const loadCurrentRole = React.useCallback(async () => {
+  const loadCurrentRole = React.useCallback(() => {
     if (!user) {
       setCurrentRole('casual');
       setIsLoading(false);
       return;
     }
-
-    if (rolesQueryLoading) return;
 
     try {
       const isAdmin = profile?.is_admin || false;
@@ -71,7 +69,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, profile, rolesData, rolesQueryLoading]);
+  }, [user, profile, rolesData]);
 
   // Update role when profile changes (but don't override session role)
   // Use ref to track previous profile role to avoid unnecessary updates
@@ -158,7 +156,9 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
           rolesData = { userRoles: [], verifiedRoles: [] };
         }
 
-        const hasRole = rolesData.userRoles?.some(r => r.role === newRole);
+        const hasRole = rolesData.userRoles?.some(
+          (r) => r.role === newRole && (r.is_active ?? (r as { isActive?: boolean }).isActive ?? true),
+        );
 
         if (!hasRole) {
           toast({
@@ -173,7 +173,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
         // For organizer/venue_owner, check verification status (must be approved AND active)
         if (newRole === 'organizer' || newRole === 'venue_owner') {
           const isVerified = rolesData.verifiedRoles?.some(
-            r => r.role === newRole && r.status === 'approved' && r.is_active
+            (r) => r.role === newRole && isApprovedVerifiedRole(r),
           );
 
           if (!isVerified) {
@@ -256,23 +256,21 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const canReportScores = currentRole === 'casual' || isSuperAdmin;
   const canVerifyResults = currentRole === 'organizer' || isSuperAdmin;
 
-  // Track previous user ID to prevent unnecessary reloads
-  const prevUserIdRef = React.useRef<string | null>(null);
-  const prevProfileIdRef = React.useRef<string | null>(null);
-
+  // Apply role once auth + /api/me/roles have settled
   useEffect(() => {
-    const currentUserId = user?.id || null;
-    const currentProfileId = profile?.id || null;
-    const prevUserId = prevUserIdRef.current;
-    const prevProfileId = prevProfileIdRef.current;
-
-    // Only reload if user or profile actually changed
-    if (currentUserId !== prevUserId || currentProfileId !== prevProfileId) {
-      prevUserIdRef.current = currentUserId;
-      prevProfileIdRef.current = currentProfileId;
-      loadCurrentRole();
+    if (!user) {
+      setCurrentRole('casual');
+      setIsLoading(false);
+      return;
     }
-  }, [user?.id, profile?.id, loadCurrentRole]);
+
+    if (rolesQueryLoading) {
+      setIsLoading(true);
+      return;
+    }
+
+    loadCurrentRole();
+  }, [user?.id, profile?.id, rolesQueryLoading, rolesData, loadCurrentRole]);
 
   const value: RoleContextType = React.useMemo(() => ({
     currentRole,
