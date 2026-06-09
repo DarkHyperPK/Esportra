@@ -16,6 +16,7 @@ import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { MapVeto } from '@/components/tournament/MapVeto';
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import { useStageCompletion } from '@/hooks/useStageCompletion';
+import { isMatchTooEarlyForLive } from '@/lib/timeUtils';
 
 interface GroupStageViewProps {
     stageId: string;
@@ -362,7 +363,11 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
             return;
         }
         setIsProcessing(true);
-        const r = await GraphMatchService.goLive(getRawId(match.id), code.trim(), force);
+        const r = await GraphMatchService.goLive(
+            getRawId(match.id),
+            code.trim(),
+            force || (isOrganizer && isMatchTooEarlyForLive(match.scheduledTime)),
+        );
         setIsProcessing(false);
         if (r.success) {
             toast({ title: 'Match is live' });
@@ -371,7 +376,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
         } else {
             toast({ title: 'Error', description: r.error, variant: 'destructive' });
         }
-    }, [goLiveMatch, partyCodeInput, toast, onMatchUpdate]);
+    }, [goLiveMatch, partyCodeInput, toast, onMatchUpdate, isOrganizer]);
 
     const openGoLive = useCallback((m: BracketMatch, code?: string, force = false) => {
         if (code) {

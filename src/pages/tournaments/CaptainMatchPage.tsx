@@ -57,6 +57,7 @@ const CaptainMatchPage = () => {
     const [userTeamId, setUserTeamId] = useState<string | undefined>(undefined);
     const [isCaptain, setIsCaptain] = useState(false);
     const [isOrganizer, setIsOrganizer] = useState(false);
+    const [staffPermissions, setStaffPermissions] = useState<string[]>([]);
     const stageFormat = 'single_elimination';
     const roundDeadline: string | null = null;
     const [participantStatus, setParticipantStatus] = useState<string | null>(null);
@@ -157,10 +158,18 @@ const CaptainMatchPage = () => {
         const adapted = adaptGraphToBracketMatches(allGraphData.nodes, allGraphData.edges, teamsMap);
         return adapted;
     }, [allGraphData?.nodes, allGraphData?.edges, teamsMap]);
+    const canManageMatchRoom = useMemo(
+        () =>
+            isOrganizer
+            || staffPermissions.includes('bracket:edit')
+            || staffPermissions.includes('disputes:assist'),
+        [isOrganizer, staffPermissions],
+    );
+
     const { data: organizerMatch } = useQuery({
         queryKey: ['organizer-match', urlMatchId],
         queryFn: async () => {
-            if (!urlMatchId || !isOrganizer) return null;
+            if (!urlMatchId || !canManageMatchRoom) return null;
             try {
                 const data = await apiClient.get<any>(`/api/brackets/matches/${urlMatchId}`);
                 if (!data) return null;
@@ -207,10 +216,10 @@ const CaptainMatchPage = () => {
                 return null;
             }
         },
-        enabled: !!urlMatchId && !!isOrganizer,
+        enabled: !!urlMatchId && canManageMatchRoom,
     });
 
-    const isOrganizerMatchView = !!urlMatchId && isOrganizer;
+    const isOrganizerMatchView = !!urlMatchId && canManageMatchRoom;
     const bracketLoading = versionsLoading || graphLoading;
     const organizerMatchLoading = isOrganizerMatchView && !organizerMatch;
     const pageLoading = loading || bracketLoading || organizerMatchLoading;
@@ -234,8 +243,16 @@ const CaptainMatchPage = () => {
             // Get participants from wrapped response
             setParticipants(response.participants || []);
 
-            // Use backend-computed organizer flag (avoids extra API call)
-            setIsOrganizer(response.isOrganizer || false);
+            const perms: string[] = response.staffPermissions || [];
+            const ownsOrg = user?.id === tourney.organization?.owner_id;
+            const isOrganizerUser = user?.id === tourney.organizer_id;
+            const hasMatchRoomStaffPerm =
+                perms.includes('bracket:edit') || perms.includes('disputes:assist');
+
+            setStaffPermissions(perms);
+            setIsOrganizer(
+                response.isOrganizer || ownsOrg || isOrganizerUser || hasMatchRoomStaffPerm,
+            );
 
         } catch (error: any) {
             console.error('Error fetching tournament:', error);
@@ -247,7 +264,7 @@ const CaptainMatchPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [slug, toast]);
+    }, [slug, toast, user?.id]);
 
     useEffect(() => {
         fetchTournamentData();
@@ -260,17 +277,25 @@ const CaptainMatchPage = () => {
 
             // 1. Organizer status already set from API response
 
-            // 2. Check if user is registered SOLO
-            let userParticipant = participants.find((p: any) => p.user_id === user.id);
+            const inactiveStatuses = new Set(['cancelled', 'rejected', 'disqualified']);
+            const matchingParticipants: any[] = [];
 
-            // 2. If not solo, check if any of user's TEAMS are registered
-            if (!userParticipant && userTeams.length > 0) {
-                const registeredTeamIds = userTeams.map(t => t.id);
-                userParticipant = participants.find((p: any) => p.team_id && registeredTeamIds.includes(p.team_id));
-            }
+            participants.forEach((p: any) => {
+                if (p.user_id === user.id) {
+                    matchingParticipants.push(p);
+                    return;
+                }
+                if (p.team_id && userTeams.some(t => t.id === p.team_id)) {
+                    matchingParticipants.push(p);
+                }
+            });
+
+            const userParticipant =
+                matchingParticipants.find(
+                    (p) => !inactiveStatuses.has(String(p.status || '').toLowerCase()),
+                ) ?? matchingParticipants[0];
 
             if (userParticipant) {
-
                 let isCap = false;
                 const teamId = userParticipant.participant_type === 'solo'
                     || userParticipant.entry_kind === 'solo_player'
@@ -278,20 +303,25 @@ const CaptainMatchPage = () => {
                     : (userParticipant.team_id || undefined);
 
                 if (userParticipant.participant_type === 'solo' || userParticipant.entry_kind === 'solo_player') {
-                    isCap = true; // Solo players are captains
+                    isCap = true;
                 } else if (userParticipant.team_id) {
-                    // Find the team in userTeams to check ownership/role
                     const userTeam = userTeams.find(t => t.id === userParticipant.team_id);
                     if (userTeam) {
                         const myMember = userTeam.members?.find(m => m.id === user.id);
-                        isCap = userTeam.owner_id === user.id ||
-                            !!(myMember && (myMember.role === 'captain' || (myMember as any).is_captain === true));
+                        isCap = userTeam.owner_id === user.id
+                            || !!(myMember && (myMember.role === 'captain' || (myMember as any).is_captain === true));
                     }
                 }
 
                 setIsCaptain(isCap);
                 setUserTeamId(teamId);
-                setParticipantStatus(userParticipant.status);
+
+                const status = String(userParticipant.status || '').toLowerCase();
+                if (canManageMatchRoom && inactiveStatuses.has(status)) {
+                    setParticipantStatus(null);
+                } else {
+                    setParticipantStatus(userParticipant.status);
+                }
             } else {
                 setIsCaptain(false);
                 setUserTeamId(undefined);
@@ -300,12 +330,12 @@ const CaptainMatchPage = () => {
         };
 
         checkRoles();
-    }, [user, participants, userTeams, teamsLoading, tournament]);
+    }, [user, participants, userTeams, teamsLoading, tournament, canManageMatchRoom]);
 
     // Find active match for the team (prefer URL matchId from notification links)
     const activeMatch = useMemo(() => {
         // Organizer mode: use directly fetched match if available
-        if (isOrganizer && urlMatchId && organizerMatch) {
+        if (canManageMatchRoom && urlMatchId && organizerMatch) {
             return organizerMatch;
         }
 
@@ -319,7 +349,7 @@ const CaptainMatchPage = () => {
                 m.id === urlMatchId || m.id.replace(/^(db-|wb-|lb-)/, '') === urlMatchId
             );
             const isUsersMatch = !!userTeamId && (urlMatch?.team1?.id === userTeamId || urlMatch?.team2?.id === userTeamId);
-            if (urlMatch && (isOrganizer || isUsersMatch)) {
+            if (urlMatch && (canManageMatchRoom || isUsersMatch)) {
                 return urlMatch;
             }
         }
@@ -346,7 +376,7 @@ const CaptainMatchPage = () => {
         );
         return nextMatch || null;
 
-    }, [isOrganizer, userTeamId, matches, urlMatchId, organizerMatch]);
+    }, [canManageMatchRoom, userTeamId, matches, urlMatchId, organizerMatch]);
 
     // Lifted Proposal state for higher-level visibility
     const { acceptedProposal } = useTimeProposal(activeMatch?.id?.replace(/^(db-|wb-|lb-)/, ''));
@@ -687,7 +717,10 @@ const CaptainMatchPage = () => {
         );
     }
 
-    if (participantStatus === 'cancelled' || participantStatus === 'rejected') {
+    if (
+        !canManageMatchRoom
+        && (participantStatus === 'cancelled' || participantStatus === 'rejected')
+    ) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-[#09090b] text-white p-4">
                 <AlertCircle className="w-16 h-16 text-red-500 mb-4" />

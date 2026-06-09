@@ -17,6 +17,7 @@ import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import { useStageCompletion } from '@/hooks/useStageCompletion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { FilterState } from '@/components/bracket/BracketSidebarFilter';
+import { isMatchTooEarlyForLive } from '@/lib/timeUtils';
 
 interface SwissViewProps {
     stageId: string;
@@ -397,7 +398,11 @@ export const SwissView: React.FC<SwissViewProps> = ({
             return;
         }
         setIsProcessing(true);
-        const r = await GraphMatchService.goLive(getRawId(match.id), code.trim(), force);
+        const r = await GraphMatchService.goLive(
+            getRawId(match.id),
+            code.trim(),
+            force || (isOrganizer && isMatchTooEarlyForLive(match.scheduledTime)),
+        );
         setIsProcessing(false);
         if (r.success) {
             toast({ title: 'Match is live' });
@@ -406,7 +411,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
         } else {
             toast({ title: 'Error', description: r.error, variant: 'destructive' });
         }
-    }, [goLiveMatch, partyCodeInput, toast, onMatchUpdate]);
+    }, [goLiveMatch, partyCodeInput, toast, onMatchUpdate, isOrganizer]);
 
     const openGoLive = useCallback((m: BracketMatch, code?: string, force = false) => {
         if (code) {

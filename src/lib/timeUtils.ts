@@ -173,3 +173,9 @@ export const localDateTimeToUTC = (dateStr: string, timeStr: string): string => 
     const date = new Date(`${dateStr}T${timeStr}`);
     return date.toISOString();
 };
+
+/** True when scheduled time is more than 15 minutes in the future (player go-live window). */
+export const isMatchTooEarlyForLive = (scheduledTime?: string | null): boolean => {
+    if (!scheduledTime) return false;
+    return new Date(scheduledTime).getTime() - Date.now() > 15 * 60 * 1000;
+};

@@ -2,16 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, PlayCircle, Swords, Eye, ChevronDown, X, Bot, MessageCircle, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import ManualAdjustmentMenu from '@/components/tournament/ManualAdjustmentMenu';
 
@@ -20,7 +10,7 @@ import ManualAdjustmentMenu from '@/components/tournament/ManualAdjustmentMenu';
 // =============================================================================
 const CARD_WIDTH = 320;
 const CARD_HEIGHT = 180;
-import { formatLocalTime } from '@/lib/timeUtils';
+import { formatLocalTime, isMatchTooEarlyForLive } from '@/lib/timeUtils';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 
 interface MatchCardProps {
@@ -91,22 +81,13 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     const canAct = isOrganizer && isDbMatch(id);
     const w1 = match.winner?.id === match.team1?.id;
 
-    // Schedule validation: can't go live more than 15 minutes before scheduled time
-    const isTooEarlyForLive = (() => {
-        const st = match.scheduledTime || match.scheduled_time;
-        if (!st) return false;
-        const scheduledMs = new Date(st).getTime();
-        const nowMs = Date.now();
-        return scheduledMs - nowMs > 15 * 60 * 1000;
-    })();
+    const isTooEarlyForLive = isMatchTooEarlyForLive(match.scheduledTime || match.scheduled_time);
     const w2 = match.winner?.id === match.team2?.id;
     const [showProofs, setShowProofs] = useState(false);
     const [actionMode, setActionMode] = useState<'default' | 'party_code'>('default');
     const [partyCode, setPartyCode] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [confirmEarlyLiveOpen, setConfirmEarlyLiveOpen] = useState(false);
-    const [pendingEarlyLiveCode, setPendingEarlyLiveCode] = useState('');
 
     // Scoring Hints based on BestOf
     const bestOf = match.bestOf || (match as any).best_of || 1;
@@ -139,30 +120,11 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
     const handleStart = async () => {
         if (!partyCode.trim()) return;
-        if (isTooEarlyForLive) {
-            setPendingEarlyLiveCode(partyCode.trim());
-            setConfirmEarlyLiveOpen(true);
-            return;
-        }
         setIsSubmitting(true);
         try {
-            await onGoLive?.(match, partyCode.trim());
+            await onGoLive?.(match, partyCode.trim(), canAct && isTooEarlyForLive);
         } finally {
             setIsSubmitting(false);
-            setActionMode('default');
-            setPartyCode('');
-        }
-    };
-
-    const handleConfirmEarlyLive = async () => {
-        if (!pendingEarlyLiveCode.trim()) return;
-        setIsSubmitting(true);
-        try {
-            await onGoLive?.(match, pendingEarlyLiveCode.trim(), true);
-        } finally {
-            setIsSubmitting(false);
-            setConfirmEarlyLiveOpen(false);
-            setPendingEarlyLiveCode('');
             setActionMode('default');
             setPartyCode('');
         }
@@ -451,17 +413,11 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
-                                                                className={cn(
-                                                                    "flex-1 min-w-[80px] h-8",
-                                                                    isTooEarlyForLive
-                                                                        ? "bg-rose-500/10 border-rose-500/20 text-rose-300 hover:bg-rose-500/20 hover:text-rose-200"
-                                                                        : "bg-green-900/20 border-green-900/30 text-green-400 hover:bg-green-900/40 hover:text-green-300"
-                                                                )}
+                                                                className="flex-1 min-w-[80px] h-8 bg-green-900/20 border-green-900/30 text-green-400 hover:bg-green-900/40 hover:text-green-300"
                                                                 onClick={(e) => { e.stopPropagation(); onGoLive?.(match); }}
                                                                 disabled={isProcessing}
-                                                                title={isTooEarlyForLive ? 'Requires confirmation to go live ahead of schedule' : undefined}
                                                             >
-                                                                <PlayCircle className="w-3.5 h-3.5 mr-1.5" /> {isTooEarlyForLive ? 'Go Live Early' : 'Go Live'}
+                                                                <PlayCircle className="w-3.5 h-3.5 mr-1.5" /> Go Live
                                                             </Button>
                                                         )}
 
@@ -563,28 +519,6 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                         </motion.div>
                     )}
                 </AnimatePresence>
-                <AlertDialog open={confirmEarlyLiveOpen} onOpenChange={setConfirmEarlyLiveOpen}>
-                    <AlertDialogContent className="border-white/10 bg-zinc-950 text-white">
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Go live ahead of schedule?</AlertDialogTitle>
-                            <AlertDialogDescription className="text-zinc-400">
-                                This match has a future scheduled time. Confirming will immediately mark it live and share the party code with both teams.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel className="border-white/10 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-white">
-                                Cancel
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                                className="bg-rose-500 text-white hover:bg-rose-600"
-                                onClick={handleConfirmEarlyLive}
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? 'Starting...' : 'Go Live Now'}
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
             </div>
         </div >
     );

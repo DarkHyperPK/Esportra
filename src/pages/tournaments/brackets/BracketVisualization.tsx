@@ -26,6 +26,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
+import { isMatchTooEarlyForLive } from '@/lib/timeUtils';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 import { useBracketWheelScroll } from '@/hooks/useBracketWheelScroll';
 import { gameHasMapVeto } from '@/utils/gameFeatures';
@@ -554,7 +555,11 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     }
     // -------------------------
 
-    const r = await GraphMatchService.goLive(getRawId(match.id), code.trim(), force);
+    const r = await GraphMatchService.goLive(
+      getRawId(match.id),
+      code.trim(),
+      force || (isOrganizer && isMatchTooEarlyForLive(match.scheduledTime)),
+    );
     setIsProcessing(false);
 
     if (r.success) {
@@ -567,7 +572,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       }
       toast({ title: 'Error', description: r.error, variant: 'destructive' });
     }
-  }, [goLiveMatch, partyCodeInput, toast, queryClient, versionId]);
+  }, [goLiveMatch, partyCodeInput, toast, queryClient, versionId, isOrganizer]);
 
   const openGoLive = useCallback((m: BracketMatch, code?: string, force = false) => {
     if (code) {
