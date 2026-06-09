@@ -122,10 +122,13 @@ export function buildCompetitorMapFromNodes(nodes: BracketNode[]): Map<string, T
 
     const add = (id?: string | null, name?: string | null, logo?: string | null) => {
         if (!id) return;
+        const existing = map.get(id);
+        // Never clobber a resolved name with TBD (winner/loser ids reuse slot ids)
+        const resolvedName = name?.trim() || existing?.name || 'TBD';
         map.set(id, {
             id,
-            name: name?.trim() || 'TBD',
-            logo_url: logo ?? null,
+            name: resolvedName,
+            logo_url: logo ?? existing?.logo_url ?? null,
         });
     };
 
@@ -138,8 +141,30 @@ export function buildCompetitorMapFromNodes(nodes: BracketNode[]): Map<string, T
         };
         add(node.team1_id, n.team1_name, n.team1_logo);
         add(node.team2_id, n.team2_name, n.team2_logo);
-        add(node.winner_id, undefined, undefined);
-        add(node.loser_id, undefined, undefined);
+
+        if (node.winner_id) {
+            const winnerName =
+                node.winner_id === node.team1_id ? n.team1_name
+                : node.winner_id === node.team2_id ? n.team2_name
+                : null;
+            const winnerLogo =
+                node.winner_id === node.team1_id ? n.team1_logo
+                : node.winner_id === node.team2_id ? n.team2_logo
+                : null;
+            add(node.winner_id, winnerName, winnerLogo);
+        }
+
+        if (node.loser_id) {
+            const loserName =
+                node.loser_id === node.team1_id ? n.team1_name
+                : node.loser_id === node.team2_id ? n.team2_name
+                : null;
+            const loserLogo =
+                node.loser_id === node.team1_id ? n.team1_logo
+                : node.loser_id === node.team2_id ? n.team2_logo
+                : null;
+            add(node.loser_id, loserName, loserLogo);
+        }
     });
 
     return map;

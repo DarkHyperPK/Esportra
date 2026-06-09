@@ -38,6 +38,28 @@ const resolveMapSplash = (mapName: string) => {
     return theme ? getMapSplash(theme.id) : null;
 };
 
+const resolveMatchSide = (match: BracketMatch, teamId?: string): 'team1' | 'team2' | null => {
+    if (!teamId) return null;
+    if (match.team1?.id === teamId) return 'team1';
+    if (match.team2?.id === teamId) return 'team2';
+    return null;
+};
+
+const resolveOpponentName = (match: BracketMatch, teamId?: string): string => {
+    const side = resolveMatchSide(match, teamId);
+    const opponent = side === 'team1' ? match.team2 : side === 'team2' ? match.team1 : null;
+    const opponentName = opponent?.name?.trim();
+    if (opponentName && opponentName !== 'TBD') return opponentName;
+
+    const fallback =
+        side === 'team1' ? match.team2?.name
+        : side === 'team2' ? match.team1?.name
+        : undefined;
+    if (fallback && fallback !== 'TBD') return fallback;
+
+    return opponentName || 'TBD';
+};
+
 /** Individual game row with map splash + expandable scoreboard */
 const GameCard: React.FC<{
     game: GameDetail;
@@ -179,10 +201,11 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches, i
                         ) : (
                             <div className="space-y-4">
                                 {pastMatches.map(match => {
-                                    const isTeam1 = match.team1?.id === teamId;
+                                    const side = resolveMatchSide(match, teamId);
+                                    const isTeam1 = side === 'team1';
                                     const myScore = isTeam1 ? match.team1_score : match.team2_score;
                                     const opponentScore = isTeam1 ? match.team2_score : match.team1_score;
-                                    const opponentName = isTeam1 ? match.team2?.name : match.team1?.name;
+                                    const opponentName = resolveOpponentName(match, teamId);
                                     const isWin = (myScore || 0) > (opponentScore || 0);
                                     const games = gameDetails[match.id] || [];
                                     const isExpanded = expandedMatches[match.id];
