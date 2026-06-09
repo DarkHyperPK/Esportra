@@ -122,8 +122,8 @@ export function useEligibleCaptainTeams({
       try {
         const captainTeamsResponse = await apiClient.get<CaptainTeamRow[]>(`/api/teams/my-captain-teams${gameQuery}`);
         teams = mergeUniqueTeams(teams, captainTeamsResponse || []);
-      } catch {
-        // optional lookup
+      } catch (err) {
+        console.warn('my-captain-teams lookup failed', err);
       }
 
       if (teams.length === 0) {
@@ -194,7 +194,7 @@ export function useEligibleCaptainTeams({
                 const rosterMembers = await apiClient.get<any[]>(
                   `/api/teams/${team.id}/rosters/${matchingRoster.id}/members`,
                 );
-                const rosterMemberCount = (rosterMembers || []).length + 1;
+                const rosterMemberCount = (rosterMembers || []).length;
                 if (rosterMemberCount < coreMembers) {
                   errs.push(`Roster needs at least ${coreMembers} members (has ${rosterMemberCount}).`);
                 }

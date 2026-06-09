@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from "framer-motion";
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
@@ -67,7 +67,6 @@ const TeamsPage = () => {
     inviteUserToTeam,
     removeMemberFromTeam,
     transferCaptaincy,
-    changeRole,
     updateRosterMemberRole,
     disbandTeam,
     leaveTeam,
@@ -195,13 +194,17 @@ const TeamsPage = () => {
     }
   }, [gameImages]);
 
-  // Ensure API images exist for any roster games not in the preloaded list
+  // Ensure API images exist for roster games only
   useEffect(() => {
     const fetchMissing = async () => {
-      const missing = Array.from(new Set((rosters || []).map(r => r.game).filter(g => g && !(gameImages as any)?.[g])));
+      const missing = Array.from(new Set((rosters || []).map(r => r.game).filter(Boolean)));
       if (missing.length === 0) return;
+
+      const toFetch = missing.filter((g) => !(gameImages as Record<string, string>)[g]);
+      if (toFetch.length === 0) return;
+
       const newImages: Record<string, string> = {};
-      await Promise.all(missing.map(async (g) => {
+      await Promise.all(toFetch.map(async (g) => {
         try {
           const cached = await fetchGameData(g);
           if (cached.gameLogo) newImages[g] = cached.gameLogo;
@@ -212,7 +215,7 @@ const TeamsPage = () => {
       }
     };
     fetchMissing();
-  }, [rosters, gameImages]);
+  }, [rosters]);
 
   // State for member invitation
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -244,23 +247,6 @@ const TeamsPage = () => {
     }
   }, [currentTeam?.id]);
 
-  const fetchGameImages = useCallback(async () => {
-    const images: Record<string, string> = {};
-    const games = listCatalogGames();
-
-    await Promise.all(
-      games.map(async (game) => {
-        try {
-          const cached = await fetchGameData(game.name);
-          if (cached.gameLogo) images[game.name] = cached.gameLogo;
-        } catch {
-          // ignore individual failures
-        }
-      })
-    );
-    setGameImages({ ...images });
-  }, []);
-
   const fetchTeamPendingInvites = useCallback(async () => {
     if (!currentTeam?.id) return;
     try {
@@ -270,6 +256,12 @@ const TeamsPage = () => {
       setTeamInvites([]);
     }
   }, [currentTeam?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserTeams();
+    }
+  }, [user?.id, fetchUserTeams]);
 
   const fetchRosters = useCallback(async () => {
     if (!currentTeam?.id) {
@@ -298,7 +290,9 @@ const TeamsPage = () => {
             user_id: currentTeam.owner_id,
             username: ownerMember?.username || 'Captain',
             avatar_url: ownerMember?.avatar_url || null,
-            card_image_url: ownerMember?.card_image_url || null
+            card_image_url: ownerMember?.card_image_url || null,
+            is_starter: true,
+            roster_role: 'starter',
           });
         }
 
@@ -330,13 +324,6 @@ const TeamsPage = () => {
       setTeamRegistrations([]);
     }
   }, [currentTeam]);
-
-  useEffect(() => {
-    if (user?.id) {
-      fetchUserTeams();
-      fetchGameImages();
-    }
-  }, [user?.id, fetchUserTeams, fetchGameImages]);
 
   useEffect(() => {
     if (currentTeam?.id) {
@@ -637,8 +624,8 @@ const TeamsPage = () => {
     // Set editable fields (only name is editable)
     setEditRosterName(r.name);
     // Load roster members from the roster data we already have
-    const rosterMembers = (r.members || []).filter((m: any) => m.user_id !== currentTeam?.owner_id);
-    setManageMembers(rosterMembers.map((x: any) => x.user_id));
+    const rosterMembers = r.members || [];
+    setManageMembers(rosterMembers.map((x: RosterMember) => x.user_id));
     const roleMap: Record<string, RosterLineupRole> = {};
     rosterMembers.forEach((x: RosterMember) => {
       roleMap[x.user_id] = resolveMemberRosterRole(x);
@@ -656,10 +643,13 @@ const TeamsPage = () => {
   };
   const addInviteeByEmail = async () => {
     if (!inviteInput || !manageRoster || !currentTeam) return;
-    const email = inviteInput.trim();
+    const email = inviteInput.trim().toLowerCase();
     try {
-      const results = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(email)}`);
-      const prof = (results || []).find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+      const cached = suggestedUsers.find((u) => u.email?.toLowerCase() === email);
+      const prof = cached
+        ? { id: cached.id, email: cached.email, username: cached.username }
+        : (await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(email)}`))
+            .find((u: any) => u.email?.toLowerCase() === email);
       if (!prof) {
         toast({ title: 'User not found', description: 'No account with that email.', variant: 'destructive' });
         return;
@@ -715,27 +705,34 @@ const TeamsPage = () => {
     }
   };
 
-  // typeahead search for invitees
+  const manageMembersRef = useRef(manageMembers);
+  const selectedInviteesRef = useRef(selectedInvitees);
+  useEffect(() => { manageMembersRef.current = manageMembers; }, [manageMembers]);
+  useEffect(() => { selectedInviteesRef.current = selectedInvitees; }, [selectedInvitees]);
+
+  // Debounced typeahead search for invitees
   useEffect(() => {
-    const run = async () => {
-      const q = inviteInput.trim();
-      if (!q || q.length < 2 || !manageRoster) {
-        setSuggestedUsers([]);
-        return;
-      }
+    const q = inviteInput.trim();
+    if (!q || q.length < 2 || !manageRoster) {
+      setSuggestedUsers([]);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
       try {
         const data = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(q)}`);
-        const existingRosterIds = new Set(manageMembers);
+        const existingRosterIds = new Set(manageMembersRef.current);
         const toShow = (data || [])
-          .filter((u: any) => u.id !== user?.id && !existingRosterIds.has(u.id) && !selectedInvitees.some(s => s.id === u.id))
+          .filter((u: any) => u.id !== user?.id && !existingRosterIds.has(u.id) && !selectedInviteesRef.current.some(s => s.id === u.id))
           .map((u: any) => ({ id: u.id, email: u.email, username: u.username }));
         setSuggestedUsers(toShow);
       } catch {
         setSuggestedUsers([]);
       }
-    };
-    run();
-  }, [inviteInput, manageRoster, manageMembers, selectedInvitees, user?.id]);
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [inviteInput, manageRoster, user?.id]);
 
   const handleAddMemberToRoster = async (userId: string) => {
     if (!manageRoster || !currentTeam) return;
@@ -823,16 +820,6 @@ const TeamsPage = () => {
       ?? (rosterMember ? resolveMemberRosterRole(rosterMember) : 'starter');
     if (currentRole === rosterRole) return;
 
-    const teamMemberRole = teamMembers.find(m => m.user_id === userId)?.role;
-    if ((rosterRole === 'starter' || rosterRole === 'substitute') && teamMemberRole === 'coach') {
-      toast({ title: 'Invalid lineup role', description: 'Change the team role from coach before assigning starter or substitute.', variant: 'destructive' });
-      return;
-    }
-    if (rosterRole === 'coach' && teamMemberRole !== 'coach') {
-      toast({ title: 'Invalid lineup role', description: 'Only team-level coaches can be assigned as lineup coaches.', variant: 'destructive' });
-      return;
-    }
-
     const limits = getRosterCapacity(manageRoster);
     const counts = countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members, userId);
     counts[rosterRole] += 1;
@@ -879,6 +866,38 @@ const TeamsPage = () => {
     } catch (e: any) {
       toast({ title: 'Update Failed', description: e.message, variant: 'destructive' });
     }
+  };
+
+  const renderRosterRolePills = (uid: string) => {
+    const rosterMember = manageRoster?.members?.find((m) => m.user_id === uid);
+    const activeRole = manageMemberRoles[uid]
+      ?? (rosterMember ? resolveMemberRosterRole(rosterMember) : 'starter');
+
+    return (
+      <div className="flex items-center gap-2 mt-1 flex-wrap">
+        {(['starter', 'substitute', 'coach'] as RosterLineupRole[]).map((role) => (
+          <button
+            key={role}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              void handleSetRosterRole(uid, role);
+            }}
+            className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border transition-all ${
+              activeRole === role
+                ? role === 'starter'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  : role === 'substitute'
+                    ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                    : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10 hover:text-white/50'
+            }`}
+          >
+            {role}
+          </button>
+        ))}
+      </div>
+    );
   };
 
   const saveManageRoster = async () => {
@@ -2043,26 +2062,28 @@ const TeamsPage = () => {
                 <div className="space-y-3 max-h-56 overflow-y-auto overscroll-contain custom-scrollbar pr-2" data-lenis-prevent>
                   {/* Captain (Implicit Member) */}
                   {currentTeam && (() => {
+                    const captainId = currentTeam.owner_id;
                     const captainData = ownerProfile
-                      || currentTeam.members?.find((m: any) => m.id === currentTeam.owner_id || m.user_id === currentTeam.owner_id)
+                      || currentTeam.members?.find((m: any) => m.id === captainId || m.user_id === captainId)
                       || { username: 'Captain', avatar_url: undefined };
                     return (
                     <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.06] border border-white/10 relative overflow-hidden group">
                       <div className="absolute inset-0 bg-rose-500/5" />
-                      <div className="flex items-center gap-4 relative z-10">
-                        <div className="relative">
+                      <div className="flex items-center gap-4 relative z-10 flex-1 min-w-0">
+                        <div className="relative shrink-0">
                           <Avatar className="w-10 h-10 border-2 border-indigo-500/50 shadow-xl">
                             <AvatarImage src={captainData.avatar_url} />
                             <AvatarFallback className="text-xs bg-indigo-900 text-indigo-200">{captainData.username?.charAt(0) || '?'}</AvatarFallback>
                           </Avatar>
                           <Crown className="absolute -top-1 -right-1 w-4 h-4 text-yellow-500 bg-[#0a0a0a] rounded-full p-0.5 border border-white/10" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <span className="text-sm font-heading font-medium text-white block">{captainData.username || 'Captain'}</span>
                           <span className="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Team Captain</span>
+                          {captainId && renderRosterRolePills(captainId)}
                         </div>
                       </div>
-                      <Badge className="bg-white/5 border-white/10 text-white/40 text-[8px] uppercase tracking-tighter relative z-10">Permanent</Badge>
+                      <Badge className="bg-white/5 border-white/10 text-white/40 text-[8px] uppercase tracking-tighter relative z-10 shrink-0">Permanent</Badge>
                     </div>
                     );
                   })()}
@@ -2096,65 +2117,7 @@ const TeamsPage = () => {
                               </div>
                               <div>
                                 <span className="text-sm font-heading font-medium text-white/90 group-hover:text-white transition-colors block">{member.username || 'Unknown User'}</span>
-                                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                  {(['starter', 'substitute', 'coach'] as RosterLineupRole[]).map((role) => {
-                                    const teamMemberRole = teamMembers.find(m => m.user_id === uid)?.role;
-                                    const rosterMember = manageRoster.members?.find((m) => m.user_id === uid);
-                                    const activeRole = manageMemberRoles[uid]
-                                      ?? (rosterMember ? resolveMemberRosterRole(rosterMember) : 'starter');
-                                    const disabled =
-                                      (role !== 'coach' && teamMemberRole === 'coach') ||
-                                      (role === 'coach' && teamMemberRole !== 'coach');
-                                    return (
-                                      <button
-                                        key={role}
-                                        disabled={disabled}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (!disabled) void handleSetRosterRole(uid, role);
-                                        }}
-                                        className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-                                          activeRole === role
-                                            ? role === 'starter'
-                                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                                              : role === 'substitute'
-                                                ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
-                                                : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
-                                            : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10 hover:text-white/50'
-                                        }`}
-                                      >
-                                        {role}
-                                      </button>
-                                    );
-                                  })}
-                                  {isCaptain && uid !== currentTeam?.owner_id && (
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        const currentRole = teamMembers.find(m => m.user_id === uid)?.role;
-                                        const newRole = currentRole === 'coach' ? 'member' : 'coach';
-                                        if (currentTeam?.id) {
-                                          const ok = await changeRole(currentTeam.id, uid, newRole);
-                                          if (ok) {
-                                            setTeamMembers(prev => prev.map(m => m.user_id === uid ? { ...m, role: newRole } : m));
-                                            if (newRole === 'coach') {
-                                              await handleSetRosterRole(uid, 'coach');
-                                            } else if (manageMemberRoles[uid] === 'coach') {
-                                              await handleSetRosterRole(uid, 'starter');
-                                            }
-                                          }
-                                        }
-                                      }}
-                                      className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border transition-all ${
-                                        teamMembers.find(m => m.user_id === uid)?.role === 'coach'
-                                          ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20'
-                                          : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10 hover:text-white/50'
-                                      }`}
-                                    >
-                                      {teamMembers.find(m => m.user_id === uid)?.role === 'coach' ? 'TEAM COACH' : 'SET TEAM COACH'}
-                                    </button>
-                                  )}
-                                </div>
+                                {renderRosterRolePills(uid)}
                               </div>
                             </div>
                             <div className="flex items-center gap-1 relative z-10 opacity-0 group-hover:opacity-100 transition-all">

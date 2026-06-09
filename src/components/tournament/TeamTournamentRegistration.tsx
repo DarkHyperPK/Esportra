@@ -363,7 +363,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
               }
             } else if (!hasMatchingRoster) {
               const members = await apiClient.get<any[]>(`/api/teams/${team.id}/members/detailed`);
-              const activeCount = (members || []).length + 1;
+              const activeCount = (members || []).length;
 
               if (activeCount < coreMembers) {
                 errs.push(`Need at least ${coreMembers} members (have ${activeCount}).`);
