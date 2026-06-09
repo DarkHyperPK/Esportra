@@ -16,6 +16,10 @@ interface Props {
     teamId?: string;
     matches: BracketMatch[];
     isOrganizer?: boolean;
+    /** When set (organizer match room), only show matches involving these teams. */
+    focusTeamIds?: string[];
+    /** Include this in-progress match so manual game reports show before the series ends. */
+    includeLiveMatchId?: string;
 }
 
 interface GameDetail {
@@ -143,17 +147,42 @@ const MatchVetoSummary: React.FC<{ matchId: string; expanded: boolean }> = ({ ma
     );
 };
 
-const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches, isOrganizer }) => {
+const CaptainMatchHistory: React.FC<Props> = ({
+    tournamentId,
+    teamId,
+    matches,
+    isOrganizer,
+    focusTeamIds,
+    includeLiveMatchId,
+}) => {
     const [expandedMatches, setExpandedMatches] = useState<Record<string, boolean>>({});
     const [expandedGames, setExpandedGames] = useState<Record<string, boolean>>({});
 
-    // Organizer mode: show all completed matches. Team mode: show only team's matches.
-    const pastMatches = matches.filter(m =>
-        m.status === 'completed' && (isOrganizer || !teamId || m.team1?.id === teamId || m.team2?.id === teamId)
-    ).sort((a, b) => Number(b.matchNumber) - Number(a.matchNumber));
+    const normalizeMatchId = (id: string) => id.replace(/^(db-|wb-|lb-)/, '');
+
+    const involvesFocusedTeams = (match: BracketMatch) => {
+        if (!focusTeamIds?.length) return true;
+        return focusTeamIds.some(
+            (id) => match.team1?.id === id || match.team2?.id === id,
+        );
+    };
+
+    const isIncludedLiveMatch = (match: BracketMatch) =>
+        !!includeLiveMatchId
+        && normalizeMatchId(match.id) === normalizeMatchId(includeLiveMatchId);
+
+    // Organizer: scoped team history + live match. Captain: own completed + live match.
+    const pastMatches = matches.filter((m) => {
+        if (isIncludedLiveMatch(m)) {
+            return m.status === 'in_progress' || m.status === 'completed';
+        }
+        if (m.status !== 'completed') return false;
+        if (isOrganizer) return involvesFocusedTeams(m);
+        return !teamId || m.team1?.id === teamId || m.team2?.id === teamId;
+    }).sort((a, b) => Number(b.matchNumber) - Number(a.matchNumber));
 
     const { data: rawGameDetails, isLoading: detailsLoading } = useQuery({
-        queryKey: ['match-history-games', teamId, pastMatches.map(m => m.id).join(',')],
+        queryKey: ['match-history-games', teamId, focusTeamIds?.join(','), includeLiveMatchId, pastMatches.map(m => m.id).join(',')],
         queryFn: async () => {
             if (pastMatches.length === 0) return {};
             const matchIdMap: Record<string, string> = {};
@@ -197,16 +226,19 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches, i
                                 <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
                             </div>
                         ) : pastMatches.length === 0 ? (
-                            <div className="text-center text-zinc-500 py-12">No completed matches yet.</div>
+                            <div className="text-center text-zinc-500 py-12">
+                                {isOrganizer ? 'No match history for these teams yet.' : 'No completed matches yet.'}
+                            </div>
                         ) : (
                             <div className="space-y-4">
                                 {pastMatches.map(match => {
                                     const side = resolveMatchSide(match, teamId);
-                                    const isTeam1 = side === 'team1';
+                                    const isTeam1 = side === 'team1' || (isOrganizer && !teamId);
                                     const myScore = isTeam1 ? match.team1_score : match.team2_score;
                                     const opponentScore = isTeam1 ? match.team2_score : match.team1_score;
                                     const opponentName = resolveOpponentName(match, teamId);
-                                    const isWin = (myScore || 0) > (opponentScore || 0);
+                                    const isLive = match.status === 'in_progress';
+                                    const isWin = !isLive && (myScore || 0) > (opponentScore || 0);
                                     const games = gameDetails[match.id] || [];
                                     const isExpanded = expandedMatches[match.id];
 
@@ -220,22 +252,42 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches, i
                                                     </div>
                                                 )}
                                                 <div className="relative z-10 flex items-center gap-4">
-                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${isWin ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'}`}>
-                                                        {isWin ? 'W' : 'L'}
+                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${
+                                                        isLive
+                                                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
+                                                            : isOrganizer
+                                                                ? 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                                                                : isWin
+                                                                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                                                                    : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                                                    }`}>
+                                                        {isLive ? '•' : isOrganizer ? '#' : isWin ? 'W' : 'L'}
                                                     </div>
                                                     <div className="flex flex-col">
                                                         <span className="text-sm font-bold text-zinc-100 group-hover:text-white transition-colors">
-                                                            {isOrganizer ? `${match.team1?.name || 'Team 1'} vs ${match.team2?.name || 'Team 2'}` : `vs ${opponentName || 'TBD'}`}
+                                                            {isOrganizer
+                                                                ? `${match.team1?.name || 'Team 1'} vs ${match.team2?.name || 'Team 2'}`
+                                                                : `vs ${opponentName || 'TBD'}`}
                                                         </span>
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Match #{match.matchNumber}</span>
+                                                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                                                                {isLive ? 'Current Match' : `Match #${match.matchNumber}`}
+                                                            </span>
                                                             {games.length > 0 && <span className="text-[10px] text-zinc-600">· {games.map(g => g.map_name).join(', ')}</span>}
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div className="relative z-10 flex items-center gap-3">
-                                                    <Badge variant="outline" className={`border-0 font-mono font-black text-sm px-3 py-1 ${isWin ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                                                        {myScore} – {opponentScore}
+                                                    <Badge variant="outline" className={`border-0 font-mono font-black text-sm px-3 py-1 ${
+                                                        isLive
+                                                            ? 'bg-amber-500/10 text-amber-300'
+                                                            : isOrganizer
+                                                                ? 'bg-zinc-800 text-zinc-300'
+                                                                : isWin
+                                                                    ? 'bg-emerald-500/10 text-emerald-400'
+                                                                    : 'bg-rose-500/10 text-rose-400'
+                                                    }`}>
+                                                        {myScore ?? 0} – {opponentScore ?? 0}
                                                     </Badge>
                                                     <div className={`p-1.5 rounded-lg bg-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
                                                         <ChevronDown className="w-4 h-4 text-zinc-500" />

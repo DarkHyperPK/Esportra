@@ -378,6 +378,16 @@ const CaptainMatchPage = () => {
 
     }, [canManageMatchRoom, userTeamId, matches, urlMatchId, organizerMatch]);
 
+    const organizerFocusTeamIds = useMemo(() => {
+        if (!canManageMatchRoom || !activeMatch) return undefined;
+        const ids = [activeMatch.team1?.id, activeMatch.team2?.id].filter(Boolean) as string[];
+        return ids.length > 0 ? ids : undefined;
+    }, [canManageMatchRoom, activeMatch]);
+
+    const showMatchHistory = Boolean(userTeamId || canManageMatchRoom);
+    const historyIncludeLiveMatchId =
+        activeMatch?.status === 'in_progress' ? activeMatch.id : undefined;
+
     // Lifted Proposal state for higher-level visibility
     const { acceptedProposal } = useTimeProposal(activeMatch?.id?.replace(/^(db-|wb-|lb-)/, ''));
 
@@ -558,7 +568,8 @@ const CaptainMatchPage = () => {
         }
 
         setNextGameMap(null);
-    }, [activeMatch]);
+        queryClient.invalidateQueries({ queryKey: ['match-history-games'] });
+    }, [activeMatch, queryClient]);
 
     useEffect(() => {
         fetchMatchGamesAndMap();
@@ -1102,12 +1113,14 @@ const CaptainMatchPage = () => {
 
                         </div>
 
-                        {(userTeamId || isOrganizerMatchView) && (
+                        {showMatchHistory && (
                             <CaptainMatchHistory
                                 tournamentId={tournament.id}
                                 teamId={userTeamId}
                                 matches={matches}
-                                isOrganizer={isOrganizerMatchView}
+                                isOrganizer={Boolean(canManageMatchRoom && isOrganizerMatchView)}
+                                focusTeamIds={canManageMatchRoom && isOrganizerMatchView ? organizerFocusTeamIds : undefined}
+                                includeLiveMatchId={historyIncludeLiveMatchId}
                             />
                         )}
                     </div>
