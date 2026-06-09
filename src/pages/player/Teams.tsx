@@ -165,11 +165,21 @@ const TeamsPage = () => {
   const getRosterCapacity = (roster: Pick<Roster, 'game' | 'format' | 'team_size'>) =>
     getRosterLimits(roster.game, roster.format, roster.team_size);
 
-  const countRosterRoles = (memberIds: string[], roles: Record<string, RosterLineupRole>) => {
+  const countRosterRoles = (
+    memberIds: string[],
+    roles: Record<string, RosterLineupRole>,
+    rosterMembers?: RosterMember[],
+    excludeUserId?: string,
+  ) => {
     const counts = { starter: 0, substitute: 0, coach: 0 };
     memberIds.forEach((uid) => {
-      const role = roles[uid] ?? 'starter';
-      counts[role] += 1;
+      if (excludeUserId && uid === excludeUserId) return;
+      let role = roles[uid];
+      if (!role && rosterMembers) {
+        const member = rosterMembers.find((m) => m.user_id === uid);
+        if (member) role = resolveMemberRosterRole(member);
+      }
+      counts[role ?? 'starter'] += 1;
     });
     return counts;
   };
@@ -730,8 +740,12 @@ const TeamsPage = () => {
   const handleAddMemberToRoster = async (userId: string) => {
     if (!manageRoster || !currentTeam) return;
     try {
-      await apiClient.post(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members`, { userId });
+      const res = await apiClient.post<{ success: boolean; rosterRole?: RosterLineupRole }>(
+        `/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members`,
+        { userId, rosterRole: 'starter' },
+      );
       setManageMembers(prev => [...prev, userId]);
+      setManageMemberRoles(prev => ({ ...prev, [userId]: res.rosterRole ?? 'starter' }));
       toast({ title: 'Member added to roster' });
       // update roster counts locally
       setRosters(prev => prev.map(r => r.id === manageRoster.id ? { ...r, member_count: (r.member_count || 0) + 1 } : r));
@@ -803,6 +817,12 @@ const TeamsPage = () => {
 
   const handleSetRosterRole = async (userId: string, rosterRole: RosterLineupRole) => {
     if (!manageRoster || !currentTeam) return;
+
+    const rosterMember = manageRoster.members?.find((m) => m.user_id === userId);
+    const currentRole = manageMemberRoles[userId]
+      ?? (rosterMember ? resolveMemberRosterRole(rosterMember) : 'starter');
+    if (currentRole === rosterRole) return;
+
     const teamMemberRole = teamMembers.find(m => m.user_id === userId)?.role;
     if ((rosterRole === 'starter' || rosterRole === 'substitute') && teamMemberRole === 'coach') {
       toast({ title: 'Invalid lineup role', description: 'Change the team role from coach before assigning starter or substitute.', variant: 'destructive' });
@@ -814,13 +834,14 @@ const TeamsPage = () => {
     }
 
     const limits = getRosterCapacity(manageRoster);
-    const nextRoles = { ...manageMemberRoles, [userId]: rosterRole };
-    const counts = countRosterRoles(manageMembers, nextRoles);
+    const counts = countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members, userId);
+    counts[rosterRole] += 1;
+
     if (rosterRole === 'substitute' && !limits.maxSubstitutes && limits.maxRoster <= limits.starters) {
       toast({ title: 'Substitutes not allowed', description: 'This game mode does not allow substitutes.', variant: 'destructive' });
       return;
     }
-    if (counts.substitute > limits.maxSubstitutes) {
+    if (rosterRole === 'substitute' && counts.substitute > limits.maxSubstitutes) {
       toast({ title: 'Substitute limit reached', description: `Max ${limits.maxSubstitutes} substitute(s) for this mode.`, variant: 'destructive' });
       return;
     }
@@ -837,6 +858,7 @@ const TeamsPage = () => {
       const ok = await updateRosterMemberRole(currentTeam.id, manageRoster.id, userId, rosterRole);
       if (!ok) return;
 
+      const nextRoles = { ...manageMemberRoles, [userId]: rosterRole };
       setManageMemberRoles(nextRoles);
       setRosters(prev => prev.map(r => {
         if (r.id === manageRoster.id) {
@@ -1903,12 +1925,15 @@ const TeamsPage = () => {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-3 block">Capacity</Label>
+                    <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-3 block">Lineup Capacity</Label>
                     <div className="h-12 flex items-center px-4 bg-white/[0.02] border border-white/[0.05] rounded-xl text-white/60 font-mono text-sm">
-                      {newRosterTeamSize} Members
+                      {(() => {
+                        const limits = getRosterLimits(newRosterGame, newRosterFormat, newRosterTeamSize);
+                        return `${limits.starters} starters · ${limits.maxSubstitutes} subs${limits.allowsCoaches ? ` · ${limits.maxCoaches} coaches` : ''}`;
+                      })()}
                     </div>
                     <p className="text-[9px] text-white/20 mt-2 uppercase tracking-widest leading-relaxed">
-                      {newRosterTeamSize > 0 ? `${newRosterTeamSize} starters` : 'Select format first'}
+                      {newRosterGame ? 'Catalog limits for selected format' : 'Select game and format first'}
                     </p>
                   </div>
                 </motion.div>
@@ -1937,7 +1962,7 @@ const TeamsPage = () => {
 
       {/* Manage Roster Modal */}
       <Dialog open={manageRosterModalOpen} onOpenChange={setManageRosterModalOpen}>
-        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2008,14 +2033,14 @@ const TeamsPage = () => {
                   <Badge variant="outline" className="bg-white/5 border-white/10 text-white/60 font-mono py-1 px-3">
                     {(() => {
                       const limits = getRosterCapacity(manageRoster);
-                      const counts = countRosterRoles(manageMembers, manageMemberRoles);
+                      const counts = countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members);
                       return `${counts.starter + counts.substitute + counts.coach} / ${limits.totalSlots}`;
                     })()}
                   </Badge>
                 </div>
 
                 {/* Member List - Premium Glassmorphic Items */}
-                <div className="space-y-3 max-h-56 overflow-y-auto custom-scrollbar pr-2">
+                <div className="space-y-3 max-h-56 overflow-y-auto overscroll-contain custom-scrollbar pr-2" data-lenis-prevent>
                   {/* Captain (Implicit Member) */}
                   {currentTeam && (() => {
                     const captainData = ownerProfile
@@ -2074,7 +2099,9 @@ const TeamsPage = () => {
                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                                   {(['starter', 'substitute', 'coach'] as RosterLineupRole[]).map((role) => {
                                     const teamMemberRole = teamMembers.find(m => m.user_id === uid)?.role;
-                                    const activeRole = manageMemberRoles[uid] ?? 'starter';
+                                    const rosterMember = manageRoster.members?.find((m) => m.user_id === uid);
+                                    const activeRole = manageMemberRoles[uid]
+                                      ?? (rosterMember ? resolveMemberRosterRole(rosterMember) : 'starter');
                                     const disabled =
                                       (role !== 'coach' && teamMemberRole === 'coach') ||
                                       (role === 'coach' && teamMemberRole !== 'coach');

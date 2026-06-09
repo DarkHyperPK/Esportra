@@ -13,6 +13,7 @@ import { MapVeto } from '@/components/tournament/MapVeto';
 import MatchResultUpload from '@/components/tournament/MatchResultUpload';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { MatchAutoReport } from '@/components/tournament/MatchAutoReport';
+import { MatchResultVerification } from '@/components/tournament/MatchResultVerification';
 import { BracketMatch, BracketTeam, BracketSide, Participant } from '@/types/bracketTypes';
 import CaptainMatchHistory from '@/components/tournament/CaptainMatchHistory';
 import { gameHasMapVeto, isAssistedMatchReportingEnabled, isBattleRoyale } from '@/utils/gameFeatures';
@@ -982,6 +983,26 @@ const CaptainMatchPage = () => {
                                             }
                                             return null;
                                         })()}
+
+                                        {/* Result verification — all live matches (manual + auto reports) */}
+                                        {isMatchLive && activeMatch.status !== 'completed' && !disputedGameNumbers.has(nextGameNumber) && (
+                                            <MatchResultVerification
+                                                matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                                                gameNumber={nextGameNumber}
+                                                userTeamId={isOrganizerMatchView ? undefined : userTeamId}
+                                                team1Id={activeMatch.team1?.id}
+                                                team2Id={activeMatch.team2?.id}
+                                                team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                                                team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
+                                                team1Logo={activeMatch.team1?.logo_url ?? undefined}
+                                                team2Logo={activeMatch.team2?.logo_url ?? undefined}
+                                                isCaptain={!isOrganizerMatchView && isCaptain}
+                                                onSuccess={() => {
+                                                    refetchBracket();
+                                                    fetchMatchGames();
+                                                }}
+                                            />
+                                        )}
 
                                         {/* Map Veto + Manual Report — only show when match is live */}
                                         {isMatchLive && activeMatch.status !== 'completed' && (

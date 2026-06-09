@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,6 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { useMatchResultReport } from '@/hooks/useMatchResultReport';
+import { MatchResultVerification } from './MatchResultVerification';
 
 interface Props {
   matchId?: string;
@@ -17,20 +20,26 @@ interface Props {
   mapId?: string;
   team1Name?: string;
   team2Name?: string;
+  team1Logo?: string;
+  team2Logo?: string;
   isCaptain: boolean;
   onSuccess?: () => void;
 }
 
 const MatchResultUpload: React.FC<Props> = ({
-  matchId, teamId, team1Id, team2Id, gameNumber, mapName, mapId, team1Name, team2Name, isCaptain, onSuccess,
+  matchId, teamId, team1Id, team2Id, gameNumber, mapName, mapId, team1Name, team2Name,
+  team1Logo, team2Logo, isCaptain, onSuccess,
 }) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [files, setFiles] = useState<File[]>([]);
   const [comment, setComment] = useState('');
   const [team1Score, setTeam1Score] = useState('');
   const [team2Score, setTeam2Score] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const { activeReport, acceptedReport } = useMatchResultReport(matchId, gameNumber);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -68,7 +77,6 @@ const MatchResultUpload: React.FC<Props> = ({
 
     setSubmitting(true);
     try {
-      // Upload screenshots
       const imageUrls: string[] = [];
       for (const file of files) {
         const fd = new FormData();
@@ -92,6 +100,7 @@ const MatchResultUpload: React.FC<Props> = ({
         comment: comment || undefined,
       });
 
+      await queryClient.invalidateQueries({ queryKey: ['match-result-reports', matchId] });
       toast({ title: 'Submitted', description: 'Match result reported. Awaiting opponent confirmation.' });
       setFiles([]); setComment(''); setTeam1Score(''); setTeam2Score('');
       onSuccess?.();
@@ -107,6 +116,24 @@ const MatchResultUpload: React.FC<Props> = ({
     }
   };
 
+  if (matchId && (activeReport || acceptedReport)) {
+    return (
+      <MatchResultVerification
+        matchId={matchId}
+        gameNumber={gameNumber}
+        userTeamId={teamId}
+        team1Id={team1Id}
+        team2Id={team2Id}
+        team1Name={team1Name}
+        team2Name={team2Name}
+        team1Logo={team1Logo}
+        team2Logo={team2Logo}
+        isCaptain={isCaptain}
+        onSuccess={onSuccess}
+      />
+    );
+  }
+
   const scoresValid = team1Score !== '' && team2Score !== '' &&
     !isNaN(parseInt(team1Score)) && !isNaN(parseInt(team2Score));
 
@@ -120,7 +147,6 @@ const MatchResultUpload: React.FC<Props> = ({
       )}
 
       <div className="space-y-3">
-        {/* Score inputs */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-gray-400 mb-1 block">
@@ -148,7 +174,6 @@ const MatchResultUpload: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Screenshot upload */}
         <div>
           <label className="text-xs text-gray-400 mb-1 block">
             Screenshots (optional proof)

@@ -232,13 +232,14 @@ export function getDefaultGameMode(gameName: string): GameMode | undefined {
 export function getGameMode(gameName: string, modeKey?: string | null): GameMode | undefined {
   if (!modeKey) return getDefaultGameMode(gameName);
   const normalized = normalize(modeKey);
-  return getGameModes(gameName).find(
+  const found = getGameModes(gameName).find(
     mode =>
       normalize(mode.key || mode.value) === normalized ||
       normalize(mode.value) === normalized ||
       normalize(mode.name) === normalized ||
       (mode.aliases || []).some(alias => normalize(alias) === normalized)
   );
+  return found ?? getDefaultGameMode(gameName);
 }
 
 /** Get default team size for a game, optionally for a selected mode. */
