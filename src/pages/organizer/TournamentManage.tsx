@@ -244,14 +244,6 @@ const TournamentDashboard = () => {
     })),
   });
 
-  const hasIncompleteStages = useMemo(() => {
-    if (stages.length === 0) return false;
-    return stageCompletionQueries.some((query, _index) => {
-      if (query.isLoading || query.isError) return true;
-      return !query.data;
-    });
-  }, [stages.length, stageCompletionQueries]);
-
   const staffPermissions = useMemo(
     () => (dashboardData?.staffPermissions || []) as StaffPermission[],
     [dashboardData?.staffPermissions],
@@ -445,19 +437,27 @@ const TournamentDashboard = () => {
     const checkOverdue = async () => {
       if (!tournament || !isOrganizer || stages.length === 0) return;
 
+      const startDate = tournament.start_date ? new Date(tournament.start_date) : null;
       const endDate = tournament.end_date ? new Date(tournament.end_date) : null;
       if (!endDate) return;
 
       const currentTime = new Date();
+
+      // Never auto-extend before the tournament starts or when dates are invalid.
+      if (!startDate || currentTime < startDate || endDate < startDate) return;
+
       const isOverdue = currentTime > endDate;
-      const incompleteStages = hasIncompleteStages;
+      const confirmedIncompleteStages = stageCompletionQueries.some(
+        (query) => !query.isLoading && !query.isError && !query.data,
+      );
 
-      if (isOverdue && incompleteStages && tournament.status !== 'completed') {
-        console.log('[TournamentManage] Tournament is overdue with incomplete stages. Extending matches...');
-
-        // Extend by 24 hours
-        const newEndDate = new Date();
+      if (isOverdue && confirmedIncompleteStages && tournament.status !== 'completed') {
+        const newEndDate = new Date(currentTime);
         newEndDate.setDate(newEndDate.getDate() + 1);
+        if (newEndDate < startDate) {
+          newEndDate.setTime(startDate.getTime());
+          newEndDate.setDate(newEndDate.getDate() + 1);
+        }
 
         try {
           await apiClient.put(`/api/tournaments/${tournament.id}`, { endDate: newEndDate.toISOString() });
@@ -465,7 +465,7 @@ const TournamentDashboard = () => {
             title: 'Tournament Extended',
             description: 'Tournament end time has passed with incomplete stages. Extended by 24 hours.',
             variant: 'default',
-            duration: 6000
+            duration: 6000,
           });
           refetchDashboard();
         } catch (err) {
@@ -475,7 +475,7 @@ const TournamentDashboard = () => {
     };
 
     checkOverdue();
-  }, [tournament, isOrganizer, stages.length, hasIncompleteStages, refetchDashboard, toast]);
+  }, [tournament, isOrganizer, stages.length, stageCompletionQueries, refetchDashboard, toast]);
 
 
   const handleTeamClick = useCallback(async (participant: Participant) => {

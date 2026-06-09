@@ -179,3 +179,27 @@ export const isMatchTooEarlyForLive = (scheduledTime?: string | null): boolean =
     if (!scheduledTime) return false;
     return new Date(scheduledTime).getTime() - Date.now() > 15 * 60 * 1000;
 };
+
+/** True when tournament end is strictly before start (invalid DB state). */
+export const isInvalidTournamentDateWindow = (
+    startDate?: string | null,
+    endDate?: string | null,
+): boolean => {
+    if (!startDate || !endDate) return false;
+    return new Date(endDate).getTime() < new Date(startDate).getTime();
+};
+
+/** Local date bounds for schedule pickers; drops max when it would invert min. */
+export const getTournamentScheduleDateBounds = (
+    startDate?: string | null,
+    endDate?: string | null,
+): { minDate: string; maxDate: string; isInvalidWindow: boolean } => {
+    const minDate = startDate ? utcToLocalDate(startDate) : '';
+    const maxDateRaw = endDate ? utcToLocalDate(endDate) : '';
+    const isInvalidWindow = Boolean(minDate && maxDateRaw && maxDateRaw < minDate);
+    return {
+        minDate,
+        maxDate: isInvalidWindow ? '' : maxDateRaw,
+        isInvalidWindow,
+    };
+};

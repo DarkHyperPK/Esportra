@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Check, AlertCircle, ChevronDown, ChevronUp, Zap, GitBranch, Globe, Info } from 'lucide-react';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 import { format, addDays, isWithinInterval, parseISO } from 'date-fns';
-import { getTimezoneAbbr, utcToLocalInput, localInputToUTC, utcToLocalDate, utcToLocalTime, localDateTimeToUTC, dateInputToUTCEndOfDay } from '@/lib/timeUtils';
+import { getTimezoneAbbr, utcToLocalInput, localInputToUTC, utcToLocalDate, utcToLocalTime, localDateTimeToUTC, dateInputToUTCEndOfDay, getTournamentScheduleDateBounds, isInvalidTournamentDateWindow } from '@/lib/timeUtils';
 
 interface RoundSchedulingPanelProps {
     stageId: string;
@@ -132,6 +132,13 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     const schedulingMode = selfPlayEnabled
         ? 'round_based' as const
         : (optimisticMode || schedulingConfig?.scheduling_mode || 'round_based');
+
+    const scheduleDateBounds = useMemo(
+        () => getTournamentScheduleDateBounds(tournamentStartDate, tournamentEndDate),
+        [tournamentStartDate, tournamentEndDate],
+    );
+    const invalidTournamentWindow = scheduleDateBounds.isInvalidWindow
+        || isInvalidTournamentDateWindow(tournamentStartDate, tournamentEndDate);
 
     const handleSetMode = async (mode: 'round_based' | 'granular') => {
         if (selfPlayEnabled || mode === schedulingMode) return;
@@ -267,12 +274,17 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
 
     // Validate date is within tournament window
     const isValidDate = (dateStr: string): boolean => {
-        if (!tournamentStartDate || !tournamentEndDate || !dateStr) return true;
+        if (!dateStr) return true;
+        if (invalidTournamentWindow) {
+            if (!scheduleDateBounds.minDate) return true;
+            return dateStr >= scheduleDateBounds.minDate;
+        }
+        if (!tournamentStartDate || !tournamentEndDate) return true;
         try {
             const date = parseISO(dateStr);
             return isWithinInterval(date, {
                 start: parseISO(tournamentStartDate),
-                end: parseISO(tournamentEndDate)
+                end: parseISO(tournamentEndDate),
             });
         } catch {
             return false;
@@ -450,8 +462,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                         <Input
                                             type="date"
                                             value={config?.deadline ? utcToLocalDate(config.deadline) : ''}
-                                            min={tournamentStartDate ? utcToLocalDate(tournamentStartDate) : ''}
-                                            max={tournamentEndDate ? utcToLocalDate(tournamentEndDate) : ''}
+                                            min={scheduleDateBounds.minDate}
+                                            max={scheduleDateBounds.maxDate || undefined}
                                             onChange={(e) => {
                                                 const dateValue = e.target.value;
                                                 const utcValue = dateValue ? dateInputToUTCEndOfDay(dateValue) : '';
@@ -493,8 +505,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                             <Input
                                                 type="date"
                                                 value={config?.deadline ? utcToLocalDate(config.deadline) : ''}
-                                                min={tournamentStartDate ? utcToLocalDate(tournamentStartDate) : ''}
-                                                max={tournamentEndDate ? utcToLocalDate(tournamentEndDate) : ''}
+                                                min={scheduleDateBounds.minDate}
+                                                max={scheduleDateBounds.maxDate || undefined}
                                                 onChange={(e) => {
                                                     const dateValue = e.target.value;
                                                     const utcValue = dateValue ? dateInputToUTCEndOfDay(dateValue) : '';
@@ -675,8 +687,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
             <CardContent className="p-6 space-y-4">
                 {/* Tournament Date Info */}
                 {(tournamentStartDate || tournamentEndDate) && (
-                    <div className="flex items-center gap-3 p-4 bg-rose-500/5 border border-rose-500/20 rounded-2xl">
-                        <Clock className="w-5 h-5 text-rose-400" />
+                    <div className={`flex items-center gap-3 p-4 border rounded-2xl ${invalidTournamentWindow ? 'bg-rose-500/10 border-rose-500/20' : 'bg-rose-500/5 border-rose-500/20'}`}>
+                        <Clock className={`w-5 h-5 ${invalidTournamentWindow ? 'text-rose-300' : 'text-rose-400'}`} />
                         <div className="text-sm">
                             <span className="text-gray-400">Tournament Window: </span>
                             <span className="text-white font-medium">
@@ -684,6 +696,11 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                 {' — '}
                                 {tournamentEndDate && format(parseISO(tournamentEndDate), 'MMM d, yyyy')}
                             </span>
+                            {invalidTournamentWindow && (
+                                <p className="mt-1 text-xs text-rose-300">
+                                    End date is before start date. Update tournament dates via Edit Tournament — schedule pickers are open from start date onward until fixed.
+                                </p>
+                            )}
                         </div>
                     </div>
                 )}
