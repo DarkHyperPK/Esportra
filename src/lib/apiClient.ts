@@ -46,7 +46,20 @@ type ApiErrorBody = {
   title?: string;
   traceId?: string;
   trace_id?: string;
+  errors?: string[] | Record<string, string[]>;
 };
+
+function formatErrorsField(errors: ApiErrorBody['errors']): string | null {
+  if (!errors) return null;
+  if (Array.isArray(errors)) {
+    const messages = errors.filter(Boolean);
+    return messages.length > 0 ? messages.join('; ') : null;
+  }
+  const messages = Object.values(errors)
+    .flat()
+    .filter(Boolean);
+  return messages.length > 0 ? messages.join('; ') : null;
+}
 
 function readApiErrorBody(body: unknown): ApiErrorBody {
   if (body && typeof body === 'object') return body as ApiErrorBody;
@@ -60,7 +73,13 @@ function buildApiErrorMessage(
   fallback: string,
 ): string {
   const parsed = readApiErrorBody(body);
-  const message = parsed.message || parsed.error || parsed.detail || parsed.title || fallback;
+  const errorsField = formatErrorsField(parsed.errors);
+  const message = errorsField
+    || parsed.message
+    || parsed.error
+    || parsed.detail
+    || parsed.title
+    || fallback;
   const traceId = parsed.traceId || parsed.trace_id;
 
   if (traceId) {
@@ -76,7 +95,13 @@ export function getApiErrorMessage(
 ): string {
   if (error instanceof ApiError) {
     const body = readApiErrorBody(error.body);
-    const message = body.message || body.error || body.detail || body.title || fallback;
+    const errorsField = formatErrorsField(body.errors);
+    const message = errorsField
+      || body.message
+      || body.error
+      || body.detail
+      || body.title
+      || fallback;
     const traceId = body.traceId || body.trace_id;
     return traceId
       ? `${message} If this keeps happening, report it with reference ${traceId}.`

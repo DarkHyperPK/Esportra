@@ -1242,7 +1242,7 @@ const TournamentDashboard = () => {
                     <MapPin className="w-4 h-4" />
                     {tournament.venue || 'Remote'}
                   </div>
-                  {tournament.status === 'completed' && tournament.winner_team_name && (
+                  {tournament.winner_team_name && (
                     <div className="flex items-center gap-2 text-yellow-400">
                       <Trophy className="w-4 h-4" />
                       Winner: {tournament.winner_team_name}

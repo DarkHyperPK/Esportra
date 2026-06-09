@@ -25,7 +25,7 @@ const MatchChat: React.FC<MatchChatProps> = ({
     allowMinimize = true,
 }) => {
     const { user } = useAuth();
-    const { messages, sendMessage, scrollRef, scrollToBottom, isLoading, connectionStatus, isJoined } = useMatchChat(matchId);
+    const { messages, sendMessage, scrollRef, scrollToBottom, isLoading, connectionStatus, isJoined, chatError, isError } = useMatchChat(matchId);
     const [messageText, setMessageText] = useState('');
     const [isMinimized, setIsMinimized] = useState(false);
     const [showScrollButton, setShowScrollButton] = useState(false);
@@ -154,7 +154,22 @@ const MatchChat: React.FC<MatchChatProps> = ({
                     <div className="flex items-center justify-center h-full">
                         <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
                     </div>
-                ) : messages?.length === 0 ? (
+                ) : isError ? (
+                    <div className="text-center py-12 px-4">
+                        <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-3">
+                            <WifiOff className="w-6 h-6 text-red-400" />
+                        </div>
+                        <p className="text-red-300 text-sm font-medium">Match chat unavailable</p>
+                        <p className="text-zinc-500 text-xs mt-2">{chatError || 'You may not have access to this match chat yet.'}</p>
+                    </div>
+                ) : (
+                    <>
+                        {chatError && (
+                            <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                                {chatError}
+                            </div>
+                        )}
+                        {messages?.length === 0 ? (
                     <div className="text-center py-12">
                         <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto mb-3">
                             <MessageCircle className="w-6 h-6 text-zinc-500" />
@@ -210,6 +225,8 @@ const MatchChat: React.FC<MatchChatProps> = ({
                             </div>
                         );
                     })
+                )}
+                    </>
                 )}
             </div>
 

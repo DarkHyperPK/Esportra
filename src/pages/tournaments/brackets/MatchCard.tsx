@@ -457,7 +457,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                                         ? "bg-rose-500/10 border-rose-500/20 text-rose-300 hover:bg-rose-500/20 hover:text-rose-200"
                                                                         : "bg-green-900/20 border-green-900/30 text-green-400 hover:bg-green-900/40 hover:text-green-300"
                                                                 )}
-                                                                onClick={(e) => { e.stopPropagation(); setActionMode('party_code'); }}
+                                                                onClick={(e) => { e.stopPropagation(); onGoLive?.(match); }}
                                                                 disabled={isProcessing}
                                                                 title={isTooEarlyForLive ? 'Requires confirmation to go live ahead of schedule' : undefined}
                                                             >

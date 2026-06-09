@@ -140,7 +140,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                             </div>
 
                             {/* Winner Banner */}
-                            {tournament.status === 'completed' && tournament.winner_team_name && (
+                            {tournament.winner_team_name && (
                                 <motion.div
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}

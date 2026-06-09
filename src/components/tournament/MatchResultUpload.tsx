@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 
@@ -95,9 +95,13 @@ const MatchResultUpload: React.FC<Props> = ({
       toast({ title: 'Submitted', description: 'Match result reported. Awaiting opponent confirmation.' });
       setFiles([]); setComment(''); setTeam1Score(''); setTeam2Score('');
       onSuccess?.();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Result submit failed:', e);
-      toast({ title: 'Upload failed', description: e?.message || 'Could not submit.', variant: 'destructive' });
+      toast({
+        title: 'Upload failed',
+        description: getApiErrorMessage(e, 'Could not submit match result.'),
+        variant: 'destructive',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -197,7 +201,7 @@ const MatchResultUpload: React.FC<Props> = ({
           <Button
             disabled={submitting || !scoresValid}
             onClick={onSubmit}
-            className="bg-gaming-purple hover:bg-gaming-purple/80 disabled:opacity-50"
+            className="bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-50"
           >
             {submitting ? 'Submitting...' : 'Submit Result'}
           </Button>

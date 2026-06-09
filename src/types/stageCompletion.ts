@@ -2,7 +2,8 @@ export type StageProgressLabel =
   | 'setup'
   | 'in_progress'
   | 'ready_to_advance'
-  | 'advanced';
+  | 'advanced'
+  | 'completed';
 
 export interface StageCompletionStatus {
   isComplete: boolean;
@@ -19,6 +20,7 @@ export const STAGE_PROGRESS_LABELS: Record<StageProgressLabel, string> = {
   in_progress: 'In Progress',
   ready_to_advance: 'Ready to Advance',
   advanced: 'Advanced',
+  completed: 'Completed',
 };
 
 export const STAGE_PROGRESS_CLASSES: Record<StageProgressLabel, string> = {
@@ -26,6 +28,7 @@ export const STAGE_PROGRESS_CLASSES: Record<StageProgressLabel, string> = {
   in_progress: 'bg-red-500/20 text-red-400 border-red-500/30',
   ready_to_advance: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   advanced: 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30',
+  completed: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
 };
 
 export function normalizeStageProgressLabel(value?: string | null): StageProgressLabel {
@@ -33,6 +36,7 @@ export function normalizeStageProgressLabel(value?: string | null): StageProgres
     case 'in_progress':
     case 'ready_to_advance':
     case 'advanced':
+    case 'completed':
       return value;
     default:
       return 'setup';

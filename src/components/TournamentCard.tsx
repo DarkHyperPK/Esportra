@@ -312,7 +312,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
             </Button>
           ) : isUpcoming ? (
             <Button
-              className="w-full font-bold tracking-wide bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/20 font-heading"
+              className="w-full font-bold tracking-wide bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-900/20 font-heading"
               onClick={() => navigate(`/tournaments/${slug || id}`)}
             >
               Join Event

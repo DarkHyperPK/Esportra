@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Layers, Trophy, Lock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, RefreshCw, Check } from 'lucide-react';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 import { StageSetupWizard } from '@/components/organizer/wizard/StageSetupWizard';
@@ -50,7 +50,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const [deleteBracketDialogOpen, setDeleteBracketDialogOpen] = useState(false);
     const [stageToDelete, setStageToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [tournamentWinner, setTournamentWinner] = useState<{ id: string; name: string; logo_url?: string | null } | null>(null);
+    const [tournamentWinner, setTournamentWinner] = useState<{ id?: string; name: string; logo_url?: string | null } | null>(null);
 
     const sortedStages = useMemo(
         () => [...stages].sort((a, b) => a.stage_order - b.stage_order),
@@ -133,7 +133,12 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             // Get the last stage
             const lastStage = stages[stages.length - 1];
-            if (lastStage.status !== 'completed') {
+            const lastStageComplete =
+                lastStage.status === 'completed' ||
+                lastStage.progress_label === 'completed' ||
+                lastStage.progress_label === 'advanced';
+
+            if (!lastStageComplete) {
                 setTournamentWinner(null);
                 return;
             }
@@ -154,9 +159,37 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                     .sort((a: any, b: any) => (b.round_index || 0) - (a.round_index || 0))[0] || null;
 
                 if (finalMatch?.winner_id) {
-                    // Get team info
-                    const team = await apiClient.get<any>(`/api/teams/${finalMatch.winner_id}`).catch(() => null);
+                    const winnerId = String(finalMatch.winner_id);
+                    const winnerName = winnerId === String(finalMatch.team1_id)
+                        ? finalMatch.team1_name
+                        : winnerId === String(finalMatch.team2_id)
+                            ? finalMatch.team2_name
+                            : null;
+                    const winnerLogo = winnerId === String(finalMatch.team1_id)
+                        ? finalMatch.team1_logo
+                        : winnerId === String(finalMatch.team2_id)
+                            ? finalMatch.team2_logo
+                            : null;
 
+                    if (winnerName) {
+                        setTournamentWinner({ name: winnerName, logo_url: winnerLogo ?? null });
+                        return;
+                    }
+
+                    const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
+                    const winnerParticipant = (participants || []).find(
+                        (p) => String(p.id) === winnerId || String(p.team_id) === winnerId,
+                    );
+
+                    if (winnerParticipant) {
+                        setTournamentWinner({
+                            name: winnerParticipant.display_name || winnerParticipant.team_name || 'Winner',
+                            logo_url: winnerParticipant.display_logo_url || winnerParticipant.team_logo_url || null,
+                        });
+                        return;
+                    }
+
+                    const team = await apiClient.get<any>(`/api/teams/${winnerId}`).catch(() => null);
                     if (team) {
                         setTournamentWinner(team);
                     }
@@ -342,6 +375,10 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 // First stage: Get participants from tournament_participants
                 console.log('[StageManagement] Fetching teams for stage 1, tournamentId:', tournamentId);
 
+                const allParticipants = useCheckInOnly
+                    ? await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => null)
+                    : null;
+
                 const statusFilter = useCheckInOnly ? '?status=checked_in' : '';
                 const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants${statusFilter}`).catch(() => null);
 
@@ -353,6 +390,24 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                         variant: 'destructive'
                     });
                     return;
+                }
+
+                if (useCheckInOnly) {
+                    const checkedInCount = participants.length;
+                    const eligibleCount = allParticipants?.length ?? checkedInCount;
+                    const pendingCount = Math.max(eligibleCount - checkedInCount, 0);
+                    const minimumRequired = 2;
+
+                    if (checkedInCount < minimumRequired) {
+                        toast({
+                            title: 'Not enough checked-in teams',
+                            description: pendingCount > 0
+                                ? `Need at least ${minimumRequired} checked-in teams to generate this bracket. ${pendingCount} eligible ${pendingCount === 1 ? 'entry is' : 'entries are'} still pending check-in.`
+                                : `Need at least ${minimumRequired} checked-in teams to generate this bracket.`,
+                            variant: 'destructive',
+                        });
+                        return;
+                    }
                 }
 
                 console.log('[StageManagement] Found participants raw count:', participants?.length || 0);
@@ -390,6 +445,15 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 })).filter(t => t.id);
             }
             if (teams.length < 2) {
+                if (useCheckInOnly) {
+                    toast({
+                        title: 'Not enough checked-in teams',
+                        description: 'Need at least 2 checked-in teams to generate this bracket.',
+                        variant: 'destructive',
+                    });
+                    return;
+                }
+
                 if (!isPublic) {
                     // Draft mode: refuse empty brackets — organizer must generate mock teams first.
                     toast({
@@ -542,7 +606,11 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             navigate(`/organizer/tournament/${slug}/manage-bracket/${stageId}`);
         } catch (error: any) {
             console.error('Error generating bracket:', error);
-            toast({ title: 'Error', description: error.message || 'Failed to generate bracket', variant: 'destructive' });
+            toast({
+                title: 'Error',
+                description: getApiErrorMessage(error, 'Failed to generate bracket'),
+                variant: 'destructive',
+            });
         }
     };
 
@@ -716,7 +784,9 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                         <div className="space-y-4">
                             {stages.map((stage, index) => {
                                 const completion = completionByStageId.get(stage.id);
-                                const progressLabel = completion?.progressLabel ?? getStageProgressFromStage(stage);
+                                const progressLabel = stage.progress_label
+                                    ? normalizeStageProgressLabel(stage.progress_label)
+                                    : (completion?.progressLabel ?? getStageProgressFromStage(stage));
                                 const stageComplete = completion?.isComplete ?? false;
 
                                 return (
