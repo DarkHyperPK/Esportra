@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { normalizeStorageUrl } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 
 type EntityType = 'user' | 'team' | 'org';
@@ -83,7 +84,8 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({
     );
     const initials = useMemo(() => getInitials(seed), [seed]);
 
-    const showFallback = !src || imgError;
+    const resolvedSrc = normalizeStorageUrl(src);
+    const showFallback = !resolvedSrc || imgError;
 
     return (
         <div
@@ -107,7 +109,7 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({
                 </div>
             ) : (
                 <img
-                    src={src}
+                    src={resolvedSrc}
                     alt={name || 'Avatar'}
                     className={cn('w-full h-full object-cover', imgClassName)}
                     loading="lazy"

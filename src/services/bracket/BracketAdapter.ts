@@ -114,6 +114,38 @@ export function adaptGraphToBracketMatches(
 }
 
 /**
+ * Builds a competitor map from bracket graph nodes (team or solo participant slots).
+ * Prefer this over /api/teams lookups — bracket slots may hold participant UUIDs.
+ */
+export function buildCompetitorMapFromNodes(nodes: BracketNode[]): Map<string, Team> {
+    const map = new Map<string, Team>();
+
+    const add = (id?: string | null, name?: string | null, logo?: string | null) => {
+        if (!id) return;
+        map.set(id, {
+            id,
+            name: name?.trim() || 'TBD',
+            logo_url: logo ?? null,
+        });
+    };
+
+    nodes.forEach((node) => {
+        const n = node as BracketNode & {
+            team1_name?: string | null;
+            team2_name?: string | null;
+            team1_logo?: string | null;
+            team2_logo?: string | null;
+        };
+        add(node.team1_id, n.team1_name, n.team1_logo);
+        add(node.team2_id, n.team2_name, n.team2_logo);
+        add(node.winner_id, undefined, undefined);
+        add(node.loser_id, undefined, undefined);
+    });
+
+    return map;
+}
+
+/**
  * Extracts all unique team IDs from bracket nodes
  */
 export function extractTeamIds(nodes: BracketNode[]): string[] {

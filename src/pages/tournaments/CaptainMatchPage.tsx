@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Trophy, AlertCircle, Swords, Copy, MessageCircle, Clock, ShieldAlert, ExternalLink, ChevronDown } from 'lucide-react';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
-import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
+import { adaptGraphToBracketMatches, buildCompetitorMapFromNodes } from '@/services/bracket/BracketAdapter';
 import { MapVeto } from '@/components/tournament/MapVeto';
 import MatchResultUpload from '@/components/tournament/MatchResultUpload';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -142,25 +142,20 @@ const CaptainMatchPage = () => {
         }
     }, [bracketVersions, tournament?.id]);
 
-    // Extract team IDs and fetch team data
-    const teamIds = useMemo(() => {
-        if (!allGraphData?.nodes) return [];
-        return extractTeamIds(allGraphData.nodes);
+    // Build competitor map from graph nodes (includes solo participant slots — not /api/teams ids)
+    const teamsMap = useMemo(() => {
+        if (!allGraphData?.nodes) return new Map<string, { id: string; name: string; logo_url?: string | null }>();
+        return buildCompetitorMapFromNodes(allGraphData.nodes);
     }, [allGraphData?.nodes]);
 
-    const { data: teamsData } = useQuery({
-        queryKey: ['captain-teams', teamIds.join(',')],
-        queryFn: async () => {
-            if (teamIds.length === 0) return [];
-            const results = await Promise.all(
-                teamIds.map(id => apiClient.get<any>(`/api/teams/${id}`).catch(() => null))
-            );
-            return results.filter(Boolean);
-        },
-        enabled: teamIds.length > 0,
-    });
-
-    // Fetch specific match by ID for organizer observer mode (bypasses bracket graph dependency)
+    // Convert graph data to BracketMatch format
+    const matches = useMemo<BracketMatch[]>(() => {
+        if (!allGraphData?.nodes || !allGraphData?.edges) {
+            return [];
+        }
+        const adapted = adaptGraphToBracketMatches(allGraphData.nodes, allGraphData.edges, teamsMap);
+        return adapted;
+    }, [allGraphData?.nodes, allGraphData?.edges, teamsMap]);
     const { data: organizerMatch } = useQuery({
         queryKey: ['organizer-match', urlMatchId],
         queryFn: async () => {
@@ -214,19 +209,8 @@ const CaptainMatchPage = () => {
         enabled: !!urlMatchId && !!isOrganizer,
     });
 
-    // Convert graph data to BracketMatch format
-    const matches = useMemo<BracketMatch[]>(() => {
-        if (!allGraphData?.nodes || !allGraphData?.edges) {
-            return [];
-        }
-        const teamsMap = new Map<string, { id: string; name: string; logo_url?: string | null }>();
-        teamsData?.forEach((t: any) => teamsMap.set(t.id, t));
-        const adapted = adaptGraphToBracketMatches(allGraphData.nodes, allGraphData.edges, teamsMap);
-        return adapted;
-    }, [allGraphData?.nodes, allGraphData?.edges, teamsData]);
-
     const isOrganizerMatchView = !!urlMatchId && isOrganizer;
-    const bracketLoading = versionsLoading || graphLoading || (!isOrganizerMatchView && teamsLoading);
+    const bracketLoading = versionsLoading || graphLoading;
     const organizerMatchLoading = isOrganizerMatchView && !organizerMatch;
     const pageLoading = loading || bracketLoading || organizerMatchLoading;
 

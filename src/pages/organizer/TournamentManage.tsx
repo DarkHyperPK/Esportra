@@ -508,9 +508,12 @@ const TournamentDashboard = () => {
         setSelectedTeamMembers(rawTokens);
       }
       // Resolve team id and logo
+      const isSoloParticipant = participant.participant_type === 'solo' || participant.entry_kind === 'solo_player';
       let teamId = participant.team_id as string | null;
-      let logoUrl: string | null = participant.team_logo || null;
-      if (!teamId) {
+      let logoUrl: string | null = participant.team_logo || participant.display_logo_url || null;
+      if (isSoloParticipant) {
+        logoUrl = logoUrl || participant.display_logo_url || null;
+      } else if (!teamId) {
         // Try exact name match first
         try {
           // Search teams by name — use team search endpoint

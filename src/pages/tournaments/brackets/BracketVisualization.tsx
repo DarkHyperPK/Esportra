@@ -21,7 +21,7 @@ import type { BracketMatch } from '@/types/bracketTypes';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { MapVeto } from '@/components/tournament/MapVeto';
 import { useGraphBracket } from '@/hooks/useGraphBracket';
-import { adaptGraphToBracketMatches, extractTeamIds } from '@/services/bracket/BracketAdapter';
+import { adaptGraphToBracketMatches, buildCompetitorMapFromNodes, extractTeamIds } from '@/services/bracket/BracketAdapter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
@@ -212,10 +212,10 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
   // Create teamsMap from fetched data (shared with child components)
   const teamsMap = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; logo_url?: string | null }>();
+    const map = buildCompetitorMapFromNodes(graphData?.nodes ?? []);
     teamsData?.forEach((t: any) => map.set(t.id, t));
     return map;
-  }, [teamsData]);
+  }, [graphData?.nodes, teamsData]);
 
   // Adapt data
   const { matches: adaptedMatches } = useMemo(() => {

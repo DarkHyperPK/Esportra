@@ -10,6 +10,29 @@ if (!SUPABASE_URL) {
 }
 export const STORAGE_ROOT = `${SUPABASE_URL}/storage/v1/object/public`;
 
+/** Rewrites legacy prod storage URLs to the current Supabase project (staging/local). */
+export function normalizeStorageUrl(url?: string | null): string | undefined {
+    if (!url) return undefined;
+    const trimmed = url.trim();
+    if (!trimmed) return undefined;
+
+    if (trimmed.startsWith('/')) {
+        return `${SUPABASE_URL}${trimmed}`;
+    }
+
+    try {
+        const parsed = new URL(trimmed);
+        if (!parsed.pathname.includes('/storage/v1/object/')) return trimmed;
+
+        const stagingHost = new URL(SUPABASE_URL).host;
+        if (parsed.host === stagingHost) return trimmed;
+
+        return `${SUPABASE_URL}${parsed.pathname}${parsed.search}`;
+    } catch {
+        return trimmed;
+    }
+}
+
 /**
  * Generates a full Supabase storage URL for a given bucket and path.
  * 
