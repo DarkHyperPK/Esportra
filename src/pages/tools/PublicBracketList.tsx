@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { Plus, Share2, Trophy } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
-import { ApiError, getApiErrorMessage } from "@/lib/apiClient";
+import { getApiErrorMessage } from "@/lib/apiClient";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { formatBracketFormat } from "./publicToolUtils";
 
@@ -13,14 +14,16 @@ const value = (row: any, ...keys: string[]) => {
 };
 
 const PublicBracketList = () => {
-  const { data = [], isLoading, error } = useQuery({
+  const { user, loading: authLoading } = useAuth();
+  const { data = [], isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["tool-brackets", "mine"],
     queryFn: () => apiClient.get<any[]>("/api/tools/brackets/mine"),
-    retry: (count, err) => !(err instanceof ApiError && (err.status === 401 || err.status === 404)) && count < 2,
+    enabled: !!user,
+    retry: 1,
   });
 
-  const unauthorized = error instanceof ApiError && error.status === 401;
-  const toolsApiMissing = error instanceof ApiError && error.status === 404;
+  const showSignIn = !authLoading && !user;
+  const showListLoading = authLoading || (!!user && isLoading);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 text-white">
@@ -42,7 +45,7 @@ const PublicBracketList = () => {
         </div>
       </div>
 
-      {unauthorized ? (
+      {showSignIn ? (
         <section className="border border-white/10 bg-black/35 p-8">
           <Trophy className="mb-4 h-8 w-8 text-rose-400" />
           <h2 className="text-xl font-bold">Sign in to view saved brackets</h2>
@@ -51,20 +54,20 @@ const PublicBracketList = () => {
             <Link to="/auth/signin?redirect=/tools/brackets">Sign in</Link>
           </Button>
         </section>
-      ) : toolsApiMissing ? (
-        <section className="border border-amber-500/30 bg-amber-500/10 p-8">
-          <Trophy className="mb-4 h-8 w-8 text-amber-300" />
-          <h2 className="text-xl font-bold">Saved brackets are not connected yet</h2>
-          <p className="mt-2 text-sm text-amber-100/80">
-            This frontend is pointed at an API that does not have the public tools routes deployed. You can still open the builder and generate a local preview.
-          </p>
-          <Button asChild className="mt-5 bg-white text-black hover:bg-zinc-200">
-            <Link to="/tools/brackets/new">Open builder</Link>
+      ) : error ? (
+        <section className="border border-red-500/30 bg-red-500/10 p-5">
+          <p className="text-sm text-red-200">{getApiErrorMessage(error, "Could not load your saved brackets.")}</p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 border-red-400/30 bg-transparent text-red-100 hover:bg-red-500/10"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {isFetching ? "Retrying..." : "Try again"}
           </Button>
         </section>
-      ) : error ? (
-        <section className="border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-200">{getApiErrorMessage(error)}</section>
-      ) : isLoading ? (
+      ) : showListLoading ? (
         <section className="border border-white/10 bg-black/35 p-8 text-sm text-zinc-400">Loading saved brackets...</section>
       ) : data.length === 0 ? (
         <section className="border border-white/10 bg-black/35 p-8">

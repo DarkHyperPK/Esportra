@@ -96,8 +96,8 @@ const PublicBracketBuilder = () => {
       if (error instanceof ApiError && error.status === 404) {
         setPreview(buildLocalPreview());
         toast({
-          title: "Preview generated locally",
-          description: "The tools API is not deployed on this backend yet, so saving still needs the backend route.",
+          title: "Preview generated on this device",
+          description: "We could not reach the bracket service, so this preview was built locally.",
         });
         return;
       }
@@ -121,8 +121,8 @@ const PublicBracketBuilder = () => {
       }
       if (error instanceof ApiError && error.status === 404) {
         toast({
-          title: "Saving is not available yet",
-          description: "The frontend is running against an API that does not have /api/tools/brackets deployed.",
+          title: "Could not save bracket",
+          description: "The save endpoint was not found. Try again in a moment or contact support if this persists.",
           variant: "destructive",
         });
         return;
