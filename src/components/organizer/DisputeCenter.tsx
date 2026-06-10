@@ -167,6 +167,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
       );
 
       setDisputes(enriched);
+      onUnreadChange?.();
     } catch (error: unknown) {
       console.error('Error fetching disputes:', error);
       toast({
@@ -177,7 +178,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [tournamentId, toast, actorUserId]);
+  }, [tournamentId, toast, actorUserId, onUnreadChange]);
 
   const fetchComments = useCallback(async (disputeId: string, silent = false) => {
     try {
@@ -409,6 +410,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
       }
       setSelectedDispute(null);
       fetchDisputes();
+      onUnreadChange?.();
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : (error as any)?.message || JSON.stringify(error);
       toast({ title: 'Error', description: `Failed to update dispute: ${errorMessage}`, variant: 'destructive' });

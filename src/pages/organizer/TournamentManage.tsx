@@ -985,7 +985,7 @@ const TournamentDashboard = () => {
 
   const canManageStaff = canActAsOwner;
   const canAssistDisputes = canActAsOwner || staffPermissions.includes('disputes:assist');
-  const { unreadCount: disputeUnreadCount, refresh: refreshDisputeUnread } = useOrganizerDisputeUnread(
+  const { badgeCount: disputeBadgeCount, refresh: refreshDisputeUnread } = useOrganizerDisputeUnread(
     tournament?.id,
     canAssistDisputes,
   );
@@ -1000,14 +1000,17 @@ const TournamentDashboard = () => {
   );
 
   const renderTabLabel = (tab: string) => {
-    if (tab !== 'disputes' || disputeUnreadCount <= 0) {
+    if (tab !== 'disputes' || disputeBadgeCount <= 0) {
       return tab;
     }
     return (
       <span className="inline-flex items-center gap-1.5">
         {tab}
-        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
-          {disputeUnreadCount > 9 ? '9+' : disputeUnreadCount}
+        <span
+          className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-black"
+          title={`${disputeBadgeCount} pending dispute${disputeBadgeCount === 1 ? '' : 's'}`}
+        >
+          {disputeBadgeCount > 9 ? '9+' : disputeBadgeCount}
         </span>
       </span>
     );
