@@ -91,8 +91,16 @@ const PublicMapVetoRoom = () => {
 
   const state = stateQuery.data;
   const mapsById = useMemo(() => new Map((state?.maps ?? []).map((map) => [map.id, map])), [state?.maps]);
-  const teamName = state?.role === "team1" ? state.team1Name : state?.role === "team2" ? state.team2Name : "Host";
-  const currentTeamName = state?.currentTeamId === state?.team1Id ? state.team1Name : state?.currentTeamId === state?.team2Id ? state.team2Name : "None";
+  const teamName = state
+    ? (state.role === "team1" ? state.team1Name : state.role === "team2" ? state.team2Name : "Host")
+    : "Host";
+  const currentTeamName = state
+    ? (state.currentTeamId === state.team1Id
+      ? state.team1Name
+      : state.currentTeamId === state.team2Id
+        ? state.team2Name
+        : "None")
+    : "None";
   const canAct = Boolean(state && !isHost && state.status === "in_progress" && ((state.role === "team1" && state.currentTeamId === state.team1Id) || (state.role === "team2" && state.currentTeamId === state.team2Id)));
   const banned = new Set([...(state?.team1BannedMaps ?? []), ...(state?.team2BannedMaps ?? [])]);
   const picked = new Set([...(state?.team1PickedMaps ?? []), ...(state?.team2PickedMaps ?? [])].map((pick) => pick.mapId));
