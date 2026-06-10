@@ -73,6 +73,7 @@ import { getEffectiveGameFeatures, getParticipantMode, isBattleRoyaleTournament,
 import BanManagement from '@/components/organizer/BanManagement';
 import PaymentManagement from '@/components/organizer/PaymentManagement';
 import DisputeCenter from '@/components/organizer/DisputeCenter';
+import { useOrganizerDisputeUnread } from '@/hooks/useOrganizerDisputeUnread';
 import MatchChecker from '@/components/organizer/MatchChecker';
 import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnouncementPanel';
 // Staff management has moved to Organization Settings (OrganizationStaffManager)
@@ -984,6 +985,10 @@ const TournamentDashboard = () => {
 
   const canManageStaff = canActAsOwner;
   const canAssistDisputes = canActAsOwner || staffPermissions.includes('disputes:assist');
+  const { unreadCount: disputeUnreadCount, refresh: refreshDisputeUnread } = useOrganizerDisputeUnread(
+    tournament?.id,
+    canAssistDisputes,
+  );
   const canManageTeams = canActAsOwner || staffPermissions.includes('teams:manage');
   const canEditBracket = canActAsOwner || staffPermissions.includes('bracket:edit');
   const canSendAnnouncements = canActAsOwner || staffPermissions.includes('announcements:send');
@@ -993,6 +998,20 @@ const TournamentDashboard = () => {
       <CardContent className="py-6 text-center text-gray-400 text-sm">{message}</CardContent>
     </Card>
   );
+
+  const renderTabLabel = (tab: string) => {
+    if (tab !== 'disputes' || disputeUnreadCount <= 0) {
+      return tab;
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        {tab}
+        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+          {disputeUnreadCount > 9 ? '9+' : disputeUnreadCount}
+        </span>
+      </span>
+    );
+  };
 
   const renderCheckInBadge = (participant: Participant) => {
     // Payment status badges take priority
@@ -1547,7 +1566,7 @@ const TournamentDashboard = () => {
 
                     return (
                       <SelectItem key={tab} value={tab} className="capitalize font-medium focus:bg-white/10 focus:text-white cursor-pointer py-3">
-                        {tab}
+                        {renderTabLabel(tab)}
                       </SelectItem>
                     );
                   });
@@ -1600,7 +1619,7 @@ const TournamentDashboard = () => {
                       value={tab}
                       className="h-auto rounded-none border border-transparent px-6 py-2.5 text-sm font-medium capitalize text-gray-400 transition-colors hover:border-white/10 hover:bg-white/5 hover:text-white data-[state=active]:border-rose-500 data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow-lg"
                     >
-                      <span className="relative z-10">{tab}</span>
+                      <span className="relative z-10">{renderTabLabel(tab)}</span>
                     </TabsTrigger>
                   );
                 });
@@ -2227,6 +2246,7 @@ const TournamentDashboard = () => {
                             tournamentId={tournament.id}
                             organizerId={tournament.organizer_id}
                             currentUserId={user.id}
+                            onUnreadChange={refreshDisputeUnread}
                           />
                           <div className="mt-6">
                             <MatchChecker tournamentId={tournament.id} />

@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { meRolesQueryKey } from '@/lib/meRoles';
+import { resetClientSessionForAuthChange } from '@/lib/resetClientSession';
 import { useToast } from './use-toast';
 import { UserRole } from '@/types/auth';
 
@@ -223,14 +224,7 @@ export const useAuthActions = () => {
     } catch (error: unknown) {
       console.error('Error signing out:', error);
     } finally {
-      // Force-clear any stale Supabase session from localStorage
-      for (const key of Object.keys(localStorage)) {
-        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-          localStorage.removeItem(key);
-        }
-      }
-      localStorage.removeItem('sessionRole');
-      queryClient.removeQueries({ queryKey: meRolesQueryKey });
+      resetClientSessionForAuthChange(queryClient);
       setLoading(false);
       toast({
         title: 'Signed out',

@@ -16,6 +16,17 @@ import {
   Trophy, Calendar, Search, MessageSquare, ZoomIn,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
+import DisputeEvidencePanel, {
+  type DisputeReport,
+  type DisputeRiotAccount,
+  type MatchDisputeEvidence,
+} from '@/components/organizer/DisputeEvidencePanel';
+import {
+  getPrimaryDisputeReport,
+  parseDisputeReports,
+  parseDisputeRiotAccounts,
+  parseMatchDispute,
+} from '@/utils/disputeReportUtils';
 
 interface DisputeMatch {
   match_number: number | null;
@@ -27,6 +38,8 @@ interface DisputeMatch {
   team2_score: number | null;
   team1_name: string | null;
   team2_name: string | null;
+  team1_id?: string | null;
+  team2_id?: string | null;
 }
 
 interface Dispute {
@@ -46,6 +59,9 @@ interface Dispute {
   raised_by_user_id: string;
   raised_by_name: string;
   match: DisputeMatch | null;
+  reports?: DisputeReport[];
+  riot_accounts?: DisputeRiotAccount[];
+  match_dispute?: MatchDisputeEvidence | null;
 }
 
 const defaultMeta = { label: 'Unknown', className: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/40', icon: Clock };
@@ -120,6 +136,8 @@ const OrganizerDisputesPage: React.FC = () => {
           tournament_name: d.tournament_name || 'Unknown Tournament',
           raised_by_name: d.raised_by_name || 'Unknown',
           match: m || null,
+          reports: parseDisputeReports(d.reports),
+          riot_accounts: parseDisputeRiotAccounts(d.riot_accounts),
         };
       });
 
@@ -308,10 +326,10 @@ const OrganizerDisputesPage: React.FC = () => {
         </div>
 
         {/* 3-Panel Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr_400px] gap-5 h-[calc(100vh-160px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr_400px] gap-5 h-[calc(100vh-160px)] min-h-0">
 
           {/* ── Panel 1: Dispute List ─────────────────────────────────── */}
-          <div className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col overflow-hidden">
+          <div className="min-h-0 bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col overflow-hidden">
             <div className="p-3 border-b border-white/[0.06] space-y-2.5">
               <Tabs value={activeStatus} onValueChange={(v) => setActiveStatus(v as 'all' | 'open' | 'closed')} className="w-full">
                 <TabsList className="grid w-full grid-cols-3 bg-white/[0.04] h-8 rounded-lg">
@@ -338,7 +356,7 @@ const OrganizerDisputesPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+            <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5 scrollbar-thin">
               {loading ? (
                 <div className="text-zinc-400 text-center py-12">
                   <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-rose-500" />
@@ -401,11 +419,21 @@ const OrganizerDisputesPage: React.FC = () => {
           </div>
 
           {/* ── Panel 2: Evidence & Info ──────────────────────────────── */}
-          <div className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col overflow-hidden">
+          <div className="min-h-0 bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col overflow-hidden">
             <AnimatePresence mode="wait">
             {selectedDispute ? (() => {
               const hasMatch = !!(selectedDispute.match?.team1_name && selectedDispute.match?.team2_name);
               const canAct = selectedDispute.status === 'open';
+              const safeReports = parseDisputeReports(selectedDispute.reports);
+              const safeRiotAccounts = parseDisputeRiotAccounts(selectedDispute.riot_accounts);
+              const matchDispute = parseMatchDispute(selectedDispute.match_dispute);
+              const primaryReport = getPrimaryDisputeReport(safeReports);
+              const headerTeam1Score = primaryReport?.team1_score
+                ?? selectedDispute.match?.team1_score
+                ?? 0;
+              const headerTeam2Score = primaryReport?.team2_score
+                ?? selectedDispute.match?.team2_score
+                ?? 0;
               return (
                 <motion.div
                   key={selectedDispute.id}
@@ -413,9 +441,9 @@ const OrganizerDisputesPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.2 }}
-                  className="flex flex-col h-full"
+                  className="flex flex-col h-full min-h-0"
                 >
-                  <div className="p-4 border-b border-white/[0.06]">
+                  <div className="shrink-0 p-4 border-b border-white/[0.06]">
                     <div className="flex items-center gap-2 mb-1">
                       {selectedDispute.reference_number && (
                         <span className="text-rose-400/70 font-mono text-sm shrink-0">{selectedDispute.reference_number}</span>
@@ -445,7 +473,7 @@ const OrganizerDisputesPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
                     {/* Match context panel */}
                     {hasMatch && (
                       <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
@@ -456,11 +484,13 @@ const OrganizerDisputesPage: React.FC = () => {
                           </div>
                           <div className="text-center shrink-0">
                             <div className="flex items-center gap-3">
-                              <span className="text-3xl font-bold text-white tabular-nums">{selectedDispute.match!.team1_score ?? 0}</span>
+                              <span className="text-3xl font-bold text-white tabular-nums">{headerTeam1Score}</span>
                               <span className="text-white/30 text-sm">–</span>
-                              <span className="text-3xl font-bold text-white tabular-nums">{selectedDispute.match!.team2_score ?? 0}</span>
+                              <span className="text-3xl font-bold text-white tabular-nums">{headerTeam2Score}</span>
                             </div>
-                            <p className="text-xs text-white/30 mt-1">Score at dispute</p>
+                            <p className="text-xs text-white/30 mt-1">
+                              {primaryReport ? 'Reported score' : 'Score at dispute'}
+                            </p>
                           </div>
                           <div className="flex-1 text-right">
                             <p className="text-base font-semibold text-white">{selectedDispute.match!.team2_name}</p>
@@ -489,41 +519,28 @@ const OrganizerDisputesPage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Description */}
-                    <div>
-                      <label className="text-zinc-500 text-xs uppercase tracking-wider mb-1.5 block font-medium">Description</label>
-                      <p className="text-white/90 text-sm bg-[#121214] p-3 rounded-xl border border-white/[0.06] leading-relaxed">
-                        {selectedDispute.description || 'No description provided.'}
-                      </p>
-                    </div>
+                    <DisputeEvidencePanel
+                      reports={safeReports}
+                      riotAccounts={safeRiotAccounts}
+                      matchDispute={matchDispute}
+                      fallbackEvidenceUrl={selectedDispute.evidence_url}
+                      disputeDescription={selectedDispute.description}
+                      matchContext={selectedDispute.match ? {
+                        team1_name: selectedDispute.match.team1_name ?? undefined,
+                        team2_name: selectedDispute.match.team2_name ?? undefined,
+                        team1_id: selectedDispute.match.team1_id ?? undefined,
+                        team2_id: selectedDispute.match.team2_id ?? undefined,
+                        best_of: selectedDispute.match.best_of ?? undefined,
+                      } : null}
+                      onImageClick={(url) => setViewingImage(url)}
+                    />
 
-                    {/* Evidence */}
-                    {selectedDispute.evidence_url && (
+                    {!primaryReport && (
                       <div>
-                        <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mb-4" />
-                        <label className="text-zinc-500 text-xs uppercase tracking-wider mb-1.5 flex items-center gap-1.5 font-medium">
-                          <ImageIcon className="h-3.5 w-3.5" />
-                          Evidence
-                        </label>
-                        <div
-                          className="relative group cursor-pointer inline-block"
-                          onClick={() => setViewingImage(selectedDispute.evidence_url || null)}
-                        >
-                          <img
-                            src={selectedDispute.evidence_url}
-                            alt="Dispute evidence"
-                            className="max-w-full max-h-80 rounded-xl border border-white/[0.08] transition-all group-hover:brightness-75"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                            }}
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="p-2.5 rounded-full bg-black/60 backdrop-blur-sm">
-                              <ZoomIn className="h-5 w-5 text-white" />
-                            </div>
-                          </div>
-                        </div>
+                        <label className="text-zinc-500 text-xs uppercase tracking-wider mb-1.5 block font-medium">Description</label>
+                        <p className="text-white/90 text-sm bg-[#121214] p-3 rounded-xl border border-white/[0.06] leading-relaxed">
+                          {selectedDispute.description || 'No description provided.'}
+                        </p>
                       </div>
                     )}
 
@@ -553,7 +570,7 @@ const OrganizerDisputesPage: React.FC = () => {
                           <Button
                             onClick={() => handleResolve('resolved')}
                             disabled={resolving}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white flex-1 transition-colors"
+                            className="bg-emerald-600 text-white border-transparent hover:bg-emerald-600 hover:text-white flex-1"
                           >
                             <CheckCircle className="h-4 w-4 mr-1.5" />
                             Resolve
@@ -590,8 +607,8 @@ const OrganizerDisputesPage: React.FC = () => {
           </div>
 
           {/* ── Panel 3: Conversation ─────────────────────────────────── */}
-          <div className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col overflow-hidden">
-            <div className="p-3 border-b border-white/[0.06]">
+          <div className="min-h-0 bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col overflow-hidden">
+            <div className="shrink-0 p-3 border-b border-white/[0.06]">
               <h3 className="text-white text-sm font-semibold flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-zinc-500" />
                 Conversation
@@ -606,7 +623,7 @@ const OrganizerDisputesPage: React.FC = () => {
               return (
                 <>
                   {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                  <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 scrollbar-thin">
                     {loadingComments ? (
                       <div className="text-center text-zinc-500 text-sm py-12">
                         <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-2 text-rose-500" />

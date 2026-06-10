@@ -75,7 +75,7 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
               variant={resolutionStatus === 'resolved' ? 'default' : 'outline'}
               onClick={() => onStatusChange('resolved')}
               className={resolutionStatus === 'resolved'
-                ? 'bg-emerald-600 hover:bg-emerald-500 flex-1 h-9'
+                ? 'bg-emerald-600 text-white border-transparent hover:bg-emerald-600 hover:text-white flex-1 h-9'
                 : 'border-white/[0.06] text-zinc-400 hover:bg-white/[0.04] flex-1 h-9'}
             >
               <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Resolve
@@ -102,8 +102,8 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
             disabled={!resolutionNotes.trim()}
             className={`w-full h-9 text-sm font-semibold ${
               resolutionStatus === 'resolved'
-                ? 'bg-emerald-600 hover:bg-emerald-500'
-                : 'bg-rose-600 hover:bg-rose-500'
+                ? 'bg-emerald-600 text-white border-transparent hover:bg-emerald-600 hover:text-white'
+                : 'bg-rose-600 hover:bg-rose-500 text-white'
             }`}
           >
             {resolutionStatus === 'resolved' ? 'Resolve Dispute' : 'Reject Dispute'}

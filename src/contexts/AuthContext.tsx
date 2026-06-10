@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { AuthContext } from '@/contexts/auth-context';
 import * as Sentry from '@sentry/react';
 import { meRolesQueryKey } from '@/lib/meRoles';
+import { resetClientSessionForAuthChange } from '@/lib/resetClientSession';
 import { UserProfile, AuthContextType, UserRole } from '@/types/auth';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuthState } from '@/hooks/useAuthState';
@@ -55,16 +56,25 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
 
   // Track previous user ID to detect actual user changes
   const prevUserIdRef = React.useRef<string | null>(null);
+  const authSessionUserRef = useRef<string | null>(null);
   const rolesSyncedForUserRef = useRef<string | null>(null);
 
-  // Refresh role/license cache whenever the authenticated user changes
+  // Clear stale browser storage + query cache when the signed-in user changes
   useEffect(() => {
     if (!isMounted || authLoading) return;
 
     const currentUserId = user?.id ?? null;
+    const previousUserId = authSessionUserRef.current;
+
+    if (previousUserId !== null && previousUserId !== currentUserId) {
+      resetClientSessionForAuthChange(queryClient);
+      rolesSyncedForUserRef.current = null;
+    }
+
+    authSessionUserRef.current = currentUserId;
+
     if (!currentUserId) {
       rolesSyncedForUserRef.current = null;
-      queryClient.removeQueries({ queryKey: meRolesQueryKey });
       return;
     }
 

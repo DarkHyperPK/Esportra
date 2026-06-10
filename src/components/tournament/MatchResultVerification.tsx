@@ -373,7 +373,7 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
               <Button
                 onClick={handleAccept}
                 disabled={acceptReport.isPending || submitting}
-                className="w-full bg-emerald-600 hover:bg-emerald-700"
+                className="w-full border-transparent bg-emerald-600 text-white hover:border-transparent hover:bg-emerald-600 focus-visible:ring-0 active:bg-emerald-700 active:scale-[0.98] transition-transform duration-75"
               >
                 {acceptReport.isPending || submitting ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -384,8 +384,7 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
               </Button>
               <Button
                 onClick={() => setDisputeOpen(true)}
-                variant="outline"
-                className="w-full border-red-500/50 text-red-400 hover:bg-red-500/10"
+                className="w-full border-transparent bg-red-600 text-white hover:border-transparent hover:bg-red-600 focus-visible:ring-0 active:bg-red-700 active:scale-[0.98] transition-transform duration-75"
               >
                 <ShieldAlert className="w-4 h-4 mr-2" />
                 Dispute Result
