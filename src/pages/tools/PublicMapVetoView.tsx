@@ -21,8 +21,10 @@ import {
   adaptPublicVetoToMatchVeto,
   buildPublicHostVetoUrl,
   buildPublicTeamVetoUrl,
+  PublicVetoGameMap,
   PublicVetoHistoryRow,
   PublicVetoState,
+  normalizePublicVetoHistoryRow,
   serializePublicVetoSide,
 } from "./publicMapVetoUtils";
 
@@ -38,18 +40,25 @@ type PublicMapVetoViewProps = {
 
 const noOp = () => undefined;
 
-const adaptHistory = (rows: PublicVetoHistoryRow[]): VetoHistoryEntry[] =>
-  rows.map((row) => normalizeHistoryEntry({
-    actionNumber: row.actionNumber,
-    teamSide: row.teamSide ?? (row.teamName ? undefined : "team1"),
-    teamName: row.teamName,
-    action: row.action,
-    mapId: row.mapId,
-    mapName: row.mapName,
-    mapImageUrl: row.mapImageUrl,
-    side: row.side,
-    createdAt: row.createdAt,
-  }));
+const adaptHistory = (
+  rows: Array<PublicVetoHistoryRow | Record<string, unknown>>,
+  maps: PublicVetoGameMap[],
+  game: string,
+): VetoHistoryEntry[] =>
+  rows.map((row) => {
+    const normalized = normalizePublicVetoHistoryRow(row as Record<string, unknown>, maps, game);
+    return normalizeHistoryEntry({
+      actionNumber: normalized.actionNumber,
+      teamSide: normalized.teamSide,
+      teamName: normalized.teamName,
+      action: normalized.action,
+      mapId: normalized.mapId,
+      mapName: normalized.mapName,
+      mapImageUrl: normalized.mapImageUrl,
+      side: normalized.side,
+      createdAt: normalized.createdAt,
+    });
+  });
 
 const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   state,
@@ -72,7 +81,10 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     () => adaptPublicMapsToGameMaps(state.maps, state.game) as GameMap[],
     [state.game, state.maps],
   );
-  const vetoHistory = useMemo(() => adaptHistory(history), [history]);
+  const vetoHistory = useMemo(
+    () => adaptHistory(history, state.maps, state.game),
+    [history, state.game, state.maps],
+  );
 
   const isComplete = veto.status === "completed";
   const vetoLive = isVetoLive(veto);

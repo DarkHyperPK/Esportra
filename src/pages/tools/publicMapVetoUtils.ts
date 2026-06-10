@@ -76,6 +76,42 @@ export type PublicVetoHistoryRow = {
   createdAt?: string;
 };
 
+const pickVetoField = (row: Record<string, unknown>, ...keys: string[]) => {
+  for (const key of keys) {
+    const value = row[key];
+    if (value !== undefined && value !== null) return value;
+  }
+  return undefined;
+};
+
+/** Postgres lowercases unquoted SQL aliases; enrich map metadata from the session pool. */
+export const normalizePublicVetoHistoryRow = (
+  raw: Record<string, unknown>,
+  maps: PublicVetoGameMap[],
+  game: string,
+): PublicVetoHistoryRow => {
+  const mapId = String(pickVetoField(raw, "mapId", "map_id", "mapid") ?? "");
+  const map = maps.find((entry) => entry.id === mapId);
+  const resolvedName = pickVetoField(raw, "mapName", "map_name", "mapname");
+  const resolvedImage = pickVetoField(raw, "mapImageUrl", "map_image_url", "mapimageurl");
+
+  return {
+    actionNumber: Number(pickVetoField(raw, "actionNumber", "action_number", "actionnumber") ?? 0),
+    teamName: String(pickVetoField(raw, "teamName", "team_name", "teamname") ?? "Team 1"),
+    teamSide: String(pickVetoField(raw, "teamSide", "team_side", "teamside") ?? "team1"),
+    action: String(pickVetoField(raw, "action", "actionType", "action_type", "actiontype") ?? "ban"),
+    mapId,
+    mapName: resolvedName ? String(resolvedName) : map ? publicVetoMapName(map) : "Unknown Map",
+    mapImageUrl: resolvedImage
+      ? String(resolvedImage)
+      : map
+        ? getPublicVetoMapImage(map, game)
+        : null,
+    side: (pickVetoField(raw, "side") as string | null | undefined) ?? null,
+    createdAt: pickVetoField(raw, "createdAt", "created_at", "createdat") as string | undefined,
+  };
+};
+
 export const normalizePublicVetoSide = (side?: string | null): "attack" | "defend" | null => {
   if (!side) return null;
   const value = side.toLowerCase();

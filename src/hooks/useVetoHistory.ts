@@ -16,21 +16,29 @@ export interface VetoHistoryEntry {
     createdAt: string;
 }
 
+function pickHistoryField(raw: Record<string, unknown>, ...keys: string[]) {
+    for (const key of keys) {
+        const value = raw[key];
+        if (value !== undefined && value !== null) return value;
+    }
+    return undefined;
+}
+
 export function normalizeHistoryEntry(raw: Record<string, unknown>): VetoHistoryEntry {
-    const teamSideRaw = String(raw.teamSide ?? raw.team_side ?? 'team1').toLowerCase();
+    const teamSideRaw = String(pickHistoryField(raw, 'teamSide', 'team_side', 'teamside') ?? 'team1').toLowerCase();
     const teamSide: 'team1' | 'team2' = teamSideRaw === 'team2' ? 'team2' : 'team1';
 
     return {
-        actionNumber: Number(raw.actionNumber ?? raw.action_number ?? 0),
+        actionNumber: Number(pickHistoryField(raw, 'actionNumber', 'action_number', 'actionnumber') ?? 0),
         teamSide,
-        teamId: (raw.teamId ?? raw.team_id ?? null) as string | null,
-        teamName: String(raw.teamName ?? raw.team_name ?? (teamSide === 'team1' ? 'Team 1' : 'Team 2')),
-        action: String(raw.action ?? raw.actionType ?? raw.action_type ?? 'ban') as VetoHistoryAction,
-        mapId: String(raw.mapId ?? raw.map_id ?? ''),
-        mapName: String(raw.mapName ?? raw.map_name ?? 'Unknown Map'),
-        mapImageUrl: (raw.mapImageUrl ?? raw.map_image_url ?? null) as string | null | undefined,
-        side: (raw.side ?? null) as 'attack' | 'defend' | null | undefined,
-        createdAt: String(raw.createdAt ?? raw.created_at ?? new Date().toISOString()),
+        teamId: (pickHistoryField(raw, 'teamId', 'team_id', 'teamid') ?? null) as string | null,
+        teamName: String(pickHistoryField(raw, 'teamName', 'team_name', 'teamname') ?? (teamSide === 'team1' ? 'Team 1' : 'Team 2')),
+        action: String(pickHistoryField(raw, 'action', 'actionType', 'action_type', 'actiontype') ?? 'ban') as VetoHistoryAction,
+        mapId: String(pickHistoryField(raw, 'mapId', 'map_id', 'mapid') ?? ''),
+        mapName: String(pickHistoryField(raw, 'mapName', 'map_name', 'mapname') ?? 'Unknown Map'),
+        mapImageUrl: (pickHistoryField(raw, 'mapImageUrl', 'map_image_url', 'mapimageurl') ?? null) as string | null | undefined,
+        side: (pickHistoryField(raw, 'side') ?? null) as 'attack' | 'defend' | null | undefined,
+        createdAt: String(pickHistoryField(raw, 'createdAt', 'created_at', 'createdat') ?? new Date().toISOString()),
     };
 }
 
