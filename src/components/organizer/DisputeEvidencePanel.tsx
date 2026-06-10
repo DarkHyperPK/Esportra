@@ -244,7 +244,7 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
                 </p>
               </div>
             )}
-            {disputingEvidenceUrls.length > 0 && (
+            {disputingEvidenceUrls.length > 0 ? (
               <div>
                 <span className="text-xs text-zinc-500 mb-2 block font-medium uppercase tracking-wider">
                   Uploaded counter-evidence
@@ -262,6 +262,10 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
                   ))}
                 </div>
               </div>
+            ) : (
+              <p className="text-xs text-zinc-500 italic">
+                No counter-evidence image was stored for this dispute.
+              </p>
             )}
           </div>
         </div>

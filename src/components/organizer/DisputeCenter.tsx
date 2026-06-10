@@ -540,7 +540,8 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
         </div>
 
         {/* Panel 2: Evidence & Info */}
-        <div className="min-h-0 bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col overflow-hidden">
+        <div className="min-h-0 h-full bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col overflow-hidden">
+          <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
           <AnimatePresence mode="wait">
           {selectedDispute ? (() => {
             const cfg = statusCfg[selectedDispute.status];
@@ -598,7 +599,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
                 </div>
 
                 {/* Scrollable content */}
-                <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
                   {/* Match context */}
                   {hasMatch && (
                     <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
@@ -669,29 +670,28 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
                       </p>
                     </div>
                   )}
-
-                  {/* Actions (assign + resolve/reject) */}
-                  {selectedDispute.status === 'open' && (
-                    <div>
-                      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mb-4" />
-                      <DisputeActions
-                        status={selectedDispute.status}
-                        canAssist={canAssistDisputes}
-                        canAssignOthers={canAssignOthers}
-                        assigneeId={selectedAssigneeId}
-                        assignmentOptions={assignmentOptions}
-                        assignmentLoading={assignmentLoading}
-                        resolutionNotes={resolutionNotes}
-                        resolutionStatus={resolutionStatus}
-                        onAssigneeChange={setSelectedAssigneeId}
-                        onAssign={() => selectedDispute && selectedAssigneeId && handleAssignDispute(selectedDispute.id, selectedAssigneeId)}
-                        onStatusChange={setResolutionStatus}
-                        onNotesChange={setResolutionNotes}
-                        onResolve={() => handleUpdateStatus(selectedDispute.id, resolutionStatus)}
-                      />
-                    </div>
-                  )}
                 </div>
+
+                {/* Actions pinned below scroll area */}
+                {selectedDispute.status === 'open' && (
+                  <div className="shrink-0 border-t border-white/[0.06] bg-[#0a0a0c] p-4">
+                    <DisputeActions
+                      status={selectedDispute.status}
+                      canAssist={canAssistDisputes}
+                      canAssignOthers={canAssignOthers}
+                      assigneeId={selectedAssigneeId}
+                      assignmentOptions={assignmentOptions}
+                      assignmentLoading={assignmentLoading}
+                      resolutionNotes={resolutionNotes}
+                      resolutionStatus={resolutionStatus}
+                      onAssigneeChange={setSelectedAssigneeId}
+                      onAssign={() => selectedDispute && selectedAssigneeId && handleAssignDispute(selectedDispute.id, selectedAssigneeId)}
+                      onStatusChange={setResolutionStatus}
+                      onNotesChange={setResolutionNotes}
+                      onResolve={() => handleUpdateStatus(selectedDispute.id, resolutionStatus)}
+                    />
+                  </div>
+                )}
               </motion.div>
             );
           })() : (
@@ -709,6 +709,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
             </motion.div>
           )}
           </AnimatePresence>
+          </div>
         </div>
 
         {/* Panel 3: Conversation */}

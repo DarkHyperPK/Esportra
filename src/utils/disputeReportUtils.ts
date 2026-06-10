@@ -26,7 +26,25 @@ export function parseDisputeRiotAccounts(raw: unknown): DisputeRiotAccount[] {
   return parseJsonArray<DisputeRiotAccount>(raw);
 }
 
+function parsePostgresTextArray(raw: string): string[] {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return [];
+  const inner = trimmed.slice(1, -1).trim();
+  if (!inner) return [];
+  return inner
+    .split(',')
+    .map((part) => part.trim().replace(/^"(.*)"$/, '$1'))
+    .filter((url) => url.length > 0);
+}
+
 export function parseEvidenceUrls(raw: unknown): string[] {
+  if (typeof raw === 'string') {
+    const jsonParsed = parseJsonArray<string>(raw);
+    if (jsonParsed.length > 0) {
+      return jsonParsed.filter((url) => typeof url === 'string' && url.length > 0);
+    }
+    return parsePostgresTextArray(raw);
+  }
   return parseJsonArray<string>(raw).filter((url) => typeof url === 'string' && url.length > 0);
 }
 
