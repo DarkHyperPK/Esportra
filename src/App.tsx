@@ -167,6 +167,7 @@ const PublicBracketList = lazyWithRetry(() => import('./pages/tools/PublicBracke
 const PublicBracketBuilder = lazyWithRetry(() => import('./pages/tools/PublicBracketBuilder'));
 const PublicBracketRunner = lazyWithRetry(() => import('./pages/tools/PublicBracketRunner'));
 const PublicBracketShare = lazyWithRetry(() => import('./pages/tools/PublicBracketShare'));
+const PublicBracketEmbed = lazyWithRetry(() => import('./pages/tools/PublicBracketEmbed'));
 const PublicMapVetoCreate = lazyWithRetry(() => import('./pages/tools/PublicMapVetoCreate'));
 const PublicMapVetoRoom = lazyWithRetry(() => import('./pages/tools/PublicMapVetoRoom'));
 const RiotTest = lazyWithRetry(() => import("./pages/debug/RiotTest"));
@@ -189,11 +190,13 @@ const AppContent = React.memo(() => {
   }, [location.pathname, scrollTo]);
 
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const isChromelessRoute = location.pathname.endsWith('/brackets/fullscreen')
+    || location.pathname.startsWith('/tools/brackets/embed/');
 
   return (
     <>
       {/* Global Background */}
-      {!location.pathname.endsWith('/brackets/fullscreen') && !isAdminRoute && (
+      {!isChromelessRoute && !isAdminRoute && (
         <div
           className="fixed inset-0 w-full h-full z-0 bg-[#0a0a0c]"
           aria-hidden="true"
@@ -211,7 +214,7 @@ const AppContent = React.memo(() => {
       <Sonner />
       <GhostModeBanner />
       <ProfileCompletionPrompt />
-      {!location.pathname.endsWith('/brackets/fullscreen') && !isAdminRoute && (
+      {!isChromelessRoute && !isAdminRoute && (
         <>
           <Navbar />
           <BetaNoticeBanner />
@@ -783,6 +786,7 @@ const AppContent = React.memo(() => {
 
               {/* Fullscreen bracket — outside layout to hide navbar/banners */}
               <Route path="/tournaments/:slug/brackets/fullscreen" element={<FullscreenBracketPage />} />
+              <Route path="/tools/brackets/embed/share/:token" element={<PublicBracketEmbed />} />
             </Routes >
           </SuspensionGuard>
         </React.Suspense >

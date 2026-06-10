@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Copy, RotateCcw, Share2, Trash2 } from "lucide-react";
+import { Code2, Copy, Download, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
@@ -17,15 +17,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { BracketExporter } from "@/components/bracket/BracketExporter";
 import { BracketRenderer } from "@/components/bracket/BracketRenderer";
 import { BracketMatch } from "@/types/bracketTypes";
 import {
   adaptPublicBracketPayload,
+  buildPublicBracketEmbedCode,
   copyText,
   formatBracketFormat,
   normalizeToolBracketPayload,
   normalizeToolBracketResponse,
   PublicBracketResponse,
+  slugifyBracketFileName,
 } from "./publicToolUtils";
 
 type WorkspaceProps = {
@@ -44,6 +54,7 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
   const [team2Score, setTeam2Score] = useState("0");
   const [saving, setSaving] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [embedOpen, setEmbedOpen] = useState(false);
 
   const queryKey = mode === "owner" ? ["tool-bracket", id] : ["tool-bracket-share", token];
   const { data, isLoading, error } = useQuery({
@@ -59,6 +70,21 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
 
   const matches = useMemo(() => data ? adaptPublicBracketPayload(data.payload) : [], [data]);
   const shareUrl = data?.shareToken ? `${window.location.origin}/tools/brackets/share/${data.shareToken}` : "";
+  const canEmbed = Boolean(data?.shareToken && data.visibility === "unlisted");
+  const embedCode = data?.shareToken ? buildPublicBracketEmbedCode(data.shareToken) : "";
+  const exportFileName = data ? `${slugifyBracketFileName(data.title)}.png` : undefined;
+
+  const openEmbedDialog = () => {
+    if (!canEmbed) {
+      toast({
+        title: "Enable sharing first",
+        description: "Turn on the share link before copying an embed code.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setEmbedOpen(true);
+  };
 
   const selectMatch = (match: BracketMatch) => {
     setSelected(match);
@@ -170,6 +196,22 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
           <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
             <Link to="/tools/brackets">Saved brackets</Link>
           </Button>
+          {matches.length > 0 && (
+            <BracketExporter
+              matches={matches}
+              downloadFileName={exportFileName}
+              triggerButton={(
+                <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+                  <Download className="mr-2 h-4 w-4" /> Export PNG
+                </Button>
+              )}
+            />
+          )}
+          {mode === "owner" && canEmbed && (
+            <Button variant="outline" onClick={openEmbedDialog} className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+              <Code2 className="mr-2 h-4 w-4" /> Embed
+            </Button>
+          )}
           {mode === "owner" && (
             <>
               <Button disabled={saving} variant="outline" onClick={toggleSharing} className="border-white/10 bg-white/5 text-white hover:bg-white/10">
@@ -252,6 +294,31 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
           )}
         </aside>
       </div>
+
+      <Dialog open={embedOpen} onOpenChange={setEmbedOpen}>
+        <DialogContent className="border-white/10 bg-[#0a0a0c] text-white sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Embed bracket</DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Paste this iframe on your site or stream overlay. The embed updates when you change match results.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <textarea
+              readOnly
+              value={embedCode}
+              rows={5}
+              className="w-full resize-none rounded-md border border-white/10 bg-black/50 p-3 font-mono text-xs text-zinc-300"
+            />
+            <Button
+              className="w-full bg-rose-600 text-white hover:bg-rose-500"
+              onClick={() => copyText(embedCode).then(() => toast({ title: "Embed code copied" }))}
+            >
+              <Copy className="mr-2 h-4 w-4" /> Copy embed code
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {mode === "owner" && (
         <AlertDialog open={deleteOpen} onOpenChange={(open) => !saving && setDeleteOpen(open)}>

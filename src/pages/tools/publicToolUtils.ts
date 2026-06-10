@@ -165,3 +165,17 @@ export const adaptPublicBracketPayload = (payload: PublicBracketPayload): Bracke
 export const copyText = async (text: string) => {
   await navigator.clipboard.writeText(text);
 };
+
+export const buildPublicBracketShareUrl = (shareToken: string) =>
+  `${window.location.origin}/tools/brackets/share/${shareToken}`;
+
+export const buildPublicBracketEmbedUrl = (shareToken: string) =>
+  `${window.location.origin}/tools/brackets/embed/share/${shareToken}`;
+
+export const buildPublicBracketEmbedCode = (shareToken: string, height = 720) => {
+  const src = buildPublicBracketEmbedUrl(shareToken);
+  return `<iframe src="${src}" width="100%" height="${height}" style="border:0;border-radius:12px;background:#09090b" allowfullscreen loading="lazy" title="Esportra bracket"></iframe>`;
+};
+
+export const slugifyBracketFileName = (title: string) =>
+  title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "bracket";

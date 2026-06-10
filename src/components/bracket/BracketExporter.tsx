@@ -7,11 +7,13 @@ import { Loader2 } from 'lucide-react';
 interface BracketExporterProps {
     matches: BracketMatch[];
     triggerButton: React.ReactNode;
+    downloadFileName?: string;
 }
 
 export const BracketExporter: React.FC<BracketExporterProps> = ({
     matches,
-    triggerButton
+    triggerButton,
+    downloadFileName,
 }) => {
     const [isExporting, setIsExporting] = useState(false);
     const exportRef = useRef<HTMLDivElement>(null);
@@ -33,7 +35,7 @@ export const BracketExporter: React.FC<BracketExporterProps> = ({
                 } as Parameters<typeof toPng>[1]);
 
                 const link = document.createElement('a');
-                link.download = `tournament-bracket-${Date.now()}.png`;
+                link.download = downloadFileName ?? `tournament-bracket-${Date.now()}.png`;
                 link.href = dataUrl;
                 link.click();
             }

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { FileUp, Save, Shuffle, Upload } from "lucide-react";
+import { Download, FileUp, Save, Shuffle } from "lucide-react";
 import { apiClient, ApiError, getApiErrorMessage } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { BracketExporter } from "@/components/bracket/BracketExporter";
 import { BracketRenderer } from "@/components/bracket/BracketRenderer";
-import { adaptPublicBracketPayload, normalizeToolBracketPayload, parseTeamText, PublicBracketPayload } from "./publicToolUtils";
+import { adaptPublicBracketPayload, normalizeToolBracketPayload, parseTeamText, PublicBracketPayload, slugifyBracketFileName } from "./publicToolUtils";
 import { SingleEliminationGenerator } from "@/services/bracket/SingleEliminationGenerator";
 import { DoubleEliminationGenerator } from "@/services/bracket/DoubleEliminationGenerator";
 
@@ -224,7 +225,17 @@ const PublicBracketBuilder = () => {
               <h2 className="text-sm font-bold">Preview</h2>
               <p className="text-xs text-zinc-500">{preview ? `${matches.length} matches generated` : "Generate a preview to inspect the bracket"}</p>
             </div>
-            <Upload className="h-4 w-4 text-zinc-500" />
+            {preview && matches.length > 0 ? (
+              <BracketExporter
+                matches={matches}
+                downloadFileName={`${slugifyBracketFileName(title)}-preview.png`}
+                triggerButton={(
+                  <Button type="button" size="sm" variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+                    <Download className="mr-2 h-4 w-4" /> Export PNG
+                  </Button>
+                )}
+              />
+            ) : null}
           </div>
           <div className="min-h-0 flex-1 overflow-auto p-3">
             {preview ? (
