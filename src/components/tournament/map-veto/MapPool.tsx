@@ -72,6 +72,8 @@ interface MapPoolProps {
     bestOf: number;
     game?: string;
     layoutMode?: VetoLayoutMode;
+    /** When false, ban/pick animations wait for server state instead of firing on click. */
+    transitionOnClick?: boolean;
 }
 
 export const MapPool: React.FC<MapPoolProps> = ({
@@ -93,6 +95,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
     bestOf,
     game = 'valorant',
     layoutMode = 'embedded',
+    transitionOnClick = true,
 }) => {
     const service = React.useMemo(() => new VetoService(game, availableMaps.length || undefined), [game, availableMaps.length]);
     const mapLookup = allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps;
@@ -204,12 +207,15 @@ export const MapPool: React.FC<MapPoolProps> = ({
     const handleMapActionWithTransition = useCallback((mapId: string) => {
         const normalizedId = String(mapId);
         const action: MapTransitionAction = veto.current_action === 'pick' ? 'pick' : 'ban';
-        if (veto.current_action === 'ban' || veto.current_action === 'pick') {
+        if (
+            transitionOnClick
+            && (veto.current_action === 'ban' || veto.current_action === 'pick')
+        ) {
             startMapTransition(normalizedId, action);
             prevUsedMapsRef.current = new Set([...prevUsedMapsRef.current, normalizedId]);
         }
         handleMapAction(mapId);
-    }, [handleMapAction, startMapTransition, veto.current_action]);
+    }, [handleMapAction, startMapTransition, transitionOnClick, veto.current_action]);
 
     if (!vetoLive) {
         return null;

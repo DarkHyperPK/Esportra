@@ -64,6 +64,55 @@ export type PublicVetoState = {
   expiresAt?: string;
 };
 
+const pickVetoField = (row: Record<string, unknown>, ...keys: string[]) => {
+  for (const key of keys) {
+    const value = row[key];
+    if (value !== undefined && value !== null) return value;
+  }
+  return undefined;
+};
+
+const normalizePickedMapsField = (raw: unknown): PublicVetoPickedMap[] => {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((pick) => {
+    const row = (pick ?? {}) as Record<string, unknown>;
+    return {
+      mapId: String(pickVetoField(row, "mapId", "map_id", "mapid") ?? ""),
+      side: pickVetoField(row, "side") as string | null | undefined,
+    };
+  }).filter((pick) => Boolean(pick.mapId));
+};
+
+export const normalizePublicVetoState = (raw: Record<string, unknown>): PublicVetoState => {
+  const mapsRaw = pickVetoField(raw, "maps", "Maps");
+  const roleRaw = String(pickVetoField(raw, "role", "Role") ?? "viewer");
+
+  return {
+    id: String(pickVetoField(raw, "id", "Id") ?? ""),
+    game: String(pickVetoField(raw, "game", "Game") ?? "valorant"),
+    bestOf: Number(pickVetoField(raw, "bestOf", "best_of", "bestof") ?? 1),
+    team1Name: String(pickVetoField(raw, "team1Name", "team1_name", "team1name") ?? "Team 1"),
+    team2Name: String(pickVetoField(raw, "team2Name", "team2_name", "team2name") ?? "Team 2"),
+    team1Id: String(pickVetoField(raw, "team1Id", "team1_id", "team1id") ?? ""),
+    team2Id: String(pickVetoField(raw, "team2Id", "team2_id", "team2id") ?? ""),
+    status: String(pickVetoField(raw, "status", "Status") ?? "pending"),
+    currentTeamId: (pickVetoField(raw, "currentTeamId", "current_team_id", "currentteamid") ?? null) as string | null,
+    currentAction: (pickVetoField(raw, "currentAction", "current_action", "currentaction") ?? null) as PublicVetoState["currentAction"],
+    currentActionNumber: Number(pickVetoField(raw, "currentActionNumber", "current_action_number", "currentactionnumber") ?? 0),
+    team1BannedMaps: (pickVetoField(raw, "team1BannedMaps", "team1_banned_maps", "team1bannedmaps") as string[]) ?? [],
+    team2BannedMaps: (pickVetoField(raw, "team2BannedMaps", "team2_banned_maps", "team2bannedmaps") as string[]) ?? [],
+    team1PickedMaps: normalizePickedMapsField(pickVetoField(raw, "team1PickedMaps", "team1_picked_maps", "team1pickedmaps")),
+    team2PickedMaps: normalizePickedMapsField(pickVetoField(raw, "team2PickedMaps", "team2_picked_maps", "team2pickedmaps")),
+    selectedMapId: (pickVetoField(raw, "selectedMapId", "selected_map_id", "selectedmapid") ?? null) as string | null,
+    maps: Array.isArray(mapsRaw) ? mapsRaw as PublicVetoGameMap[] : [],
+    hostToken: (pickVetoField(raw, "hostToken", "host_token", "hosttoken") ?? null) as string | null,
+    team1Token: (pickVetoField(raw, "team1Token", "team1_token", "team1token") ?? null) as string | null,
+    team2Token: (pickVetoField(raw, "team2Token", "team2_token", "team2token") ?? null) as string | null,
+    role: roleRaw === "host" || roleRaw === "team1" || roleRaw === "team2" ? roleRaw : "viewer",
+    expiresAt: pickVetoField(raw, "expiresAt", "expires_at", "expiresat") as string | undefined,
+  };
+};
+
 export type PublicVetoHistoryRow = {
   actionNumber: number;
   teamName: string;
@@ -74,14 +123,6 @@ export type PublicVetoHistoryRow = {
   mapImageUrl?: string | null;
   side?: string | null;
   createdAt?: string;
-};
-
-const pickVetoField = (row: Record<string, unknown>, ...keys: string[]) => {
-  for (const key of keys) {
-    const value = row[key];
-    if (value !== undefined && value !== null) return value;
-  }
-  return undefined;
 };
 
 /** Postgres lowercases unquoted SQL aliases; enrich map metadata from the session pool. */

@@ -1,10 +1,17 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
 import PublicMapVetoView, { PublicMapVetoLoading } from "./PublicMapVetoView";
-import type { PublicVetoHistoryRow, PublicVetoState } from "./publicMapVetoUtils";
+import {
+  normalizePublicVetoHistoryRow,
+  normalizePublicVetoState,
+  type PublicVetoHistoryRow,
+  type PublicVetoState,
+} from "./publicMapVetoUtils";
+
+const PUBLIC_VETO_POLL_MS = 5000;
 
 const PublicMapVetoRoom = () => {
   const { token } = useParams();
@@ -12,54 +19,105 @@ const PublicMapVetoRoom = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const isHost = location.pathname.includes("/host/");
+  const actingRef = useRef(false);
   const [acting, setActing] = useState(false);
   const statePath = isHost ? `/api/tools/map-veto/host/${token}` : `/api/tools/map-veto/team/${token}`;
+  const stateQueryKey = ["public-map-veto", isHost ? "host" : "team", token] as const;
+  const historyQueryKey = ["public-map-veto-history", token] as const;
 
   const stateQuery = useQuery({
-    queryKey: ["public-map-veto", isHost ? "host" : "team", token],
-    queryFn: () => apiClient.get<PublicVetoState>(statePath),
+    queryKey: stateQueryKey,
+    queryFn: async () => normalizePublicVetoState(await apiClient.get<Record<string, unknown>>(statePath)),
     enabled: Boolean(token),
-    refetchInterval: 2500,
+    staleTime: 1500,
+    refetchIntervalInBackground: false,
+    refetchInterval: (query) => {
+      if (actingRef.current) return false;
+      if (query.state.data?.status === "completed") return false;
+      return PUBLIC_VETO_POLL_MS;
+    },
   });
 
   const historyQuery = useQuery({
-    queryKey: ["public-map-veto-history", token],
-    queryFn: () => apiClient.get<PublicVetoHistoryRow[]>(`/api/tools/map-veto/${token}/history`),
-    enabled: Boolean(token),
-    refetchInterval: 2500,
+    queryKey: historyQueryKey,
+    queryFn: async () => {
+      const rows = await apiClient.get<Array<Record<string, unknown>>>(`/api/tools/map-veto/${token}/history`);
+      const maps = stateQuery.data?.maps ?? [];
+      const game = stateQuery.data?.game ?? "valorant";
+      return rows.map((row) => normalizePublicVetoHistoryRow(row, maps, game));
+    },
+    enabled: Boolean(token) && Boolean(stateQuery.data),
+    staleTime: 1500,
+    refetchIntervalInBackground: false,
+    refetchInterval: () => {
+      if (actingRef.current) return false;
+      if (stateQuery.data?.status === "completed") return false;
+      return PUBLIC_VETO_POLL_MS;
+    },
   });
+
+  const beginAction = () => {
+    actingRef.current = true;
+    setActing(true);
+  };
+
+  const endAction = () => {
+    actingRef.current = false;
+    setActing(false);
+  };
+
+  const applyServerState = (raw: Record<string, unknown>) => {
+    const nextState = normalizePublicVetoState(raw);
+    queryClient.setQueryData(stateQueryKey, nextState);
+    return nextState;
+  };
+
+  const refreshHistory = async (maps: PublicVetoState["maps"], game: string) => {
+    const rows = await apiClient.get<Array<Record<string, unknown>>>(`/api/tools/map-veto/${token}/history`);
+    queryClient.setQueryData(
+      historyQueryKey,
+      rows.map((row) => normalizePublicVetoHistoryRow(row, maps, game)),
+    );
+  };
 
   const performAction = async (mapId: string, side?: string | null) => {
     const state = stateQuery.data;
-    if (!state?.currentAction || !token || isHost) return;
-    setActing(true);
+    if (!state?.currentAction || !token || isHost || actingRef.current) return;
+
+    beginAction();
     try {
       const actionPath = state.currentAction === "pick_side" ? "pick-side" : state.currentAction;
-      await apiClient.post(
+      const updated = await apiClient.post<Record<string, unknown>>(
         `/api/tools/map-veto/team/${token}/${actionPath}`,
         state.currentAction === "pick_side" ? { mapId, side } : { mapId },
       );
-      await Promise.all([stateQuery.refetch(), historyQuery.refetch()]);
+      const nextState = applyServerState(updated);
+      await refreshHistory(nextState.maps, nextState.game);
     } catch (err) {
       toast({ title: "Action failed", description: getApiErrorMessage(err), variant: "destructive" });
+      await Promise.all([
+        stateQuery.refetch(),
+        historyQuery.refetch(),
+      ]);
       throw err;
     } finally {
-      setActing(false);
+      endAction();
     }
   };
 
   const reset = async () => {
-    if (!token) return;
-    setActing(true);
+    if (!token || actingRef.current) return;
+    beginAction();
     try {
-      await apiClient.post(`/api/tools/map-veto/host/${token}/reset`, {});
-      await queryClient.invalidateQueries({ queryKey: ["public-map-veto"] });
-      await queryClient.invalidateQueries({ queryKey: ["public-map-veto-history", token] });
+      const updated = await apiClient.post<Record<string, unknown>>(`/api/tools/map-veto/host/${token}/reset`, {});
+      const nextState = applyServerState(updated);
+      queryClient.setQueryData(historyQueryKey, []);
+      await refreshHistory(nextState.maps, nextState.game);
       toast({ title: "Veto reset" });
     } catch (err) {
       toast({ title: "Reset failed", description: getApiErrorMessage(err), variant: "destructive" });
     } finally {
-      setActing(false);
+      endAction();
     }
   };
 
@@ -83,8 +141,8 @@ const PublicMapVetoRoom = () => {
     <div className="min-h-screen bg-[#050505]">
       <PublicMapVetoView
         state={stateQuery.data}
-        history={historyQuery.data ?? []}
-        historyLoading={historyQuery.isLoading}
+        history={(historyQuery.data ?? []) as PublicVetoHistoryRow[]}
+        historyLoading={historyQuery.isLoading || historyQuery.isFetching}
         isHost={isHost}
         acting={acting}
         onMapAction={performAction}

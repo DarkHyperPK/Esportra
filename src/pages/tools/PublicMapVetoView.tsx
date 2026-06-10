@@ -232,24 +232,30 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   );
 
   const mapPoolPanel = (
-    <MapPool
-      veto={veto}
-      availableMaps={gameMaps}
-      allAvailableMaps={gameMaps}
-      isUserTurn={isUserTurn}
-      actionLoading={isHost ? null : (actionLoading ?? (acting ? "busy" : null))}
-      handleMapAction={isHost ? noOp : handleMapAction}
-      imagesLoaded={imagesLoaded}
-      setImagesLoaded={setImagesLoaded}
-      currentTeamName={currentTeamName}
-      team1Name={state.team1Name}
-      team2Name={state.team2Name}
-      team1Id={state.team1Id}
-      team2Id={state.team2Id}
-      bestOf={currentBestOf}
-      game={state.game}
-      layoutMode={layout}
-    />
+    <div className="relative">
+      <MapPool
+        veto={veto}
+        availableMaps={gameMaps}
+        allAvailableMaps={gameMaps}
+        isUserTurn={isUserTurn && !acting}
+        actionLoading={isHost ? null : (actionLoading ?? (acting ? "busy" : null))}
+        handleMapAction={isHost ? noOp : handleMapAction}
+        imagesLoaded={imagesLoaded}
+        setImagesLoaded={setImagesLoaded}
+        currentTeamName={currentTeamName}
+        team1Name={state.team1Name}
+        team2Name={state.team2Name}
+        team1Id={state.team1Id}
+        team2Id={state.team2Id}
+        bestOf={currentBestOf}
+        game={state.game}
+        layoutMode={layout}
+        transitionOnClick={false}
+      />
+      {acting && !isHost && (
+        <div className="pointer-events-none absolute inset-0 z-20 rounded-xl bg-black/35 backdrop-blur-[1px]" aria-hidden="true" />
+      )}
+    </div>
   );
 
   const sequencePanel = (
@@ -261,7 +267,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
         <div>
           <div className="text-[10px] font-black uppercase tracking-widest text-white/60">Veto Sequence</div>
           <div className="mt-0.5 text-[11px] text-zinc-500 sm:mt-1 sm:text-xs">
-            {isComplete ? "Final ban/pick recap" : "Live turn order"}
+            {isComplete ? "Final ban/pick recap" : "Actions confirmed so far"}
           </div>
         </div>
         {!isComplete && veto.current_action && (
@@ -277,7 +283,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
         <VetoSequence
           veto={veto}
           entries={vetoHistory}
-          loading={historyLoading}
+          loading={historyLoading && vetoHistory.length === 0}
           bestOf={currentBestOf}
           team1Name={state.team1Name}
           team2Name={state.team2Name}
@@ -288,6 +294,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
           game={state.game}
           compact={ui.sequenceCompact}
           columns={ui.sequenceColumns}
+          doneOnly={!isComplete}
           emptyMessage={!vetoLive ? "Veto has not started yet." : "No veto actions recorded yet."}
         />
       </div>
@@ -305,12 +312,14 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-[10px] font-black uppercase tracking-widest text-white/50">Current Turn</div>
-          <div className={cn("mt-0.5 text-sm font-black", isUserTurn ? "text-rose-200" : "text-white")}>
-            {isHost
-              ? `${currentTeamName}'s turn`
-              : isUserTurn
-                ? "Your turn"
-                : `${currentTeamName}'s turn`}
+          <div className={cn("mt-0.5 text-sm font-black", acting ? "text-zinc-400" : isUserTurn ? "text-rose-200" : "text-white")}>
+            {acting
+              ? "Confirming action..."
+              : isHost
+                ? `${currentTeamName}'s turn`
+                : isUserTurn
+                  ? "Your turn"
+                  : `${currentTeamName}'s turn`}
           </div>
         </div>
         <span className={cn(
