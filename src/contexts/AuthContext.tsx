@@ -8,6 +8,7 @@ import { useAuthActions } from '@/hooks/useAuthActions';
 import { useProfileManagement } from '@/hooks/useProfileManagement';
 import { apiClient } from '@/lib/apiClient';
 import { detectUserCountry } from '@/utils/countries';
+import { hasProfileDateOfBirth } from '@/utils/profileFields';
 import React from 'react';
 
 interface AuthProviderProps {
@@ -24,6 +25,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     loading: profileLoading,
     error: profileError,
     fetchProfile,
+    applyProfilePatch,
     clearProfile
   } = useProfile();
 
@@ -142,13 +144,14 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
       return;
     }
 
-    await updateProfile(updates, user.id);
+    const updated = await updateProfile(updates, user.id);
+    applyProfilePatch(user.id, updated as unknown as Record<string, unknown>);
     await fetchProfile(user.id);
-  }, [user, updateProfile, fetchProfile]);
+  }, [user, updateProfile, fetchProfile, applyProfilePatch]);
 
   // Silent background country detection
   useEffect(() => {
-    if (!profile || profile.country_code || !profile.date_of_birth || !user || !isMounted) return;
+    if (!profile || profile.country_code || hasProfileDateOfBirth(profile) || !user || !isMounted) return;
 
     const performSilentDetection = async () => {
       // Use a session storage flag to avoid repeated attempts if detection fails or is slow

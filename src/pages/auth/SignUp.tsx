@@ -15,8 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 import AuthLayout from "@/components/auth/AuthLayout";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { countries, getCountryFlag } from "@/utils/countries";
+import { CountryCombobox } from "@/components/profile/CountryCombobox";
 import { validateCountryCode } from "@/utils/countryValidation";
 import { validateDateOfBirth } from "@/utils/dobValidation";
 
@@ -260,20 +259,13 @@ const SignUp = () => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-white/70">Country</FormLabel>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <FormControl>
-                    <SelectTrigger className="h-11 bg-zinc-900/50 border-zinc-800 text-white focus:border-rose-500 focus:ring-rose-500/20">
-                      <SelectValue placeholder="Select your country" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent className="bg-zinc-900 border-zinc-800 text-white max-h-60">
-                    {countries.map((country) => (
-                      <SelectItem key={country.code} value={country.code}>
-                        {getCountryFlag(country.code)} {country.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <CountryCombobox
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select your country"
+                  />
+                </FormControl>
                 <FormMessage className="text-red-400" />
               </FormItem>
             )}

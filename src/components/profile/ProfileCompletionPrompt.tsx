@@ -13,14 +13,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { countries, detectUserCountry, getCountryFlag } from '@/utils/countries';
+import { CountryCombobox } from '@/components/profile/CountryCombobox';
+import { detectUserCountry } from '@/utils/countries';
 import { validateCountryCode } from '@/utils/countryValidation';
 import { maxDateOfBirthInputValue, validateDateOfBirth } from '@/utils/dobValidation';
 import {
@@ -143,21 +137,13 @@ export function ProfileCompletionPrompt() {
                 <Globe className="h-4 w-4 text-rose-500" />
                 Country
               </Label>
-              <Select value={countryCode} onValueChange={setCountryCode}>
-                <SelectTrigger
-                  id="profile-country"
-                  className="h-11 border-zinc-800 bg-zinc-900/50 text-white"
-                >
-                  <SelectValue placeholder={detectingCountry ? 'Detecting country...' : 'Select your country'} />
-                </SelectTrigger>
-                <SelectContent className="max-h-60 border-zinc-800 bg-zinc-900 text-white">
-                  {countries.map((country) => (
-                    <SelectItem key={country.code} value={country.code}>
-                      {getCountryFlag(country.code)} {country.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <CountryCombobox
+                id="profile-country"
+                value={countryCode}
+                onValueChange={setCountryCode}
+                placeholder={detectingCountry ? 'Detecting country...' : 'Select your country'}
+                disabled={detectingCountry}
+              />
               {countryError && <p className="text-sm text-red-400">{countryError}</p>}
             </div>
           )}
