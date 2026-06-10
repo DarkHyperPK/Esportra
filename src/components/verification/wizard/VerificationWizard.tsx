@@ -9,7 +9,6 @@ import WizardProgress from '@/components/tournament/wizard/WizardProgress';
 import StepPersonalDetails from './StepPersonalDetails';
 import StepBusinessInfo from './StepBusinessInfo';
 import StepExperience from './StepExperience';
-import StepDocuments from './StepDocuments';
 import StepLicenseTerms from './StepLicenseTerms';
 import { VerificationWizardData, DEFAULT_VERIFICATION_DATA } from '@/types/verificationWizard';
 import { ORGANIZER_STEPS, VENUE_OWNER_STEPS } from './VerificationSteps';
@@ -35,7 +34,7 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
             if (saved) {
                 const parsed = JSON.parse(saved);
                 // File fields can't be serialized — keep them null
-                return { ...DEFAULT_VERIFICATION_DATA, ...parsed, cnicFront: null, cnicBack: null, venueExterior: null, venueInterior: null, gamingArea: null };
+                return { ...DEFAULT_VERIFICATION_DATA, ...parsed, venueExterior: null, venueInterior: null, gamingArea: null };
             }
         } catch { /* ignore corrupt draft */ }
         return DEFAULT_VERIFICATION_DATA;
@@ -54,7 +53,7 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
     useEffect(() => {
         const timer = setTimeout(() => {
             // Strip File objects before saving
-            const { cnicFront: _cnicFront, cnicBack: _cnicBack, venueExterior: _venueExterior, venueInterior: _venueInterior, gamingArea: _gamingArea, ...serializable } = data;
+            const { venueExterior: _venueExterior, venueInterior: _venueInterior, gamingArea: _gamingArea, ...serializable } = data;
             localStorage.setItem(draftKey, JSON.stringify(serializable));
         }, 500);
         return () => clearTimeout(timer);
@@ -109,12 +108,7 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
             }
         }
 
-        if (step === 4) { // Documents
-            if (!data.cnicFront) newErrors.cnicFront = 'Front image required';
-            if (!data.cnicBack) newErrors.cnicBack = 'Back image required';
-        }
-
-        if (step === 5 && role === 'organizer') { // License Terms
+        if (step === 4 && role === 'organizer') {
             if (!data.acceptedTerms) newErrors.acceptedTerms = 'You must accept the License Terms to continue.';
         }
 
@@ -182,9 +176,6 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
                 gamingPath = await uploadFile(data.gamingArea, 'gaming_area');
             }
 
-            const cnicFrontPath = await uploadFile(data.cnicFront, 'cnic_front');
-            const cnicBackPath = await uploadFile(data.cnicBack, 'cnic_back');
-
             const payload: any = {
                 user_id: user.id,
                 requested_role: role,
@@ -196,20 +187,15 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
                 business_type: role === 'venue_owner' ? 'gaming_zone' : data.business_type,
                 business_description: data.business_description,
                 experience_description: role === 'organizer' ? (data.previous_tournaments || 'N/A') : (data.business_description || 'N/A'),
-                cnic_front_url: cnicFrontPath,
-                cnic_back_url: cnicBackPath,
             };
 
             // Extended JSON Data
             if (role === 'organizer') {
                 payload.organizer_data = {
                     dob: data.dob,
-                    cnic_front_path: cnicFrontPath,
-                    cnic_back_path: cnicBackPath,
                     website: data.website || null,
                     contact_email: data.contact_email,
                     contact_phone: data.contact_phone,
-                    // Organizer specific
                     organization_type: data.organization_type,
                     years_experience: data.years_experience,
                     previous_tournaments: data.previous_tournaments,
@@ -219,13 +205,10 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
             } else {
                 payload.venue_data = {
                     dob: data.dob,
-                    cnic_front_path: cnicFrontPath,
-                    cnic_back_path: cnicBackPath,
                     website: data.website || null,
                     contact_email: data.contact_email,
                     contact_phone: data.contact_phone,
                     business_address: data.business_address,
-                    // Venue specific
                     venue_name: data.venue_name,
                     total_pcs: data.total_pcs,
                     pc_specs: data.pc_specs,
@@ -270,9 +253,9 @@ const VerificationWizard: React.FC<VerificationWizardProps> = ({ role, onSuccess
             case 3:
                 return <StepExperience data={data} updateData={updateData} errors={errors} role={role} />;
             case 4:
-                return <StepDocuments data={data} updateData={updateData} errors={errors} role={role} />;
-            case 5:
-                return role === 'organizer' ? <StepLicenseTerms data={data} updateData={updateData} errors={errors} role={role} /> : null;
+                return role === 'organizer'
+                    ? <StepLicenseTerms data={data} updateData={updateData} errors={errors} role={role} />
+                    : null;
             default: return null;
         }
     };

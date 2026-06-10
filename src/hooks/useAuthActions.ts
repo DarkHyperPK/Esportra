@@ -72,13 +72,13 @@ export const useAuthActions = () => {
     username: string,
     fullName?: string,
     role: UserRole = 'casual',
-    _dateOfBirth?: string
+    dateOfBirth?: string
   ) => {
     setLoading(true);
     console.log("Signing up with role:", role);
 
     try {
-      // Step 1: Create the auth user with minimal metadata
+      // Step 1: Create the auth user with profile metadata used by handle_new_user trigger
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -86,7 +86,8 @@ export const useAuthActions = () => {
           data: {
             username,
             full_name: fullName || null,
-            role: role
+            role: role,
+            date_of_birth: dateOfBirth || null,
           },
         }
       });
@@ -101,6 +102,15 @@ export const useAuthActions = () => {
       }
 
       console.log(`User created with ID: ${authData.user.id} and role: ${role}`);
+
+      if (dateOfBirth) {
+        try {
+          await apiClient.put(`/api/profiles/${authData.user.id}`, { date_of_birth: dateOfBirth });
+        } catch (profileErr) {
+          console.warn('[SignUp] Failed to persist date_of_birth on profile:', profileErr);
+        }
+      }
+
       // Profile is created automatically by the handle_new_user trigger on auth.users.
 
       // If email confirmation is required, redirect to verify page

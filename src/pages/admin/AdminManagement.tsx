@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminStats, useAdminAuditLogs, useAdminUsersList, useAdminTournaments, useAdminAlertSummary, useAdminAlerts, useAcknowledgeAlert } from "@/hooks/useAdminQueries";
+import { AuditLogDetailsPanel } from "@/components/admin/AuditLogDetailsPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
@@ -630,12 +631,7 @@ const AdminManagement = () => {
                   <p className="text-white text-sm mt-1">{selectedLog.target_type} / {selectedLog.target_name || selectedLog.target_id?.slice(0, 12)}</p>
                 </div>
               </div>
-              <div className="p-3 rounded-md bg-zinc-900/50">
-                <p className="text-xs text-zinc-500 uppercase mb-2">Details</p>
-                <pre className="text-sm text-zinc-300 overflow-x-auto font-mono bg-zinc-950 p-4 rounded-md max-h-48">
-                  {JSON.stringify(selectedLog.details, null, 2)}
-                </pre>
-              </div>
+              <AuditLogDetailsPanel details={selectedLog.details} actionType={selectedLog.action_type} />
             </div>
           )}
         </DialogContent>
