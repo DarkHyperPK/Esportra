@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import type { StaffPermission } from '@/lib/tournamentStaff';
 import { apiClient } from '@/lib/apiClient';
 import { auditLog } from '@/lib/auditLog';
 import { useToast } from '@/hooks/use-toast';
@@ -15,7 +17,7 @@ import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 import type { DisputeReport, DisputeRiotAccount, MatchDisputeEvidence } from './DisputeEvidencePanel';
 import DisputeEvidencePanel from './DisputeEvidencePanel';
-import DisputeActions from './DisputeActions';
+import DisputeActions, { type DisputeStaffMember } from './DisputeActions';
 import DisputeIdStrip from './DisputeIdStrip';
 import DisputeConversation from './DisputeConversation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -76,12 +78,14 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
   onUnreadChange,
 }) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const conn = useHub(HubPaths.Match);
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [resolutionStatus, setResolutionStatus] = useState<'resolved' | 'rejected'>('resolved');
+  const [enforceReportScore, setEnforceReportScore] = useState(false);
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(null);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
@@ -97,9 +101,20 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
     () => staff.filter((member) => member.status === 'active'),
     [staff]
   );
-  const staffOptions = useMemo(
-    () =>
-      activeStaff.map((member) => ({
+  const staffMembers = useMemo((): DisputeStaffMember[] => {
+    const members = new Map<string, DisputeStaffMember>();
+
+    members.set(organizerId, {
+      value: organizerId,
+      label: 'Lead Organizer',
+      role: 'Tournament Owner',
+      permissions: ['disputes:assist', 'scores:update', 'bracket:edit', 'teams:manage', 'announcements:send'],
+      isLeadOrganizer: true,
+      isAssigned: selectedDispute?.assigned_to_user_id === organizerId,
+    });
+
+    activeStaff.forEach((member) => {
+      members.set(member.user_id, {
         value: member.user_id,
         label:
           member.profiles?.full_name ||
@@ -107,29 +122,23 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
           member.profiles?.email ||
           'Staff member',
         role: member.role,
-      })),
-    [activeStaff]
-  );
-  const assignmentOptions = useMemo(() => {
-    const options = new Map<
-      string,
-      { value: string; label: string }
-    >();
-    options.set(organizerId, {
-      value: organizerId,
-      label: 'Lead Organizer',
+        permissions: member.permissions as StaffPermission[],
+        isAssigned: selectedDispute?.assigned_to_user_id === member.user_id,
+      });
     });
-    staffOptions.forEach((opt) => options.set(opt.value, { value: opt.value, label: opt.label }));
 
-    if (selectedDispute?.assigned_to_user_id && !options.has(selectedDispute.assigned_to_user_id)) {
-      options.set(selectedDispute.assigned_to_user_id, {
+    if (selectedDispute?.assigned_to_user_id && !members.has(selectedDispute.assigned_to_user_id)) {
+      members.set(selectedDispute.assigned_to_user_id, {
         value: selectedDispute.assigned_to_user_id,
         label: selectedDispute.assigned_to_name || 'Assigned staff',
+        role: 'Staff',
+        permissions: ['disputes:assist'],
+        isAssigned: true,
       });
     }
 
-    return Array.from(options.values());
-  }, [organizerId, staffOptions, selectedDispute?.assigned_to_user_id, selectedDispute?.assigned_to_name]);
+    return Array.from(members.values());
+  }, [organizerId, activeStaff, selectedDispute?.assigned_to_user_id, selectedDispute?.assigned_to_name]);
   const canAssistDisputes =
     actorUserId === organizerId || hasPermission(actorUserId, 'disputes:assist');
   const canAssignOthers = actorUserId === organizerId;
@@ -363,13 +372,21 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
     }
   };
 
-  const handleUpdateStatus = async (disputeId: string, newStatus: 'resolved' | 'rejected') => {
+  const handleUpdateStatus = async (
+    disputeId: string,
+    newStatus: 'resolved' | 'rejected',
+    options?: { reportId?: string | null },
+  ) => {
     try {
-      // Use /resolve endpoint — sends notifications + enforces scores
-      await apiClient.post(`/api/organizer/disputes/${disputeId}/resolve`, {
+      const payload: Record<string, string | null> = {
         status: newStatus,
         resolution_notes: resolutionNotes || null,
-      });
+      };
+      if (newStatus === 'resolved' && options?.reportId) {
+        payload.report_id = options.reportId;
+      }
+
+      await apiClient.post(`/api/organizer/disputes/${disputeId}/resolve`, payload);
 
       await logDisputeAudit(disputeId, newStatus, {
         resolution_notes: resolutionNotes || undefined,
@@ -382,6 +399,14 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
       });
 
       setResolutionNotes('');
+      setEnforceReportScore(false);
+      if (selectedDispute?.match_id) {
+        const matchId = selectedDispute.match_id;
+        void queryClient.invalidateQueries({ queryKey: ['match-result-reports', matchId] });
+        void queryClient.invalidateQueries({ queryKey: ['match-dispute', matchId] });
+        void queryClient.invalidateQueries({ queryKey: ['bracket'] });
+        void queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+      }
       setSelectedDispute(null);
       fetchDisputes();
     } catch (error: unknown) {
@@ -490,6 +515,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
                     onClick={() => {
                       setSelectedDispute(dispute);
                       setResolutionStatus('resolved');
+                      setEnforceReportScore(false);
                     }}
                     className={`w-full text-left p-3 rounded-xl border transition-all duration-150 border-l-[3px] ${
                       isSelected
@@ -673,25 +699,48 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
                 </div>
 
                 {/* Actions pinned below scroll area */}
-                {selectedDispute.status === 'open' && (
-                  <div className="shrink-0 border-t border-white/[0.06] bg-[#0a0a0c] p-4">
-                    <DisputeActions
-                      status={selectedDispute.status}
-                      canAssist={canAssistDisputes}
-                      canAssignOthers={canAssignOthers}
-                      assigneeId={selectedAssigneeId}
-                      assignmentOptions={assignmentOptions}
-                      assignmentLoading={assignmentLoading}
-                      resolutionNotes={resolutionNotes}
-                      resolutionStatus={resolutionStatus}
-                      onAssigneeChange={setSelectedAssigneeId}
-                      onAssign={() => selectedDispute && selectedAssigneeId && handleAssignDispute(selectedDispute.id, selectedAssigneeId)}
-                      onStatusChange={setResolutionStatus}
-                      onNotesChange={setResolutionNotes}
-                      onResolve={() => handleUpdateStatus(selectedDispute.id, resolutionStatus)}
-                    />
-                  </div>
-                )}
+                {selectedDispute.status === 'open' && (() => {
+                  const disputedReport = safeReports.find((r) => r.status === 'disputed') ?? primaryReport;
+                  const canEnforceReportScore = Boolean(
+                    resolutionStatus === 'resolved'
+                    && disputedReport
+                    && disputedReport.status !== 'accepted',
+                  );
+                  const reportedScoreLabel = disputedReport && hasMatch
+                    ? `${selectedDispute.match!.team1_name} ${disputedReport.team1_score}–${disputedReport.team2_score} ${selectedDispute.match!.team2_name}`
+                    : disputedReport
+                      ? `${disputedReport.team1_score}–${disputedReport.team2_score}`
+                      : null;
+
+                  return (
+                    <div className="shrink-0 border-t border-white/[0.06] bg-[#0a0a0c] p-4 max-h-[48vh] overflow-y-auto overscroll-contain scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+                      <DisputeActions
+                        status={selectedDispute.status}
+                        canAssist={canAssistDisputes}
+                        canAssignOthers={canAssignOthers}
+                        assigneeId={selectedAssigneeId}
+                        staffMembers={staffMembers}
+                        assignmentLoading={assignmentLoading}
+                        resolutionNotes={resolutionNotes}
+                        resolutionStatus={resolutionStatus}
+                        enforceReportScore={enforceReportScore}
+                        canEnforceReportScore={canEnforceReportScore}
+                        reportedScoreLabel={reportedScoreLabel}
+                        onAssigneeChange={setSelectedAssigneeId}
+                        onAssign={() => selectedDispute && selectedAssigneeId && handleAssignDispute(selectedDispute.id, selectedAssigneeId)}
+                        onStatusChange={(status) => {
+                          setResolutionStatus(status);
+                          if (status === 'rejected') setEnforceReportScore(false);
+                        }}
+                        onNotesChange={setResolutionNotes}
+                        onEnforceReportScoreChange={setEnforceReportScore}
+                        onResolve={() => handleUpdateStatus(selectedDispute.id, resolutionStatus, {
+                          reportId: enforceReportScore && disputedReport?.id ? disputedReport.id : null,
+                        })}
+                      />
+                    </div>
+                  );
+                })()}
               </motion.div>
             );
           })() : (

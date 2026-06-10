@@ -571,7 +571,10 @@ const CaptainMatchPage = () => {
     const { reports: activeMatchReports } = useMatchResultReport(activeMatchRawId, undefined, {
         subscribeRealtime: false,
     });
-    const hasDisputedReport = activeMatchReports?.some((r: { status: string }) => r.status === 'disputed') ?? false;
+    const matchSettled = activeMatch?.status === 'completed'
+        && (activeMatch?.winner_id || activeMatch?.team1_score != null);
+    const hasDisputedReport = !matchSettled
+        && (activeMatchReports?.some((r: { status: string }) => r.status === 'disputed') ?? false);
     // Track which game numbers are disputed — blocks re-submission for those specific games
     const disputedGameNumbers = new Set(
         (activeMatchReports || [])
