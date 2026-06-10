@@ -163,6 +163,12 @@ const PlayerHistory = lazyWithRetry(() => import('./pages/player/History'));
 const VerificationStatus = lazyWithRetry(() => import('./pages/VerificationStatus'));
 const OrganizerDisputesPage = lazyWithRetry(() => import('./pages/organizer/Disputes'));
 const MapVetoToken = lazyWithRetry(() => import('./pages/tournaments/MapVetoToken'));
+const PublicBracketList = lazyWithRetry(() => import('./pages/tools/PublicBracketList'));
+const PublicBracketBuilder = lazyWithRetry(() => import('./pages/tools/PublicBracketBuilder'));
+const PublicBracketRunner = lazyWithRetry(() => import('./pages/tools/PublicBracketRunner'));
+const PublicBracketShare = lazyWithRetry(() => import('./pages/tools/PublicBracketShare'));
+const PublicMapVetoCreate = lazyWithRetry(() => import('./pages/tools/PublicMapVetoCreate'));
+const PublicMapVetoRoom = lazyWithRetry(() => import('./pages/tools/PublicMapVetoRoom'));
 const RiotTest = lazyWithRetry(() => import("./pages/debug/RiotTest"));
 const IgdbTest = lazyWithRetry(() => import("./pages/debug/IgdbTest"));
 const RiotOAuthCallback   = lazyWithRetry(() => import("./pages/auth/RiotOAuthCallback"));
@@ -713,6 +719,15 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
                 <Route path="/map-veto/:token" element={<MapVetoToken />} />
+
+                {/* Public Tools */}
+                <Route path="/tools/brackets" element={<PublicBracketList />} />
+                <Route path="/tools/brackets/new" element={<PublicBracketBuilder />} />
+                <Route path="/tools/brackets/:id" element={<PublicBracketRunner />} />
+                <Route path="/tools/brackets/share/:token" element={<PublicBracketShare />} />
+                <Route path="/tools/map-veto" element={<PublicMapVetoCreate />} />
+                <Route path="/tools/map-veto/host/:token" element={<PublicMapVetoRoom />} />
+                <Route path="/tools/map-veto/team/:token" element={<PublicMapVetoRoom />} />
 
                 {/* Company Pages */}
                 <Route path="/about" element={<AboutPage />} />

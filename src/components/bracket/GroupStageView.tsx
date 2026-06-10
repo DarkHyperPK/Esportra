@@ -44,14 +44,23 @@ interface GroupStageViewProps {
 // Helpers
 const getRawId = (id: string | number) => String(id).replace(/^(db-|wb-|lb-|source-)/, '');
 const isDbMatch = (id: string | number) => String(id).startsWith('db-');
+const resolveNodeSeed = (node: BracketNode, slot: 1 | 2) => {
+    const snakeSeed = slot === 1 ? (node as any).team1_seed : (node as any).team2_seed;
+    if (typeof snakeSeed === 'number' && Number.isFinite(snakeSeed) && snakeSeed > 0) return snakeSeed;
+
+    const camelSeed = slot === 1 ? (node as any).team1Seed : (node as any).team2Seed;
+    if (typeof camelSeed === 'number' && Number.isFinite(camelSeed) && camelSeed > 0) return camelSeed;
+
+    return (node.match_number || 0) * 2 - (slot === 1 ? 1 : 0);
+};
 
 // Convert BracketNode to BracketMatch for MatchCard compatibility
 const nodeToMatch = (node: BracketNode): BracketMatch => ({
     id: `db-${node.id}`,
     round: (node.round_index || 0) + 1,
     matchNumber: node.match_number || 0,
-    team1: node.team1_id ? { id: node.team1_id, name: (node as any).team1_name || 'Team 1', seed: 1 } : null,
-    team2: node.team2_id ? { id: node.team2_id, name: (node as any).team2_name || 'Team 2', seed: 2 } : null,
+    team1: node.team1_id ? { id: node.team1_id, name: (node as any).team1_name || 'Team 1', seed: resolveNodeSeed(node, 1) } : null,
+    team2: node.team2_id ? { id: node.team2_id, name: (node as any).team2_name || 'Team 2', seed: resolveNodeSeed(node, 2) } : null,
     winner: null,
     score: null,
     team1_score: (node as any).team1_score ?? null,
@@ -296,13 +305,13 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
             team1: node.team1_id ? {
                 id: node.team1_id,
                 name: team1?.name || (node as any).team1_name || 'TBD',
-                seed: 1,
+                seed: resolveNodeSeed(node, 1),
                 logo_url: team1?.logo_url || (node as any).team1_logo
             } : null,
             team2: node.team2_id ? {
                 id: node.team2_id,
                 name: team2?.name || (node as any).team2_name || 'TBD',
-                seed: 2,
+                seed: resolveNodeSeed(node, 2),
                 logo_url: team2?.logo_url || (node as any).team2_logo
             } : null,
             winner: null,

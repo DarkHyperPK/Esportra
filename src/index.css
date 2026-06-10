@@ -692,3 +692,140 @@ img {
   image-rendering: auto;
 }
 
+/* Tournament manage tab panels: compact operational density.
+ * Scoped below the tab content wrapper so tab navigation and other dashboards
+ * keep their original proportions.
+ */
+.tournament-dashboard-tab-content [role="tabpanel"] {
+  font-size: 0.8125rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .text-3xl {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .text-2xl {
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .text-xl {
+  font-size: 1rem;
+  line-height: 1.375rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .text-lg {
+  font-size: 0.9375rem;
+  line-height: 1.25rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .text-base {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .text-sm {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .text-xs {
+  font-size: 0.6875rem;
+  line-height: 0.9375rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .p-10 {
+  padding: 1.5rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .p-8,
+.tournament-dashboard-tab-content [role="tabpanel"] .p-6 {
+  padding: 1rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .p-5,
+.tournament-dashboard-tab-content [role="tabpanel"] .p-4 {
+  padding: 0.875rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .py-8 {
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .py-6 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .pt-6,
+.tournament-dashboard-tab-content [role="tabpanel"] .pt-4 {
+  padding-top: 0.875rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .pb-8,
+.tournament-dashboard-tab-content [role="tabpanel"] .pb-6 {
+  padding-bottom: 1rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .pb-4 {
+  padding-bottom: 0.75rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .mb-8,
+.tournament-dashboard-tab-content [role="tabpanel"] .mb-6 {
+  margin-bottom: 1rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .mb-4,
+.tournament-dashboard-tab-content [role="tabpanel"] .mb-3 {
+  margin-bottom: 0.75rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .mt-6 {
+  margin-top: 1rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .mt-4,
+.tournament-dashboard-tab-content [role="tabpanel"] .mt-3 {
+  margin-top: 0.75rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .my-6 {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .gap-8,
+.tournament-dashboard-tab-content [role="tabpanel"] .gap-6 {
+  gap: 1rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .gap-5,
+.tournament-dashboard-tab-content [role="tabpanel"] .gap-4 {
+  gap: 0.75rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .space-y-6 > :not([hidden]) ~ :not([hidden]),
+.tournament-dashboard-tab-content [role="tabpanel"] .space-y-5 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.75rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] .rounded-3xl,
+.tournament-dashboard-tab-content [role="tabpanel"] .rounded-2xl,
+.tournament-dashboard-tab-content [role="tabpanel"] .rounded-xl,
+.tournament-dashboard-tab-content [role="tabpanel"] .rounded-lg {
+  border-radius: 0.5rem;
+}
+
+.tournament-dashboard-tab-content [role="tabpanel"] svg.w-12,
+.tournament-dashboard-tab-content [role="tabpanel"] .w-12.h-12 {
+  width: 2rem;
+  height: 2rem;
+}
+

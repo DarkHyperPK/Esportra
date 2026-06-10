@@ -36,14 +36,14 @@ import { gameHasMapVeto } from '@/utils/gameFeatures';
 // =============================================================================
 const CARD_WIDTH = 320;
 const CARD_HEIGHT = 180;  // Increased for better layout
-const ROUND_GAP = 120;    // Horizontal gap between rounds
-const MATCH_GAP = 20;     // Vertical gap between first-round matches
+const ROUND_GAP = 92;     // Horizontal gap between rounds
+const MATCH_GAP = 8;      // Vertical gap between first-round matches
 const LEFT_PADDING = 50;  // Padding for headings
 
 // Spacing Constants
 const HEADING_HEIGHT = 40;
-const HEADING_MARGIN = 50; // Space between heading and cards
-const BRACKET_SPACING = 100; // Space between Winners bottom and Losers heading
+const HEADING_MARGIN = 32; // Space between heading and cards
+const BRACKET_SPACING = 64; // Space between Winners bottom and Losers heading
 
 export interface BracketVisualizationProps {
   matches?: BracketMatch[];
@@ -859,14 +859,17 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-950/30">
           {renderRoundTabs()}
           <div className="min-h-0 flex-1 overflow-auto p-4">
-          <div className="space-y-5">
+          <div className="space-y-3">
             {matchListGroups.map(([group, groupMatches]) => (
-              <section key={group} className="rounded-xl border border-white/10 bg-zinc-900/40 p-4">
-                <div className="mb-3 flex items-center justify-between">
+              <section key={group} className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
+                <div className="mb-2.5 flex items-center justify-between">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-white">{group}</h3>
                   <span className="text-xs text-zinc-500">{groupMatches.length} match{groupMatches.length === 1 ? '' : 'es'}</span>
                 </div>
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <div
+                  className="grid justify-start gap-2.5"
+                  style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 320px))' }}
+                >
                   {groupMatches.map((match) => (
                     <div key={match.id} className="min-w-0">
                       {renderMatchCard(match, undefined, undefined, getMatchLabel(match))}
@@ -921,6 +924,41 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
               height: filteredListPositions ? filteredListPositions.height : totalHeight,
               position: 'relative'
             }}>
+            {activeFilter.type === 'all' && (
+              <svg
+                className="absolute left-0 top-0 pointer-events-none overflow-visible"
+                style={{ width: totalWidth, height: totalHeight }}
+              >
+                {matches.map(match => {
+                  if (!match.nextMatchId) return null;
+                  const sourcePos = matchPositions.get(String(match.id)) || matchPositions.get(getRawId(match.id));
+                  const targetPos = matchPositions.get(String(match.nextMatchId)) || matchPositions.get(getRawId(match.nextMatchId));
+                  if (!sourcePos || !targetPos) return null;
+
+                  const connectorGap = Math.min(18, Math.max(12, ROUND_GAP * 0.16));
+                  const connectorInset = Math.min(36, Math.max(18, (ROUND_GAP - connectorGap * 2) * 0.45));
+                  const startX = sourcePos.x + CARD_WIDTH + connectorGap;
+                  const startY = sourcePos.y + CARD_HEIGHT / 2;
+                  const endX = targetPos.x - connectorGap;
+                  const endY = targetPos.y + CARD_HEIGHT / 2;
+                  const midX = Math.max(startX + 8, Math.min(startX + connectorInset, endX - 8));
+
+                  return (
+                    <path
+                      key={`edge-${match.id}`}
+                      d={`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`}
+                      fill="none"
+                      stroke="#cbd5e1"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.5"
+                      className="opacity-55"
+                    />
+                  );
+                })}
+              </svg>
+            )}
+
             {/* Winners Bracket Heading */}
             {(activeFilter.type === 'all' || activeFilter.type === 'winners') &&
               matches.some(m => m.bracketSide === 'winners') &&

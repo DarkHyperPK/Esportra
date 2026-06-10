@@ -33,7 +33,7 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
     hasProofsMap = {},
     cardWidth = 260,
     cardHeight = 86,
-    roundGap = 100,
+    roundGap = 70,
     matchGap = 30,
     leftPadding = 10,
     headingHeight = 40,
@@ -289,20 +289,24 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
                         const targetPos = matchPositions[match.nextMatchId] || matchPositions[getRawId(match.nextMatchId)];
                         if (!sourcePos || !targetPos) return null;
 
-                        const startX = sourcePos.x + cardWidth;
+                        const connectorGap = Math.min(16, Math.max(10, roundGap * 0.18));
+                        const connectorInset = Math.min(30, Math.max(16, (roundGap - connectorGap * 2) * 0.45));
+                        const startX = sourcePos.x + cardWidth + connectorGap;
                         const startY = sourcePos.y + cardHeight / 2;
-                        const endX = targetPos.x;
+                        const endX = targetPos.x - connectorGap;
                         const endY = targetPos.y + cardHeight / 2;
-                        const midX = startX + (endX - startX) / 2;
+                        const midX = Math.max(startX + 8, Math.min(startX + connectorInset, endX - 8));
 
                         return (
                             <path
                                 key={`edge-w-${match.id}`}
                                 d={`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`}
                                 fill="none"
-                                stroke="#475569"
-                                strokeWidth="2"
-                                className="opacity-50"
+                                stroke="#cbd5e1"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.5"
+                                className="opacity-55"
                             />
                         );
                     })}

@@ -1613,7 +1613,7 @@ const TournamentDashboard = () => {
           {/* Premium Tab Navigation */}
 
 
-          <div className="relative min-h-[400px]">
+          <div className="tournament-dashboard-tab-content relative min-h-[400px]">
             <AnimatePresence mode="wait" custom={direction}>
               {activeTab === 'overview' && (
                 <TabsContent value="overview" forceMount key="overview">

@@ -39,14 +39,37 @@ interface MatchCardProps {
     onMatchRoom?: (match: any) => void;
 }
 
+const SeedBadge = ({ seed }: { seed?: number | null }) => {
+    if (typeof seed !== 'number' || !Number.isFinite(seed) || seed <= 0) return null;
+
+    return (
+        <span className="shrink-0 rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-zinc-500">
+            #{seed}
+        </span>
+    );
+};
+
+const formatMatchCode = (round?: number | null, matchNumber?: number | null) => {
+    const hasRound = typeof round === 'number' && Number.isFinite(round) && round > 0;
+    const hasMatchNumber = typeof matchNumber === 'number' && Number.isFinite(matchNumber) && matchNumber > 0;
+
+    if (hasRound && hasMatchNumber) return `R${round}.M${matchNumber}`;
+    if (hasMatchNumber) return `M${matchNumber}`;
+    return null;
+};
+
 const areMatchPropsEqual = (prev: MatchCardProps, next: MatchCardProps) => {
     return (
         prev.match.id === next.match.id &&
+        prev.match.round === next.match.round &&
+        prev.match.matchNumber === next.match.matchNumber &&
         prev.match.status === next.match.status &&
         prev.match.team1_score === next.match.team1_score &&
         prev.match.team2_score === next.match.team2_score &&
         prev.match.team1?.id === next.match.team1?.id &&
+        prev.match.team1?.seed === next.match.team1?.seed &&
         prev.match.team2?.id === next.match.team2?.id &&
+        prev.match.team2?.seed === next.match.team2?.seed &&
         prev.match.winner?.id === next.match.winner?.id &&
         prev.match.partyCode === next.match.partyCode &&
         prev.x === next.x &&
@@ -144,6 +167,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
     const showInputs = canAct && (isLive || isEditing);
     const canOpenMatchRoom = canAct && hasBoth && !!onMatchRoom;
+    const matchCode = formatMatchCode(match.round, match.matchNumber);
 
     const style: React.CSSProperties = x !== undefined && y !== undefined ? {
         position: 'absolute', left: x, top: y, width: CARD_WIDTH, minHeight: CARD_HEIGHT, zIndex: isExp ? 50 : 10
@@ -177,7 +201,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                     <div
                         className={`flex items-center justify-between mb-6`}
                     >
-                        <div className="flex items-center gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
                             <EntityAvatar
                                 src={match.team1?.logo_url}
                                 name={match.team1?.name}
@@ -186,7 +210,8 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                 size="w-8 h-8"
                                 className="mr-0"
                             />
-                            <span className={`text-sm font-medium truncate max-w-[140px] ${w1 && !isEditing ? 'text-white' : 'text-zinc-400'}`}>
+                            <SeedBadge seed={match.team1?.seed} />
+                            <span className={`text-sm font-medium truncate max-w-[120px] ${w1 && !isEditing ? 'text-white' : 'text-zinc-400'}`}>
                                 {match.team1?.name || (isComplete ? 'BYE' : 'TBD')}
                             </span>
                         </div>
@@ -234,7 +259,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                     <div
                         className={`flex items-center justify-between mt-6`}
                     >
-                        <div className="flex items-center gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
                             <EntityAvatar
                                 src={match.team2?.logo_url}
                                 name={match.team2?.name}
@@ -243,7 +268,8 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                 size="w-8 h-8"
                                 className="mr-0"
                             />
-                            <span className={`text-sm font-medium truncate max-w-[140px] ${w2 && !isEditing ? 'text-white' : 'text-zinc-400'}`}>
+                            <SeedBadge seed={match.team2?.seed} />
+                            <span className={`text-sm font-medium truncate max-w-[120px] ${w2 && !isEditing ? 'text-white' : 'text-zinc-400'}`}>
                                 {match.team2?.name || (isComplete ? 'BYE' : 'TBD')}
                             </span>
                         </div>
@@ -291,6 +317,11 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                 {/* Footer */}
                 <div className="px-4 py-2 bg-black/20 border-t border-white/5 flex justify-between items-center h-9">
                     <div className="flex items-center gap-2">
+                        {matchCode && (
+                            <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border border-white/10 bg-white/[0.03] text-zinc-500">
+                                {matchCode}
+                            </span>
+                        )}
                         <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${statusColor}`}>
                             {label}
                         </span>

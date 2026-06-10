@@ -12,6 +12,7 @@ interface Team {
     id: string;
     name: string;
     logo_url?: string | null;
+    seed?: number | null;
 }
 
 /**
@@ -38,10 +39,24 @@ function createBracketTeam(team: Team | undefined, seed: number): BracketTeam | 
     return {
         id: team.id,
         name: team.name,
-        seed,
+        seed: team.seed ?? seed,
         logo_url: team.logo_url,
         eliminated: false
     };
+}
+
+function resolveSeed(node: BracketNode, slot: 1 | 2): number {
+    const explicitSeed = slot === 1 ? node.team1_seed : node.team2_seed;
+    if (typeof explicitSeed === 'number' && Number.isFinite(explicitSeed) && explicitSeed > 0) {
+        return explicitSeed;
+    }
+
+    const legacySeed = (node as any)[slot === 1 ? 'team1Seed' : 'team2Seed'];
+    if (typeof legacySeed === 'number' && Number.isFinite(legacySeed) && legacySeed > 0) {
+        return legacySeed;
+    }
+
+    return node.match_number * 2 - (slot === 1 ? 1 : 0);
 }
 
 /**
@@ -67,6 +82,8 @@ export function adaptGraphToBracketMatches(
 
         const team1: Team | undefined = mapTeam1 || (node.team1_id ? { id: node.team1_id, name: (node as any).team1_name || 'TBD', logo_url: (node as any).team1_logo } : undefined);
         const team2: Team | undefined = mapTeam2 || (node.team2_id ? { id: node.team2_id, name: (node as any).team2_name || 'TBD', logo_url: (node as any).team2_logo } : undefined);
+        const team1Seed = resolveSeed(node, 1);
+        const team2Seed = resolveSeed(node, 2);
 
         // Find next match from edges (winner advancement)
         const winnerEdge = edges.find(e =>
@@ -89,8 +106,8 @@ export function adaptGraphToBracketMatches(
             id: `db-${node.id}`,
             round: node.round_index + 1, // Convert 0-indexed to 1-indexed
             matchNumber: node.match_number,
-            team1: createBracketTeam(team1, node.match_number * 2 - 1),
-            team2: createBracketTeam(team2, node.match_number * 2),
+            team1: createBracketTeam(team1, team1Seed),
+            team2: createBracketTeam(team2, team2Seed),
             winner: createBracketTeam(winner, 0),
             score: null, // We use individual scores instead
             team1_score: (node as any).team1_score ?? null,

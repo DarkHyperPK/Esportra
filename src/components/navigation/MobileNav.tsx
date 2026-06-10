@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Bell, ChevronDown, LogOut, MapPin, Medal, Plus, Shield, Trophy, User, Info, Handshake } from "lucide-react";
+import { Bell, ChevronDown, LogOut, MapPin, Medal, Plus, Shield, Trophy, User, Info, Handshake, Wrench } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -162,6 +162,35 @@ const MobileNav = ({
                   Leaderboards
                 </span>
               </Link>
+
+              {/* Tools */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => toggleMenu("tools")}
+                  className={linkClass(isActive(["/tools"]))}
+                >
+                  <span className="flex items-center gap-2">
+                    <Wrench className="h-4 w-4" />
+                    Tools
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      expandedMenu === "tools" ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                <AnimatePresence>
+                  {expandedMenu === "tools" && (
+                    <motion.div {...accordionMotion} className="overflow-hidden">
+                      <div className="mx-3 mb-2 mt-1 space-y-px bg-black">
+                        <JackSubItem to="/tools/brackets">Bracket Builder</JackSubItem>
+                        <JackSubItem to="/tools/map-veto">Map Veto</JackSubItem>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {/* About */}
               <div>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { ChevronDown, MapPin, Trophy, Medal, Info, Handshake, Shield } from "lucide-react";
+import { ChevronDown, MapPin, Trophy, Medal, Info, Handshake, Shield, Wrench } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -127,6 +127,23 @@ const DesktopNav = ({
           Leaderboards
           {activeBar(isActive(["/leaderboards"]))}
         </Link>
+
+        {/* Tools */}
+        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
+          <FramerDropdownTrigger asChild>
+            <button type="button" className={linkClass(isActive(["/tools"]))}>
+              <Wrench className="h-4 w-4" />
+              Tools
+              <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+            </button>
+          </FramerDropdownTrigger>
+          <FramerDropdownContent className="min-w-[220px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+            <div className="space-y-px bg-[#0a0a0c]">
+              <JackItem to="/tools/brackets">Bracket Builder</JackItem>
+              <JackItem to="/tools/map-veto">Map Veto</JackItem>
+            </div>
+          </FramerDropdownContent>
+        </FramerDropdownRoot>
 
         {/* About */}
         <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">

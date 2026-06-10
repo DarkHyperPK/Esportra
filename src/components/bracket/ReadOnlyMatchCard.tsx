@@ -14,6 +14,25 @@ interface ReadOnlyMatchCardProps {
     onTeamHover?: (teamId: string | null) => void;
 }
 
+const SeedRail = ({ seed }: { seed?: number | null }) => {
+    const seedLabel = typeof seed === 'number' && Number.isFinite(seed) && seed > 0 ? seed : '';
+
+    return (
+        <span className="flex h-full w-8 shrink-0 items-center justify-center border-r border-black/25 bg-zinc-600/70 text-[10px] font-bold tabular-nums text-zinc-950/80">
+            {seedLabel}
+        </span>
+    );
+};
+
+const formatMatchCode = (round?: number | null, matchNumber?: number | null) => {
+    const hasRound = typeof round === 'number' && Number.isFinite(round) && round > 0;
+    const hasMatchNumber = typeof matchNumber === 'number' && Number.isFinite(matchNumber) && matchNumber > 0;
+
+    if (hasRound && hasMatchNumber) return `R${round}.M${matchNumber}`;
+    if (hasMatchNumber) return `M${matchNumber}`;
+    return null;
+};
+
 export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
     match,
     x,
@@ -31,6 +50,7 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
     const isLive = match.status === 'live';
     const team1Highlighted = hoveredTeamId && hoveredTeamId === match.team1?.id;
     const team2Highlighted = hoveredTeamId && hoveredTeamId === match.team2?.id;
+    const matchCode = formatMatchCode(match.round, match.matchNumber);
 
     const style: React.CSSProperties = x !== undefined && y !== undefined ? {
         position: 'absolute',
@@ -56,68 +76,74 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
             onMouseLeave={() => onTeamHover?.(null)}
         >
             <div className={cn(
-                'relative w-full h-full rounded overflow-hidden bg-zinc-900 border-l-4 shadow-md',
-                isLive ? 'border-rose-500' : isCompleted ? 'border-zinc-600' : 'border-zinc-700',
+                'relative w-full h-full rounded overflow-hidden border border-zinc-800/80 bg-zinc-900 shadow-md',
+                isLive ? 'ring-1 ring-rose-500/40' : isCompleted ? 'ring-1 ring-zinc-700/40' : 'ring-1 ring-zinc-800/40',
                 onClick && 'hover:bg-zinc-800/80 transition-colors',
             )}>
 
                 {/* Team 1 */}
                 <div
                     className={cn(
-                        'flex items-center justify-between h-[35px] px-3 border-b border-slate-700/50 transition-colors',
+                        'flex h-[35px] items-center border-b border-slate-700/50 transition-colors',
                         team1Won && 'bg-slate-700/50',
                         team1Highlighted && 'bg-rose-500/20 text-white ring-1 ring-inset ring-rose-500/40',
                     )}
                     onMouseEnter={() => match.team1?.id && onTeamHover?.(match.team1.id)}
                 >
-                    <div className="flex items-center gap-2 overflow-hidden">
-                        <EntityAvatar
-                            src={match.team1?.logo_url}
-                            name={match.team1?.name || '?'}
-                            entityId={match.team1?.id}
-                            type="team"
-                            size="w-6 h-6"
-                            className="rounded-sm"
-                        />
-                        <span className={cn('text-xs font-medium truncate', team1Won || team1Highlighted ? 'text-white' : 'text-slate-400')}>
-                            {match.team1?.name || (isCompleted ? 'BYE' : 'TBD')}
-                        </span>
-                    </div>
-                    <div className="flex items-center">
-                        <span className={`text-sm font-bold tabular-nums ${team1Won ? 'text-orange-500' : 'text-slate-500'}`}>
-                            {match.team1_score ?? '-'}
-                        </span>
-                        {team1Won && <div className="w-1 h-full absolute right-0 top-0 bg-orange-500" />}
+                    <SeedRail seed={match.team1?.seed} />
+                    <div className="flex min-w-0 flex-1 items-center justify-between px-2.5">
+                        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                            <EntityAvatar
+                                src={match.team1?.logo_url}
+                                name={match.team1?.name || '?'}
+                                entityId={match.team1?.id}
+                                type="team"
+                                size="w-6 h-6"
+                                className="rounded-sm"
+                            />
+                            <span className={cn('truncate text-xs font-medium', team1Won || team1Highlighted ? 'text-white' : 'text-slate-400')}>
+                                {match.team1?.name || (isCompleted ? 'BYE' : 'TBD')}
+                            </span>
+                        </div>
+                        <div className="flex shrink-0 items-center pl-2">
+                            <span className={`text-sm font-bold tabular-nums ${team1Won ? 'text-orange-500' : 'text-slate-500'}`}>
+                                {match.team1_score ?? '-'}
+                            </span>
+                            {team1Won && <div className="w-1 h-full absolute right-0 top-0 bg-orange-500" />}
+                        </div>
                     </div>
                 </div>
 
                 {/* Team 2 */}
                 <div
                     className={cn(
-                        'flex items-center justify-between h-[35px] px-3 transition-colors',
+                        'flex h-[35px] items-center transition-colors',
                         team2Won && 'bg-slate-700/50',
                         team2Highlighted && 'bg-rose-500/20 text-white ring-1 ring-inset ring-rose-500/40',
                     )}
                     onMouseEnter={() => match.team2?.id && onTeamHover?.(match.team2.id)}
                 >
-                    <div className="flex items-center gap-2 overflow-hidden">
-                        <EntityAvatar
-                            src={match.team2?.logo_url}
-                            name={match.team2?.name || '?'}
-                            entityId={match.team2?.id}
-                            type="team"
-                            size="w-6 h-6"
-                            className="rounded-sm"
-                        />
-                        <span className={cn('text-xs font-medium truncate', team2Won || team2Highlighted ? 'text-white' : 'text-slate-400')}>
-                            {match.team2?.name || (isCompleted ? 'BYE' : 'TBD')}
-                        </span>
-                    </div>
-                    <div className="flex items-center">
-                        <span className={`text-sm font-bold tabular-nums ${team2Won ? 'text-orange-500' : 'text-slate-500'}`}>
-                            {match.team2_score ?? '-'}
-                        </span>
-                        {team2Won && <div className="w-1 h-full absolute right-0 bottom-0 bg-orange-500" />}
+                    <SeedRail seed={match.team2?.seed} />
+                    <div className="flex min-w-0 flex-1 items-center justify-between px-2.5">
+                        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                            <EntityAvatar
+                                src={match.team2?.logo_url}
+                                name={match.team2?.name || '?'}
+                                entityId={match.team2?.id}
+                                type="team"
+                                size="w-6 h-6"
+                                className="rounded-sm"
+                            />
+                            <span className={cn('truncate text-xs font-medium', team2Won || team2Highlighted ? 'text-white' : 'text-slate-400')}>
+                                {match.team2?.name || (isCompleted ? 'BYE' : 'TBD')}
+                            </span>
+                        </div>
+                        <div className="flex shrink-0 items-center pl-2">
+                            <span className={`text-sm font-bold tabular-nums ${team2Won ? 'text-orange-500' : 'text-slate-500'}`}>
+                                {match.team2_score ?? '-'}
+                            </span>
+                            {team2Won && <div className="w-1 h-full absolute right-0 bottom-0 bg-orange-500" />}
+                        </div>
                     </div>
                 </div>
 
@@ -137,6 +163,11 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
                             <span>TBD</span>
                         )}
                     </div>
+                    {matchCode && (
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-slate-600">
+                            {matchCode}
+                        </span>
+                    )}
                 </div>
             </div>
         </div>
