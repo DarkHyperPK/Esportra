@@ -558,8 +558,6 @@ const CaptainMatchPage = () => {
         && competitorIdsMatch(userTeamId, activeMatch.team1.id),
     );
 
-    const isTournamentCheckedIn = String(participantStatus || '').toLowerCase() === 'checked_in';
-
     const isMatchLive = roomState?.isMatchLive ?? activeMatch?.status === 'in_progress';
     const mapVetoCompleted = roomState?.mapVetoCompleted ?? isVetoCompleted;
 
@@ -875,24 +873,6 @@ const CaptainMatchPage = () => {
                                         <div className="text-center text-xs text-zinc-500 py-2">Loading match room state…</div>
                                     )}
 
-                                    {!isOrganizerMatchView && selfPlayEnabled && isTournamentCheckedIn && selfPlayPhase === 'needs_schedule' && (
-                                        <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200">
-                                            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                                            <span>
-                                                Tournament check-in does not start your match. Agree a match time with your opponent below.
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {!isOrganizerMatchView && selfPlayEnabled && selfPlayPhase === 'awaiting_checkin' && (
-                                        <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-200">
-                                            <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                                            <span>
-                                                Match check-in required — both captains must check in here (separate from tournament check-in).
-                                            </span>
-                                        </div>
-                                    )}
-
                                     {/* Round Name */}
                                     <p className="text-center text-xs font-medium text-emerald-500 uppercase tracking-widest">
                                         {getRoundName(activeMatch.round, activeMatch.bracketSide)}
@@ -938,7 +918,10 @@ const CaptainMatchPage = () => {
                                     )}
 
                                     {/* Time Proposal Card — step 1 in self-play */}
-                                    {(nextAction === 'propose_time' && activeMatch.status === 'pending' && activeMatch.team2?.id) && (
+                                    {selfPlayEnabled
+                                        && !effectiveScheduledTime
+                                        && activeMatch.status === 'pending'
+                                        && activeMatch.team2?.id && (
                                         (() => {
                                             const roundIndex = activeMatch.round - 1;
                                             const configDeadline = readRoundDeadlines(schedulingConfig)[String(roundIndex)];
@@ -953,11 +936,7 @@ const CaptainMatchPage = () => {
                                                     userTeamId={isOrganizerMatchView ? undefined : userTeamId}
                                                     team1Id={activeMatch.team1?.id}
                                                     isCaptain={!isOrganizerMatchView && isCaptain}
-                                                    suggestedStartTime={
-                                                        roomState?.scheduleSource === 'tournament_start'
-                                                            ? effectiveScheduledTime
-                                                            : (activeMatch.round === 1 ? tournament?.start_date ?? null : null)
-                                                    }
+                                                    suggestedStartTime={null}
                                                     onTimeAccepted={() => {
                                                         refetchBracket();
                                                         toast({ title: 'Match Scheduled!', description: 'Now proceed to check-in.' });
@@ -970,9 +949,11 @@ const CaptainMatchPage = () => {
 
                                     {/* Check-in + party code — steps 2–3 in self-play */}
                                     {effectiveScheduledTime
-                                        && (nextAction === 'check_in' || nextAction === 'submit_party_code' || !selfPlayEnabled)
                                         && activeMatch.status === 'pending'
-                                        && activeMatch.team2?.id && (
+                                        && activeMatch.team2?.id
+                                        && (selfPlayEnabled
+                                            ? (nextAction === 'check_in' || nextAction === 'submit_party_code')
+                                            : true) && (
                                         <MatchCheckinCard
                                             matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                                             team1Id={activeMatch.team1?.id}
@@ -1132,7 +1113,7 @@ const CaptainMatchPage = () => {
                                                         gameNumber={nextGameNumber}
                                                         mapName={nextGameMap?.name || 'Unknown Map'}
                                                         mapId={nextGameMap?.id || ''}
-                                                        scheduledTime={activeMatch.scheduledTime ?? undefined}
+                                                        scheduledTime={(selfPlayEnabled ? effectiveScheduledTime : activeMatch.scheduledTime) ?? undefined}
                                                         userTeamId={isOrganizerMatchView ? undefined : userTeamId}
                                                         team1Id={activeMatch.team1?.id}
                                                         team2Id={activeMatch.team2?.id}
