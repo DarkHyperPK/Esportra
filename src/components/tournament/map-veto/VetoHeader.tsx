@@ -19,6 +19,7 @@ interface VetoHeaderProps {
     team2Name?: string;
     showShareLinks?: boolean;
     compact?: boolean;
+    getTeamVetoUrl?: (token: string) => string;
 }
 
 export const VetoHeader: React.FC<VetoHeaderProps> = ({
@@ -34,12 +35,15 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
     team2Name = 'Team 2',
     showShareLinks = true,
     compact = false,
+    getTeamVetoUrl,
 }) => {
     const { toast } = useToast();
     const [copiedTeam, setCopiedTeam] = useState<'team1' | 'team2' | null>(null);
 
     const copyLink = async (token: string, team: 'team1' | 'team2', teamName: string) => {
-        const link = `${window.location.origin}/map-veto/${token}`;
+        const link = getTeamVetoUrl
+            ? getTeamVetoUrl(token)
+            : `${window.location.origin}/map-veto/${token}`;
         await navigator.clipboard.writeText(link);
         setCopiedTeam(team);
         toast({ title: 'Copied!', description: `${teamName} veto link copied to clipboard.` });

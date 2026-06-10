@@ -33,3 +33,97 @@ export const getPublicVetoMapImage = (map: PublicVetoGameMap, game: string) => {
 
 export const buildPublicVetoMapsUrl = (apiGameName: string) =>
   `/api/games/maps?game=${encodeURIComponent(apiGameName)}`;
+
+export type PublicVetoPickedMap = {
+  mapId: string;
+  side?: string | null;
+};
+
+export type PublicVetoState = {
+  id: string;
+  game: string;
+  bestOf: number;
+  team1Name: string;
+  team2Name: string;
+  team1Id: string;
+  team2Id: string;
+  status: string;
+  currentTeamId?: string | null;
+  currentAction?: "ban" | "pick" | "pick_side" | null;
+  currentActionNumber?: number;
+  team1BannedMaps: string[];
+  team2BannedMaps: string[];
+  team1PickedMaps: PublicVetoPickedMap[];
+  team2PickedMaps: PublicVetoPickedMap[];
+  selectedMapId?: string | null;
+  maps: PublicVetoGameMap[];
+  hostToken?: string | null;
+  team1Token?: string | null;
+  team2Token?: string | null;
+  role: "host" | "team1" | "team2" | "viewer";
+  expiresAt?: string;
+};
+
+export type PublicVetoHistoryRow = {
+  actionNumber: number;
+  teamName: string;
+  teamSide?: string;
+  action: string;
+  mapName?: string;
+  mapId: string;
+  mapImageUrl?: string | null;
+  side?: string | null;
+  createdAt?: string;
+};
+
+export const normalizePublicVetoSide = (side?: string | null): "attack" | "defend" | null => {
+  if (!side) return null;
+  const value = side.toLowerCase();
+  if (value === "defense" || value === "defend") return "defend";
+  return "attack";
+};
+
+export const serializePublicVetoSide = (side: "attack" | "defend" | null) =>
+  side === "defend" ? "defend" : side;
+
+export const adaptPublicMapsToGameMaps = (maps: PublicVetoGameMap[], game: string) =>
+  maps.map((map) => ({
+    id: map.id,
+    game,
+    map_name: publicVetoMapName(map),
+    map_image_url: getPublicVetoMapImage(map, game),
+    is_active: true,
+  }));
+
+export const adaptPublicVetoToMatchVeto = (state: PublicVetoState) => ({
+  id: state.id,
+  matchId: "public-tool",
+  tournamentId: "public-tool",
+  team1Id: state.team1Id,
+  team2Id: state.team2Id,
+  team1LinkToken: state.team1Token,
+  team2LinkToken: state.team2Token,
+  bestOf: state.bestOf,
+  status: state.status,
+  currentTeamId: state.currentTeamId,
+  currentAction: state.currentAction,
+  currentActionNumber: state.currentActionNumber ?? 0,
+  team1BannedMaps: state.team1BannedMaps,
+  team2BannedMaps: state.team2BannedMaps,
+  team1PickedMaps: state.team1PickedMaps.map((pick) => ({
+    mapId: pick.mapId,
+    side: normalizePublicVetoSide(pick.side),
+  })),
+  team2PickedMaps: state.team2PickedMaps.map((pick) => ({
+    mapId: pick.mapId,
+    side: normalizePublicVetoSide(pick.side),
+  })),
+  selectedMapId: state.selectedMapId,
+  game: state.game,
+});
+
+export const buildPublicTeamVetoUrl = (token: string) =>
+  `${window.location.origin}/tools/map-veto/team/${token}`;
+
+export const buildPublicHostVetoUrl = (token: string) =>
+  `${window.location.origin}/tools/map-veto/host/${token}`;
