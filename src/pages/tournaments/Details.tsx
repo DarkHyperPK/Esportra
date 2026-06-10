@@ -532,8 +532,8 @@ const TournamentDetails = () => {
       await apiClient.post(`/api/tournaments/${tournament.id}/check-in`);
 
       toast({
-        title: 'Checked in',
-        description: 'Your team is confirmed for this tournament.'
+        title: 'Tournament check-in complete',
+        description: 'Open Match Room to schedule your match, check in, and start the lobby.',
       });
 
       await checkRegistration(true);

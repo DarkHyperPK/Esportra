@@ -3,13 +3,24 @@ import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useMatchRealtime } from '@/hooks/useMatchRealtime';
+import { normalizeCompetitorId } from '@/utils/competitorId';
 
 interface MatchCheckin {
-  match_id: string;
-  team_id: string;
-  user_id: string;
-  checked_in_at: string;
+  match_id?: string;
+  matchId?: string;
+  team_id?: string;
+  teamId?: string;
+  user_id?: string;
+  userId?: string;
+  checked_in_at?: string;
+  checkedInAt?: string;
 }
+
+const readCheckinTeamId = (row: MatchCheckin) =>
+  normalizeCompetitorId(row.team_id ?? row.teamId);
+
+const readCheckinTime = (row: MatchCheckin) =>
+  row.checked_in_at ?? row.checkedInAt ?? null;
 
 interface CheckinStatus {
   team1CheckedIn: boolean;
@@ -37,11 +48,18 @@ export const useMatchCheckin = (
     staleTime: 10_000,
   });
 
+  const normalizedTeam1Id = normalizeCompetitorId(team1Id);
+  const normalizedTeam2Id = normalizeCompetitorId(team2Id);
+
   const checkinStatus: CheckinStatus = {
-    team1CheckedIn:  checkins?.some((c) => c.team_id === team1Id) ?? false,
-    team2CheckedIn:  checkins?.some((c) => c.team_id === team2Id) ?? false,
-    team1CheckinTime: checkins?.find((c) => c.team_id === team1Id)?.checked_in_at ?? null,
-    team2CheckinTime: checkins?.find((c) => c.team_id === team2Id)?.checked_in_at ?? null,
+    team1CheckedIn: checkins?.some((c) => readCheckinTeamId(c) === normalizedTeam1Id) ?? false,
+    team2CheckedIn: checkins?.some((c) => readCheckinTeamId(c) === normalizedTeam2Id) ?? false,
+    team1CheckinTime: checkins?.find((c) => readCheckinTeamId(c) === normalizedTeam1Id)
+      ? readCheckinTime(checkins.find((c) => readCheckinTeamId(c) === normalizedTeam1Id)!)
+      : null,
+    team2CheckinTime: checkins?.find((c) => readCheckinTeamId(c) === normalizedTeam2Id)
+      ? readCheckinTime(checkins.find((c) => readCheckinTeamId(c) === normalizedTeam2Id)!)
+      : null,
     bothCheckedIn: false,
   };
   checkinStatus.bothCheckedIn = checkinStatus.team1CheckedIn && checkinStatus.team2CheckedIn;
@@ -61,6 +79,7 @@ export const useMatchCheckin = (
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['match-checkins', matchId] });
+      queryClient.invalidateQueries({ queryKey: ['match-room-state', matchId] });
       toast({ title: 'Checked In!', description: 'You are ready for the match.' });
     },
     onError: (err: Error) => {

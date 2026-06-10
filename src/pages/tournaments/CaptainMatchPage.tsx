@@ -16,17 +16,18 @@ import { MatchAutoReport } from '@/components/tournament/MatchAutoReport';
 import { MatchResultVerification } from '@/components/tournament/MatchResultVerification';
 import { BracketMatch, BracketTeam, BracketSide, Participant } from '@/types/bracketTypes';
 import CaptainMatchHistory from '@/components/tournament/CaptainMatchHistory';
-import { gameHasMapVeto, isAssistedMatchReportingEnabled, isBattleRoyale } from '@/utils/gameFeatures';
+import { gameHasMapVeto, isAssistedMatchReportingEnabled } from '@/utils/gameFeatures';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
 import MatchCheckinCard from '@/components/tournament/MatchCheckinCard';
 import TimeProposalCard from '@/components/tournament/TimeProposalCard';
+import PartyCodeGoLiveCard from '@/components/tournament/PartyCodeGoLiveCard';
+import { competitorIdsMatch } from '@/utils/competitorId';
 
 import MatchChat from '@/components/tournament/MatchChat';
 import TournamentEndScreen from '@/components/tournament/TournamentEndScreen';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 
 import { useTeamManagement } from '@/hooks/useTeamManagement';
-import { useTimeProposal } from '@/hooks/useTimeProposal';
 import { useMatchResultReport } from '@/hooks/useMatchResultReport';
 import { useBracketRealtime } from '@/hooks/useBracketRealtime';
 import { useMatchRealtime } from '@/hooks/useMatchRealtime';
@@ -35,8 +36,25 @@ import ServerConnectionCard from '@/components/match/ServerConnectionCard';
 import LiveScoreCard from '@/components/match/LiveScoreCard';
 import { VetoHistoryTimeline } from '@/components/tournament/map-veto/VetoHistoryTimeline';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
+import { matchRoomStateQueryKey, useMatchRoomState } from '@/hooks/useMatchRoomState';
 
 const repo = new MatchRepository();
+
+const readStageId = (value: any): string | undefined =>
+    value?.stage_id ?? value?.stageId;
+
+const readSchedulingConfig = (value: any): any => {
+    const raw = value?.scheduling_config ?? value?.schedulingConfig;
+    if (typeof raw !== 'string') return raw ?? null;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+};
+
+const readRoundDeadlines = (config: any): Record<string, string> =>
+    config?.round_deadlines ?? config?.roundDeadlines ?? {};
 
 // ... existing imports
 
@@ -249,13 +267,11 @@ const CaptainMatchPage = () => {
         if (!stagesData?.length) return;
         const configs: Record<string, any> = {};
         stagesData.forEach((stage: any) => {
-            let sc = stage.scheduling_config;
-            if (typeof sc === 'string') {
-                try { sc = JSON.parse(sc); } catch { sc = null; }
-            }
-            configs[stage.id] = {
+            const stageId = stage.id ?? stage.stage_id ?? stage.stageId;
+            if (!stageId) return;
+            configs[stageId] = {
                 format: stage.format,
-                scheduling_config: sc,
+                scheduling_config: readSchedulingConfig(stage),
             };
         });
         setStageConfigs(configs);
@@ -387,6 +403,15 @@ const CaptainMatchPage = () => {
 
     }, [canManageMatchRoom, userTeamId, matches, urlMatchId, organizerMatch]);
 
+    const activeMatchRawId = activeMatch?.id?.replace(/^(db-|wb-|lb-)/, '') ?? undefined;
+
+    const {
+        roomState,
+        isLoading: roomStateLoading,
+        isError: roomStateError,
+        error: roomStateFetchError,
+    } = useMatchRoomState(activeMatchRawId, { subscribeRealtime: false });
+
     const organizerFocusTeamIds = useMemo(() => {
         if (!canManageMatchRoom || !activeMatch) return undefined;
         const ids = [activeMatch.team1?.id, activeMatch.team2?.id].filter(Boolean) as string[];
@@ -396,18 +421,6 @@ const CaptainMatchPage = () => {
     const showMatchHistory = Boolean(userTeamId || canManageMatchRoom);
     const historyIncludeLiveMatchId =
         activeMatch?.status === 'in_progress' ? activeMatch.id : undefined;
-
-    // Lifted Proposal state for higher-level visibility (page owns MatchHub subscription)
-    const { acceptedProposal } = useTimeProposal(
-        activeMatch?.id?.replace(/^(db-|wb-|lb-)/, ''),
-        { subscribeRealtime: false },
-    );
-
-    // The source of truth for "When is this match?"
-    // If the database has it, use it. Otherwise, if there's an accepted proposal on this page, use that.
-    const effectiveScheduledTime = useMemo(() => {
-        return activeMatch?.scheduledTime || acceptedProposal?.proposed_time;
-    }, [activeMatch?.scheduledTime, acceptedProposal?.proposed_time]);
 
     // Fetch map veto status for the active match
     const { data: vetoData } = useQuery({
@@ -434,11 +447,6 @@ const CaptainMatchPage = () => {
         if (!vetoData) return false;
         return vetoData.status === 'completed' || !!vetoData.completed_at;
     }, [activeMatch, vetoData]);
-
-    // Match is "live" when status is in_progress (party code shared / checkin done)
-    const isMatchLive = useMemo(() => {
-        return activeMatch?.status === 'in_progress';
-    }, [activeMatch?.status]);
 
     // Find the latest completed match for context (e.g. "Waiting for next round")
     const lastCompletedMatch = useMemo(() => {
@@ -525,17 +533,36 @@ const CaptainMatchPage = () => {
     }, [isOrganizerMatchView, organizerVersionMeta, bracketVersions, activeMatch?.stageId]);
 
     const schedulingConfig = useMemo(() => {
-        if (!activeMatchVersion?.stage_id) return null;
-        return stageConfigs[activeMatchVersion.stage_id]?.scheduling_config;
+        const stageId = readStageId(activeMatchVersion);
+        if (!stageId) return null;
+        return stageConfigs[stageId]?.scheduling_config ?? null;
     }, [activeMatchVersion, stageConfigs]);
 
+    const selfPlayEnabled = roomState?.selfPlayEnabled ?? false;
+    const effectiveScheduledTime = roomState?.effectiveScheduledTime ?? null;
+    const selfPlayPhase = roomState?.phase ?? null;
+    const roomMessage = roomState?.message ?? null;
+    const nextAction = roomState?.nextAction ?? null;
+
     const isVetoEnabled = useMemo(() => {
+        if (roomState) return roomState.mapVetoEnabled;
         if (!gameHasMapVeto(tournament?.game || '', tournament?.game_mode)) return false;
         return tournament?.settings?.mapVetoEnabled !== false;
-    }, [tournament?.settings, tournament?.game, tournament?.game_mode]);
+    }, [roomState, tournament?.settings, tournament?.game, tournament?.game_mode]);
 
-    // Watch reports for the active match — used to detect disputed status
-    const activeMatchRawId = activeMatch ? activeMatch.id.replace(/^(db-|wb-|lb-)/, '') : undefined;
+    const isTeam1Captain = roomState?.callerIsTeam1Captain ?? Boolean(
+        !isOrganizerMatchView
+        && isCaptain
+        && userTeamId
+        && activeMatch?.team1?.id
+        && competitorIdsMatch(userTeamId, activeMatch.team1.id),
+    );
+
+    const isTournamentCheckedIn = String(participantStatus || '').toLowerCase() === 'checked_in';
+
+    const isMatchLive = roomState?.isMatchLive ?? activeMatch?.status === 'in_progress';
+    const mapVetoCompleted = roomState?.mapVetoCompleted ?? isVetoCompleted;
+
     const { reports: activeMatchReports } = useMatchResultReport(activeMatchRawId);
     const hasDisputedReport = activeMatchReports?.some((r: { status: string }) => r.status === 'disputed') ?? false;
     // Track which game numbers are disputed — blocks re-submission for those specific games
@@ -601,9 +628,8 @@ const CaptainMatchPage = () => {
     const determineMap = fetchMatchGamesAndMap;
 
     // SignalR realtime subscriptions (replaces Supabase postgres_changes)
-    const rawMatchId = activeMatch?.id?.replace(/^(db-|wb-|lb-)/, '') ?? null;
     const { data: vetoHistory = [], isLoading: vetoHistoryLoading } = useVetoHistory(
-        rawMatchId,
+        activeMatchRawId ?? null,
         Boolean(vetoData) && isVetoEnabled,
     );
 
@@ -620,44 +646,56 @@ const CaptainMatchPage = () => {
 
     // Match lifecycle events → debounced invalidation + targeted refetches
     useMatchRealtime({
-        matchId: rawMatchId,
-        enabled: !!rawMatchId,
+        matchId: activeMatchRawId ?? null,
+        enabled: !!activeMatchRawId,
         onReportSubmitted: () => {
             debouncedBracketInvalidate();
             fetchMatchGames();
+            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
         },
         onReportAccepted: () => {
             debouncedBracketInvalidate();
             fetchMatchGames();
+            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
         },
         onStatusChanged: () => {
             debouncedBracketInvalidate();
             fetchMatchGames();
             determineMap();
-            // Also invalidate time-proposals and checkins (needed after match reset)
             queryClient.invalidateQueries({ queryKey: ['match-time-proposals'] });
-            queryClient.invalidateQueries({ queryKey: ['match-checkins'] });
+            queryClient.invalidateQueries({ queryKey: ['match-checkins', activeMatchRawId] });
+            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
+        },
+        onCheckInUpdated: () => {
+            queryClient.invalidateQueries({ queryKey: ['match-checkins', activeMatchRawId] });
+            queryClient.invalidateQueries({ queryKey: ['match-time-proposals', activeMatchRawId] });
+            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
+            debouncedBracketInvalidate();
         },
         onDisputeResolved: () => {
             debouncedBracketInvalidate();
+            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
         },
     });
 
     // Veto state updates → only update veto-specific state, no bracket refetch needed
     // B1 fix: disable when MapVeto dialog is open (it has its own SignalR connection)
     useVetoRealtime({
-        matchId: rawMatchId,
-        enabled: !!rawMatchId && !mapVetoOpen,
+        matchId: activeMatchRawId ?? null,
+        enabled: !!activeMatchRawId && !mapVetoOpen,
         onStateUpdate: () => {
             determineMap();
             queryClient.invalidateQueries({ queryKey: ['match-veto', activeMatch?.id] });
+            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
         },
         onComplete: () => {
             determineMap();
             queryClient.invalidateQueries({ queryKey: ['match-veto', activeMatch?.id] });
+            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
         },
         onReset: () => {
             determineMap();
+            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
         },
     });
 
@@ -822,6 +860,39 @@ const CaptainMatchPage = () => {
 
                             {activeMatch ? (
                                 <div className="w-full max-w-lg mx-auto space-y-4">
+                                    {roomStateError && (
+                                        <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-200">
+                                            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                            <span>
+                                                {roomStateFetchError instanceof Error
+                                                    ? roomStateFetchError.message
+                                                    : 'Unable to load match room state. Deploy the latest backend or refresh the page.'}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {roomStateLoading && !roomState && !roomStateError && (
+                                        <div className="text-center text-xs text-zinc-500 py-2">Loading match room state…</div>
+                                    )}
+
+                                    {!isOrganizerMatchView && selfPlayEnabled && isTournamentCheckedIn && selfPlayPhase === 'needs_schedule' && (
+                                        <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200">
+                                            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                            <span>
+                                                Tournament check-in does not start your match. Agree a match time with your opponent below.
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {!isOrganizerMatchView && selfPlayEnabled && selfPlayPhase === 'awaiting_checkin' && (
+                                        <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-200">
+                                            <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                            <span>
+                                                Match check-in required — both captains must check in here (separate from tournament check-in).
+                                            </span>
+                                        </div>
+                                    )}
+
                                     {/* Round Name */}
                                     <p className="text-center text-xs font-medium text-emerald-500 uppercase tracking-widest">
                                         {getRoundName(activeMatch.round, activeMatch.bracketSide)}
@@ -866,32 +937,11 @@ const CaptainMatchPage = () => {
                                         </div>
                                     )}
 
-                                    {/* Check-in Card */}
-                                    {effectiveScheduledTime && activeMatch.status === 'pending' && activeMatch.team2?.id && (
-                                        <MatchCheckinCard
-                                            matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                            team1Id={activeMatch.team1?.id}
-                                            team2Id={activeMatch.team2?.id}
-                                            team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
-                                            team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
-                                            userTeamId={isOrganizerMatchView ? undefined : userTeamId}
-                                            scheduledTime={effectiveScheduledTime}
-                                            isCaptain={!isOrganizerMatchView && isCaptain}
-                                            selfPlayEnabled={!isBattleRoyale(tournament?.game || '') && (schedulingConfig?.self_play_enabled || false)}
-                                            checkInWindowMinutes={schedulingConfig?.checkin_window_minutes || 15}
-                                            onPartyCodeGenerated={(code) => {
-                                                refetchBracket();
-                                                toast({ title: 'Match Started', description: `Party Code: ${code}` });
-                                            }}
-                                            subscribeRealtime={false}
-                                        />
-                                    )}
-
-                                    {/* Time Proposal Card */}
-                                    {((!effectiveScheduledTime) && (!isBattleRoyale(tournament?.game || '') && schedulingConfig?.self_play_enabled && activeMatch.status === 'pending') && activeMatch.team2?.id) && (
+                                    {/* Time Proposal Card — step 1 in self-play */}
+                                    {(nextAction === 'propose_time' && activeMatch.status === 'pending' && activeMatch.team2?.id) && (
                                         (() => {
                                             const roundIndex = activeMatch.round - 1;
-                                            const configDeadline = schedulingConfig?.round_deadlines?.[String(roundIndex)];
+                                            const configDeadline = readRoundDeadlines(schedulingConfig)[String(roundIndex)];
                                             const defaultDeadline = getDefaultDeadline(roundIndex);
                                             const effectiveDeadline = configDeadline || defaultDeadline || roundDeadline || activeMatch.scheduledTime;
                                             return (
@@ -903,6 +953,11 @@ const CaptainMatchPage = () => {
                                                     userTeamId={isOrganizerMatchView ? undefined : userTeamId}
                                                     team1Id={activeMatch.team1?.id}
                                                     isCaptain={!isOrganizerMatchView && isCaptain}
+                                                    suggestedStartTime={
+                                                        roomState?.scheduleSource === 'tournament_start'
+                                                            ? effectiveScheduledTime
+                                                            : (activeMatch.round === 1 ? tournament?.start_date ?? null : null)
+                                                    }
                                                     onTimeAccepted={() => {
                                                         refetchBracket();
                                                         toast({ title: 'Match Scheduled!', description: 'Now proceed to check-in.' });
@@ -911,6 +966,36 @@ const CaptainMatchPage = () => {
                                                 />
                                             );
                                         })()
+                                    )}
+
+                                    {/* Check-in + party code — steps 2–3 in self-play */}
+                                    {effectiveScheduledTime
+                                        && (nextAction === 'check_in' || nextAction === 'submit_party_code' || !selfPlayEnabled)
+                                        && activeMatch.status === 'pending'
+                                        && activeMatch.team2?.id && (
+                                        <MatchCheckinCard
+                                            matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                                            team1Id={activeMatch.team1?.id}
+                                            team2Id={activeMatch.team2?.id}
+                                            team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                                            team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
+                                            userTeamId={isOrganizerMatchView ? undefined : userTeamId}
+                                            scheduledTime={effectiveScheduledTime}
+                                            isCaptain={!isOrganizerMatchView && isCaptain}
+                                            selfPlayEnabled={selfPlayEnabled}
+                                            checkInWindowMinutes={roomState?.checkinWindowMinutes ?? 15}
+                                            checkinWindowOpen={roomState?.checkinWindowOpen}
+                                            checkinWindowClosed={roomState?.checkinWindowClosed}
+                                            team1CheckedIn={roomState?.team1CheckedIn}
+                                            team2CheckedIn={roomState?.team2CheckedIn}
+                                            hidePartyCodeInput={nextAction === 'submit_party_code'}
+                                            initialPartyCode={activeMatch.partyCode}
+                                            onPartyCodeGenerated={(code) => {
+                                                refetchBracket();
+                                                toast({ title: 'Match Started', description: `Party Code: ${code}` });
+                                            }}
+                                            subscribeRealtime={false}
+                                        />
                                     )}
 
                                     {/* Map veto summary — visible once veto record exists */}
@@ -965,15 +1050,37 @@ const CaptainMatchPage = () => {
                                             </div>
                                         )}
 
-                                        {/* Progressive unlock flow indicator */}
-                                        {activeMatch.status !== 'completed' && !isMatchLive && (
-                                            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800/50 text-xs text-zinc-500">
-                                                <Clock className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
-                                                <span>{isVetoEnabled ? 'Complete check-in to unlock Map Veto and match actions' : 'Complete check-in to unlock match actions'}</span>
+                                        {/* Self-play sequence guidance */}
+                                        {roomMessage
+                                            && activeMatch.status !== 'completed'
+                                            && selfPlayPhase !== 'ready_for_match'
+                                            && selfPlayPhase !== 'completed' && (
+                                            <div className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs ${
+                                                selfPlayPhase === 'awaiting_veto'
+                                                    ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-300'
+                                                    : 'bg-zinc-900/60 border border-zinc-800/50 text-zinc-500'
+                                            }`}>
+                                                {selfPlayPhase === 'awaiting_veto'
+                                                    ? <Swords className="w-3.5 h-3.5 shrink-0" />
+                                                    : <Clock className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
+                                                <span>{roomMessage}</span>
                                             </div>
                                         )}
 
-                                        {isVetoEnabled && isMatchLive && !isVetoCompleted && activeMatch.status !== 'completed' && (
+                                        {nextAction === 'submit_party_code'
+                                            && isTeam1Captain
+                                            && activeMatch.status === 'pending'
+                                            && !activeMatch.partyCode && (
+                                            <PartyCodeGoLiveCard
+                                                matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                                                onSuccess={() => {
+                                                    refetchBracket();
+                                                    queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
+                                                }}
+                                            />
+                                        )}
+
+                                        {!selfPlayEnabled && isVetoEnabled && isMatchLive && !mapVetoCompleted && activeMatch.status !== 'completed' && (
                                             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 text-xs text-indigo-300">
                                                 <Swords className="w-3.5 h-3.5 shrink-0" />
                                                 <span>Complete Map Veto to unlock result reporting</span>
@@ -981,10 +1088,10 @@ const CaptainMatchPage = () => {
                                         )}
 
                                         {/* CS2 Live Score — show after veto completes */}
-                                        {rawMatchId && isMatchLive && isVetoCompleted &&
+                                        {activeMatchRawId && isMatchLive && mapVetoCompleted &&
                                          (tournament?.game?.toLowerCase() === 'counter-strike 2' || tournament?.game?.toLowerCase() === 'cs2') && (
                                             <LiveScoreCard
-                                                matchId={rawMatchId}
+                                                matchId={activeMatchRawId}
                                                 team1Name={activeMatch.team1?.name}
                                                 team2Name={activeMatch.team2?.name}
                                                 bestOf={activeMatch.bestOf || 1}
@@ -992,9 +1099,9 @@ const CaptainMatchPage = () => {
                                         )}
 
                                         {/* CS2 Server Connection — show after veto completes */}
-                                        {rawMatchId && isMatchLive && isVetoCompleted &&
+                                        {activeMatchRawId && isMatchLive && mapVetoCompleted &&
                                          (tournament?.game?.toLowerCase() === 'counter-strike 2' || tournament?.game?.toLowerCase() === 'cs2') && (
-                                            <ServerConnectionCard matchId={rawMatchId} />
+                                            <ServerConnectionCard matchId={activeMatchRawId} />
                                         )}
 
                                         {/* Valorant Auto-Report — only when veto completed (or veto disabled) */}
@@ -1008,7 +1115,7 @@ const CaptainMatchPage = () => {
                                             const bestOf = activeMatch.bestOf || 1;
                                             const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
                                             const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
-                                            const vetoReady = !isVetoEnabled || isVetoCompleted;
+                                            const vetoReady = !isVetoEnabled || mapVetoCompleted;
                                             if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf && vetoReady) {
                                                 // Block auto-report for disputed games
                                                 if (disputedGameNumbers.has(nextGameNumber)) {
@@ -1081,11 +1188,11 @@ const CaptainMatchPage = () => {
                                                 <Button
                                                     onClick={() => handleUploadResult(activeMatch.id)}
                                                     className="bg-rose-500 hover:bg-rose-600 text-white h-10 text-sm font-semibold font-mono tracking-wide disabled:opacity-40"
-                                                    disabled={(isVetoEnabled && !isVetoCompleted) || disputedGameNumbers.has(nextGameNumber)}
+                                                    disabled={(isVetoEnabled && !mapVetoCompleted) || disputedGameNumbers.has(nextGameNumber)}
                                                 >
                                                     <Trophy className="w-4 h-4 mr-1.5" />
                                                     {disputedGameNumbers.has(nextGameNumber) ? `Game ${nextGameNumber} Disputed`
-                                                        : (isVetoEnabled && !isVetoCompleted) ? 'Awaiting Veto' : 'Manual Report'}
+                                                        : (isVetoEnabled && !mapVetoCompleted) ? 'Awaiting Veto' : 'Manual Report'}
                                                 </Button>
                                             </div>
                                         )}

@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Check, Clock, Zap, Copy } from 'lucide-react';
 import { useMatchCheckin } from '@/hooks/useMatchCheckin';
 import { useToast } from '@/hooks/use-toast';
-import { apiClient } from '@/lib/apiClient';
 import { format } from 'date-fns';
 import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { Countdown } from '@/components/ui/Countdown';
+import { competitorIdsMatch } from '@/utils/competitorId';
+import PartyCodeGoLiveCard from '@/components/tournament/PartyCodeGoLiveCard';
 
 interface MatchCheckinCardProps {
     matchId: string;
@@ -21,6 +21,12 @@ interface MatchCheckinCardProps {
     isCaptain: boolean;
     selfPlayEnabled: boolean;
     checkInWindowMinutes?: number;
+    checkinWindowOpen?: boolean;
+    checkinWindowClosed?: boolean;
+    team1CheckedIn?: boolean;
+    team2CheckedIn?: boolean;
+    hidePartyCodeInput?: boolean;
+    initialPartyCode?: string | null;
     onPartyCodeGenerated?: (code: string) => void;
     /** When false, parent page handles MatchHub realtime (avoids duplicate JoinMatch). */
     subscribeRealtime?: boolean;
@@ -37,44 +43,48 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
     isCaptain,
     selfPlayEnabled,
     checkInWindowMinutes = 15, // Default to 15 if not provided
+    checkinWindowOpen,
+    checkinWindowClosed,
+    team1CheckedIn,
+    team2CheckedIn,
+    hidePartyCodeInput = false,
+    initialPartyCode = null,
     onPartyCodeGenerated,
     subscribeRealtime = true,
 }) => {
     const {
-        checkinStatus,
+        checkinStatus: hookCheckinStatus,
         checkIn,
         isCheckinWindowOpen,
         isCheckinWindowClosed,
     } = useMatchCheckin(matchId, team1Id, team2Id, { subscribeRealtime });
     const { toast } = useToast();
-    const [manualCode, setManualCode] = useState('');
-    const [isSubmittingCode, setIsSubmittingCode] = useState(false);
-    const [partyCode, setPartyCode] = useState<string | null>(null);
+    const [partyCode, setPartyCode] = useState<string | null>(initialPartyCode);
 
-    const windowOpen = scheduledTime ? isCheckinWindowOpen(scheduledTime, checkInWindowMinutes) : false;
-    const windowClosed = scheduledTime ? isCheckinWindowClosed(scheduledTime, checkInWindowMinutes) : false;
-
-    const isTeam1 = userTeamId === team1Id;
-    const myTeamCheckedIn = isTeam1 ? checkinStatus.team1CheckedIn : checkinStatus.team2CheckedIn;
-
-    // Submit manual party code (Team 1 only in self-play)
-    const submitPartyCode = async () => {
-        if (!manualCode.trim()) return;
-        setIsSubmittingCode(true);
-        try {
-            const code = manualCode.trim().toUpperCase();
-
-            await apiClient.post(`/api/matches/${matchId}/go-live`, { partyCode: code });
-
-            setPartyCode(code);
-            onPartyCodeGenerated?.(code);
-            toast({ title: 'Match Started', description: `Party Code: ${code}` });
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        } finally {
-            setIsSubmittingCode(false);
+    useEffect(() => {
+        if (initialPartyCode) {
+            setPartyCode(initialPartyCode);
         }
+    }, [initialPartyCode]);
+
+    const checkinStatus = {
+        team1CheckedIn: team1CheckedIn ?? hookCheckinStatus.team1CheckedIn,
+        team2CheckedIn: team2CheckedIn ?? hookCheckinStatus.team2CheckedIn,
+        bothCheckedIn: (team1CheckedIn ?? hookCheckinStatus.team1CheckedIn)
+            && (team2CheckedIn ?? hookCheckinStatus.team2CheckedIn),
+        team1CheckinTime: hookCheckinStatus.team1CheckinTime,
+        team2CheckinTime: hookCheckinStatus.team2CheckinTime,
     };
+
+    const windowOpen = checkinWindowOpen ?? (scheduledTime
+        ? isCheckinWindowOpen(scheduledTime, checkInWindowMinutes)
+        : false);
+    const windowClosed = checkinWindowClosed ?? (scheduledTime
+        ? isCheckinWindowClosed(scheduledTime, checkInWindowMinutes)
+        : false);
+
+    const isTeam1 = competitorIdsMatch(userTeamId, team1Id);
+    const myTeamCheckedIn = isTeam1 ? checkinStatus.team1CheckedIn : checkinStatus.team2CheckedIn;
 
     const copyCode = () => {
         if (partyCode) {
@@ -235,32 +245,14 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                                 )}
 
                                 {/* Both checked in - show manual party code input (Team 1 only in self-play) */}
-                                {checkinStatus.bothCheckedIn && selfPlayEnabled && isTeam1 && !partyCode && (
-                                    <div className="space-y-3 p-4 bg-zinc-800/30 rounded-lg border border-zinc-700/30">
-                                        <div className="flex items-center gap-2 text-sm text-zinc-400">
-                                            <Zap className="w-4 h-4 text-purple-500" />
-                                            <span>Create the lobby in-game and enter code:</span>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                value={manualCode}
-                                                onChange={(e) => setManualCode(e.target.value)}
-                                                placeholder="Lobby Code"
-                                                className="bg-zinc-900 border-zinc-700 text-white font-mono uppercase"
-                                            />
-                                            <Button
-                                                onClick={submitPartyCode}
-                                                disabled={isSubmittingCode || !manualCode.trim()}
-                                                className="bg-rose-500 hover:bg-rose-600 transition-all text-white font-semibold px-6"
-                                            >
-                                                {isSubmittingCode ? (
-                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                ) : (
-                                                    'Start'
-                                                )}
-                                            </Button>
-                                        </div>
-                                    </div>
+                                {!hidePartyCodeInput && checkinStatus.bothCheckedIn && selfPlayEnabled && isTeam1 && isCaptain && !partyCode && (
+                                    <PartyCodeGoLiveCard
+                                        matchId={matchId}
+                                        onSuccess={(code) => {
+                                            setPartyCode(code);
+                                            onPartyCodeGenerated?.(code);
+                                        }}
+                                    />
                                 )}
                             </div>
                         )}

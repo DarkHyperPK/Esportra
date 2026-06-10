@@ -6,7 +6,7 @@ import { Calendar, Clock, Check, X, ArrowRightLeft, AlertCircle } from 'lucide-r
 import { useTimeProposal } from '@/hooks/useTimeProposal';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
-import { getTimezoneAbbr, utcToLocalDate } from '@/lib/timeUtils';
+import { getTimezoneAbbr, utcToLocalDate, utcToLocalTime } from '@/lib/timeUtils';
 import { Countdown } from '@/components/ui/Countdown';
 
 interface TimeProposalCardProps {
@@ -17,6 +17,8 @@ interface TimeProposalCardProps {
     userTeamId: string | undefined;
     team1Id: string | undefined;
     isCaptain: boolean;
+    /** Tournament start time — offers a one-click propose for round 1 self-play. */
+    suggestedStartTime?: string | null;
     onTimeAccepted?: () => void;
     /** When false, parent page handles MatchHub realtime (avoids duplicate JoinMatch). */
     subscribeRealtime?: boolean;
@@ -30,6 +32,7 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
     userTeamId: _userTeamId,
     team1Id: _team1Id,
     isCaptain,
+    suggestedStartTime = null,
     onTimeAccepted,
     subscribeRealtime = true,
 }) => {
@@ -41,9 +44,14 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
     const [proposedTime, setProposedTime] = useState<string>('20:00');
     const [showCounter, setShowCounter] = useState(false);
 
-    console.log('[TimeProposalCard] Match:', matchId, 'Deadline:', roundDeadline);
-
     const isMyProposal = activeProposal?.proposed_by === user?.id;
+
+    const handleProposeSuggestedStart = async () => {
+        if (!suggestedStartTime) return;
+        const start = new Date(suggestedStartTime);
+        if (Number.isNaN(start.getTime())) return;
+        await proposeTime.mutateAsync(start);
+    };
 
     const handlePropose = async () => {
         // Convert local date+time to a Date object (interpreted as local time)
@@ -166,15 +174,38 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                 </div>
 
                 <div className="p-4 space-y-4">
-                    {/* No active proposal - show propose button */}
+                    {/* No active proposal - show propose buttons */}
                     {!activeProposal && !showPicker && isCaptain && (
-                        <Button
-                            onClick={() => setShowPicker(true)}
-                            className="w-full bg-rose-500 hover:bg-rose-600 transition-all text-white font-semibold"
-                        >
-                            <Calendar className="w-4 h-4 mr-2" />
-                            Propose Match Time
-                        </Button>
+                        <div className="space-y-2">
+                            {suggestedStartTime && (
+                                <Button
+                                    onClick={() => void handleProposeSuggestedStart()}
+                                    disabled={proposeTime.isPending}
+                                    className="w-full bg-emerald-600 hover:bg-emerald-500 transition-all text-white font-semibold"
+                                >
+                                    <Clock className="w-4 h-4 mr-2" />
+                                    {proposeTime.isPending
+                                        ? 'Sending...'
+                                        : `Propose tournament start (${format(new Date(suggestedStartTime), 'MMM d, h:mm a')} ${getTimezoneAbbr()})`}
+                                </Button>
+                            )}
+                            <Button
+                                onClick={() => {
+                                    if (suggestedStartTime) {
+                                        setProposedDate(utcToLocalDate(suggestedStartTime));
+                                        setProposedTime(utcToLocalTime(suggestedStartTime));
+                                    }
+                                    setShowPicker(true);
+                                }}
+                                variant={suggestedStartTime ? 'outline' : 'default'}
+                                className={suggestedStartTime
+                                    ? 'w-full border-zinc-700 text-white hover:bg-zinc-800'
+                                    : 'w-full bg-rose-500 hover:bg-rose-600 transition-all text-white font-semibold'}
+                            >
+                                <Calendar className="w-4 h-4 mr-2" />
+                                {suggestedStartTime ? 'Pick a different time' : 'Propose Match Time'}
+                            </Button>
+                        </div>
                     )}
 
                     {/* Time picker */}

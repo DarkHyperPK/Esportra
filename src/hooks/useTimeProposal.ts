@@ -66,6 +66,7 @@ export const useTimeProposal = (
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['match-time-proposals', matchId] });
+            queryClient.invalidateQueries({ queryKey: ['match-room-state', matchId] });
             toast({ title: 'Time Accepted!', description: 'Match time has been scheduled.' });
         },
         onError: (error: Error) => {
