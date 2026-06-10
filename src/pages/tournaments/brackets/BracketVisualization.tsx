@@ -1098,6 +1098,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
               <MapVeto
                 matchId={getRawId(mapVetoMatch.id)}
                 tournamentId={tournamentId}
+                tournamentSlug={tournamentSlug}
                 team1Id={mapVetoMatch.team1?.id}
                 team2Id={mapVetoMatch.team2?.id}
                 team1Name={mapVetoMatch.team1?.name}

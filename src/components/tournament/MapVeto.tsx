@@ -16,6 +16,7 @@ import { getVetoLayoutConfig } from './map-veto/vetoLayoutConfig';
 interface MapVetoProps {
   matchId: string;
   tournamentId: string;
+  tournamentSlug?: string | null;
   team1Id?: string | null;
   team2Id?: string | null;
   team1Name?: string;
@@ -36,6 +37,7 @@ const noOp = () => { };
 export const MapVeto: React.FC<MapVetoProps> = ({
   matchId,
   tournamentId,
+  tournamentSlug,
   team1Id,
   team2Id,
   team1Name = 'Team 1',
@@ -86,6 +88,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   } = useMapVetoMachine({
     matchId,
     tournamentId,
+    tournamentSlug,
     team1Id,
     team2Id,
     team1Name,

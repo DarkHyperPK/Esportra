@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
 import { useToast } from './use-toast';
 import { UserRole } from '@/types/auth';
 
@@ -26,8 +27,30 @@ export const useAuthActions = () => {
 
       console.log("Sign in successful:", data.user?.id);
 
-      // Suspension check is handled by AuthContext after profile fetch.
-      // AuthContext will redirect to /suspended if needed.
+      const profile = await apiClient.get<{
+        is_suspended?: boolean;
+        suspension_reason?: string | null;
+        suspension_until?: string | null;
+        suspension_type?: string | null;
+      }>('/api/profiles/me');
+
+      if (profile?.is_suspended) {
+        await supabase.auth.signOut();
+        toast({
+          title: 'Account Restricted',
+          description: `This account is suspended. Reason: ${profile.suspension_reason || 'Violation of terms'}`,
+          variant: 'destructive',
+        });
+        navigate('/suspended', {
+          replace: true,
+          state: {
+            reason: profile.suspension_reason,
+            type: profile.suspension_type,
+            until: profile.suspension_until,
+          },
+        });
+        return;
+      }
 
       toast({
         title: 'Welcome back!',

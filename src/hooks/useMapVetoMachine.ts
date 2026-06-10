@@ -13,6 +13,7 @@ import {
     isValidNotificationUserId,
     sendVetoNotifications,
 } from '@/utils/vetoNotifications';
+import { buildCaptainMatchRoomLink } from '@/utils/notificationLinks';
 export { VetoService };
 
 // Types
@@ -348,6 +349,7 @@ export function validateTransition(
 interface UseMapVetoMachineProps {
     matchId: string;
     tournamentId: string;
+    tournamentSlug?: string | null;
     team1Id?: string | null;
     team2Id?: string | null;
     team1Name?: string;
@@ -362,6 +364,7 @@ interface UseMapVetoMachineProps {
 export const useMapVetoMachine = ({
     matchId,
     tournamentId,
+    tournamentSlug,
     team1Id,
     team2Id,
     team1Name: _team1Name,
@@ -1124,8 +1127,11 @@ export const useMapVetoMachine = ({
                                     : nextStep.action === 'pick' ? 'pick'
                                     : 'pick a side for'
                             } a map.`,
-                            link: `/tournaments/${tournamentId}/captain-match`,
-                            data: { match_id: matchId },
+                            link: buildCaptainMatchRoomLink(tournamentSlug, tournamentId, matchId),
+                            data: {
+                                match_id: matchId,
+                                tournament_slug: tournamentSlug ?? undefined,
+                            },
                         });
                     })
                     .catch(() => {});
@@ -1137,8 +1143,11 @@ export const useMapVetoMachine = ({
                             type: 'veto_completed',
                             title: 'Map Veto Complete',
                             message: 'The map veto has finished. Good luck in your match!',
-                            link: `/tournaments/${tournamentId}/captain-match`,
-                            data: { match_id: matchId },
+                            link: buildCaptainMatchRoomLink(tournamentSlug, tournamentId, matchId),
+                            data: {
+                                match_id: matchId,
+                                tournament_slug: tournamentSlug ?? undefined,
+                            },
                         });
                     })
                     .catch(() => {});
@@ -1154,7 +1163,7 @@ export const useMapVetoMachine = ({
         } finally {
             setActionLoading(null);
         }
-    }, [fetchVetoData, isCaptain, isOrganizer, matchId, onComplete, queryClient, service, toast, tournamentId, userTeamId, veto, vetoToken]);
+    }, [fetchVetoData, isCaptain, isOrganizer, matchId, onComplete, queryClient, service, toast, tournamentId, tournamentSlug, userTeamId, veto, vetoToken]);
 
     const handleMapAction = useCallback(async (mapId: string) => {
         if (!veto) return;

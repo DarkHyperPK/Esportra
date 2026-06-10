@@ -293,7 +293,9 @@ const UserManagementTool = () => {
             // 1. Update Profile securely via RPC
             await suspendMutation.mutateAsync({
                 userId,
-                reason: `${suspensionReason} [${suspensionType}, ${suspensionDuration}]`,
+                reason: suspensionReason,
+                suspensionType,
+                suspensionUntil: suspensionUntil?.toISOString() ?? null,
             });
 
             // 2. Log Action

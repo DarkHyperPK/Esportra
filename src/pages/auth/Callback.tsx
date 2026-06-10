@@ -28,12 +28,13 @@ const Callback = () => {
         }
       }
 
-      // Check for suspension
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_suspended, suspension_until, suspension_reason, suspension_type')
-        .eq('id', session.user.id)
-        .single();
+      // Check for suspension via API (consistent with password login + middleware allowlist)
+      const profile = await apiClient.get<{
+        is_suspended?: boolean;
+        suspension_reason?: string | null;
+        suspension_until?: string | null;
+        suspension_type?: string | null;
+      }>('/api/profiles/me');
 
       if (profile?.is_suspended) {
         await supabase.auth.signOut();

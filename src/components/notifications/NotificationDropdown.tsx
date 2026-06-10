@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { respondToOrgStaffInvite } from '@/lib/organizationStaff';
 import { useToast } from '@/hooks/use-toast';
+import { resolveCaptainMatchNotificationLinkAsync } from '@/utils/notificationLinks';
 
 export const NotificationDropdown = () => {
     const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications } = useNotifications();
@@ -65,10 +66,14 @@ export const NotificationDropdown = () => {
 
         setIsOpen(false);
 
-        if (notification.link) {
-            navigate(notification.link);
-        } else if (notification.data?.link) {
-            navigate(notification.data.link);
+        const destination =
+            await resolveCaptainMatchNotificationLinkAsync(notification)
+            ?? notification.link
+            ?? notification.data?.link
+            ?? null;
+
+        if (destination) {
+            navigate(destination);
         } else if (notification.type === 'team_invite') {
             navigate('/player/teams');
         }

@@ -307,8 +307,22 @@ export const useAdminUserSuspend = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
-      apiClient.post(`/api/admin/users/${userId}/suspend`, { reason }),
+    mutationFn: ({
+      userId,
+      reason,
+      suspensionType,
+      suspensionUntil,
+    }: {
+      userId: string;
+      reason: string;
+      suspensionType?: string | null;
+      suspensionUntil?: string | null;
+    }) =>
+      apiClient.post(`/api/admin/users/${userId}/suspend`, {
+        reason,
+        suspensionType: suspensionType ?? null,
+        suspensionUntil: suspensionUntil ?? null,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.all });
     },

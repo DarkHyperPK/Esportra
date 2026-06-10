@@ -58,7 +58,6 @@ const CaptainMatchPage = () => {
     const roundDeadline: string | null = null;
     const [participantStatus, setParticipantStatus] = useState<string | null>(null);
     const [stageConfigs, setStageConfigs] = useState<Record<string, any>>({});
-    const terminology = useGameTerminology(tournament?.game);
 
     // Match actions state
     const [uploadOpen, setUploadOpen] = useState(false);
@@ -93,6 +92,7 @@ const CaptainMatchPage = () => {
     });
 
     const tournament = tournamentResponse?.tournament ?? null;
+    const terminology = useGameTerminology(tournament?.game);
 
     const isOrganizer = useMemo(() => {
         if (!tournamentResponse || !user) return false;
@@ -1189,6 +1189,7 @@ const CaptainMatchPage = () => {
                                 <MapVeto
                                     matchId={mapVetoMatchId.replace(/^(db-|wb-|lb-)/, '')}
                                     tournamentId={tournament.id}
+                                    tournamentSlug={slug}
                                     team1Id={mapVetoMatch.team1?.id}
                                     team2Id={mapVetoMatch.team2?.id}
                                     team1Name={mapVetoMatch.team1?.name}

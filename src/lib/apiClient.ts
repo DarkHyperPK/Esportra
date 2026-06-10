@@ -44,6 +44,7 @@ type ApiErrorBody = {
   message?: string;
   detail?: string;
   title?: string;
+  code?: string;
   traceId?: string;
   trace_id?: string;
   errors?: string[] | Record<string, string[]>;
@@ -172,6 +173,18 @@ async function fetchWithAuth(
       const text = await response.text();
       try { body = JSON.parse(text); } catch { body = text; }
     } catch { body = null; }
+
+    const parsed = readApiErrorBody(body);
+    if (
+      response.status === 403
+      && parsed.code === 'account_suspended'
+      && !path.startsWith('/api/profiles/me')
+    ) {
+      void supabase.auth.signOut();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/suspended') {
+        window.location.assign('/suspended');
+      }
+    }
 
     throw new ApiError(
       response.status,

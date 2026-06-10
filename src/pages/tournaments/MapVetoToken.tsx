@@ -101,6 +101,7 @@ const MapVetoToken: React.FC = () => {
       <MapVeto
         matchId={veto.match_id}
         tournamentId={veto.tournament_id}
+        tournamentSlug={tournament?.slug}
         team1Id={vetoTeam1Id}
         team2Id={vetoTeam2Id}
         team1Name={vetoTeam1?.name || 'Team 1'}
