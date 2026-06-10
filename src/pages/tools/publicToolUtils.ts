@@ -43,6 +43,22 @@ export type PublicBracketResponse = {
   payload: PublicBracketPayload;
 };
 
+const resolveToolBracketPayloadSource = (raw: AnyRecord): AnyRecord => {
+  const nested = pick<AnyRecord>(raw, "payload", "Payload");
+  if (nested) return nested;
+
+  const graphJson = pick<string>(raw, "graph_json", "graphJson");
+  if (graphJson) {
+    try {
+      return typeof graphJson === "string" ? JSON.parse(graphJson) : graphJson;
+    } catch {
+      return raw;
+    }
+  }
+
+  return raw;
+};
+
 export const normalizeToolBracketResponse = (raw: AnyRecord): PublicBracketResponse => ({
   id: String(pick(raw, "id") ?? ""),
   title: String(pick(raw, "title") ?? pick(raw, "payload", "Payload")?.title ?? "Untitled bracket"),
@@ -53,7 +69,7 @@ export const normalizeToolBracketResponse = (raw: AnyRecord): PublicBracketRespo
   shareToken: pick(raw, "shareToken", "share_token") ?? null,
   createdAt: pick(raw, "createdAt", "created_at"),
   updatedAt: pick(raw, "updatedAt", "updated_at"),
-  payload: normalizeToolBracketPayload(pick(raw, "payload", "Payload") ?? raw),
+  payload: normalizeToolBracketPayload(resolveToolBracketPayloadSource(raw)),
 });
 
 export const normalizeToolBracketPayload = (raw: AnyRecord): PublicBracketPayload => {
