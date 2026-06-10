@@ -15,6 +15,7 @@ import { useGameCatalogContext } from "@/hooks/useGameCatalogContext";
 import { SignalRProvider } from "@/contexts/SignalRContext";
 import { TransitionLayout } from "@/components/TransitionLayout";
 import { SuspensionGuard } from "@/components/auth/SuspensionGuard";
+import { ProfileCompletionPrompt } from "@/components/profile/ProfileCompletionPrompt";
 import { useGlobalSmoothScroll } from "@/hooks/useGlobalSmoothScroll";
 
 import { PremiumLoadingScreen } from "@/components/ui/PremiumLoadingScreen";
@@ -203,6 +204,7 @@ const AppContent = React.memo(() => {
       <Toaster />
       <Sonner />
       <GhostModeBanner />
+      <ProfileCompletionPrompt />
       {!location.pathname.endsWith('/brackets/fullscreen') && !isAdminRoute && (
         <>
           <Navbar />

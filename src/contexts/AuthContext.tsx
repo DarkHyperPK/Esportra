@@ -37,9 +37,10 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     username: string,
     fullName?: string,
     role?: UserRole,
-    dateOfBirth?: string
+    dateOfBirth?: string,
+    countryCode?: string,
   ): Promise<void> => {
-    await originalSignUp(email, password, username, fullName, role, dateOfBirth);
+    await originalSignUp(email, password, username, fullName, role, dateOfBirth, countryCode);
   }, [originalSignUp]);
 
   // Set mounted state
@@ -147,7 +148,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
 
   // Silent background country detection
   useEffect(() => {
-    if (!profile || profile.country_code || !user || !isMounted) return;
+    if (!profile || profile.country_code || !profile.date_of_birth || !user || !isMounted) return;
 
     const performSilentDetection = async () => {
       // Use a session storage flag to avoid repeated attempts if detection fails or is slow

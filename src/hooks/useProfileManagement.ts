@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 const ALLOWED_FIELDS = [
   'username', 'full_name', 'avatar_url', 'bio',
   'riot_tag', 'steam_tag', 'phone', 'location',
-  'social_links', 'card_image_url', 'country_code',
+  'social_links', 'card_image_url', 'country_code', 'date_of_birth',
 ] as const;
 
 export const useProfileManagement = () => {

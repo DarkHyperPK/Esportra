@@ -15,6 +15,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 import AuthLayout from "@/components/auth/AuthLayout";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { countries, getCountryFlag } from "@/utils/countries";
+import { validateCountryCode } from "@/utils/countryValidation";
+import { validateDateOfBirth } from "@/utils/dobValidation";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -28,16 +32,18 @@ const formSchema = z.object({
   fullName: z.string().min(2, {
     message: "Full name must be at least 2 characters.",
   }),
-  dateOfBirth: z.string().min(1, {
-    message: "Date of birth is required.",
-  }).refine((val) => {
-    const birth = new Date(val);
-    const now = new Date();
-    let age = now.getFullYear() - birth.getFullYear();
-    const m = now.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
-    return age >= 13;
-  }, { message: "You must be at least 13 years old to sign up." }),
+  dateOfBirth: z.string().superRefine((val, ctx) => {
+    const result = validateDateOfBirth(val);
+    if (!result.valid) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error ?? "Invalid date of birth." });
+    }
+  }),
+  countryCode: z.string().superRefine((val, ctx) => {
+    const result = validateCountryCode(val);
+    if (!result.valid) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error ?? "Invalid country." });
+    }
+  }),
   password: z.string().min(8, {
     message: "Password must be at least 8 characters.",
   }),
@@ -80,6 +86,7 @@ const SignUp = () => {
       username: "",
       fullName: "",
       dateOfBirth: "",
+      countryCode: "",
       password: "",
       acceptTerms: false,
     },
@@ -115,7 +122,8 @@ const SignUp = () => {
         values.username,
         values.fullName,
         'casual',
-        values.dateOfBirth
+        values.dateOfBirth,
+        values.countryCode,
       );
       // Toast and navigation are handled by useAuthActions.signUp
     } catch (error: any) {
@@ -241,6 +249,31 @@ const SignUp = () => {
                     {...field}
                   />
                 </FormControl>
+                <FormMessage className="text-red-400" />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="countryCode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white/70">Country</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger className="h-11 bg-zinc-900/50 border-zinc-800 text-white focus:border-rose-500 focus:ring-rose-500/20">
+                      <SelectValue placeholder="Select your country" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent className="bg-zinc-900 border-zinc-800 text-white max-h-60">
+                    {countries.map((country) => (
+                      <SelectItem key={country.code} value={country.code}>
+                        {getCountryFlag(country.code)} {country.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage className="text-red-400" />
               </FormItem>
             )}

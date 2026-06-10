@@ -72,7 +72,8 @@ export const useAuthActions = () => {
     username: string,
     fullName?: string,
     role: UserRole = 'casual',
-    dateOfBirth?: string
+    dateOfBirth?: string,
+    countryCode?: string,
   ) => {
     setLoading(true);
     console.log("Signing up with role:", role);
@@ -88,6 +89,7 @@ export const useAuthActions = () => {
             full_name: fullName || null,
             role: role,
             date_of_birth: dateOfBirth || null,
+            country_code: countryCode || null,
           },
         }
       });
@@ -103,11 +105,14 @@ export const useAuthActions = () => {
 
       console.log(`User created with ID: ${authData.user.id} and role: ${role}`);
 
-      if (dateOfBirth) {
+      if (dateOfBirth || countryCode) {
         try {
-          await apiClient.put(`/api/profiles/${authData.user.id}`, { date_of_birth: dateOfBirth });
+          await apiClient.put(`/api/profiles/${authData.user.id}`, {
+            ...(dateOfBirth ? { date_of_birth: dateOfBirth } : {}),
+            ...(countryCode ? { country_code: countryCode } : {}),
+          });
         } catch (profileErr) {
-          console.warn('[SignUp] Failed to persist date_of_birth on profile:', profileErr);
+          console.warn('[SignUp] Failed to persist profile fields on signup:', profileErr);
         }
       }
 

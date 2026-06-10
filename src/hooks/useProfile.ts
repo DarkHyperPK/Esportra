@@ -3,8 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { UserProfile, UserRole } from '@/types/auth';
 
-const fetchProfileById = async (userId: string): Promise<UserProfile> => {
-  const data = await apiClient.get<UserProfile>(`/api/profiles/${userId}`);
+const fetchOwnProfile = async (userId: string): Promise<UserProfile> => {
+  const data = await apiClient.get<UserProfile>('/api/profiles/me');
   const role: UserRole = (data as any).role ?? 'casual';
   return {
     ...data,
@@ -20,7 +20,7 @@ export const useProfile = () => {
 
   const { data: profile = null, isLoading: loading, error: queryError } = useQuery({
     queryKey: ['profile', trackedUserId],
-    queryFn: () => fetchProfileById(trackedUserId!),
+    queryFn: () => fetchOwnProfile(trackedUserId!),
     enabled: !!trackedUserId,
     staleTime: 5 * 60 * 1000,
   });
@@ -33,7 +33,7 @@ export const useProfile = () => {
     try {
       return await queryClient.fetchQuery({
         queryKey: ['profile', userId],
-        queryFn: () => fetchProfileById(userId),
+        queryFn: () => fetchOwnProfile(userId),
         staleTime: 5 * 60 * 1000,
       });
     } catch {
