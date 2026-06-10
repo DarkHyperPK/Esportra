@@ -106,6 +106,13 @@ export const parseTeamText = (text: string, mode: "lines" | "csv" = "lines") => 
   return { names, duplicates: Array.from(duplicates) };
 };
 
+export const validateBracketTeamCount = (teamCount: number, bracketSize: number) => {
+  if (teamCount > bracketSize) {
+    return `You have ${teamCount} teams but the bracket is set to ${bracketSize} slots. Increase the bracket size or remove extra teams.`;
+  }
+  return null;
+};
+
 export const formatBracketFormat = (format: string) =>
   format === "double_elimination" ? "Double elimination" : "Single elimination";
 

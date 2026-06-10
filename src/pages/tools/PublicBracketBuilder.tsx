@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Download, FileUp, Save, Shuffle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiClient, ApiError, getApiErrorMessage } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { BracketExporter } from "@/components/bracket/BracketExporter";
 import { BracketRenderer } from "@/components/bracket/BracketRenderer";
-import { adaptPublicBracketPayload, normalizeToolBracketPayload, parseTeamText, PublicBracketPayload, slugifyBracketFileName } from "./publicToolUtils";
+import {
+  adaptPublicBracketPayload,
+  normalizeToolBracketPayload,
+  parseTeamText,
+  PublicBracketPayload,
+  slugifyBracketFileName,
+  validateBracketTeamCount,
+} from "./publicToolUtils";
 import { SingleEliminationGenerator } from "@/services/bracket/SingleEliminationGenerator";
 import { DoubleEliminationGenerator } from "@/services/bracket/DoubleEliminationGenerator";
 
@@ -19,6 +27,7 @@ const DRAFT_KEY = "publicBracketDraft";
 const PublicBracketBuilder = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [title, setTitle] = useState("Untitled bracket");
   const [format, setFormat] = useState("single_elimination");
@@ -28,6 +37,11 @@ const PublicBracketBuilder = () => {
   const [preview, setPreview] = useState<PublicBracketPayload | null>(null);
   const [busy, setBusy] = useState(false);
   const parsed = useMemo(() => parseTeamText(teamText), [teamText]);
+  const selectedBracketSize = Number(bracketSize);
+  const teamCountError = useMemo(
+    () => validateBracketTeamCount(parsed.names.length, selectedBracketSize),
+    [parsed.names.length, selectedBracketSize],
+  );
   const matches = useMemo(() => preview ? adaptPublicBracketPayload(preview) : [], [preview]);
 
   useEffect(() => {
@@ -84,6 +98,10 @@ const PublicBracketBuilder = () => {
       toast({ title: "Add another team", description: "Use at least two team names or clear the list for an empty bracket.", variant: "destructive" });
       return false;
     }
+    if (teamCountError) {
+      toast({ title: "Too many teams for bracket size", description: teamCountError, variant: "destructive" });
+      return false;
+    }
     return true;
   };
 
@@ -113,6 +131,7 @@ const PublicBracketBuilder = () => {
     setBusy(true);
     try {
       const response = await apiClient.post<{ id: string }>("/api/tools/brackets", buildRequest());
+      await queryClient.invalidateQueries({ queryKey: ["tool-brackets", "mine"] });
       navigate(`/tools/brackets/${response.id}`);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -206,13 +225,16 @@ const PublicBracketBuilder = () => {
                 onChange={(e) => setTeamText(e.target.value)}
                 className="min-h-[260px] border-white/10 bg-black/40 font-mono text-xs text-white"
               />
-              <p className="text-xs text-zinc-500">{parsed.names.length} teams detected. Seeds follow list order.</p>
+              <p className={teamCountError ? "text-xs text-red-300" : "text-xs text-zinc-500"}>
+                {parsed.names.length} teams detected for {selectedBracketSize} slots.
+                {teamCountError ? ` ${teamCountError}` : " Seeds follow list order."}
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Button type="button" disabled={busy} onClick={generatePreview} variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+              <Button type="button" disabled={busy || Boolean(teamCountError)} onClick={generatePreview} variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
                 <Shuffle className="mr-2 h-4 w-4" /> Preview
               </Button>
-              <Button type="button" disabled={busy} onClick={saveBracket} className="bg-rose-600 text-white hover:bg-rose-500">
+              <Button type="button" disabled={busy || Boolean(teamCountError)} onClick={saveBracket} className="bg-rose-600 text-white hover:bg-rose-500">
                 <Save className="mr-2 h-4 w-4" /> Save
               </Button>
             </div>

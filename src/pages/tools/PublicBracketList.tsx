@@ -30,15 +30,27 @@ const PublicBracketList = () => {
   const { toast } = useToast();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const { data = [], isLoading, error, refetch, isFetching } = useQuery({
+  const canLoadBrackets = Boolean(user) && !authLoading;
+  const {
+    data,
+    error,
+    refetch,
+    isFetching,
+    isPending,
+    isSuccess,
+  } = useQuery({
     queryKey: ["tool-brackets", "mine"],
     queryFn: () => apiClient.get<any[]>("/api/tools/brackets/mine"),
-    enabled: !!user,
+    enabled: canLoadBrackets,
+    staleTime: 0,
+    refetchOnMount: "always",
     retry: 1,
   });
+  const brackets = data ?? [];
 
   const showSignIn = !authLoading && !user;
-  const showListLoading = authLoading || (!!user && isLoading);
+  const showListLoading = authLoading || (canLoadBrackets && (isPending || (isFetching && !isSuccess)));
+  const showEmpty = isSuccess && brackets.length === 0;
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -99,14 +111,14 @@ const PublicBracketList = () => {
         </section>
       ) : showListLoading ? (
         <section className="border border-white/10 bg-black/35 p-8 text-sm text-zinc-400">Loading saved brackets...</section>
-      ) : data.length === 0 ? (
+      ) : showEmpty ? (
         <section className="border border-white/10 bg-black/35 p-8">
           <h2 className="text-xl font-bold">No saved brackets yet</h2>
           <p className="mt-2 text-sm text-zinc-400">Create a single or double elimination bracket and it will appear here.</p>
         </section>
       ) : (
         <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {data.map((row: any) => {
+          {brackets.map((row: any) => {
             const id = value(row, "id");
             const shareToken = value(row, "shareToken", "share_token");
             return (
