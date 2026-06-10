@@ -140,7 +140,7 @@ const PublicBracketBuilder = () => {
   };
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-8 text-white">
+    <main className="w-full px-4 py-6 text-white sm:px-6 xl:px-8">
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-rose-400">Bracket tool</p>
@@ -151,8 +151,8 @@ const PublicBracketBuilder = () => {
         </Button>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
-        <section className="border border-white/10 bg-black/40 p-4">
+      <div className="grid gap-5 lg:min-h-[calc(100dvh-11rem)] lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] lg:items-stretch">
+        <section className="border border-white/10 bg-black/40 p-4 lg:overflow-y-auto">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="bracket-title">Title</Label>
@@ -218,15 +218,15 @@ const PublicBracketBuilder = () => {
           </div>
         </section>
 
-        <section className="min-h-[620px] overflow-hidden border border-white/10 bg-black/35">
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <section className="flex min-h-[520px] flex-col overflow-hidden border border-white/10 bg-black/35 lg:min-h-[calc(100dvh-11rem)]">
+          <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
             <div>
               <h2 className="text-sm font-bold">Preview</h2>
               <p className="text-xs text-zinc-500">{preview ? `${matches.length} matches generated` : "Generate a preview to inspect the bracket"}</p>
             </div>
             <Upload className="h-4 w-4 text-zinc-500" />
           </div>
-          <div className="h-[640px] overflow-auto p-3">
+          <div className="min-h-0 flex-1 overflow-auto p-3">
             {preview ? (
               <BracketRenderer matches={matches} activeFilter={{ type: "all" }} disableAnimations cardWidth={260} cardHeight={86} roundGap={64} matchGap={18} />
             ) : (

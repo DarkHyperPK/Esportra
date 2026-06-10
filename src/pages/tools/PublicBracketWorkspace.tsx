@@ -130,7 +130,7 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1600px] px-4 py-8 text-white">
+    <main className="w-full px-4 py-6 text-white sm:px-6 xl:px-8">
       <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-rose-400">
@@ -166,8 +166,8 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
         </section>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="h-[720px] overflow-auto border border-white/10 bg-black/35 p-3">
+      <div className="grid gap-4 xl:min-h-[calc(100dvh-12rem)] xl:grid-cols-[minmax(0,1fr)_320px] xl:items-stretch">
+        <section className="min-h-[520px] overflow-auto border border-white/10 bg-black/35 p-3 xl:min-h-[calc(100dvh-12rem)]">
           <BracketRenderer
             matches={matches}
             activeFilter={{ type: "all" }}
