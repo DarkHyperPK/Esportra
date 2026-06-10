@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ArrowRightLeft, Building2, Gamepad2, Trophy } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { useAuth } from '@/hooks/useAuth';
 import { useMeRoles } from '@/hooks/useMeRoles';
+import { meRolesQueryKey } from '@/lib/meRoles';
 import { useToast } from "@/hooks/use-toast";
 import VerificationRequestForm from '@/components/VerificationRequestForm';
 import { JackButton } from '@/components/ui/JackButton';
@@ -78,6 +80,7 @@ export const RoleSwitcherDialog: React.FC<{
   const { currentRole, isLoading, switchRole } = useRole();
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [reason, setReason] = useState('');
   const [showVerificationForm, setShowVerificationForm] = useState(false);
@@ -231,7 +234,7 @@ export const RoleSwitcherDialog: React.FC<{
             requestedRole={verificationRequestedRole}
             onSuccess={() => {
               setShowVerificationForm(false);
-              checkVerificationStatus();
+              void queryClient.invalidateQueries({ queryKey: meRolesQueryKey });
             }}
             onCancel={() => setShowVerificationForm(false)}
           />

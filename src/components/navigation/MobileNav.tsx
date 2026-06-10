@@ -3,6 +3,8 @@ import { Bell, ChevronDown, LogOut, MapPin, Medal, Plus, Shield, Trophy, User, I
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useStaffAssignmentsSummary } from "@/hooks/useNavTeamStatus";
+import { isSuperAdminUser } from "@/lib/adminAccess";
 import { useNotifications } from "@/hooks/useNotifications";
 import { UserRole } from "@/types/auth";
 import RoleSwitcher from "@/components/RoleSwitcher";
@@ -23,14 +25,16 @@ const MobileNav = ({
   const { user, profile } = useAuth();
   const { currentRole } = useRole();
   const admin = useAdmin();
+  const { data: staffAssignments = [] } = useStaffAssignmentsSummary();
   const { unreadCount } = useNotifications();
   const location = useLocation();
   const userRole = currentRole as UserRole;
-  const isSuperAdmin = admin.isAdmin && admin.roles.includes("super_admin");
+  const isSuperAdmin = isSuperAdminUser(admin, profile);
+  const hasStaffAssignments = staffAssignments.length > 0;
   const canManageVenues =
     userRole === "venue_owner" || isSuperAdmin || admin.hasPermission("venues:view");
   const canManageTournaments =
-    userRole === "organizer" || isSuperAdmin || admin.hasPermission("tournaments:create");
+    userRole === "organizer" || isSuperAdmin || admin.hasPermission("tournaments:create") || hasStaffAssignments;
 
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   const toggleMenu = (menu: string) => setExpandedMenu(expandedMenu === menu ? null : menu);
@@ -234,7 +238,7 @@ const MobileNav = ({
                   </Link>
                 </div>
 
-                {profile?.role === "admin" && (
+                {admin.isAdmin && (
                   <div className="mt-2 space-y-0.5">
                     <Link to="/admin/dashboard" className={linkClass(isActive(["/admin"]))} onClick={onClose}>
                       <span className="flex items-center gap-2">

@@ -3,6 +3,8 @@ import { ChevronDown, MapPin, Trophy, Medal, Info, Handshake, Shield } from "luc
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useStaffAssignmentsSummary } from "@/hooks/useNavTeamStatus";
+import { isSuperAdminUser } from "@/lib/adminAccess";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import UserMenu from "./UserMenu";
 import { cn } from "@/lib/utils";
@@ -21,16 +23,18 @@ const DesktopNav = ({
 }: {
   handleSignOut: () => Promise<void>;
 }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { currentRole } = useRole();
   const admin = useAdmin();
+  const { data: staffAssignments = [] } = useStaffAssignmentsSummary();
   const location = useLocation();
   const userRole = currentRole;
-  const isSuperAdmin = admin.isAdmin && admin.roles.includes("super_admin");
+  const isSuperAdmin = isSuperAdminUser(admin, profile);
+  const hasStaffAssignments = staffAssignments.length > 0;
   const canManageVenues =
     userRole === "venue_owner" || isSuperAdmin || admin.hasPermission("venues:view");
   const canManageTournaments =
-    userRole === "organizer" || isSuperAdmin || admin.hasPermission("tournaments:create");
+    userRole === "organizer" || isSuperAdmin || admin.hasPermission("tournaments:create") || hasStaffAssignments;
 
   const isActive = (paths: string[]) =>
     paths.some(

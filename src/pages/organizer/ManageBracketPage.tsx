@@ -2,6 +2,9 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useRole } from '@/hooks/useRole';
+import { useAdmin } from '@/hooks/useAdmin';
+import { isSuperAdminUser } from '@/lib/adminAccess';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +19,9 @@ const ManageBracketPage = () => {
     const { slug, stageId } = useParams<{ slug: string; stageId: string }>();
     const navigate = useNavigate();
     const { toast } = useToast();
-    const { user, loading: authLoading } = useAuth();
+    const { user, profile, loading: authLoading } = useAuth();
+    const { currentRole } = useRole();
+    const admin = useAdmin();
     const queryClient = useQueryClient();
 
     const [tournament, setTournament] = useState<any>(null);
@@ -56,7 +61,13 @@ const ManageBracketPage = () => {
             const isOrganizerUser = user?.id === tournamentData.organizer_id;
             const staffPerms: string[] = tournamentData.staffPermissions || [];
             const hasBracketPerm = staffPerms.includes('bracket:edit');
-            setIsOrganizer(ownsOrg || isOrganizerUser || hasBracketPerm);
+            const isSuperAdmin = isSuperAdminUser(admin, profile);
+            const inOrganizerSession = currentRole === 'organizer' || isSuperAdmin;
+            const canManageBracket =
+                (ownsOrg || isOrganizerUser) && inOrganizerSession
+                || hasBracketPerm
+                || isSuperAdmin;
+            setIsOrganizer(canManageBracket);
 
             // Fetch stage
             const stageData = await apiClient.get<any>(`/api/stages/${stageId}`).catch(() => null);

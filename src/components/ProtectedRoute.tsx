@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useRole } from "@/hooks/useRole";
 import { hasTournamentStaffAccess, useTournamentStaffAccess } from "@/hooks/useTournamentStaffAccess";
+import { isSuperAdminUser } from "@/lib/adminAccess";
 import { ProfileLoading } from "./profile/ProfileLoading";
 import { UserRole } from "@/types/auth";
 
@@ -40,7 +41,9 @@ const ProtectedRoute = ({
     isLoading: staffAccessLoading,
   } = useTournamentStaffAccess(tournamentSlug);
 
-  if (loading || roleLoading || (allowStaffForTournamentParam && staffAccessLoading)) {
+  const waitingOnAdmin = Boolean(allowedRoles && admin.loading);
+
+  if (loading || roleLoading || waitingOnAdmin || (allowStaffForTournamentParam && staffAccessLoading)) {
     return <ProfileLoading error={authError} />;
   }
 
@@ -52,7 +55,7 @@ const ProtectedRoute = ({
   if (allowedRoles) {
     const effectiveRole = (currentRole || profile?.role) as UserRole | undefined;
 
-    const isSuperAdmin = admin.isAdmin && admin.roles.includes('super_admin');
+    const isSuperAdmin = isSuperAdminUser(admin, profile);
     const hasRole = !!effectiveRole && allowedRoles.includes(effectiveRole);
 
     const hasAdminPerm = admin.isAdmin && allowedRoles.some(role => {

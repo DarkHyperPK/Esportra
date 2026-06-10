@@ -57,6 +57,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
+import { isSuperAdminUser } from '@/lib/adminAccess';
 import type { StaffPermission } from '@/lib/tournamentStaff';
 import {
   AlertDialog,
@@ -210,7 +211,7 @@ const TournamentDashboard = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { currentRole, isLoading: roleLoading } = useRole();
   const admin = useAdmin();
 
@@ -233,7 +234,7 @@ const TournamentDashboard = () => {
     [dashboardData?.stages],
   );
   const isOrganizer = dashboardData?.isOrganizer || false;
-  const isSuperAdmin = admin.isAdmin && admin.roles.includes('super_admin');
+  const isSuperAdmin = isSuperAdminUser(admin, profile);
   const inOrganizerSession = currentRole === 'organizer' || isSuperAdmin;
   /** Owner powers only when session role is Organizer (not Player mode). */
   const canActAsOwner = isOrganizer && inOrganizerSession;
@@ -265,7 +266,7 @@ const TournamentDashboard = () => {
 
   // Player session: leave organizer dashboard unless staff on this tournament
   useEffect(() => {
-    if (dashboardLoading || roleLoading) return;
+    if (dashboardLoading || roleLoading || admin.loading) return;
     if (inOrganizerSession || hasTournamentStaffAccess) return;
     if (slug) {
       toast({
@@ -279,6 +280,7 @@ const TournamentDashboard = () => {
   }, [
     dashboardLoading,
     roleLoading,
+    admin.loading,
     inOrganizerSession,
     hasTournamentStaffAccess,
     slug,
