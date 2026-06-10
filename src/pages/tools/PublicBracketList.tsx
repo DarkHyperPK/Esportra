@@ -1,11 +1,22 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Share2, Trophy } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Plus, Share2, Trash2, Trophy } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import { getApiErrorMessage } from "@/lib/apiClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatBracketFormat } from "./publicToolUtils";
 
 const value = (row: any, ...keys: string[]) => {
@@ -15,6 +26,10 @@ const value = (row: any, ...keys: string[]) => {
 
 const PublicBracketList = () => {
   const { user, loading: authLoading } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const { data = [], isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["tool-brackets", "mine"],
     queryFn: () => apiClient.get<any[]>("/api/tools/brackets/mine"),
@@ -24,6 +39,21 @@ const PublicBracketList = () => {
 
   const showSignIn = !authLoading && !user;
   const showListLoading = authLoading || (!!user && isLoading);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await apiClient.delete(`/api/tools/brackets/${deleteTarget.id}`);
+      await queryClient.invalidateQueries({ queryKey: ["tool-brackets", "mine"] });
+      toast({ title: "Bracket deleted" });
+      setDeleteTarget(null);
+    } catch (err) {
+      toast({ title: "Could not delete bracket", description: getApiErrorMessage(err), variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 text-white">
@@ -90,14 +120,51 @@ const PublicBracketList = () => {
                   </div>
                   {shareToken && <Share2 className="h-4 w-4 shrink-0 text-rose-300" />}
                 </div>
-                <Button asChild size="sm" className="mt-4 w-full bg-white text-black hover:bg-zinc-200">
-                  <Link to={`/tools/brackets/${id}`}>Open runner</Link>
-                </Button>
+                <div className="mt-4 flex gap-2">
+                  <Button asChild size="sm" className="flex-1 bg-white text-black hover:bg-zinc-200">
+                    <Link to={`/tools/brackets/${id}`}>Open runner</Link>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-red-500/30 bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-200"
+                    onClick={() => setDeleteTarget({ id: String(id), title: value(row, "title") || "Untitled bracket" })}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </article>
             );
           })}
         </section>
       )}
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && !deleting && setDeleteTarget(null)}>
+        <AlertDialogContent className="border-white/10 bg-[#0a0a0c] text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete bracket?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              {deleteTarget ? `"${deleteTarget.title}" will be permanently removed. Shared links will stop working.` : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting} className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              className="bg-red-600 text-white hover:bg-red-500"
+              onClick={(event) => {
+                event.preventDefault();
+                void confirmDelete();
+              }}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 };

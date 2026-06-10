@@ -1,12 +1,22 @@
 import React, { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Copy, RotateCcw, Share2 } from "lucide-react";
+import { Copy, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { BracketRenderer } from "@/components/bracket/BracketRenderer";
 import { BracketMatch } from "@/types/bracketTypes";
 import {
@@ -33,6 +43,7 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
   const [team1Score, setTeam1Score] = useState("0");
   const [team2Score, setTeam2Score] = useState("0");
   const [saving, setSaving] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const queryKey = mode === "owner" ? ["tool-bracket", id] : ["tool-bracket-share", token];
   const { data, isLoading, error } = useQuery({
@@ -97,6 +108,22 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
     }
   };
 
+  const deleteBracket = async () => {
+    if (!data || mode !== "owner") return;
+    setSaving(true);
+    try {
+      await apiClient.delete(`/api/tools/brackets/${data.id}`);
+      await queryClient.invalidateQueries({ queryKey: ["tool-brackets", "mine"] });
+      toast({ title: "Bracket deleted" });
+      setDeleteOpen(false);
+      navigate("/tools/brackets");
+    } catch (err) {
+      toast({ title: "Could not delete bracket", description: getApiErrorMessage(err), variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const toggleSharing = async () => {
     if (!data) return;
     setSaving(true);
@@ -150,6 +177,14 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
               </Button>
               <Button disabled={saving} variant="outline" onClick={resetBracket} className="border-white/10 bg-white/5 text-white hover:bg-white/10">
                 <RotateCcw className="mr-2 h-4 w-4" /> Reset
+              </Button>
+              <Button
+                disabled={saving}
+                variant="outline"
+                onClick={() => setDeleteOpen(true)}
+                className="border-red-500/30 bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-200"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
               </Button>
             </>
           )}
@@ -217,6 +252,34 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
           )}
         </aside>
       </div>
+
+      {mode === "owner" && (
+        <AlertDialog open={deleteOpen} onOpenChange={(open) => !saving && setDeleteOpen(open)}>
+          <AlertDialogContent className="border-white/10 bg-[#0a0a0c] text-white">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete bracket?</AlertDialogTitle>
+              <AlertDialogDescription className="text-zinc-400">
+                {`"${data.title}" will be permanently removed. Shared links will stop working.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={saving} className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                disabled={saving}
+                className="bg-red-600 text-white hover:bg-red-500"
+                onClick={(event) => {
+                  event.preventDefault();
+                  void deleteBracket();
+                }}
+              >
+                {saving ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </main>
   );
 };
