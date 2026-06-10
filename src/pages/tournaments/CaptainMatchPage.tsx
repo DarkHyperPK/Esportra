@@ -331,11 +331,11 @@ const CaptainMatchPage = () => {
                     isCap = true;
                 } else if (userParticipant.team_id) {
                     const userTeam = userTeams.find(t => t.id === userParticipant.team_id);
-                    if (userTeam) {
-                        const myMember = userTeam.members?.find(m => m.id === user.id);
-                        isCap = userTeam.owner_id === user.id
-                            || !!(myMember && (myMember.role === 'captain' || (myMember as any).is_captain === true));
-                    }
+                    const myMember = userTeam?.members?.find(m => m.id === user.id);
+                    isCap = userParticipant.user_id === user.id
+                        || userParticipant.team_captain_id === user.id
+                        || userTeam?.owner_id === user.id
+                        || !!(myMember && (myMember.role === 'captain' || (myMember as any).is_captain === true));
                 }
 
                 setIsCaptain(isCap);
@@ -541,6 +541,14 @@ const CaptainMatchPage = () => {
     const selfPlayEnabled = roomState?.selfPlayEnabled ?? false;
     const effectiveScheduledTime = roomState?.effectiveScheduledTime ?? null;
     const nextAction = roomState?.nextAction ?? null;
+
+    const canVerifyResult = useMemo(() => {
+        if (isOrganizerMatchView || !user) return false;
+        if (roomState?.callerCompetitorId) return true;
+        if (!userTeamId || !activeMatch) return false;
+        return competitorIdsMatch(userTeamId, activeMatch.team1?.id)
+            || competitorIdsMatch(userTeamId, activeMatch.team2?.id);
+    }, [isOrganizerMatchView, user, roomState?.callerCompetitorId, userTeamId, activeMatch]);
 
     const isVetoEnabled = useMemo(() => {
         if (roomState) return roomState.mapVetoEnabled;
@@ -1107,7 +1115,9 @@ const CaptainMatchPage = () => {
                                             <MatchResultVerification
                                                 matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                                                 gameNumber={nextGameNumber}
-                                                userTeamId={isOrganizerMatchView ? undefined : userTeamId}
+                                                userTeamId={isOrganizerMatchView
+                                                    ? undefined
+                                                    : (userTeamId ?? roomState?.callerCompetitorId ?? undefined)}
                                                 team1Id={activeMatch.team1?.id}
                                                 team2Id={activeMatch.team2?.id}
                                                 team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
@@ -1115,6 +1125,8 @@ const CaptainMatchPage = () => {
                                                 team1Logo={activeMatch.team1?.logo_url ?? undefined}
                                                 team2Logo={activeMatch.team2?.logo_url ?? undefined}
                                                 isCaptain={!isOrganizerMatchView && isCaptain}
+                                                canVerify={canVerifyResult}
+                                                subscribeRealtime={false}
                                                 onSuccess={() => {
                                                     refetchBracket();
                                                     fetchMatchGames();

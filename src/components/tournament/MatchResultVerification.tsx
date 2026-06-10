@@ -11,6 +11,7 @@ import { getApiErrorMessage } from '@/lib/apiClient';
 import { useMatchResultReport } from '@/hooks/useMatchResultReport';
 import { FullScoreboard } from './FullScoreboard';
 import EntityAvatar from '@/components/ui/EntityAvatar';
+import { competitorIdsMatch } from '@/utils/competitorId';
 
 interface MatchResultVerificationProps {
   matchId: string;
@@ -23,6 +24,9 @@ interface MatchResultVerificationProps {
   team1Logo?: string;
   team2Logo?: string;
   isCaptain?: boolean;
+  /** When set, overrides isCaptain — should match backend GetUserCompetitorIdInMatch. */
+  canVerify?: boolean;
+  subscribeRealtime?: boolean;
   onSuccess?: () => void;
 }
 
@@ -37,6 +41,8 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
   team1Logo,
   team2Logo,
   isCaptain = true,
+  canVerify,
+  subscribeRealtime = true,
   onSuccess,
 }) => {
   const {
@@ -45,7 +51,7 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
     isMyReport,
     acceptReport,
     disputeReport,
-  } = useMatchResultReport(matchId, gameNumber);
+  } = useMatchResultReport(matchId, gameNumber, { subscribeRealtime });
   const { toast } = useToast();
 
   const [submitting, setSubmitting] = useState(false);
@@ -215,6 +221,19 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
     return null;
   }
 
+  const isMatchParticipant = Boolean(
+    userTeamId
+    && (competitorIdsMatch(userTeamId, team1Id) || competitorIdsMatch(userTeamId, team2Id)),
+  );
+  const isOnReportingSide = Boolean(
+    userTeamId
+    && activeReport.reported_by_team_id
+    && competitorIdsMatch(userTeamId, activeReport.reported_by_team_id),
+  );
+  const isOwnSideReport = isMyReport || isOnReportingSide;
+  const showVerifyActions = !isOwnSideReport
+    && (canVerify ?? isMatchParticipant ?? isCaptain);
+
   return (
     <Card className="bg-black border-zinc-800 overflow-hidden">
       <CardContent className="p-0">
@@ -339,12 +358,12 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
             </div>
           )}
 
-          {isMyReport ? (
+          {isOwnSideReport ? (
             <div className="text-center p-3 bg-zinc-800/50 rounded-lg">
               <Clock className="w-5 h-5 text-zinc-400 mx-auto mb-1 animate-pulse" />
               <p className="text-zinc-400 text-sm">Waiting for opponent to verify...</p>
             </div>
-          ) : isCaptain ? (
+          ) : showVerifyActions ? (
             <div className="space-y-2">
               {acceptError && (
                 <div className="p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-xs">
