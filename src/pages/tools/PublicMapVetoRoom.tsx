@@ -1,8 +1,9 @@
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
+import { usePublicVetoRealtime } from "@/hooks/usePublicVetoRealtime";
 import PublicMapVetoView, { PublicMapVetoLoading } from "./PublicMapVetoView";
 import {
   normalizePublicVetoHistoryRow,
@@ -11,7 +12,7 @@ import {
   type PublicVetoState,
 } from "./publicMapVetoUtils";
 
-const PUBLIC_VETO_POLL_MS = 5000;
+const PUBLIC_VETO_FALLBACK_POLL_MS = 30_000;
 
 const PublicMapVetoRoom = () => {
   const { token } = useParams();
@@ -20,21 +21,45 @@ const PublicMapVetoRoom = () => {
   const { toast } = useToast();
   const isHost = location.pathname.includes("/host/");
   const actingRef = useRef(false);
+  const realtimeConnectedRef = useRef(false);
   const [acting, setActing] = useState(false);
   const statePath = isHost ? `/api/tools/map-veto/host/${token}` : `/api/tools/map-veto/team/${token}`;
   const stateQueryKey = ["public-map-veto", isHost ? "host" : "team", token] as const;
   const historyQueryKey = ["public-map-veto-history", token] as const;
 
+  const refreshHistory = useCallback(async (maps: PublicVetoState["maps"], game: string) => {
+    if (!token) return;
+    const rows = await apiClient.get<Array<Record<string, unknown>>>(`/api/tools/map-veto/${token}/history`);
+    queryClient.setQueryData(
+      historyQueryKey,
+      rows.map((row) => normalizePublicVetoHistoryRow(row, maps, game)),
+    );
+  }, [historyQueryKey, queryClient, token]);
+
+  const syncFromServer = useCallback(async () => {
+    if (!token || actingRef.current) return;
+    const [rawState, historyRows] = await Promise.all([
+      apiClient.get<Record<string, unknown>>(statePath),
+      apiClient.get<Array<Record<string, unknown>>>(`/api/tools/map-veto/${token}/history`),
+    ]);
+    const nextState = normalizePublicVetoState(rawState);
+    queryClient.setQueryData(stateQueryKey, nextState);
+    queryClient.setQueryData(
+      historyQueryKey,
+      historyRows.map((row) => normalizePublicVetoHistoryRow(row, nextState.maps, nextState.game)),
+    );
+  }, [historyQueryKey, queryClient, statePath, stateQueryKey, token]);
+
   const stateQuery = useQuery({
     queryKey: stateQueryKey,
     queryFn: async () => normalizePublicVetoState(await apiClient.get<Record<string, unknown>>(statePath)),
     enabled: Boolean(token),
-    staleTime: 1500,
+    staleTime: 0,
     refetchIntervalInBackground: false,
     refetchInterval: (query) => {
-      if (actingRef.current) return false;
+      if (actingRef.current || realtimeConnectedRef.current) return false;
       if (query.state.data?.status === "completed") return false;
-      return PUBLIC_VETO_POLL_MS;
+      return PUBLIC_VETO_FALLBACK_POLL_MS;
     },
   });
 
@@ -47,14 +72,24 @@ const PublicMapVetoRoom = () => {
       return rows.map((row) => normalizePublicVetoHistoryRow(row, maps, game));
     },
     enabled: Boolean(token) && Boolean(stateQuery.data),
-    staleTime: 1500,
+    staleTime: 0,
     refetchIntervalInBackground: false,
     refetchInterval: () => {
-      if (actingRef.current) return false;
+      if (actingRef.current || realtimeConnectedRef.current) return false;
       if (stateQuery.data?.status === "completed") return false;
-      return PUBLIC_VETO_POLL_MS;
+      return PUBLIC_VETO_FALLBACK_POLL_MS;
     },
   });
+
+  const { connected: realtimeConnected } = usePublicVetoRealtime({
+    sessionId: stateQuery.data?.id,
+    enabled: Boolean(token) && Boolean(stateQuery.data),
+    actingRef,
+    onUpdated: syncFromServer,
+    onReset: syncFromServer,
+  });
+
+  realtimeConnectedRef.current = realtimeConnected;
 
   const beginAction = () => {
     actingRef.current = true;
@@ -72,14 +107,6 @@ const PublicMapVetoRoom = () => {
     return nextState;
   };
 
-  const refreshHistory = async (maps: PublicVetoState["maps"], game: string) => {
-    const rows = await apiClient.get<Array<Record<string, unknown>>>(`/api/tools/map-veto/${token}/history`);
-    queryClient.setQueryData(
-      historyQueryKey,
-      rows.map((row) => normalizePublicVetoHistoryRow(row, maps, game)),
-    );
-  };
-
   const performAction = async (mapId: string, side?: string | null) => {
     const state = stateQuery.data;
     if (!state?.currentAction || !token || isHost || actingRef.current) return;
@@ -95,10 +122,7 @@ const PublicMapVetoRoom = () => {
       await refreshHistory(nextState.maps, nextState.game);
     } catch (err) {
       toast({ title: "Action failed", description: getApiErrorMessage(err), variant: "destructive" });
-      await Promise.all([
-        stateQuery.refetch(),
-        historyQuery.refetch(),
-      ]);
+      await syncFromServer();
       throw err;
     } finally {
       endAction();
