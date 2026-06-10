@@ -26,6 +26,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
+import { formatBracketMatchLabel } from '@/utils/bracketMatchLabel';
 import { isMatchTooEarlyForLive } from '@/lib/timeUtils';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 import { useBracketWheelScroll } from '@/hooks/useBracketWheelScroll';
@@ -596,13 +597,21 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     navigate(`/tournaments/${tournamentSlug}/captain-match/${getRawId(m.id)}`);
   }, [navigate, tournamentSlug]);
   const copyPartyCode = async () => { if (!partyCodeMatch?.partyCode) return; await navigator.clipboard.writeText(partyCodeMatch.partyCode); setCopiedCode(true); toast({ title: '📋 Copied!' }); setTimeout(() => setCopiedCode(false), 2000); };
+  const isDoubleElimination = useMemo(
+    () => matches.some((match) => match.bracketSide === 'losers'),
+    [matches],
+  );
+  const maxFinalRound = useMemo(
+    () => (finalsMatches.length > 0 ? Math.max(...finalsMatches.map((finalMatch) => finalMatch.round)) : undefined),
+    [finalsMatches],
+  );
   const getMatchLabel = useCallback((m: BracketMatch) => (
-    m.bracketSide === 'final'
-      ? (finalsMatches.length > 1 && m.round === Math.max(...finalsMatches.map(f => f.round))
-        ? "Grand Finals Reset"
-        : "Grand Finals")
-      : `${m.bracketSide === 'losers' ? 'L' : 'W'}${m.round} • M${m.matchNumber}`
-  ), [finalsMatches]);
+    formatBracketMatchLabel(m, {
+      isDoubleElimination,
+      finalsMatchCount: finalsMatches.length,
+      maxFinalRound,
+    }) ?? ''
+  ), [finalsMatches.length, isDoubleElimination, maxFinalRound]);
   const handleScoreChange = useCallback((id: string, t: 't1' | 't2', v: string) => {
     const rawId = getRawId(id);
     if (!scoreDraftRef.current[rawId]) {

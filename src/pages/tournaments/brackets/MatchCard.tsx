@@ -49,15 +49,6 @@ const SeedBadge = ({ seed }: { seed?: number | null }) => {
     );
 };
 
-const formatMatchCode = (round?: number | null, matchNumber?: number | null) => {
-    const hasRound = typeof round === 'number' && Number.isFinite(round) && round > 0;
-    const hasMatchNumber = typeof matchNumber === 'number' && Number.isFinite(matchNumber) && matchNumber > 0;
-
-    if (hasRound && hasMatchNumber) return `R${round}.M${matchNumber}`;
-    if (hasMatchNumber) return `M${matchNumber}`;
-    return null;
-};
-
 const areMatchPropsEqual = (prev: MatchCardProps, next: MatchCardProps) => {
     return (
         prev.match.id === next.match.id &&
@@ -162,13 +153,8 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     const byeTeam = match.team1?.id ? match.team1 : match.team2;
     void byeTeam;
 
-    // Status Badge Color
-    const statusColor = isLive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : isComplete ? 'bg-zinc-800 text-zinc-400 border-zinc-700' : 'bg-zinc-800/50 text-zinc-500 border-zinc-800';
-
     const showInputs = canAct && (isLive || isEditing);
     const canOpenMatchRoom = canAct && hasBoth && !!onMatchRoom;
-    const matchCode = formatMatchCode(match.round, match.matchNumber);
-
     const style: React.CSSProperties = x !== undefined && y !== undefined ? {
         position: 'absolute', left: x, top: y, width: CARD_WIDTH, minHeight: CARD_HEIGHT, zIndex: isExp ? 50 : 10
     } : {
@@ -316,15 +302,12 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
                 {/* Footer */}
                 <div className="px-4 py-2 bg-black/20 border-t border-white/5 flex justify-between items-center h-9">
-                    <div className="flex items-center gap-2">
-                        {matchCode && (
-                            <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border border-white/10 bg-white/[0.03] text-zinc-500">
-                                {matchCode}
+                    <div className="flex items-center gap-2 min-w-0">
+                        {label ? (
+                            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border border-white/10 bg-white/[0.03] text-zinc-500">
+                                {label}
                             </span>
-                        )}
-                        <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${statusColor}`}>
-                            {label}
-                        </span>
+                        ) : null}
                         {match.scheduledTime && (
                             <span className="text-[10px] font-medium text-zinc-500 flex items-center">
                                 {formatLocalTime(match.scheduledTime, 'MMM d • h:mm a')}
