@@ -38,7 +38,7 @@ function isReactUiSupport(id: string) {
 function resolveVendorChunk(id: string): string | undefined {
   if (!id.includes("node_modules")) return;
 
-  if (id.includes("@sentry/react")) return "vendor-react";
+  if (id.includes("@sentry")) return "vendor-react";
 
   if (isReactEcosystem(id) || isUiPrimitives(id) || isReactUiSupport(id)) {
     return "vendor-react";
@@ -58,7 +58,6 @@ function resolveVendorChunk(id: string): string | undefined {
   if (id.includes("lucide-react")) return "vendor-lucide";
   if (id.includes("@supabase")) return "vendor-supabase";
   if (id.includes("@microsoft/signalr")) return "vendor-signalr";
-  if (id.includes("@sentry")) return "vendor-sentry";
   if (
     id.includes("zod")
     || id.includes("react-hook-form")
