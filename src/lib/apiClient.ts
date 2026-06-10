@@ -26,6 +26,22 @@ const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1_000;
 const MAX_JITTER_MS = 500;
 
+function isAuthOrSuspendedRoute(pathname: string): boolean {
+  return pathname === '/suspended' || pathname.startsWith('/auth/');
+}
+
+function scheduleSuspendedRedirect(): void {
+  if (typeof window === 'undefined') return;
+
+  // Defer so in-flight lazy chunks (e.g. SignIn.tsx) are not aborted mid-fetch.
+  window.setTimeout(() => {
+    const pathname = window.location.pathname;
+    if (!isAuthOrSuspendedRoute(pathname)) {
+      window.location.assign('/suspended');
+    }
+  }, 0);
+}
+
 // ── Response wrapper ──────────────────────────────────────────────────────────
 
 export class ApiError extends Error {
@@ -181,9 +197,7 @@ async function fetchWithAuth(
       && !path.startsWith('/api/profiles/me')
     ) {
       void supabase.auth.signOut();
-      if (typeof window !== 'undefined' && window.location.pathname !== '/suspended') {
-        window.location.assign('/suspended');
-      }
+      scheduleSuspendedRedirect();
     }
 
     throw new ApiError(

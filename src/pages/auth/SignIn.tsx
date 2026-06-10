@@ -71,12 +71,8 @@ const SignIn = () => {
 
     try {
       setError(null);
-      await signIn(values.email, values.password);
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully signed in.",
-      });
-      navigate(redirectTo || '/');
+      await signIn(values.email, values.password, redirectTo || undefined);
+      // Success toast + navigation handled in useAuthActions.signIn
     } catch (error: any) {
       console.error("Sign in error:", error);
       setError(error.message);

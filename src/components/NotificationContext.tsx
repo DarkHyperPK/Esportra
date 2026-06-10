@@ -9,8 +9,8 @@ import { NotificationContext, type Notification } from '@/contexts/notification-
 export type { Notification };
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
-  const { user, loading: authLoading } = useAuth();
-  const hub = useHub(HubPaths.Notification, { autoStart: !!user && !authLoading });
+  const { user, loading: authLoading, profile } = useAuth();
+  const hub = useHub(HubPaths.Notification, { autoStart: !!user && !authLoading && !profile?.is_suspended });
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const listenersAttached = useRef(false);
@@ -97,13 +97,13 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!userId) {
+    if (!userId || profile?.is_suspended) {
       setNotifications([]);
       setUnreadCount(0);
       return;
     }
     fetchNotifications();
-  }, [userId, fetchNotifications, authLoading]);
+  }, [userId, fetchNotifications, authLoading, profile?.is_suspended]);
 
   const markAsRead = async (id: string) => {
     setNotifications(prev => {

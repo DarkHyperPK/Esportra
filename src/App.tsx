@@ -26,6 +26,14 @@ import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import BetaNoticeBanner from "@/components/BetaNoticeBanner";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
 import { lazyWithRetry } from "@/utils/lazyWithRetry";
+import SignIn from "./pages/auth/SignIn";
+import SignUp from "./pages/auth/SignUp";
+import Callback from "./pages/auth/Callback";
+import Suspended from "./pages/auth/Suspended";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import VerifyEmail from "./pages/auth/VerifyEmail";
+import ResetPassword from "./pages/auth/ResetPassword";
+import SetPassword from "./pages/auth/SetPassword";
 
 const AdminLayout = lazyWithRetry(() => import("@/components/admin/AdminLayout"));
 
@@ -45,14 +53,6 @@ function BRGameRoomLegacyRedirect() {
 const Index = lazyWithRetry(() => import("./pages/Index"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Unauthorized = lazyWithRetry(() => import("./pages/Unauthorized"));
-const SignUp = lazyWithRetry(() => import("./pages/auth/SignUp"));
-const SignIn = lazyWithRetry(() => import("./pages/auth/SignIn"));
-const Callback = lazyWithRetry(() => import("./pages/auth/Callback"));
-const SetPassword = lazyWithRetry(() => import("./pages/auth/SetPassword"));
-const ForgotPassword = lazyWithRetry(() => import("./pages/auth/ForgotPassword"));
-const ResetPassword = lazyWithRetry(() => import("./pages/auth/ResetPassword"));
-const VerifyEmail = lazyWithRetry(() => import("./pages/auth/VerifyEmail"));
-const Suspended = lazyWithRetry(() => import("./pages/auth/Suspended"));
 
 // User
 const PlayerProfile = lazyWithRetry(() => import("./pages/player/Profile"));

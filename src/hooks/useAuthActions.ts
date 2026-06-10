@@ -10,7 +10,7 @@ export const useAuthActions = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, redirectTo?: string) => {
     setLoading(true);
 
     try {
@@ -57,7 +57,7 @@ export const useAuthActions = () => {
         description: 'You have successfully signed in.',
       });
 
-      navigate('/');
+      navigate(redirectTo || '/');
     } catch (error: any) {
       console.error('Error signing in:', error);
       throw error;
