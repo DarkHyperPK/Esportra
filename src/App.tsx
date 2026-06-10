@@ -29,6 +29,12 @@ import { lazyWithRetry } from "@/utils/lazyWithRetry";
 
 const AdminLayout = lazyWithRetry(() => import("@/components/admin/AdminLayout"));
 
+/** Legacy `/tournaments/edit/:slug` redirects to the protected organizer edit route. */
+function OrganizerEditLegacyRedirect() {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={`/organizer/tournament/${slug}/edit`} replace />;
+}
+
 /** Legacy `/br-lobby` URLs redirect to the canonical game room route. */
 function BRGameRoomLegacyRedirect() {
   const { slug } = useParams<{ slug: string }>();
@@ -632,22 +638,22 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/tournament/:slug" element={
-                  <ProtectedRoute allowedRoles={['organizer']} allowStaffAssignments>
+                  <ProtectedRoute allowedRoles={['organizer']} allowStaffForTournamentParam="slug">
                     <TournamentManage />
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/tournament/:slug/edit" element={
-                  <ProtectedRoute allowedRoles={['organizer']} allowStaffAssignments>
+                  <ProtectedRoute allowedRoles={['organizer']} allowStaffForTournamentParam="slug">
                     <EditTournament />
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/tournament/:slug/brackets" element={
-                  <ProtectedRoute allowedRoles={['organizer']} allowStaffAssignments>
+                  <ProtectedRoute allowedRoles={['organizer']} allowStaffForTournamentParam="slug">
                     <TournamentBrackets />
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/tournament/:slug/manage-bracket/:stageId" element={
-                  <ProtectedRoute allowedRoles={['organizer']} allowStaffAssignments>
+                  <ProtectedRoute allowedRoles={['organizer']} allowStaffForTournamentParam="slug">
                     <ManageBracketPage />
                   </ProtectedRoute>
                 } />
@@ -687,7 +693,7 @@ const AppContent = React.memo(() => {
                     <CreateTournament />
                   </ProtectedRoute>
                 } />
-                <Route path="/tournaments/edit/:slug" element={<EditTournament />} />
+                <Route path="/tournaments/edit/:slug" element={<OrganizerEditLegacyRedirect />} />
                 <Route path="/tournaments/:slug/brackets" element={<TournamentBrackets />} />
                 <Route path="/tournaments/:slug/captain-match/:matchId?" element={
                   <ProtectedRoute>

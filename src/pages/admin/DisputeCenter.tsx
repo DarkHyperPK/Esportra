@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -244,25 +243,16 @@ const DisputeCenter: React.FC = () => {
         setUploadingAttachment(true);
         
         const disputeReason = disputeData?.dispute_reason || 'general';
-        const fileExt = commentAttachment.name.split('.').pop();
-        
-        // Path structure: {dispute_id}/{dispute_reason}/{user_id}-{timestamp}.{ext}
-        // For general support: {dispute_id}/general_support/{user_id}-{timestamp}.{ext}
-        const fileName = disputeData?.tournament_id
-          ? `${disputeId}/${disputeReason}/${user.id}-${Date.now()}.${fileExt}`
-          : `${disputeId}/general_support/${user.id}-${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('tournaments.disputes.evidence')
-          .upload(fileName, commentAttachment, { upsert: false });
+        const folder = disputeData?.tournament_id
+          ? `${disputeId}/${disputeReason}`
+          : `${disputeId}/general_support`;
 
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from('tournaments.disputes.evidence')
-          .getPublicUrl(fileName);
-
-        attachmentUrl = urlData.publicUrl;
+        const fd = new FormData();
+        fd.append('file', commentAttachment);
+        fd.append('bucket', 'tournaments.disputes.evidence');
+        fd.append('folder', folder);
+        const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+        attachmentUrl = url;
         setUploadingAttachment(false);
       }
 

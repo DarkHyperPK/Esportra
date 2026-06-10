@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { auditLog } from '@/lib/auditLog';
 import { useToast } from '@/hooks/use-toast';
@@ -304,16 +303,12 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({ tournamentId, organizerId
       let attachmentUrl: string | null = null;
       if (attachment) {
         setUploadingAttachment(true);
-        const fileExt = attachment.name.split('.').pop();
-        const fileName = `${disputeId}/${actorUserId}-${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('tournaments.disputes.evidence')
-          .upload(fileName, attachment, { upsert: false });
-        if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage
-          .from('tournaments.disputes.evidence')
-          .getPublicUrl(fileName);
-        attachmentUrl = urlData.publicUrl;
+        const fd = new FormData();
+        fd.append('file', attachment);
+        fd.append('bucket', 'tournaments.disputes.evidence');
+        fd.append('folder', disputeId);
+        const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+        attachmentUrl = url;
         setUploadingAttachment(false);
       }
 
