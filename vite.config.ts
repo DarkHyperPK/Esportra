@@ -28,20 +28,31 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('recharts')) return 'vendor-charts';
-            if (id.includes('framer-motion')) return 'vendor-framer';
-            if (id.includes('lucide-react')) return 'vendor-lucide';
-            if (id.includes('@supabase')) return 'vendor-supabase';
-            if (id.includes('@radix-ui')) return 'vendor-radix';
-            if (id.includes('@tanstack')) return 'vendor-tanstack';
-            if (id.includes('react-router')) return 'vendor-router';
-            if (id.includes('zod') || id.includes('react-hook-form') || id.includes('@hookform')) return 'vendor-forms';
-            if (id.includes('@microsoft/signalr')) return 'vendor-signalr';
-            if (id.includes('@sentry')) return 'vendor-sentry';
+          if (!id.includes('node_modules')) return;
 
-            return 'vendor-main';
+          // React must stay isolated — bundling it with vendor-main creates a
+          // circular init with vendor-radix (radix imports react from main).
+          if (
+            id.includes('/node_modules/react-dom/')
+            || id.includes('/node_modules/react/')
+            || id.includes('\\node_modules\\react-dom\\')
+            || id.includes('\\node_modules\\react\\')
+          ) {
+            return 'vendor-react';
           }
+
+          if (id.includes('recharts')) return 'vendor-charts';
+          if (id.includes('framer-motion')) return 'vendor-framer';
+          if (id.includes('lucide-react')) return 'vendor-lucide';
+          if (id.includes('@supabase')) return 'vendor-supabase';
+          if (id.includes('@radix-ui') || id.includes('/cmdk/')) return 'vendor-radix';
+          if (id.includes('@tanstack')) return 'vendor-tanstack';
+          if (id.includes('react-router')) return 'vendor-router';
+          if (id.includes('zod') || id.includes('react-hook-form') || id.includes('@hookform')) return 'vendor-forms';
+          if (id.includes('@microsoft/signalr')) return 'vendor-signalr';
+          if (id.includes('@sentry')) return 'vendor-sentry';
+
+          return 'vendor-main';
         },
         // Standard chunk naming
         chunkFileNames: 'assets/[name]-[hash].js',
