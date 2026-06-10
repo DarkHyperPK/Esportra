@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run check:chunks",
+    "check:chunks": "node tools/check-vendor-chunks.cjs",
     "build:dev": "vite build --mode development",
     "check:app-routes": "node tools/check-app-route-symbols.cjs",
     "check:critical-symbols": "node tools/check-app-route-symbols.cjs",
