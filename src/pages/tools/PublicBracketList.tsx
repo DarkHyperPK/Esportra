@@ -121,7 +121,7 @@ const PublicBracketList = () => {
                   {shareToken && <Share2 className="h-4 w-4 shrink-0 text-rose-300" />}
                 </div>
                 <div className="mt-4 flex gap-2">
-                  <Button asChild size="sm" className="flex-1 bg-white text-black hover:bg-zinc-200">
+                  <Button asChild size="sm" className="flex-1 border-rose-600 bg-rose-600 text-white hover:border-rose-500 hover:bg-rose-500 hover:text-white">
                     <Link to={`/tools/brackets/${id}`}>Open runner</Link>
                   </Button>
                   <Button
