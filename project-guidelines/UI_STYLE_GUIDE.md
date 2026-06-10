@@ -460,6 +460,7 @@ All interactive elements must have visible focus indicators.
 10. **4.5:1 contrast minimum** for all text.
 11. **Respect reduced motion.** Every animation must degrade gracefully.
 12. **Consistent card patterns.** Tournament cards, player cards, venue cards — each has a defined spec. Follow it.
+13. **Match Room actions use card/button state.** No decorative phase banner strips (Zap icons, colored guidance rows) — the check-in card and primary CTA carry flow state.
 
 ---
 

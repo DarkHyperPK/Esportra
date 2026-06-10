@@ -1,6 +1,8 @@
-import { ReactNode, useState, useEffect, useMemo, useCallback } from 'react';
+import { ReactNode, useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AuthContext } from '@/contexts/auth-context';
 import * as Sentry from '@sentry/react';
+import { meRolesQueryKey } from '@/lib/meRoles';
 import { UserProfile, AuthContextType, UserRole } from '@/types/auth';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuthState } from '@/hooks/useAuthState';
@@ -17,6 +19,7 @@ interface AuthProviderProps {
 
 // Separate the provider implementation
 function AuthProviderImpl({ children }: AuthProviderProps) {
+  const queryClient = useQueryClient();
   const { user, loading: authLoading, error: authError } = useAuthState();
   const { signIn, signUp: originalSignUp, signInWithGoogle, signInWithDiscord, signOut } = useAuthActions();
   const { updateProfile } = useProfileManagement();
@@ -52,6 +55,23 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
 
   // Track previous user ID to detect actual user changes
   const prevUserIdRef = React.useRef<string | null>(null);
+  const rolesSyncedForUserRef = useRef<string | null>(null);
+
+  // Refresh role/license cache whenever the authenticated user changes
+  useEffect(() => {
+    if (!isMounted || authLoading) return;
+
+    const currentUserId = user?.id ?? null;
+    if (!currentUserId) {
+      rolesSyncedForUserRef.current = null;
+      queryClient.removeQueries({ queryKey: meRolesQueryKey });
+      return;
+    }
+
+    if (rolesSyncedForUserRef.current === currentUserId) return;
+    rolesSyncedForUserRef.current = currentUserId;
+    void queryClient.invalidateQueries({ queryKey: meRolesQueryKey });
+  }, [user?.id, authLoading, isMounted, queryClient]);
 
   // Track previous profile ID to prevent loops
   const prevProfileIdRef = React.useRef<string | null>(null);

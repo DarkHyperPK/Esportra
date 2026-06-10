@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trophy, AlertCircle, Swords, Copy, MessageCircle, Clock, ShieldAlert, ExternalLink, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Trophy, AlertCircle, Swords, Copy, MessageCircle, ShieldAlert, ExternalLink, ChevronDown } from 'lucide-react';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import { adaptGraphToBracketMatches, buildCompetitorMapFromNodes } from '@/services/bracket/BracketAdapter';
@@ -30,10 +30,10 @@ import EntityAvatar from '@/components/ui/EntityAvatar';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useMatchResultReport } from '@/hooks/useMatchResultReport';
 import { useBracketRealtime } from '@/hooks/useBracketRealtime';
-import { useMatchRealtime } from '@/hooks/useMatchRealtime';
+import { useMatchRoomRealtime } from '@/hooks/useMatchRoomRealtime';
 import { useVetoRealtime } from '@/hooks/useVetoRealtime';
 import ServerConnectionCard from '@/components/match/ServerConnectionCard';
-import LiveScoreCard from '@/components/match/LiveScoreCard';
+import { LiveScoreCardView, useLiveScoreState } from '@/components/match/LiveScoreCard';
 import { VetoHistoryTimeline } from '@/components/tournament/map-veto/VetoHistoryTimeline';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
 import { matchRoomStateQueryKey, useMatchRoomState } from '@/hooks/useMatchRoomState';
@@ -540,8 +540,6 @@ const CaptainMatchPage = () => {
 
     const selfPlayEnabled = roomState?.selfPlayEnabled ?? false;
     const effectiveScheduledTime = roomState?.effectiveScheduledTime ?? null;
-    const selfPlayPhase = roomState?.phase ?? null;
-    const roomMessage = roomState?.message ?? null;
     const nextAction = roomState?.nextAction ?? null;
 
     const isVetoEnabled = useMemo(() => {
@@ -561,7 +559,10 @@ const CaptainMatchPage = () => {
     const isMatchLive = roomState?.isMatchLive ?? activeMatch?.status === 'in_progress';
     const mapVetoCompleted = roomState?.mapVetoCompleted ?? isVetoCompleted;
 
-    const { reports: activeMatchReports } = useMatchResultReport(activeMatchRawId);
+    const liveScore = useLiveScoreState();
+    const { reports: activeMatchReports } = useMatchResultReport(activeMatchRawId, undefined, {
+        subscribeRealtime: false,
+    });
     const hasDisputedReport = activeMatchReports?.some((r: { status: string }) => r.status === 'disputed') ?? false;
     // Track which game numbers are disputed — blocks re-submission for those specific games
     const disputedGameNumbers = new Set(
@@ -642,38 +643,24 @@ const CaptainMatchPage = () => {
         },
     });
 
-    // Match lifecycle events → debounced invalidation + targeted refetches
-    useMatchRealtime({
+    // Match lifecycle events → single MatchHub subscription + coordinated invalidation
+    useMatchRoomRealtime({
         matchId: activeMatchRawId ?? null,
         enabled: !!activeMatchRawId,
-        onReportSubmitted: () => {
-            debouncedBracketInvalidate();
-            fetchMatchGames();
-            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
-        },
-        onReportAccepted: () => {
-            debouncedBracketInvalidate();
-            fetchMatchGames();
-            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
-        },
+        debouncedBracketInvalidate,
         onStatusChanged: () => {
-            debouncedBracketInvalidate();
             fetchMatchGames();
             determineMap();
-            queryClient.invalidateQueries({ queryKey: ['match-time-proposals'] });
-            queryClient.invalidateQueries({ queryKey: ['match-checkins', activeMatchRawId] });
-            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
         },
-        onCheckInUpdated: () => {
-            queryClient.invalidateQueries({ queryKey: ['match-checkins', activeMatchRawId] });
-            queryClient.invalidateQueries({ queryKey: ['match-time-proposals', activeMatchRawId] });
-            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
-            debouncedBracketInvalidate();
+        onReportSubmitted: () => {
+            fetchMatchGames();
         },
-        onDisputeResolved: () => {
-            debouncedBracketInvalidate();
-            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
+        onReportAccepted: () => {
+            fetchMatchGames();
         },
+        onGoingLive: liveScore.handleGoingLive,
+        onScoreUpdated: liveScore.handleScoreUpdated,
+        onMapResult: liveScore.handleMapResult,
     });
 
     // Veto state updates → only update veto-specific state, no bracket refetch needed
@@ -967,8 +954,6 @@ const CaptainMatchPage = () => {
                                             checkInWindowMinutes={roomState?.checkinWindowMinutes ?? 15}
                                             checkinWindowOpen={roomState?.checkinWindowOpen}
                                             checkinWindowClosed={roomState?.checkinWindowClosed}
-                                            team1CheckedIn={roomState?.team1CheckedIn}
-                                            team2CheckedIn={roomState?.team2CheckedIn}
                                             hidePartyCodeInput={nextAction === 'submit_party_code'}
                                             initialPartyCode={activeMatch.partyCode}
                                             onPartyCodeGenerated={(code) => {
@@ -1031,23 +1016,6 @@ const CaptainMatchPage = () => {
                                             </div>
                                         )}
 
-                                        {/* Self-play sequence guidance */}
-                                        {roomMessage
-                                            && activeMatch.status !== 'completed'
-                                            && selfPlayPhase !== 'ready_for_match'
-                                            && selfPlayPhase !== 'completed' && (
-                                            <div className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs ${
-                                                selfPlayPhase === 'awaiting_veto'
-                                                    ? 'bg-indigo-600/10 border border-indigo-500/20 text-indigo-300'
-                                                    : 'bg-zinc-900/60 border border-zinc-800/50 text-zinc-500'
-                                            }`}>
-                                                {selfPlayPhase === 'awaiting_veto'
-                                                    ? <Swords className="w-3.5 h-3.5 shrink-0" />
-                                                    : <Clock className="w-3.5 h-3.5 text-zinc-600 shrink-0" />}
-                                                <span>{roomMessage}</span>
-                                            </div>
-                                        )}
-
                                         {nextAction === 'submit_party_code'
                                             && isTeam1Captain
                                             && activeMatch.status === 'pending'
@@ -1071,8 +1039,8 @@ const CaptainMatchPage = () => {
                                         {/* CS2 Live Score — show after veto completes */}
                                         {activeMatchRawId && isMatchLive && mapVetoCompleted &&
                                          (tournament?.game?.toLowerCase() === 'counter-strike 2' || tournament?.game?.toLowerCase() === 'cs2') && (
-                                            <LiveScoreCard
-                                                matchId={activeMatchRawId}
+                                            <LiveScoreCardView
+                                                liveScore={liveScore}
                                                 team1Name={activeMatch.team1?.name}
                                                 team2Name={activeMatch.team2?.name}
                                                 bestOf={activeMatch.bestOf || 1}

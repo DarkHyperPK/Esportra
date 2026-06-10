@@ -38,7 +38,13 @@ export const useTimeProposal = (
     useMatchRealtime({
         matchId,
         enabled: subscribeRealtime && !!matchId,
-        onStatusChanged: () => queryClient.invalidateQueries({ queryKey: ['match-time-proposals', matchId] }),
+        onTimeProposalUpdated: () => {
+            void queryClient.invalidateQueries({ queryKey: ['match-time-proposals', matchId] });
+            void queryClient.invalidateQueries({ queryKey: ['match-room-state', matchId] });
+        },
+        onStatusChanged: () => {
+            void queryClient.invalidateQueries({ queryKey: ['match-time-proposals', matchId] });
+        },
     });
 
     // Propose a time

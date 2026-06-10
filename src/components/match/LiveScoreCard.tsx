@@ -1,24 +1,25 @@
 import React, { useState, useCallback } from 'react';
 import { Activity, Swords } from 'lucide-react';
-import { useMatchRealtime, type MatchScorePayload, type GoingLivePayload, type MapResultPayload } from '@/hooks/useMatchRealtime';
+import {
+  useMatchRealtime,
+  type MatchScorePayload,
+  type GoingLivePayload,
+  type MapResultPayload,
+} from '@/hooks/useMatchRealtime';
 
-interface LiveScoreCardProps {
-  matchId: string;
-  team1Name?: string;
-  team2Name?: string;
-  bestOf: number;
+export interface LiveScoreState {
+  currentMap: number;
+  mapScores: Record<number, { t1: number; t2: number; status: string; winner?: string }>;
+  seriesScore: { t1: number; t2: number };
+  isLive: boolean;
+  hasData: boolean;
+  handleGoingLive: (payload: GoingLivePayload) => void;
+  handleScoreUpdated: (payload: MatchScorePayload) => void;
+  handleMapResult: (payload: MapResultPayload) => void;
 }
 
-/**
- * Displays live CS2 match scores from MatchZy webhooks via SignalR.
- * Shows per-map round scores and series score in real time.
- */
-const LiveScoreCard: React.FC<LiveScoreCardProps> = ({
-  matchId,
-  team1Name = 'Team 1',
-  team2Name = 'Team 2',
-  bestOf,
-}) => {
+/** Stateful handlers for MatchZy live events — wire via useMatchRoomRealtime on match pages. */
+export function useLiveScoreState(): LiveScoreState {
   const [currentMap, setCurrentMap] = useState(0);
   const [mapScores, setMapScores] = useState<Record<number, { t1: number; t2: number; status: string; winner?: string }>>({});
   const [seriesScore, setSeriesScore] = useState({ t1: 0, t2: 0 });
@@ -27,7 +28,7 @@ const LiveScoreCard: React.FC<LiveScoreCardProps> = ({
   const handleGoingLive = useCallback((payload: GoingLivePayload) => {
     setCurrentMap(payload.gameNumber);
     setIsLive(true);
-    setMapScores(prev => ({
+    setMapScores((prev) => ({
       ...prev,
       [payload.gameNumber]: prev[payload.gameNumber] || { t1: 0, t2: 0, status: 'live' },
     }));
@@ -35,7 +36,7 @@ const LiveScoreCard: React.FC<LiveScoreCardProps> = ({
 
   const handleScoreUpdated = useCallback((payload: MatchScorePayload) => {
     setIsLive(true);
-    setMapScores(prev => ({
+    setMapScores((prev) => ({
       ...prev,
       [payload.gameNumber]: { t1: payload.team1Score, t2: payload.team2Score, status: 'live' },
     }));
@@ -43,35 +44,58 @@ const LiveScoreCard: React.FC<LiveScoreCardProps> = ({
   }, []);
 
   const handleMapResult = useCallback((payload: MapResultPayload) => {
-    setMapScores(prev => ({
+    setMapScores((prev) => ({
       ...prev,
-      [payload.gameNumber]: { t1: payload.team1Score, t2: payload.team2Score, status: 'completed', winner: payload.winner ?? undefined },
+      [payload.gameNumber]: {
+        t1: payload.team1Score,
+        t2: payload.team2Score,
+        status: 'completed',
+        winner: payload.winner ?? undefined,
+      },
     }));
   }, []);
 
-  useMatchRealtime({
-    matchId,
-    enabled: true,
-    onGoingLive: handleGoingLive,
-    onScoreUpdated: handleScoreUpdated,
-    onMapResult: handleMapResult,
-  });
+  const hasData = isLive || Object.keys(mapScores).length > 0;
 
-  // Don't render until we get the first live event
-  if (!isLive && Object.keys(mapScores).length === 0) return null;
+  return {
+    currentMap,
+    mapScores,
+    seriesScore,
+    isLive,
+    hasData,
+    handleGoingLive,
+    handleScoreUpdated,
+    handleMapResult,
+  };
+}
 
-  const mapEntries = Object.entries(mapScores)
+interface LiveScoreCardViewProps {
+  liveScore: LiveScoreState;
+  team1Name?: string;
+  team2Name?: string;
+  bestOf: number;
+}
+
+/** Presentational live score panel — use with useLiveScoreState + useMatchRoomRealtime on match pages. */
+export const LiveScoreCardView: React.FC<LiveScoreCardViewProps> = ({
+  liveScore,
+  team1Name = 'Team 1',
+  team2Name = 'Team 2',
+  bestOf,
+}) => {
+  if (!liveScore.hasData) return null;
+
+  const mapEntries = Object.entries(liveScore.mapScores)
     .sort(([a], [b]) => Number(a) - Number(b));
 
   return (
     <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Activity className="w-5 h-5 text-rose-400" />
           <h3 className="text-sm font-semibold text-white">Live Score</h3>
         </div>
-        {isLive && (
+        {liveScore.isLive && (
           <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-rose-500/10 text-rose-400 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
             LIVE
@@ -79,29 +103,27 @@ const LiveScoreCard: React.FC<LiveScoreCardProps> = ({
         )}
       </div>
 
-      {/* Series Score */}
       {bestOf > 1 && (
         <div className="flex items-center justify-center gap-6 py-3">
           <div className="text-right flex-1">
             <p className="text-xs text-zinc-400 truncate">{team1Name}</p>
-            <p className={`text-2xl font-bold ${seriesScore.t1 > seriesScore.t2 ? 'text-emerald-400' : 'text-white'}`}>
-              {seriesScore.t1}
+            <p className={`text-2xl font-bold ${liveScore.seriesScore.t1 > liveScore.seriesScore.t2 ? 'text-emerald-400' : 'text-white'}`}>
+              {liveScore.seriesScore.t1}
             </p>
           </div>
           <Swords className="w-5 h-5 text-zinc-600 shrink-0" />
           <div className="text-left flex-1">
             <p className="text-xs text-zinc-400 truncate">{team2Name}</p>
-            <p className={`text-2xl font-bold ${seriesScore.t2 > seriesScore.t1 ? 'text-emerald-400' : 'text-white'}`}>
-              {seriesScore.t2}
+            <p className={`text-2xl font-bold ${liveScore.seriesScore.t2 > liveScore.seriesScore.t1 ? 'text-emerald-400' : 'text-white'}`}>
+              {liveScore.seriesScore.t2}
             </p>
           </div>
         </div>
       )}
 
-      {/* Per-Map Scores */}
       <div className="space-y-2">
         {mapEntries.map(([gameNum, scores]) => {
-          const isCurrentMap = Number(gameNum) === currentMap && scores.status === 'live';
+          const isCurrentMap = Number(gameNum) === liveScore.currentMap && scores.status === 'live';
           return (
             <div
               key={gameNum}
@@ -135,6 +157,43 @@ const LiveScoreCard: React.FC<LiveScoreCardProps> = ({
         })}
       </div>
     </div>
+  );
+};
+
+interface LiveScoreCardProps {
+  matchId: string;
+  team1Name?: string;
+  team2Name?: string;
+  bestOf: number;
+}
+
+/**
+ * Standalone live score card with its own MatchHub subscription.
+ * Match room pages should use useLiveScoreState + LiveScoreCardView instead.
+ */
+const LiveScoreCard: React.FC<LiveScoreCardProps> = ({
+  matchId,
+  team1Name = 'Team 1',
+  team2Name = 'Team 2',
+  bestOf,
+}) => {
+  const liveScore = useLiveScoreState();
+
+  useMatchRealtime({
+    matchId,
+    enabled: !!matchId,
+    onGoingLive: liveScore.handleGoingLive,
+    onScoreUpdated: liveScore.handleScoreUpdated,
+    onMapResult: liveScore.handleMapResult,
+  });
+
+  return (
+    <LiveScoreCardView
+      liveScore={liveScore}
+      team1Name={team1Name}
+      team2Name={team2Name}
+      bestOf={bestOf}
+    />
   );
 };
 

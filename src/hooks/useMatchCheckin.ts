@@ -68,8 +68,10 @@ export const useMatchCheckin = (
   useMatchRealtime({
     matchId,
     enabled: subscribeRealtime && !!matchId,
-    onCheckInUpdated: () =>
-      queryClient.invalidateQueries({ queryKey: ['match-checkins', matchId] }),
+    onCheckInUpdated: () => {
+      void queryClient.invalidateQueries({ queryKey: ['match-checkins', matchId] });
+      void queryClient.invalidateQueries({ queryKey: ['match-room-state', matchId] });
+    },
   });
 
   const checkIn = useMutation({

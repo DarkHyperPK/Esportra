@@ -129,6 +129,7 @@ export const useMatchRoomState = (
     enabled: subscribeRealtime && enabled,
     onStatusChanged: invalidate,
     onCheckInUpdated: invalidate,
+    onTimeProposalUpdated: invalidate,
     onReportSubmitted: invalidate,
     onReportAccepted: invalidate,
     onReportDisputed: invalidate,

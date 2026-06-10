@@ -3,7 +3,7 @@
  *
  * Groups joined: match:{matchId}
  * Events: ReportSubmitted, ReportAccepted, ReportDisputed, DisputeResolved,
- *         CheckInUpdated, StatusChanged,
+ *         CheckInUpdated, TimeProposalUpdated, StatusChanged,
  *         GoingLive, MatchScoreUpdated, MapResultFinalized (MatchZy)
  */
 
@@ -52,8 +52,9 @@ interface Options {
   onReportDisputed?:  (payload: MatchRealtimePayload) => void;
   onDisputeResolved?: (payload: MatchRealtimePayload) => void;
   onStatusChanged?:   (payload: MatchRealtimePayload) => void;
-  onCheckInUpdated?:  (payload: MatchRealtimePayload) => void;
-  onGoingLive?:       (payload: GoingLivePayload) => void;
+  onCheckInUpdated?:       (payload: MatchRealtimePayload) => void;
+  onTimeProposalUpdated?:  (payload: MatchRealtimePayload) => void;
+  onGoingLive?:            (payload: GoingLivePayload) => void;
   onScoreUpdated?:    (payload: MatchScorePayload) => void;
   onMapResult?:       (payload: MapResultPayload) => void;
 }
@@ -67,6 +68,7 @@ export function useMatchRealtime({
   onDisputeResolved,
   onStatusChanged,
   onCheckInUpdated,
+  onTimeProposalUpdated,
   onGoingLive,
   onScoreUpdated,
   onMapResult,
@@ -96,7 +98,8 @@ export function useMatchRealtime({
     const handleReportDisputed   = wrap(onReportDisputed);
     const handleDisputeResolved  = wrap(onDisputeResolved);
     const handleStatusChanged    = wrap(onStatusChanged);
-    const handleCheckInUpdated   = wrap(onCheckInUpdated);
+    const handleCheckInUpdated        = wrap(onCheckInUpdated);
+    const handleTimeProposalUpdated   = wrap(onTimeProposalUpdated);
 
     // MatchZy live events — invalidate + forward
     const handleGoingLive = (payload: GoingLivePayload) => {
@@ -120,8 +123,9 @@ export function useMatchRealtime({
     conn.on('ReportDisputed',     handleReportDisputed);
     conn.on('DisputeResolved',    handleDisputeResolved);
     conn.on('StatusChanged',      handleStatusChanged);
-    conn.on('CheckInUpdated',     handleCheckInUpdated);
-    conn.on('GoingLive',          handleGoingLive);
+    conn.on('CheckInUpdated',        handleCheckInUpdated);
+    conn.on('TimeProposalUpdated',   handleTimeProposalUpdated);
+    conn.on('GoingLive',             handleGoingLive);
     conn.on('MatchScoreUpdated',  handleScoreUpdated);
     conn.on('MapResultFinalized', handleMapResult);
 
@@ -139,8 +143,9 @@ export function useMatchRealtime({
       conn.off('ReportDisputed',     handleReportDisputed);
       conn.off('DisputeResolved',    handleDisputeResolved);
       conn.off('StatusChanged',      handleStatusChanged);
-      conn.off('CheckInUpdated',     handleCheckInUpdated);
-      conn.off('GoingLive',          handleGoingLive);
+      conn.off('CheckInUpdated',        handleCheckInUpdated);
+      conn.off('TimeProposalUpdated',   handleTimeProposalUpdated);
+      conn.off('GoingLive',             handleGoingLive);
       conn.off('MatchScoreUpdated',  handleScoreUpdated);
       conn.off('MapResultFinalized', handleMapResult);
       if (conn.state === HubConnectionState.Connected)

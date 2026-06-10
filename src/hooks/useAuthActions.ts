@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
+import { meRolesQueryKey } from '@/lib/meRoles';
 import { useToast } from './use-toast';
 import { UserRole } from '@/types/auth';
 
@@ -9,6 +11,7 @@ export const useAuthActions = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const signIn = async (email: string, password: string, redirectTo?: string) => {
     setLoading(true);
@@ -51,6 +54,8 @@ export const useAuthActions = () => {
         });
         return;
       }
+
+      await queryClient.invalidateQueries({ queryKey: meRolesQueryKey });
 
       toast({
         title: 'Welcome back!',
@@ -144,6 +149,7 @@ export const useAuthActions = () => {
         data: { username },
       }).catch((err) => console.warn('[SignUp] Welcome email failed:', err));
 
+      await queryClient.invalidateQueries({ queryKey: meRolesQueryKey });
       navigate('/');
 
     } catch (error: any) {
@@ -224,6 +230,7 @@ export const useAuthActions = () => {
         }
       }
       localStorage.removeItem('sessionRole');
+      queryClient.removeQueries({ queryKey: meRolesQueryKey });
       setLoading(false);
       toast({
         title: 'Signed out',

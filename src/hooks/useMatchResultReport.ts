@@ -26,7 +26,12 @@ export interface MatchResultReport {
   created_at: string;
 }
 
-export const useMatchResultReport = (matchId: string | undefined, gameNumber?: number) => {
+export const useMatchResultReport = (
+  matchId: string | undefined,
+  gameNumber?: number,
+  options?: { subscribeRealtime?: boolean },
+) => {
+  const subscribeRealtime = options?.subscribeRealtime !== false;
   const queryClient = useQueryClient();
   const { toast }   = useToast();
   const { user }    = useAuth();
@@ -46,7 +51,7 @@ export const useMatchResultReport = (matchId: string | undefined, gameNumber?: n
   // Live updates via SignalR MatchHub (invalidates cache on any match event)
   useMatchRealtime({
     matchId,
-    enabled: !!matchId,
+    enabled: subscribeRealtime && !!matchId,
     onReportSubmitted: () => queryClient.invalidateQueries({ queryKey: ['match-result-reports', matchId] }),
     onReportAccepted:  () => {
       queryClient.invalidateQueries({ queryKey: ['match-result-reports', matchId] });

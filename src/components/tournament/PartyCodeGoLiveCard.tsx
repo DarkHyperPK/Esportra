@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Zap } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -41,11 +40,8 @@ const PartyCodeGoLiveCard: React.FC<PartyCodeGoLiveCardProps> = ({
     };
 
     return (
-        <div className={`space-y-3 p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg ${className}`}>
-            <div className="flex items-center gap-2 text-sm text-purple-300 font-medium">
-                <Zap className="w-4 h-4 text-purple-400" />
-                <span>Both teams are checked in — submit the lobby code to start the match</span>
-            </div>
+        <div className={`space-y-3 ${className}`}>
+            <p className="text-sm text-zinc-400">Enter the lobby code to start the match.</p>
             <div className="flex gap-2">
                 <Input
                     value={manualCode}

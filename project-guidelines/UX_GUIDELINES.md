@@ -274,12 +274,15 @@ Pattern:
 | **Match scores** | Per round | Animate score change, flash highlight |
 | **Map veto** | Per action | Show pick/ban in real-time, disable stale buttons |
 | **Tournament bracket** | Per match result | Animate team advancement |
+| **Match check-in** | Per team action | Opponent status updates without page refresh (SignalR `CheckInUpdated`) |
+| **Time proposals** (self-play) | Per propose/accept/reject | Opponent sees proposal state live (SignalR `TimeProposalUpdated`) |
 | **Check-in countdown** | Per second | Live timer, pulse when < 60s |
 | **Station grid** (desktop) | Per heartbeat | Green/red status dots, live health metrics |
 
 ### Rules
 - **Optimistic updates** for actions the user takes themselves (veto pick, score report). Show the change immediately, roll back if the server rejects it.
-- **Server-authoritative updates** for actions by other users. Wait for the Supabase realtime event before showing changes.
+- **Server-authoritative updates** for actions by other users. Wait for the SignalR hub event, then invalidate TanStack Query — do not merge stale server booleans over fresher hook data.
+- **Match Room UI** — express phase in cards and buttons; no decorative banner strips (Zap/lightning guidance rows). See IMPLEMENTATION_GUIDE Match Hub section.
 - **Conflict resolution**: If the user is looking at stale data and tries to act on it, show a toast: "This was already updated. Refreshing..." and invalidate the query.
 - **Connection loss**: Show a banner "Reconnecting..." and auto-retry. Don't let the user submit actions while disconnected.
 

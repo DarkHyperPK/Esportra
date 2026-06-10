@@ -573,11 +573,25 @@ useEffect(() => {
 |----------|---------|
 | `/hubs/notifications` | Push notifications |
 | `/hubs/bracket` | Bracket match updates |
-| `/hubs/match` | Check-in, results, disputes |
+| `/hubs/match` | Check-in, time proposals, results, disputes |
 | `/hubs/veto` | Map veto state machine |
 | `/hubs/chat` | Match-scoped chat |
 | `/hubs/conversations` | Direct messaging |
 | `/hubs/live` | Venue seat status |
+
+**Match Hub (`/hubs/match`) — match room invalidation matrix:**
+
+| Hub event | Invalidate query keys |
+|-----------|----------------------|
+| `CheckInUpdated` | `match-checkins`, `match-room-state` |
+| `TimeProposalUpdated` | `match-time-proposals`, `match-room-state` |
+| `StatusChanged` | `match-checkins`, `match-time-proposals`, `match-room-state`, bracket queries |
+
+- One `JoinMatch` per match page — use `useMatchRoomRealtime` on `CaptainMatchPage`; child cards pass `subscribeRealtime: false`.
+- Check-in UI reads live status from `useMatchCheckin`, not stale `roomState` booleans.
+- Backend must broadcast `TimeProposalUpdated` after propose / accept / reject / counter.
+
+**Auth roles cache:** invalidate `meRolesQueryKey` on sign-in, sign-out, and user-id change (`AuthContext`).
 
 **Real-time rules:**
 - Always clean up subscriptions on unmount.

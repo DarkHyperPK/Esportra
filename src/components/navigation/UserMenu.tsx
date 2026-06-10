@@ -82,9 +82,8 @@ const UserMenu = ({
   const sessionRoleHint = typeof localStorage !== 'undefined'
     ? localStorage.getItem('sessionRole')
     : null;
-  const hasApprovedLicense = meRolesReady
-    ? deriveHasApprovedLicense(meRoles)
-    : sessionRoleHint === 'organizer' || sessionRoleHint === 'venue_owner';
+  const hasApprovedLicense = deriveHasApprovedLicense(meRoles)
+    || (!meRolesReady && (sessionRoleHint === 'organizer' || sessionRoleHint === 'venue_owner'));
   const hasOrganization = userRole === 'organizer' && deriveHasOrganization(meRoles);
 
   useEffect(() => {
