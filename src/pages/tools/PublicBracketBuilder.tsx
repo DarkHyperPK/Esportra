@@ -35,6 +35,7 @@ const PublicBracketBuilder = () => {
   const [bracketSize, setBracketSize] = useState("8");
   const [teamText, setTeamText] = useState("Buffer Overflow\nStorm Riders\nWar Machine\nHex Runners\nGhost Protocol\nStatic Charge\nIce Breakers\nBlack Horizon");
   const [preview, setPreview] = useState<PublicBracketPayload | null>(null);
+  const [hoveredTeamId, setHoveredTeamId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const parsed = useMemo(() => parseTeamText(teamText), [teamText]);
   const selectedBracketSize = Number(bracketSize);
@@ -261,7 +262,17 @@ const PublicBracketBuilder = () => {
           </div>
           <div className="min-h-0 flex-1 overflow-auto p-3">
             {preview ? (
-              <BracketRenderer matches={matches} activeFilter={{ type: "all" }} disableAnimations cardWidth={260} cardHeight={86} roundGap={64} matchGap={18} />
+              <BracketRenderer
+                matches={matches}
+                activeFilter={{ type: "all" }}
+                disableAnimations
+                hoveredTeamId={hoveredTeamId}
+                onTeamHover={setHoveredTeamId}
+                cardWidth={260}
+                cardHeight={86}
+                roundGap={64}
+                matchGap={18}
+              />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-zinc-500">No preview yet</div>
             )}

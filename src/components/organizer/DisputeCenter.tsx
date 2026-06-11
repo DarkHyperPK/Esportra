@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { StaffPermission } from '@/lib/tournamentStaff';
 import { apiClient } from '@/lib/apiClient';
@@ -16,12 +16,14 @@ import { useTournamentStaff } from '@/hooks/useTournamentStaff';
 import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 import type { DisputeReport, DisputeRiotAccount, MatchDisputeEvidence } from './DisputeEvidencePanel';
-import DisputeEvidencePanel from './DisputeEvidencePanel';
-import DisputeActions, { type DisputeStaffMember } from './DisputeActions';
-import DisputeIdStrip from './DisputeIdStrip';
+import type { DisputeStaffMember } from './DisputeActions';
+import DisputeCaseHeader from './DisputeCaseHeader';
+import DisputeEvidenceCompare from './DisputeEvidenceCompare';
+import DisputeResolutionDock from './DisputeResolutionDock';
 import DisputeConversation from './DisputeConversation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+  getInitialReport,
   getPrimaryDisputeReport,
   parseDisputeReports,
   parseDisputeRiotAccounts,
@@ -94,6 +96,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
   const [submittingComment, setSubmittingComment] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const assigneeChangedByUser = useRef(false);
 
   const actorUserId = currentUserId ?? organizerId;
   const { staff, loading: _staffLoading, hasPermission } = useTournamentStaff(tournamentId);
@@ -244,6 +247,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
 
   useEffect(() => {
     if (selectedDispute) {
+      assigneeChangedByUser.current = false;
       setSelectedAssigneeId(
         selectedDispute.assigned_to_user_id ||
         (canAssistDisputes ? actorUserId : organizerId)
@@ -251,10 +255,16 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
       fetchComments(selectedDispute.id);
       markDisputeRead(selectedDispute.id);
     } else {
+      assigneeChangedByUser.current = false;
       setSelectedAssigneeId(null);
       setComments([]);
     }
   }, [selectedDispute, actorUserId, canAssistDisputes, organizerId, fetchComments, markDisputeRead]);
+
+  const handleAssigneeChange = useCallback((id: string) => {
+    assigneeChangedByUser.current = true;
+    setSelectedAssigneeId(id);
+  }, []);
 
   // SignalR subscription for dispute events (replaces Supabase realtime)
   useEffect(() => {
@@ -306,7 +316,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
     });
   };
 
-  const handleAssignDispute = async (disputeId: string, assigneeId: string) => {
+  const handleAssignDispute = useCallback(async (disputeId: string, assigneeId: string) => {
     try {
       setAssignmentLoading(true);
       await apiClient.put(`/api/organizer/disputes/${disputeId}`, {
@@ -335,7 +345,26 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
     } finally {
       setAssignmentLoading(false);
     }
-  };
+  }, [selectedDispute?.title, toast, fetchDisputes]);
+
+  // Debounced auto-save when user explicitly changes assignee (lead organizer only)
+  useEffect(() => {
+    if (!assigneeChangedByUser.current) return;
+    if (!selectedDispute || selectedDispute.status !== 'open') return;
+    if (!canAssignOthers || !selectedAssigneeId) return;
+    if (selectedAssigneeId === selectedDispute.assigned_to_user_id) return;
+
+    const timer = window.setTimeout(() => {
+      void handleAssignDispute(selectedDispute.id, selectedAssigneeId);
+    }, 600);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    selectedAssigneeId,
+    selectedDispute,
+    canAssignOthers,
+    handleAssignDispute,
+  ]);
 
   /** Direct comment submission (called from DisputeConversation sub-component) */
   const handleAddCommentDirect = async (disputeId: string, text: string, attachment: File | null) => {
@@ -379,12 +408,16 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
     options?: { reportId?: string | null },
   ) => {
     try {
-      const payload: Record<string, string | null> = {
+      const payload: {
+        status: 'resolved' | 'rejected';
+        resolutionNotes: string;
+        reportId?: string;
+      } = {
         status: newStatus,
-        resolution_notes: resolutionNotes || null,
+        resolutionNotes: resolutionNotes.trim(),
       };
       if (newStatus === 'resolved' && options?.reportId) {
-        payload.report_id = options.reportId;
+        payload.reportId = options.reportId;
       }
 
       await apiClient.post(`/api/organizer/disputes/${disputeId}/resolve`, payload);
@@ -572,23 +605,31 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
           <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
           <AnimatePresence mode="wait">
           {selectedDispute ? (() => {
-            const cfg = statusCfg[selectedDispute.status];
-            const StatusIcon = cfg.icon;
             const hasMatch = !!(selectedDispute.match?.team1_name && selectedDispute.match?.team2_name);
 
             const safeReports = parseDisputeReports(selectedDispute.reports);
             const primaryReport = getPrimaryDisputeReport(safeReports);
-            const headerTeam1Score = primaryReport?.team1_score
-              ?? selectedDispute.match?.team1_score
-              ?? 0;
-            const headerTeam2Score = primaryReport?.team2_score
-              ?? selectedDispute.match?.team2_score
-              ?? 0;
+            const initialReport = getInitialReport(safeReports, parseMatchDispute(selectedDispute.match_dispute));
             const safeRiotAccounts = parseDisputeRiotAccounts(selectedDispute.riot_accounts);
             const matchDispute = parseMatchDispute(selectedDispute.match_dispute);
             const riotMatchIds = safeReports
               .map(r => r.riot_match_id)
               .filter((v, i, a) => v && a.indexOf(v) === i) as string[];
+            const disputedReport = safeReports.find((r) => r.status === 'disputed') ?? primaryReport;
+            const canEnforceReportScore = Boolean(
+              resolutionStatus === 'resolved'
+              && disputedReport
+              && disputedReport.status !== 'accepted',
+            );
+            const reportedScoreLabel = disputedReport && hasMatch
+              ? `${selectedDispute.match!.team1_name} ${disputedReport.team1_score}–${disputedReport.team2_score} ${selectedDispute.match!.team2_name}`
+              : disputedReport
+                ? `${disputedReport.team1_score}–${disputedReport.team2_score}`
+                : null;
+            const caseTitle = hasMatch
+              ? `${selectedDispute.match!.team1_name} vs ${selectedDispute.match!.team2_name}`
+              : selectedDispute.title;
+            const isClosed = selectedDispute.status === 'resolved' || selectedDispute.status === 'rejected';
 
             return (
               <motion.div
@@ -599,71 +640,36 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
                 transition={{ duration: 0.2 }}
                 className="flex flex-col h-full min-h-0"
               >
-                {/* Header */}
-                <div className="shrink-0 p-4 border-b border-white/[0.06]">
-                  <div className="flex items-center gap-2 mb-1">
-                    {selectedDispute.reference_number && (
-                      <span className="text-rose-400/70 font-mono text-sm shrink-0">{selectedDispute.reference_number}</span>
-                    )}
-                    <h2 className="text-white text-lg font-semibold flex-1 truncate">
-                      {hasMatch
-                        ? `${selectedDispute.match!.team1_name} vs ${selectedDispute.match!.team2_name}`
-                        : selectedDispute.title}
-                    </h2>
-                    <Badge className={`${cfg.cls} text-xs shrink-0`}>
-                      <StatusIcon className="w-3 h-3 mr-1" />
-                      {cfg.label}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-                    <span className="flex items-center gap-1"><User className="w-3 h-3" />{selectedDispute.raised_by_name}</span>
-                    {selectedDispute.team_name && <span className="text-zinc-600">({selectedDispute.team_name})</span>}
-                    <span className="text-zinc-700">•</span>
-                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{new Date(selectedDispute.created_at).toLocaleString()}</span>
-                  </div>
-                  <div className="mt-2">
-                    <DisputeIdStrip disputeId={selectedDispute.id} referenceNumber={selectedDispute.reference_number} matchId={selectedDispute.match_id} riotMatchIds={riotMatchIds} />
-                  </div>
-                </div>
+                <DisputeCaseHeader
+                  referenceNumber={selectedDispute.reference_number}
+                  title={caseTitle}
+                  status={selectedDispute.status}
+                  raisedByName={selectedDispute.raised_by_name}
+                  teamName={selectedDispute.team_name}
+                  createdAt={selectedDispute.created_at}
+                  timeAgo={getTimeAgo(selectedDispute.created_at)}
+                  disputeId={selectedDispute.id}
+                  matchId={selectedDispute.match_id}
+                  riotMatchIds={riotMatchIds}
+                  assigneeId={selectedAssigneeId}
+                  staffMembers={staffMembers}
+                  canAssignOthers={canAssignOthers}
+                  canAssist={canAssistDisputes}
+                  isClosed={isClosed}
+                  onAssigneeChange={handleAssigneeChange}
+                />
 
-                {/* Scrollable content */}
                 <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
-                  {/* Match context */}
-                  {hasMatch && (
-                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
-                      <div className="px-5 py-4 flex items-center justify-between gap-4">
-                        <div className="flex-1">
-                          <p className="text-base font-semibold text-white">{selectedDispute.match!.team1_name}</p>
-                          <p className="text-xs text-white/40 mt-0.5">Team 1</p>
-                        </div>
-                        <div className="text-center shrink-0">
-                          <div className="flex items-center gap-3">
-                            <span className="text-3xl font-bold text-white tabular-nums">{headerTeam1Score}</span>
-                            <span className="text-white/30 text-sm">–</span>
-                            <span className="text-3xl font-bold text-white tabular-nums">{headerTeam2Score}</span>
-                          </div>
-                          <p className="text-xs text-white/30 mt-1">
-                            {primaryReport ? 'Reported score' : 'Score at dispute'}
-                          </p>
-                        </div>
-                        <div className="flex-1 text-right">
-                          <p className="text-base font-semibold text-white">{selectedDispute.match!.team2_name}</p>
-                          <p className="text-xs text-white/40 mt-0.5">Team 2</p>
-                        </div>
-                      </div>
-                      {selectedDispute.match!.match_number != null && (
-                        <div className="px-5 py-2.5 border-t border-white/[0.07] bg-white/[0.02] flex items-center gap-4 flex-wrap">
-                          <span className="text-xs text-white/50">Match #{selectedDispute.match!.match_number}</span>
-                          {selectedDispute.match!.best_of != null && (
-                            <span className="text-xs text-white/50">Best of {selectedDispute.match!.best_of}</span>
-                          )}
-                        </div>
+                  {hasMatch && selectedDispute.match!.match_number != null && (
+                    <div className="flex items-center gap-3 text-xs text-zinc-500">
+                      <span>Match #{selectedDispute.match!.match_number}</span>
+                      {selectedDispute.match!.best_of != null && (
+                        <span>Best of {selectedDispute.match!.best_of}</span>
                       )}
                     </div>
                   )}
 
-                  {/* Initial report evidence (score, screenshots, Val scoreboard) */}
-                  <DisputeEvidencePanel
+                  <DisputeEvidenceCompare
                     reports={safeReports}
                     riotAccounts={safeRiotAccounts}
                     matchDispute={matchDispute}
@@ -679,7 +685,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
                     onImageClick={(url) => setViewingImage(url)}
                   />
 
-                  {!primaryReport && (
+                  {!initialReport && !matchDispute && (
                     <div>
                       <label className="text-zinc-500 text-xs uppercase tracking-wider mb-1.5 block font-medium">Description</label>
                       <p className="text-white/90 text-sm bg-[#121214] p-3 rounded-xl border border-white/[0.06] leading-relaxed">
@@ -688,61 +694,47 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
                     </div>
                   )}
 
-                  {/* Resolution notes (closed disputes) */}
-                  {selectedDispute.resolution_notes && (selectedDispute.status === 'resolved' || selectedDispute.status === 'rejected') && (
-                    <div>
-                      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mb-4" />
-                      <label className="text-zinc-500 text-xs uppercase tracking-wider mb-1.5 block font-medium">Resolution Notes</label>
-                      <p className="text-zinc-300 text-sm bg-[#121214] p-3 rounded-xl border border-white/[0.06]">
-                        {selectedDispute.resolution_notes}
+                  {isClosed && selectedDispute.resolution_notes && (
+                    <div
+                      className={`rounded-xl p-4 text-sm border border-white/[0.06] border-l-[3px] ${
+                        selectedDispute.status === 'resolved'
+                          ? 'border-l-emerald-500 bg-emerald-500/5 text-emerald-200'
+                          : 'border-l-rose-500 bg-rose-500/5 text-rose-200'
+                      }`}
+                    >
+                      <p className="text-[11px] uppercase tracking-wider font-semibold text-zinc-500 mb-2">
+                        Resolution notes
                       </p>
+                      <p className="text-sm leading-relaxed">{selectedDispute.resolution_notes}</p>
                     </div>
                   )}
                 </div>
 
-                {/* Actions pinned below scroll area */}
-                {selectedDispute.status === 'open' && (() => {
-                  const disputedReport = safeReports.find((r) => r.status === 'disputed') ?? primaryReport;
-                  const canEnforceReportScore = Boolean(
-                    resolutionStatus === 'resolved'
-                    && disputedReport
-                    && disputedReport.status !== 'accepted',
-                  );
-                  const reportedScoreLabel = disputedReport && hasMatch
-                    ? `${selectedDispute.match!.team1_name} ${disputedReport.team1_score}–${disputedReport.team2_score} ${selectedDispute.match!.team2_name}`
-                    : disputedReport
-                      ? `${disputedReport.team1_score}–${disputedReport.team2_score}`
-                      : null;
-
-                  return (
-                    <div className="shrink-0 border-t border-white/[0.06] bg-[#0a0a0c] p-4 max-h-[48vh] overflow-y-auto overscroll-contain scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
-                      <DisputeActions
-                        status={selectedDispute.status}
-                        canAssist={canAssistDisputes}
-                        canAssignOthers={canAssignOthers}
-                        assigneeId={selectedAssigneeId}
-                        staffMembers={staffMembers}
-                        assignmentLoading={assignmentLoading}
-                        resolutionNotes={resolutionNotes}
-                        resolutionStatus={resolutionStatus}
-                        enforceReportScore={enforceReportScore}
-                        canEnforceReportScore={canEnforceReportScore}
-                        reportedScoreLabel={reportedScoreLabel}
-                        onAssigneeChange={setSelectedAssigneeId}
-                        onAssign={() => selectedDispute && selectedAssigneeId && handleAssignDispute(selectedDispute.id, selectedAssigneeId)}
-                        onStatusChange={(status) => {
-                          setResolutionStatus(status);
-                          if (status === 'rejected') setEnforceReportScore(false);
-                        }}
-                        onNotesChange={setResolutionNotes}
-                        onEnforceReportScoreChange={setEnforceReportScore}
-                        onResolve={() => handleUpdateStatus(selectedDispute.id, resolutionStatus, {
-                          reportId: enforceReportScore && disputedReport?.id ? disputedReport.id : null,
-                        })}
-                      />
-                    </div>
-                  );
-                })()}
+                {selectedDispute.status === 'open' && (
+                  <DisputeResolutionDock
+                    canAssist={canAssistDisputes}
+                    canAssignOthers={canAssignOthers}
+                    assigneeId={selectedAssigneeId}
+                    staffMembers={staffMembers}
+                    assignmentLoading={assignmentLoading}
+                    resolutionNotes={resolutionNotes}
+                    resolutionStatus={resolutionStatus}
+                    enforceReportScore={enforceReportScore}
+                    canEnforceReportScore={canEnforceReportScore}
+                    reportedScoreLabel={reportedScoreLabel}
+                    referenceNumber={selectedDispute.reference_number}
+                    onAssigneeChange={handleAssigneeChange}
+                    onStatusChange={(status) => {
+                      setResolutionStatus(status);
+                      if (status === 'rejected') setEnforceReportScore(false);
+                    }}
+                    onNotesChange={setResolutionNotes}
+                    onEnforceReportScoreChange={setEnforceReportScore}
+                    onResolve={() => handleUpdateStatus(selectedDispute.id, resolutionStatus, {
+                      reportId: enforceReportScore && disputedReport?.id ? disputedReport.id : null,
+                    })}
+                  />
+                )}
               </motion.div>
             );
           })() : (

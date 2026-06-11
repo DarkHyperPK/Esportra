@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { BracketMatch } from '@/types/bracketTypes';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
+import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
 import { MapVeto } from '@/components/tournament/MapVeto';
 import { useGraphBracket } from '@/hooks/useGraphBracket';
 import { adaptGraphToBracketMatches, buildCompetitorMapFromNodes, extractTeamIds } from '@/services/bracket/BracketAdapter';
@@ -674,6 +675,10 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     setIsProcessing(false);
     if (r.success) {
       delete scoreDraftRef.current[getRawId(m.id)];
+      invalidateMatchLifecycleQueries(queryClient, {
+        matchId: getRawId(m.id),
+        versionId,
+      });
       toast({ title: '🏆 Score saved!' });
     }
     else {

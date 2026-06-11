@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -36,7 +36,13 @@ import ServerConnectionCard from '@/components/match/ServerConnectionCard';
 import { LiveScoreCardView, useLiveScoreState } from '@/components/match/LiveScoreCard';
 import { VetoHistoryTimeline } from '@/components/tournament/map-veto/VetoHistoryTimeline';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
-import { matchRoomStateQueryKey, useMatchRoomState } from '@/hooks/useMatchRoomState';
+import { useMatchRoomState } from '@/hooks/useMatchRoomState';
+import { useMatchLifecycleInvalidation } from '@/hooks/useMatchLifecycleInvalidation';
+import {
+    isBracketMatchSettled,
+    resolveActiveMatch,
+    toRawMatchId,
+} from '@/utils/matchRoomLifecycle';
 
 const repo = new MatchRepository();
 
@@ -85,15 +91,6 @@ const CaptainMatchPage = () => {
     const [mapVetoMatchId, setMapVetoMatchId] = useState<string | null>(null);
     const [vetoSummaryOpen, setVetoSummaryOpen] = useState(false);
 
-    // Debounced bracket refetch to prevent rapid cascading re-renders from realtime events
-    const bracketRefetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const debouncedBracketInvalidate = useCallback(() => {
-        if (bracketRefetchTimer.current) clearTimeout(bracketRefetchTimer.current);
-        bracketRefetchTimer.current = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
-        }, 1500);
-    }, [queryClient]);
-    useEffect(() => () => { if (bracketRefetchTimer.current) clearTimeout(bracketRefetchTimer.current); }, []);
 
     const { data: tournamentResponse, isLoading: tournamentLoading, isError: tournamentError } = useQuery({
         queryKey: ['tournament-captain-room', slug],
@@ -357,53 +354,45 @@ const CaptainMatchPage = () => {
         checkRoles();
     }, [user, participants, userTeams, teamsLoading, tournament, canManageMatchRoom]);
 
-    // Find active match for the team (prefer URL matchId from notification links)
-    const activeMatch = useMemo(() => {
-        // Organizer mode: use directly fetched match if available
-        if (canManageMatchRoom && urlMatchId && organizerMatch) {
-            return organizerMatch;
-        }
+    const activeMatchResolution = useMemo(
+        () => resolveActiveMatch({
+            matches,
+            userTeamId,
+            urlMatchId,
+            focusMatch: organizerMatch,
+            canManageMatchRoom,
+            isOrganizerMatchView,
+        }),
+        [matches, userTeamId, urlMatchId, organizerMatch, canManageMatchRoom, isOrganizerMatchView],
+    );
 
-        // Fallback to bracket graph data
-        if (!matches.length) {
-            return null;
-        }
+    const activeMatch = activeMatchResolution.activeMatch;
 
-        if (urlMatchId) {
-            const urlMatch = matches.find(m =>
-                m.id === urlMatchId || m.id.replace(/^(db-|wb-|lb-)/, '') === urlMatchId
-            );
-            const isUsersMatch = !!userTeamId && (urlMatch?.team1?.id === userTeamId || urlMatch?.team2?.id === userTeamId);
-            if (urlMatch && (canManageMatchRoom || isUsersMatch)) {
-                return urlMatch;
-            }
-        }
+    useEffect(() => {
+        if (!activeMatchResolution.shouldUnpinUrl || !slug) return;
+        navigate(`/tournaments/${slug}/captain-match`, { replace: true });
+    }, [activeMatchResolution.shouldUnpinUrl, slug, navigate]);
 
-        if (!userTeamId) {
-            return null;
-        }
+    const activeMatchRawId = activeMatch ? toRawMatchId(activeMatch.id) : undefined;
 
-        // Find matches involving this team
-        const teamMatches = matches.filter(m =>
-            m.team1?.id === userTeamId || m.team2?.id === userTeamId
-        );
+    const lifecycleScope = useMemo(
+        () => ({
+            matchId: activeMatchRawId ?? urlMatchId,
+            versionId: isOrganizerMatchView
+                ? organizerVersionId
+                : (activeMatch?.stageId ?? bracketVersions?.[0]?.id),
+        }),
+        [
+            activeMatchRawId,
+            urlMatchId,
+            isOrganizerMatchView,
+            organizerVersionId,
+            activeMatch?.stageId,
+            bracketVersions,
+        ],
+    );
 
-        // Sort by round/match number to find the earliest upcoming match
-        // Priority: earliest pending match > earliest in_progress match > null
-        const sortedTeamMatches = teamMatches.sort((a, b) => {
-            if (a.round !== b.round) return a.round - b.round;
-            return (a.matchNumber || 0) - (b.matchNumber || 0);
-        });
-
-        // Find the first match that is pending or in_progress (upcoming/active match)
-        const nextMatch = sortedTeamMatches.find(m =>
-            m.status === 'pending' || m.status === 'in_progress'
-        );
-        return nextMatch || null;
-
-    }, [canManageMatchRoom, userTeamId, matches, urlMatchId, organizerMatch]);
-
-    const activeMatchRawId = activeMatch?.id?.replace(/^(db-|wb-|lb-)/, '') ?? undefined;
+    const { invalidateDebounced, invalidateNow } = useMatchLifecycleInvalidation(lifecycleScope);
 
     const {
         roomState,
@@ -571,8 +560,7 @@ const CaptainMatchPage = () => {
     const { reports: activeMatchReports } = useMatchResultReport(activeMatchRawId, undefined, {
         subscribeRealtime: false,
     });
-    const matchSettled = activeMatch?.status === 'completed'
-        && (activeMatch?.winner_id || activeMatch?.team1_score != null);
+    const matchSettled = isBracketMatchSettled(activeMatch, roomState?.phase ?? null);
     const hasDisputedReport = !matchSettled
         && (activeMatchReports?.some((r: { status: string }) => r.status === 'disputed') ?? false);
     // Track which game numbers are disputed — blocks re-submission for those specific games
@@ -645,21 +633,20 @@ const CaptainMatchPage = () => {
 
     // Bracket updates → debounced invalidation (structural changes)
     useBracketRealtime({
-        versionId: isOrganizerMatchView
-            ? (organizerVersionId ?? null)
-            : (bracketVersions?.[0]?.id ?? null),
-        enabled: !!activeMatch?.id,
+        versionId: lifecycleScope.versionId ?? null,
+        enabled: Boolean(lifecycleScope.versionId),
         onMatchUpdated: () => {
-            debouncedBracketInvalidate();
+            invalidateDebounced();
         },
     });
 
     // Match lifecycle events → single MatchHub subscription + coordinated invalidation
     useMatchRoomRealtime({
-        matchId: activeMatchRawId ?? null,
-        enabled: !!activeMatchRawId,
-        debouncedBracketInvalidate,
+        matchId: activeMatchRawId ?? lifecycleScope.matchId ?? null,
+        versionId: lifecycleScope.versionId,
+        enabled: Boolean(activeMatchRawId || lifecycleScope.matchId),
         onStatusChanged: () => {
+            invalidateNow();
             fetchMatchGames();
             determineMap();
         },
@@ -667,7 +654,11 @@ const CaptainMatchPage = () => {
             fetchMatchGames();
         },
         onReportAccepted: () => {
+            invalidateNow();
             fetchMatchGames();
+        },
+        onDisputeResolved: () => {
+            invalidateNow();
         },
         onGoingLive: liveScore.handleGoingLive,
         onScoreUpdated: liveScore.handleScoreUpdated,
@@ -681,17 +672,15 @@ const CaptainMatchPage = () => {
         enabled: !!activeMatchRawId && !mapVetoOpen,
         onStateUpdate: () => {
             determineMap();
-            queryClient.invalidateQueries({ queryKey: ['match-veto', activeMatch?.id] });
-            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
+            invalidateNow();
         },
         onComplete: () => {
             determineMap();
-            queryClient.invalidateQueries({ queryKey: ['match-veto', activeMatch?.id] });
-            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
+            invalidateNow();
         },
         onReset: () => {
             determineMap();
-            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
+            invalidateNow();
         },
     });
 
@@ -1008,6 +997,18 @@ const CaptainMatchPage = () => {
 
                                     {/* Actions — progressively unlocked */}
                                     <div className="space-y-2">
+                                        {matchSettled && (
+                                            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+                                                <Trophy className="w-3.5 h-3.5 shrink-0" />
+                                                <span>
+                                                    Match complete
+                                                    {activeMatch.winner?.name
+                                                        ? ` — ${activeMatch.winner.name} wins`
+                                                        : ''}.
+                                                </span>
+                                            </div>
+                                        )}
+
                                         {/* Disputed result notice */}
                                         {hasDisputedReport && (
                                             <div className="flex items-start gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
@@ -1035,7 +1036,7 @@ const CaptainMatchPage = () => {
                                                 matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                                                 onSuccess={() => {
                                                     refetchBracket();
-                                                    queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
+                                                    invalidateNow();
                                                 }}
                                             />
                                         )}

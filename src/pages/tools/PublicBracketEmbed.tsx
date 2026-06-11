@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
@@ -7,6 +7,7 @@ import { adaptPublicBracketPayload, normalizeToolBracketResponse } from "./publi
 
 const PublicBracketEmbed = () => {
   const { token } = useParams();
+  const [hoveredTeamId, setHoveredTeamId] = useState<string | null>(null);
   const { data, isLoading, error } = useQuery({
     queryKey: ["tool-bracket-embed", token],
     queryFn: async () => {
@@ -44,6 +45,8 @@ const PublicBracketEmbed = () => {
         matches={matches}
         activeFilter={{ type: "all" }}
         disableAnimations
+        hoveredTeamId={hoveredTeamId}
+        onTeamHover={setHoveredTeamId}
         cardWidth={260}
         cardHeight={86}
         roundGap={64}

@@ -62,11 +62,7 @@ const TournamentsList = () => {
         const raw = await apiClient.get<any>(`/api/organizations/${organizationId}/tournaments`);
         const tournamentsData = normalizeRows(raw);
         const mapped = tournamentsData.map((tournament: any) => {
-          let displayStatus = tournament.status || "draft";
-          if (["open", "closed"].includes(displayStatus) && tournament.start_date) {
-            const startDate = new Date(tournament.start_date);
-            if (startDate <= new Date()) displayStatus = "ongoing";
-          }
+          const displayStatus = tournament.status || "draft";
 
           return {
             id: tournament.id,

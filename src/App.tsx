@@ -162,6 +162,7 @@ const Leaderboards = lazyWithRetry(() => import('./pages/Leaderboards'));
 const PlayerHistory = lazyWithRetry(() => import('./pages/player/History'));
 const VerificationStatus = lazyWithRetry(() => import('./pages/VerificationStatus'));
 const OrganizerDisputesPage = lazyWithRetry(() => import('./pages/organizer/Disputes'));
+const TournamentDisputesPage = lazyWithRetry(() => import('./pages/organizer/TournamentDisputesPage'));
 const MapVetoToken = lazyWithRetry(() => import('./pages/tournaments/MapVetoToken'));
 const PublicBracketList = lazyWithRetry(() => import('./pages/tools/PublicBracketList'));
 const PublicBracketBuilder = lazyWithRetry(() => import('./pages/tools/PublicBracketBuilder'));
@@ -178,6 +179,19 @@ const SteamCallback       = lazyWithRetry(() => import("./pages/auth/SteamCallba
 const SettingsRedirect = () => {
   const location = useLocation();
   return <Navigate to={`/account/settings${location.search}`} replace />;
+};
+
+const DisputeIdToQueryRedirect = () => {
+  const { slug, disputeId } = useParams<{ slug: string; disputeId: string }>();
+  if (!slug || !disputeId) {
+    return <Navigate to="/organizer/tournaments" replace />;
+  }
+  return (
+    <Navigate
+      to={`/organizer/tournament/${encodeURIComponent(slug)}/disputes?dispute=${encodeURIComponent(disputeId)}`}
+      replace
+    />
+  );
 };
 
 const AppContent = React.memo(() => {
@@ -666,6 +680,15 @@ const AppContent = React.memo(() => {
                 <Route path="/organizer/tournament/:slug/manage-bracket/:stageId" element={
                   <ProtectedRoute allowedRoles={['organizer']} allowStaffForTournamentParam="slug">
                     <ManageBracketPage />
+                  </ProtectedRoute>
+                } />
+                <Route
+                  path="/organizer/tournament/:slug/disputes/:disputeId"
+                  element={<DisputeIdToQueryRedirect />}
+                />
+                <Route path="/organizer/tournament/:slug/disputes" element={
+                  <ProtectedRoute allowedRoles={['organizer']} allowStaffForTournamentParam="slug">
+                    <TournamentDisputesPage />
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/disputes" element={

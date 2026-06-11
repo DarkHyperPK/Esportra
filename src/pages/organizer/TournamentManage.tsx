@@ -2,7 +2,7 @@
 // This file is for managing a single tournament (participants, brackets, settings, etc.)
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams, Navigate } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
 import { OrganizerTeamCard } from '@/components/organizer/OrganizerTeamCard';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -72,9 +72,7 @@ import {
 import { getEffectiveGameFeatures, getParticipantMode, isBattleRoyaleTournament, getBRConfig, getGameByName, getPersistedTournamentFormat } from '@/utils/gameFeatures';
 import BanManagement from '@/components/organizer/BanManagement';
 import PaymentManagement from '@/components/organizer/PaymentManagement';
-import DisputeCenter from '@/components/organizer/DisputeCenter';
 import { useOrganizerDisputeUnread } from '@/hooks/useOrganizerDisputeUnread';
-import MatchChecker from '@/components/organizer/MatchChecker';
 import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnouncementPanel';
 // Staff management has moved to Organization Settings (OrganizationStaffManager)
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
@@ -309,6 +307,10 @@ const TournamentDashboard = () => {
   const prevTabRef = React.useRef(0);
 
   const handleTabChange = (newTab: string) => {
+    if (newTab === 'disputes' && slug) {
+      navigate(`/organizer/tournament/${slug}/disputes`);
+      return;
+    }
     const newIndex = TAB_ORDER.indexOf(newTab);
     const oldIndex = prevTabRef.current;
 
@@ -2236,28 +2238,9 @@ const TournamentDashboard = () => {
                 </TabsContent>
               )}
 
-              {activeTab === 'disputes' && (
+              {activeTab === 'disputes' && slug && (
                 <TabsContent value="disputes" forceMount key="disputes">
-                  <TabTransition direction={direction}>
-                    {!canAssistDisputes ? (
-                      <PermissionNotice message="Your staff role does not include dispute assistance permissions." />
-                    ) : (
-                      tournament?.id && user?.id && (
-                        <>
-                          <DisputeCenter
-                            key={tournament.id}
-                            tournamentId={tournament.id}
-                            organizerId={tournament.organizer_id}
-                            currentUserId={user.id}
-                            onUnreadChange={refreshDisputeUnread}
-                          />
-                          <div className="mt-6">
-                            <MatchChecker tournamentId={tournament.id} />
-                          </div>
-                        </>
-                      )
-                    )}
-                  </TabTransition>
+                  <Navigate to={`/organizer/tournament/${slug}/disputes`} replace />
                 </TabsContent>
               )}
 

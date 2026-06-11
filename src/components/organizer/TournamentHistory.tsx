@@ -33,10 +33,8 @@ export default function TournamentHistory() {
                 // Map DB status to filter groups, inferring 'ongoing' from dates
                 let computedStatus: TournamentFilterStatus = 'completed';
                 const s = t.status as string;
-                const startDate = new Date(t.start_date);
-                const isStarted = startDate <= new Date();
 
-                if (s === 'ongoing' || (['open', 'closed'].includes(s) && isStarted)) {
+                if (s === 'ongoing') {
                     computedStatus = 'active';
                 } else if (['draft', 'published', 'open', 'closed'].includes(s)) {
                     computedStatus = 'upcoming';

@@ -11,6 +11,7 @@ import {
   type MatchScorePayload,
 } from '@/hooks/useMatchRealtime';
 import { matchRoomStateQueryKey } from '@/hooks/useMatchRoomState';
+import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
 
 export const matchCheckinsQueryKey = (matchId: string | undefined) =>
   ['match-checkins', matchId] as const;
@@ -23,6 +24,7 @@ export const matchResultReportsQueryKey = (matchId: string | undefined) =>
 
 interface Options {
   matchId: string | null | undefined;
+  versionId?: string | null;
   enabled?: boolean;
   onStatusChanged?: () => void;
   onReportSubmitted?: () => void;
@@ -32,11 +34,11 @@ interface Options {
   onGoingLive?: (payload: GoingLivePayload) => void;
   onScoreUpdated?: (payload: MatchScorePayload) => void;
   onMapResult?: (payload: MapResultPayload) => void;
-  debouncedBracketInvalidate?: () => void;
 }
 
 export function useMatchRoomRealtime({
   matchId,
+  versionId,
   enabled = true,
   onStatusChanged,
   onReportSubmitted,
@@ -46,9 +48,12 @@ export function useMatchRoomRealtime({
   onGoingLive,
   onScoreUpdated,
   onMapResult,
-  debouncedBracketInvalidate,
 }: Options) {
   const queryClient = useQueryClient();
+
+  const invalidateLifecycle = useCallback(() => {
+    invalidateMatchLifecycleQueries(queryClient, { matchId, versionId });
+  }, [queryClient, matchId, versionId]);
 
   const invalidateRoomState = useCallback(() => {
     if (!matchId) return;
@@ -78,15 +83,15 @@ export function useMatchRoomRealtime({
       invalidateCheckins();
       invalidateProposals();
       invalidateRoomState();
-      debouncedBracketInvalidate?.();
+      invalidateLifecycle();
     },
     onTimeProposalUpdated: () => {
       invalidateProposals();
       invalidateRoomState();
-      debouncedBracketInvalidate?.();
+      invalidateLifecycle();
     },
     onStatusChanged: () => {
-      debouncedBracketInvalidate?.();
+      invalidateLifecycle();
       onStatusChanged?.();
       invalidateCheckins();
       invalidateProposals();
@@ -94,27 +99,25 @@ export function useMatchRoomRealtime({
       invalidateReports();
     },
     onReportSubmitted: () => {
-      debouncedBracketInvalidate?.();
+      invalidateLifecycle();
       onReportSubmitted?.();
       invalidateReports();
       invalidateRoomState();
     },
     onReportAccepted: () => {
-      debouncedBracketInvalidate?.();
+      invalidateLifecycle();
       onReportAccepted?.();
       invalidateReports();
       invalidateRoomState();
-      void queryClient.invalidateQueries({ queryKey: ['bracket'] });
-      void queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
     },
     onReportDisputed: () => {
-      debouncedBracketInvalidate?.();
+      invalidateLifecycle();
       onReportDisputed?.();
       invalidateReports();
       invalidateRoomState();
     },
     onDisputeResolved: () => {
-      debouncedBracketInvalidate?.();
+      invalidateLifecycle();
       onDisputeResolved?.();
       invalidateReports();
       invalidateRoomState();

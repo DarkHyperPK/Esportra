@@ -125,3 +125,30 @@ export function getPrimaryDisputeReport(reports: DisputeReport[]): DisputeReport
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   )[0];
 }
+
+/** Original score report filed before the counter-claim (excludes disputer's team). */
+export function getInitialReport(
+  reports: DisputeReport[],
+  matchDispute?: MatchDisputeEvidence | null,
+): DisputeReport | null {
+  if (!reports.length) return null;
+
+  const disputerTeamId = matchDispute?.disputed_by_team_id;
+  if (disputerTeamId) {
+    const fromReporter = reports.find((r) => r.reported_by_team_id !== disputerTeamId);
+    if (fromReporter) return fromReporter;
+  }
+
+  const accepted = reports.find((r) => r.status === 'accepted');
+  if (accepted) return accepted;
+
+  const pending = reports.find((r) => r.status === 'pending');
+  if (pending) return pending;
+
+  const disputed = reports.find((r) => r.status === 'disputed');
+  if (disputed) return disputed;
+
+  return [...reports].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  )[0];
+}

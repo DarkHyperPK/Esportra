@@ -44,6 +44,11 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
     hoveredTeamId,
     onTeamHover,
 }) => {
+    const isDoubleElimination = useMemo(() => {
+        if (isSingleElimination) return false;
+        return matches.some((match) => match.bracketSide === 'losers');
+    }, [isSingleElimination, matches]);
+
     // Helper to get raw ID (remove 'db-', 'wb-', 'lb-' prefixes if present)
     const getRawId = (id: string) => id.replace(/^(db-|wb-|lb-|source-)/, '');
 
@@ -227,6 +232,12 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
         return false;
     };
 
+    const matchHasHoveredTeam = (match: BracketMatch) =>
+        Boolean(
+            hoveredTeamId
+            && (match.team1?.id === hoveredTeamId || match.team2?.id === hoveredTeamId),
+        );
+
     const renderMatchCards = () => matches.map(match => {
         if (!match) return null;
         if (!isMatchVisible(match)) return null;
@@ -247,6 +258,7 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
                 hasProofs={hasProofsMap[getRawId(String(match.id))]?.length > 0}
                 hoveredTeamId={hoveredTeamId}
                 onTeamHover={onTeamHover}
+                isDoubleElimination={isDoubleElimination}
             />
         );
 
@@ -276,6 +288,12 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
         <div
             className="relative"
             style={{ width: totalWidth, height: filteredListPositions ? filteredListPositions.height : totalHeight, minWidth: '100%' }}
+            onMouseLeave={() => onTeamHover?.(null)}
+            onMouseEnter={(e) => {
+                if (e.target === e.currentTarget) {
+                    onTeamHover?.(null);
+                }
+            }}
         >
             {/* Connector Lines (SVG) — only in full bracket view */}
             {activeFilter.type === 'all' && (
@@ -297,16 +315,17 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
                         const endY = targetPos.y + cardHeight / 2;
                         const midX = Math.max(startX + 8, Math.min(startX + connectorInset, endX - 8));
 
+                        const onTeamPath = matchHasHoveredTeam(match);
                         return (
                             <path
                                 key={`edge-w-${match.id}`}
                                 d={`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`}
                                 fill="none"
-                                stroke="#cbd5e1"
+                                stroke={onTeamPath ? '#f43f5e' : '#cbd5e1'}
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                strokeWidth="1.5"
-                                className="opacity-55"
+                                strokeWidth={onTeamPath ? 2.5 : 1.5}
+                                className={onTeamPath ? 'opacity-90' : 'opacity-55'}
                             />
                         );
                     })}

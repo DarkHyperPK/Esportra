@@ -14,6 +14,7 @@ import Footer from '@/components/Footer';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { useQueryClient } from '@tanstack/react-query';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
+import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
 
 const ManageBracketPage = () => {
     const { slug, stageId } = useParams<{ slug: string; stageId: string }>();
@@ -175,8 +176,7 @@ const ManageBracketPage = () => {
             toast({ title: 'BYE Advanced', description: 'Team has been advanced!' });
 
             // Invalidate to sync with server truth
-            await queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
-            await queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+            invalidateMatchLifecycleQueries(queryClient, { matchId, versionId });
         } catch (error: any) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         }

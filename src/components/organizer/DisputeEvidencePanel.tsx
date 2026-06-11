@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Copy, Shield, ChevronDown } from 'lucide-react';
+import { Copy, ChevronDown } from 'lucide-react';
 import { FullScoreboard } from '@/components/tournament/FullScoreboard';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -170,9 +170,8 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
       {primaryReport && (
         <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 overflow-hidden">
           <div className="px-4 py-3 border-b border-rose-500/10 flex items-center justify-between gap-3 flex-wrap">
-            <label className="text-sm font-semibold text-white flex items-center gap-2">
-              <Shield className="h-4 w-4 text-rose-400" />
-              {reporterTeamName ? `Reported by ${reporterTeamName}` : 'Initial reported result'}
+            <label className="text-sm font-semibold text-white">
+              {reporterTeamName ? `Initial report — ${reporterTeamName}` : 'Initial reported result'}
             </label>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="outline" className="text-[10px] border-white/[0.06]">
@@ -213,9 +212,8 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
       {showDisputingSide && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 overflow-hidden">
           <div className="px-4 py-3 border-b border-amber-500/10 flex items-center justify-between gap-3 flex-wrap">
-            <label className="text-sm font-semibold text-white flex items-center gap-2">
-              <Shield className="h-4 w-4 text-amber-400" />
-              {disputingTeamName ? `Disputed by ${disputingTeamName}` : 'Disputing team evidence'}
+            <label className="text-sm font-semibold text-white">
+              {disputingTeamName ? `Dispute claim — ${disputingTeamName}` : 'Dispute claim evidence'}
             </label>
             <div className="flex items-center gap-2 flex-wrap">
               {matchDispute?.disputed_by_name && (

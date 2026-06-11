@@ -48,6 +48,7 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
   const { id, token } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [hoveredTeamId, setHoveredTeamId] = useState<string | null>(null);
   const { toast } = useToast();
   const [selected, setSelected] = useState<BracketMatch | null>(null);
   const [team1Score, setTeam1Score] = useState("0");
@@ -250,6 +251,8 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
             activeFilter={{ type: "all" }}
             disableAnimations
             onMatchClick={mode === "owner" ? selectMatch : undefined}
+            hoveredTeamId={hoveredTeamId}
+            onTeamHover={setHoveredTeamId}
             cardWidth={260}
             cardHeight={86}
             roundGap={64}

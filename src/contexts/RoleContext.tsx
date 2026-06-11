@@ -261,6 +261,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     if (!user) {
       setCurrentRole('casual');
       setIsLoading(false);
+      localStorage.removeItem('sessionRole');
       return;
     }
 
