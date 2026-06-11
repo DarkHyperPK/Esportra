@@ -434,6 +434,54 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                         </div>
                     )}
 
+                    {/* Kill cap & tiebreaker — tournament-wide scoring rules */}
+                    <div className="space-y-3">
+                        <div className="w-full h-px bg-white/5 my-6" />
+                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Kill Point Cap</Label>
+                        <Select
+                            value={data.brKillCap === null ? '0' : String(data.brKillCap)}
+                            onValueChange={(v) => {
+                                const val = parseInt(v);
+                                updateData({ brKillCap: val === 0 ? null : val });
+                            }}
+                        >
+                            <SelectTrigger className="w-full font-bold tracking-tight">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="0">No Cap</SelectItem>
+                                <SelectItem value="3">3 kills per game</SelectItem>
+                                <SelectItem value="5">5 kills per game</SelectItem>
+                                <SelectItem value="6">6 kills per game</SelectItem>
+                                <SelectItem value="8">8 kills per game</SelectItem>
+                                <SelectItem value="10">10 kills per game</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p className="text-sm text-gray-400">
+                            Maximum kill points a unit can earn per game. Applies to all stages.
+                        </p>
+                    </div>
+
+                    <div className="space-y-3">
+                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Tiebreaker Rule</Label>
+                        <Select
+                            value={data.brTiebreaker}
+                            onValueChange={(v) => updateData({ brTiebreaker: v as typeof data.brTiebreaker })}
+                        >
+                            <SelectTrigger className="w-full font-bold tracking-tight">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="most_wins">Most Wins (1st places)</SelectItem>
+                                <SelectItem value="most_kills">Most Total Kills</SelectItem>
+                                <SelectItem value="head_to_head">Best Placement Average</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p className="text-sm text-gray-400">
+                            How to break ties when units have equal total points.
+                        </p>
+                    </div>
+
                     {/* Max Participants for BR — label and options adapt to solo/duo/squad */}
                     {(() => {
                         const ts = data.teamSize ?? 1;
@@ -475,6 +523,14 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                             </div>
                         );
                     })()}
+
+                    {/* Stages configured after creation */}
+                    <div className="p-4 bg-rose-500/10 rounded-none border border-rose-500/30">
+                        <div className="font-medium text-white">Tournament Stages</div>
+                        <p className="text-sm text-gray-400 mt-1">
+                            Lobby structure (single lobby, groups, qualifiers, finals) is configured after creating the tournament in the Stages tab.
+                        </p>
+                    </div>
 
                     {/* Default lobby size */}
                     <div className="space-y-3">

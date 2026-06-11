@@ -52,19 +52,13 @@ export function getStageBRConfig(stage: StageLike): BRStageConfig | null {
 function resolveScoringPreset(
   gameName: string,
   settings: TournamentSettingsLike,
-  stageOverride: BRStageConfig | null,
+  _stageOverride: BRStageConfig | null,
   catalogBrConfig?: BRConfig | null,
 ): BRScoringPreset {
   const catalog = catalogBrConfig ?? getBRConfig(gameName);
-  const stageScoring = stageOverride?.scoring;
-
-  if (stageScoring?.custom) {
-    return stageScoring.custom;
-  }
 
   const presetKey =
-    stageScoring?.presetKey
-    ?? (typeof settings?.brScoringPreset === 'string' ? settings.brScoringPreset : null)
+    (typeof settings?.brScoringPreset === 'string' ? settings.brScoringPreset : null)
     ?? catalog?.defaultPreset
     ?? 'custom';
 
@@ -77,12 +71,9 @@ function resolveScoringPreset(
 
 function resolveKillCap(
   settings: TournamentSettingsLike,
-  stageOverride: BRStageConfig | null,
+  _stageOverride: BRStageConfig | null,
   preset: BRScoringPreset,
 ): number | null {
-  if (stageOverride?.scoring?.killCap !== undefined && stageOverride.scoring.killCap !== null) {
-    return stageOverride.scoring.killCap;
-  }
   if (settings?.brKillCap !== undefined && settings.brKillCap !== null) {
     return settings.brKillCap as number;
   }

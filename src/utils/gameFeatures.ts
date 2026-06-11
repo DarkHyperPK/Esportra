@@ -68,6 +68,7 @@ export interface EsportsGame {
   aliases?: string[];
   tournamentCapabilities?: TournamentCapabilities;
   logo: string;
+  banner?: string | null;
   features: GameFeatures;
   brConfig?: BRConfig;
 }
@@ -150,6 +151,11 @@ export function listCatalogGames(): EsportsGame[] {
 export function getGameLogo(gameName: string): string {
   const game = getGameByName(gameName);
   return resolveGameLogoUrl(gameName, game?.logo);
+}
+
+/** Canonical HTTPS banner URL from the active game catalog. */
+export function getGameBannerUrl(gameName: string): string | null {
+  return getGameByName(gameName)?.banner ?? null;
 }
 
 /** Get feature flags for a game (returns defaults if game not found) */

@@ -24,6 +24,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import {
   AlertTriangle,

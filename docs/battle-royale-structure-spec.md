@@ -1,6 +1,9 @@
 # Battle Royale Tournament Structure — Implementation Spec
 
-**Version:** lean v1 (shipped) → backend parity → v2 presets  
+> **SUPERSEDED** — This document describes the lean v1 engine and deferred V2 appendix.  
+> **Use instead:** [`docs/battle-royale-pro-structure-spec.md`](./battle-royale-pro-structure-spec.md) — the gold-standard pro structure spec covering Group Rotation, Multi-Lobby Cut/Gauntlet, hybrid macro-structure, seed-group/lobby separation, stage-global leaderboards, and game-agnostic catalog-driven context.
+
+**Version:** lean v1 (shipped) → backend parity → v2 presets *(historical)*  
 **Platform:** Frag & Book tournament platform  
 **Goal:** One flexible BR structure that works for every battle royale game, with organizer customization. Game-specific esports formats (PUBG group-vs-group, etc.) come later as presets on top of the same core.
 

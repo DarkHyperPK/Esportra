@@ -176,6 +176,19 @@ const EditTournament = () => {
         mapVetoEnabled: effectiveFeatures.mapVeto
           ? ((tournamentData.settings as any)?.mapVetoEnabled ?? true)
           : false,
+
+        // Battle Royale settings (from tournament.settings JSON)
+        ...(persistedFormat === 'battle_royale' ? {
+          brGameCount: (tournamentData.settings as any)?.brGameCount
+            ?? (tournamentData.settings as any)?.brDefaultGameCount
+            ?? DEFAULT_WIZARD_DATA.brGameCount,
+          brScoringPreset: (tournamentData.settings as any)?.brScoringPreset ?? DEFAULT_WIZARD_DATA.brScoringPreset,
+          brCustomScoring: (tournamentData.settings as any)?.brCustomScoring ?? null,
+          brKillCap: (tournamentData.settings as any)?.brKillCap ?? null,
+          brTiebreaker: (tournamentData.settings as any)?.brTiebreaker ?? DEFAULT_WIZARD_DATA.brTiebreaker,
+          brDefaultLobbySize: (tournamentData.settings as any)?.brDefaultLobbySize ?? DEFAULT_WIZARD_DATA.brDefaultLobbySize,
+          brDefaultMapMode: (tournamentData.settings as any)?.brDefaultMapMode ?? DEFAULT_WIZARD_DATA.brDefaultMapMode,
+        } : {}),
       };
 
       console.log('[EditTournament] Mapped assistedMatchReporting:', mappedData.assistedMatchReporting);

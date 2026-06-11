@@ -82,20 +82,15 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
             icon: <Trophy className="w-5 h-5" />,
             items: isBR ? [
                 { label: 'Tournament Type', value: 'Points-Based (Battle Royale)' },
-                { label: 'Structure', value: data.brMultiStage ? 'Multi-Stage (Groups to Finals)' : 'Single Lobby' },
-                { label: data.brMultiStage ? 'Group Stage Games' : 'Lobby Games', value: `${data.brGameCount} games` },
+                { label: 'Team Format', value: teamSizeLabel },
+                { label: 'Games per Stage', value: `${data.brGameCount} games` },
                 { label: 'Scoring', value: data.brScoringPreset === 'custom' ? 'Custom' : (brConfig?.scoringPresets?.[data.brScoringPreset]?.name || data.brScoringPreset) },
                 { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
+                { label: 'Tiebreaker', value: data.brTiebreaker === 'most_wins' ? 'Most Wins' : data.brTiebreaker === 'most_kills' ? 'Most Kills' : 'Best Placement' },
                 { label: 'Max Participants', value: data.maxTeams ? `${data.maxTeams} ${maxParticipantsUnit}` : 'Unlimited' },
                 { label: 'Default Lobby Size', value: `${data.brDefaultLobbySize} per lobby` },
                 ...(gameHasBRMaps(data.game) ? [{ label: 'Default Map Mode', value: data.brDefaultMapMode.replace('_', ' ') }] : []),
-                { label: 'Team Size', value: teamSizeLabel },
-                ...(data.brMultiStage ? [
-                    { label: 'Lobby Size', value: `${data.brLobbySize} teams per group` },
-                    { label: 'Groups', value: data.maxTeams ? `${Math.ceil(data.maxTeams / data.brLobbySize)} groups` : 'TBD' },
-                    { label: 'Advancement', value: `Top ${data.brAdvancementCount} per group` },
-                    { label: 'Finals Games', value: `${data.brFinalsGameCount} games` },
-                ] : []),
+                { label: 'Stages', value: 'Configure after creation in Stages tab' },
             ] : [
                 { label: 'Total Stages', value: `${data.stages.length} stage(s)` },
                 ...data.stages.map((stage, i) => ({
@@ -154,12 +149,6 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                     : []),
                 ...(features.assistedReporting
                     ? [{ label: 'Assisted Match Reporting', value: data.assistedMatchReporting ? 'Enabled' : 'Disabled' }]
-                    : []),
-                ...(isBR
-                    ? [
-                        { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
-                        { label: 'Tiebreaker', value: data.brTiebreaker === 'most_wins' ? 'Most Wins' : data.brTiebreaker === 'most_kills' ? 'Most Kills' : 'Best Placement' },
-                    ]
                     : []),
                 ...(!features.mapVeto && !features.assistedReporting && !isBR
                     ? [{ label: 'Game Settings', value: 'No game-specific settings' }]

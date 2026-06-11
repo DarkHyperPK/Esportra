@@ -54,19 +54,25 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!userId || !hub || authLoading || listenersAttached.current) return;
 
-    const onNewNotification = (payload: Record<string, string>) => {
+    const onNewNotification = (payload: Record<string, unknown>) => {
+      const data = payload.data as Record<string, unknown> | undefined;
       const stub: Notification = {
-        id: payload.id ?? crypto.randomUUID(),
+        id: typeof payload.id === 'string' ? payload.id : crypto.randomUUID(),
         user_id: userId,
-        type: payload.type ?? 'general',
-        title: payload.title ?? 'New Notification',
-        message: payload.message ?? '',
-        link: payload.link,
+        type: typeof payload.type === 'string' ? payload.type : 'general',
+        title: typeof payload.title === 'string' ? payload.title : 'New Notification',
+        message: typeof payload.message === 'string' ? payload.message : '',
+        link: typeof payload.link === 'string' ? payload.link : undefined,
+        data,
         is_read: false,
         created_at: new Date().toISOString(),
       };
       setNotifications(prev => [stub, ...prev]);
       setUnreadCount(prev => prev + 1);
+
+      if (stub.type === 'tournament_invite') {
+        void fetchNotifications();
+      }
     };
 
     const onNewNotificationRead = (notificationId: string) => {
@@ -93,7 +99,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       hub.off('AllRead', onAllRead);
       listenersAttached.current = false;
     };
-  }, [userId, hub, authLoading]);
+  }, [userId, hub, authLoading, fetchNotifications]);
 
   useEffect(() => {
     if (authLoading) return;

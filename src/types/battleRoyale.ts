@@ -33,6 +33,7 @@ export interface BRMapConfig {
   fixedMap: string | null;
 }
 
+/** @deprecated Scoring is tournament-wide only — do not write stage scoring overrides. */
 export interface BRStageScoringOverride {
   presetKey?: string;
   custom?: BRScoringPreset | null;
@@ -46,6 +47,7 @@ export interface BRAdvancementConfig {
 }
 
 export interface BRStageConfig {
+  /** @deprecated Tournament wizard owns scoring — ignored at runtime */
   scoring?: BRStageScoringOverride | null;
   gameCount?: number | null;
   advancement?: BRAdvancementConfig | null;

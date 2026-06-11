@@ -139,16 +139,6 @@ export const useTournamentWizard = (
     const validateCurrentStep = useCallback(() => {
         const result = validateStep(currentStep, data);
 
-        // BR multi-stage: enforce advancement × groups ≤ lobby size
-        if (currentStep === 2 && data.tournamentType === 'battle_royale' && data.brMultiStage && data.maxTeams > 0) {
-            const groupCount = Math.ceil(data.maxTeams / data.brLobbySize);
-            const totalQualified = data.brAdvancementCount * groupCount;
-            if (totalQualified > data.brLobbySize) {
-                result.valid = false;
-                result.errors['brAdvancementCount'] = `${totalQualified} qualified teams exceeds finals lobby size of ${data.brLobbySize}. Reduce advancement count or increase lobby size.`;
-            }
-        }
-
         // Map veto games require an exact map pool size (e.g. Valorant/CS2 = 7, R6 = 9)
         if (currentStep === 2 && data.game) {
             const modeFeatures = getEffectiveGameFeatures(data.game, data.gameMode);
@@ -282,12 +272,6 @@ export const useTournamentWizard = (
                             brDefaultLobbySize: data.brDefaultLobbySize,
                             brDefaultGameCount: data.brGameCount,
                             brDefaultMapMode: data.brDefaultMapMode,
-                            brMultiStage: data.brMultiStage,
-                            ...(data.brMultiStage ? {
-                                brLobbySize: data.brLobbySize,
-                                brAdvancementCount: data.brAdvancementCount,
-                                brFinalsGameCount: data.brFinalsGameCount,
-                            } : {}),
                         } : {}),
                     },
                 };
@@ -300,41 +284,9 @@ export const useTournamentWizard = (
 
                 // Stage sync — single PUT replaces 3 sequential Supabase calls (delete/upsert/insert)
                 const stagesToSync = (() => {
-                    const defaultBrLobbySize = data.brDefaultLobbySize || data.brLobbySize || data.maxTeams;
-                    if (data.tournamentType === 'battle_royale' && data.brMultiStage) {
-                        return [
-                            {
-                                id: null,
-                                name: 'Group Stage',
-                                format: 'battle_royale',
-                                stageOrder: 1,
-                                bestOf: 1,
-                                capacity: data.brLobbySize,
-                                advancementCount: data.brAdvancementCount,
-                            },
-                            {
-                                id: null,
-                                name: 'Finals',
-                                format: 'battle_royale',
-                                stageOrder: 2,
-                                bestOf: 1,
-                                capacity: defaultBrLobbySize,
-                                advancementCount: null,
-                            },
-                        ];
-                    }
+                    // BR stages are configured post-create via the stage setup wizard
                     if (data.tournamentType === 'battle_royale') {
-                        return [
-                            {
-                                id: null,
-                                name: 'Main Event',
-                                format: 'battle_royale',
-                                stageOrder: 1,
-                                bestOf: 1,
-                                capacity: defaultBrLobbySize,
-                                advancementCount: null,
-                            },
-                        ];
+                        return [];
                     }
                     return data.stages.map(s => ({
                         id:               s.id || null,
@@ -347,7 +299,8 @@ export const useTournamentWizard = (
                     }));
                 })();
 
-                if (stagesToSync.length > 0 || initialData?.stages) {
+                // BR stages are managed in the organizer Stages tab — never sync from wizard on update
+                if (data.tournamentType !== 'battle_royale' && (stagesToSync.length > 0 || initialData?.stages)) {
                     await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
                         stages: stagesToSync,
                     });
@@ -419,48 +372,13 @@ export const useTournamentWizard = (
                             brDefaultLobbySize: data.brDefaultLobbySize,
                             brDefaultGameCount: data.brGameCount,
                             brDefaultMapMode: data.brDefaultMapMode,
-                            brMultiStage: data.brMultiStage,
-                            ...(data.brMultiStage ? {
-                                brLobbySize: data.brLobbySize,
-                                brAdvancementCount: data.brAdvancementCount,
-                                brFinalsGameCount: data.brFinalsGameCount,
-                            } : {}),
                         } : {}),
                     },
                     // Backend handles stages + map pool in one transaction
                     stages: (() => {
-                        const defaultBrLobbySize = data.brDefaultLobbySize || data.brLobbySize || data.maxTeams;
-                        if (data.tournamentType === 'battle_royale' && data.brMultiStage) {
-                            return [
-                                {
-                                    name: 'Group Stage',
-                                    format: 'battle_royale',
-                                    stageOrder: 1,
-                                    bestOf: 1,
-                                    capacity: data.brLobbySize,
-                                    advancementCount: data.brAdvancementCount,
-                                },
-                                {
-                                    name: 'Finals',
-                                    format: 'battle_royale',
-                                    stageOrder: 2,
-                                    bestOf: 1,
-                                    capacity: defaultBrLobbySize,
-                                    advancementCount: null,
-                                },
-                            ];
-                        }
+                        // BR stages are configured post-create via the stage setup wizard
                         if (data.tournamentType === 'battle_royale') {
-                            return [
-                                {
-                                    name: 'Main Event',
-                                    format: 'battle_royale',
-                                    stageOrder: 1,
-                                    bestOf: 1,
-                                    capacity: defaultBrLobbySize,
-                                    advancementCount: null,
-                                },
-                            ];
+                            return [];
                         }
                         return data.stages.map((s, i) => ({
                             name:             s.name,

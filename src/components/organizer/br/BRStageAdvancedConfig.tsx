@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { getStageBRConfig, parseStageConfig } from '@/utils/brConfigResolve';
@@ -60,12 +59,6 @@ export const BRStageAdvancedConfig: React.FC<BRStageAdvancedConfigProps> = ({
   const [fixedMap, setFixedMap] = useState<string>(
     existing.map?.fixedMap ?? catalogPool[0] ?? '',
   );
-  const [scoringPresetKey, setScoringPresetKey] = useState<string>(
-    existing.scoring?.presetKey ?? '',
-  );
-  const [scoringKillCap, setScoringKillCap] = useState<string>(
-    existing.scoring?.killCap != null ? String(existing.scoring.killCap) : '',
-  );
 
   const toggleMap = (mapName: string, checked: boolean) => {
     setSelectedMaps((prev) => {
@@ -80,14 +73,6 @@ export const BRStageAdvancedConfig: React.FC<BRStageAdvancedConfigProps> = ({
       const advancementMode: BRAdvancementMode = 'top_n_per_group';
       const brConfig: BRStageConfig = {
         gameCount: gameCount.trim() ? Number(gameCount) : null,
-        ...(scoringPresetKey.trim() || scoringKillCap.trim()
-          ? {
-              scoring: {
-                presetKey: scoringPresetKey.trim() || undefined,
-                killCap: scoringKillCap.trim() ? Number(scoringKillCap) : undefined,
-              },
-            }
-          : {}),
         advancement:
           stage.advancement_count === null && !perGroup.trim()
             ? null
@@ -148,9 +133,11 @@ export const BRStageAdvancedConfig: React.FC<BRStageAdvancedConfigProps> = ({
 
   return (
     <div className="rounded-xl border border-white/8 bg-white/[0.02] p-4 space-y-4">
-      <div className="flex items-center gap-2 text-sm font-medium text-white">
-        <Settings2 className="w-4 h-4 text-zinc-400" />
-        Stage settings
+      <div>
+        <p className="text-sm font-medium text-white">Stage options</p>
+        <p className="text-xs text-zinc-500 mt-1">
+          Scoring is set in the tournament wizard and applies to all stages. Adjust lobby-specific options below.
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -165,6 +152,7 @@ export const BRStageAdvancedConfig: React.FC<BRStageAdvancedConfigProps> = ({
             placeholder="Inherit tournament default"
             className="h-9 bg-white/5 border-white/10"
           />
+          <p className="text-[10px] text-zinc-600">Leave blank to use the tournament default.</p>
         </div>
 
         <div className="space-y-2">
@@ -175,34 +163,7 @@ export const BRStageAdvancedConfig: React.FC<BRStageAdvancedConfigProps> = ({
             value={perGroup}
             onChange={(e) => setPerGroup(e.target.value)}
             className="h-9 bg-white/5 border-white/10"
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-white/5">
-        <div className="space-y-2">
-          <Label className="text-[10px] uppercase tracking-wider text-zinc-500">Scoring preset override</Label>
-          <Select value={scoringPresetKey || '__inherit__'} onValueChange={(v) => setScoringPresetKey(v === '__inherit__' ? '' : v)}>
-            <SelectTrigger className="h-9 bg-white/5 border-white/10">
-              <SelectValue placeholder="Inherit tournament default" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__inherit__">Inherit tournament default</SelectItem>
-              <SelectItem value="algs">ALGS</SelectItem>
-              <SelectItem value="fncs">FNCS</SelectItem>
-              <SelectItem value="pcs">PCS</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label className="text-[10px] uppercase tracking-wider text-zinc-500">Kill cap override</Label>
-          <Input
-            type="number"
-            min={0}
-            value={scoringKillCap}
-            onChange={(e) => setScoringKillCap(e.target.value)}
-            placeholder="Inherit preset / tournament"
-            className="h-9 bg-white/5 border-white/10"
+            disabled={stage.advancement_count === null && !perGroup}
           />
         </div>
       </div>
@@ -256,8 +217,7 @@ export const BRStageAdvancedConfig: React.FC<BRStageAdvancedConfigProps> = ({
         disabled={saving}
         className="bg-emerald-600 hover:bg-emerald-500"
       >
-        <Save className="w-3.5 h-3.5 mr-1.5" />
-        {saving ? 'Saving...' : 'Save stage settings'}
+        {saving ? 'Saving...' : 'Save stage options'}
       </Button>
     </div>
   );

@@ -34,6 +34,7 @@ export type CatalogGameApi = {
   logo?: string | null;
   icon?: string | null;
   cover?: string | null;
+  banner?: string | null;
   sortOrder?: number;
   aliases?: string[];
   modes: CatalogModeApi[];
@@ -69,6 +70,7 @@ export type UpsertDraftGameRequest = {
   logoUrl?: string | null;
   iconUrl?: string | null;
   coverUrl?: string | null;
+  bannerUrl?: string | null;
   sortOrder: number;
   modes: CatalogModeApi[];
   tournamentStructures: CatalogStructureApi[];

@@ -3,7 +3,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Bell, CheckCheck, Users, ShieldAlert, Info, ArrowRight, Shield, Check, X, Loader2, FileText, CheckCircle2, AlertTriangle, XCircle, Swords, Map, Trophy } from 'lucide-react';
+import { Bell, CheckCheck, Users, ShieldAlert, Info, ArrowRight, Shield, Check, X, Loader2, FileText, CheckCircle2, AlertTriangle, XCircle, Swords, Map, Trophy, Ticket } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { respondToOrgStaffInvite } from '@/lib/organizationStaff';
 import { useToast } from '@/hooks/use-toast';
 import { resolveCaptainMatchNotificationLinkAsync } from '@/utils/notificationLinks';
+import { buildRedeemInvitePath, getTournamentInviteFromNotification } from '@/utils/tournamentInviteNotification';
 
 export const NotificationDropdown = () => {
     const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications } = useNotifications();
@@ -76,6 +77,14 @@ export const NotificationDropdown = () => {
             navigate(destination);
         } else if (notification.type === 'team_invite') {
             navigate('/player/teams');
+        } else if (notification.type === 'tournament_invite') {
+            const invite = getTournamentInviteFromNotification(notification);
+            if (invite?.data.code) {
+                navigate(buildRedeemInvitePath(
+                    invite.data.code,
+                    invite.data.tournament_id ?? null,
+                ));
+            }
         }
     };
 
@@ -144,6 +153,7 @@ export const NotificationDropdown = () => {
             case 'dispute_resolved': return 'bg-green-500/10 border-green-500/20';
             case 'dispute_rejected': return 'bg-red-500/10 border-red-500/20';
             case 'tournament_announcement': return 'bg-rose-500/10 border-rose-500/20';
+            case 'tournament_invite': return 'bg-violet-500/10 border-violet-500/20';
             case 'ban': return 'bg-red-500/10 border-red-500/20';
             case 'kick': return 'bg-orange-500/10 border-orange-500/20';
             case 'veto_your_turn':
@@ -178,6 +188,8 @@ export const NotificationDropdown = () => {
                 return <XCircle className="h-4 w-4 text-red-400" />;
             case 'tournament_announcement':
                 return <Bell className="h-4 w-4 text-rose-400" />;
+            case 'tournament_invite':
+                return <Ticket className="h-4 w-4 text-violet-400" />;
             case 'ban':
                 return <ShieldAlert className="h-4 w-4 text-red-500" />;
             case 'kick':
