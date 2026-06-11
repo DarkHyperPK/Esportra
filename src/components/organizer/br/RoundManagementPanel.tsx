@@ -69,13 +69,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   completed: { label: 'Completed', color: 'border-emerald-500/30 text-emerald-400' },
 };
 
-const toLocalInputValue = (iso: string | null | undefined) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-
 export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   stageId,
   groupId,
@@ -340,9 +333,6 @@ const RoundRow: React.FC<RoundRowProps> = ({
     groupId
   );
   const [lobbyCode, setLobbyCode] = useState(round.lobby_code ?? '');
-  const [scheduledAtInput, setScheduledAtInput] = useState(
-    round.scheduled_at ? toLocalInputValue(round.scheduled_at) : ''
-  );
   const [queueTimerInput, setQueueTimerInput] = useState(
     round.queue_timer_minutes != null ? String(round.queue_timer_minutes) : ''
   );
@@ -371,11 +361,10 @@ const RoundRow: React.FC<RoundRowProps> = ({
 
   useEffect(() => {
     setLobbyCode(round.lobby_code ?? '');
-    setScheduledAtInput(round.scheduled_at ? toLocalInputValue(round.scheduled_at) : '');
     setQueueTimerInput(round.queue_timer_minutes != null ? String(round.queue_timer_minutes) : '');
     setMapInput(round.map ?? resolveMapForRound(mapConfig, round.round_number ?? round.wave_number) ?? '');
     setSettingsDirty(false);
-  }, [round.id, round.lobby_code, round.scheduled_at, round.queue_timer_minutes, round.map, round.round_number, round.wave_number, mapConfig]);
+  }, [round.id, round.lobby_code, round.queue_timer_minutes, round.map, round.round_number, round.wave_number, mapConfig]);
 
   const getRoundSettings = (): RoundActionSettings => {
     const trimmedLobbyCode = lobbyCode.trim();
@@ -384,7 +373,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
 
     return {
       lobbyCode: trimmedLobbyCode === '' ? null : trimmedLobbyCode,
-      scheduledAt: scheduledAtInput.trim() === '' ? null : new Date(scheduledAtInput).toISOString(),
+      scheduledAt: round.scheduled_at ?? null,
       queueTimerMinutes: Number.isFinite(parsedTimer) ? parsedTimer : null,
       map: BR_FEATURE_FLAGS.mapsEnabled && mapConfig.mode !== 'none' ? (mapInput.trim() || null) : null,
     };
@@ -464,7 +453,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
         <div className="border-t border-white/5 px-4 py-4 space-y-4">
           {/* Round Settings + Actions Row */}
           <div className="space-y-3">
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_280px]">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
               <div className="rounded-xl border border-white/6 bg-white/[0.02] p-3">
                 <label className="mb-2 flex text-[10px] text-zinc-500 uppercase tracking-wider items-center gap-1">
                   <Key className="w-3 h-3" /> Lobby Code
@@ -478,22 +467,6 @@ const RoundRow: React.FC<RoundRowProps> = ({
                 />
                 <p className="mt-2 text-[10px] leading-relaxed text-zinc-600">
                   The code becomes visible to players only when the round is live.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-white/6 bg-white/[0.02] p-3">
-                <label className="mb-2 flex text-[10px] text-zinc-500 uppercase tracking-wider items-center gap-1">
-                  <Clock className="w-3 h-3" /> Scheduled Start
-                </label>
-                <Input
-                  type="datetime-local"
-                  value={scheduledAtInput}
-                  onChange={(e) => { setScheduledAtInput(e.target.value); setSettingsDirty(true); }}
-                  disabled={round.status === 'completed'}
-                  className="h-10 text-sm bg-white/5 border-white/10 text-white [color-scheme:dark]"
-                />
-                <p className="mt-2 text-[10px] leading-relaxed text-zinc-600">
-                  Set the intended round start time here while you manage the lobby.
                 </p>
               </div>
 
@@ -524,6 +497,20 @@ const RoundRow: React.FC<RoundRowProps> = ({
                   Countdown starts when the round is live and the lobby code is visible.
                 </p>
               </div>
+            </div>
+
+            <div className="rounded-xl border border-white/6 bg-white/[0.02] px-3 py-2.5 text-[10px] text-zinc-500">
+              <span className="flex items-center gap-1 text-zinc-400">
+                <Clock className="w-3 h-3" />
+                {round.scheduled_at
+                  ? `Scheduled ${new Date(round.scheduled_at).toLocaleString('en-GB', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })} — edit in the Schedule tab`
+                  : 'Lobby start times are set in the Schedule tab, not here.'}
+              </span>
             </div>
 
             {BR_FEATURE_FLAGS.mapsEnabled && mapConfig.mode !== 'none' && (

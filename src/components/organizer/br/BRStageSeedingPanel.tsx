@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useBRGroupTeams, useBRGroupsDetail, useBRGroupsMutations } from '@/hooks/useBRGroups';
-import { useBRStageSchedule } from '@/hooks/useBRStageSchedule';
 import { GroupCard } from '@/components/organizer/br/GroupCard';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,7 +16,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { getStageBRConfig } from '@/utils/brConfigResolve';
-import { generateBrSchedule } from '@/utils/brScheduleGenerator';
 import type { BRDistributionMethod } from '@/types/brGroups';
 
 interface BRStageSeedingPanelProps {
@@ -37,15 +35,13 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
   onUpdate,
 }) => {
   const brConfig = getStageBRConfig({ config: stageConfig });
-  const stageFormat = brConfig?.format ?? 'static_groups';
-  const isRotation = stageFormat === 'group_rotation';
+  const isRotation = brConfig?.format === 'group_rotation';
 
   const { data, isLoading, error, refetch } = useBRGroupsDetail(stageId, { includeTeams: false });
   const groups = data?.groups ?? [];
   const hasLobbies = data?.has_rounds === true;
 
   const { assignTeams, bootstrapLobby, deleteGroup } = useBRGroupsMutations(stageId);
-  const { generatePreview, commitSchedule } = useBRStageSchedule(stageId);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [method, setMethod] = useState<BRDistributionMethod>('random');
@@ -72,15 +68,6 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
   const remainingTeams = Math.max(registeredTeamCount - totalAssigned, 0);
   const rosterLocked = hasLobbies;
 
-  const schedulePreview = useMemo(() => {
-    if (!isRotation || groups.length < 2) return null;
-    try {
-      return generateBrSchedule({ seedGroupCount: groups.length });
-    } catch {
-      return null;
-    }
-  }, [isRotation, groups.length]);
-
   const handleDistribute = async () => {
     try {
       await assignTeams.mutateAsync({ method });
@@ -89,32 +76,12 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
     finally { setConfirmDistribute(false); }
   };
 
-  const handleCommitSchedule = async () => {
-    if (!schedulePreview) return;
-    await commitSchedule.mutateAsync({
-      mode: 'rotating_pairwise',
-      seedGroupCount: groups.length,
-      groupsPerLobby: 2,
-      matchesPerWave: 1,
-      matchupSchedule: 'auto',
-      waves: schedulePreview.waves,
-    });
-    onUpdate();
-  };
-
-  const handlePreviewSchedule = () => {
-    if (groups.length < 2) return;
-    generatePreview.mutate({
-      seedGroupCount: groups.length,
-      groupsPerLobby: 2,
-      matchesPerWave: 1,
-    });
-  };
+  const readyForGames = seedingComplete && (!isRotation || hasLobbies);
 
   return (
     <div className="space-y-4 mt-4 border-t border-white/5 pt-4">
       {!isLoading && !error && (
-        <div className="grid gap-2 md:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-3">
           <div className={`rounded-xl border px-3 py-3 ${hasGroups ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
             <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Step 1</p>
             <p className="mt-1 text-sm font-semibold text-white">{isSingleLobby ? 'Main Lobby Ready' : 'Seed Groups Ready'}</p>
@@ -133,30 +100,23 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
                   : 'All participants seeded.'}
             </p>
           </div>
-          {isRotation ? (
-            <div className={`rounded-xl border px-3 py-3 ${hasLobbies ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : seedingComplete ? 'border-amber-500/20 bg-amber-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Step 3</p>
-              <p className="mt-1 text-sm font-semibold text-white">Rotation Schedule</p>
-              <p className="mt-1 text-xs text-zinc-400">
-                {hasLobbies
-                  ? `${schedulePreview?.totalLobbies ?? '—'} lobbies materialized.`
-                  : seedingComplete
-                    ? 'Generate and commit the pairwise schedule.'
-                    : 'Finish seeding before generating the schedule.'}
-              </p>
-            </div>
-          ) : null}
-          <div className={`rounded-xl border px-3 py-3 ${seedingComplete && (!isRotation || hasLobbies) ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Step {isRotation ? '4' : '3'}</p>
+          <div className={`rounded-xl border px-3 py-3 ${readyForGames ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Step 3</p>
             <p className="mt-1 text-sm font-semibold text-white">Ready for Games</p>
             <p className="mt-1 text-xs text-zinc-400">
-              {seedingComplete && (!isRotation || hasLobbies)
-                ? 'Use the Games tab to run lobbies and submit results.'
-                : isRotation
-                  ? 'Commit the rotation schedule to unlock games.'
-                  : 'Finish seeding before moving to Games.'}
+              {!seedingComplete
+                ? 'Finish seeding first.'
+                : isRotation && !hasLobbies
+                  ? 'Set matchup schedule in the Schedule tab, then use Games.'
+                  : 'Use the Games tab to run lobbies and submit results.'}
             </p>
           </div>
+        </div>
+      )}
+
+      {isRotation && seedingComplete && !hasLobbies && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-3 py-2 text-xs text-amber-200">
+          Group rotation needs a committed matchup schedule — open the <strong className="text-amber-100">Schedule</strong> tab for this stage.
         </div>
       )}
 
@@ -212,50 +172,6 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
               </Button>
             </div>
           </div>
-
-          {isRotation && seedingComplete && !hasLobbies && schedulePreview && (
-            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium text-white">Pairwise rotation preview</p>
-                  <p className="text-xs text-zinc-500 mt-1">
-                    {schedulePreview.totalWaves} waves · {schedulePreview.totalLobbies} lobbies · ~{schedulePreview.estimatedDurationMinutes} min est.
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-white/10"
-                    onClick={handlePreviewSchedule}
-                    disabled={generatePreview.isPending}
-                  >
-                    Validate on server
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="bg-emerald-600 hover:bg-emerald-500"
-                    onClick={handleCommitSchedule}
-                    disabled={commitSchedule.isPending}
-                  >
-                    {commitSchedule.isPending ? 'Committing...' : 'Commit schedule'}
-                  </Button>
-                </div>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {schedulePreview.waves.map((wave) => (
-                  <div key={wave.wave} className="rounded-lg border border-white/5 px-3 py-2 text-xs text-zinc-400">
-                    <span className="text-zinc-300 font-medium">Wave {wave.wave}</span>
-                    <ul className="mt-1 space-y-0.5">
-                      {wave.lobbies.map((lobby, idx) => (
-                        <li key={idx}>{lobby.join(' vs ')}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {rosterLocked && (
             <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-zinc-400">

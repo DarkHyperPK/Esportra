@@ -8,10 +8,16 @@ export interface BRGameContext {
   defaultMapMode: string;
 }
 
+/** Competing units per lobby from catalog player cap and team size (e.g. 100 solo, 33 trio, 25 squad). */
+export const deriveDefaultLobbyUnits = (
+  teamSize: number,
+  playersPerLobby = 100,
+): number => Math.max(1, Math.floor(playersPerLobby / Math.max(1, teamSize)));
+
 export const deriveBRGameContext = (catalog: BRConfig | null | undefined, teamSize: number): BRGameContext => {
   const safeTeamSize = Math.max(1, teamSize || 1);
   const playersPerLobby = catalog?.playersPerLobby ?? 100;
-  const maxLobbySize = Math.max(1, Math.floor(playersPerLobby / safeTeamSize));
+  const maxLobbySize = deriveDefaultLobbyUnits(safeTeamSize, playersPerLobby);
   const mapPool = catalog?.maps?.pool ?? [];
 
   return {

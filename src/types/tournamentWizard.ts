@@ -136,7 +136,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     brCustomScoring: null,
     brKillCap: null,
     brTiebreaker: 'most_wins',
-    brDefaultLobbySize: 20,
+    brDefaultLobbySize: 100,
     brDefaultMapMode: 'none',
 
     // Step 3

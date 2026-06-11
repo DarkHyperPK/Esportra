@@ -9,7 +9,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
-import { Trophy, Users, Target, Plus, Trash2, Layers, FileText } from 'lucide-react';
+import { Trophy, Users, Target, Plus, Trash2, Layers, FileText, MapIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import TournamentMapPoolSelector, { MapPoolSectionLabel } from './TournamentMapPoolSelector';
@@ -19,6 +19,7 @@ import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode, getGameModeGroups, getEffectiveGameFeatures, gameHasBRMaps } from '@/utils/gameFeatures';
 import type { BRMapMode } from '@/types/battleRoyale';
+import { deriveDefaultLobbyUnits } from '@/utils/brGameContext';
 
 /* ──────────────────────────────────────────────────────────────
    Main Component
@@ -61,7 +62,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         };
 
         if (isBR && brConfig) {
-            const unitsPerLobby = Math.floor(brConfig.playersPerLobby / Math.max(1, mode.teamSize));
+            const unitsPerLobby = deriveDefaultLobbyUnits(mode.teamSize, brConfig.playersPerLobby);
             const validOptions = [20, 30, 40, 60, 100, 150, 200];
             const target = unitsPerLobby * 5;
             updates.maxTeams = validOptions.find(n => n >= target) ?? validOptions[validOptions.length - 1];
@@ -488,7 +489,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                         const unitSingular = ts === 1 ? 'player'  : ts === 2 ? 'duo'  : ts === 3 ? 'trio'  : 'squad';
                         const unitPlural   = ts === 1 ? 'players' : ts === 2 ? 'duos' : ts === 3 ? 'trios' : 'squads';
                         const labelStr = ts === 1 ? 'Maximum Players' : ts === 2 ? 'Maximum Duos' : ts === 3 ? 'Maximum Trios' : 'Maximum Squads';
-                        const unitsPerLobby = brConfig ? Math.floor(brConfig.playersPerLobby / Math.max(1, ts)) : 20;
+                        const unitsPerLobby = brConfig
+                            ? deriveDefaultLobbyUnits(ts, brConfig.playersPerLobby)
+                            : deriveDefaultLobbyUnits(ts);
                         // Options: multiples of lobby size up to a reasonable cap, plus common fixed sizes
                         const raw = [1, 2, 3, 4, 5, 8, 10].map(n => n * unitsPerLobby);
                         const fixed = ts === 1 ? [20, 30, 40, 60, 100, 150, 200] : ts === 2 ? [10, 16, 20, 30, 50, 60, 100] : [8, 10, 16, 20, 30, 40, 50];
@@ -524,14 +527,6 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                         );
                     })()}
 
-                    {/* Stages configured after creation */}
-                    <div className="p-4 bg-rose-500/10 rounded-none border border-rose-500/30">
-                        <div className="font-medium text-white">Tournament Stages</div>
-                        <p className="text-sm text-gray-400 mt-1">
-                            Lobby structure (single lobby, groups, qualifiers, finals) is configured after creating the tournament in the Stages tab.
-                        </p>
-                    </div>
-
                     {/* Default lobby size */}
                     <div className="space-y-3">
                         <div className="w-full h-px bg-white/5 my-6" />
@@ -541,14 +536,26 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                         </Label>
                         <Input
                             type="number"
-                            min={2}
+                            min={1}
                             max={200}
                             value={data.brDefaultLobbySize}
-                            onChange={(e) => updateData({ brDefaultLobbySize: Math.max(2, parseInt(e.target.value) || 2) })}
+                            onChange={(e) => updateData({ brDefaultLobbySize: Math.max(1, parseInt(e.target.value) || 1) })}
                             className="[color-scheme:dark]"
                         />
                         <p className="text-sm text-gray-400">
-                            Competing units per lobby for new stages. Override per stage in tournament management.
+                            {(() => {
+                                const ts = data.teamSize ?? 1;
+                                const playersCap = brConfig?.playersPerLobby ?? 100;
+                                const suggested = deriveDefaultLobbyUnits(ts, playersCap);
+                                const unit =
+                                    ts === 1 ? 'players' : ts === 2 ? 'duos' : ts === 3 ? 'trios' : 'squads';
+                                return (
+                                    <>
+                                        Suggested for this mode: <span className="text-zinc-300">{suggested} {unit}</span>{' '}
+                                        ({playersCap} players per lobby). Override here or per stage after creation.
+                                    </>
+                                );
+                            })()}
                         </p>
                     </div>
 

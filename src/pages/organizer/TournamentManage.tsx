@@ -79,6 +79,7 @@ import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnoun
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
 import { BRStageManagementTab } from '@/components/organizer/tabs/BRStageManagementTab';
 import { BRGamesTab } from '@/components/organizer/tabs/BRGamesTab';
+import { BRScheduleTab } from '@/components/organizer/tabs/BRScheduleTab';
 import StageSchedulingConfig from '@/components/tournament/StageSchedulingConfig';
 import RoundSchedulingPanel from '@/components/tournament/RoundSchedulingPanel';
 import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTournamentDashboard';
@@ -1730,65 +1731,73 @@ const TournamentDashboard = () => {
               {activeTab === 'schedule' && canEditBracket && (
                 <TabsContent value="schedule" forceMount key="schedule">
                   <TabTransition direction={direction}>
-                    <div className="space-y-6">
-                      <Card className="border-white/10 bg-[#0a0a0c]/90">
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2 text-white">
-                            <Calendar className="h-5 w-5 text-rose-400" />
-                            Schedule
-                          </CardTitle>
-                          <p className="text-sm text-zinc-400">
-                            Configure match scheduling, check-in windows, and round deadlines for each stage.
-                          </p>
-                        </CardHeader>
-                      </Card>
-
-                      {stages.length === 0 ? (
-                        <Card className="border-dashed border-white/10 bg-[#0a0a0c]/70">
-                          <CardContent className="p-10 text-center text-sm text-zinc-500">
-                            Add a stage before configuring match schedules.
-                          </CardContent>
+                    {isBR ? (
+                      <BRScheduleTab
+                        tournamentId={tournament.id}
+                        stages={stages}
+                        onUpdate={() => refetchDashboard()}
+                      />
+                    ) : (
+                      <div className="space-y-6">
+                        <Card className="border-white/10 bg-[#0a0a0c]/90">
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-white">
+                              <Calendar className="h-5 w-5 text-rose-400" />
+                              Schedule
+                            </CardTitle>
+                            <p className="text-sm text-zinc-400">
+                              Configure match scheduling, check-in windows, and round deadlines for each stage.
+                            </p>
+                          </CardHeader>
                         </Card>
-                      ) : (
-                        [...stages]
-                          .sort((a: any, b: any) => (a.stage_order ?? 0) - (b.stage_order ?? 0))
-                          .map((stage: any) => {
-                            const schedulingConfig = typeof stage.scheduling_config === 'string'
-                              ? (() => { try { return JSON.parse(stage.scheduling_config); } catch { return null; } })()
-                              : stage.scheduling_config;
-                            const selfPlayEnabled = Boolean(schedulingConfig?.self_play_enabled);
 
-                            return (
-                              <Card key={stage.id} className="border-white/10 bg-[#0a0a0c]/90">
-                                <CardHeader>
-                                  <CardTitle className="flex items-center justify-between gap-3 text-white">
-                                    <span>{stage.name}</span>
-                                    <Badge className="border-white/10 bg-white/5 text-zinc-300">
-                                      {(stage.format || 'single_elimination').replace(/_/g, ' ')}
-                                    </Badge>
-                                  </CardTitle>
-                                </CardHeader>
-                                <CardContent className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                                  <StageSchedulingConfig
-                                    stageId={stage.id}
-                                    stageFormat={stage.format || 'single_elimination'}
-                                    gameName={tournament.game || ''}
-                                    onConfigChange={() => refetchDashboard()}
-                                  />
-                                  <RoundSchedulingPanel
-                                    stageId={stage.id}
-                                    stageFormat={stage.format || 'single_elimination'}
-                                    tournamentStartDate={tournament.start_date || null}
-                                    tournamentEndDate={tournament.end_date || null}
-                                    selfPlayEnabled={selfPlayEnabled}
-                                    onScheduleApplied={() => refetchDashboard()}
-                                  />
-                                </CardContent>
-                              </Card>
-                            );
-                          })
-                      )}
-                    </div>
+                        {stages.length === 0 ? (
+                          <Card className="border-dashed border-white/10 bg-[#0a0a0c]/70">
+                            <CardContent className="p-10 text-center text-sm text-zinc-500">
+                              Add a stage before configuring match schedules.
+                            </CardContent>
+                          </Card>
+                        ) : (
+                          [...stages]
+                            .sort((a: any, b: any) => (a.stage_order ?? 0) - (b.stage_order ?? 0))
+                            .map((stage: any) => {
+                              const schedulingConfig = typeof stage.scheduling_config === 'string'
+                                ? (() => { try { return JSON.parse(stage.scheduling_config); } catch { return null; } })()
+                                : stage.scheduling_config;
+                              const selfPlayEnabled = Boolean(schedulingConfig?.self_play_enabled);
+
+                              return (
+                                <Card key={stage.id} className="border-white/10 bg-[#0a0a0c]/90">
+                                  <CardHeader>
+                                    <CardTitle className="flex items-center justify-between gap-3 text-white">
+                                      <span>{stage.name}</span>
+                                      <Badge className="border-white/10 bg-white/5 text-zinc-300">
+                                        {(stage.format || 'single_elimination').replace(/_/g, ' ')}
+                                      </Badge>
+                                    </CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                                    <StageSchedulingConfig
+                                      stageId={stage.id}
+                                      stageFormat={stage.format || 'single_elimination'}
+                                      gameName={tournament.game || ''}
+                                      onConfigChange={() => refetchDashboard()}
+                                    />
+                                    <RoundSchedulingPanel
+                                      stageId={stage.id}
+                                      stageFormat={stage.format || 'single_elimination'}
+                                      tournamentStartDate={tournament.start_date || null}
+                                      tournamentEndDate={tournament.end_date || null}
+                                      selfPlayEnabled={selfPlayEnabled}
+                                      onScheduleApplied={() => refetchDashboard()}
+                                    />
+                                  </CardContent>
+                                </Card>
+                              );
+                            })
+                        )}
+                      </div>
+                    )}
                   </TabTransition>
                 </TabsContent>
               )}

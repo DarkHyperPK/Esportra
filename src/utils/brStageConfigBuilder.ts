@@ -25,9 +25,7 @@ export function buildProStageConfig(input: BuildProStageConfigInput): { br: BRSt
       : input.format === 'group_rotation'
         ? {
             mode: 'top_n_overall',
-            overall: input.advancementPerGroup != null
-              ? input.advancementPerGroup * Math.max(1, input.groupCount)
-              : undefined,
+            overall: input.advancementPerGroup ?? undefined,
           }
         : {
             mode: 'top_n_per_group',

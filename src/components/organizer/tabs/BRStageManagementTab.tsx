@@ -306,8 +306,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
             <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-xl px-6">
               <p className="text-white font-medium mb-2">No stages configured yet</p>
               <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">
-                Use the step-by-step wizard to decide whether everyone plays in one lobby or
-                whether you need qualifiers and a grand finals.
+                Choose a pro stage format: one lobby, group rotation, or multi-lobby cut.
+                Add more stages later for hybrid flows (e.g. qualifiers → finals).
               </p>
               <Button
                 onClick={() => openWizard('initial')}
@@ -340,6 +340,16 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs text-zinc-500 font-mono">Stage {index + 1}</span>
+                          {(() => {
+                            const br = (stage.config as { br?: { format?: string } } | null)?.br;
+                            const format = br?.format;
+                            if (!format) return null;
+                            return (
+                              <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-300 font-semibold">
+                                {format.replace(/_/g, ' ')}
+                              </span>
+                            );
+                          })()}
                           {isLast && (
                             <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold">
                               Finals

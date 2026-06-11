@@ -20,6 +20,7 @@ import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types
 import { validateStep } from '@/schemas/tournamentSchema';
 import { getGameByName, getDefaultGameMode, getDefaultTeamSize, isBattleRoyale, getBRConfig, getEffectiveGameFeatures } from '@/utils/gameFeatures';
 import { catalogGameHasBRMaps } from '@/utils/gameCatalogBr';
+import { deriveDefaultLobbyUnits } from '@/utils/brGameContext';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import slugify from 'slugify';
 import {
@@ -105,8 +106,9 @@ export const useTournamentWizard = (
                         if (brConfig) {
                             newData.brGameCount = brConfig.defaultGameCount;
                             newData.brScoringPreset = brConfig.defaultPreset;
-                            newData.brDefaultLobbySize = Math.floor(
-                              brConfig.playersPerLobby / Math.max(1, newData.teamSize),
+                            newData.brDefaultLobbySize = deriveDefaultLobbyUnits(
+                              newData.teamSize,
+                              brConfig.playersPerLobby,
                             );
                             newData.brDefaultMapMode = brConfig.defaultMapMode
                               ?? (catalogGameHasBRMaps(brConfig) ? 'per_round' : 'none');
