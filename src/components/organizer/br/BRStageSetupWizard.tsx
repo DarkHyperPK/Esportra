@@ -24,12 +24,15 @@ import {
   deriveLobbySize,
   validateIntermediateStage,
 } from '@/utils/brStageFlow';
+import { buildProStageConfig, resolveFormatFromWizard } from '@/utils/brStageConfigBuilder';
+import type { BRStageFormat } from '@/types/battleRoyale';
 
 type WizardMode = 'initial' | 'add';
 
 type StructureChoice = 'single' | 'qualifier_finals';
 
 type LobbyLayout = 'single_lobby' | 'split_groups';
+type SplitFormation = 'parallel' | 'rotation';
 
 export interface BrStageDtoInput {
   id?: string | null;
@@ -41,6 +44,7 @@ export interface BrStageDtoInput {
   advancementCount: number | null;
   startsAt: null;
   endsAt: null;
+  config?: Record<string, unknown>;
 }
 
 interface BRStageSetupWizardProps {
@@ -90,6 +94,7 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
 
   // Lobby & advancement
   const [lobbyLayout, setLobbyLayout] = useState<LobbyLayout>('single_lobby');
+  const [splitFormation, setSplitFormation] = useState<SplitFormation>('parallel');
   const [groupCount, setGroupCount] = useState(1);
   const [advancementPerGroup, setAdvancementPerGroup] = useState(1);
 
@@ -99,6 +104,7 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
     setIsFinal(mode === 'add' && existingStages.length > 0);
     setStageName('');
     setLobbyLayout('single_lobby');
+    setSplitFormation('parallel');
     const incoming = mode === 'add' ? incomingTeams : registeredUnitCount;
     const groups = deriveGroupCount(incoming, maxLobbySize);
     setGroupCount(groups);
@@ -160,6 +166,43 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
   const stepLabels = mode === 'initial' ? STEP_LABELS_INITIAL : STEP_LABELS_ADD;
   const maxStep = stepLabels.length - 1;
 
+  const resolveStageFormat = (
+    layout: LobbyLayout,
+    formation: SplitFormation,
+    incoming: number,
+    groups: number,
+  ): BRStageFormat => {
+    if (mode === 'initial' && structure === 'qualifier_finals') {
+      return 'static_groups';
+    }
+    if (isFinal || (mode === 'initial' && structure === 'single' && layout === 'single_lobby')) {
+      return 'single_lobby';
+    }
+    return resolveFormatFromWizard({
+      lobbyLayout: layout,
+      splitFormation: formation,
+      registeredUnits: incoming,
+      maxLobbySize,
+    });
+  };
+
+  const attachProConfig = (
+    dto: BrStageDtoInput,
+    stageFormat: BRStageFormat,
+    groups: number,
+    advPerGroup: number | null,
+    finalStage: boolean,
+  ): BrStageDtoInput => ({
+    ...dto,
+    config: buildProStageConfig({
+      format: stageFormat,
+      groupCount: groups,
+      lobbySize: dto.capacity,
+      advancementPerGroup: advPerGroup,
+      isFinal: finalStage,
+    }),
+  });
+
   const buildStageDtos = (): BrStageDtoInput[] => {
     const baseOrder = existingStages.length;
 
@@ -167,7 +210,7 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
       const qualGroups = deriveGroupCount(registeredUnitCount, maxLobbySize);
       const qualLobby = deriveLobbySize(registeredUnitCount, qualGroups);
       const adv = Math.max(1, Math.floor(qualLobby / 2));
-      return [
+      const qualifier = attachProConfig(
         {
           id: null,
           name: 'Qualifiers',
@@ -179,6 +222,12 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
           startsAt: null,
           endsAt: null,
         },
+        'static_groups',
+        qualGroups,
+        adv,
+        false,
+      );
+      const finals = attachProConfig(
         {
           id: null,
           name: 'Grand Finals',
@@ -190,7 +239,12 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
           startsAt: null,
           endsAt: null,
         },
-      ];
+        'single_lobby',
+        1,
+        null,
+        true,
+      );
+      return [qualifier, finals];
     }
 
     const isSingleStageEvent = mode === 'initial' && structure === 'single';
@@ -198,22 +252,35 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
       stageName.trim() ||
       (isFinal || isSingleStageEvent ? 'Main Event' : existingStages.length === 0 ? 'Main Event' : 'Group Stage');
 
+    const stageFormat = resolveStageFormat(
+      lobbyLayout,
+      splitFormation,
+      effectiveIncoming,
+      effectiveGroups,
+    );
+    const dto: BrStageDtoInput = {
+      id: null,
+      name,
+      format: 'battle_royale',
+      stageOrder: baseOrder + 1,
+      bestOf: 1,
+      capacity: isSingleStageEvent
+        ? (lobbyLayout === 'split_groups' ? lobbySize : null)
+        : isFinal
+          ? null
+          : lobbySize,
+      advancementCount: isFinal || isSingleStageEvent ? null : advancementPerGroup,
+      startsAt: null,
+      endsAt: null,
+    };
     return [
-      {
-        id: null,
-        name,
-        format: 'battle_royale',
-        stageOrder: baseOrder + 1,
-        bestOf: 1,
-        capacity: isSingleStageEvent
-          ? (lobbyLayout === 'split_groups' ? lobbySize : null)
-          : isFinal
-            ? null
-            : lobbySize,
-        advancementCount: isFinal || isSingleStageEvent ? null : advancementPerGroup,
-        startsAt: null,
-        endsAt: null,
-      },
+      attachProConfig(
+        dto,
+        stageFormat,
+        effectiveGroups,
+        isFinal || isSingleStageEvent ? null : advancementPerGroup,
+        isFinal || isSingleStageEvent,
+      ),
     ];
   };
 
@@ -443,6 +510,39 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
             </button>
           </div>
           {lobbyLayout === 'split_groups' && (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>Group play style</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setSplitFormation('parallel')}
+                    className={`rounded-xl border p-3 text-left text-sm ${
+                      splitFormation === 'parallel'
+                        ? 'border-rose-500/50 bg-rose-500/10 text-white'
+                        : 'border-white/10 text-zinc-400'
+                    }`}
+                  >
+                    Parallel groups
+                    <p className="mt-1 text-xs text-zinc-500">Each group plays in its own lobby.</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSplitFormation('rotation');
+                      if (groupCount % 2 !== 0) setGroupCount(groupCount + 1);
+                    }}
+                    className={`rounded-xl border p-3 text-left text-sm ${
+                      splitFormation === 'rotation'
+                        ? 'border-rose-500/50 bg-rose-500/10 text-white'
+                        : 'border-white/10 text-zinc-400'
+                    }`}
+                  >
+                    Group rotation
+                    <p className="mt-1 text-xs text-zinc-500">Pairwise schedule — every group meets once.</p>
+                  </button>
+                </div>
+              </div>
             <div className="space-y-1.5">
               <Label>Number of groups</Label>
               <Select
@@ -459,13 +559,16 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
                   {Array.from(
                     { length: Math.max(1, Math.min(effectiveIncoming, 64)) },
                     (_, k) => k + 1,
-                  ).map((n) => (
+                  )
+                    .filter((n) => splitFormation !== 'rotation' || n % 2 === 0)
+                    .map((n) => (
                     <SelectItem key={n} value={String(n)}>
                       {n} {n === 1 ? 'group' : 'groups'} — ~{deriveLobbySize(effectiveIncoming, n)} {unitsLabel}/group
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            </div>
             </div>
           )}
           {lobbySize != null && lobbySize > 0 && (
@@ -534,6 +637,9 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
                 ) : (
                   <div>Single merged finals lobby</div>
                 )}
+                {dto.config?.br && typeof dto.config.br === 'object' && 'format' in (dto.config.br as object) ? (
+                  <div>Format: {String((dto.config.br as { format?: string }).format).replace(/_/g, ' ')}</div>
+                ) : null}
                 {dto.advancementCount != null ? (
                   <div>Advance: top {dto.advancementCount} per group</div>
                 ) : (

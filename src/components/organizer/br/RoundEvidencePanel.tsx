@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useBRRoundEvidence } from '@/hooks/useBRRounds';
+import { useBRLobbyEvidence } from '@/hooks/useBRLobbies';
 import { CheckCircle2, ExternalLink, ImageIcon, ShieldCheck } from 'lucide-react';
 
 interface RoundEvidencePanelProps {
@@ -17,7 +17,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
   groupId,
   realtimeConnected = false,
 }) => {
-  const { evidence, isLoading, markReviewed, isUpdating } = useBRRoundEvidence(
+  const { evidence, isLoading, markReviewed, isUpdating } = useBRLobbyEvidence(
     roundId,
     stageId,
     groupId,

@@ -12,7 +12,28 @@ export interface BRScoringPreset {
 
 export type BRMapMode = 'none' | 'fixed_stage' | 'per_round' | 'rotation';
 
-export type BRAdvancementMode = 'top_n_per_group' | 'top_n_overall';
+export type BRStageFormat =
+  | 'single_lobby'
+  | 'static_groups'
+  | 'group_rotation'
+  | 'multi_lobby_cut';
+
+export type BRLeaderboardScope =
+  | 'stage_global'
+  | 'per_seed_group'
+  | 'per_lobby';
+
+export type BRLobbyFormationMode =
+  | 'single'
+  | 'parallel_fixed'
+  | 'rotating_pairwise';
+
+export type BRAdvancementMode =
+  | 'top_n_per_group'
+  | 'top_n_per_lobby'
+  | 'top_n_overall'
+  | 'threshold'
+  | 'none';
 
 export type BRTiebreaker = 'most_wins' | 'most_kills' | 'head_to_head';
 
@@ -43,13 +64,33 @@ export interface BRStageScoringOverride {
 export interface BRAdvancementConfig {
   mode: BRAdvancementMode;
   perGroup?: number;
+  perLobby?: number;
   overall?: number;
+  threshold?: number;
+}
+
+export interface MatchupWave {
+  wave: number;
+  lobbies: string[][];
+}
+
+export interface BRLobbyFormationConfig {
+  mode: BRLobbyFormationMode;
+  seedGroupCount?: number;
+  groupsPerLobby?: number;
+  lobbyCount?: number;
+  lobbySize?: number;
+  matchupSchedule?: 'auto' | MatchupWave[];
+  matchesPerWave?: number;
 }
 
 export interface BRStageConfig {
   /** @deprecated Tournament wizard owns scoring — ignored at runtime */
   scoring?: BRStageScoringOverride | null;
+  format?: BRStageFormat;
   gameCount?: number | null;
+  leaderboardScope?: BRLeaderboardScope;
+  lobbyFormation?: BRLobbyFormationConfig | null;
   advancement?: BRAdvancementConfig | null;
   map?: Partial<BRMapConfig> | null;
 }
@@ -74,6 +115,9 @@ export interface ResolvedStageBRConfig {
   tiebreaker: BRTiebreaker;
   gameCount: number;
   lobbySize: number | null;
+  format: BRStageFormat;
+  leaderboardScope: BRLeaderboardScope;
+  lobbyFormation: BRLobbyFormationConfig | null;
   advancement: BRAdvancementConfig | null;
   map: BRMapConfig;
 }

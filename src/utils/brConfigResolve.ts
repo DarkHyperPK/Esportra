@@ -1,9 +1,12 @@
 import type {
   BRAdvancementConfig,
   BRConfig,
+  BRLeaderboardScope,
+  BRLobbyFormationConfig,
   BRMapConfig,
   BRMapMode,
   BRScoringPreset,
+  BRStageFormat,
   BRStageConfig,
   BRTiebreaker,
   ResolvedStageBRConfig,
@@ -110,10 +113,25 @@ function resolveAdvancement(
   stageOverride: BRStageConfig | null,
 ): BRAdvancementConfig | null {
   const fromConfig = stageOverride?.advancement;
+  if (fromConfig?.mode === 'none') {
+    return { mode: 'none' };
+  }
+  if (fromConfig?.mode === 'threshold') {
+    return {
+      mode: 'threshold',
+      threshold: fromConfig.threshold ?? stage.advancement_count ?? undefined,
+    };
+  }
   if (fromConfig?.mode === 'top_n_overall') {
     return {
       mode: 'top_n_overall',
       overall: fromConfig.overall ?? stage.advancement_count ?? undefined,
+    };
+  }
+  if (fromConfig?.mode === 'top_n_per_lobby') {
+    return {
+      mode: 'top_n_per_lobby',
+      perLobby: fromConfig.perLobby ?? stage.advancement_count ?? undefined,
     };
   }
 
@@ -132,6 +150,33 @@ function resolveAdvancement(
   }
 
   return null;
+}
+
+function resolveFormat(stageOverride: BRStageConfig | null): BRStageFormat {
+  return stageOverride?.format ?? 'static_groups';
+}
+
+function resolveLeaderboardScope(
+  format: BRStageFormat,
+  stageOverride: BRStageConfig | null,
+): BRLeaderboardScope {
+  if (stageOverride?.leaderboardScope) return stageOverride.leaderboardScope;
+  if (format === 'single_lobby' || format === 'group_rotation') return 'stage_global';
+  if (format === 'multi_lobby_cut') return 'per_lobby';
+  return 'per_seed_group';
+}
+
+function resolveLobbyFormation(
+  format: BRStageFormat,
+  stageOverride: BRStageConfig | null,
+  lobbySize: number | null,
+): BRLobbyFormationConfig | null {
+  if (stageOverride?.lobbyFormation) return stageOverride.lobbyFormation;
+  if (format === 'single_lobby') return { mode: 'single' };
+  return {
+    mode: format === 'group_rotation' ? 'rotating_pairwise' : 'parallel_fixed',
+    lobbySize: lobbySize ?? undefined,
+  };
 }
 
 export function resolveStageBRConfig(params: {
@@ -163,12 +208,19 @@ export function resolveStageBRConfig(params: {
       ? Math.floor(catalog.playersPerLobby / Math.max(1, teamSize))
       : 20;
 
+  const format = resolveFormat(stageOverride);
+  const leaderboardScope = resolveLeaderboardScope(format, stageOverride);
+  const lobbySize = stage.capacity === undefined ? defaultLobbyUnits : stage.capacity;
+
   return {
     scoringPreset,
     killCap,
     tiebreaker,
     gameCount,
-    lobbySize: stage.capacity === undefined ? defaultLobbyUnits : stage.capacity,
+    lobbySize,
+    format,
+    leaderboardScope,
+    lobbyFormation: resolveLobbyFormation(format, stageOverride, lobbySize),
     advancement: resolveAdvancement(stage, stageOverride),
     map: resolveMapConfig(settings, stageOverride, catalogBrConfig),
   };
@@ -210,6 +262,12 @@ export function getQualificationCutoff(
 
   if (adv.mode === 'top_n_overall' && adv.overall && adv.overall > 0) {
     return adv.overall;
+  }
+  if (adv.mode === 'top_n_per_lobby' && adv.perLobby && adv.perLobby > 0) {
+    return adv.perLobby;
+  }
+  if (adv.mode === 'threshold' && adv.threshold && adv.threshold > 0) {
+    return adv.threshold;
   }
 
   return undefined;

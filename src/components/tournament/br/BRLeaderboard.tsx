@@ -84,6 +84,8 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({
 
             {visibleEntries.map((entry, index) => {
               const absoluteIndex = pageStartIndex + index;
+              const isQualifiedRank = hasQualificationCutoff && qualificationCutoff != null && absoluteIndex < qualificationCutoff;
+              const isBubbleRank = hasQualificationCutoff && qualificationCutoff != null && absoluteIndex >= qualificationCutoff && absoluteIndex <= qualificationCutoff + 1;
               return (
               <React.Fragment key={entry.teamId}>
                 <div
@@ -92,7 +94,8 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({
                     absoluteIndex === 0 ? "bg-amber-500/10 border border-amber-500/20" :
                     absoluteIndex === 1 ? "bg-gray-400/5 border border-gray-400/10" :
                     absoluteIndex === 2 ? "bg-amber-700/5 border border-amber-700/10" :
-                    qualificationCutoff != null && hasQualificationCutoff && absoluteIndex < qualificationCutoff ? "bg-emerald-500/[0.03]" :
+                    isQualifiedRank ? "bg-emerald-500/[0.03]" :
+                    isBubbleRank ? "bg-amber-500/[0.05] border border-amber-500/20" :
                     "hover:bg-white/[0.02]"
                   )}
                 >

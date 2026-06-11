@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useBRRounds, useBRRoundResults } from '@/hooks/useBRRounds';
+import { useBRLobbies, useBRLobbyResults } from '@/hooks/useBRLobbies';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { useToast } from '@/hooks/use-toast';
 import { RoundResultsGrid } from './RoundResultsGrid';
@@ -86,8 +86,8 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   mapCatalogItems = [],
 }) => {
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
-  const { connected } = useBRRealtime({ stageId, groupId, roundId: expandedRoundId });
-  const { rounds, isLoading, error, refetch, createRound, updateRound, resetRound } = useBRRounds(
+  const { connected } = useBRRealtime({ stageId, groupId, lobbyId: expandedRoundId });
+  const { lobbies: rounds, isLoading, error, refetch, createLobby, updateLobby, resetLobby } = useBRLobbies(
     stageId,
     groupId,
     { realtimeConnected: connected },
@@ -105,7 +105,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
     action: RoundAction;
     settings?: RoundActionSettings;
   } | null>(null);
-  const isMutatingRound = updateRound.isPending || resetRound.isPending;
+  const isMutatingRound = updateLobby.isPending || resetLobby.isPending;
 
   const handleCreateRound = async () => {
     try {
@@ -114,7 +114,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
         const nextRoundNumber = rounds.length + 1;
         payload.map = resolveMapForRound(mapConfig, nextRoundNumber);
       }
-      await createRound.mutateAsync(payload);
+      await createLobby.mutateAsync(payload);
     } catch {
       /* toast handled by hook */
     }
@@ -126,10 +126,10 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
     const statusMap = { start: 'active', complete: 'completed', reopen: 'active' } as const;
     try {
       if (action === 'reset') {
-        await resetRound.mutateAsync({ roundId, roundNumber });
+        await resetLobby.mutateAsync({ lobbyId: roundId, roundNumber });
       } else if (action === 'start') {
-        await updateRound.mutateAsync({
-          roundId,
+        await updateLobby.mutateAsync({
+          lobbyId: roundId,
           status: statusMap[action],
           lobbyCode: confirmAction.settings?.lobbyCode ?? null,
           scheduledAt: confirmAction.settings?.scheduledAt ?? null,
@@ -137,7 +137,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
           map: confirmAction.settings?.map ?? null,
         });
       } else {
-        await updateRound.mutateAsync({ roundId, status: statusMap[action] });
+        await updateLobby.mutateAsync({ lobbyId: roundId, status: statusMap[action] });
       }
     } catch {
       /* toast handled by hook */
@@ -153,7 +153,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
     queueTimerMinutes: number | null,
     map?: string | null,
   ) => {
-    await updateRound.mutateAsync({ roundId, lobbyCode: lobbyCode || null, scheduledAt, queueTimerMinutes, map });
+    await updateLobby.mutateAsync({ lobbyId: roundId, lobbyCode: lobbyCode || null, scheduledAt, queueTimerMinutes, map });
   };
 
   if (isLoading) {
@@ -184,12 +184,12 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
         <h4 className="text-sm font-semibold text-white">{groupName} — Rounds</h4>
         <Button
           onClick={handleCreateRound}
-          disabled={createRound.isPending}
+          disabled={createLobby.isPending}
           size="sm"
           className="h-7 text-xs bg-white/5 border border-white/10 text-white hover:bg-white/10"
         >
           <Plus className="w-3 h-3 mr-1" />
-          {createRound.isPending ? 'Creating...' : 'New Round'}
+          {createLobby.isPending ? 'Creating...' : 'New Lobby'}
         </Button>
       </div>
 
@@ -240,7 +240,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
                     return;
                   }
 
-                 setConfirmAction({ roundId: round.id, roundNumber: round.round_number, action, settings });
+                 setConfirmAction({ roundId: round.id, roundNumber: round.round_number ?? round.wave_number, action, settings });
                }}
               onRoundSettingsSave={(settings) => handleLobbyCodeUpdate(
                 round.id,
@@ -334,7 +334,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
   mapConfig,
   mapCatalogItems,
 }) => {
-  const { results, isLoading: resultsLoading, submitResults } = useBRRoundResults(
+  const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
     isExpanded ? round.id : null,
     stageId,
     groupId
@@ -373,9 +373,9 @@ const RoundRow: React.FC<RoundRowProps> = ({
     setLobbyCode(round.lobby_code ?? '');
     setScheduledAtInput(round.scheduled_at ? toLocalInputValue(round.scheduled_at) : '');
     setQueueTimerInput(round.queue_timer_minutes != null ? String(round.queue_timer_minutes) : '');
-    setMapInput(round.map ?? resolveMapForRound(mapConfig, round.round_number) ?? '');
+    setMapInput(round.map ?? resolveMapForRound(mapConfig, round.round_number ?? round.wave_number) ?? '');
     setSettingsDirty(false);
-  }, [round.id, round.lobby_code, round.scheduled_at, round.queue_timer_minutes, round.map, round.round_number, mapConfig]);
+  }, [round.id, round.lobby_code, round.scheduled_at, round.queue_timer_minutes, round.map, round.round_number, round.wave_number, mapConfig]);
 
   const getRoundSettings = (): RoundActionSettings => {
     const trimmedLobbyCode = lobbyCode.trim();
@@ -404,7 +404,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
   };
 
   const handleResultSave = async (resultInputs: BRResultInput[]) => {
-    await submitResults.mutateAsync({ roundId: round.id, results: resultInputs });
+    await submitResults.mutateAsync({ lobbyId: round.id, results: resultInputs });
   };
 
   return (
@@ -419,7 +419,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
         ) : (
           <ChevronRight className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
         )}
-        <span className="text-sm font-medium text-white">Round {round.round_number}</span>
+        <span className="text-sm font-medium text-white">Lobby {round.round_number ?? round.wave_number}</span>
         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${statusCfg.color}`}>
           {statusCfg.label}
         </Badge>
@@ -559,7 +559,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
                     {selectedMapItem ? (
                       <BRMapBadge mapName={selectedMapItem.name} imageUrl={selectedMapItem.imageUrl} />
                     ) : (
-                      round.map ?? resolveMapForRound(mapConfig, round.round_number) ?? '—'
+                      round.map ?? resolveMapForRound(mapConfig, round.round_number ?? round.wave_number) ?? '—'
                     )}
                   </div>
                 )}

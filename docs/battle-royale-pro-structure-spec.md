@@ -872,14 +872,19 @@ All values from `useGameCatalogGame(game)` + tournament `teamSize`. No hardcoded
 | GET | `/api/stages/{stageId}/completion-status` | Format-aware completion (wave-based for rotation) |
 | PUT | `/api/tournaments/{id}/stages` | Accept `config.br.format` + `lobbyFormation` on stage DTOs |
 
-### 9.3 Deprecated endpoints (keep during migration)
+### 9.3 No-proxy migration policy (implemented)
 
-| Method | Path | Migration |
-|--------|------|-------------|
-| GET/POST | `.../br/groups/{groupId}/rounds` | Proxy to lobbies filtered by seed group |
-| PATCH | `/api/br/rounds/{roundId}` | Proxy to `/api/br/lobbies/{lobbyId}` |
+Round routes are **removed**, not proxied. Backend and frontend deploy together in one release:
 
-Remove proxies after frontend migration complete.
+| Removed route | Replacement |
+|---------------|-------------|
+| `GET/POST .../br/groups/{groupId}/rounds` | `GET/POST .../br/groups/{groupId}/lobbies` |
+| `PATCH /api/br/rounds/{roundId}` | `PATCH /api/br/lobbies/{lobbyId}` |
+| `POST /api/br/rounds/{roundId}/reset` | `POST /api/br/lobbies/{lobbyId}/reset` |
+| `GET/PUT /api/br/rounds/{roundId}/results` | `GET/PUT /api/br/lobbies/{lobbyId}/results` |
+| `GET/PUT/PATCH /api/br/rounds/{roundId}/evidence` | `GET/PUT/PATCH /api/br/lobbies/{lobbyId}/evidence` |
+
+SignalR: `JoinRound`/`br:round:*` replaced by `JoinLobby`/`br:lobby:*`. Events: `LobbyCreated`, `LobbyUpdated`, `LobbyReset`, `LobbyCompleted`.
 
 ### 9.4 Realtime (SignalR `BRHub`)
 

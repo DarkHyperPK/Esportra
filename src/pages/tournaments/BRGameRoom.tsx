@@ -9,7 +9,7 @@ import {
   useBRGroupLeaderboard,
   useBRGroupRounds,
 } from '@/hooks/useBRGroupLeaderboard';
-import { useBRRoundEvidence, useBRCompletedRoundResults } from '@/hooks/useBRRounds';
+import { useBRLobbyEvidence, useBRCompletedLobbyResults } from '@/hooks/useBRLobbies';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { isBattleRoyaleTournament, getBRConfig, getPersistedTournamentFormat } from '@/utils/gameFeatures';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
@@ -63,7 +63,7 @@ const BRGameRoom: React.FC = () => {
   const { connected } = useBRRealtime({
     stageId: context.stageId,
     groupId: context.groupId,
-    roundId: context.activeRound?.id ?? null,
+    lobbyId: context.activeRound?.id ?? null,
     tournamentId: tournament?.id,
     enabled: Boolean(context.stageId && context.groupId),
   });
@@ -85,13 +85,13 @@ const BRGameRoom: React.FC = () => {
   );
   const effectiveActiveRoundId = activeRound?.id ?? context.activeRound?.id ?? null;
   const hasActiveRound = Boolean(activeRound ?? context.activeRound);
-  const { evidence, submitEvidence, isSubmitting, refetch: refetchEvidence } = useBRRoundEvidence(
+  const { evidence, submitEvidence, isSubmitting, refetch: refetchEvidence } = useBRLobbyEvidence(
     effectiveActiveRoundId,
     context.stageId,
     context.groupId,
     { realtimeConnected: connected },
   );
-  const { completedRounds: finishedRounds, resultsByRoundNumber } = useBRCompletedRoundResults(
+  const { completedRounds: finishedRounds, resultsByRoundNumber } = useBRCompletedLobbyResults(
     rounds,
     Boolean(context.groupId),
   );
@@ -629,7 +629,8 @@ const BRGameRoom: React.FC = () => {
                   className="overflow-hidden space-y-2"
                 >
                   {finishedRounds.map((round) => {
-                    const results = resultsByRoundNumber.get(round.round_number) ?? [];
+                    const roundOrdinal = round.round_number ?? round.wave_number;
+                    const results = resultsByRoundNumber.get(roundOrdinal) ?? [];
                     const userResult = userTeam
                       ? results.find((r) => userEntityIds.has(r.team_id))
                       : null;
@@ -642,7 +643,7 @@ const BRGameRoom: React.FC = () => {
                           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
                             <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                           </div>
-                          <span className="text-sm font-semibold text-zinc-300">Round {round.round_number}</span>
+                          <span className="text-sm font-semibold text-zinc-300">Lobby {roundOrdinal}</span>
                         </div>
                         {userResult ? (
                           <div className="flex items-center gap-3 text-xs">

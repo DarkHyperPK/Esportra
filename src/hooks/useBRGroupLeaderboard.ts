@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import type { BRGroup } from '@/types/brGroups';
 import type { BRLeaderboardEntry } from '@/types/battleRoyale';
-import type { BRRound } from '@/types/brRounds';
+import type { BRRound } from '@/types/brLobbies';
 
 interface GroupLeaderboardResponse {
   team_id: string;
@@ -59,7 +59,7 @@ const selectPreferredActiveRound = (rounds: BRRound[]) => {
       return startedDifference;
     }
 
-    return right.round_number - left.round_number;
+    return (right.round_number ?? right.wave_number) - (left.round_number ?? left.wave_number);
   })[0];
 };
 
@@ -108,6 +108,33 @@ export const useBRGroupLeaderboard = (
   };
 };
 
+export const useBRStageLeaderboard = (
+  stageId: string | null,
+  options: { refetchIntervalMs?: number | false } = {},
+) => {
+  const { refetchIntervalMs = false } = options;
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['br-stage-leaderboard', stageId],
+    queryFn: async () => {
+      const raw = await apiClient.get<GroupLeaderboardResponse[]>(
+        `/api/stages/${stageId}/br/leaderboard`,
+      );
+      return raw.map(mapToLeaderboardEntry);
+    },
+    enabled: !!stageId,
+    staleTime: 1000 * 30,
+    refetchInterval: !!stageId ? refetchIntervalMs : false,
+    refetchIntervalInBackground: Boolean(refetchIntervalMs),
+  });
+
+  return {
+    leaderboard: data ?? [],
+    isLoading,
+    error,
+    refetch,
+  };
+};
+
 interface UseBRGroupRoundsOptions {
   enabled?: boolean;
   refetchIntervalMs?: number | false;
@@ -124,9 +151,9 @@ export const useBRGroupRounds = (
     ? false
     : refetchIntervalMs;
   const { data, isLoading, error } = useQuery({
-    queryKey: ['br-rounds', stageId, groupId],
+    queryKey: ['br-lobbies', stageId, groupId],
     queryFn: () =>
-      apiClient.get<BRRound[]>(`/api/stages/${stageId}/br/groups/${groupId}/rounds`),
+      apiClient.get<BRRound[]>(`/api/stages/${stageId}/br/groups/${groupId}/lobbies`),
     enabled: enabled && !!stageId && !!groupId,
     staleTime: 1000 * 60,
     refetchInterval: enabled && !!stageId && !!groupId ? effectiveInterval : false,
@@ -134,12 +161,16 @@ export const useBRGroupRounds = (
   });
 
   const rounds = data ?? [];
-  const completed = rounds.filter((r) => r.status === 'completed').length;
-  const activeRound = selectPreferredActiveRound(rounds);
+  const normalizedRounds = rounds.map((round) => ({
+    ...round,
+    round_number: round.round_number ?? round.wave_number,
+  }));
+  const completed = normalizedRounds.filter((r) => r.status === 'completed').length;
+  const activeRound = selectPreferredActiveRound(normalizedRounds);
 
   return {
-    rounds,
-    totalRounds: rounds.length,
+    rounds: normalizedRounds,
+    totalRounds: normalizedRounds.length,
     completedRounds: completed,
     activeRound,
     isLoading,
@@ -157,8 +188,10 @@ export interface BRPlayerContext {
   totalRounds: number;
   completedRounds: number;
   activeRound: {
-    id: string;
-    roundNumber: number;
+    id?: string;
+    lobbyId?: string;
+    waveNumber?: number;
+    roundNumber?: number;
     lobbyCode: string | null;
     status: string;
     queueTimerMinutes: number | null;

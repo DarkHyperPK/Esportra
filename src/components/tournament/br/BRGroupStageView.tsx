@@ -186,30 +186,30 @@ const GroupContent: React.FC<GroupContentProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* No rounds state */}
+      {/* No lobbies state */}
       {!roundsLoading && totalRounds === 0 && (
         <div className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-white/10 bg-white/[0.01]">
           <Clock className="w-4 h-4 text-zinc-600 flex-shrink-0" />
-          <p className="text-xs text-zinc-500">No rounds have been created yet. The organizer will start rounds soon.</p>
+          <p className="text-xs text-zinc-500">No lobbies have been created yet. The organizer will start games soon.</p>
         </div>
       )}
 
-      {/* All rounds complete, none active */}
+      {/* All lobbies complete, none active */}
       {!roundsLoading && totalRounds > 0 && !activeRound && completedRounds < totalRounds && (
         <div className="flex items-center gap-3 p-3 rounded-xl border border-amber-500/15 bg-amber-500/[0.04]">
           <Clock className="w-4 h-4 text-amber-500/60 flex-shrink-0" />
-          <p className="text-xs text-amber-300/70">Waiting for the next round to start. {completedRounds}/{totalRounds} rounds completed.</p>
+          <p className="text-xs text-amber-300/70">Waiting for the next lobby to start. {completedRounds}/{totalRounds} games completed.</p>
         </div>
       )}
 
-      {/* Active round banner */}
+      {/* Active lobby banner */}
       {activeRound && (
         <div className="flex items-center gap-4 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 animate-pulse-slow">
           <div className="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
             <Swords className="w-5 h-5 text-rose-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-bold text-white">Round {activeRound.round_number} is Live</h3>
+            <h3 className="text-sm font-bold text-white">Lobby {(activeRound.round_number ?? activeRound.wave_number)} is Live</h3>
             <p className="text-xs text-zinc-400 mt-1">
               Lobby codes are only shared in the Match Room for registered players.
             </p>

@@ -1,5 +1,5 @@
 /**
- * useBRRealtime — live BR round/evidence/leaderboard updates via SignalR BRHub.
+ * useBRRealtime — live BR lobby/evidence/leaderboard updates via SignalR BRHub.
  * Invalidates TanStack Query caches on hub events; does not push full state.
  */
 
@@ -12,32 +12,35 @@ import { HubPaths } from '@/lib/signalrClient';
 interface BrEventScope {
   stageId?: string | null;
   groupId?: string | null;
-  roundId?: string | null;
+  lobbyId?: string | null;
 }
 
 interface UseBRRealtimeOptions extends BrEventScope {
+  roundId?: string | null;
   tournamentId?: string | null;
   enabled?: boolean;
 }
 
 interface BrScopedPayload extends BrEventScope {
-  roundId?: string;
+  lobbyId?: string;
 }
 
 const matchesScope = (payload: BrScopedPayload, scope: BrEventScope) => {
   if (scope.stageId && payload.stageId && payload.stageId !== scope.stageId) return false;
   if (scope.groupId && payload.groupId && payload.groupId !== scope.groupId) return false;
-  if (scope.roundId && payload.roundId && payload.roundId !== scope.roundId) return false;
+  if (scope.lobbyId && payload.lobbyId && payload.lobbyId !== scope.lobbyId) return false;
   return true;
 };
 
 export function useBRRealtime({
   stageId,
   groupId,
+  lobbyId,
   roundId,
   tournamentId,
   enabled = true,
 }: UseBRRealtimeOptions) {
+  const effectiveLobbyId = lobbyId ?? roundId ?? null;
   const conn = useHub(HubPaths.BR);
   const queryClient = useQueryClient();
   const [connected, setConnected] = useState(false);
@@ -50,27 +53,27 @@ export function useBRRealtime({
 
     let active = true;
     let joined = false;
-    const scope = { stageId, groupId, roundId };
+    const scope = { stageId, groupId, lobbyId: effectiveLobbyId };
 
-    const invalidateRounds = () => {
+    const invalidateLobbies = () => {
       if (stageId && groupId) {
-        queryClient.invalidateQueries({ queryKey: ['br-rounds', stageId, groupId] });
+        queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, groupId] });
       } else {
-        queryClient.invalidateQueries({ queryKey: ['br-rounds'] });
+        queryClient.invalidateQueries({ queryKey: ['br-lobbies'] });
       }
     };
 
-    const invalidateRoundResults = (targetRoundId?: string | null) => {
-      const id = targetRoundId ?? roundId;
+    const invalidateLobbyResults = (targetLobbyId?: string | null) => {
+      const id = targetLobbyId ?? effectiveLobbyId;
       if (id) {
-        queryClient.invalidateQueries({ queryKey: ['br-round-results', id] });
+        queryClient.invalidateQueries({ queryKey: ['br-lobby-results', id] });
       }
     };
 
-    const invalidateRoundEvidence = (targetRoundId?: string | null) => {
-      const id = targetRoundId ?? roundId;
+    const invalidateLobbyEvidence = (targetLobbyId?: string | null) => {
+      const id = targetLobbyId ?? effectiveLobbyId;
       if (id) {
-        queryClient.invalidateQueries({ queryKey: ['br-round-evidence', id] });
+        queryClient.invalidateQueries({ queryKey: ['br-lobby-evidence', id] });
       }
     };
 
@@ -79,6 +82,9 @@ export function useBRRealtime({
         queryClient.invalidateQueries({ queryKey: ['br-group-leaderboard', stageId, groupId] });
       } else {
         queryClient.invalidateQueries({ queryKey: ['br-group-leaderboard'] });
+      }
+      if (stageId) {
+        queryClient.invalidateQueries({ queryKey: ['br-stage-leaderboard', stageId] });
       }
     };
 
@@ -98,25 +104,25 @@ export function useBRRealtime({
       }
     };
 
-    const handleRoundCreated = (payload: BrScopedPayload) => {
+    const handleLobbyCreated = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
-      invalidateRounds();
+      invalidateLobbies();
       invalidatePlayerContext();
     };
 
-    const handleRoundUpdated = (payload: BrScopedPayload) => {
+    const handleLobbyUpdated = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
-      invalidateRounds();
+      invalidateLobbies();
       invalidatePlayerContext();
       invalidateLeaderboard();
       invalidateStageCompletion();
     };
 
-    const handleRoundReset = (payload: BrScopedPayload) => {
+    const handleLobbyReset = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
-      invalidateRounds();
-      invalidateRoundResults(payload.roundId);
-      invalidateRoundEvidence(payload.roundId);
+      invalidateLobbies();
+      invalidateLobbyResults(payload.lobbyId);
+      invalidateLobbyEvidence(payload.lobbyId);
       invalidateLeaderboard();
       invalidatePlayerContext();
       invalidateStageCompletion();
@@ -124,20 +130,20 @@ export function useBRRealtime({
 
     const handleEvidenceSubmitted = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
-      invalidateRoundEvidence(payload.roundId);
-      invalidateRounds();
+      invalidateLobbyEvidence(payload.lobbyId);
+      invalidateLobbies();
     };
 
     const handleEvidenceReviewed = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
-      invalidateRoundEvidence(payload.roundId);
-      invalidateRounds();
+      invalidateLobbyEvidence(payload.lobbyId);
+      invalidateLobbies();
     };
 
     const handleResultsUpdated = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
-      invalidateRoundResults(payload.roundId);
-      invalidateRounds();
+      invalidateLobbyResults(payload.lobbyId);
+      invalidateLobbies();
       invalidateLeaderboard();
       invalidateStageCompletion();
     };
@@ -148,9 +154,10 @@ export function useBRRealtime({
       invalidateStageCompletion();
     };
 
-    conn.on('RoundCreated', handleRoundCreated);
-    conn.on('RoundUpdated', handleRoundUpdated);
-    conn.on('RoundReset', handleRoundReset);
+    conn.on('LobbyCreated', handleLobbyCreated);
+    conn.on('LobbyUpdated', handleLobbyUpdated);
+    conn.on('LobbyReset', handleLobbyReset);
+    conn.on('LobbyCompleted', handleLobbyUpdated);
     conn.on('EvidenceSubmitted', handleEvidenceSubmitted);
     conn.on('EvidenceReviewed', handleEvidenceReviewed);
     conn.on('ResultsUpdated', handleResultsUpdated);
@@ -163,7 +170,7 @@ export function useBRRealtime({
         await Promise.all([
           stageId ? conn.invoke('JoinStage', stageId) : Promise.resolve(),
           groupId ? conn.invoke('JoinGroup', groupId) : Promise.resolve(),
-          roundId ? conn.invoke('JoinRound', roundId) : Promise.resolve(),
+          effectiveLobbyId ? conn.invoke('JoinLobby', effectiveLobbyId) : Promise.resolve(),
         ]);
 
         if (active) {
@@ -197,21 +204,22 @@ export function useBRRealtime({
     return () => {
       active = false;
       window.clearInterval(timer);
-      conn.off('RoundCreated', handleRoundCreated);
-      conn.off('RoundUpdated', handleRoundUpdated);
-      conn.off('RoundReset', handleRoundReset);
+      conn.off('LobbyCreated', handleLobbyCreated);
+      conn.off('LobbyUpdated', handleLobbyUpdated);
+      conn.off('LobbyReset', handleLobbyReset);
+      conn.off('LobbyCompleted', handleLobbyUpdated);
       conn.off('EvidenceSubmitted', handleEvidenceSubmitted);
       conn.off('EvidenceReviewed', handleEvidenceReviewed);
       conn.off('ResultsUpdated', handleResultsUpdated);
       conn.off('LeaderboardUpdated', handleLeaderboardUpdated);
 
       if (conn.state === HubConnectionState.Connected) {
-        if (roundId) conn.invoke('LeaveRound', roundId).catch(() => {});
+        if (effectiveLobbyId) conn.invoke('LeaveLobby', effectiveLobbyId).catch(() => {});
         if (groupId) conn.invoke('LeaveGroup', groupId).catch(() => {});
         if (stageId) conn.invoke('LeaveStage', stageId).catch(() => {});
       }
     };
-  }, [conn, stageId, groupId, roundId, tournamentId, enabled, queryClient]);
+  }, [conn, stageId, groupId, effectiveLobbyId, tournamentId, enabled, queryClient]);
 
   return { connected };
 }

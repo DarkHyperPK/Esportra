@@ -3,9 +3,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layers, Users, Trophy, Filter, ChevronRight, RefreshCw } from 'lucide-react';
-import { useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
+import { useBRGroupLeaderboard, useBRGroupRounds, useBRStageLeaderboard } from '@/hooks/useBRGroupLeaderboard';
 import { useBRGroupTeams, useBRGroups } from '@/hooks/useBRGroups';
-import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementPanel';
+import { LobbyManagementPanel } from '@/components/organizer/br/LobbyManagementPanel';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import { useStageCompletion } from '@/hooks/useStageCompletion';
@@ -118,10 +118,17 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     } = useBRGroupTeams(selectedStageId || null, selectedGroupId || null);
 
     // Fetch leaderboard for the selected group
-    const { leaderboard, isLoading: leaderboardLoading } = useBRGroupLeaderboard(
+    const { leaderboard: groupLeaderboard, isLoading: groupLeaderboardLoading } = useBRGroupLeaderboard(
         selectedStageId || null,
         selectedGroupId || null
     );
+    const { leaderboard: stageLeaderboard, isLoading: stageLeaderboardLoading } = useBRStageLeaderboard(
+        selectedStageId || null,
+    );
+
+    const leaderboardScope = resolvedStageConfig?.leaderboardScope ?? 'per_seed_group';
+    const leaderboard = leaderboardScope === 'stage_global' ? stageLeaderboard : groupLeaderboard;
+    const leaderboardLoading = leaderboardScope === 'stage_global' ? stageLeaderboardLoading : groupLeaderboardLoading;
 
     const sortedLeaderboard = useMemo(() => {
         if (!resolvedStageConfig) return leaderboard;
@@ -281,7 +288,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                                 <Trophy className="w-4 h-4 text-amber-400" />
-                                {selectedGroupName} — Leaderboard
+                                {leaderboardScope === 'stage_global' ? selectedStage?.name : selectedGroupName} — Leaderboard
                             </h3>
                             {selectedStage && (
                                 <StageProgressChip progressLabel={selectedStageProgress} />
@@ -295,7 +302,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                             </div>
                         ) : leaderboard.length === 0 ? (
                             <p className="text-xs text-gray-500 text-center py-6">
-                                No results yet. Start rounds below and submit results.
+                                No results yet. Start lobbies below and submit results.
                             </p>
                         ) : (
                             <>
@@ -307,13 +314,13 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                 pageSize={20}
                             />
                             <p className="text-xs text-zinc-500 text-right mt-1">
-                              Rounds are managed in the panel below
+                              Lobbies are managed in the panel below
                             </p>
                             </>
                         )}
                     </Card>
 
-                    {/* Rounds & Results */}
+                    {/* Lobbies & Results */}
                     {groupTeamsLoading ? (
                         <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-5 space-y-2">
                             <div className="h-5 w-44 bg-white/5 rounded animate-pulse" />
@@ -323,7 +330,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                         </Card>
                     ) : (
                         <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-5">
-                            <RoundManagementPanel
+                            <LobbyManagementPanel
                                 stageId={selectedStageId}
                                 groupId={selectedGroupId}
                                 groupName={selectedGroupName || selectedGroup.name}
@@ -337,11 +344,11 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                 </>
             ) : selectedStageId && groups.length > 0 && !selectedGroupId ? (
                 <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-8 text-center">
-                    <p className="text-gray-400 text-sm">Select a group above to manage rounds and results.</p>
+                    <p className="text-gray-400 text-sm">Select a group above to manage lobbies and results.</p>
                 </Card>
             ) : selectedStageId && groups.length === 0 && !groupsLoading && !groupsError ? (
                 <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-8 text-center">
-                    <p className="text-gray-400 text-sm">Initialize the lobby to manage rounds and results.</p>
+                    <p className="text-gray-400 text-sm">Initialize the lobby to manage lobbies and results.</p>
                 </Card>
             ) : null}
         </div>

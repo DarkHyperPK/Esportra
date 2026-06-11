@@ -16,9 +16,8 @@ import { Input } from '@/components/ui/input';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
-import BRStageGroupSection from '@/components/organizer/br/BRStageGroupSection';
-import BRStageAdvancedConfig from '@/components/organizer/br/BRStageAdvancedConfig';
-import BRStageSetupWizard from '@/components/organizer/br/BRStageSetupWizard';
+import BRStageSeedingPanel from '@/components/organizer/br/BRStageSeedingPanel';
+import BRProStageWizard from '@/components/organizer/br/BRProStageWizard';
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
@@ -452,16 +451,10 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
 
                     {isExpanded && game && (
                       <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
-                        <BRStageAdvancedConfig
-                          tournamentId={tournamentId}
-                          stages={stages}
-                          stage={stage}
-                          gameName={game}
-                          onSaved={onUpdate}
-                        />
-                        <BRStageGroupSection
+                        <BRStageSeedingPanel
                           stageId={stage.id}
                           stageCapacity={stage.capacity}
+                          stageConfig={stage.config}
                           registeredTeamCount={flow?.teamsEntering ?? registeredUnitCount}
                           hasNextStage={!isLast}
                           advancementCount={stage.advancement_count}
@@ -477,7 +470,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
         </CardContent>
       </Card>
 
-      <BRStageSetupWizard
+      <BRProStageWizard
         open={wizardOpen}
         onOpenChange={setWizardOpen}
         mode={wizardMode}

@@ -36,7 +36,11 @@ interface AdvanceExecuteResponse {
 }
 
 interface AdvanceRequest {
+  mode?: 'top_n_per_group' | 'top_n_per_lobby' | 'top_n_overall' | 'threshold' | 'none';
   teamsPerGroup?: number;
+  perLobby?: number;
+  overall?: number;
+  threshold?: number;
 }
 
 export const useBRAdvancement = (stageId: string | null) => {
@@ -62,8 +66,9 @@ export const useBRAdvancement = (stageId: string | null) => {
       ),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['br-groups'] });
-      queryClient.invalidateQueries({ queryKey: ['br-rounds'] });
+      queryClient.invalidateQueries({ queryKey: ['br-lobbies'] });
       queryClient.invalidateQueries({ queryKey: ['br-group-teams-batch'] });
+      queryClient.invalidateQueries({ queryKey: ['br-stage-leaderboard'] });
       toast({ title: `${data.advanced} teams advanced to ${data.to_stage}` });
     },
     onError: (error: Error) => {

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Calendar, Clock, Wand2, Save, ChevronRight } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import type { BRRound } from '@/types/brRounds';
+import type { BRRound } from '@/types/brLobbies';
 import type { BRGroup } from '@/types/brGroups';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -102,7 +102,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
   useEffect(() => {
     if (!selectedGroupId || step !== 'rounds') return;
     setLoadingRounds(true);
-    apiClient.get<BRRound[]>(`/api/stages/${stage.id}/br/groups/${selectedGroupId}/rounds`)
+    apiClient.get<BRRound[]>(`/api/stages/${stage.id}/br/groups/${selectedGroupId}/lobbies`)
       .then(r => {
         setRounds(r);
         const schedMap: Record<string, string> = {};
@@ -169,7 +169,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
         const isoVal = localVal ? new Date(localVal).toISOString() : null;
         const existingVal = round.scheduled_at ? new Date(round.scheduled_at).toISOString() : null;
         if (isoVal !== existingVal) {
-          await apiClient.patch(`/api/br/rounds/${round.id}`, { scheduledAt: isoVal });
+          await apiClient.patch(`/api/br/lobbies/${round.id}`, { scheduledAt: isoVal });
           updated++;
         }
       }
@@ -316,7 +316,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
               </Button>
             )}
 
-            {/* Round list */}
+            {/* Lobby list */}
             {loadingRounds ? (
               <div className="space-y-2">
                 {[1, 2, 3].map(i => <div key={i} className="h-12 bg-white/5 rounded-lg animate-pulse" />)}
@@ -324,8 +324,8 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
             ) : rounds.length === 0 ? (
               <div className="text-center py-8">
                 <Clock className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">No rounds created yet</p>
-                <p className="text-xs text-gray-600 mt-1">Create rounds in the group management section first.</p>
+                <p className="text-sm text-gray-400">No lobbies created yet</p>
+                <p className="text-xs text-gray-600 mt-1">Create lobbies in the group management section first.</p>
               </div>
             ) : groups.length === 0 ? (
               <div className="text-center py-8">
@@ -338,7 +338,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
                 {rounds.map((round) => (
                   <div key={round.id} className="flex items-center gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-lg">
                     <div className="w-8 h-8 rounded-md bg-white/5 border border-white/10 flex items-center justify-center text-xs font-bold text-gray-400 flex-shrink-0">
-                      R{round.round_number}
+                      L{round.round_number ?? round.wave_number}
                     </div>
                     <div className="flex-1 min-w-0">
                       <Input
