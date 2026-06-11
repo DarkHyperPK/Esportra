@@ -42,7 +42,7 @@ const MapPoolCard = ({ map, game, isSelected, onToggle }: MapPoolCardProps) => {
       aria-label={`${isSelected ? "Deselect" : "Select"} ${name}`}
       onClick={() => onToggle(map.id)}
       className={cn(
-        "group relative aspect-[16/10] overflow-hidden border-2 text-left transition-all duration-200",
+        "group relative aspect-[16/7] overflow-hidden border-2 text-left transition-all duration-200",
         isSelected
           ? "border-rose-500 shadow-lg shadow-rose-500/25 ring-1 ring-rose-500/40"
           : "border-white/10 hover:border-white/30 hover:shadow-md hover:shadow-black/30",
@@ -64,10 +64,10 @@ const MapPoolCard = ({ map, game, isSelected, onToggle }: MapPoolCardProps) => {
           isSelected ? "bg-rose-500/10" : "bg-black/20 group-hover:bg-black/10",
         )}
       />
-      <div className="absolute inset-x-0 bottom-0 p-3">
+      <div className="absolute inset-x-0 bottom-0 p-2">
         <span
           className={cn(
-            "block truncate text-sm font-bold tracking-tight",
+            "block truncate text-xs font-bold tracking-tight sm:text-[13px]",
             isSelected ? "text-rose-200" : "text-white",
           )}
         >
@@ -99,11 +99,17 @@ const PublicMapVetoCreate = () => {
   const maps = useMemo(() => filterCompetitiveVetoMaps(rawMaps), [rawMaps]);
 
   useEffect(() => {
+    maps.forEach((map) => {
+      const img = new Image();
+      img.decoding = "async";
+      img.src = getPublicVetoMapImage(map, game);
+    });
+  }, [game, maps]);
+
+  useEffect(() => {
     setSelectedMapIds((current) => {
       const available = maps.map((map) => map.id);
-      const kept = current.filter((id) => available.includes(id));
-      if (kept.length > 0) return kept.slice(0, gameConfig.poolSize);
-      return available.slice(0, gameConfig.poolSize);
+      return current.filter((id) => available.includes(id)).slice(0, gameConfig.poolSize);
     });
   }, [gameConfig.poolSize, maps]);
 
@@ -176,24 +182,24 @@ const PublicMapVetoCreate = () => {
       };
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8 text-white">
-      <div className="mb-8">
+    <main className="w-full px-4 py-5 text-white lg:px-6 xl:px-8">
+      <div className="mb-4">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-rose-400">Public tools</p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight">Map Veto Room</h1>
-        <p className="mt-2 max-w-2xl text-sm text-zinc-400">
+        <h1 className="mt-1 text-2xl font-black tracking-tight sm:text-[1.65rem]">Map Veto Room</h1>
+        <p className="mt-1 max-w-2xl text-[13px] text-zinc-400">
           Set up a premium three-step veto room, then share host and team links for the next 24 hours.
         </p>
       </div>
 
-      <div className="mb-8 border border-white/10 bg-black/40 p-4 backdrop-blur-sm sm:p-6">
-        <div className="relative flex justify-between gap-2">
+      <div className="mb-4 border border-white/10 bg-black/40 px-3 py-3 backdrop-blur-sm sm:px-4">
+        <div className="relative grid grid-cols-3 gap-2">
           <div
-            className="absolute left-0 right-0 top-5 hidden h-px bg-white/10 sm:block"
+            className="absolute left-[16.666%] right-[16.666%] top-4 hidden h-px bg-white/10 sm:block"
             aria-hidden="true"
           />
           <div
-            className="absolute left-0 top-5 hidden h-px bg-gradient-to-r from-rose-500 to-rose-400 transition-all duration-500 sm:block"
-            style={{ width: `${((step - 1) / (STEPS.length - 1)) * 100}%` }}
+            className="absolute left-[16.666%] top-4 hidden h-px bg-gradient-to-r from-rose-500 to-rose-400 transition-all duration-500 sm:block"
+            style={{ width: `${((step - 1) / (STEPS.length - 1)) * 66.666}%` }}
             aria-hidden="true"
           />
           {STEPS.map((item) => {
@@ -201,22 +207,22 @@ const PublicMapVetoCreate = () => {
             const isActive = step === item.id;
             const isComplete = step > item.id;
             return (
-              <div key={item.id} className="relative z-10 flex min-w-0 flex-1 flex-col items-center gap-2 text-center">
+              <div key={item.id} className="relative z-10 flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center">
                 <div
                   className={cn(
-                    "flex h-10 w-10 items-center justify-center rounded-full border-2 bg-[#050505] transition-all duration-300",
-                    isActive && "scale-110 border-rose-500 shadow-[0_0_18px_rgba(244,63,94,0.35)]",
+                    "flex h-8 w-8 items-center justify-center rounded-full border-2 bg-[#050505] transition-all duration-300",
+                    isActive && "scale-105 border-rose-500 shadow-[0_0_14px_rgba(244,63,94,0.3)]",
                     isComplete && "border-rose-500/80 text-rose-300",
                     !isActive && !isComplete && "border-white/10 text-zinc-500",
                   )}
                 >
-                  {isComplete ? <CheckCircle2 className="h-5 w-5" /> : <Icon className={cn("h-4 w-4", isActive && "text-rose-400")} />}
+                  {isComplete ? <CheckCircle2 className="h-[17px] w-[17px]" /> : <Icon className={cn("h-3.5 w-3.5", isActive && "text-rose-400")} />}
                 </div>
                 <div className="hidden sm:block">
-                  <p className={cn("text-xs font-bold uppercase tracking-[0.18em]", isActive ? "text-rose-300" : isComplete ? "text-zinc-300" : "text-zinc-600")}>
+                  <p className={cn("text-[10px] font-bold uppercase tracking-[0.15em]", isActive ? "text-rose-300" : isComplete ? "text-zinc-300" : "text-zinc-600")}>
                     {item.title}
                   </p>
-                  <p className="mt-1 text-[11px] text-zinc-500">{item.blurb}</p>
+                  <p className="mt-0.5 text-[9px] text-zinc-500">{item.blurb}</p>
                 </div>
               </div>
             );
@@ -224,13 +230,13 @@ const PublicMapVetoCreate = () => {
         </div>
       </div>
 
-      <section className="border border-white/10 bg-[#0a0a0c]/90 p-5 backdrop-blur-md sm:p-8">
+      <section className="border border-white/10 bg-[#0a0a0c]/90 p-4 backdrop-blur-md sm:p-5">
         <AnimatePresence mode="wait">
           {step === 1 && (
-            <motion.div key="format" {...stepMotion} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} className="mx-auto max-w-xl space-y-6">
+            <motion.div key="format" {...stepMotion} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} className="mx-auto max-w-xl space-y-5">
               <div>
-                <h2 className="text-xl font-bold">Match format</h2>
-                <p className="mt-1 text-sm text-zinc-400">Choose the title and how many maps can be played.</p>
+                <h2 className="text-lg font-bold sm:text-[1.15rem]">Match format</h2>
+                <p className="mt-1 text-[13px] text-zinc-400 sm:text-sm">Choose the title and how many maps can be played.</p>
               </div>
               <div className="space-y-2">
                 <Label>Game</Label>
@@ -242,7 +248,7 @@ const PublicMapVetoCreate = () => {
                     setStep(1);
                   }}
                 >
-                  <SelectTrigger className="border-white/10 bg-black/40 text-white"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-10 border-white/10 bg-black/40 text-sm text-white"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PUBLIC_VETO_GAMES.map((item) => (
                       <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
@@ -253,7 +259,7 @@ const PublicMapVetoCreate = () => {
               <div className="space-y-2">
                 <Label>Best of</Label>
                 <Select value={bestOf} onValueChange={setBestOf}>
-                  <SelectTrigger className="border-white/10 bg-black/40 text-white"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-10 border-white/10 bg-black/40 text-sm text-white"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="1">BO1</SelectItem>
                     <SelectItem value="3">BO3</SelectItem>
@@ -265,10 +271,10 @@ const PublicMapVetoCreate = () => {
           )}
 
           {step === 2 && (
-            <motion.div key="teams" {...stepMotion} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} className="mx-auto max-w-xl space-y-6">
+            <motion.div key="teams" {...stepMotion} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} className="mx-auto max-w-xl space-y-5">
               <div>
-                <h2 className="text-xl font-bold">Team names</h2>
-                <p className="mt-1 text-sm text-zinc-400">These labels appear on the veto board and share links.</p>
+                <h2 className="text-lg font-bold sm:text-[1.15rem]">Team names</h2>
+                <p className="mt-1 text-[13px] text-zinc-400 sm:text-sm">These labels appear on the veto board and share links.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="team-a">Team A</Label>
@@ -276,7 +282,7 @@ const PublicMapVetoCreate = () => {
                   id="team-a"
                   value={team1Name}
                   onChange={(e) => setTeam1Name(e.target.value)}
-                  className="border-white/10 bg-black/40 text-white"
+                  className="h-10 border-white/10 bg-black/40 text-sm text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -285,35 +291,23 @@ const PublicMapVetoCreate = () => {
                   id="team-b"
                   value={team2Name}
                   onChange={(e) => setTeam2Name(e.target.value)}
-                  className="border-white/10 bg-black/40 text-white"
+                  className="h-10 border-white/10 bg-black/40 text-sm text-white"
                 />
               </div>
             </motion.div>
           )}
 
           {step === 3 && (
-            <motion.div key="maps" {...stepMotion} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} className="space-y-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-bold">Map pool</h2>
-                  <p className="mt-1 text-sm text-zinc-400">
-                    {isLoading
-                      ? "Loading competitive maps..."
-                      : `${selectedCount}/${gameConfig.poolSize} selected · ${maps.length} competitive maps`}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="border-white/10 bg-white/5 text-white hover:bg-white/10"
-                  onClick={() => setSelectedMapIds(maps.slice(0, gameConfig.poolSize).map((map) => map.id))}
-                  disabled={isLoading || maps.length === 0}
-                >
-                  Auto-select {gameConfig.poolSize}
-                </Button>
+            <motion.div key="maps" {...stepMotion} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} className="space-y-3">
+              <div>
+                <h2 className="text-lg font-bold sm:text-[1.15rem]">Map pool</h2>
+                <p className="mt-1 text-[13px] text-zinc-400">
+                  {isLoading
+                    ? "Loading competitive maps..."
+                    : `${selectedCount}/${gameConfig.poolSize} selected · ${maps.length} competitive maps`}
+                </p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
                 {maps.map((map) => (
                   <MapPoolCard
                     key={map.id}
@@ -324,7 +318,7 @@ const PublicMapVetoCreate = () => {
                   />
                 ))}
                 {!isLoading && maps.length === 0 && (
-                  <div className="col-span-full border border-white/10 bg-black/30 p-5 text-sm text-zinc-400">
+                  <div className="col-span-full border border-white/10 bg-black/30 p-4 text-sm text-zinc-400">
                     No competitive maps were returned for {gameConfig.label}.
                   </div>
                 )}
@@ -333,11 +327,11 @@ const PublicMapVetoCreate = () => {
           )}
         </AnimatePresence>
 
-        <div className="mt-8 flex flex-col-reverse gap-3 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col-reverse gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <Button
             type="button"
             variant="outline"
-            className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+            className="h-10 border-white/10 bg-white/5 px-4 text-sm text-white hover:bg-white/10"
             disabled={step === 1 || creating}
             onClick={() => setStep((current) => Math.max(current - 1, 1))}
           >
@@ -359,7 +353,7 @@ const PublicMapVetoCreate = () => {
               type="button"
               disabled={creating || !hasValidPool}
               onClick={createSession}
-              className="bg-rose-600 text-white hover:bg-rose-500"
+              className="h-10 bg-rose-600 px-4 text-sm text-white hover:bg-rose-500"
             >
               <Swords className="mr-2 h-4 w-4" />
               {creating ? "Creating room..." : "Create veto links"}
