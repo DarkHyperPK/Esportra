@@ -1,8 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, ChevronDown, Loader2, Swords } from 'lucide-react';
+import { ChevronDown, Loader2, Swords } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { BracketMatch } from '@/types/bracketTypes';
 import { apiClient } from '@/lib/apiClient';
@@ -10,15 +8,15 @@ import { FullScoreboard } from './FullScoreboard';
 import { MAP_THEMES, getMapSplash } from './fullScoreboardConstants';
 import { VetoHistoryTimeline } from './map-veto/VetoHistoryTimeline';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
+import { cn } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Props {
     tournamentId: string;
     teamId?: string;
     matches: BracketMatch[];
     isOrganizer?: boolean;
-    /** When set (organizer match room), only show matches involving these teams. */
     focusTeamIds?: string[];
-    /** Include this in-progress match so manual game reports show before the series ends. */
     includeLiveMatchId?: string;
 }
 
@@ -32,7 +30,7 @@ interface GameDetail {
     map_id: string;
     map_name: string;
     map_image_url: string | null;
-    match_details: any; // Riot API scoreboard data — shape varies per match
+    match_details: any;
     reported_by_team_id?: string;
 }
 
@@ -64,8 +62,7 @@ const resolveOpponentName = (match: BracketMatch, teamId?: string): string => {
     return opponentName || 'TBD';
 };
 
-/** Individual game row with map splash + expandable scoreboard */
-const GameCard: React.FC<{
+const GameRow: React.FC<{
     game: GameDetail;
     isTeam1: boolean;
     isExpanded: boolean;
@@ -79,53 +76,64 @@ const GameCard: React.FC<{
     const splash = resolveMapSplash(game.map_name);
     const myScore = isTeam1 ? game.team1_score : game.team2_score;
     const oppScore = isTeam1 ? game.team2_score : game.team1_score;
-    const [splashLoaded, setSplashLoaded] = useState(false);
-    const handleSplashLoad = useCallback(() => setSplashLoaded(true), []);
+    const won = myScore > oppScore;
 
     return (
-        <div className="space-y-2">
-            <div
-                className="relative group/game flex items-center justify-between border border-white/5 rounded-xl overflow-hidden cursor-pointer hover:border-white/20 transition-all min-h-[80px]"
+        <div className="border-t border-white/5">
+            <button
+                type="button"
+                className="group flex w-full items-center justify-between gap-4 px-0 py-4 text-left transition-colors hover:bg-white/[0.02]"
                 onClick={onToggle}
             >
-                {splash && (
-                    <div className="absolute inset-0 z-0">
-                        <img src={splash} loading="lazy" alt="" onLoad={handleSplashLoad} className={`w-full h-full object-cover transition-opacity duration-500 ${splashLoaded ? 'opacity-40 group-hover/game:opacity-60' : 'opacity-0'}`} />
-                        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/40 to-transparent" />
-                    </div>
-                )}
-                <div className="relative z-10 flex flex-col p-5">
-                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1 drop-shadow-md">Game {game.game_number}</span>
-                    <span className="text-lg font-black text-white uppercase tracking-tight drop-shadow-lg">{game.map_name}</span>
-                </div>
-                <div className="relative z-10 flex items-center gap-4 p-5">
-                    <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 shadow-2xl">
-                        <span className={`text-base font-black ${myScore > oppScore ? 'text-white' : 'text-zinc-500'}`}>{myScore}</span>
-                        <span className="text-xs text-zinc-700 font-bold">VS</span>
-                        <span className={`text-base font-black ${oppScore > myScore ? 'text-white' : 'text-zinc-500'}`}>{oppScore}</span>
-                    </div>
-                    {game.match_details?.players && (
-                        <div className={`p-2 rounded-full bg-white/10 border border-white/10 backdrop-blur-sm transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                            <ChevronDown className="w-4 h-4 text-white" />
+                <div className="flex min-w-0 items-center gap-4">
+                    {splash ? (
+                        <div className="relative h-14 w-20 shrink-0 overflow-hidden border border-white/10">
+                            <img src={splash} loading="lazy" alt="" className="h-full w-full object-cover opacity-70" />
+                        </div>
+                    ) : (
+                        <div className="flex h-14 w-20 shrink-0 items-center justify-center border border-white/10 bg-white/[0.02] font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+                            Map
                         </div>
                     )}
+                    <div className="min-w-0">
+                        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-zinc-500">
+                            Game {game.game_number}
+                        </p>
+                        <p className="truncate font-heading text-lg font-bold uppercase tracking-tight text-white">
+                            {game.map_name}
+                        </p>
+                    </div>
                 </div>
-            </div>
-            {isExpanded && game.match_details?.players && (
-                <div className="bg-zinc-950/40 backdrop-blur-md rounded-xl border border-white/5 overflow-hidden p-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <FullScoreboard
-                        players={game.match_details.players}
-                        team1Name={team1Name}
-                        team2Name={team2Name}
-                        team1Score={game.team1_score}
-                        team2Score={game.team2_score}
-                        reporterSide={game.match_details.reporterSide}
-                        reportedByTeamId={game.reported_by_team_id || (isTeam1 ? teamId : opposingTeamId)}
-                        team1Id={matchTeam1Id}
-                        t1Side={game.match_details.t1Side}
-                    />
+
+                <div className="flex shrink-0 items-center gap-4">
+                    <div className="font-heading text-xl font-black tabular-nums text-white">
+                        <span className={won ? 'text-white' : 'text-zinc-600'}>{myScore}</span>
+                        <span className="mx-2 text-zinc-700">–</span>
+                        <span className={!won && oppScore > myScore ? 'text-white' : 'text-zinc-600'}>{oppScore}</span>
+                    </div>
+                    {game.match_details?.players ? (
+                        <ChevronDown className={cn('h-4 w-4 text-zinc-500 transition-transform', isExpanded && 'rotate-180')} />
+                    ) : null}
                 </div>
-            )}
+            </button>
+
+            {isExpanded && game.match_details?.players ? (
+                <div className="pb-5">
+                    <div className="overflow-x-auto border border-white/5 bg-black/40 p-3">
+                        <FullScoreboard
+                            players={game.match_details.players}
+                            team1Name={team1Name}
+                            team2Name={team2Name}
+                            team1Score={game.team1_score}
+                            team2Score={game.team2_score}
+                            reporterSide={game.match_details.reporterSide}
+                            reportedByTeamId={game.reported_by_team_id || (isTeam1 ? teamId : opposingTeamId)}
+                            team1Id={matchTeam1Id}
+                            t1Side={game.match_details.t1Side}
+                        />
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
 };
@@ -137,15 +145,132 @@ const MatchVetoSummary: React.FC<{ matchId: string; expanded: boolean }> = ({ ma
     if (!isLoading && entries.length === 0) return null;
 
     return (
-        <div className="rounded-xl border border-white/5 bg-black/30 p-3">
-            <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-                <Swords className="w-3 h-3" />
-                Map Veto Summary
+        <div className="border border-indigo-500/20 bg-indigo-500/5 p-4">
+            <p className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-indigo-300">
+                <Swords className="h-3.5 w-3.5" />
+                Map veto timeline
             </p>
             <VetoHistoryTimeline entries={entries} loading={isLoading} compact />
         </div>
     );
 };
+
+const MatchStatsList: React.FC<{
+    pastMatches: BracketMatch[];
+    gameDetails: Record<string, GameDetail[]>;
+    teamId?: string;
+    isOrganizer?: boolean;
+    expandedMatches: Record<string, boolean>;
+    expandedGames: Record<string, boolean>;
+    toggleMatch: (id: string) => void;
+    toggleGame: (id: string) => void;
+}> = ({
+    pastMatches,
+    gameDetails,
+    teamId,
+    isOrganizer,
+    expandedMatches,
+    expandedGames,
+    toggleMatch,
+    toggleGame,
+}) => (
+    <div className="divide-y divide-white/10 border-y border-white/10">
+        {pastMatches.map((match) => {
+            const side = resolveMatchSide(match, teamId);
+            const isTeam1 = side === 'team1' || (isOrganizer && !teamId);
+            const myScore = isTeam1 ? match.team1_score : match.team2_score;
+            const opponentScore = isTeam1 ? match.team2_score : match.team1_score;
+            const opponentName = resolveOpponentName(match, teamId);
+            const isLive = match.status === 'in_progress';
+            const isWin = !isLive && (myScore || 0) > (opponentScore || 0);
+            const games = gameDetails[match.id] || [];
+            const isExpanded = expandedMatches[match.id];
+
+            const accentBarClass = isLive
+                ? 'bg-amber-500/60'
+                : isOrganizer
+                    ? 'bg-zinc-600'
+                    : isWin
+                        ? 'bg-emerald-500/60'
+                        : 'bg-rose-500/60';
+
+            return (
+                <article key={match.id} className="group">
+                    <button
+                        type="button"
+                        className="flex w-full items-center justify-between gap-6 py-6 text-left transition-colors hover:bg-white/[0.02]"
+                        onClick={() => toggleMatch(match.id)}
+                    >
+                        <div className="flex min-w-0 items-center gap-5">
+                            <div className={cn('h-12 w-1 shrink-0', accentBarClass)} />
+                            <div className="min-w-0">
+                                <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                    {isLive ? 'Current match' : `Match ${match.matchNumber}`}
+                                </p>
+                                <h3 className="mt-1 truncate font-heading text-xl font-bold uppercase tracking-tight text-white md:text-2xl">
+                                    {isOrganizer
+                                        ? `${match.team1?.name || 'Team 1'} vs ${match.team2?.name || 'Team 2'}`
+                                        : `vs ${opponentName || 'TBD'}`}
+                                </h3>
+                                {games.length > 0 ? (
+                                    <p className="mt-1 truncate text-xs text-zinc-600">
+                                        {games.map((g) => g.map_name).join(' · ')}
+                                    </p>
+                                ) : null}
+                            </div>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-4">
+                            <Badge
+                                variant="outline"
+                                className={cn(
+                                    'border-0 px-3 py-1 font-mono text-sm font-black tabular-nums',
+                                    isLive
+                                        ? 'bg-amber-500/10 text-amber-300'
+                                        : isOrganizer
+                                            ? 'bg-zinc-800 text-zinc-300'
+                                            : isWin
+                                                ? 'bg-emerald-500/10 text-emerald-400'
+                                                : 'bg-rose-500/10 text-rose-400',
+                                )}
+                            >
+                                {myScore ?? 0} – {opponentScore ?? 0}
+                            </Badge>
+                            <ChevronDown className={cn('h-5 w-5 text-zinc-500 transition-transform', isExpanded && 'rotate-180')} />
+                        </div>
+                    </button>
+
+                    {isExpanded ? (
+                        <div className="border-t border-white/5 bg-black/20 px-0 pb-6 pt-2 md:pl-6">
+                            {games.length === 0 ? (
+                                <p className="py-4 text-center text-xs italic text-zinc-600">
+                                    No detailed game data available.
+                                </p>
+                            ) : (
+                                <div>
+                                    {games.map((game) => (
+                                        <GameRow
+                                            key={game.id}
+                                            game={game}
+                                            isTeam1={isTeam1}
+                                            isExpanded={!!expandedGames[game.id]}
+                                            onToggle={() => toggleGame(game.id)}
+                                            team1Name={match.team1?.name || 'Team 1'}
+                                            team2Name={match.team2?.name || 'Team 2'}
+                                            teamId={teamId}
+                                            opposingTeamId={match.team2?.id}
+                                            matchTeam1Id={match.team1?.id}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : null}
+                </article>
+            );
+        })}
+    </div>
+);
 
 const CaptainMatchHistory: React.FC<Props> = ({
     tournamentId,
@@ -171,7 +296,6 @@ const CaptainMatchHistory: React.FC<Props> = ({
         !!includeLiveMatchId
         && normalizeMatchId(match.id) === normalizeMatchId(includeLiveMatchId);
 
-    // Organizer: scoped team history + live match. Captain: own completed + live match.
     const pastMatches = matches.filter((m) => {
         if (isIncludedLiveMatch(m)) {
             return m.status === 'in_progress' || m.status === 'completed';
@@ -189,13 +313,13 @@ const CaptainMatchHistory: React.FC<Props> = ({
             pastMatches.forEach(m => {
                 matchIdMap[m.id.replace(/^(db-|wb-|lb-)/, '')] = m.id;
             });
-             
-            const data = await apiClient.get<any[]>( // API returns dynamic jsonb columns
+
+            const data = await apiClient.get<any[]>(
                 `/api/tournaments/${tournamentId}/match-games?matchIds=${Object.keys(matchIdMap).join(',')}`
             );
             const grouped: Record<string, GameDetail[]> = {};
-             
-            data?.forEach((game: any) => { // API returns dynamic jsonb columns
+
+            data?.forEach((game: any) => {
                 const prefixedId = matchIdMap[game.match_id];
                 if (!prefixedId) return;
                 if (!grouped[prefixedId]) grouped[prefixedId] = [];
@@ -211,120 +335,96 @@ const CaptainMatchHistory: React.FC<Props> = ({
     const toggleGame = (id: string) => setExpandedGames(prev => ({ ...prev, [id]: !prev[id] }));
 
     return (
-        <div className="mt-8 max-w-2xl mx-auto">
-            <Card className="bg-[#18181b] border-zinc-800 shadow-2xl rounded-3xl overflow-hidden">
-                <CardHeader className="border-b border-white/5 pb-4 bg-white/5">
-                    <CardTitle className="text-lg font-heading text-white flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-emerald-500" />
-                        Match History
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                    <ScrollArea className="h-[450px] pr-4">
-                        {detailsLoading && pastMatches.length > 0 && Object.keys(gameDetails).length === 0 ? (
-                            <div className="flex justify-center py-20">
-                                <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-                            </div>
-                        ) : pastMatches.length === 0 ? (
-                            <div className="text-center text-zinc-500 py-12">
-                                {isOrganizer ? 'No match history for these teams yet.' : 'No completed matches yet.'}
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {pastMatches.map(match => {
-                                    const side = resolveMatchSide(match, teamId);
-                                    const isTeam1 = side === 'team1' || (isOrganizer && !teamId);
-                                    const myScore = isTeam1 ? match.team1_score : match.team2_score;
-                                    const opponentScore = isTeam1 ? match.team2_score : match.team1_score;
-                                    const opponentName = resolveOpponentName(match, teamId);
-                                    const isLive = match.status === 'in_progress';
-                                    const isWin = !isLive && (myScore || 0) > (opponentScore || 0);
-                                    const games = gameDetails[match.id] || [];
-                                    const isExpanded = expandedMatches[match.id];
+        <div>
+            <div className="mb-10 flex flex-col gap-4 border-b border-white/10 pb-8 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-emerald-400">Archive</p>
+                    <h2 className="mt-2 font-heading text-3xl font-black uppercase tracking-tight text-white md:text-4xl">
+                        Match history
+                    </h2>
+                </div>
+                <p className="max-w-md text-sm text-zinc-500">
+                    Series results, map breakdowns, and Riot-powered player statistics from completed and live matches.
+                </p>
+            </div>
 
-                                    return (
-                                        <div key={match.id} className="rounded-2xl bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-all overflow-hidden">
-                                            <div className="relative flex items-center justify-between p-4 cursor-pointer group overflow-hidden" onClick={() => toggleMatch(match.id)}>
-                                                {games.length > 0 && (
-                                                    <div className="absolute inset-0 z-0">
-                                                        <img src={resolveMapSplash(games[0].map_name) || ''} loading="lazy" alt="" className="w-full h-full object-cover opacity-0 group-hover:opacity-30 transition-opacity duration-500" onLoad={(e) => { (e.target as HTMLImageElement).classList.replace('opacity-0', 'opacity-20'); }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                                        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/70 to-zinc-950/50" />
-                                                    </div>
-                                                )}
-                                                <div className="relative z-10 flex items-center gap-4">
-                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${
-                                                        isLive
-                                                            ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
-                                                            : isOrganizer
-                                                                ? 'bg-zinc-800 text-zinc-300 border border-zinc-700'
-                                                                : isWin
-                                                                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                                                                    : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
-                                                    }`}>
-                                                        {isLive ? '•' : isOrganizer ? '#' : isWin ? 'W' : 'L'}
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-zinc-100 group-hover:text-white transition-colors">
-                                                            {isOrganizer
-                                                                ? `${match.team1?.name || 'Team 1'} vs ${match.team2?.name || 'Team 2'}`
-                                                                : `vs ${opponentName || 'TBD'}`}
-                                                        </span>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
-                                                                {isLive ? 'Current Match' : `Match #${match.matchNumber}`}
-                                                            </span>
-                                                            {games.length > 0 && <span className="text-[10px] text-zinc-600">· {games.map(g => g.map_name).join(', ')}</span>}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="relative z-10 flex items-center gap-3">
-                                                    <Badge variant="outline" className={`border-0 font-mono font-black text-sm px-3 py-1 ${
-                                                        isLive
-                                                            ? 'bg-amber-500/10 text-amber-300'
-                                                            : isOrganizer
-                                                                ? 'bg-zinc-800 text-zinc-300'
-                                                                : isWin
-                                                                    ? 'bg-emerald-500/10 text-emerald-400'
-                                                                    : 'bg-rose-500/10 text-rose-400'
-                                                    }`}>
-                                                        {myScore ?? 0} – {opponentScore ?? 0}
-                                                    </Badge>
-                                                    <div className={`p-1.5 rounded-lg bg-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                                        <ChevronDown className="w-4 h-4 text-zinc-500" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {isExpanded && (
-                                                <div className="px-4 pb-4 border-t border-white/5 bg-black/20">
-                                                    <div className="pt-4 space-y-3">
-                                                        <MatchVetoSummary matchId={match.id} expanded={isExpanded} />
-                                                        {games.length === 0 ? (
-                                                            <p className="text-center text-xs text-zinc-600 italic py-2">No detailed game data available.</p>
-                                                        ) : games.map(game => (
-                                                            <GameCard
-                                                                key={game.id}
-                                                                game={game}
-                                                                isTeam1={isTeam1}
-                                                                isExpanded={!!expandedGames[game.id]}
-                                                                onToggle={() => toggleGame(game.id)}
-                                                                team1Name={match.team1?.name || 'Team 1'}
-                                                                team2Name={match.team2?.name || 'Team 2'}
-                                                                teamId={teamId}
-                                                                opposingTeamId={match.team2?.id}
-                                                                matchTeam1Id={match.team1?.id}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </ScrollArea>
-                </CardContent>
-            </Card>
+            {detailsLoading && pastMatches.length > 0 && Object.keys(gameDetails).length === 0 ? (
+                <div className="flex justify-center py-24">
+                    <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                </div>
+            ) : pastMatches.length === 0 ? (
+                <div className="border border-dashed border-white/10 py-16 text-center text-zinc-500">
+                    {isOrganizer ? 'No match history for these teams yet.' : 'No completed matches yet.'}
+                </div>
+            ) : (
+                <Tabs defaultValue="veto" className="space-y-6">
+                    <TabsList className="rounded-none border border-white/10 bg-black/40 p-1">
+                        <TabsTrigger value="veto" className="rounded-none font-mono text-[10px] uppercase tracking-[0.22em]">
+                            Map veto history
+                        </TabsTrigger>
+                        <TabsTrigger value="stats" className="rounded-none font-mono text-[10px] uppercase tracking-[0.22em]">
+                            Match statistics
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="veto" className="mt-0">
+                        <div className="space-y-4">
+                            {pastMatches.map((match) => (
+                                <article key={match.id} className="border border-white/10 bg-black/20 p-4">
+                                    <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                        <h3 className="font-heading text-lg font-bold uppercase tracking-tight text-white">
+                                            {match.team1?.name || 'Team 1'} vs {match.team2?.name || 'Team 2'}
+                                        </h3>
+                                        <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500">
+                                            Match {match.matchNumber}
+                                        </span>
+                                    </div>
+                                    <MatchVetoSummary matchId={match.id} expanded />
+                                </article>
+                            ))}
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="stats" className="mt-0">
+                        <Tabs defaultValue="full" className="space-y-6">
+                            <TabsList className="rounded-none border border-white/10 bg-black/30 p-1">
+                                <TabsTrigger value="full" className="rounded-none font-mono text-[10px] uppercase tracking-[0.22em]">
+                                    Full match data
+                                </TabsTrigger>
+                                <TabsTrigger value="scoreboard" className="rounded-none font-mono text-[10px] uppercase tracking-[0.22em]">
+                                    Scoreboard
+                                </TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="full" className="mt-0">
+                                <MatchStatsList
+                                    pastMatches={pastMatches}
+                                    gameDetails={gameDetails}
+                                    teamId={teamId}
+                                    isOrganizer={isOrganizer}
+                                    expandedMatches={expandedMatches}
+                                    expandedGames={expandedGames}
+                                    toggleMatch={toggleMatch}
+                                    toggleGame={toggleGame}
+                                />
+                            </TabsContent>
+
+                            <TabsContent value="scoreboard" className="mt-0">
+                                <MatchStatsList
+                                    pastMatches={pastMatches}
+                                    gameDetails={gameDetails}
+                                    teamId={teamId}
+                                    isOrganizer={isOrganizer}
+                                    expandedMatches={expandedMatches}
+                                    expandedGames={expandedGames}
+                                    toggleMatch={toggleMatch}
+                                    toggleGame={toggleGame}
+                                />
+                            </TabsContent>
+                        </Tabs>
+                    </TabsContent>
+                </Tabs>
+            )}
         </div>
     );
 };

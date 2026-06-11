@@ -1,96 +1,192 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { getAgentIcon } from '@/components/tournament/fullScoreboardConstants';
+import {
+  formatPercent,
+  formatStat,
+  resolvePlayerAcs,
+  resolvePlayerKdRatio,
+  type RiotTeamSide,
+  type ScoreboardPlayer,
+} from '@/types/scoreboardPlayer';
 
-interface FullScoreboardProps {
-    players: any[];
-    team1Name: string;
-    team2Name: string;
-    team1Score: number;
-    team2Score: number;
-    reporterSide?: 'Blue' | 'Red';
-    reportedByTeamId?: string;
-    team1Id?: string;
-    t1Side?: 'Blue' | 'Red';
+export interface FullScoreboardProps {
+  players?: ScoreboardPlayer[];
+  team1Name: string;
+  team2Name: string;
+  team1Score: number;
+  team2Score: number;
+  reporterSide?: RiotTeamSide;
+  reportedByTeamId?: string;
+  team1Id?: string;
+  t1Side?: RiotTeamSide;
 }
 
-const PlayerRow = ({ player }: { player: any }) => (
-    <div className="flex items-center justify-between py-2 px-3 hover:bg-white/5 transition-colors rounded-lg group/row">
-        <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/10 bg-zinc-800">
-                <img src={getAgentIcon(player.characterId)} loading="lazy" alt="" className="w-full h-full object-cover" />
-            </div>
-            <div className="flex flex-col">
-                <span className="text-sm font-bold text-zinc-200 group-hover/row:text-white transition-colors">
-                    {player.gameName}
-                    <span className="text-zinc-500 font-medium ml-1">#{player.tagLine}</span>
-                </span>
-            </div>
-        </div>
-        <div className="flex items-center gap-6">
-            <div className="flex items-center gap-1.5 min-w-[80px] justify-center">
-                <span className="text-emerald-400 font-bold text-xs">{player.kills}</span>
-                <span className="text-zinc-700 text-[10px]">/</span>
-                <span className="text-rose-500 font-bold text-xs">{player.deaths}</span>
-                <span className="text-zinc-700 text-[10px]">/</span>
-                <span className="text-zinc-400 font-bold text-xs">{player.assists}</span>
-            </div>
-            <div className="min-w-[50px] text-right">
-                <span className="text-zinc-500 font-mono text-[10px] uppercase">Score</span>
-                <div className="text-xs font-black text-white">{player.score.toLocaleString()}</div>
-            </div>
-        </div>
+function isTeam1RiotPlayer(player: ScoreboardPlayer, isTeam1Blue: boolean): boolean {
+  const teamId = player.teamId;
+  if (isTeam1Blue) {
+    return teamId === 'Blue' || teamId === 1200;
+  }
+  return teamId === 'Red' || teamId === 1100;
+}
+
+function sortByAcs(players: ScoreboardPlayer[]): ScoreboardPlayer[] {
+  return [...players].sort((left, right) => {
+    const leftAcs = resolvePlayerAcs(left) ?? 0;
+    const rightAcs = resolvePlayerAcs(right) ?? 0;
+    return rightAcs - leftAcs;
+  });
+}
+
+function StatCell({
+  value,
+  className,
+}: {
+  value: string;
+  className?: string;
+}) {
+  return (
+    <span className={cn('tabular-nums text-xs font-semibold text-zinc-300', className)}>
+      {value}
+    </span>
+  );
+}
+
+function PlayerStatRow({ player }: { player: ScoreboardPlayer }) {
+  const acs = resolvePlayerAcs(player);
+  const kd = resolvePlayerKdRatio(player);
+
+  return (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_repeat(5,2.25rem)] sm:grid-cols-[auto_minmax(0,1fr)_repeat(8,2.25rem)] lg:grid-cols-[auto_minmax(0,1fr)_repeat(9,2.5rem)] items-center gap-x-2 gap-y-1 px-3 py-2.5 border-b border-white/5 last:border-b-0 hover:bg-white/[0.03] transition-colors">
+      <div className="w-8 h-8 rounded-md overflow-hidden border border-white/10 bg-zinc-900 shrink-0">
+        {player.characterId ? (
+          <img
+            src={getAgentIcon(player.characterId)}
+            loading="lazy"
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        ) : null}
+      </div>
+
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-zinc-100">
+          {player.gameName || 'Unknown'}
+          {player.tagLine ? (
+            <span className="text-zinc-500 font-medium ml-1">#{player.tagLine}</span>
+          ) : null}
+        </p>
+      </div>
+
+      <StatCell value={formatStat(acs)} className="text-white font-bold" />
+      <StatCell value={formatStat(player.kills)} className="text-emerald-400" />
+      <StatCell value={formatStat(player.deaths)} className="text-rose-400" />
+      <StatCell value={formatStat(player.assists)} className="text-zinc-400" />
+      <StatCell value={formatStat(kd, 2)} className="hidden sm:block" />
+      <StatCell value={formatStat(player.adr)} className="hidden sm:block" />
+      <StatCell value={formatPercent(player.hsPct)} className="hidden lg:block" />
+      <StatCell value={formatStat(player.firstBloods)} className="hidden lg:block" />
     </div>
-);
+  );
+}
+
+function TeamScoreboard({
+  teamName,
+  teamScore,
+  players,
+}: {
+  teamName: string;
+  teamScore: number;
+  players: ScoreboardPlayer[];
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 truncate pr-3">
+          {teamName}
+        </span>
+        <span className="text-lg font-black tabular-nums text-white shrink-0">{teamScore}</span>
+      </div>
+
+      <div className="rounded-xl border border-white/5 bg-zinc-950/40 overflow-x-auto">
+        <div className="min-w-[720px]">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_repeat(5,2.25rem)] sm:grid-cols-[auto_minmax(0,1fr)_repeat(8,2.25rem)] lg:grid-cols-[auto_minmax(0,1fr)_repeat(9,2.5rem)] gap-x-2 px-3 py-2 border-b border-white/10 bg-black/30">
+          <span className="col-span-2 text-[9px] font-bold uppercase tracking-widest text-zinc-500">
+            Player
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
+            ACS
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
+            K
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
+            D
+          </span>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
+            A
+          </span>
+          <span className="hidden sm:block text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
+            KD
+          </span>
+          <span className="hidden sm:block text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
+            ADR
+          </span>
+          <span className="hidden lg:block text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
+            HS%
+          </span>
+          <span className="hidden lg:block text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
+            FB
+          </span>
+        </div>
+
+        {players.length === 0 ? (
+          <p className="px-3 py-4 text-xs text-zinc-500">No player statistics available.</p>
+        ) : (
+          players.map((player, index) => (
+            <PlayerStatRow key={player.puuid ?? `${player.gameName}-${index}`} player={player} />
+          ))
+        )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export const FullScoreboard: React.FC<FullScoreboardProps> = ({
-    players,
-    team1Name,
-    team2Name,
-    team1Score,
-    team2Score,
-    reporterSide,
-    reportedByTeamId,
-    team1Id,
-    t1Side
+  players = [],
+  team1Name,
+  team2Name,
+  team1Score,
+  team2Score,
+  reporterSide,
+  reportedByTeamId,
+  team1Id,
+  t1Side,
 }) => {
-    // Determine which Riot team (Blue/Red) corresponds to Tournament Team 1
+  const { team1Players, team2Players } = useMemo(() => {
     let isTeam1Blue = true;
 
     if (t1Side) {
-        // Direct mapping from stored side
-        isTeam1Blue = t1Side === 'Blue';
+      isTeam1Blue = t1Side === 'Blue';
     } else if (reporterSide && reportedByTeamId && team1Id) {
-        // Fallback: Infer from reporter
-        const isReporterTeam1 = String(reportedByTeamId).toLowerCase() === String(team1Id).toLowerCase();
-        isTeam1Blue = isReporterTeam1 ? (reporterSide === 'Blue') : (reporterSide === 'Red');
+      const isReporterTeam1 =
+        String(reportedByTeamId).toLowerCase() === String(team1Id).toLowerCase();
+      isTeam1Blue = isReporterTeam1 ? reporterSide === 'Blue' : reporterSide === 'Red';
     }
 
-    const team1RiotPlayers = players.filter(p => isTeam1Blue ? (p.teamId === 'Blue' || p.teamId === 1200) : (p.teamId === 'Red' || p.teamId === 1100));
-    const team2RiotPlayers = players.filter(p => isTeam1Blue ? (p.teamId === 'Red' || p.teamId === 1100) : (p.teamId === 'Blue' || p.teamId === 1200));
-
-    return (
-        <div className="space-y-6 py-2">
-            {/* Team 1 Section */}
-            <div className="space-y-2">
-                <div className="flex items-center justify-between px-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{team1Name}</span>
-                    <span className="text-lg font-black text-white">{team1Score}</span>
-                </div>
-                <div className="bg-zinc-900/30 rounded-xl border border-white/5 overflow-hidden">
-                    {team1RiotPlayers.map((p, i) => <PlayerRow key={i} player={p} />)}
-                </div>
-            </div>
-
-            {/* Team 2 Section */}
-            <div className="space-y-2">
-                <div className="flex items-center justify-between px-1">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{team2Name}</span>
-                    <span className="text-lg font-black text-white">{team2Score}</span>
-                </div>
-                <div className="bg-zinc-900/30 rounded-xl border border-white/5 overflow-hidden">
-                    {team2RiotPlayers.map((p, i) => <PlayerRow key={i} player={p} />)}
-                </div>
-            </div>
-        </div>
+    const team1 = sortByAcs(players.filter((player) => isTeam1RiotPlayer(player, isTeam1Blue)));
+    const team2 = sortByAcs(
+      players.filter((player) => !isTeam1RiotPlayer(player, isTeam1Blue)),
     );
+
+    return { team1Players: team1, team2Players: team2 };
+  }, [players, reporterSide, reportedByTeamId, team1Id, t1Side]);
+
+  return (
+    <div className="space-y-5 py-1 overflow-x-auto">
+      <TeamScoreboard teamName={team1Name} teamScore={team1Score} players={team1Players} />
+      <TeamScoreboard teamName={team2Name} teamScore={team2Score} players={team2Players} />
+    </div>
+  );
 };

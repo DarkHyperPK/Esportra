@@ -5,7 +5,11 @@ import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Trophy, AlertCircle, Swords, Copy, MessageCircle, ShieldAlert, ExternalLink, ChevronDown } from 'lucide-react';
+import PremiumBackground from '@/components/ui/PremiumBackground';
+import { Trophy, AlertCircle, Swords, ShieldAlert, ExternalLink } from 'lucide-react';
+import { MatchRoomHero } from '@/components/tournament/match-room/MatchRoomHero';
+import { MatchRoomActionList } from '@/components/tournament/match-room/MatchRoomActionList';
+import { FloatingMatchChat } from '@/components/tournament/match-room/FloatingMatchChat';
 import { MatchRepository } from '@/services/bracket/MatchRepository';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import { adaptGraphToBracketMatches, buildCompetitorMapFromNodes } from '@/services/bracket/BracketAdapter';
@@ -25,7 +29,6 @@ import { competitorIdsMatch } from '@/utils/competitorId';
 
 import MatchChat from '@/components/tournament/MatchChat';
 import TournamentEndScreen from '@/components/tournament/TournamentEndScreen';
-import EntityAvatar from '@/components/ui/EntityAvatar';
 
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useMatchResultReport } from '@/hooks/useMatchResultReport';
@@ -34,8 +37,6 @@ import { useMatchRoomRealtime } from '@/hooks/useMatchRoomRealtime';
 import { useVetoRealtime } from '@/hooks/useVetoRealtime';
 import ServerConnectionCard from '@/components/match/ServerConnectionCard';
 import { LiveScoreCardView, useLiveScoreState } from '@/components/match/LiveScoreCard';
-import { VetoHistoryTimeline } from '@/components/tournament/map-veto/VetoHistoryTimeline';
-import { useVetoHistory } from '@/hooks/useVetoHistory';
 import { useMatchRoomState } from '@/hooks/useMatchRoomState';
 import { useMatchLifecycleInvalidation } from '@/hooks/useMatchLifecycleInvalidation';
 import {
@@ -89,7 +90,6 @@ const CaptainMatchPage = () => {
     const [mapVetoOpen, setMapVetoOpen] = useState(false);
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
     const [mapVetoMatchId, setMapVetoMatchId] = useState<string | null>(null);
-    const [vetoSummaryOpen, setVetoSummaryOpen] = useState(false);
 
 
     const { data: tournamentResponse, isLoading: tournamentLoading, isError: tournamentError } = useQuery({
@@ -625,12 +625,6 @@ const CaptainMatchPage = () => {
     const fetchMatchGames = fetchMatchGamesAndMap;
     const determineMap = fetchMatchGamesAndMap;
 
-    // SignalR realtime subscriptions (replaces Supabase postgres_changes)
-    const { data: vetoHistory = [], isLoading: vetoHistoryLoading } = useVetoHistory(
-        activeMatchRawId ?? null,
-        Boolean(vetoData) && isVetoEnabled,
-    );
-
     // Bracket updates → debounced invalidation (structural changes)
     useBracketRealtime({
         versionId: lifecycleScope.versionId ?? null,
@@ -811,40 +805,89 @@ const CaptainMatchPage = () => {
     };
 
 
-    return (
-        <div className="min-h-screen bg-transparent text-white p-4 md:p-8 font-body">
-            <div className="max-w-7xl mx-auto space-y-8">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <Button
-                        variant="ghost"
-                        className="text-gray-400 hover:text-white pl-0"
-                        onClick={() => navigate(`/tournaments/${slug}`)}
-                    >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back to Dashboard
-                    </Button>
-                    <div className="text-right">
-                        <h1 className="text-xl font-bold text-white">{tournament.name}</h1>
-                        <p className="text-sm text-emerald-500 font-medium uppercase tracking-wider">
-                            {isOrganizerMatchView ? 'Organizer Match Room' : "Captain's Match View"}
-                        </p>
+    const assistedMatchReportAction = activeMatch
+        ? (() => {
+            const assistedEnabled = isAssistedMatchReportingEnabled(
+                tournament?.game || '',
+                tournament?.game_mode,
+                tournament?.settings as { assistedMatchReporting?: boolean },
+            );
+            if (!assistedEnabled) return null;
+
+            const bestOf = activeMatch.bestOf || 1;
+            const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
+            const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
+            const vetoReady = !isVetoEnabled || mapVetoCompleted;
+
+            if (activeMatch.status === 'completed' || isMatchDecided || nextGameNumber > bestOf || !vetoReady) {
+                return null;
+            }
+
+            if (disputedGameNumbers.has(nextGameNumber)) {
+                return (
+                    <div className="flex items-center gap-2 border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                        <ShieldAlert className="h-4 w-4 shrink-0" />
+                        Game {nextGameNumber} is disputed — awaiting organizer resolution.
                     </div>
-                </div>
+                );
+            }
 
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Column: Match Details */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Active Match Section */}
-                        <div className="space-y-5">
-                            <h2 className="flex items-center gap-2 text-base font-semibold text-white">
-                                <Swords className="w-4 h-4 text-esports-accent" />
-                                {isOrganizerMatchView ? 'Selected Match Room' : 'Your Active Match'}
-                            </h2>
+            return (
+                <MatchAutoReport
+                    matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                    gameNumber={nextGameNumber}
+                    mapName={nextGameMap?.name || 'Unknown Map'}
+                    mapId={nextGameMap?.id || ''}
+                    scheduledTime={(selfPlayEnabled ? effectiveScheduledTime : activeMatch.scheduledTime) ?? undefined}
+                    userTeamId={isOrganizerMatchView ? undefined : userTeamId}
+                    team1Id={activeMatch.team1?.id}
+                    team2Id={activeMatch.team2?.id}
+                    team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                    team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
+                    team1Logo={activeMatch.team1?.logo_url ?? undefined}
+                    team2Logo={activeMatch.team2?.logo_url ?? undefined}
+                    isCaptain={!isOrganizerMatchView && isCaptain}
+                    className="!w-auto h-9 rounded-none px-4 text-[10px]"
+                    onSuccess={() => {
+                        toast({ title: "Game Reported", description: "Result verified and saved." });
+                        refetchBracket();
+                        fetchMatchGames();
+                    }}
+                />
+            );
+        })()
+        : null;
 
-                            {activeMatch ? (
-                                <div className="w-full max-w-lg mx-auto space-y-4">
+    const manualReportLabel = disputedGameNumbers.has(nextGameNumber) ? `Game ${nextGameNumber} disputed`
+        : (isVetoEnabled && !mapVetoCompleted) ? 'Awaiting veto'
+        : 'Upload result';
+
+    return (
+        <PremiumBackground animated intensity={0.14} className="text-white font-body overflow-x-hidden">
+            <MatchRoomHero
+                tournamentGame={tournament.game}
+                slug={slug || ''}
+                isOrganizerView={isOrganizerMatchView}
+                activeMatch={activeMatch}
+                roundLabel={activeMatch ? getRoundName(activeMatch.round, activeMatch.bracketSide) : undefined}
+                isLive={isMatchLive}
+                matchSettled={matchSettled}
+                nextGameNumber={nextGameNumber}
+                nextMapName={nextGameMap?.name}
+                partyCode={activeMatch?.partyCode}
+                onNavigateBack={() => navigate(`/tournaments/${slug}`)}
+                onCopyPartyCode={activeMatch?.partyCode ? () => {
+                    navigator.clipboard.writeText(activeMatch.partyCode!);
+                    toast({ title: 'Copied', description: 'Party code copied' });
+                } : undefined}
+            />
+
+            {activeMatch ? (
+                <>
+                    <section className="border-b border-white/10 bg-[#08080a]">
+                        <div className="mx-auto grid max-w-[1180px] gap-8 px-4 py-10 md:px-10 lg:grid-cols-[minmax(0,1fr)_360px]">
+                            <div className="space-y-5">
+                                <div className="w-full space-y-4">
                                     {roomStateError && (
                                         <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-200">
                                             <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
@@ -859,42 +902,6 @@ const CaptainMatchPage = () => {
                                     {roomStateLoading && !roomState && !roomStateError && (
                                         <div className="text-center text-xs text-zinc-500 py-2">Loading match room state…</div>
                                     )}
-
-                                    {/* Round Name */}
-                                    <p className="text-center text-xs font-medium text-emerald-500 uppercase tracking-widest">
-                                        {getRoundName(activeMatch.round, activeMatch.bracketSide)}
-                                    </p>
-
-                                    {/* Team VS Team — compact */}
-                                    <div className="flex items-center justify-center gap-6 py-4">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <EntityAvatar
-                                                src={activeMatch.team1?.logo_url}
-                                                name={activeMatch.team1?.name}
-                                                entityId={activeMatch.team1?.id}
-                                                type="team"
-                                                size="w-14 h-14"
-                                            />
-                                            <span className="text-xs font-medium text-white max-w-[100px] truncate">
-                                                {activeMatch.team1?.name || 'TBD'}
-                                            </span>
-                                        </div>
-
-                                        <span className="text-lg font-bold text-zinc-600">VS</span>
-
-                                        <div className="flex flex-col items-center gap-2">
-                                            <EntityAvatar
-                                                src={activeMatch.team2?.logo_url}
-                                                name={activeMatch.team2?.name}
-                                                entityId={activeMatch.team2?.id}
-                                                type="team"
-                                                size="w-14 h-14"
-                                            />
-                                            <span className="text-xs font-medium text-white max-w-[100px] truncate">
-                                                {activeMatch.team2?.name || 'TBD'}
-                                            </span>
-                                        </div>
-                                    </div>
 
                                     {/* Waiting for opponent */}
                                     {(!activeMatch.team2?.id) && activeMatch.status === 'pending' && (
@@ -962,37 +969,6 @@ const CaptainMatchPage = () => {
                                             }}
                                             subscribeRealtime={false}
                                         />
-                                    )}
-
-                                    {/* Map veto summary — visible once veto record exists */}
-                                    {isVetoEnabled && vetoData && (
-                                        <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/50 overflow-hidden">
-                                            <button
-                                                type="button"
-                                                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-800/40 transition-colors"
-                                                onClick={() => setVetoSummaryOpen((open) => !open)}
-                                                aria-expanded={vetoSummaryOpen}
-                                            >
-                                                <div>
-                                                    <p className="text-sm font-semibold text-white">Map veto summary</p>
-                                                    <p className="text-xs text-zinc-500 mt-0.5">
-                                                        {vetoData.status === 'completed'
-                                                            ? `${vetoHistory.length} actions recorded`
-                                                            : `In progress — ${vetoHistory.length} actions so far`}
-                                                    </p>
-                                                </div>
-                                                <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform ${vetoSummaryOpen ? 'rotate-180' : ''}`} />
-                                            </button>
-                                            {vetoSummaryOpen && (
-                                                <div className="px-4 pb-4 border-t border-zinc-800/60">
-                                                    <VetoHistoryTimeline
-                                                        entries={vetoHistory}
-                                                        loading={vetoHistoryLoading}
-                                                        compact
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
                                     )}
 
                                     {/* Actions — progressively unlocked */}
@@ -1065,55 +1041,6 @@ const CaptainMatchPage = () => {
                                             <ServerConnectionCard matchId={activeMatchRawId} />
                                         )}
 
-                                        {/* Valorant Auto-Report — only when veto completed (or veto disabled) */}
-                                        {(() => {
-                                            const assistedEnabled = isAssistedMatchReportingEnabled(
-                                                tournament?.game || '',
-                                                tournament?.game_mode,
-                                                tournament?.settings as { assistedMatchReporting?: boolean },
-                                            );
-                                            if (!assistedEnabled) return null;
-                                            const bestOf = activeMatch.bestOf || 1;
-                                            const winsNeeded = bestOf === 1 ? 1 : Math.ceil(bestOf / 2);
-                                            const isMatchDecided = (activeMatch.team1_score || 0) >= winsNeeded || (activeMatch.team2_score || 0) >= winsNeeded;
-                                            const vetoReady = !isVetoEnabled || mapVetoCompleted;
-                                            if (activeMatch.status !== 'completed' && !isMatchDecided && nextGameNumber <= bestOf && vetoReady) {
-                                                // Block auto-report for disputed games
-                                                if (disputedGameNumbers.has(nextGameNumber)) {
-                                                    return (
-                                                        <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-300 text-xs flex items-center gap-2">
-                                                            <ShieldAlert className="w-4 h-4 flex-shrink-0" />
-                                                            Game {nextGameNumber} is disputed — awaiting organizer resolution.
-                                                        </div>
-                                                    );
-                                                }
-                                                return (
-                                                    <MatchAutoReport
-                                                        matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                                        gameNumber={nextGameNumber}
-                                                        mapName={nextGameMap?.name || 'Unknown Map'}
-                                                        mapId={nextGameMap?.id || ''}
-                                                        scheduledTime={(selfPlayEnabled ? effectiveScheduledTime : activeMatch.scheduledTime) ?? undefined}
-                                                        userTeamId={isOrganizerMatchView ? undefined : userTeamId}
-                                                        team1Id={activeMatch.team1?.id}
-                                                        team2Id={activeMatch.team2?.id}
-                                                        team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
-                                                        team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
-                                                        team1Logo={activeMatch.team1?.logo_url ?? undefined}
-                                                        team2Logo={activeMatch.team2?.logo_url ?? undefined}
-                                                        isCaptain={!isOrganizerMatchView && isCaptain}
-                                                        className="w-full h-10"
-                                                        onSuccess={() => {
-                                                            toast({ title: "Game Reported", description: "Result verified and saved." });
-                                                            refetchBracket();
-                                                            fetchMatchGames();
-                                                        }}
-                                                    />
-                                                );
-                                            }
-                                            return null;
-                                        })()}
-
                                         {/* Result verification — all live matches (manual + auto reports) */}
                                         {isMatchLive && activeMatch.status !== 'completed' && !disputedGameNumbers.has(nextGameNumber) && (
                                             <MatchResultVerification
@@ -1138,175 +1065,128 @@ const CaptainMatchPage = () => {
                                             />
                                         )}
 
-                                        {/* Map Veto + Manual Report — only show when match is live */}
-                                        {isMatchLive && activeMatch.status !== 'completed' && (
-                                            <div className={`grid gap-2 ${isVetoEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                                                {isVetoEnabled && (
-                                                    <Button
-                                                        onClick={() => handleOpenVeto(activeMatch)}
-                                                        className="bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/50 text-white h-10 text-sm font-semibold font-mono tracking-wide"
-                                                    >
-                                                        <Swords className="w-4 h-4 mr-1.5" />
-                                                        Map Veto
-                                                    </Button>
-                                                )}
-                                                <Button
-                                                    onClick={() => handleUploadResult(activeMatch.id)}
-                                                    className="bg-rose-500 hover:bg-rose-600 text-white h-10 text-sm font-semibold font-mono tracking-wide disabled:opacity-40"
-                                                    disabled={(isVetoEnabled && !mapVetoCompleted) || disputedGameNumbers.has(nextGameNumber)}
-                                                >
-                                                    <Trophy className="w-4 h-4 mr-1.5" />
-                                                    {disputedGameNumbers.has(nextGameNumber) ? `Game ${nextGameNumber} Disputed`
-                                                        : (isVetoEnabled && !mapVetoCompleted) ? 'Awaiting Veto' : 'Manual Report'}
-                                                </Button>
-                                            </div>
-                                        )}
-
-                                        {/* Party Code — inline */}
-                                        {activeMatch.partyCode && (
-                                            <div className="flex items-center justify-between bg-zinc-900/40 px-4 py-3 rounded-lg border border-zinc-800/60">
-                                                <div>
-                                                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold block">Party Code</span>
-                                                    <code className="text-base font-mono text-emerald-400 font-bold">{activeMatch.partyCode}</code>
-                                                </div>
-                                                <button
-                                                    className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
-                                                    onClick={() => {
-                                                        if (!activeMatch.partyCode) return;
-                                                        navigator.clipboard.writeText(activeMatch.partyCode);
-                                                        toast({ title: "Copied", description: "Party code copied" });
-                                                    }}
-                                                >
-                                                    <Copy className="h-4 w-4" />
-                                                </button>
-                                            </div>
-                                        )}
-
                                     </div>
                                 </div>
-                            ) : (
-                                <TournamentEndScreen
-                                    state={
-                                        isTournamentWinner ? 'winner'
-                                        : isTournamentRunnerUp ? 'runner_up'
-                                        : isEliminated ? 'eliminated'
-                                        : lastCompletedMatch ? 'waiting'
-                                        : 'no_match'
-                                    }
-                                    exitRoundName={lastCompletedMatch ? getRoundName(lastCompletedMatch.round, lastCompletedMatch.bracketSide) : undefined}
-                                    tournamentStatus={tournament?.status}
-                                    slug={slug}
-                                    onNavigate={navigate}
+                            </div>
+
+                            <aside className="lg:sticky lg:top-8 lg:self-start">
+                                <MatchRoomActionList
+                                    vetoEnabled={isVetoEnabled}
+                                    canOpenVeto={isMatchLive && activeMatch.status !== 'completed'}
+                                    manualReportDisabled={(isVetoEnabled && !mapVetoCompleted) || disputedGameNumbers.has(nextGameNumber)}
+                                    manualReportLabel={manualReportLabel}
+                                    assistedAction={assistedMatchReportAction}
+                                    onOpenVeto={() => handleOpenVeto(activeMatch)}
+                                    onManualReport={() => handleUploadResult(activeMatch.id)}
                                 />
-                            )}
-
-
+                            </aside>
                         </div>
+                    </section>
+                </>
+            ) : (
+                <section className="border-b border-white/10 bg-[#08080a]">
+                    <div className="mx-auto max-w-[1180px] px-4 py-16 md:px-10">
+                        <TournamentEndScreen
+                            state={
+                                isTournamentWinner ? 'winner'
+                                : isTournamentRunnerUp ? 'runner_up'
+                                : isEliminated ? 'eliminated'
+                                : lastCompletedMatch ? 'waiting'
+                                : 'no_match'
+                            }
+                            exitRoundName={lastCompletedMatch ? getRoundName(lastCompletedMatch.round, lastCompletedMatch.bracketSide) : undefined}
+                            tournamentStatus={tournament?.status}
+                            slug={slug}
+                            onNavigate={navigate}
+                        />
+                    </div>
+                </section>
+            )}
 
-                        {showMatchHistory && (
-                            <CaptainMatchHistory
+            {showMatchHistory && (
+                <section className="bg-[#070708]">
+                    <div className="mx-auto max-w-[1400px] px-4 py-12 md:px-10">
+                    <CaptainMatchHistory
+                        tournamentId={tournament.id}
+                        teamId={userTeamId}
+                        matches={matches}
+                        isOrganizer={Boolean(canManageMatchRoom && isOrganizerMatchView)}
+                        focusTeamIds={canManageMatchRoom && isOrganizerMatchView ? organizerFocusTeamIds : undefined}
+                        includeLiveMatchId={historyIncludeLiveMatchId}
+                    />
+                    </div>
+                </section>
+            )}
+
+            {activeMatch ? (
+                <FloatingMatchChat>
+                    <MatchChat
+                        matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                        userTeamId={isOrganizerMatchView ? undefined : userTeamId}
+                        team1Id={activeMatch.team1?.id}
+                        team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
+                        team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
+                        allowMinimize={false}
+                    />
+                </FloatingMatchChat>
+            ) : null}
+
+            {/* Modals */}
+            <Dialog open={isVetoEnabled && mapVetoOpen} onOpenChange={setMapVetoOpen}>
+                <DialogContent className="bg-[#09090b] border-zinc-800/80 max-w-[min(96vw,1280px)] h-[min(86dvh,780px)] overflow-hidden p-0 flex flex-col gap-0">
+                    <DialogHeader className="px-4 py-3 border-b border-zinc-800 bg-[#18181b] flex-shrink-0">
+                        <DialogTitle className="text-white text-base font-semibold">Map Veto</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" data-lenis-prevent>
+                        {mapVetoMatch && mapVetoMatchId && (
+                            <MapVeto
+                                matchId={mapVetoMatchId.replace(/^(db-|wb-|lb-)/, '')}
                                 tournamentId={tournament.id}
-                                teamId={userTeamId}
-                                matches={matches}
-                                isOrganizer={Boolean(canManageMatchRoom && isOrganizerMatchView)}
-                                focusTeamIds={canManageMatchRoom && isOrganizerMatchView ? organizerFocusTeamIds : undefined}
-                                includeLiveMatchId={historyIncludeLiveMatchId}
+                                tournamentSlug={slug}
+                                team1Id={mapVetoMatch.team1?.id}
+                                team2Id={mapVetoMatch.team2?.id}
+                                team1Name={mapVetoMatch.team1?.name}
+                                team2Name={mapVetoMatch.team2?.name}
+                                bestOf={mapVetoMatch.bestOf}
+                                game={tournament.game}
+                                layout="modal"
+                                showShareLinks={false}
+                                onComplete={() => {
+                                    setMapVetoOpen(false);
+                                    toast({ title: "Veto Completed", description: "Map veto process has been finalized." });
+                                }}
                             />
                         )}
                     </div>
+                </DialogContent>
+            </Dialog>
 
-                    {/* Right Column: Sticky Chat */}
-                    <div className="lg:col-span-1">
-                        <div className="sticky top-8 space-y-6">
-                            {activeMatch ? (
-                                <>
-                                    <div className="flex items-center gap-2 mb-2 px-2">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                        <span className="text-sm font-medium text-emerald-400">Live Match Chat</span>
-                                    </div>
-                                    <MatchChat
-                                        matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
-                                        userTeamId={isOrganizerMatchView ? undefined : userTeamId}
-                                        team1Id={activeMatch.team1?.id}
-                                        team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
-                                        team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
-                                    />
-                                    <div className="px-4 py-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-xs text-blue-200">
-                                        <p className="flex gap-2">
-                                            <MessageCircle className="w-4 h-4 flex-shrink-0" />
-                                            {isOrganizerMatchView
-                                                ? 'Organizer observer mode: monitor chat, check-in status, scheduling, and match coordination.'
-                                                : 'Communication is key! Use this chat to coordinate map vetoes and scheduling with your opponent.'}
-                                        </p>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="h-[200px] flex flex-col items-center justify-center border border-dashed border-zinc-800 rounded-xl bg-zinc-900/50 text-zinc-500 p-6 text-center">
-                                    <MessageCircle className="w-8 h-8 mb-3 opacity-20" />
-                                    <p className="text-sm">Chat will be available when you have an active match.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Modals */}
-                <Dialog open={isVetoEnabled && mapVetoOpen} onOpenChange={setMapVetoOpen}>
-                    <DialogContent className="bg-[#09090b] border-zinc-800/80 max-w-[min(96vw,1280px)] h-[min(86dvh,780px)] overflow-hidden p-0 flex flex-col gap-0">
-                        <DialogHeader className="px-4 py-3 border-b border-zinc-800 bg-[#18181b] flex-shrink-0">
-                            <DialogTitle className="text-white text-base font-semibold">Map Veto</DialogTitle>
-                        </DialogHeader>
-                        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" data-lenis-prevent>
-                            {mapVetoMatch && mapVetoMatchId && (
-                                <MapVeto
-                                    matchId={mapVetoMatchId.replace(/^(db-|wb-|lb-)/, '')}
-                                    tournamentId={tournament.id}
-                                    tournamentSlug={slug}
-                                    team1Id={mapVetoMatch.team1?.id}
-                                    team2Id={mapVetoMatch.team2?.id}
-                                    team1Name={mapVetoMatch.team1?.name}
-                                    team2Name={mapVetoMatch.team2?.name}
-                                    bestOf={mapVetoMatch.bestOf}
-                                    game={tournament.game}
-                                    layout="modal"
-                                    showShareLinks={false}
-                                    onComplete={() => {
-                                        setMapVetoOpen(false);
-                                        toast({ title: "Veto Completed", description: "Map veto process has been finalized." });
-                                    }}
-                                />
-                            )}
-                        </div>
-                    </DialogContent>
-                </Dialog>
-
-                <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-                    <DialogContent className="sm:max-w-md bg-[#18181b] border-zinc-800 p-0">
-                        <DialogTitle className="sr-only">Manual Result Report</DialogTitle>
-                        <MatchResultUpload
-                            matchId={(uploadMatchId || '').replace(/^(db-|wb-|lb-)/, '')}
-                            teamId={userTeamId}
-                            team1Id={activeMatch?.team1?.id}
-                            team2Id={activeMatch?.team2?.id}
-                            gameNumber={nextGameNumber}
-                            mapName={nextGameMap?.name}
-                            mapId={nextGameMap?.id}
-                            team1Name={activeMatch?.team1?.name || `${terminology.competitorLabel} 1`}
-                            team2Name={activeMatch?.team2?.name || `${terminology.competitorLabel} 2`}
-                            isCaptain={isCaptain}
-                            onSuccess={() => {
-                                setUploadOpen(false);
-                                fetchMatchGames();
-                                refetchBracket();
-                                toast({ title: "Result Submitted", description: "Match result reported. Awaiting opponent confirmation." });
-                            }}
-                        />
-                    </DialogContent>
-                </Dialog>
+            <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
+                <DialogContent className="sm:max-w-md bg-[#18181b] border-zinc-800 p-0">
+                    <DialogTitle className="sr-only">Manual Result Report</DialogTitle>
+                    <MatchResultUpload
+                        matchId={(uploadMatchId || '').replace(/^(db-|wb-|lb-)/, '')}
+                        teamId={userTeamId}
+                        team1Id={activeMatch?.team1?.id}
+                        team2Id={activeMatch?.team2?.id}
+                        gameNumber={nextGameNumber}
+                        mapName={nextGameMap?.name}
+                        mapId={nextGameMap?.id}
+                        team1Name={activeMatch?.team1?.name || `${terminology.competitorLabel} 1`}
+                        team2Name={activeMatch?.team2?.name || `${terminology.competitorLabel} 2`}
+                        isCaptain={isCaptain}
+                        onSuccess={() => {
+                            setUploadOpen(false);
+                            fetchMatchGames();
+                            refetchBracket();
+                            toast({ title: "Result Submitted", description: "Match result reported. Awaiting opponent confirmation." });
+                        }}
+                    />
+                </DialogContent>
+            </Dialog>
 
 
-            </div>
-        </div>
+        </PremiumBackground>
     );
 };
 

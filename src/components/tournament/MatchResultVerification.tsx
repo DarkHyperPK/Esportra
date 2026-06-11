@@ -194,7 +194,7 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
                       transition={{ duration: 0.2 }}
                       style={{ display: 'grid', overflow: 'hidden' }}
                     >
-                      <div style={{ minHeight: 0, overflow: 'hidden' }}>
+                      <div style={{ minHeight: 0, overflow: 'auto' }}>
                         <FullScoreboard
                           players={acceptedReport.match_data.players}
                           team1Name={team1Name}
@@ -314,7 +314,7 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
                         style={{ display: 'grid', overflow: 'hidden' }}
                         className="mt-2"
                       >
-                        <div style={{ minHeight: 0, overflow: 'hidden' }}>
+                        <div style={{ minHeight: 0, overflow: 'auto' }}>
                           <FullScoreboard
                             players={activeReport.match_data.players}
                             team1Name={team1Name}

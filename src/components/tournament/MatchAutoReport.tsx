@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, Trophy, Clock, Swords, Check, ShieldAlert, Search, Info, SearchX, RefreshCcw, Zap, AlertTriangle } from 'lucide-react';
+import { Loader2, Trophy, Clock, Swords, Check, Search, Info, SearchX, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/lib/apiClient';
 import { useMatchResultReport } from '@/hooks/useMatchResultReport';
@@ -231,36 +231,21 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
 
                     {/* Step: Scanning */}
                     {scanStep === 'scanning' && (
-                        <div className="py-20 text-center relative overflow-hidden">
-                            {/* Premium Orbital Loader */}
-                            <div className="relative w-24 h-24 mx-auto mb-8">
-                                <div className="absolute inset-0 rounded-full border-2 border-indigo-500/20" />
-                                <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                    className="absolute inset-0 rounded-full border-t-2 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)]"
-                                />
-                                <motion.div
-                                    animate={{ rotate: -360 }}
-                                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                                    className="absolute inset-2 rounded-full border-b-2 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.4)]"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <Zap className="w-8 h-8 text-white/20 animate-pulse" />
+                        <div className="py-14 px-6 text-center space-y-5">
+                            <div className="mx-auto w-full max-w-xs space-y-3">
+                                <div className="h-1 w-full overflow-hidden rounded-full bg-zinc-800">
+                                    <div
+                                        className="h-full w-1/3 rounded-full bg-rose-500 motion-safe:animate-[scan-progress_1.2s_ease-in-out_infinite]"
+                                        aria-hidden
+                                    />
                                 </div>
+                                <p className="text-sm font-medium text-zinc-300">
+                                    Scanning recent matches
+                                </p>
+                                <p className="text-xs text-zinc-500">
+                                    Checking Riot match history for {mapName}
+                                </p>
                             </div>
-
-                            <motion.h3
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="text-xl font-black uppercase tracking-tighter text-white mb-2 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent"
-                            >
-                                Scanning Results
-                            </motion.h3>
-                            <p className="text-sm text-zinc-500 font-medium">This may take a few seconds...</p>
-
-                            {/* Background Glow */}
-                            <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-64 h-32 bg-indigo-500/10 blur-[80px] rounded-full" />
                         </div>
                     )}
 
