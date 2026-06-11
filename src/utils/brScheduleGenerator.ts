@@ -55,7 +55,9 @@ export function generateBrSchedule({
     const lobbies: string[][] = [];
     lobbies.push([fixed, rotating[0]]);
 
-    for (let i = 1; i < rotating.length / 2 + 1; i += 1) {
+    // Match C# integer division: circle.Count / 2 + 1 (JS 5/2+1 === 3.5 would add a duplicate pair).
+    const innerPairLimit = Math.floor(rotating.length / 2);
+    for (let i = 1; i <= innerPairLimit; i += 1) {
       const left = rotating[i];
       const right = rotating[rotating.length - i];
       if (left !== right) {
