@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Calendar, Clock, Wand2, Save, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, Save, ChevronRight } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import type { BRRound } from '@/types/brLobbies';
@@ -144,20 +144,6 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
     if (hasRoundsConfigured) {
       setStep('rounds');
     }
-  };
-
-  const handleAutoDistribute = () => {
-    if (!startsAt || !endsAt || rounds.length === 0) return;
-    const start = new Date(startsAt).getTime();
-    const end = new Date(endsAt).getTime();
-    if (end <= start) return;
-    const interval = (end - start) / rounds.length;
-    const newSchedules: Record<string, string> = {};
-    for (let i = 0; i < rounds.length; i++) {
-      const dt = new Date(start + interval * i);
-      newSchedules[rounds[i].id] = toLocalInput(dt.toISOString());
-    }
-    setRoundSchedules(newSchedules);
   };
 
   const handleSaveRoundSchedules = async () => {
@@ -301,19 +287,6 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
                   </button>
                 ))}
               </div>
-            )}
-
-            {/* Auto-distribute button */}
-            {rounds.length > 0 && startsAt && endsAt && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAutoDistribute}
-                className="border-white/10 text-gray-300 hover:text-white text-xs"
-              >
-                <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-                Auto-distribute evenly across {rounds.length} rounds
-              </Button>
             )}
 
             {/* Lobby list */}

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,10 +15,16 @@ import { useBRGames } from '@/hooks/useBRGames';
 import { useBRGroupParticipants } from '@/hooks/useBRGroups';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
+import { apiClient } from '@/lib/apiClient';
+import type { BRStageFormat } from '@/types/battleRoyale';
+import type { BRGame } from '@/types/brLobbies';
+import { formatPublicLobbyLabel, getPublicBRScheduleCopy } from '@/utils/brScheduleLabels';
+import { formatRotationMatchdayLabel, seedGroupShortLabel } from '@/utils/brWaveScheduleDisplay';
 
 interface BRGroupStageViewProps {
   stageId: string;
   gameName?: string;
+  stageFormat?: BRStageFormat | string;
   /** Number of teams that qualify from each group (for cutoff line) */
   qualificationCount?: number;
   /** If provided, renders a "Match Room" CTA button */
@@ -27,6 +34,7 @@ interface BRGroupStageViewProps {
 const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
   stageId,
   gameName,
+  stageFormat,
   qualificationCount,
   tournamentSlug,
 }) => {
@@ -77,6 +85,8 @@ const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
     );
   }
 
+  const activeGroup = groups.find((g) => g.id === activeGroupId);
+
   return (
     <div className="space-y-4">
       {tournamentSlug && (
@@ -120,6 +130,8 @@ const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
         <GroupContent
           stageId={stageId}
           groupId={activeGroupId}
+          groupName={activeGroup?.name ?? 'Group'}
+          stageFormat={stageFormat}
           gameName={gameName}
           qualificationCount={qualificationCount}
           tournamentSlug={tournamentSlug}
@@ -132,6 +144,8 @@ const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
 interface GroupContentProps {
   stageId: string;
   groupId: string;
+  groupName: string;
+  stageFormat?: BRStageFormat | string;
   gameName?: string;
   qualificationCount?: number;
   tournamentSlug?: string;
@@ -140,6 +154,8 @@ interface GroupContentProps {
 const GroupContent: React.FC<GroupContentProps> = ({
   stageId,
   groupId,
+  groupName,
+  stageFormat,
   gameName,
   qualificationCount,
   tournamentSlug,
@@ -167,6 +183,27 @@ const GroupContent: React.FC<GroupContentProps> = ({
   });
   const { data: activeLobbyGames = [] } = useBRGames(activeRound?.id ?? null);
   const { data: participants = [], isLoading: participantsLoading } = useBRGroupParticipants(stageId, groupId);
+
+  const scheduleCopy = getPublicBRScheduleCopy(stageFormat);
+  const shortGroupName = seedGroupShortLabel(groupName);
+
+  const lobbyGameQueries = useQueries({
+    queries: rounds.map((lobby) => ({
+      queryKey: ['br-games', lobby.id],
+      queryFn: () => apiClient.get<BRGame[]>(`/api/lobbies/${lobby.id}/games`),
+      enabled: !scheduleCopy.isRotation && !!lobby.id,
+      staleTime: 1000 * 30,
+    })),
+  });
+
+  const gamesByLobbyId = useMemo(() => {
+    const map = new Map<string, BRGame[]>();
+    rounds.forEach((lobby, index) => {
+      const games = lobbyGameQueries[index]?.data ?? [];
+      map.set(lobby.id, [...games].sort((a, b) => a.game_number - b.game_number));
+    });
+    return map;
+  }, [lobbyGameQueries, rounds]);
 
   const isLoading = lbLoading || roundsLoading;
 
@@ -222,12 +259,17 @@ const GroupContent: React.FC<GroupContentProps> = ({
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-white">
-              Match live — Round {activeRound.round_number ?? activeRound.wave_number}
+              {scheduleCopy.liveBannerPrefix} — {shortGroupName}
               {activeLobbyGames.length > 0 && (
                 <span className="text-zinc-400 font-normal">
                   {' '}· Game {activeLobbyGames.find((g) => g.status === 'active')?.game_number
                     ?? activeLobbyGames.filter((g) => g.status === 'completed').length + 1}
                   /{activeLobbyGames.length}
+                </span>
+              )}
+              {scheduleCopy.isRotation && (
+                <span className="text-zinc-400 font-normal">
+                  {' '}· {formatRotationMatchdayLabel(activeRound.round_number ?? activeRound.wave_number ?? 1)}
                 </span>
               )}
             </h3>
@@ -262,35 +304,113 @@ const GroupContent: React.FC<GroupContentProps> = ({
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-zinc-400" />
-              <h3 className="text-sm font-semibold text-white">Match schedule</h3>
+              <h3 className="text-sm font-semibold text-white">{scheduleCopy.scheduleTitle}</h3>
+              {!scheduleCopy.isRotation && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-zinc-400">
+                  {shortGroupName}
+                </Badge>
+              )}
             </div>
             <div className="space-y-2">
-              {rounds.map((lobby) => (
-                <div
-                  key={lobby.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2"
-                >
-                  <div>
-                    <p className="text-sm text-white font-medium">
-                      Round {lobby.wave_number ?? lobby.round_number}
-                      {lobby.lobby_index != null ? ` · Match ${lobby.lobby_index + 1}` : ''}
-                    </p>
-                    <p className="text-[10px] text-zinc-500">
-                      {(lobby.games_completed ?? 0)}/{(lobby.game_count ?? 1)} games · {lobby.status}
-                    </p>
+              {scheduleCopy.isRotation ? (
+                rounds.map((lobby, lobbyIndex) => (
+                  <div
+                    key={lobby.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2"
+                  >
+                    <div>
+                      <p className="text-sm text-white font-medium">
+                        {formatPublicLobbyLabel(lobby, {
+                          format: stageFormat,
+                          groupName,
+                          lobbyIndex,
+                          totalLobbiesInGroup: rounds.length,
+                          seedGroupCount: groups.length,
+                          groups,
+                        })}
+                      </p>
+                      <p className="text-[10px] text-zinc-500">
+                        {(lobby.games_completed ?? 0)}/{(lobby.game_count ?? 1)} scored game{(lobby.game_count ?? 1) === 1 ? '' : 's'} · {lobby.status}
+                      </p>
+                    </div>
+                    {lobby.scheduled_at && (
+                      <p className="text-[10px] text-zinc-400">
+                        {new Date(lobby.scheduled_at).toLocaleString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    )}
                   </div>
-                  {lobby.scheduled_at && (
-                    <p className="text-[10px] text-zinc-400">
-                      {new Date(lobby.scheduled_at).toLocaleString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  )}
-                </div>
-              ))}
+                ))
+              ) : (
+                rounds.map((lobby, lobbyIndex) => {
+                  const games = gamesByLobbyId.get(lobby.id) ?? [];
+                  const lobbyLabel = formatPublicLobbyLabel(lobby, {
+                    format: stageFormat,
+                    groupName,
+                    lobbyIndex,
+                    totalLobbiesInGroup: rounds.length,
+                  });
+
+                  if (games.length === 0) {
+                    return (
+                      <div
+                        key={lobby.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2"
+                      >
+                        <div>
+                          <p className="text-sm text-white font-medium">{lobbyLabel}</p>
+                          <p className="text-[10px] text-zinc-500">
+                            {(lobby.games_completed ?? 0)}/{(lobby.game_count ?? 1)} games · {lobby.status}
+                          </p>
+                        </div>
+                        {lobby.scheduled_at && (
+                          <p className="text-[10px] text-zinc-400">
+                            {new Date(lobby.scheduled_at).toLocaleString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={lobby.id} className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 space-y-2">
+                      {rounds.length > 1 && (
+                        <p className="text-xs font-medium text-zinc-300">{lobbyLabel}</p>
+                      )}
+                      {games.map((game) => (
+                        <div
+                          key={game.id}
+                          className="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 first:border-t-0 first:pt-0 pt-2"
+                        >
+                          <div>
+                            <p className="text-sm text-white font-medium">Game {game.game_number}</p>
+                            <p className="text-[10px] text-zinc-500 capitalize">{game.status}</p>
+                          </div>
+                          {(game.scheduled_at || lobby.scheduled_at) && (
+                            <p className="text-[10px] text-zinc-400">
+                              {new Date(game.scheduled_at ?? lobby.scheduled_at!).toLocaleString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>

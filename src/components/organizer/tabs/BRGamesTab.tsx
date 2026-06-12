@@ -388,6 +388,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                             stageId={selectedStageId}
                             groups={groups}
                             seedGroupCount={groups.length}
+                            gamesPerMatch={resolvedStageConfig?.gamesPerLobby ?? resolvedStageConfig?.gameCount ?? 6}
                             scoringPreset={scoringPreset}
                             mapConfig={mapConfig}
                             mapCatalogItems={mapCatalogItems}

@@ -1,4 +1,5 @@
 import type { BRConfig, BRStageFormat } from '@/types/battleRoyale';
+import { summarizeGroupRotationSchedule } from '@/utils/brWaveScheduleDisplay';
 
 export interface BRWizardTerminology {
   isSolo: boolean;
@@ -136,11 +137,13 @@ export function formatBRStageStructureSummary(opts: {
         title: `${seedGroups} group${seedGroups === 1 ? '' : 's'} — each group gets its own lobby`,
         subtitle: `${gamesText} · standings are per group`,
       };
-    case 'group_rotation':
+    case 'group_rotation': {
+      const summary = summarizeGroupRotationSchedule(seedGroups, gamesPerLobby);
       return {
-        title: `${seedGroups} groups — everyone plays each other across ${Math.max(1, seedGroups - 1)} rounds`,
-        subtitle: `${gamesText} · two groups per match each round`,
+        title: summary.title,
+        subtitle: `${summary.subtitle} · ${summary.notDoubleRoundRobinNote}`,
       };
+    }
     case 'multi_lobby_cut':
       return {
         title: `${seedGroups} parallel cut lobby${seedGroups === 1 ? '' : 'ies'}`,

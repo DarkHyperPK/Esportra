@@ -30,7 +30,7 @@ import {
   formatUnitsPerGroup,
   recommendBRStageFormat,
 } from '@/utils/brGameContext';
-import { formatMatchPairing, formatRoundLabel } from '@/utils/brWaveScheduleDisplay';
+import { formatMatchPairing, formatRotationMatchdayLabel, summarizeGroupRotationSchedule } from '@/utils/brWaveScheduleDisplay';
 import { generateBrSchedule } from '@/utils/brScheduleGenerator';
 import type { BRStageFormat } from '@/types/battleRoyale';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
@@ -102,6 +102,20 @@ function defaultAdvancementForLobby(
   return Math.max(1, Math.min(Math.floor(lobbySize / 2), lobbySize - 1));
 }
 
+function resolveGroupsForFormat(
+  format: BRStageFormat,
+  incoming: number,
+  maxLobbySize: number | null,
+): number {
+  const baseGroups = deriveGroupCount(incoming, maxLobbySize);
+  if (format === 'single_lobby') return 1;
+  if (format === 'group_rotation') {
+    const groups = Math.max(4, baseGroups);
+    return groups % 2 === 0 ? groups : groups + 1;
+  }
+  return Math.max(1, baseGroups);
+}
+
 const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
   open,
   onOpenChange,
@@ -162,13 +176,11 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
       maxLobbySize ?? 100,
     );
     setStageFormat(recommended);
-    const baseGroups = deriveGroupCount(countForRecommend, maxLobbySize);
-    const groups =
-      recommended === 'group_rotation'
-        ? Math.max(4, baseGroups)
-        : baseGroups;
-    const evenGroups = groups % 2 === 0 ? groups : groups + 1;
-    const resolvedGroups = recommended === 'group_rotation' ? evenGroups : Math.max(1, groups);
+    const resolvedGroups = resolveGroupsForFormat(
+      recommended,
+      countForRecommend,
+      maxLobbySize,
+    );
     setGroupCount(resolvedGroups);
     const lobby = deriveLobbySize(countForRecommend, resolvedGroups);
     setAdvancementCount(
@@ -176,6 +188,23 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
         lobby,
         recommended === 'group_rotation',
         countForRecommend,
+      ),
+    );
+  };
+
+  const applyFormatDefaults = (format: BRStageFormat) => {
+    const resolvedGroups = resolveGroupsForFormat(
+      format,
+      effectiveIncoming,
+      maxLobbySize,
+    );
+    setGroupCount(resolvedGroups);
+    const lobby = deriveLobbySize(effectiveIncoming, resolvedGroups);
+    setAdvancementCount(
+      defaultAdvancementForLobby(
+        lobby,
+        format === 'group_rotation',
+        effectiveIncoming,
       ),
     );
   };
@@ -501,10 +530,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
                   onClick={() => {
                     if (blocked) return;
                     setStageFormat(opt.id);
-                    if (opt.id === 'group_rotation' && groupCount % 2 !== 0) {
-                      setGroupCount(groupCount + 1);
-                    }
-                    if (opt.id === 'single_lobby') setGroupCount(1);
+                    applyFormatDefaults(opt.id);
                   }}
                   className={`w-full text-left p-4 rounded-xl border transition-colors ${
                     blocked
@@ -550,15 +576,24 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
           {stageFormat === 'group_rotation' && (
             <>
               <p className="text-xs text-zinc-500 leading-relaxed">
-                Groups are roster buckets (A, B, C…). Each <strong className="text-zinc-300">round</strong> runs several
-                parallel <strong className="text-zinc-300">matches</strong> (e.g. Group A + Group B). Teams stay in their group;
-                each match combines two groups into one room. Set times in Schedule after seeding, then create matches.
+                <strong className="text-zinc-300">Single round-robin</strong> across seed groups (A, B, C…).
+                Each <strong className="text-zinc-300">matchday</strong> runs parallel{' '}
+                <strong className="text-zinc-300">cross-group matches</strong> (e.g. Group A + Group B in one lobby).
+                Each match has multiple <strong className="text-zinc-300">scored games</strong> with the same combined roster.
+                This is not double round-robin.
               </p>
               <div className="space-y-1.5">
                 <Label>Seed groups (even)</Label>
                 <Select
                   value={String(groupCount)}
-                  onValueChange={(v) => setGroupCount(parseInt(v, 10))}
+                  onValueChange={(v) => {
+                    const next = parseInt(v, 10);
+                    setGroupCount(next);
+                    const nextLobby = deriveLobbySize(effectiveIncoming, next);
+                    setAdvancementCount(
+                      defaultAdvancementForLobby(nextLobby, true, effectiveIncoming),
+                    );
+                  }}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -573,15 +608,16 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
               {schedulePreview && (
                 <div className="rounded-lg border border-white/10 p-3 text-xs text-zinc-400 space-y-2">
                   <p className="text-zinc-300 font-medium">
-                    {schedulePreview.totalWaves} rounds · {schedulePreview.totalLobbies} matches
+                    {summarizeGroupRotationSchedule(groupCount, gamesPerLobby).title}
                   </p>
+                  <p>{summarizeGroupRotationSchedule(groupCount, gamesPerLobby).subtitle}</p>
                   {schedulePreview.waves.slice(0, 3).map((wave) => (
                     <div key={wave.wave}>
-                      {formatRoundLabel(wave.wave)}: {wave.lobbies.map((l) => formatMatchPairing(l)).join(' · ')}
+                      {formatRotationMatchdayLabel(wave.wave)}: {wave.lobbies.map((l) => formatMatchPairing(l)).join(' · ')}
                     </div>
                   ))}
                   {schedulePreview.waves.length > 3 && (
-                    <p className="text-zinc-600">+{schedulePreview.waves.length - 3} more rounds</p>
+                    <p className="text-zinc-600">+{schedulePreview.waves.length - 3} more matchdays</p>
                   )}
                   <p className="text-zinc-600">Create matches in the Schedule tab after seeding.</p>
                 </div>
@@ -620,7 +656,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
             </>
           )}
           <div className="space-y-1.5">
-            <Label>Scored matches per lobby</Label>
+            <Label>Scored games per match</Label>
             <Input
               type="number"
               min={1}
@@ -630,7 +666,9 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
               className="[color-scheme:dark]"
             />
             <p className="text-xs text-zinc-500">
-              How many games count toward standings in each lobby for this stage (catalog default: {defaultGameCount}).
+              {stageFormat === 'group_rotation'
+                ? 'How many scored games teams play in each cross-group match lobby (same roster each game).'
+                : `How many games count toward standings in each lobby for this stage (catalog default: ${defaultGameCount}).`}
             </p>
           </div>
 

@@ -30,6 +30,7 @@ export interface BRRound {
   evidence_count?: number;
   pending_evidence_count?: number;
   lobby_index?: number;
+  group_ids?: string[];
   game_count?: number;
   games_completed?: number;
 }

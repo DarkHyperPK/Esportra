@@ -27,24 +27,25 @@ import type { BRGroup } from '@/types/brGroups';
 import type { BRRound } from '@/types/brLobbies';
 import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
 import {
-  formatMatchPairingFromLabel,
-  formatRoundLabel,
+  formatRotationMatchdayLabel,
   groupLobbiesByWave,
-  resolveLobbyMatchupLabel,
+  resolveMatchupLabelFromLobby,
   seedGroupShortLabel,
+  summarizeGroupRotationSchedule,
 } from '@/utils/brWaveScheduleDisplay';
 
 interface BRWaveLobbyPanelProps {
   stageId: string;
   groups: BRGroup[];
   seedGroupCount: number;
+  gamesPerMatch?: number;
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
   mapCatalogItems?: BRMapCatalogItem[];
 }
 
 const groupIdsForMatchup = (matchupLabel: string, groups: BRGroup[]): string[] => {
-  const parts = matchupLabel.split('+').map((s) => s.trim().toUpperCase());
+  const parts = matchupLabel.split('+').map((s) => s.trim().replace(/^group\s+/i, '').toUpperCase());
   return parts
     .map((part) => groups.find((g) => seedGroupShortLabel(g.name).toUpperCase() === part)?.id)
     .filter((id): id is string => Boolean(id));
@@ -79,13 +80,15 @@ const RotationLobbyRow: React.FC<{
   onRoundSettingsSave,
   isUpdating,
 }) => {
-  const matchupLabel = resolveLobbyMatchupLabel(
-    lobby.wave_number ?? lobby.round_number ?? 1,
-    lobby.lobby_index ?? 0,
+  const matchupLabel = resolveMatchupLabelFromLobby(
+    lobby,
+    groups,
     formation,
     seedGroupCount,
   );
-  const rosterGroupIds = groupIdsForMatchup(matchupLabel, groups);
+  const rosterGroupIds = lobby.group_ids?.length
+    ? lobby.group_ids
+    : groupIdsForMatchup(matchupLabel, groups);
   const primaryGroupId = rosterGroupIds[0] ?? groups[0]?.id ?? '';
   const { teams, isLoading } = useBRLobbyRoster(stageId, rosterGroupIds);
   const { connected } = useBRRealtime({
@@ -113,7 +116,7 @@ const RotationLobbyRow: React.FC<{
       onRoundSettingsSave={onRoundSettingsSave}
       isUpdating={isUpdating}
       realtimeConnected={connected}
-      matchupLabel={formatMatchPairingFromLabel(matchupLabel)}
+      matchupLabel={matchupLabel}
     />
   );
 };
@@ -122,6 +125,7 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
   stageId,
   groups,
   seedGroupCount,
+  gamesPerMatch = 6,
   scoringPreset,
   mapConfig,
   mapCatalogItems = [],
@@ -142,6 +146,11 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
   const { schedule: formation } = useBRStageSchedule(stageId);
   const { updateLobby, resetLobby } = useBRLobbies(stageId, groups[0]?.id ?? null);
   const isMutating = updateLobby.isPending || resetLobby.isPending;
+
+  const rotationSummary = useMemo(
+    () => summarizeGroupRotationSchedule(seedGroupCount, gamesPerMatch),
+    [seedGroupCount, gamesPerMatch],
+  );
 
   const waves = useMemo(() => groupLobbiesByWave(lobbies), [lobbies]);
 
@@ -224,16 +233,18 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-zinc-400">
-        <strong className="text-rose-200">Round-robin groups</strong> — each row is one match.
-        Rosters combine the paired groups (e.g. Group A + Group B = all teams from both groups).
-        Match pairings are set in the Schedule tab.
+      <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-zinc-400 space-y-1">
+        <p>
+          <strong className="text-rose-200">{rotationSummary.title}</strong>
+          {' '}— each row is one cross-group match ({rotationSummary.gamesPerMatch} scored games, same roster).
+        </p>
+        <p className="text-zinc-500">{rotationSummary.notDoubleRoundRobinNote}</p>
       </div>
 
       {[...waves.entries()].map(([waveNumber, waveLobbies]) => (
         <section key={waveNumber} className="space-y-2">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            {formatRoundLabel(waveNumber)} · {waveLobbies.length} match{waveLobbies.length === 1 ? '' : 'es'}
+            {formatRotationMatchdayLabel(waveNumber)} · {waveLobbies.length} cross-group match{waveLobbies.length === 1 ? '' : 'es'}
           </h4>
           <div className="space-y-2">
             {waveLobbies.map((lobby) => (

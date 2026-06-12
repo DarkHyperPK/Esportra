@@ -23,6 +23,7 @@ interface UseBRRealtimeOptions extends BrEventScope {
 
 interface BrScopedPayload extends BrEventScope {
   lobbyId?: string;
+  gameId?: string;
 }
 
 const matchesScope = (payload: BrScopedPayload, scope: BrEventScope) => {
@@ -56,8 +57,8 @@ export function useBRRealtime({
     const scope = { stageId, groupId, lobbyId: effectiveLobbyId };
 
     const invalidateLobbies = () => {
-      if (stageId && groupId) {
-        queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, groupId] });
+      if (stageId) {
+        queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId] });
       } else {
         queryClient.invalidateQueries({ queryKey: ['br-lobbies'] });
       }
@@ -102,6 +103,24 @@ export function useBRRealtime({
       } else {
         queryClient.invalidateQueries({ queryKey: ['br-player-context'] });
       }
+    };
+
+    const invalidateGames = (targetLobbyId?: string | null) => {
+      const id = targetLobbyId ?? effectiveLobbyId;
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['br-games', id] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['br-games'] });
+      }
+    };
+
+    const handleGameUpdated = (payload: BrScopedPayload) => {
+      if (!active || !matchesScope(payload, scope)) return;
+      invalidateGames(payload.lobbyId);
+      invalidateLobbies();
+      invalidatePlayerContext();
+      invalidateLeaderboard();
+      invalidateStageCompletion();
     };
 
     const handleLobbyCreated = (payload: BrScopedPayload) => {
@@ -158,6 +177,8 @@ export function useBRRealtime({
     conn.on('LobbyUpdated', handleLobbyUpdated);
     conn.on('LobbyReset', handleLobbyReset);
     conn.on('LobbyCompleted', handleLobbyUpdated);
+    conn.on('GameUpdated', handleGameUpdated);
+    conn.on('GameCompleted', handleGameUpdated);
     conn.on('EvidenceSubmitted', handleEvidenceSubmitted);
     conn.on('EvidenceReviewed', handleEvidenceReviewed);
     conn.on('ResultsUpdated', handleResultsUpdated);
@@ -208,6 +229,8 @@ export function useBRRealtime({
       conn.off('LobbyUpdated', handleLobbyUpdated);
       conn.off('LobbyReset', handleLobbyReset);
       conn.off('LobbyCompleted', handleLobbyUpdated);
+      conn.off('GameUpdated', handleGameUpdated);
+      conn.off('GameCompleted', handleGameUpdated);
       conn.off('EvidenceSubmitted', handleEvidenceSubmitted);
       conn.off('EvidenceReviewed', handleEvidenceReviewed);
       conn.off('ResultsUpdated', handleResultsUpdated);

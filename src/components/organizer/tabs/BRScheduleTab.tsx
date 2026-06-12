@@ -30,8 +30,7 @@ export const BRScheduleTab: React.FC<BRScheduleTabProps> = ({
             BR Scheduling
           </CardTitle>
           <p className="text-sm text-zinc-400">
-            Round schedules, stage windows, and match start times.
-            Seed participants in Stages; run matches in Games.
+            Create cross-group matches (round-robin) or group lobbies, set manual start times, then run games in Games.
           </p>
         </CardHeader>
       </Card>

@@ -103,16 +103,16 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
           <div className={`rounded-xl border px-3 py-3 ${readyForGames ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : needsMatchGeneration ? 'border-amber-500/20 bg-amber-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
             <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Step 3</p>
             <p className="mt-1 text-sm font-semibold text-white">
-              {readyForGames ? 'Ready for Games' : needsMatchGeneration ? 'Create Matches' : 'Ready for Games'}
+              {readyForGames ? 'Ready for Games' : needsMatchGeneration ? (isRotation ? 'Create Matches' : 'Create Lobbies') : 'Ready for Games'}
             </p>
             <p className="mt-1 text-xs text-zinc-400">
               {!seedingComplete
-                ? 'Finish seeding every participant into a lobby before creating matches.'
+                ? 'Finish seeding every participant into a group before creating lobbies.'
                 : isRotation && !hasRounds
                   ? 'Create matches from the Schedule tab, then use the Games tab.'
                   : needsMatchGeneration
-                    ? 'Generate lobbies and games to lock the roster.'
-                    : 'Stage structure is ready. Use the Games tab to start rounds and submit results.'}
+                    ? 'Generate one lobby per group and scored games to lock the roster.'
+                    : 'Stage structure is ready. Use the Games tab to start games and submit results.'}
             </p>
             {needsMatchGeneration && (
               <Button
@@ -121,7 +121,9 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
                 disabled={generateLobbies.isPending}
                 onClick={() => generateLobbies.mutate(undefined, { onSuccess: () => onUpdate() })}
               >
-                {generateLobbies.isPending ? 'Creating matches...' : 'Create matches'}
+                {generateLobbies.isPending
+                  ? (isRotation ? 'Creating matches...' : 'Creating lobbies...')
+                  : (isRotation ? 'Create matches' : 'Create group lobbies')}
               </Button>
             )}
           </div>

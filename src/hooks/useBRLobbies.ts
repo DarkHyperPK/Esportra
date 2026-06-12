@@ -343,42 +343,31 @@ export const useBRLobbyEvidence = (
   };
 };
 
-/** Full lobby rows (with results counts) deduped across seed groups — for rotation stage view. */
+/** Full lobby rows for rotation stages — single stage-level fetch (deduped by lobby id). */
 export function useStageLobbiesDeduped(stageId: string | null, groups: BRGroup[]) {
-  const queries = useQueries({
-    queries: groups.map((group) => ({
-      queryKey: ['br-lobbies', stageId, group.id],
-      queryFn: async () => {
-        const data = await apiClient.get<BRRound[]>(
-          `/api/stages/${stageId}/br/groups/${group.id}/lobbies`,
-        );
-        return data.map(withRoundAlias);
-      },
-      enabled: Boolean(stageId && group.id),
-      staleTime: 1000 * 60,
-    })),
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['br-lobbies', stageId, 'stage-all'],
+    queryFn: async () => {
+      const rows = await apiClient.get<BRRound[]>(`/api/stages/${stageId}/br/lobbies`);
+      return (Array.isArray(rows) ? rows : []).map(withRoundAlias);
+    },
+    enabled: Boolean(stageId && groups.length > 0),
+    staleTime: 1000 * 60,
   });
 
   const lobbies = useMemo(() => {
-    const byId = new Map<string, BRRound>();
-    for (const query of queries) {
-      for (const lobby of query.data ?? []) {
-        if (!byId.has(lobby.id)) {
-          byId.set(lobby.id, lobby);
-        }
-      }
-    }
-    return [...byId.values()].sort(
+    const list = data ?? [];
+    return [...list].sort(
       (a, b) =>
         (a.wave_number ?? a.round_number ?? 0) - (b.wave_number ?? b.round_number ?? 0)
         || (a.lobby_index ?? 0) - (b.lobby_index ?? 0),
     );
-  }, [queries]);
+  }, [data]);
 
-  const isLoading = groups.length > 0 && queries.some((q) => q.isLoading);
-  const error = queries.find((q) => q.error)?.error ?? null;
-
-  const refetch = () => Promise.all(queries.map((q) => q.refetch()));
-
-  return { lobbies, isLoading, error, refetch };
+  return {
+    lobbies,
+    isLoading,
+    error: error ?? null,
+    refetch: () => refetch(),
+  };
 }

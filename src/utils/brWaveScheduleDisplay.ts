@@ -6,8 +6,55 @@ import { generateBrSchedule } from '@/utils/brScheduleGenerator';
 export const seedGroupShortLabel = (name: string): string =>
   name.replace(/^group\s+/i, '').trim() || name;
 
-/** User-facing round label, e.g. "Round 1" */
+/** User-facing round label, e.g. "Round 1" (non-rotation contexts). */
 export const formatRoundLabel = (roundNumber: number): string => `Round ${roundNumber}`;
+
+/** One round-robin wave: each group pairing plays once per matchday (not a scored game). */
+export const formatRotationMatchdayLabel = (matchday: number): string => `Matchday ${matchday}`;
+
+export interface GroupRotationScheduleSummary {
+  matchdayCount: number;
+  matchesPerMatchday: number;
+  totalCrossGroupMatches: number;
+  gamesPerMatch: number;
+  title: string;
+  subtitle: string;
+  notDoubleRoundRobinNote: string;
+}
+
+/** Single round-robin at seed-group level (circle method). Not double round-robin. */
+export function summarizeGroupRotationSchedule(
+  seedGroupCount: number,
+  gamesPerMatch: number,
+): GroupRotationScheduleSummary {
+  const matchdayCount = Math.max(0, seedGroupCount - 1);
+  const matchesPerMatchday = seedGroupCount >= 2 ? seedGroupCount / 2 : 0;
+  let totalCrossGroupMatches = matchdayCount * matchesPerMatchday;
+  if (seedGroupCount >= 2) {
+    try {
+      totalCrossGroupMatches = generateBrSchedule({ seedGroupCount }).totalLobbies;
+    } catch {
+      /* keep estimate */
+    }
+  }
+
+  return {
+    matchdayCount,
+    matchesPerMatchday,
+    totalCrossGroupMatches,
+    gamesPerMatch,
+    title: `Single round-robin · ${matchdayCount} matchday${matchdayCount === 1 ? '' : 's'}`,
+    subtitle: `${matchesPerMatchday} cross-group match${matchesPerMatchday === 1 ? '' : 'es'} per matchday · ${gamesPerMatch} scored game${gamesPerMatch === 1 ? '' : 's'} per match (same roster)`,
+    notDoubleRoundRobinNote: 'Each group pairing meets once — not double round-robin.',
+  };
+}
+
+export function formatRotationMatchLabel(matchday: number, pairingLabel: string): string {
+  const pairing = pairingLabel.includes('+')
+    ? formatMatchPairingFromLabel(pairingLabel)
+    : pairingLabel;
+  return `${formatRotationMatchdayLabel(matchday)} · ${pairing}`;
+}
 
 /** Pairing display, e.g. ["A", "B"] → "Group A + Group B" */
 export function formatMatchPairing(labels: string[]): string {
@@ -55,6 +102,34 @@ export function resolveLobbyMatchupLabel(
   }
 
   return `Lobby ${lobbyIndex + 1}`;
+}
+
+/** Prefer linked seed groups on the lobby row; fall back to schedule index. */
+export function resolveMatchupLabelFromLobby(
+  lobby: BRRound,
+  groups: Array<{ id: string; name: string }>,
+  formation?: BRLobbyFormationConfig | null,
+  seedGroupCount?: number,
+): string {
+  const linkedIds = lobby.group_ids ?? [];
+  if (linkedIds.length >= 2) {
+    const labels = linkedIds
+      .map((id) => groups.find((g) => g.id === id))
+      .filter((g): g is { id: string; name: string } => Boolean(g))
+      .map((g) => seedGroupShortLabel(g.name))
+      .sort();
+    if (labels.length >= 2) {
+      return formatMatchPairing(labels);
+    }
+  }
+
+  const raw = resolveLobbyMatchupLabel(
+    lobby.wave_number ?? lobby.round_number ?? 1,
+    lobby.lobby_index ?? 0,
+    formation,
+    seedGroupCount ?? groups.length,
+  );
+  return formatMatchPairingFromLabel(raw);
 }
 
 export function groupLobbiesByWave(lobbies: BRRound[]): Map<number, BRRound[]> {

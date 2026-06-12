@@ -18,7 +18,7 @@ export function useOrganizerDisputeUnread(tournamentId: string | undefined, enab
     try {
       setLoading(true);
       const data = await apiClient.get<{ unread_count: number; pending_count?: number }>(
-        `/api/organizer/disputes/unread-count?tournament_id=${tournamentId}`,
+        `/api/organizer/disputes/unread-count?tournamentId=${encodeURIComponent(tournamentId)}`,
       );
       const pending = Math.max(0, data?.pending_count ?? data?.unread_count ?? 0);
       const unread = Math.max(0, data?.unread_count ?? pending);

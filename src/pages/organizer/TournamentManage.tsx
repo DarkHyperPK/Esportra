@@ -94,7 +94,7 @@ import {
   getInviteExpiryDaysFromTournament,
   getReservedInviteSlotsFromTournament,
 } from '@/utils/tournamentInviteUtils';
-import { makePrivateUpdatePayload } from '@/utils/tournamentVisibilityUtils';
+import { launchStateToUpdatePayload, makePrivateUpdatePayload } from '@/utils/tournamentVisibilityUtils';
 import { StageGuidelineModal } from '@/components/organizer/wizard/StageGuidelineModal';
 import { CommandButton, CommandTabButton } from '@/components/management/CommandSurface';
 
@@ -348,6 +348,7 @@ const TournamentDashboard = () => {
   const [publishMockGuardOpen, setPublishMockGuardOpen] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [pendingPublishMode, setPendingPublishMode] = useState<'private' | 'public' | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [showGuidelines, setShowGuidelines] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [draftInviteEmails, setDraftInviteEmails] = useState<string[]>([]);
@@ -395,16 +396,15 @@ const TournamentDashboard = () => {
   });
 
   const executePublish = useCallback(async (mode: 'private' | 'public', clearMocksFirst = false) => {
-    if (!tournament?.id) return;
+    if (!tournament?.id || isPublishing) return;
+    setIsPublishing(true);
     try {
       if (clearMocksFirst) {
         await clearMockForPublish.mutateAsync();
       }
-      const payload = mode === 'private'
-        ? { status: tournament.status === 'draft' ? 'published' : tournament.status, isPublic: false }
-        : { status: 'open', isPublic: true };
+      const payload = launchStateToUpdatePayload(mode, tournament.status);
       await apiClient.put(`/api/tournaments/${tournament.id}`, payload);
-      refetchDashboard();
+      await refetchDashboard();
       toast({
         title: mode === 'private' ? 'Published privately' : 'Published publicly',
         description: mode === 'private'
@@ -412,23 +412,29 @@ const TournamentDashboard = () => {
           : 'Your tournament is now discoverable and open for registration.',
       });
       setPublishDialogOpen(false);
+      setPublishMockGuardOpen(false);
+      setPendingPublishMode(null);
     } catch (err: unknown) {
       toast({
         title: 'Publish failed',
         description: getApiErrorMessage(err, 'We could not publish this tournament. Check required settings and try again.'),
         variant: 'destructive',
       });
+    } finally {
+      setIsPublishing(false);
     }
-  }, [tournament?.id, tournament?.status, clearMockForPublish, refetchDashboard, toast]);
+  }, [tournament?.id, tournament?.status, isPublishing, clearMockForPublish, refetchDashboard, toast]);
 
   const requestPublish = useCallback((mode: 'private' | 'public') => {
+    if (isPublishing) return;
     if (mockCount > 0) {
       setPendingPublishMode(mode);
+      setPublishDialogOpen(false);
       setPublishMockGuardOpen(true);
       return;
     }
     void executePublish(mode);
-  }, [mockCount, executePublish]);
+  }, [mockCount, isPublishing, executePublish]);
 
   const handleMakePrivate = useCallback(async () => {
     if (!tournament?.id) return;
@@ -1369,9 +1375,14 @@ const TournamentDashboard = () => {
                         variant="secondary"
                         size="sm"
                         className="w-full justify-start h-auto py-4 px-4"
+                        disabled={isPublishing}
                         onClick={() => requestPublish('private')}
                       >
-                        <EyeOff className="w-5 h-5 mr-3 shrink-0 text-purple-400" />
+                        {isPublishing ? (
+                          <Loader2 className="w-5 h-5 mr-3 shrink-0 animate-spin text-purple-400" />
+                        ) : (
+                          <EyeOff className="w-5 h-5 mr-3 shrink-0 text-purple-400" />
+                        )}
                         <div className="text-left">
                           <div className="font-bold text-white">Publish privately</div>
                           <div className="text-xs text-gray-500 font-normal mt-0.5">Link-only access. Hidden from browse and search.</div>
@@ -1381,9 +1392,14 @@ const TournamentDashboard = () => {
                         variant="primary"
                         size="sm"
                         className="w-full justify-start h-auto py-4 px-4"
+                        disabled={isPublishing}
                         onClick={() => requestPublish('public')}
                       >
-                        <Globe className="w-5 h-5 mr-3 shrink-0" />
+                        {isPublishing ? (
+                          <Loader2 className="w-5 h-5 mr-3 shrink-0 animate-spin" />
+                        ) : (
+                          <Globe className="w-5 h-5 mr-3 shrink-0" />
+                        )}
                         <div className="text-left">
                           <div className="font-bold">Publish publicly</div>
                           <div className="text-xs opacity-80 font-normal mt-0.5">Listed in discovery. Open for registration.</div>
@@ -1424,14 +1440,21 @@ const TournamentDashboard = () => {
                         <CommandButton
                           variant="primary"
                           size="sm"
-                          onClick={async () => {
+                          disabled={isPublishing}
+                          onClick={async (event) => {
+                            event.preventDefault();
                             const mode = pendingPublishMode ?? 'public';
                             await executePublish(mode, true);
-                            setPublishMockGuardOpen(false);
-                            setPendingPublishMode(null);
                           }}
                         >
-                          Clear &amp; Publish
+                          {isPublishing ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                              Publishing...
+                            </>
+                          ) : (
+                            'Clear & Publish'
+                          )}
                         </CommandButton>
                       </AlertDialogAction>
                     </AlertDialogFooter>

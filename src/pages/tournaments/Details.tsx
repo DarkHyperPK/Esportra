@@ -51,6 +51,7 @@ import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
 import BRGroupStageView from '@/components/tournament/br/BRGroupStageView';
 import { useBRGroupStage } from '@/hooks/useBRGroupLeaderboard';
+import { getStageBRConfig } from '@/utils/brConfigResolve';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 import { SEO } from '@/components/SEO';
 import InviteCodeRedemption from '@/components/tournament/InviteCodeRedemption';
@@ -751,6 +752,9 @@ const TournamentDetails = () => {
                       <BRGroupStageView
                         stageId={selectedStageId}
                         gameName={tournament?.game || ''}
+                        stageFormat={getStageBRConfig(
+                          stages.find((s: { id: string }) => s.id === selectedStageId) ?? {},
+                        )?.format}
                         qualificationCount={(stages.find((s: any) => s.id === selectedStageId) as any)?.advancement_count}
                         tournamentSlug={slug}
                       />

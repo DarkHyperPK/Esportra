@@ -21,6 +21,8 @@ interface BRGameRunListProps {
   lobbyId: string;
   stageId: string;
   groupId: string;
+  lobbyStatus: string;
+  lobbyCode: string | null;
   teams: BRGroupTeam[];
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
@@ -31,6 +33,8 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
   lobbyId,
   stageId,
   groupId,
+  lobbyStatus,
+  lobbyCode,
   teams,
   scoringPreset,
   mapConfig,
@@ -47,14 +51,22 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
   if (games.length === 0) {
     return (
       <p className="text-xs text-zinc-500 px-2 py-3">
-        No games yet. Create matches from the Schedule tab to generate games.
+        No games yet. Create group lobbies from the Schedule tab to generate games.
       </p>
     );
   }
 
+  const lobbyIsLive = lobbyStatus === 'active' && Boolean(lobbyCode?.trim());
+  const canStartGames = lobbyIsLive;
+
   return (
     <div className="space-y-2 border-t border-white/5 pt-3 mt-3">
       <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide px-1">Games in this lobby</p>
+      {!canStartGames && (
+        <p className="text-[10px] text-amber-300/90 px-1 leading-relaxed">
+          Start the group lobby with a lobby code above before starting individual games.
+        </p>
+      )}
       {games.map((game) => (
         <BRGameRunRow
           key={game.id}
@@ -66,6 +78,7 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
           scoringPreset={scoringPreset}
           mapConfig={mapConfig}
           mapCatalogItems={mapCatalogItems}
+          canStartGame={canStartGames}
           isExpanded={expandedGameId === game.id}
           onToggle={() => setExpandedGameId((id) => (id === game.id ? null : game.id))}
           onUpdateGame={updateGame.mutateAsync}
@@ -91,6 +104,7 @@ const BRGameRunRow: React.FC<{
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
   mapCatalogItems: BRMapCatalogItem[];
+  canStartGame: boolean;
   isExpanded: boolean;
   onToggle: () => void;
   onUpdateGame: (params: { gameId: string; map?: string | null; status?: 'pending' | 'active' | 'completed' }) => Promise<unknown>;
@@ -104,6 +118,7 @@ const BRGameRunRow: React.FC<{
   scoringPreset,
   mapConfig,
   mapCatalogItems,
+  canStartGame,
   isExpanded,
   onToggle,
   onUpdateGame,
@@ -152,7 +167,7 @@ const BRGameRunRow: React.FC<{
                 size="sm"
                 variant="outline"
                 className="border-amber-500/30 text-amber-300"
-                disabled={isUpdating}
+                disabled={isUpdating || !canStartGame}
                 onClick={() => onUpdateGame({ gameId: game.id, status: 'active', map: mapInput || null })}
               >
                 <Play className="w-3.5 h-3.5 mr-1" /> Start game

@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Save, Wand2 } from 'lucide-react';
+import { Clock, Save } from 'lucide-react';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useBRGroupsDetail, useBRGroupsMutations } from '@/hooks/useBRGroups';
@@ -15,10 +14,18 @@ import { generateBrSchedule } from '@/utils/brScheduleGenerator';
 import {
   formatMatchPairing,
   formatMatchPairingFromLabel,
-  formatRoundLabel,
+  formatRotationMatchdayLabel,
   groupLobbiesByWave,
-  resolveLobbyMatchupLabel,
+  resolveMatchupLabelFromLobby,
+  summarizeGroupRotationSchedule,
 } from '@/utils/brWaveScheduleDisplay';
+import {
+  collectGameScheduleErrors,
+  getBRScheduleCopy,
+  resolveLobbyDisplayLabel,
+  validateLobbyGameSchedules,
+} from '@/utils/brScheduleLabels';
+import { seedGroupShortLabel } from '@/utils/brWaveScheduleDisplay';
 import type { BRRound, BRGame } from '@/types/brLobbies';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -39,12 +46,8 @@ const toLocalInput = (iso: string | null | undefined): string => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-const formatShort = (iso: string) =>
-  new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-
 export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   stage,
-  tournamentId,
   allStages,
   registeredUnitCount = 0,
   onUpdate,
@@ -53,6 +56,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   const brConfig = getStageBRConfig(stage);
   const stageFormat = brConfig?.format ?? 'static_groups';
   const isRotation = stageFormat === 'group_rotation';
+  const scheduleCopy = getBRScheduleCopy(stageFormat);
 
   const { data: groupsDetail, isLoading: groupsLoading } = useBRGroupsDetail(stage.id, { includeTeams: false });
   const groups = groupsDetail?.groups ?? [];
@@ -72,10 +76,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   const { schedule: committedFormation, commitSchedule } = useBRStageSchedule(stage.id);
   const { generateLobbies } = useBRGroupsMutations(stage.id);
 
-  const [startsAt, setStartsAt] = useState('');
-  const [endsAt, setEndsAt] = useState('');
-  const [savingStage, setSavingStage] = useState(false);
-
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [lobbies, setLobbies] = useState<BRRound[]>([]);
   const [lobbySchedules, setLobbySchedules] = useState<Record<string, string>>({});
   const [gameSchedules, setGameSchedules] = useState<Record<string, string>>({});
@@ -84,12 +85,23 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   const [savingLobbies, setSavingLobbies] = useState(false);
   const [savingGames, setSavingGames] = useState(false);
 
-  useEffect(() => {
-    setStartsAt(toLocalInput(stage.starts_at));
-    setEndsAt(toLocalInput(stage.ends_at));
-  }, [stage.id, stage.starts_at, stage.ends_at]);
+  const activeGroupId = selectedGroupId && groups.some((g) => g.id === selectedGroupId)
+    ? selectedGroupId
+    : groups[0]?.id ?? null;
 
   useEffect(() => {
+    setSelectedGroupId(null);
+  }, [stage.id]);
+
+  useEffect(() => {
+    if (!hasLobbies) {
+      setLobbies([]);
+      setLobbySchedules({});
+      setGamesByLobby({});
+      setGameSchedules({});
+      return;
+    }
+
     let cancelled = false;
     setLoadingLobbies(true);
     apiClient
@@ -124,11 +136,14 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
         if (!cancelled) {
           setLobbies([]);
           setLobbySchedules({});
+          setGamesByLobby({});
+          setGameSchedules({});
         }
       })
       .finally(() => {
         if (!cancelled) setLoadingLobbies(false);
       });
+
     return () => { cancelled = true; };
   }, [stage.id, hasLobbies]);
 
@@ -141,34 +156,17 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     }
   }, [isRotation, groups.length]);
 
-  const handleSaveStageWindow = async () => {
-    setSavingStage(true);
-    try {
-      const stageDtos = allStages.map((s) => ({
-        id: s.id,
-        name: s.name,
-        format: s.format || 'battle_royale',
-        stageOrder: s.stage_order,
-        bestOf: 1 as const,
-        capacity: s.capacity,
-        advancementCount: s.advancement_count,
-        startsAt: s.id === stage.id ? (startsAt ? new Date(startsAt).toISOString() : null) : (s.starts_at || null),
-        endsAt: s.id === stage.id ? (endsAt ? new Date(endsAt).toISOString() : null) : (s.ends_at || null),
-        ...(s.config && typeof s.config === 'object' ? { config: s.config } : {}),
-      }));
-      await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
-      toast({ title: 'Stage window saved' });
-      onUpdate();
-    } catch (error: unknown) {
-      toast({
-        title: 'Could not save stage window',
-        description: getApiErrorMessage(error, 'Please try again.'),
-        variant: 'destructive',
-      });
-    } finally {
-      setSavingStage(false);
-    }
-  };
+  const lobbiesForSelectedGroup = useMemo(() => {
+    if (!activeGroupId) return [];
+    return lobbies.filter((lobby) => lobby.group_ids?.includes(activeGroupId));
+  }, [lobbies, activeGroupId]);
+
+  const lobbiesByWave = useMemo(() => groupLobbiesByWave(lobbies), [lobbies]);
+
+  const gameScheduleErrors = useMemo(
+    () => collectGameScheduleErrors(gamesByLobby, gameSchedules),
+    [gamesByLobby, gameSchedules],
+  );
 
   const handleCreateMatches = async () => {
     if (!schedulePreview) return;
@@ -185,31 +183,61 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     } catch { /* toast in hook */ }
   };
 
-  const handleAutoDistribute = () => {
-    if (!startsAt || !endsAt || lobbies.length === 0) return;
-    const start = new Date(startsAt).getTime();
-    const end = new Date(endsAt).getTime();
-    if (end <= start) return;
-    const interval = (end - start) / lobbies.length;
-    const newSchedules: Record<string, string> = {};
-    for (let i = 0; i < lobbies.length; i += 1) {
-      newSchedules[lobbies[i].id] = toLocalInput(new Date(start + interval * i).toISOString());
+  const handleSaveLobbyTimes = async (lobbyIds: string[]) => {
+    setSavingLobbies(true);
+    try {
+      let updated = 0;
+      for (const lobbyId of lobbyIds) {
+        const lobby = lobbies.find((l) => l.id === lobbyId);
+        if (!lobby) continue;
+        const localVal = lobbySchedules[lobbyId] || '';
+        const isoVal = localVal ? new Date(localVal).toISOString() : null;
+        const existingVal = lobby.scheduled_at ? new Date(lobby.scheduled_at).toISOString() : null;
+        if (isoVal !== existingVal) {
+          await apiClient.patch(`/api/br/lobbies/${lobbyId}`, { scheduledAt: isoVal });
+          updated += 1;
+        }
+      }
+      toast({ title: updated > 0 ? `${updated} lobby time(s) saved` : 'No lobby changes to save' });
+      onUpdate();
+    } catch (error: unknown) {
+      toast({
+        title: 'Could not save lobby times',
+        description: getApiErrorMessage(error, 'Please try again.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingLobbies(false);
     }
-    setLobbySchedules(newSchedules);
   };
 
-  const handleSaveGameTimes = async () => {
+  const handleSaveGameTimes = async (lobbyIds: string[]) => {
+    const relevantGames = lobbyIds.flatMap((id) => gamesByLobby[id] ?? []);
+    const relevantSchedules = Object.fromEntries(
+      relevantGames.map((g) => [g.id, gameSchedules[g.id] ?? '']),
+    );
+    const errors = collectGameScheduleErrors(
+      Object.fromEntries(lobbyIds.map((id) => [id, gamesByLobby[id] ?? []])),
+      relevantSchedules,
+    );
+    if (errors.length > 0) {
+      toast({
+        title: 'Game times must be sequential',
+        description: errors[0],
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSavingGames(true);
     try {
       let updated = 0;
-      for (const [gameId, localVal] of Object.entries(gameSchedules)) {
+      for (const game of relevantGames) {
+        const localVal = gameSchedules[game.id] || '';
         const isoVal = localVal ? new Date(localVal).toISOString() : null;
-        const existing = Object.values(gamesByLobby)
-          .flat()
-          .find((g) => g.id === gameId)?.scheduled_at;
-        const existingVal = existing ? new Date(existing).toISOString() : null;
+        const existingVal = game.scheduled_at ? new Date(game.scheduled_at).toISOString() : null;
         if (isoVal !== existingVal) {
-          await apiClient.patch(`/api/br/games/${gameId}`, { scheduledAt: isoVal });
+          await apiClient.patch(`/api/br/games/${game.id}`, { scheduledAt: isoVal });
           updated += 1;
         }
       }
@@ -226,34 +254,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     }
   };
 
-  const handleSaveLobbyTimes = async () => {
-    setSavingLobbies(true);
-    try {
-      let updated = 0;
-      for (const lobby of lobbies) {
-        const localVal = lobbySchedules[lobby.id] || '';
-        const isoVal = localVal ? new Date(localVal).toISOString() : null;
-        const existingVal = lobby.scheduled_at ? new Date(lobby.scheduled_at).toISOString() : null;
-        if (isoVal !== existingVal) {
-          await apiClient.patch(`/api/br/lobbies/${lobby.id}`, { scheduledAt: isoVal });
-          updated += 1;
-        }
-      }
-      toast({ title: updated > 0 ? `${updated} lobby time(s) saved` : 'No changes to save' });
-      onUpdate();
-    } catch (error: unknown) {
-      toast({
-        title: 'Could not save lobby times',
-        description: getApiErrorMessage(error, 'Please try again.'),
-        variant: 'destructive',
-      });
-    } finally {
-      setSavingLobbies(false);
-    }
-  };
-
   const formatLabel = (brConfig?.format ?? 'static_groups').replace(/_/g, ' ');
-  const lobbiesByWave = useMemo(() => groupLobbiesByWave(lobbies), [lobbies]);
   const gamesPerLobby = brConfig?.gamesPerLobby ?? brConfig?.gameCount ?? 6;
   const structureSummary = formatBRStageStructureSummary({
     format: brConfig?.format ?? 'static_groups',
@@ -262,6 +263,113 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     lobbyCapacity: stage.capacity,
     unitsLabel: 'teams',
   });
+
+  const renderGameRows = (lobby: BRRound) => {
+    const lobbyGames = [...(gamesByLobby[lobby.id] ?? [])].sort((a, b) => a.game_number - b.game_number);
+    if (lobbyGames.length === 0) return null;
+
+    return (
+      <div className="mt-3 space-y-2 pl-2 border-l border-white/10">
+        <p className="text-[10px] text-zinc-500 uppercase tracking-wide">
+          Per-game starts (sequential — same roster)
+        </p>
+        {lobbyGames.map((game, gameIdx) => {
+          const prevGame = gameIdx > 0 ? lobbyGames[gameIdx - 1] : null;
+          const prevTime = prevGame ? gameSchedules[prevGame.id] : '';
+          const rowError = gameSchedules[game.id] && prevGame
+            ? validateLobbyGameSchedules(lobbyGames, gameSchedules)
+            : null;
+          return (
+            <div key={game.id} className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-zinc-400 w-16 shrink-0">Game {game.game_number}</span>
+                <Input
+                  type="datetime-local"
+                  value={gameSchedules[game.id] || ''}
+                  onChange={(e) =>
+                    setGameSchedules((prev) => ({ ...prev, [game.id]: e.target.value }))
+                  }
+                  min={prevTime || undefined}
+                  className="h-7 text-[10px] flex-1 [color-scheme:dark] bg-white/5 border-white/10"
+                />
+              </div>
+              {rowError && gameSchedules[game.id] && (
+                <p className="text-[10px] text-amber-400/90 pl-[4.5rem]">{rowError}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderGroupSchedulePanel = () => {
+    const group = groups.find((g) => g.id === activeGroupId);
+    const groupLobbies = lobbiesForSelectedGroup;
+
+    if (groupLobbies.length === 0) {
+      return (
+        <p className="text-sm text-zinc-500 py-4 text-center">
+          No lobby for this group yet. Create group lobbies first.
+        </p>
+      );
+    }
+
+    if (groupLobbies.length > 1) {
+      return (
+        <p className="text-sm text-amber-300/90 py-2">
+          Group {seedGroupShortLabel(group?.name ?? '')} has {groupLobbies.length} lobbies — qualifiers should have exactly one.
+        </p>
+      );
+    }
+
+    const lobby = groupLobbies[0];
+    return (
+      <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3 space-y-3">
+        <div>
+          <p className="text-sm font-medium text-white">
+            {resolveLobbyDisplayLabel(lobby, groups, stageFormat, null)}
+          </p>
+          <p className="text-[10px] text-zinc-500 mt-0.5">
+            {(gamesByLobby[lobby.id] ?? []).length} game{(gamesByLobby[lobby.id] ?? []).length === 1 ? '' : 's'} in this lobby
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Lobby start (optional)</p>
+          <Input
+            type="datetime-local"
+            value={lobbySchedules[lobby.id] || ''}
+            onChange={(e) =>
+              setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))
+            }
+            className="h-8 text-xs [color-scheme:dark] bg-white/5 border-white/10"
+          />
+        </div>
+        {renderGameRows(lobby)}
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button
+            size="sm"
+            className="bg-rose-600 hover:bg-rose-500"
+            disabled={savingLobbies}
+            onClick={() => handleSaveLobbyTimes([lobby.id])}
+          >
+            <Save className="w-3.5 h-3.5 mr-1.5" />
+            {savingLobbies ? 'Saving...' : 'Save lobby time'}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-white/10"
+            disabled={savingGames || gameScheduleErrors.length > 0}
+            onClick={() => handleSaveGameTimes([lobby.id])}
+          >
+            <Save className="w-3.5 h-3.5 mr-1.5" />
+            {savingGames ? 'Saving...' : 'Save game times'}
+          </Button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -277,17 +385,12 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
       </div>
 
       <section className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-        <h4 className="text-sm font-semibold text-white mb-2">Scheduling checklist</h4>
+        <h4 className="text-sm font-semibold text-white mb-2">Setup checklist</h4>
         <ol className="text-xs text-zinc-400 space-y-1.5 list-decimal list-inside">
           <li>Seed participants into groups (Stages tab → Manage lobbies)</li>
-          <li>
-            {isRotation
-              ? 'Create matches from the round schedule below'
-              : 'Create matches (button below, or Games tab)'}
-          </li>
-          <li>Set the stage time window, then lobby start times</li>
-          <li>Optional: set per-game start times under each lobby</li>
-          <li>Run matches in the Games tab (start game → enter results)</li>
+          <li>{scheduleCopy.checklistCreate}</li>
+          <li>Set manual start times per group and game below (optional)</li>
+          <li>{scheduleCopy.checklistRun}</li>
         </ol>
       </section>
 
@@ -295,37 +398,37 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
         <div className="h-24 rounded-xl bg-white/5 animate-pulse" />
       ) : groups.length === 0 ? (
         <div className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-sm text-zinc-500 text-center">
-          Initialize seed groups in the Stages tab before configuring schedules.
+          Initialize seed groups in the Stages tab before configuring this stage.
         </div>
       ) : (
         <>
-          {isRotation && (
+          {isRotation ? (
             <section className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
               <div>
-                <h4 className="text-sm font-semibold text-white">Round schedule</h4>
+                <h4 className="text-sm font-semibold text-white">Matchday schedule</h4>
                 <p className="text-xs text-zinc-500 mt-1">
-                  Each round pairs two groups into one match. Review below, then create matches.
+                  {summarizeGroupRotationSchedule(groups.length, gamesPerLobby).subtitle}
+                </p>
+                <p className="text-xs text-zinc-600 mt-1">
+                  {summarizeGroupRotationSchedule(groups.length, gamesPerLobby).notDoubleRoundRobinNote}
                 </p>
               </div>
 
-              {hasLobbies ? (
-                <p className="text-sm text-emerald-300/90">
-                  {lobbies.length} match{lobbies.length === 1 ? '' : 'es'} created — set start times below or run them in Games.
-                </p>
-              ) : schedulePreview ? (
+              {!hasLobbies && schedulePreview ? (
                 <>
                   <p className="text-xs text-zinc-400">
-                    {schedulePreview.totalWaves} round{schedulePreview.totalWaves === 1 ? '' : 's'} ·{' '}
-                    {schedulePreview.totalLobbies} match{schedulePreview.totalLobbies === 1 ? '' : 'es'} · ~{schedulePreview.estimatedDurationMinutes} min est.
+                    {schedulePreview.totalWaves} matchday{schedulePreview.totalWaves === 1 ? '' : 's'} ·{' '}
+                    {schedulePreview.totalLobbies} cross-group match{schedulePreview.totalLobbies === 1 ? '' : 'es'} ·{' '}
+                    {gamesPerLobby} scored game{gamesPerLobby === 1 ? '' : 's'} each
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {schedulePreview.waves.map((wave) => (
                       <div key={wave.wave} className="rounded-lg border border-white/5 px-3 py-2 text-xs text-zinc-400">
-                        <span className="text-zinc-300 font-medium">{formatRoundLabel(wave.wave)}</span>
+                        <span className="text-zinc-300 font-medium">{formatRotationMatchdayLabel(wave.wave)}</span>
                         <ul className="mt-1 space-y-0.5">
                           {wave.lobbies.map((pairing, idx) => (
                             <li key={idx}>
-                              Match {idx + 1}: {formatMatchPairing(pairing)}
+                              {formatMatchPairing(pairing)}
                             </li>
                           ))}
                         </ul>
@@ -341,204 +444,145 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                     {commitSchedule.isPending ? 'Creating matches...' : 'Create matches'}
                   </Button>
                 </>
-              ) : (
-                <p className="text-sm text-amber-300/90">
-                  Need at least 2 even groups for round scheduling.
-                </p>
-              )}
+              ) : !hasLobbies ? (
+                <p className="text-sm text-amber-300/90">Need at least 2 even groups for round scheduling.</p>
+              ) : null}
             </section>
-          )}
-
-          <section className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
-            <div>
-              <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-rose-400" />
-                Stage window
-              </h4>
-              <p className="text-xs text-zinc-500 mt-1">Overall start and end for this stage — used to auto-spread lobby times.</p>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs text-zinc-400">Start</Label>
-                <Input
-                  type="datetime-local"
-                  value={startsAt}
-                  onChange={(e) => setStartsAt(e.target.value)}
-                  className="[color-scheme:dark] bg-white/5 border-white/10"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs text-zinc-400">End</Label>
-                <Input
-                  type="datetime-local"
-                  value={endsAt}
-                  onChange={(e) => setEndsAt(e.target.value)}
-                  min={startsAt || undefined}
-                  className="[color-scheme:dark] bg-white/5 border-white/10"
-                />
-              </div>
-            </div>
-            <Button
-              size="sm"
-              className="bg-rose-600 hover:bg-rose-500"
-              disabled={savingStage || !startsAt || !endsAt}
-              onClick={handleSaveStageWindow}
-            >
-              <Save className="w-3.5 h-3.5 mr-1.5" />
-              {savingStage ? 'Saving...' : 'Save stage window'}
-            </Button>
-          </section>
-
-          <section className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
-            <div>
-              <h4 className="text-sm font-semibold text-white flex items-center gap-2">
-                <Clock className="w-4 h-4 text-rose-400" />
-                Match start times
-              </h4>
-              <p className="text-xs text-zinc-500 mt-1">
-                {isRotation
-                  ? 'Set when each round’s matches go live. Create matches first.'
-                  : 'Set scheduled starts per match. Create matches below or in the Games tab if none exist yet.'}
-              </p>
-            </div>
-
-            {startsAt && endsAt && (
-              <p className="text-xs text-zinc-500">
-                Window: {formatShort(new Date(startsAt).toISOString())} → {formatShort(new Date(endsAt).toISOString())}
-              </p>
-            )}
-
-            {loadingLobbies ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-12 bg-white/5 rounded-lg animate-pulse" />
-                ))}
-              </div>
-            ) : lobbies.length === 0 ? (
-              <div className="py-4 text-center space-y-3">
-                <p className="text-sm text-zinc-500">
-                  {isRotation && !hasLobbies
-                    ? 'Create matches from the round schedule above first.'
-                    : 'No matches yet. Create group matches, then set start times here.'}
+          ) : (
+            <section className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
+              <div>
+                <h4 className="text-sm font-semibold text-white">Group lobbies</h4>
+                <p className="text-xs text-zinc-500 mt-1">
+                  One lobby per seed group ({gamesPerLobby} games each). Create lobbies, then schedule below.
                 </p>
-                {!isRotation && groups.length > 0 && (
+              </div>
+
+              {!hasLobbies ? (
+                <div className="py-2 space-y-3">
                   <Button
                     size="sm"
                     className="bg-emerald-600 hover:bg-emerald-500"
                     disabled={generateLobbies.isPending || !seedingComplete}
                     onClick={() => generateLobbies.mutate(undefined, { onSuccess: () => onUpdate() })}
                   >
-                    {generateLobbies.isPending ? 'Creating matches...' : 'Create matches'}
+                    {generateLobbies.isPending ? scheduleCopy.createPending : scheduleCopy.createAction}
                   </Button>
-                )}
-                {!isRotation && groups.length > 0 && !seedingComplete && (
-                  <p className="text-xs text-amber-300/90">
-                    Seed all participants in the Stages tab first ({totalAssigned}/{expectedUnits || '—'} assigned).
-                  </p>
-                )}
+                  {!seedingComplete && (
+                    <p className="text-xs text-amber-300/90">
+                      Seed all participants first ({totalAssigned}/{expectedUnits || '—'} assigned).
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-emerald-300/90">
+                  {lobbies.length} group lobby{lobbies.length === 1 ? '' : 'ies'} ready — schedule each group below.
+                </p>
+              )}
+            </section>
+          )}
+
+          {hasLobbies && (
+            <section className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
+              <div>
+                <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-rose-400" />
+                  {scheduleCopy.startTimesTitle}
+                </h4>
+                <p className="text-xs text-zinc-500 mt-1">{scheduleCopy.startTimesHint}</p>
               </div>
-            ) : (
-              <>
-                {startsAt && endsAt && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAutoDistribute}
-                    className="border-white/10 text-zinc-300"
-                  >
-                    <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-                    Auto-distribute across {lobbies.length} matches
-                  </Button>
-                )}
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                  {[...lobbiesByWave.entries()].map(([waveNumber, waveLobbies]) => (
-                    <div key={waveNumber} className="space-y-2">
-                      <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-                        {formatRoundLabel(waveNumber)} · {waveLobbies.length} match{waveLobbies.length === 1 ? '' : 'es'}
-                      </p>
-                      {waveLobbies.map((lobby) => {
-                        const rawMatchup = isRotation
-                          ? resolveLobbyMatchupLabel(
-                              waveNumber,
-                              lobby.lobby_index ?? 0,
-                              committedFormation ?? brConfig?.lobbyFormation,
-                              groups.length,
-                            )
-                          : null;
-                        const matchup = isRotation && rawMatchup
-                          ? formatMatchPairingFromLabel(rawMatchup)
-                          : `Match ${(lobby.lobby_index ?? 0) + 1}`;
-                        return (
-                          <div
-                            key={lobby.id}
-                            className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border border-white/5 rounded-lg bg-black/20"
-                          >
-                            <div className="sm:w-48 shrink-0">
-                              <span className="text-xs font-medium text-zinc-300">{matchup}</span>
-                              {isRotation && (
-                                <span className="block text-[10px] text-zinc-600">{formatRoundLabel(waveNumber)}</span>
-                              )}
-                            </div>
-                            <Input
-                              type="datetime-local"
-                              value={lobbySchedules[lobby.id] || ''}
-                              onChange={(e) =>
-                                setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))
-                              }
-                              min={startsAt || undefined}
-                              max={endsAt || undefined}
-                              className="h-8 text-xs flex-1 [color-scheme:dark] bg-white/5 border-white/10"
-                            />
-                            {(gamesByLobby[lobby.id] ?? []).length > 0 && (
-                              <div className="sm:col-span-2 mt-2 space-y-1.5 pl-2 border-l border-white/10">
-                                <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Per-game starts</p>
-                                {(gamesByLobby[lobby.id] ?? []).map((game) => (
-                                  <div key={game.id} className="flex items-center gap-2">
-                                    <span className="text-[10px] text-zinc-400 w-16 shrink-0">Game {game.game_number}</span>
-                                    <Input
-                                      type="datetime-local"
-                                      value={gameSchedules[game.id] || ''}
-                                      onChange={(e) =>
-                                        setGameSchedules((prev) => ({ ...prev, [game.id]: e.target.value }))
-                                      }
-                                      min={startsAt || undefined}
-                                      max={endsAt || undefined}
-                                      className="h-7 text-[10px] flex-1 [color-scheme:dark] bg-white/5 border-white/10"
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+
+              {loadingLobbies ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-12 bg-white/5 rounded-lg animate-pulse" />
                   ))}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    className="bg-rose-600 hover:bg-rose-500"
-                    disabled={savingLobbies}
-                    onClick={handleSaveLobbyTimes}
-                  >
-                    <Save className="w-3.5 h-3.5 mr-1.5" />
-                    {savingLobbies ? 'Saving...' : 'Save lobby times'}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-white/10"
-                    disabled={savingGames}
-                    onClick={handleSaveGameTimes}
-                  >
-                    <Save className="w-3.5 h-3.5 mr-1.5" />
-                    {savingGames ? 'Saving...' : 'Save game times'}
-                  </Button>
-                </div>
-              </>
-            )}
-          </section>
+              ) : isRotation ? (
+                <>
+                  {gameScheduleErrors.length > 0 && (
+                    <p className="text-xs text-amber-300/90">{gameScheduleErrors[0]}</p>
+                  )}
+                  <div className="space-y-4 max-h-[28rem] overflow-y-auto">
+                    {[...lobbiesByWave.entries()].map(([waveNumber, waveLobbies]) => (
+                      <div key={waveNumber} className="space-y-2">
+                        <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+                          {scheduleCopy.waveHeader(waveNumber, waveLobbies.length)}
+                        </p>
+                        {waveLobbies.map((lobby) => {
+                          const matchup = resolveMatchupLabelFromLobby(
+                            lobby,
+                            groups,
+                            committedFormation ?? brConfig?.lobbyFormation,
+                            groups.length,
+                          );
+                          return (
+                            <div
+                              key={lobby.id}
+                              className="rounded-xl border border-white/8 bg-white/[0.03] p-3"
+                            >
+                              <p className="text-xs font-medium text-zinc-300 mb-2">{matchup}</p>
+                              <Input
+                                type="datetime-local"
+                                value={lobbySchedules[lobby.id] || ''}
+                                onChange={(e) =>
+                                  setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))
+                                }
+                                className="h-8 text-xs [color-scheme:dark] bg-white/5 border-white/10"
+                              />
+                              {renderGameRows(lobby)}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      className="bg-rose-600 hover:bg-rose-500"
+                      disabled={savingLobbies}
+                      onClick={() => handleSaveLobbyTimes(lobbies.map((l) => l.id))}
+                    >
+                      <Save className="w-3.5 h-3.5 mr-1.5" />
+                      {savingLobbies ? 'Saving...' : 'Save all lobby times'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-white/10"
+                      disabled={savingGames || gameScheduleErrors.length > 0}
+                      onClick={() => handleSaveGameTimes(lobbies.map((l) => l.id))}
+                    >
+                      <Save className="w-3.5 h-3.5 mr-1.5" />
+                      {savingGames ? 'Saving...' : 'Save all game times'}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {groups.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {groups.map((group) => (
+                        <button
+                          key={group.id}
+                          type="button"
+                          onClick={() => setSelectedGroupId(group.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap border transition-colors ${
+                            activeGroupId === group.id
+                              ? 'bg-rose-500/15 border-rose-500/40 text-rose-400'
+                              : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white'
+                          }`}
+                        >
+                          {seedGroupShortLabel(group.name)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {renderGroupSchedulePanel()}
+                </>
+              )}
+            </section>
+          )}
         </>
       )}
     </div>

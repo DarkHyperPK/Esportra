@@ -58,12 +58,12 @@ export const useBRGroupsMutations = (stageId: string | null) => {
       queryClient.invalidateQueries({ queryKey: ['br-lobbies'] });
       queryClient.invalidateQueries({ queryKey: ['br-group-rounds'] });
       queryClient.invalidateQueries({ queryKey: ['stage-completion', stageId] });
-      toast({ title: 'Matches created' });
+      toast({ title: 'Group lobbies created', description: 'Set lobby start times in the Schedule tab.' });
     },
     onError: (error: unknown) => {
       toast({
-        title: 'Failed to create matches',
-        description: getApiErrorMessage(error, 'We could not create matches for this stage.'),
+        title: 'Failed to create lobbies',
+        description: getApiErrorMessage(error, 'We could not create group lobbies for this stage.'),
         variant: 'destructive',
       });
     },
