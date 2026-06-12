@@ -144,7 +144,14 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
         return { economyData, playerStatsMap, roundCount: rounds.length };
     }, [matchData, player]);
 
-    const targetKAST = analytics ? Math.round((analytics.playerStatsMap[targetPuuid].kastCount / analytics.roundCount) * 100) : 0;
+    const roundCount = analytics?.roundCount
+        ?? player.stats?.roundsPlayed
+        ?? matchData.roundResults?.length
+        ?? 1;
+
+    const targetKAST = analytics
+        ? Math.round((analytics.playerStatsMap[targetPuuid].kastCount / analytics.roundCount) * 100)
+        : 0;
 
     // Valorant API assets
     useEffect(() => {
@@ -229,15 +236,19 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                                         </div>
                                     </div>
                                 </td>
-                                <td className="text-center font-bold text-zinc-300">{Math.round(p.stats.score / analytics!.roundCount)}</td>
+                                <td className="text-center font-bold text-zinc-300">{Math.round(p.stats.score / roundCount)}</td>
                                 <td className="text-center font-bold text-white">{p.stats.kills}</td>
                                 <td className="text-center text-zinc-400">{p.stats.deaths}</td>
                                 <td className="text-center text-zinc-400">{p.stats.assists}</td>
                                 <td className={`text-center font-bold ${diffColor}`}>{killDiff > 0 ? `+${killDiff}` : killDiff}</td>
                                 <td className={`text-center font-bold ${kdColor}`}>{kdRatio}</td>
                                 <td className="text-center font-mono text-white/90">{hsPerc}%</td>
-                                <td className="text-center text-zinc-300">{Math.round(p.stats.score / analytics!.roundCount)}</td>
-                                <td className="text-center text-zinc-400 font-mono italic">{Math.round((pAnalytics?.kastCount || 0) / analytics!.roundCount * 100)}%</td>
+                                <td className="text-center text-zinc-300">{Math.round(p.stats.score / roundCount)}</td>
+                                <td className="text-center text-zinc-400 font-mono italic">
+                                    {analytics
+                                        ? `${Math.round((pAnalytics?.kastCount || 0) / roundCount * 100)}%`
+                                        : '-'}
+                                </td>
                                 <td className="text-center text-emerald-500 font-bold">{pAnalytics?.fb || 0}</td>
                                 <td className="text-center text-rose-500 font-bold">{pAnalytics?.fd || 0}</td>
                             </tr>

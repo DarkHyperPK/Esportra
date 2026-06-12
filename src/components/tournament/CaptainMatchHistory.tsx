@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ChevronRight, Loader2, Swords } from 'lucide-react';
-import type { ScoreboardPlayer } from '@/types/scoreboardPlayer';
 import { useQuery } from '@tanstack/react-query';
 import { BracketMatch } from '@/types/bracketTypes';
 import { apiClient } from '@/lib/apiClient';
@@ -9,6 +8,9 @@ import { FullScoreboard } from './FullScoreboard';
 import { MAP_THEMES, getMapSplash } from './fullScoreboardConstants';
 import { VetoHistoryTimeline } from './map-veto/VetoHistoryTimeline';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
+import { mergeMatchDetails, useRiotGameDetails } from '@/hooks/useRiotGameDetails';
+import type { MatchDetailsPayload } from '@/types/matchDetails';
+import { RiotEconomyChart, RiotRoundTimeline } from '@/components/tournament/RiotMatchAnalytics';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -19,20 +21,6 @@ interface Props {
     isOrganizer?: boolean;
     focusTeamIds?: string[];
     includeLiveMatchId?: string;
-}
-
-interface MatchDetailsPayload {
-    players?: ScoreboardPlayer[];
-    blueTeam?: { roundsWon: number; won: boolean };
-    redTeam?: { roundsWon: number; won: boolean };
-    queueId?: string;
-    gameLengthMillis?: number;
-    startTime?: number;
-    reporterResult?: string;
-    reporterKda?: string;
-    reporterSide?: 'Blue' | 'Red';
-    reportedByTeamId?: string;
-    t1Side?: 'Blue' | 'Red';
 }
 
 interface GameDetail {
@@ -245,12 +233,13 @@ const resolveReporterTeamName = (
 
 const FullMatchDataPanel: React.FC<{
     game: GameDetail;
+    details: MatchDetailsPayload | null;
+    riotLoading?: boolean;
     team1Name: string;
     team2Name: string;
     team1Id?: string;
     team2Id?: string;
-}> = ({ game, team1Name, team2Name, team1Id, team2Id }) => {
-    const details = game.match_details;
+}> = ({ game, details, riotLoading = false, team1Name, team2Name, team1Id, team2Id }) => {
     const splash = resolveMapSplash(game.map_name);
     const duration = formatGameDuration(details?.gameLengthMillis);
     const startedAt = formatStartTime(details?.startTime);
@@ -322,6 +311,18 @@ const FullMatchDataPanel: React.FC<{
                     </div>
                 )}
             </div>
+
+            {riotLoading ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-sm text-zinc-500">
+                    <Loader2 className="h-4 w-4 animate-spin text-rose-400" />
+                    Loading Riot round and economy data…
+                </div>
+            ) : (
+                <div className="space-y-8 border border-white/10 bg-black/20 p-5">
+                    <RiotRoundTimeline rounds={details?.roundTimeline ?? []} />
+                    <RiotEconomyChart economy={details?.economyTimeline ?? []} />
+                </div>
+            )}
         </div>
     );
 };
@@ -335,10 +336,16 @@ const MatchStatisticsDetail: React.FC<{
 }> = ({ match, games, teamId, isOrganizer, onBack }) => {
     const sortedGames = sortGames(games);
     const [selectedGameId, setSelectedGameId] = useState<string>(() => sortedGames[0]?.id ?? '');
-    const side = resolveMatchSide(match, teamId);
-    const isTeam1 = side === 'team1' || (isOrganizer && !teamId);
-    const opponentName = resolveOpponentName(match, teamId);
     const selectedGame = sortedGames.find((game) => game.id === selectedGameId) ?? sortedGames[0];
+    const { data: fetchedDetails, isLoading: riotLoading } = useRiotGameDetails(
+        match.id,
+        selectedGame?.game_number ?? 0,
+        selectedGame?.match_details ?? null,
+        selectedGame?.riot_match_id,
+    );
+    const mergedDetails = selectedGame
+        ? mergeMatchDetails(selectedGame.match_details, fetchedDetails ?? null)
+        : null;
 
     if (!selectedGame) {
         return (
@@ -358,9 +365,12 @@ const MatchStatisticsDetail: React.FC<{
         );
     }
 
+    const side = resolveMatchSide(match, teamId);
+    const isTeam1 = side === 'team1' || (isOrganizer && !teamId);
+    const opponentName = resolveOpponentName(match, teamId);
     const team1Name = match.team1?.name || 'Team 1';
     const team2Name = match.team2?.name || 'Team 2';
-    const hasScoreboard = (selectedGame.match_details?.players?.length ?? 0) > 0;
+    const hasScoreboard = (mergedDetails?.players?.length ?? 0) > 0;
 
     return (
         <div className="space-y-6">
@@ -420,6 +430,8 @@ const MatchStatisticsDetail: React.FC<{
                 <TabsContent value="full" className="mt-0">
                     <FullMatchDataPanel
                         game={selectedGame}
+                        details={mergedDetails}
+                        riotLoading={riotLoading}
                         team1Name={team1Name}
                         team2Name={team2Name}
                         team1Id={match.team1?.id}
@@ -428,22 +440,27 @@ const MatchStatisticsDetail: React.FC<{
                 </TabsContent>
 
                 <TabsContent value="scoreboard" className="mt-0">
-                    {hasScoreboard ? (
+                    {riotLoading ? (
+                        <div className="flex items-center justify-center gap-2 py-16 text-sm text-zinc-500">
+                            <Loader2 className="h-4 w-4 animate-spin text-rose-400" />
+                            Loading player scoreboard…
+                        </div>
+                    ) : hasScoreboard ? (
                         <div className="overflow-x-auto border border-white/10 bg-black/40 p-3">
                             <FullScoreboard
-                                players={selectedGame.match_details?.players}
+                                players={mergedDetails?.players}
                                 team1Name={team1Name}
                                 team2Name={team2Name}
                                 team1Score={selectedGame.team1_score}
                                 team2Score={selectedGame.team2_score}
-                                reporterSide={selectedGame.match_details?.reporterSide}
+                                reporterSide={mergedDetails?.reporterSide}
                                 reportedByTeamId={
                                     selectedGame.reported_by_team_id
-                                    || selectedGame.match_details?.reportedByTeamId
+                                    || mergedDetails?.reportedByTeamId
                                     || (isTeam1 ? teamId : match.team2?.id)
                                 }
                                 team1Id={match.team1?.id}
-                                t1Side={selectedGame.match_details?.t1Side}
+                                t1Side={mergedDetails?.t1Side}
                             />
                         </div>
                     ) : (

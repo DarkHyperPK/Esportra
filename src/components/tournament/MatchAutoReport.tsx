@@ -25,6 +25,8 @@ interface MatchCandidate {
     blueTeam: { roundsWon: number; won: boolean };
     redTeam: { roundsWon: number; won: boolean };
     players: any[];
+    roundTimeline?: Array<{ round: number; winningTeam: string; resultCode?: string | null }>;
+    economyTimeline?: Array<{ round: number; blueSpent: number; redSpent: number }>;
 }
 
 interface MatchAutoReportProps {
@@ -154,6 +156,8 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                     reporterSide: reporterSide,
                     reportedByTeamId: userTeamId,
                     t1Side: t1Side,
+                    roundTimeline: candidate.roundTimeline,
+                    economyTimeline: candidate.economyTimeline,
                 },
             });
 
