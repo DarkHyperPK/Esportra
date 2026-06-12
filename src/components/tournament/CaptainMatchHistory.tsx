@@ -259,7 +259,6 @@ const FullMatchDataPanel: React.FC<{
         game.riot_match_id
         || duration
         || startedAt
-        || details?.queueId
         || reporterTeamName,
     );
 
@@ -308,12 +307,6 @@ const FullMatchDataPanel: React.FC<{
                             <div>
                                 <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Played at</p>
                                 <p className="mt-1 text-sm font-semibold text-white">{startedAt}</p>
-                            </div>
-                        ) : null}
-                        {details?.queueId ? (
-                            <div>
-                                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Queue</p>
-                                <p className="mt-1 text-sm font-semibold text-white">{details.queueId}</p>
                             </div>
                         ) : null}
                         {reporterTeamName ? (
