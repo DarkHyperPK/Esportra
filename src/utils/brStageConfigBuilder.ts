@@ -66,6 +66,7 @@ export function buildProStageConfig(input: BuildProStageConfigInput): { br: BRSt
   };
 
   if (input.gameCount != null && input.gameCount > 0) {
+    br.gamesPerLobby = input.gameCount;
     br.gameCount = input.gameCount;
   }
 

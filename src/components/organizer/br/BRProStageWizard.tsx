@@ -56,6 +56,7 @@ interface BRProStageWizardProps {
   fromStageName: string | null;
   maxLobbySize: number | null;
   defaultLobbySize: number;
+  defaultGameCount?: number;
   unitLabel: string;
   unitsLabel: string;
   onComplete: () => void;
@@ -69,8 +70,13 @@ const FORMAT_OPTIONS: Array<{
 }> = [
   {
     id: 'single_lobby',
-    title: 'One lobby',
-    desc: 'Everyone plays in a single match room. Best for finals and small fields.',
+    title: 'Single lobby',
+    desc: 'One physical lobby, multiple scored games (Cash Cup). Stage-global leaderboard.',
+  },
+  {
+    id: 'static_groups',
+    title: 'Group qualifiers',
+    desc: 'Each seed group gets its own lobby. Top N per group advance.',
   },
   {
     id: 'group_rotation',
@@ -96,6 +102,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
   incomingTeams,
   fromStageName,
   maxLobbySize,
+  defaultGameCount = 6,
   unitLabel,
   unitsLabel,
   onComplete,
@@ -109,6 +116,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
   const [stageFormat, setStageFormat] = useState<BRStageFormat>('single_lobby');
   const [groupCount, setGroupCount] = useState(4);
   const [advancementCount, setAdvancementCount] = useState(10);
+  const [gamesPerLobby, setGamesPerLobby] = useState(defaultGameCount);
 
   const effectiveIncoming = mode === 'add' ? incomingTeams : registeredUnitCount;
 
@@ -133,6 +141,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
         ? Math.max(1, Math.floor(effectiveIncoming / 2))
         : Math.max(1, Math.floor(lobby / 2)),
     );
+    setGamesPerLobby(defaultGameCount);
   };
 
   useEffect(() => {
@@ -232,6 +241,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
       lobbySize: dto.capacity,
       advancementPerGroup: dto.advancementCount,
       isFinal: skipAdvancement,
+      gameCount: gamesPerLobby,
     }),
   });
 
@@ -370,7 +380,13 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setIsFinal(true)}
+              onClick={() => {
+                setIsFinal(true);
+                if (maxLobbySize && incomingTeams <= maxLobbySize) {
+                  setStageFormat('single_lobby');
+                  setGroupCount(1);
+                }
+              }}
               className={`flex-1 py-3 px-3 rounded-lg border text-sm font-medium ${
                 isFinal ? 'border-amber-500/40 bg-amber-500/15 text-amber-200' : 'border-white/10 text-zinc-400'
               }`}
@@ -392,37 +408,61 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
     }
 
     const formatStep = mode === 'add' ? 1 : 0;
+    const singleLobbyBlocked =
+      maxLobbySize != null && effectiveIncoming > maxLobbySize;
+
+    const formatBlockReason = (id: BRStageFormat): string | null => {
+      if (id === 'single_lobby' && singleLobbyBlocked) {
+        return `Need ≤ ${maxLobbySize} ${unitsLabel} for one lobby (you have ${effectiveIncoming}).`;
+      }
+      return null;
+    };
+
     if (step === formatStep) {
       return (
         <div className="space-y-4">
-          <p className="text-sm text-zinc-400">
-            Choose how this stage forms lobbies. Hybrid tournaments use multiple stages — add another stage later for a different format.
-          </p>
+          <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5 text-xs text-zinc-400 space-y-1">
+            <p>
+              <strong className="text-zinc-200">One stage per save.</strong>{' '}
+              Multi-stage events (e.g. qualifiers → league → finals) are built by adding stages one at a time — not in a single wizard pass.
+            </p>
+            {existingStages.length > 0 && (
+              <p>Stage {existingStages.length + 1} · {effectiveIncoming} {unitsLabel} entering this stage.</p>
+            )}
+          </div>
           <p className="text-xs text-zinc-500">
-            {effectiveIncoming} {unitsLabel} entering · max {maxLobbySize ?? '—'} per game lobby
+            Max {maxLobbySize ?? '—'} {unitsLabel} per physical game lobby (from game catalog).
           </p>
           <div className="space-y-2">
-            {visibleFormats.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => {
-                  setStageFormat(opt.id);
-                  if (opt.id === 'group_rotation' && groupCount % 2 !== 0) {
-                    setGroupCount(groupCount + 1);
-                  }
-                  if (opt.id === 'single_lobby') setGroupCount(1);
-                }}
-                className={`w-full text-left p-4 rounded-xl border transition-colors ${
-                  stageFormat === opt.id
-                    ? 'border-rose-500/50 bg-rose-500/10'
-                    : 'border-white/10 bg-white/[0.02] hover:border-white/20'
-                }`}
-              >
-                <div className="font-medium text-white text-sm">{opt.title}</div>
-                <div className="text-xs text-zinc-500 mt-1">{opt.desc}</div>
-              </button>
-            ))}
+            {visibleFormats.map((opt) => {
+              const blocked = formatBlockReason(opt.id);
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  disabled={Boolean(blocked)}
+                  onClick={() => {
+                    if (blocked) return;
+                    setStageFormat(opt.id);
+                    if (opt.id === 'group_rotation' && groupCount % 2 !== 0) {
+                      setGroupCount(groupCount + 1);
+                    }
+                    if (opt.id === 'single_lobby') setGroupCount(1);
+                  }}
+                  className={`w-full text-left p-4 rounded-xl border transition-colors ${
+                    blocked
+                      ? 'border-white/5 bg-white/[0.01] opacity-50 cursor-not-allowed'
+                      : stageFormat === opt.id
+                        ? 'border-rose-500/50 bg-rose-500/10'
+                        : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                  }`}
+                >
+                  <div className="font-medium text-white text-sm">{opt.title}</div>
+                  <div className="text-xs text-zinc-500 mt-1">{opt.desc}</div>
+                  {blocked && <div className="text-xs text-amber-400/90 mt-2">{blocked}</div>}
+                </button>
+              );
+            })}
           </div>
         </div>
       );
@@ -439,6 +479,11 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
           )}
           {stageFormat === 'group_rotation' && (
             <>
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                Seed groups are roster buckets (A, B, C…). Each <strong className="text-zinc-300">wave</strong> runs several
+                parallel <strong className="text-zinc-300">matches</strong> (e.g. A+B, C+F, D+E). Players stay in their seed group;
+                matches merge two groups into one game lobby. Schedule times per match are set in the Schedule tab after seeding.
+              </p>
               <div className="space-y-1.5">
                 <Label>Seed groups (even)</Label>
                 <Select
@@ -473,6 +518,26 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
               )}
             </>
           )}
+          {stageFormat === 'static_groups' && (
+            <>
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                Each seed group plays in its own lobby. Top N per group advance using per-group standings.
+              </p>
+              <div className="space-y-1.5">
+                <Label>Seed groups</Label>
+                <Select value={String(groupCount)} onValueChange={(v) => setGroupCount(parseInt(v, 10))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: Math.min(32, Math.max(2, effectiveIncoming)) }, (_, k) => k + 1).map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n} groups — ~{deriveLobbySize(effectiveIncoming, n)} {unitsLabel}/group
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
           {stageFormat === 'multi_lobby_cut' && (
             <>
               <div className="space-y-1.5">
@@ -495,6 +560,20 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
               )}
             </>
           )}
+          <div className="space-y-1.5">
+            <Label>Games per lobby</Label>
+            <Input
+              type="number"
+              min={1}
+              max={20}
+              value={gamesPerLobby}
+              onChange={(e) => setGamesPerLobby(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              className="[color-scheme:dark]"
+            />
+            <p className="text-xs text-zinc-500">
+              Scored games inside each physical lobby (tournament default: {defaultGameCount}).
+            </p>
+          </div>
         </div>
       );
     }

@@ -10,7 +10,8 @@ import { useBRGroupsDetail } from '@/hooks/useBRGroups';
 import { useBRStageSchedule } from '@/hooks/useBRStageSchedule';
 import { getStageBRConfig } from '@/utils/brConfigResolve';
 import { generateBrSchedule } from '@/utils/brScheduleGenerator';
-import type { BRRound } from '@/types/brLobbies';
+import { groupLobbiesByWave, resolveLobbyMatchupLabel } from '@/utils/brWaveScheduleDisplay';
+import type { BRRound, BRGame } from '@/types/brLobbies';
 import type { Database } from '@/integrations/supabase/types';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
@@ -48,7 +49,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   const hasLobbies = groupsDetail?.has_rounds === true;
   const totalAssigned = groups.reduce((sum, g) => sum + g.team_count, 0);
 
-  const { generatePreview, commitSchedule } = useBRStageSchedule(stage.id);
+  const { schedule: committedFormation, generatePreview, commitSchedule } = useBRStageSchedule(stage.id);
 
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
@@ -56,8 +57,11 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
 
   const [lobbies, setLobbies] = useState<BRRound[]>([]);
   const [lobbySchedules, setLobbySchedules] = useState<Record<string, string>>({});
+  const [gameSchedules, setGameSchedules] = useState<Record<string, string>>({});
+  const [gamesByLobby, setGamesByLobby] = useState<Record<string, BRGame[]>>({});
   const [loadingLobbies, setLoadingLobbies] = useState(false);
   const [savingLobbies, setSavingLobbies] = useState(false);
+  const [savingGames, setSavingGames] = useState(false);
 
   useEffect(() => {
     setStartsAt(toLocalInput(stage.starts_at));
@@ -69,15 +73,31 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     setLoadingLobbies(true);
     apiClient
       .get<BRRound[]>(`/api/stages/${stage.id}/br/lobbies`)
-      .then((rows) => {
+      .then(async (rows) => {
         if (cancelled) return;
         const list = Array.isArray(rows) ? rows : [];
         setLobbies(list);
         const schedMap: Record<string, string> = {};
-        for (const lobby of list) {
-          schedMap[lobby.id] = toLocalInput(lobby.scheduled_at);
-        }
+        const gameMap: Record<string, BRGame[]> = {};
+        const gameSchedMap: Record<string, string> = {};
+        await Promise.all(
+          list.map(async (lobby) => {
+            schedMap[lobby.id] = toLocalInput(lobby.scheduled_at);
+            try {
+              const games = await apiClient.get<BRGame[]>(`/api/lobbies/${lobby.id}/games`);
+              gameMap[lobby.id] = games;
+              for (const game of games) {
+                gameSchedMap[game.id] = toLocalInput(game.scheduled_at);
+              }
+            } catch {
+              gameMap[lobby.id] = [];
+            }
+          }),
+        );
+        if (cancelled) return;
         setLobbySchedules(schedMap);
+        setGamesByLobby(gameMap);
+        setGameSchedules(gameSchedMap);
       })
       .catch(() => {
         if (!cancelled) {
@@ -157,6 +177,34 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     setLobbySchedules(newSchedules);
   };
 
+  const handleSaveGameTimes = async () => {
+    setSavingGames(true);
+    try {
+      let updated = 0;
+      for (const [gameId, localVal] of Object.entries(gameSchedules)) {
+        const isoVal = localVal ? new Date(localVal).toISOString() : null;
+        const existing = Object.values(gamesByLobby)
+          .flat()
+          .find((g) => g.id === gameId)?.scheduled_at;
+        const existingVal = existing ? new Date(existing).toISOString() : null;
+        if (isoVal !== existingVal) {
+          await apiClient.patch(`/api/br/games/${gameId}`, { scheduledAt: isoVal });
+          updated += 1;
+        }
+      }
+      toast({ title: updated > 0 ? `${updated} game time(s) saved` : 'No game changes to save' });
+      onUpdate();
+    } catch (error: unknown) {
+      toast({
+        title: 'Could not save game times',
+        description: getApiErrorMessage(error, 'Please try again.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingGames(false);
+    }
+  };
+
   const handleSaveLobbyTimes = async () => {
     setSavingLobbies(true);
     try {
@@ -184,6 +232,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   };
 
   const formatLabel = (brConfig?.format ?? 'static_groups').replace(/_/g, ' ');
+  const lobbiesByWave = useMemo(() => groupLobbiesByWave(lobbies), [lobbies]);
 
   return (
     <div className="space-y-6">
@@ -351,32 +400,87 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                     Auto-distribute across {lobbies.length} lobbies
                   </Button>
                 )}
-                <div className="space-y-2 max-h-72 overflow-y-auto">
-                  {lobbies.map((lobby) => (
-                    <div key={lobby.id} className="flex items-center gap-3 p-3 border border-white/5 rounded-lg bg-black/20">
-                      <span className="text-xs font-mono text-zinc-500 w-14 shrink-0">
-                        W{lobby.wave_number ?? lobby.round_number ?? '?'}
-                      </span>
-                      <Input
-                        type="datetime-local"
-                        value={lobbySchedules[lobby.id] || ''}
-                        onChange={(e) => setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))}
-                        min={startsAt || undefined}
-                        max={endsAt || undefined}
-                        className="h-8 text-xs [color-scheme:dark] bg-white/5 border-white/10"
-                      />
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {[...lobbiesByWave.entries()].map(([waveNumber, waveLobbies]) => (
+                    <div key={waveNumber} className="space-y-2">
+                      <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+                        Wave {waveNumber} · {waveLobbies.length} match{waveLobbies.length === 1 ? '' : 'es'}
+                      </p>
+                      {waveLobbies.map((lobby) => {
+                        const matchup = isRotation
+                          ? resolveLobbyMatchupLabel(
+                              waveNumber,
+                              lobby.lobby_index ?? 0,
+                              committedFormation ?? brConfig?.lobbyFormation,
+                              groups.length,
+                            )
+                          : `Lobby ${(lobby.lobby_index ?? 0) + 1}`;
+                        return (
+                          <div
+                            key={lobby.id}
+                            className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border border-white/5 rounded-lg bg-black/20"
+                          >
+                            <div className="sm:w-36 shrink-0">
+                              <span className="text-xs font-medium text-zinc-300">{matchup}</span>
+                              <span className="block text-[10px] text-zinc-600 font-mono">W{waveNumber}</span>
+                            </div>
+                            <Input
+                              type="datetime-local"
+                              value={lobbySchedules[lobby.id] || ''}
+                              onChange={(e) =>
+                                setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))
+                              }
+                              min={startsAt || undefined}
+                              max={endsAt || undefined}
+                              className="h-8 text-xs flex-1 [color-scheme:dark] bg-white/5 border-white/10"
+                            />
+                            {(gamesByLobby[lobby.id] ?? []).length > 0 && (
+                              <div className="sm:col-span-2 mt-2 space-y-1.5 pl-2 border-l border-white/10">
+                                <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Per-game starts</p>
+                                {(gamesByLobby[lobby.id] ?? []).map((game) => (
+                                  <div key={game.id} className="flex items-center gap-2">
+                                    <span className="text-[10px] text-zinc-400 w-16 shrink-0">Game {game.game_number}</span>
+                                    <Input
+                                      type="datetime-local"
+                                      value={gameSchedules[game.id] || ''}
+                                      onChange={(e) =>
+                                        setGameSchedules((prev) => ({ ...prev, [game.id]: e.target.value }))
+                                      }
+                                      min={startsAt || undefined}
+                                      max={endsAt || undefined}
+                                      className="h-7 text-[10px] flex-1 [color-scheme:dark] bg-white/5 border-white/10"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   ))}
                 </div>
-                <Button
-                  size="sm"
-                  className="bg-rose-600 hover:bg-rose-500"
-                  disabled={savingLobbies}
-                  onClick={handleSaveLobbyTimes}
-                >
-                  <Save className="w-3.5 h-3.5 mr-1.5" />
-                  {savingLobbies ? 'Saving...' : 'Save lobby times'}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    className="bg-rose-600 hover:bg-rose-500"
+                    disabled={savingLobbies}
+                    onClick={handleSaveLobbyTimes}
+                  >
+                    <Save className="w-3.5 h-3.5 mr-1.5" />
+                    {savingLobbies ? 'Saving...' : 'Save lobby times'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-white/10"
+                    disabled={savingGames}
+                    onClick={handleSaveGameTimes}
+                  >
+                    <Save className="w-3.5 h-3.5 mr-1.5" />
+                    {savingGames ? 'Saving...' : 'Save game times'}
+                  </Button>
+                </div>
               </>
             )}
           </section>

@@ -196,7 +196,8 @@ export function resolveStageBRConfig(params: {
   const tiebreaker = (settings?.brTiebreaker as BRTiebreaker) ?? 'most_wins';
 
   const gameCount =
-    stageOverride?.gameCount
+    stageOverride?.gamesPerLobby
+    ?? stageOverride?.gameCount
     ?? (typeof settings?.brDefaultGameCount === 'number' ? settings.brDefaultGameCount : null)
     ?? (typeof settings?.brGameCount === 'number' ? settings.brGameCount : null)
     ?? catalog?.defaultGameCount
@@ -217,6 +218,7 @@ export function resolveStageBRConfig(params: {
     killCap,
     tiebreaker,
     gameCount,
+    gamesPerLobby: gameCount,
     lobbySize,
     format,
     leaderboardScope,

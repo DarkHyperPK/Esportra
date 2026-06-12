@@ -1,3 +1,17 @@
+export interface BRGame {
+  id: string;
+  lobby_id: string;
+  game_number: number;
+  map: string | null;
+  status: 'pending' | 'active' | 'completed';
+  scheduled_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at?: string;
+  result_count?: number;
+  evidence_count?: number;
+}
+
 export interface BRRound {
   id: string;
   wave_number: number;

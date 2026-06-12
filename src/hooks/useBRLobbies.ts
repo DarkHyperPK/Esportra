@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { BR_CONFIG } from '@/config/brConfig';
 import type { BRRound, BRRoundResult, BRResultInput } from '@/types/brLobbies';
 import type { BREvidence } from '@/types/battleRoyale';
+import type { BRGroup } from '@/types/brGroups';
 
 const withRoundAlias = (lobby: BRRound): BRRound => ({
   ...lobby,
@@ -126,20 +127,30 @@ export const useBRLobbies = (
   };
 };
 
-export const useBRLobbyResults = (lobbyId: string | null, stageId?: string | null, groupId?: string | null) => {
+export const useBRLobbyResults = (
+  lobbyId: string | null,
+  stageId?: string | null,
+  groupId?: string | null,
+  options?: { gameNumber?: number },
+) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const gameNumber = options?.gameNumber;
 
   const { data: results, isLoading, error, refetch } = useQuery({
-    queryKey: ['br-lobby-results', lobbyId],
-    queryFn: () => apiClient.get<BRRoundResult[]>(`/api/br/lobbies/${lobbyId}/results`),
+    queryKey: ['br-lobby-results', lobbyId, gameNumber],
+    queryFn: () => {
+      const suffix = gameNumber != null ? `?gameNumber=${gameNumber}` : '';
+      return apiClient.get<BRRoundResult[]>(`/api/br/lobbies/${lobbyId}/results${suffix}`);
+    },
     enabled: !!lobbyId,
     staleTime: BR_CONFIG.ROUNDS_STALE_TIME_MS,
   });
 
   const submitResults = useMutation({
-    mutationFn: (params: { lobbyId: string; results: BRResultInput[] }) =>
+    mutationFn: (params: { lobbyId: string; gameNumber?: number; results: BRResultInput[] }) =>
       apiClient.put<{ saved: number }>(`/api/br/lobbies/${params.lobbyId}/results`, {
+        gameNumber: params.gameNumber,
         results: params.results,
       }),
     onSuccess: (data, variables) => {
@@ -279,3 +290,43 @@ export const useBRLobbyEvidence = (
     isUpdating: markReviewedMutation.isPending,
   };
 };
+
+/** Full lobby rows (with results counts) deduped across seed groups — for rotation stage view. */
+export function useStageLobbiesDeduped(stageId: string | null, groups: BRGroup[]) {
+  const queries = useQueries({
+    queries: groups.map((group) => ({
+      queryKey: ['br-lobbies', stageId, group.id],
+      queryFn: async () => {
+        const data = await apiClient.get<BRRound[]>(
+          `/api/stages/${stageId}/br/groups/${group.id}/lobbies`,
+        );
+        return data.map(withRoundAlias);
+      },
+      enabled: Boolean(stageId && group.id),
+      staleTime: 1000 * 60,
+    })),
+  });
+
+  const lobbies = useMemo(() => {
+    const byId = new Map<string, BRRound>();
+    for (const query of queries) {
+      for (const lobby of query.data ?? []) {
+        if (!byId.has(lobby.id)) {
+          byId.set(lobby.id, lobby);
+        }
+      }
+    }
+    return [...byId.values()].sort(
+      (a, b) =>
+        (a.wave_number ?? a.round_number ?? 0) - (b.wave_number ?? b.round_number ?? 0)
+        || (a.lobby_index ?? 0) - (b.lobby_index ?? 0),
+    );
+  }, [queries]);
+
+  const isLoading = groups.length > 0 && queries.some((q) => q.isLoading);
+  const error = queries.find((q) => q.error)?.error ?? null;
+
+  const refetch = () => Promise.all(queries.map((q) => q.refetch()));
+
+  return { lobbies, isLoading, error, refetch };
+}

@@ -180,24 +180,54 @@ export const useBRGroupRounds = (
 
 // ── Player context ────────────────────────────────────────────────────────────
 
+export interface BRPlayerGameSchedule {
+  id: string;
+  gameNumber: number;
+  map: string | null;
+  status: string;
+  scheduledAt: string | null;
+}
+
+export interface BRPlayerLobbySchedule {
+  lobbyId: string;
+  waveNumber: number;
+  matchupLabel: string | null;
+  status: string;
+  scheduledAt: string | null;
+  games: BRPlayerGameSchedule[];
+}
+
 export interface BRPlayerContext {
   stageId: string | null;
   stageName: string | null;
   groupId: string | null;
   groupName: string | null;
+  gamesPerLobby?: number;
   totalRounds: number;
   completedRounds: number;
+  totalGames?: number;
+  completedGames?: number;
   activeRound: {
     id?: string;
     lobbyId?: string;
     waveNumber?: number;
     roundNumber?: number;
+    matchupLabel?: string | null;
     lobbyCode: string | null;
     status: string;
     queueTimerMinutes: number | null;
     queueStartedAt: string | null;
     scheduledAt: string | null;
   } | null;
+  activeGame?: {
+    id: string;
+    lobbyId: string;
+    gameNumber: number;
+    map: string | null;
+    status: string;
+    scheduledAt: string | null;
+  } | null;
+  lobbies?: BRPlayerLobbySchedule[];
 }
 
 export const useBRPlayerContext = (

@@ -88,6 +88,9 @@ export interface BRStageConfig {
   /** @deprecated Tournament wizard owns scoring — ignored at runtime */
   scoring?: BRStageScoringOverride | null;
   format?: BRStageFormat;
+  /** Games played inside each physical lobby (Cash Cup model). */
+  gamesPerLobby?: number | null;
+  /** @deprecated Use gamesPerLobby */
   gameCount?: number | null;
   leaderboardScope?: BRLeaderboardScope;
   lobbyFormation?: BRLobbyFormationConfig | null;
@@ -114,6 +117,7 @@ export interface ResolvedStageBRConfig {
   killCap: number | null;
   tiebreaker: BRTiebreaker;
   gameCount: number;
+  gamesPerLobby: number;
   lobbySize: number | null;
   format: BRStageFormat;
   leaderboardScope: BRLeaderboardScope;

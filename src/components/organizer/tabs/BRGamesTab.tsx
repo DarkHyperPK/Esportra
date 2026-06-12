@@ -5,7 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Layers, Users, Trophy, Filter, ChevronRight, RefreshCw } from 'lucide-react';
 import { useBRGroupLeaderboard, useBRGroupRounds, useBRStageLeaderboard } from '@/hooks/useBRGroupLeaderboard';
 import { useBRGroupTeams, useBRGroups } from '@/hooks/useBRGroups';
+import { useStageLobbiesDeduped } from '@/hooks/useBRLobbies';
 import { LobbyManagementPanel } from '@/components/organizer/br/LobbyManagementPanel';
+import { BRWaveLobbyPanel } from '@/components/organizer/br/BRWaveLobbyPanel';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import { useStageCompletion } from '@/hooks/useStageCompletion';
@@ -126,6 +128,11 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
         selectedStageId || null,
     );
 
+    const stageFormat = resolvedStageConfig?.format ?? 'static_groups';
+    const isGroupRotation = stageFormat === 'group_rotation';
+    const isMultiLobbyCut = stageFormat === 'multi_lobby_cut';
+    const useWaveLobbyView = isGroupRotation;
+
     const leaderboardScope = resolvedStageConfig?.leaderboardScope ?? 'per_seed_group';
     const leaderboard = leaderboardScope === 'stage_global' ? stageLeaderboard : groupLeaderboard;
     const leaderboardLoading = leaderboardScope === 'stage_global' ? stageLeaderboardLoading : groupLeaderboardLoading;
@@ -151,6 +158,15 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     );
 
     const { progressLabel: selectedStageProgress } = useStageCompletion(selectedStageId || null);
+
+    const { lobbies: stageLobbies } = useStageLobbiesDeduped(
+        useWaveLobbyView ? selectedStageId || null : null,
+        useWaveLobbyView ? groups : [],
+    );
+    const rotationGamesCompleted = useMemo(
+        () => stageLobbies.filter((l) => l.status === 'completed').length,
+        [stageLobbies],
+    );
 
     if (sortedStages.length === 0) {
         return (
@@ -200,14 +216,15 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                             </Select>
                         </div>
 
-                        {groups.length !== 1 && (
+                        {!useWaveLobbyView && groups.length !== 1 && (
                             <ChevronRight className="w-4 h-4 text-gray-600 hidden sm:block mt-4" />
                         )}
 
-                        {/* Group Selector */}
+                        {/* Group Selector — hidden for group rotation (wave-based view) */}
+                        {!useWaveLobbyView && (
                         <div className="space-y-0.5">
                             <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">
-                                {isSingleLobby ? 'Lobby' : 'Group'}
+                                {isSingleLobby ? 'Lobby' : isMultiLobbyCut ? 'Parallel lobby' : 'Group'}
                             </label>
                             {groupsLoading ? (
                                 <div className="h-8 w-[180px] bg-white/5 rounded-md animate-pulse" />
@@ -244,6 +261,12 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                 </Select>
                             )}
                         </div>
+                        )}
+                        {useWaveLobbyView && groups.length > 0 && (
+                            <div className="text-xs text-zinc-500 mt-4 sm:mt-0">
+                                {groups.length} seed groups · wave matches below
+                            </div>
+                        )}
                     </div>
 
                     {/* Quick info */}
@@ -281,7 +304,50 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
             )}
 
             {/* Group Content */}
-            {!groupsError && selectedStageId && selectedGroupId && selectedGroup ? (
+            {!groupsError && selectedStageId && useWaveLobbyView && groups.length > 0 ? (
+                <>
+                    <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-5">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                                <Trophy className="w-4 h-4 text-amber-400" />
+                                {selectedStage?.name} — Stage leaderboard
+                            </h3>
+                            {selectedStage && (
+                                <StageProgressChip progressLabel={selectedStageProgress} />
+                            )}
+                        </div>
+                        {leaderboardLoading ? (
+                            <div className="space-y-2">
+                                {Array.from({ length: 4 }).map((_, i) => (
+                                    <div key={i} className="h-10 bg-white/5 rounded-lg animate-pulse" />
+                                ))}
+                            </div>
+                        ) : sortedLeaderboard.length === 0 ? (
+                            <p className="text-xs text-gray-500 text-center py-6">
+                                No results yet. Complete wave matches below.
+                            </p>
+                        ) : (
+                            <BRLeaderboard
+                                entries={sortedLeaderboard}
+                                totalGames={stageLobbies.length}
+                                gamesCompleted={rotationGamesCompleted}
+                                qualificationCutoff={qualificationCutoff}
+                                pageSize={20}
+                            />
+                        )}
+                    </Card>
+                    <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-5">
+                        <BRWaveLobbyPanel
+                            stageId={selectedStageId}
+                            groups={groups}
+                            seedGroupCount={groups.length}
+                            scoringPreset={scoringPreset}
+                            mapConfig={mapConfig}
+                            mapCatalogItems={mapCatalogItems}
+                        />
+                    </Card>
+                </>
+            ) : !groupsError && selectedStageId && selectedGroupId && selectedGroup ? (
                 <>
                     {/* Group Leaderboard */}
                     <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-5">
@@ -338,6 +404,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                 scoringPreset={scoringPreset}
                                 mapConfig={mapConfig}
                                 mapCatalogItems={mapCatalogItems}
+                                allowCreateLobby={!isGroupRotation}
                             />
                         </Card>
                     )}

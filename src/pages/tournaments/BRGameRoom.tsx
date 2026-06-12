@@ -148,7 +148,9 @@ const BRGameRoom: React.FC = () => {
     || brConf?.scoringPresets?.[brPresetKey]
     || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
   const brKillCap = brSettings?.brKillCap ?? brScoringPreset.killCap ?? null;
-  const brGameCount = context.totalRounds || brSettings?.brGameCount || brConf?.defaultGameCount || 6;
+  const gamesPerLobby = context.gamesPerLobby ?? brSettings?.brGameCount ?? brConf?.defaultGameCount ?? 6;
+  const totalGames = context.totalGames ?? ((context.totalRounds * gamesPerLobby) || gamesPerLobby);
+  const completedGames = context.completedGames ?? context.completedRounds ?? 0;
 
   const [reportPlacement, setReportPlacement] = useState<number>(1);
   const [reportKills, setReportKills] = useState<number>(0);
@@ -157,11 +159,13 @@ const BRGameRoom: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
-  const activeRoundNumber = activeRound?.round_number ?? context.activeRound?.roundNumber ?? null;
+  const activeRoundNumber = activeRound?.round_number ?? context.activeRound?.waveNumber ?? context.activeRound?.roundNumber ?? null;
+  const activeMatchup = context.activeRound?.matchupLabel ?? null;
+  const activeGameNumber = context.activeGame?.gameNumber ?? null;
   const activeCode = activeRound?.lobby_code ?? context.activeRound?.lobbyCode ?? null;
-  const activeMap = activeRound?.map ?? null;
-  const gamesCompleted = completedRounds || context.completedRounds;
-  const allGamesFinished = totalRounds > 0 && gamesCompleted >= totalRounds && !hasActiveRound;
+  const activeMap = context.activeGame?.map ?? activeRound?.map ?? null;
+  const gamesCompleted = completedGames;
+  const allGamesFinished = totalGames > 0 && gamesCompleted >= totalGames && !hasActiveRound && !context.activeGame;
   const winner = allGamesFinished && leaderboard.length > 0 ? leaderboard[0] : null;
 
   const userRank = userTeam
@@ -301,19 +305,19 @@ const BRGameRoom: React.FC = () => {
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg sm:text-xl font-bold text-white truncate tracking-tight">{tournament.name}</h1>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">{game}</span>
-              <span className="w-1 h-1 rounded-full bg-zinc-700" />
-              <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Battle Royale</span>
-              {context.groupName && (
-                <>
-                  <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                  <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest truncate">{context.groupName}</span>
-                </>
+            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+              {context.stageName && (
+                <span className="text-[10px] font-mono text-rose-400/80 uppercase tracking-widest">{context.stageName}</span>
               )}
-              <span className="w-1 h-1 rounded-full bg-zinc-700" />
+              <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">{game}</span>
+              {context.groupName && (
+                <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest truncate">{context.groupName}</span>
+              )}
+              {activeMatchup && (
+                <span className="text-[10px] font-mono text-zinc-500">Lobby: {activeMatchup}</span>
+              )}
               <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">
-                {gamesCompleted}/{totalRounds || brGameCount} Rounds
+                {gamesCompleted}/{totalGames} games
               </span>
             </div>
           </div>
@@ -324,6 +328,45 @@ const BRGameRoom: React.FC = () => {
             </div>
           )}
         </motion.div>
+
+        {context.lobbies && context.lobbies.length > 0 && (
+          <motion.div variants={stagger.item}>
+            <Card className="bg-[#0a0a0c]/80 border-white/10">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-white flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-rose-400" />
+                  Game schedule
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-xs">
+                {context.lobbies.map((lobby) => (
+                  <div key={lobby.lobbyId} className="rounded-lg border border-white/5 p-3">
+                    <p className="text-zinc-300 font-medium">
+                      Wave {lobby.waveNumber}
+                      {lobby.matchupLabel ? ` · ${lobby.matchupLabel}` : ''}
+                    </p>
+                    <ul className="mt-2 space-y-1">
+                      {lobby.games.map((game) => (
+                        <li key={game.id} className="flex justify-between text-zinc-500">
+                          <span>
+                            Game {game.gameNumber}
+                            {game.map ? ` · ${game.map}` : ''}
+                            <span className="ml-2 text-[10px] uppercase">{game.status}</span>
+                          </span>
+                          <span className="text-zinc-600">
+                            {game.scheduledAt
+                              ? new Date(game.scheduledAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                              : 'TBD'}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {activeRoundNumber ? (
           <motion.div variants={stagger.item}>
@@ -343,10 +386,11 @@ const BRGameRoom: React.FC = () => {
                       </div>
                       <div>
                         <CardTitle className="text-base sm:text-lg font-bold text-white tracking-tight">
-                          Round {activeRoundNumber}
+                          {activeGameNumber ? `Game ${activeGameNumber}` : `Wave ${activeRoundNumber}`}
+                          {activeMatchup ? ` · ${activeMatchup}` : ''}
                         </CardTitle>
                         <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest mt-0.5">
-                          {gamesCompleted} of {totalRounds || brGameCount} completed
+                          {gamesCompleted} of {totalGames} games completed
                         </p>
                       </div>
                     </div>
@@ -672,7 +716,7 @@ const BRGameRoom: React.FC = () => {
         <motion.div variants={stagger.item}>
           <BRLeaderboard
             entries={leaderboard}
-            totalGames={totalRounds || brGameCount}
+            totalGames={totalGames}
             gamesCompleted={gamesCompleted}
           />
         </motion.div>

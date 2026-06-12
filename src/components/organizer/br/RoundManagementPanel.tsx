@@ -3,6 +3,7 @@ import { useBRLobbies, useBRLobbyResults } from '@/hooks/useBRLobbies';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { useToast } from '@/hooks/use-toast';
 import { RoundResultsGrid } from './RoundResultsGrid';
+import { BRGameRunList } from './BRGameRunList';
 import { RoundEvidencePanel } from './RoundEvidencePanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +62,8 @@ interface RoundManagementPanelProps {
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
   mapCatalogItems?: BRMapCatalogItem[];
+  /** When false, hides manual lobby creation (rotation stages use Schedule commit). */
+  allowCreateLobby?: boolean;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -77,6 +80,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   scoringPreset,
   mapConfig,
   mapCatalogItems = [],
+  allowCreateLobby = true,
 }) => {
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
   const { connected } = useBRRealtime({ stageId, groupId, lobbyId: expandedRoundId });
@@ -175,15 +179,17 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-white">{groupName} — Rounds</h4>
-        <Button
-          onClick={handleCreateRound}
-          disabled={createLobby.isPending}
-          size="sm"
-          className="h-7 text-xs bg-white/5 border border-white/10 text-white hover:bg-white/10"
-        >
-          <Plus className="w-3 h-3 mr-1" />
-          {createLobby.isPending ? 'Creating...' : 'New Lobby'}
-        </Button>
+        {allowCreateLobby && (
+          <Button
+            onClick={handleCreateRound}
+            disabled={createLobby.isPending}
+            size="sm"
+            className="h-7 text-xs bg-white/5 border border-white/10 text-white hover:bg-white/10"
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            {createLobby.isPending ? 'Creating...' : 'New Lobby'}
+          </Button>
+        )}
       </div>
 
       {/* Round List */}
@@ -296,7 +302,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
 
 // ── RoundRow (internal) ─────────────────────────────────────────────────────
 
-interface RoundRowProps {
+export interface RoundRowProps {
   round: BRRound;
   stageId: string;
   groupId: string;
@@ -310,9 +316,11 @@ interface RoundRowProps {
   realtimeConnected?: boolean;
   mapConfig: BRMapConfig;
   mapCatalogItems: BRMapCatalogItem[];
+  /** e.g. "A + B" for rotation lobbies */
+  matchupLabel?: string;
 }
 
-const RoundRow: React.FC<RoundRowProps> = ({
+export const RoundRow: React.FC<RoundRowProps> = ({
   round,
   stageId,
   groupId,
@@ -326,6 +334,7 @@ const RoundRow: React.FC<RoundRowProps> = ({
   realtimeConnected = false,
   mapConfig,
   mapCatalogItems,
+  matchupLabel,
 }) => {
   const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
     isExpanded ? round.id : null,
@@ -408,7 +417,12 @@ const RoundRow: React.FC<RoundRowProps> = ({
         ) : (
           <ChevronRight className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
         )}
-        <span className="text-sm font-medium text-white">Lobby {round.round_number ?? round.wave_number}</span>
+        <span className="text-sm font-medium text-white">
+          {matchupLabel ? `Match: ${matchupLabel}` : `Lobby ${round.round_number ?? round.wave_number}`}
+        </span>
+        {matchupLabel && (
+          <span className="text-[10px] text-zinc-500 font-mono">W{round.wave_number ?? round.round_number}</span>
+        )}
         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${statusCfg.color}`}>
           {statusCfg.label}
         </Badge>
@@ -633,23 +647,15 @@ const RoundRow: React.FC<RoundRowProps> = ({
             realtimeConnected={realtimeConnected}
           />
 
-          {resultsLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-8 bg-white/5 rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : (
-            <RoundResultsGrid
-              roundId={round.id}
-              teams={teams}
-              existingResults={results}
-              scoringPreset={scoringPreset}
-              onSave={handleResultSave}
-              isSaving={submitResults.isPending}
-              isLocked={round.status === 'completed'}
-            />
-          )}
+          <BRGameRunList
+            lobbyId={round.id}
+            stageId={stageId}
+            groupId={groupId}
+            teams={teams}
+            scoringPreset={scoringPreset}
+            mapConfig={mapConfig}
+            mapCatalogItems={mapCatalogItems}
+          />
         </div>
       )}
     </div>

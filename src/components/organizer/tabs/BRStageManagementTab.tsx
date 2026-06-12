@@ -24,51 +24,52 @@ import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 import { getBRConfig, getDefaultGameMode, getDefaultTeamSize } from '@/utils/gameFeatures';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import { computeStageFlows } from '@/utils/brStageFlow';
+import { getStageBRConfig } from '@/utils/brConfigResolve';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
 type StageDtoPatch = Partial<{
-  id: string | null;
-  name: string;
-  stageOrder: number;
-  capacity: number | null;
-  advancementCount: number | null;
+    id: string | null;
+    name: string;
+    stageOrder: number;
+    capacity: number | null;
+    advancementCount: number | null;
 }>;
 
 function buildBrStageDto(stage: TournamentStage, patch?: StageDtoPatch) {
-  const dto: Record<string, unknown> = {
-    id: patch?.id !== undefined ? patch.id : stage.id,
-    name: patch?.name ?? stage.name,
-    format: stage.format || 'battle_royale',
-    stageOrder: patch?.stageOrder ?? stage.stage_order,
-    bestOf: 1,
-    capacity: patch?.capacity !== undefined ? patch.capacity : stage.capacity,
-    advancementCount: patch?.advancementCount !== undefined ? patch.advancementCount : stage.advancement_count,
+    const dto: Record<string, unknown> = {
+        id: patch?.id !== undefined ? patch.id : stage.id,
+        name: patch?.name ?? stage.name,
+        format: stage.format || 'battle_royale',
+        stageOrder: patch?.stageOrder ?? stage.stage_order,
+        bestOf: 1,
+        capacity: patch?.capacity !== undefined ? patch.capacity : stage.capacity,
+        advancementCount: patch?.advancementCount !== undefined ? patch.advancementCount : stage.advancement_count,
     startsAt: stage.starts_at || null,
     endsAt: stage.ends_at || null,
-  };
+    };
   if (stage.config && typeof stage.config === 'object') {
     dto.config = stage.config;
-  }
-  return dto;
+    }
+    return dto;
 }
 
 interface Participant {
-  team_id?: string | null;
+    team_id?: string | null;
   participant_type?: string | null;
-  status?: string;
+    status?: string;
 }
 
 interface BRStageManagementTabProps {
-  tournamentId: string;
-  stages: TournamentStage[];
+    tournamentId: string;
+    stages: TournamentStage[];
   participants?: Participant[];
-  maxParticipants?: number | null;
-  teamSize?: number | null;
-  game?: string;
-  tournamentSettings?: Record<string, unknown> | null;
+    maxParticipants?: number | null;
+    teamSize?: number | null;
+    game?: string;
+    tournamentSettings?: Record<string, unknown> | null;
   scoringPreset: unknown;
-  onUpdate: () => void;
+    onUpdate: () => void;
 }
 
 export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
@@ -80,17 +81,17 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
   tournamentSettings,
   onUpdate,
 }) => {
-  const stages = useMemo(() => stagesProp ?? [], [stagesProp]);
-  const { toast } = useToast();
+    const stages = useMemo(() => stagesProp ?? [], [stagesProp]);
+    const { toast } = useToast();
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardMode, setWizardMode] = useState<'initial' | 'add'>('initial');
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [expandedStageId, setExpandedStageId] = useState<string | null>(null);
-  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
-  const [advanceConfirmStageId, setAdvanceConfirmStageId] = useState<string | null>(null);
-  const [isAdvancing, setIsAdvancing] = useState(false);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [expandedStageId, setExpandedStageId] = useState<string | null>(null);
+    const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
+    const [advanceConfirmStageId, setAdvanceConfirmStageId] = useState<string | null>(null);
+    const [isAdvancing, setIsAdvancing] = useState(false);
   const [editingNameId, setEditingNameId] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState('');
 
@@ -105,6 +106,11 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
     () => catalogBrConfig ?? getBRConfig(game || ''),
     [catalogBrConfig, game],
   );
+  const brGameCount =
+    (typeof tournamentSettings?.brGameCount === 'number' ? tournamentSettings.brGameCount : null)
+    ?? (typeof tournamentSettings?.brDefaultGameCount === 'number' ? tournamentSettings.brDefaultGameCount : null)
+    ?? brConfig?.defaultGameCount
+    ?? 6;
 
   const effectiveTeamSize = useMemo(() => {
     if (teamSize != null && teamSize > 0) return teamSize;
@@ -132,34 +138,34 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
     [sortedStages, registeredUnitCount],
   );
 
-  const stageCompletionQueries = useQueries({
-    queries: sortedStages.map((stage) => ({
-      queryKey: ['stage-completion', stage.id],
-      queryFn: async (): Promise<StageCompletionStatus> => {
+    const stageCompletionQueries = useQueries({
+        queries: sortedStages.map((stage) => ({
+            queryKey: ['stage-completion', stage.id],
+            queryFn: async (): Promise<StageCompletionStatus> => {
         const raw = await apiClient.get<{
           isComplete: boolean;
           alreadyAdvanced: boolean;
           progressLabel: string;
         }>(`/api/stages/${stage.id}/completion-status`);
-        return {
-          isComplete: Boolean(raw.isComplete),
-          alreadyAdvanced: Boolean(raw.alreadyAdvanced),
-          progressLabel: normalizeStageProgressLabel(raw.progressLabel),
-        };
-      },
-      enabled: Boolean(stage.id),
-      staleTime: 15_000,
-    })),
-  });
-
-  const completionByStageId = useMemo(() => {
-    const map = new Map<string, StageCompletionStatus>();
-    sortedStages.forEach((stage, index) => {
-      const result = stageCompletionQueries[index]?.data;
-      if (result) map.set(stage.id, result);
+                return {
+                    isComplete: Boolean(raw.isComplete),
+                    alreadyAdvanced: Boolean(raw.alreadyAdvanced),
+                    progressLabel: normalizeStageProgressLabel(raw.progressLabel),
+                };
+            },
+            enabled: Boolean(stage.id),
+            staleTime: 15_000,
+        })),
     });
-    return map;
-  }, [sortedStages, stageCompletionQueries]);
+
+    const completionByStageId = useMemo(() => {
+        const map = new Map<string, StageCompletionStatus>();
+        sortedStages.forEach((stage, index) => {
+            const result = stageCompletionQueries[index]?.data;
+            if (result) map.set(stage.id, result);
+        });
+        return map;
+    }, [sortedStages, stageCompletionQueries]);
 
   const addStageContext = useMemo(() => {
     if (sortedStages.length === 0) {
@@ -183,153 +189,153 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
       const stageDtos = stages.map((s) =>
         buildBrStageDto(s, s.id === stageId ? { name: name.trim() } : undefined),
       );
-      await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
+            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
       toast({ title: 'Stage renamed' });
       setEditingNameId(null);
-      onUpdate();
-    } catch (error: unknown) {
-      toast({
+            onUpdate();
+        } catch (error: unknown) {
+            toast({
         title: 'Could not rename stage',
         description: getApiErrorMessage(error, 'Please try again.'),
-        variant: 'destructive',
-      });
-    }
-  }, [stages, tournamentId, toast, onUpdate]);
+                variant: 'destructive',
+            });
+        }
+    }, [stages, tournamentId, toast, onUpdate]);
 
-  const handleDeleteStage = async (stageId: string) => {
-    try {
-      await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds: [stageId] });
-      const remaining = stages
+    const handleDeleteStage = async (stageId: string) => {
+        try {
+            await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds: [stageId] });
+            const remaining = stages
         .filter((s) => s.id !== stageId)
-        .sort((a, b) => a.stage_order - b.stage_order);
-      if (remaining.length > 0) {
-        const resequenced = remaining.map((s, i) => buildBrStageDto(s, { stageOrder: i + 1 }));
-        await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: resequenced });
-      }
-      toast({ title: 'Stage deleted' });
-      setDeleteConfirmId(null);
-      if (expandedStageId === stageId) setExpandedStageId(null);
-      onUpdate();
-    } catch (error: unknown) {
-      toast({
-        title: 'Could not delete stage',
+                .sort((a, b) => a.stage_order - b.stage_order);
+            if (remaining.length > 0) {
+                const resequenced = remaining.map((s, i) => buildBrStageDto(s, { stageOrder: i + 1 }));
+                await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: resequenced });
+            }
+            toast({ title: 'Stage deleted' });
+            setDeleteConfirmId(null);
+            if (expandedStageId === stageId) setExpandedStageId(null);
+            onUpdate();
+        } catch (error: unknown) {
+            toast({
+                title: 'Could not delete stage',
         description: getApiErrorMessage(error, 'Please try again.'),
-        variant: 'destructive',
-      });
-    }
-  };
+                variant: 'destructive',
+            });
+        }
+    };
 
-  const handleResetAllStages = async () => {
-    setIsResetting(true);
-    try {
+    const handleResetAllStages = async () => {
+        setIsResetting(true);
+        try {
       await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, {
         deleteIds: stages.map((s) => s.id),
       });
       toast({ title: 'All stages cleared', description: 'Use the setup wizard to configure again.' });
-      setResetConfirmOpen(false);
-      setExpandedStageId(null);
-      onUpdate();
-    } catch (error: unknown) {
-      toast({
-        title: 'Could not reset stages',
+            setResetConfirmOpen(false);
+            setExpandedStageId(null);
+            onUpdate();
+        } catch (error: unknown) {
+            toast({
+                title: 'Could not reset stages',
         description: getApiErrorMessage(error, 'Please try again.'),
-        variant: 'destructive',
-      });
-    } finally {
-      setIsResetting(false);
-    }
-  };
+                variant: 'destructive',
+            });
+        } finally {
+            setIsResetting(false);
+        }
+    };
 
-  const handleAdvanceTeams = async (stageId: string, advancementCount: number) => {
-    setIsAdvancing(true);
-    try {
-      const data = await apiClient.post<{ advanced: number; to_stage: string }>(
-        `/api/stages/${stageId}/br/advance?preview=false`,
+    const handleAdvanceTeams = async (stageId: string, advancementCount: number) => {
+        setIsAdvancing(true);
+        try {
+            const data = await apiClient.post<{ advanced: number; to_stage: string }>(
+                `/api/stages/${stageId}/br/advance?preview=false`,
         { teamsPerGroup: advancementCount },
-      );
+            );
       toast({ title: `${data.advanced} ${unitsLabel} advanced to ${data.to_stage}` });
-      setAdvanceConfirmStageId(null);
-      onUpdate();
-    } catch (error: unknown) {
-      toast({
-        title: 'Advancement failed',
+            setAdvanceConfirmStageId(null);
+            onUpdate();
+        } catch (error: unknown) {
+            toast({
+                title: 'Advancement failed',
         description: getApiErrorMessage(error, 'Complete all group rounds first.'),
-        variant: 'destructive',
-      });
-    } finally {
-      setIsAdvancing(false);
-    }
-  };
+                variant: 'destructive',
+            });
+        } finally {
+            setIsAdvancing(false);
+        }
+    };
 
   const formatLabel =
     effectiveTeamSize === 1 ? 'Solo' : effectiveTeamSize === 2 ? 'Duo' : effectiveTeamSize === 3 ? 'Trio' : 'Squad';
 
-  return (
-    <>
-      <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6">
-        <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4 flex flex-row items-center justify-between space-y-0">
-          <div>
-            <div className="flex items-center gap-2">
-              <CardTitle>Battle Royale Stages</CardTitle>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400">
+    return (
+        <>
+            <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6">
+                <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4 flex flex-row items-center justify-between space-y-0">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <CardTitle>Battle Royale Stages</CardTitle>
+                                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400">
                 {formatLabel}
-              </span>
-            </div>
-            <p className="text-sm text-gray-400 mt-1">
+                                </span>
+                        </div>
+                        <p className="text-sm text-gray-400 mt-1">
               Configure how {unitsLabel} are split across lobbies and who advances between stages.
               Scoring is set in the tournament wizard.
-            </p>
-          </div>
-          {sortedStages.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setResetConfirmOpen(true)}
+                        </p>
+                    </div>
+                    {sortedStages.length > 0 && (
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setResetConfirmOpen(true)}
                 className="border-red-500/20 text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
-              >
+                            >
                 Reset all
-              </Button>
-              <Button
+                            </Button>
+                            <Button
                 size="sm"
                 onClick={() => openWizard('add')}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white"
               >
                 Add stage
-              </Button>
-            </div>
-          )}
-        </CardHeader>
+                            </Button>
+                        </div>
+                    )}
+                </CardHeader>
 
-        <CardContent className="p-0">
-          {sortedStages.length === 0 ? (
+                <CardContent className="p-0">
+                    {sortedStages.length === 0 ? (
             <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-xl px-6">
               <p className="text-white font-medium mb-2">No stages configured yet</p>
               <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">
                 Choose a pro stage format: one lobby, group rotation, or multi-lobby cut.
                 Add more stages later for hybrid flows (e.g. qualifiers → finals).
               </p>
-              <Button
+                                <Button
                 onClick={() => openWizard('initial')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white"
-              >
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                                >
                 Set up stages
-              </Button>
-            </div>
-          ) : (
+                                </Button>
+                        </div>
+                    ) : (
             <div className="space-y-3">
-              {sortedStages.map((stage, index) => {
-                const flow = stageFlows.get(stage.id);
-                const isLast = index === sortedStages.length - 1;
+                            {sortedStages.map((stage, index) => {
+                                const flow = stageFlows.get(stage.id);
+                                const isLast = index === sortedStages.length - 1;
                 const isExpanded = expandedStageId === stage.id;
-                const completion = completionByStageId.get(stage.id);
+                                const completion = completionByStageId.get(stage.id);
                 const canAdvance =
                   !isLast &&
                   stage.advancement_count != null &&
                   (flow?.teamsAdvancing ?? 0) > 0 &&
                   completion?.isComplete;
 
-                return (
+                                return (
                   <div
                     key={stage.id}
                     className={`p-5 border rounded-xl ${
@@ -356,16 +362,16 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                             </span>
                           )}
                           <StageProgressChip progressLabel={completion?.progressLabel} />
-                        </div>
+                                                        </div>
 
                         {editingNameId === stage.id ? (
                           <div className="flex items-center gap-2 mt-2">
-                            <Input
+                                                                    <Input
                               value={editNameValue}
                               onChange={(e) => setEditNameValue(e.target.value)}
                               className="h-8 max-w-xs [color-scheme:dark]"
-                              autoFocus
-                              onKeyDown={(e) => {
+                                                                        autoFocus
+                                                                        onKeyDown={(e) => {
                                 if (e.key === 'Enter' && editNameValue.trim()) {
                                   saveStageName(stage.id, editNameValue);
                                 }
@@ -378,13 +384,13 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                               onClick={() => editNameValue.trim() && saveStageName(stage.id, editNameValue)}
                             >
                               Save
-                            </Button>
+                                                                    </Button>
                             <Button size="sm" variant="ghost" onClick={() => setEditingNameId(null)}>
                               Cancel
-                            </Button>
-                          </div>
-                        ) : (
-                          <button
+                                                                    </Button>
+                                                                </div>
+                                                            ) : (
+                                                                <button
                             type="button"
                             className="text-left mt-1"
                             onClick={() => {
@@ -393,55 +399,61 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                             }}
                           >
                             <h4 className="font-bold text-white text-base hover:text-rose-300 transition-colors">
-                              {stage.name}
-                            </h4>
-                          </button>
-                        )}
+                                                                        {stage.name}
+                                                                    </h4>
+                                                                </button>
+                                                            )}
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 text-sm">
                           <div className="rounded-lg border border-white/8 bg-white/[0.02] p-3">
                             <div className="text-[10px] uppercase tracking-wider text-zinc-500">{UnitsLabel} in</div>
                             <div className="text-white font-semibold mt-1">{flow?.teamsEntering ?? '—'}</div>
-                          </div>
+                                                        </div>
                           <div className="rounded-lg border border-white/8 bg-white/[0.02] p-3">
                             <div className="text-[10px] uppercase tracking-wider text-zinc-500">Lobby size</div>
                             <div className="text-white font-semibold mt-1">
                               {stage.capacity ?? 'Merged'}
-                            </div>
+                                                    </div>
                             <div className="text-[10px] text-zinc-600 mt-0.5">
-                              {(flow?.groupsFormed ?? 1) > 1 ? `${flow?.groupsFormed} groups` : '1 lobby'}
+                              {(() => {
+                                const br = getStageBRConfig(stage);
+                                const games = br?.gamesPerLobby ?? br?.gameCount ?? brGameCount;
+                                const groups = flow?.groupsFormed ?? 1;
+                                const lobbies = br?.format === 'single_lobby' ? 1 : groups;
+                                return `${groups} group${groups === 1 ? '' : 's'} × ${lobbies} lobby${lobbies === 1 ? '' : 'ies'} × ${games} game${games === 1 ? '' : 's'}`;
+                              })()}
                             </div>
-                          </div>
+                                                        </div>
                           <div className="rounded-lg border border-white/8 bg-white/[0.02] p-3">
                             <div className="text-[10px] uppercase tracking-wider text-zinc-500">Advance</div>
                             <div className="text-white font-semibold mt-1">
                               {isLast ? 'Winner' : flow?.teamsAdvancing ?? 'Not set'}
-                            </div>
+                                                    </div>
                             {!isLast && !stage.advancement_count && (
                               <div className="text-[10px] text-amber-400/80 mt-0.5">Use setup wizard</div>
-                            )}
-                          </div>
+                                                        )}
+                                                    </div>
                           <div className="rounded-lg border border-white/8 bg-white/[0.02] p-3">
                             <div className="text-[10px] uppercase tracking-wider text-zinc-500">Status</div>
                             <div className="text-white font-semibold mt-1 text-xs">
                               {completion?.progressLabel ?? 'Pending'}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                                                </div>
+                                                    </div>
+                                                        </div>
+                                                    </div>
 
                       <div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
-                        <Button
-                          size="sm"
+                                                    <Button
+                                                        size="sm"
                           variant="outline"
                           className="border-white/10"
-                          onClick={() => setExpandedStageId(isExpanded ? null : stage.id)}
-                        >
+                                                        onClick={() => setExpandedStageId(isExpanded ? null : stage.id)}
+                                                    >
                           {isExpanded ? 'Hide lobbies' : 'Manage lobbies'}
-                        </Button>
+                                                    </Button>
                         {canAdvance && (
-                          <Button
-                            size="sm"
+                                                    <Button
+                                                        size="sm"
                             className="bg-emerald-600 hover:bg-emerald-500"
                             onClick={() => setAdvanceConfirmStageId(stage.id)}
                           >
@@ -455,30 +467,30 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                           onClick={() => setDeleteConfirmId(stage.id)}
                         >
                           Delete
-                        </Button>
-                      </div>
-                    </div>
+                                                    </Button>
+                                                </div>
+                                            </div>
 
                     {isExpanded && game && (
-                      <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
+                                                <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
                         <BRStageSeedingPanel
-                          stageId={stage.id}
-                          stageCapacity={stage.capacity}
+                                                        stageId={stage.id}
+                                                        stageCapacity={stage.capacity}
                           stageConfig={stage.config}
                           registeredTeamCount={flow?.teamsEntering ?? registeredUnitCount}
-                          hasNextStage={!isLast}
-                          advancementCount={stage.advancement_count}
-                          onUpdate={onUpdate}
-                        />
-                      </div>
+                                                        hasNextStage={!isLast}
+                                                        advancementCount={stage.advancement_count}
+                                                        onUpdate={onUpdate}
+                                                    />
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
                     )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </CardContent>
+            </Card>
 
       <BRProStageWizard
         open={wizardOpen}
@@ -491,6 +503,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
         fromStageName={addStageContext.fromStageName}
         maxLobbySize={maxLobbySize}
         defaultLobbySize={defaultLobbySize}
+        defaultGameCount={brGameCount}
         unitLabel={unitLabel}
         unitsLabel={unitsLabel}
         onComplete={onUpdate}
@@ -516,57 +529,57 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={!!advanceConfirmStageId} onOpenChange={() => setAdvanceConfirmStageId(null)}>
-        <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
-          <AlertDialogHeader>
+            <AlertDialog open={!!advanceConfirmStageId} onOpenChange={() => setAdvanceConfirmStageId(null)}>
+                <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
+                    <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Advance {UnitsLabel}</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-400">
-              {(() => {
+                        <AlertDialogDescription className="text-gray-400">
+                            {(() => {
                 const stage = sortedStages.find((s) => s.id === advanceConfirmStageId);
-                const flow = stage ? stageFlows.get(stage.id) : null;
-                if (!stage) return '';
+                                const flow = stage ? stageFlows.get(stage.id) : null;
+                                if (!stage) return '';
                 return `Advance the top ${flow?.teamsAdvancing ?? '?'} ${unitsLabel} from "${stage.name}" to the next stage.`;
-              })()}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-emerald-600 hover:bg-emerald-500 text-white"
-              disabled={isAdvancing}
-              onClick={() => {
+                            })()}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            disabled={isAdvancing}
+                            onClick={() => {
                 const stage = sortedStages.find((s) => s.id === advanceConfirmStageId);
-                if (stage?.advancement_count && advanceConfirmStageId) {
-                  handleAdvanceTeams(advanceConfirmStageId, stage.advancement_count);
-                }
-              }}
-            >
-              {isAdvancing ? 'Advancing...' : `Advance ${UnitsLabel}`}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+                                if (stage?.advancement_count && advanceConfirmStageId) {
+                                    handleAdvanceTeams(advanceConfirmStageId, stage.advancement_count);
+                                }
+                            }}
+                        >
+                            {isAdvancing ? 'Advancing...' : `Advance ${UnitsLabel}`}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
-      <AlertDialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
-        <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
-          <AlertDialogHeader>
+            <AlertDialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
+                <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
+                    <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Reset all stages?</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-400">
+                        <AlertDialogDescription className="text-gray-400">
               This permanently deletes all {sortedStages.length} stages, including groups, rounds, and results.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700 text-white"
-              disabled={isResetting}
-              onClick={handleResetAllStages}
-            >
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            disabled={isResetting}
+                            onClick={handleResetAllStages}
+                        >
               {isResetting ? 'Resetting...' : 'Reset all'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    );
 };
