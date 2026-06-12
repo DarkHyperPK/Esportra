@@ -13,6 +13,8 @@ export interface ScoreboardPlayer {
   tagLine?: string;
   teamId?: string | number;
   characterId?: string | number;
+  displayAgentName?: string;
+  displayAgentIcon?: string | null;
   kills?: number;
   deaths?: number;
   assists?: number;

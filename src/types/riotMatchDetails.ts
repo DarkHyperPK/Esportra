@@ -1,8 +1,10 @@
 export interface RoundTimelineEntry {
   round: number;
+  displayRound?: number;
   winningTeam: string;
   resultCode?: string | null;
   result?: string | null;
+  displayResult?: string | null;
   plantSite?: string | null;
 }
 
@@ -16,27 +18,24 @@ export interface EconomyTimelineEntry {
 
 export interface WeaponSummaryEntry {
   weapon: string;
+  displayName?: string;
+  displayIcon?: string | null;
   roundCount: number;
 }
 
 export interface RiotMatchInfo {
   matchId?: string | null;
   mapId?: string | null;
+  displayMapName?: string | null;
   gameVersion?: string | null;
   gameLengthMillis?: number;
   region?: string | null;
   gameStartMillis?: number;
   queueId?: string | null;
   gameMode?: string | null;
+  displayGameMode?: string | null;
   isRanked?: boolean;
   isCompleted?: boolean;
-}
-
-export interface AbilityCasts {
-  grenadeCasts?: number;
-  ability1Casts?: number;
-  ability2Casts?: number;
-  ultimateCasts?: number;
 }
 
 export interface RiotDerivedMatchDetails {
@@ -56,4 +55,12 @@ export function hasRiotDerivedDetails(details?: RiotDerivedMatchDetails | null):
 
 export function resolveRoundResultCode(round: RoundTimelineEntry): string | null {
   return round.resultCode || round.result || null;
+}
+
+export function resolveDisplayRound(round: RoundTimelineEntry): number {
+  return round.displayRound ?? round.round;
+}
+
+export function resolveWeaponLabel(entry: WeaponSummaryEntry): string {
+  return entry.displayName || entry.weapon;
 }
