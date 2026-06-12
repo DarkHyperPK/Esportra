@@ -167,11 +167,21 @@ export const useBRGroupRounds = (
   }));
   const completed = normalizedRounds.filter((r) => r.status === 'completed').length;
   const activeRound = selectPreferredActiveRound(normalizedRounds);
+  const totalGames = normalizedRounds.reduce((sum, lobby) => sum + (lobby.game_count ?? 1), 0);
+  const completedGames = normalizedRounds.reduce(
+    (sum, lobby) => sum + (
+      lobby.games_completed
+      ?? (lobby.status === 'completed' ? (lobby.game_count ?? 1) : 0)
+    ),
+    0,
+  );
 
   return {
     rounds: normalizedRounds,
     totalRounds: normalizedRounds.length,
     completedRounds: completed,
+    totalGames,
+    completedGames,
     activeRound,
     isLoading,
     error,

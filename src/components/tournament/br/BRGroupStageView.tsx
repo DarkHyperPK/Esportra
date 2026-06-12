@@ -10,6 +10,7 @@ import { getMapImageUrl } from '@/utils/gameCatalogBr';
 import { BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useBRGroupStage, useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
+import { useBRGames } from '@/hooks/useBRGames';
 import { useBRGroupParticipants } from '@/hooks/useBRGroups';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
@@ -152,10 +153,19 @@ const GroupContent: React.FC<GroupContentProps> = ({
     groupId,
     { refetchIntervalMs: pollIntervalMs },
   );
-  const { totalRounds, completedRounds, activeRound, isLoading: roundsLoading } = useBRGroupRounds(stageId, groupId, {
+  const {
+    totalRounds,
+    completedRounds,
+    totalGames,
+    completedGames,
+    activeRound,
+    rounds,
+    isLoading: roundsLoading,
+  } = useBRGroupRounds(stageId, groupId, {
     refetchIntervalMs: pollIntervalMs,
     realtimeConnected: connected,
   });
+  const { data: activeLobbyGames = [] } = useBRGames(activeRound?.id ?? null);
   const { data: participants = [], isLoading: participantsLoading } = useBRGroupParticipants(stageId, groupId);
 
   const isLoading = lbLoading || roundsLoading;
@@ -195,10 +205,12 @@ const GroupContent: React.FC<GroupContentProps> = ({
       )}
 
       {/* All lobbies complete, none active */}
-      {!roundsLoading && totalRounds > 0 && !activeRound && completedRounds < totalRounds && (
+      {!roundsLoading && totalRounds > 0 && !activeRound && completedGames < totalGames && (
         <div className="flex items-center gap-3 p-3 rounded-xl border border-amber-500/15 bg-amber-500/[0.04]">
           <Clock className="w-4 h-4 text-amber-500/60 flex-shrink-0" />
-          <p className="text-xs text-amber-300/70">Waiting for the next lobby to start. {completedRounds}/{totalRounds} games completed.</p>
+          <p className="text-xs text-amber-300/70">
+            Waiting for the next lobby to start. {completedGames}/{totalGames} games completed across {totalRounds} lobbies.
+          </p>
         </div>
       )}
 
@@ -209,7 +221,16 @@ const GroupContent: React.FC<GroupContentProps> = ({
             <Swords className="w-5 h-5 text-rose-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-bold text-white">Lobby {(activeRound.round_number ?? activeRound.wave_number)} is Live</h3>
+            <h3 className="text-sm font-bold text-white">
+              Lobby {(activeRound.round_number ?? activeRound.wave_number)} is Live
+              {activeLobbyGames.length > 0 && (
+                <span className="text-zinc-400 font-normal">
+                  {' '}· Game {activeLobbyGames.find((g) => g.status === 'active')?.game_number
+                    ?? activeLobbyGames.filter((g) => g.status === 'completed').length + 1}
+                  /{activeLobbyGames.length}
+                </span>
+              )}
+            </h3>
             <p className="text-xs text-zinc-400 mt-1">
               Lobby codes are only shared in the Match Room for registered players.
             </p>
@@ -234,6 +255,45 @@ const GroupContent: React.FC<GroupContentProps> = ({
             </Button>
           )}
         </div>
+      )}
+
+      {rounds.length > 0 && (
+        <Card className="bg-black/20 border border-white/10 rounded-2xl">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-zinc-400" />
+              <h3 className="text-sm font-semibold text-white">Lobby schedule</h3>
+            </div>
+            <div className="space-y-2">
+              {rounds.map((lobby) => (
+                <div
+                  key={lobby.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2"
+                >
+                  <div>
+                    <p className="text-sm text-white font-medium">
+                      Wave {lobby.wave_number ?? lobby.round_number}
+                      {lobby.lobby_index != null ? ` · Lobby ${lobby.lobby_index + 1}` : ''}
+                    </p>
+                    <p className="text-[10px] text-zinc-500">
+                      {(lobby.games_completed ?? 0)}/{(lobby.game_count ?? 1)} games · {lobby.status}
+                    </p>
+                  </div>
+                  {lobby.scheduled_at && (
+                    <p className="text-[10px] text-zinc-400">
+                      {new Date(lobby.scheduled_at).toLocaleString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Group participants */}
@@ -290,8 +350,8 @@ const GroupContent: React.FC<GroupContentProps> = ({
       {/* Leaderboard */}
       <BRLeaderboard
         entries={leaderboard}
-        totalGames={totalRounds}
-        gamesCompleted={completedRounds}
+        totalGames={totalGames}
+        gamesCompleted={completedGames}
         qualificationCutoff={qualificationCount}
         pageSize={20}
       />

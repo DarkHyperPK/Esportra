@@ -12,6 +12,7 @@ import {
 import { useBRLobbyEvidence, useBRCompletedLobbyResults } from '@/hooks/useBRLobbies';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { isBattleRoyaleTournament, getBRConfig, getPersistedTournamentFormat } from '@/utils/gameFeatures';
+import { resolveStageBRConfig, getQualificationCutoff } from '@/utils/brConfigResolve';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,20 +79,31 @@ const BRGameRoom: React.FC = () => {
     context.groupId,
     { refetchIntervalMs: fallbackPollingMs },
   );
-  const { rounds, completedRounds, activeRound, totalRounds } = useBRGroupRounds(
+  const { rounds, activeRound } = useBRGroupRounds(
     context.stageId,
     context.groupId,
     { refetchIntervalMs: fallbackPollingMs, realtimeConnected: connected },
   );
   const effectiveActiveRoundId = activeRound?.id ?? context.activeRound?.id ?? null;
   const hasActiveRound = Boolean(activeRound ?? context.activeRound);
+  const activeGameNumber = context.activeGame?.gameNumber ?? null;
   const { evidence, submitEvidence, isSubmitting, refetch: refetchEvidence } = useBRLobbyEvidence(
     effectiveActiveRoundId,
     context.stageId,
     context.groupId,
-    { realtimeConnected: connected },
+    {
+      realtimeConnected: connected,
+      gameNumber: activeGameNumber ?? undefined,
+      gameId: context.activeGame?.id ?? null,
+    },
   );
-  const { completedRounds: finishedRounds, resultsByRoundNumber } = useBRCompletedLobbyResults(
+
+  const { data: tournamentStages = [] } = useQuery({
+    queryKey: ['tournament-stages', tournament?.id],
+    queryFn: () => apiClient.get<any[]>(`/api/tournaments/${tournament!.id}/stages`),
+    enabled: !!tournament?.id,
+  });
+  const { completedGameSlots, resultsByRoundNumber } = useBRCompletedLobbyResults(
     rounds,
     Boolean(context.groupId),
   );
@@ -161,8 +173,34 @@ const BRGameRoom: React.FC = () => {
 
   const activeRoundNumber = activeRound?.round_number ?? context.activeRound?.waveNumber ?? context.activeRound?.roundNumber ?? null;
   const activeMatchup = context.activeRound?.matchupLabel ?? null;
-  const activeGameNumber = context.activeGame?.gameNumber ?? null;
   const activeCode = activeRound?.lobby_code ?? context.activeRound?.lobbyCode ?? null;
+  const queueTimerMinutes = activeRound?.queue_timer_minutes ?? context.activeRound?.queueTimerMinutes ?? null;
+  const queueStartedAt = activeRound?.queue_started_at ?? context.activeRound?.queueStartedAt ?? null;
+  const [queueRemainingSec, setQueueRemainingSec] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!queueStartedAt || !queueTimerMinutes || queueTimerMinutes <= 0) {
+      setQueueRemainingSec(null);
+      return;
+    }
+    const endMs = new Date(queueStartedAt).getTime() + queueTimerMinutes * 60_000;
+    const tick = () => setQueueRemainingSec(Math.max(0, Math.ceil((endMs - Date.now()) / 1000)));
+    tick();
+    const timerId = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timerId);
+  }, [queueStartedAt, queueTimerMinutes]);
+
+  const qualificationCutoff = useMemo(() => {
+    const stage = tournamentStages.find((item) => item.id === context.stageId);
+    if (!stage) return undefined;
+    const resolved = resolveStageBRConfig({
+      stage,
+      gameName: game,
+      settings: tournament?.settings,
+      catalogBrConfig: catalogGame?.brConfig,
+    });
+    return getQualificationCutoff(resolved, 1);
+  }, [tournamentStages, context.stageId, game, tournament?.settings, catalogGame?.brConfig]);
   const activeMap = context.activeGame?.map ?? activeRound?.map ?? null;
   const gamesCompleted = completedGames;
   const allGamesFinished = totalGames > 0 && gamesCompleted >= totalGames && !hasActiveRound && !context.activeGame;
@@ -226,6 +264,7 @@ const BRGameRoom: React.FC = () => {
         imageUrl,
         placement: reportPlacement,
         kills: reportKills,
+        gameNumber: activeGameNumber ?? undefined,
       });
 
       await refetchEvidence();
@@ -402,6 +441,19 @@ const BRGameRoom: React.FC = () => {
                 </CardHeader>
 
                 <CardContent className="p-5 sm:p-6 space-y-5">
+                  {queueRemainingSec != null && queueRemainingSec > 0 && (
+                    <div className="flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-amber-400" />
+                        <span className="text-xs font-semibold text-amber-200 uppercase tracking-wider">Queue closes in</span>
+                      </div>
+                      <span className="text-lg font-mono font-bold text-amber-300 tabular-nums">
+                        {String(Math.floor(queueRemainingSec / 60)).padStart(2, '0')}:
+                        {String(queueRemainingSec % 60).padStart(2, '0')}
+                      </span>
+                    </div>
+                  )}
+
                   {activeCode ? (
                     <div className="relative rounded-xl overflow-hidden">
                       <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.06] to-transparent" />
@@ -548,7 +600,7 @@ const BRGameRoom: React.FC = () => {
                     <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15">
                       <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                       <p className="text-sm text-emerald-300/80">
-                        Evidence submitted for Round {activeRoundNumber}.
+                        Evidence submitted for {activeGameNumber ? `Game ${activeGameNumber}` : `Wave ${activeRoundNumber}`}.
                         {userEvidence?.reviewed
                           ? ' Your submission has been reviewed.'
                           : ' Awaiting organizer review.'}
@@ -597,7 +649,7 @@ const BRGameRoom: React.FC = () => {
                 </div>
                 <h3 className="text-base font-bold text-white tracking-tight mb-1">Waiting for Next Round</h3>
                 <p className="text-sm text-zinc-500 max-w-xs">
-                  {gamesCompleted} of {totalRounds || brGameCount} rounds completed. The organizer will start the next round soon.
+                  {gamesCompleted} of {totalGames} games completed. The organizer will start the next game soon.
                 </p>
               </CardContent>
             </Card>
@@ -672,22 +724,28 @@ const BRGameRoom: React.FC = () => {
                   transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
                   className="overflow-hidden space-y-2"
                 >
-                  {finishedRounds.map((round) => {
-                    const roundOrdinal = round.round_number ?? round.wave_number;
-                    const results = resultsByRoundNumber.get(roundOrdinal) ?? [];
+                  {completedGameSlots.map((slot) => {
+                    const roundOrdinal = slot.lobby.round_number ?? slot.lobby.wave_number;
+                    const resultKey = slot.gameNumber > 1
+                      ? roundOrdinal * 100 + slot.gameNumber
+                      : roundOrdinal;
+                    const results = resultsByRoundNumber.get(resultKey) ?? [];
                     const userResult = userTeam
                       ? results.find((r) => userEntityIds.has(r.team_id))
                       : null;
+                    const label = slot.gameNumber > 1
+                      ? `Wave ${roundOrdinal} · Game ${slot.gameNumber}`
+                      : `Wave ${roundOrdinal}`;
                     return (
                       <div
-                        key={round.id}
+                        key={`${slot.lobby.id}-${slot.gameNumber}`}
                         className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.03] transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
                             <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                           </div>
-                          <span className="text-sm font-semibold text-zinc-300">Lobby {roundOrdinal}</span>
+                          <span className="text-sm font-semibold text-zinc-300">{label}</span>
                         </div>
                         {userResult ? (
                           <div className="flex items-center gap-3 text-xs">
@@ -718,6 +776,7 @@ const BRGameRoom: React.FC = () => {
             entries={leaderboard}
             totalGames={totalGames}
             gamesCompleted={gamesCompleted}
+            qualificationCutoff={qualificationCutoff}
           />
         </motion.div>
 

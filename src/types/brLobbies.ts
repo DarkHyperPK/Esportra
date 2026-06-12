@@ -30,6 +30,13 @@ export interface BRRound {
   evidence_count?: number;
   pending_evidence_count?: number;
   lobby_index?: number;
+  game_count?: number;
+  games_completed?: number;
+}
+
+/** Lobby row with nested scored games (client-side aggregate). */
+export interface BRLobbyWithGames extends BRRound {
+  games: BRGame[];
 }
 
 export interface BRRoundResult {

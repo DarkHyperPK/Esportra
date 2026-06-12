@@ -33,6 +33,7 @@ export function useBRStageSchedule(stageId: string | null) {
       queryClient.invalidateQueries({ queryKey: ['br-stage-schedule', stageId] });
       queryClient.invalidateQueries({ queryKey: ['br-groups-detail', stageId] });
       queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId] });
+      queryClient.invalidateQueries({ queryKey: ['br-games'] });
       toast({ title: 'Schedule committed', description: 'Lobbies were materialized for this stage.' });
     },
     onError: (error: unknown) => {

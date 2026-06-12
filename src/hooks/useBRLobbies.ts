@@ -192,10 +192,39 @@ export const useBRCompletedLobbyResults = (lobbies: BRRound[], enabled = true) =
     [lobbies],
   );
 
-  const queries = useQueries({
+  const gameQueries = useQueries({
     queries: completedRounds.map((lobby) => ({
-      queryKey: ['br-lobby-results', lobby.id],
-      queryFn: () => apiClient.get<BRRoundResult[]>(`/api/br/lobbies/${lobby.id}/results`),
+      queryKey: ['br-lobby-games', lobby.id],
+      queryFn: () => apiClient.get<{ id: string; game_number: number; status: string }[]>(
+        `/api/lobbies/${lobby.id}/games`,
+      ),
+      enabled,
+      staleTime: BR_CONFIG.ROUNDS_STALE_TIME_MS,
+    })),
+  });
+
+  const completedGameSlots = useMemo(() => {
+    const slots: { lobby: BRRound; gameNumber: number }[] = [];
+    completedRounds.forEach((lobby, index) => {
+      const games = gameQueries[index]?.data ?? [];
+      const completedGames = games.filter((game) => game.status === 'completed');
+      if (completedGames.length > 0) {
+        for (const game of completedGames) {
+          slots.push({ lobby, gameNumber: game.game_number });
+        }
+        return;
+      }
+      slots.push({ lobby, gameNumber: 1 });
+    });
+    return slots;
+  }, [completedRounds, gameQueries]);
+
+  const resultQueries = useQueries({
+    queries: completedGameSlots.map(({ lobby, gameNumber }) => ({
+      queryKey: ['br-lobby-results', lobby.id, gameNumber],
+      queryFn: () => apiClient.get<BRRoundResult[]>(
+        `/api/br/lobbies/${lobby.id}/results?gameNumber=${gameNumber}`,
+      ),
       enabled,
       staleTime: BR_CONFIG.ROUNDS_STALE_TIME_MS,
     })),
@@ -203,16 +232,22 @@ export const useBRCompletedLobbyResults = (lobbies: BRRound[], enabled = true) =
 
   const resultsByRoundNumber = useMemo(() => {
     const resultMap = new Map<number, BRRoundResult[]>();
-    completedRounds.forEach((lobby, index) => {
-      resultMap.set(lobby.round_number ?? lobby.wave_number, queries[index]?.data ?? []);
+    completedGameSlots.forEach((slot, index) => {
+      const lobbyOrdinal = slot.lobby.round_number ?? slot.lobby.wave_number;
+      const key = slot.gameNumber > 1
+        ? lobbyOrdinal * 100 + slot.gameNumber
+        : lobbyOrdinal;
+      resultMap.set(key, resultQueries[index]?.data ?? []);
     });
     return resultMap;
-  }, [completedRounds, queries]);
+  }, [completedGameSlots, resultQueries]);
 
   return {
     completedRounds,
+    completedGameSlots,
     resultsByRoundNumber,
-    isLoading: queries.some((query) => query.isLoading),
+    isLoading: gameQueries.some((query) => query.isLoading)
+      || resultQueries.some((query) => query.isLoading),
   };
 };
 
@@ -220,16 +255,24 @@ export const useBRLobbyEvidence = (
   lobbyId: string | null,
   stageId?: string | null,
   groupId?: string | null,
-  options?: { realtimeConnected?: boolean },
+  options?: { realtimeConnected?: boolean; gameNumber?: number; gameId?: string | null },
 ) => {
   const realtimeConnected = options?.realtimeConnected ?? false;
+  const gameNumber = options?.gameNumber;
+  const gameId = options?.gameId;
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: evidence, isLoading, error, refetch } = useQuery({
-    queryKey: ['br-lobby-evidence', lobbyId],
-    queryFn: () => apiClient.get<BREvidence[]>(`/api/br/lobbies/${lobbyId}/evidence`),
-    enabled: !!lobbyId,
+    queryKey: ['br-lobby-evidence', lobbyId, gameNumber, gameId],
+    queryFn: () => {
+      if (gameId) {
+        return apiClient.get<BREvidence[]>(`/api/br/games/${gameId}/evidence`);
+      }
+      const suffix = gameNumber != null ? `?gameNumber=${gameNumber}` : '';
+      return apiClient.get<BREvidence[]>(`/api/br/lobbies/${lobbyId}/evidence${suffix}`);
+    },
+    enabled: !!lobbyId || !!gameId,
     staleTime: BR_CONFIG.ROUNDS_STALE_TIME_MS,
     refetchInterval: (query) => {
       if (realtimeConnected) return false;
@@ -242,16 +285,22 @@ export const useBRLobbyEvidence = (
   });
 
   const invalidateRelatedQueries = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['br-lobby-evidence', lobbyId] });
+    await queryClient.invalidateQueries({ queryKey: ['br-lobby-evidence', lobbyId, gameNumber, gameId] });
     if (stageId && groupId) {
       await queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, groupId] });
     }
   };
 
   const submitEvidenceMutation = useMutation({
-    mutationFn: async (payload: { imageUrl: string; imagePath?: string; placement?: number | null; kills?: number | null }) => {
+    mutationFn: async (payload: { imageUrl: string; imagePath?: string; placement?: number | null; kills?: number | null; gameNumber?: number }) => {
+      if (gameId) {
+        return apiClient.put<{ success: boolean }>(`/api/br/games/${gameId}/evidence`, payload);
+      }
       if (!lobbyId) throw new Error('No lobby selected');
-      return apiClient.put<{ success: boolean }>(`/api/br/lobbies/${lobbyId}/evidence`, payload);
+      return apiClient.put<{ success: boolean }>(`/api/br/lobbies/${lobbyId}/evidence`, {
+        ...payload,
+        gameNumber: payload.gameNumber ?? gameNumber,
+      });
     },
     onSuccess: async () => {
       await invalidateRelatedQueries();
@@ -259,10 +308,13 @@ export const useBRLobbyEvidence = (
   });
 
   const markReviewedMutation = useMutation({
-    mutationFn: async (payload: { entityId: string; reviewed: boolean }) => {
+    mutationFn: async (payload: { entityId: string; reviewed: boolean; gameNumber?: number }) => {
       if (!lobbyId) throw new Error('No lobby selected');
+      const suffix = (payload.gameNumber ?? gameNumber) != null
+        ? `?gameNumber=${payload.gameNumber ?? gameNumber}`
+        : '';
       return apiClient.patch<{ success: boolean }>(
-        `/api/br/lobbies/${lobbyId}/evidence/${payload.entityId}`,
+        `/api/br/lobbies/${lobbyId}/evidence/${payload.entityId}${suffix}`,
         { reviewed: payload.reviewed },
       );
     },

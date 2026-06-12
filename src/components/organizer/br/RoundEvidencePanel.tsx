@@ -8,6 +8,8 @@ interface RoundEvidencePanelProps {
   roundId: string;
   stageId: string;
   groupId: string;
+  gameNumber?: number;
+  gameId?: string;
   realtimeConnected?: boolean;
 }
 
@@ -15,22 +17,26 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
   roundId,
   stageId,
   groupId,
+  gameNumber,
+  gameId,
   realtimeConnected = false,
 }) => {
   const { evidence, isLoading, markReviewed, isUpdating } = useBRLobbyEvidence(
     roundId,
     stageId,
     groupId,
-    { realtimeConnected },
+    { realtimeConnected, gameNumber, gameId },
   );
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h5 className="text-sm font-semibold text-white">Evidence submissions</h5>
+          <h5 className="text-sm font-semibold text-white">
+            Evidence submissions{gameNumber != null ? ` — Game ${gameNumber}` : ''}
+          </h5>
           <p className="text-[11px] text-zinc-500">
-            Review player screenshots before finalizing round standings.
+            Review player screenshots before finalizing game standings.
           </p>
         </div>
         <Badge variant="outline" className="border-white/10 text-zinc-300">
@@ -111,7 +117,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                       <Button
                         type="button"
                         size="sm"
-                        onClick={() => markReviewed({ entityId: entry.teamId, reviewed: true })}
+                        onClick={() => markReviewed({ entityId: entry.teamId, reviewed: true, gameNumber })}
                         disabled={isUpdating}
                         className="bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 border border-emerald-500/20"
                       >
@@ -125,7 +131,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => markReviewed({ entityId: entry.teamId, reviewed: false })}
+                        onClick={() => markReviewed({ entityId: entry.teamId, reviewed: false, gameNumber })}
                         disabled={isUpdating}
                         className="border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10"
                       >

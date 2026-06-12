@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useBRGames, useUpdateBRGame } from '@/hooks/useBRGames';
 import { useBRLobbyResults } from '@/hooks/useBRLobbies';
 import { RoundResultsGrid } from '@/components/organizer/br/RoundResultsGrid';
+import { RoundEvidencePanel } from '@/components/organizer/br/RoundEvidencePanel';
 import type { BRGroupTeam } from '@/types/brGroups';
 import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
 import { BRMapOptionList } from '@/components/organizer/br/BRMapOptionList';
@@ -187,6 +188,13 @@ const BRGameRunRow: React.FC<{
               isLocked={game.status === 'completed'}
             />
           )}
+          <RoundEvidencePanel
+            roundId={lobbyId}
+            stageId={stageId}
+            groupId={groupId}
+            gameNumber={game.game_number}
+            gameId={game.id}
+          />
         </div>
       )}
     </div>
