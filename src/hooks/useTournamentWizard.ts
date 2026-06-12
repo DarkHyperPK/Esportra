@@ -266,13 +266,11 @@ export const useTournamentWizard = (
                         reservedInviteSlots: data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
                         inviteExpiryDays: data.inviteExpiryDays || 7,
                         ...(data.tournamentType === 'battle_royale' ? {
-                            brGameCount: data.brGameCount,
                             brScoringPreset: data.brScoringPreset,
                             brCustomScoring: data.brCustomScoring,
                             brKillCap: data.brKillCap,
                             brTiebreaker: data.brTiebreaker,
                             brDefaultLobbySize: data.brDefaultLobbySize,
-                            brDefaultGameCount: data.brGameCount,
                             brDefaultMapMode: data.brDefaultMapMode,
                         } : {}),
                     },
@@ -366,13 +364,11 @@ export const useTournamentWizard = (
                         inviteExpiryDays: data.inviteExpiryDays || 7,
                         // BR-specific settings
                         ...(data.tournamentType === 'battle_royale' ? {
-                            brGameCount: data.brGameCount,
                             brScoringPreset: data.brScoringPreset,
                             brCustomScoring: data.brCustomScoring,
                             brKillCap: data.brKillCap,
                             brTiebreaker: data.brTiebreaker,
                             brDefaultLobbySize: data.brDefaultLobbySize,
-                            brDefaultGameCount: data.brGameCount,
                             brDefaultMapMode: data.brDefaultMapMode,
                         } : {}),
                     },

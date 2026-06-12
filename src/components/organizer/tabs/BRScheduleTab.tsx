@@ -9,12 +9,14 @@ type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 interface BRScheduleTabProps {
   tournamentId: string;
   stages: TournamentStage[];
+  registeredUnitCount?: number;
   onUpdate: () => void;
 }
 
 export const BRScheduleTab: React.FC<BRScheduleTabProps> = ({
   tournamentId,
   stages,
+  registeredUnitCount = 0,
   onUpdate,
 }) => {
   const sortedStages = [...stages].sort((a, b) => a.stage_order - b.stage_order);
@@ -28,8 +30,8 @@ export const BRScheduleTab: React.FC<BRScheduleTabProps> = ({
             BR Scheduling
           </CardTitle>
           <p className="text-sm text-zinc-400">
-            Matchup schedules (group rotation), stage windows, and lobby start times.
-            Seeding participants stays in the Stages tab; running games stays in Games.
+            Round schedules, stage windows, and match start times.
+            Seed participants in Stages; run matches in Games.
           </p>
         </CardHeader>
       </Card>
@@ -48,6 +50,7 @@ export const BRScheduleTab: React.FC<BRScheduleTabProps> = ({
                 stage={stage}
                 tournamentId={tournamentId}
                 allStages={sortedStages}
+                registeredUnitCount={registeredUnitCount}
                 onUpdate={onUpdate}
               />
             </CardContent>

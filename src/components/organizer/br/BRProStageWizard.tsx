@@ -25,7 +25,12 @@ import {
   validateIntermediateStage,
 } from '@/utils/brStageFlow';
 import { buildProStageConfig } from '@/utils/brStageConfigBuilder';
-import { recommendBRStageFormat } from '@/utils/brGameContext';
+import {
+  formatBRStageStructureSummary,
+  formatUnitsPerGroup,
+  recommendBRStageFormat,
+} from '@/utils/brGameContext';
+import { formatMatchPairing, formatRoundLabel } from '@/utils/brWaveScheduleDisplay';
 import { generateBrSchedule } from '@/utils/brScheduleGenerator';
 import type { BRStageFormat } from '@/types/battleRoyale';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
@@ -54,6 +59,7 @@ interface BRProStageWizardProps {
   registeredUnitCount: number;
   incomingTeams: number;
   fromStageName: string | null;
+  priorStageHasAdvancement?: boolean;
   maxLobbySize: number | null;
   defaultLobbySize: number;
   defaultGameCount?: number;
@@ -76,21 +82,25 @@ const FORMAT_OPTIONS: Array<{
   {
     id: 'static_groups',
     title: 'Group qualifiers',
-    desc: 'Each seed group gets its own lobby. Top N per group advance.',
+    desc: 'Split into seed groups (A, B, C…). Each group plays in its own lobby. Top N per group advance.',
   },
   {
     id: 'group_rotation',
-    title: 'Group rotation',
-    desc: 'Seed groups rotate through shared lobbies each wave — fairness and integrity standard.',
-    requiresPro: true,
-  },
-  {
-    id: 'multi_lobby_cut',
-    title: 'Multi-lobby cut',
-    desc: 'Parallel lobbies with a per-lobby cut — fast funnel for large opens.',
+    title: 'Round-robin groups',
+    desc: 'Groups rotate pairings each round — two groups per lobby. Stage-global standings.',
     requiresPro: true,
   },
 ];
+
+function defaultAdvancementForLobby(
+  lobbySize: number,
+  isRotation: boolean,
+  incoming: number,
+): number {
+  if (isRotation) return Math.max(1, Math.floor(incoming / 2));
+  if (lobbySize <= 1) return 1;
+  return Math.max(1, Math.min(Math.floor(lobbySize / 2), lobbySize - 1));
+}
 
 const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
   open,
@@ -101,6 +111,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
   registeredUnitCount,
   incomingTeams,
   fromStageName,
+  priorStageHasAdvancement = false,
   maxLobbySize,
   defaultGameCount = 6,
   unitLabel,
@@ -120,28 +131,53 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
 
   const effectiveIncoming = mode === 'add' ? incomingTeams : registeredUnitCount;
 
+  const structureIncoming = useMemo(() => {
+    if (mode === 'add' && isFinal) {
+      return incomingTeams > 0 ? incomingTeams : registeredUnitCount;
+    }
+    return effectiveIncoming;
+  }, [mode, isFinal, incomingTeams, registeredUnitCount, effectiveIncoming]);
+
+  const planningCount =
+    mode === 'add' ? Math.max(incomingTeams, registeredUnitCount) : registeredUnitCount;
+
   const resetForm = () => {
+    const defaultFinal = mode === 'add' && existingStages.length > 0;
     setStep(0);
-    setIsFinal(mode === 'add' && existingStages.length > 0);
+    setIsFinal(defaultFinal);
     setStageName('');
+    setGamesPerLobby(defaultGameCount);
+
+    if (defaultFinal) {
+      setStageFormat('single_lobby');
+      setGroupCount(1);
+      setAdvancementCount(1);
+      return;
+    }
+
+    const countForRecommend =
+      mode === 'add' ? incomingTeams : registeredUnitCount;
     const recommended = recommendBRStageFormat(
-      mode === 'add' ? incomingTeams : registeredUnitCount,
+      countForRecommend,
       maxLobbySize ?? 100,
     );
     setStageFormat(recommended);
+    const baseGroups = deriveGroupCount(countForRecommend, maxLobbySize);
     const groups =
       recommended === 'group_rotation'
-        ? Math.max(4, deriveGroupCount(effectiveIncoming, maxLobbySize))
-        : deriveGroupCount(effectiveIncoming, maxLobbySize);
+        ? Math.max(4, baseGroups)
+        : baseGroups;
     const evenGroups = groups % 2 === 0 ? groups : groups + 1;
-    setGroupCount(recommended === 'group_rotation' ? evenGroups : groups);
-    const lobby = deriveLobbySize(effectiveIncoming, evenGroups);
+    const resolvedGroups = recommended === 'group_rotation' ? evenGroups : Math.max(1, groups);
+    setGroupCount(resolvedGroups);
+    const lobby = deriveLobbySize(countForRecommend, resolvedGroups);
     setAdvancementCount(
-      recommended === 'group_rotation'
-        ? Math.max(1, Math.floor(effectiveIncoming / 2))
-        : Math.max(1, Math.floor(lobby / 2)),
+      defaultAdvancementForLobby(
+        lobby,
+        recommended === 'group_rotation',
+        countForRecommend,
+      ),
     );
-    setGamesPerLobby(defaultGameCount);
   };
 
   useEffect(() => {
@@ -158,7 +194,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
     stageFormat === 'single_lobby' ? 1 : groupCount;
   const lobbySize =
     isFinal && stageFormat === 'single_lobby'
-      ? null
+      ? structureIncoming > 0 ? structureIncoming : null
       : deriveLobbySize(effectiveIncoming, effectiveGroups);
 
   const schedulePreview = useMemo(() => {
@@ -171,22 +207,29 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
   }, [stageFormat, effectiveGroups]);
 
   const validationErrors = useMemo(() => {
-    if (isFinal) return [];
+    if (isFinal) {
+      if (stageFormat === 'single_lobby' && maxLobbySize && structureIncoming > maxLobbySize) {
+        return [
+          `${structureIncoming} ${unitsLabel} exceed one lobby (max ${maxLobbySize}). Use Group qualifiers to split the field.`,
+        ];
+      }
+      return [];
+    }
     if (stageFormat === 'single_lobby') {
       if (maxLobbySize && effectiveIncoming > maxLobbySize) {
-        return [`${effectiveIncoming} ${unitsLabel} exceed one lobby (max ${maxLobbySize}). Choose group rotation or multi-lobby cut.`];
+        return [`${effectiveIncoming} ${unitsLabel} exceed one lobby (max ${maxLobbySize}). Choose Group qualifiers or Round-robin groups.`];
       }
       return [];
     }
     if (stageFormat === 'group_rotation') {
       const errors: string[] = [];
-      if (effectiveGroups % 2 !== 0) errors.push('Group rotation requires an even number of seed groups.');
-      if (effectiveGroups < 2) errors.push('Need at least 2 seed groups for rotation.');
+      if (effectiveGroups % 2 !== 0) errors.push('Round-robin requires an even number of groups.');
+      if (effectiveGroups < 2) errors.push('Need at least 2 groups for round-robin scheduling.');
       const perGroup = deriveLobbySize(effectiveIncoming, effectiveGroups);
       if (maxLobbySize && perGroup * 2 > maxLobbySize) {
         errors.push(`Pairwise lobbies would hold ${perGroup * 2} ${unitsLabel} (max ${maxLobbySize}). Add more groups.`);
       }
-      if (!schedulePreview) errors.push('Could not generate rotation schedule for this group count.');
+      if (!schedulePreview) errors.push('Could not generate round schedule for this group count.');
       return errors;
     }
     return validateIntermediateStage({
@@ -206,6 +249,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
     unitLabel,
     unitsLabel,
     schedulePreview,
+    structureIncoming,
   ]);
 
   const visibleFormats = FORMAT_OPTIONS.filter(
@@ -257,13 +301,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
           ? 'League Stage'
           : 'Qualifiers');
 
-    const advancementForDto = skipAdvancement
-      ? null
-      : stageFormat === 'group_rotation'
-        ? advancementCount
-        : stageFormat === 'multi_lobby_cut'
-          ? advancementCount
-          : advancementCount;
+    const advancementForDto = skipAdvancement ? null : advancementCount;
 
     return [
       attachProConfig({
@@ -306,23 +344,9 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
         stages: [...existingDtos, ...newDtos],
       });
 
-      const freshStages = await apiClient.get<Array<{ id: string; stage_order: number }>>(
-        `/api/tournaments/${tournamentId}/stages`,
-      );
-
-      for (const dto of newDtos) {
-        const stage = freshStages.find((s) => s.stage_order === dto.stageOrder);
-        if (!stage) continue;
-        try {
-          await apiClient.post(`/api/stages/${stage.id}/br/bootstrap`, {});
-        } catch {
-          // Bootstrap can be retried from Stages tab
-        }
-      }
-
       toast({
         title: 'Stage saved',
-        description: `"${newDtos[0].name}" created (${stageFormat.replace(/_/g, ' ')}). Configure schedules in the Schedule tab.`,
+        description: `"${newDtos[0].name}" created. Open Manage lobbies to initialize groups, seed participants, and create matches.`,
       });
       handleOpenChange(false);
       onComplete();
@@ -353,7 +377,42 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
     setStep((s) => Math.max(s - 1, 0));
   };
 
-  const canProceed = validationErrors.length === 0 && effectiveIncoming > 0;
+  const canProceed =
+    validationErrors.length === 0 &&
+    (isFinal ? planningCount > 0 : effectiveIncoming > 0);
+
+  const renderValidationBanner = () => {
+    const messages: string[] = [];
+    if (
+      mode === 'add' &&
+      isFinal &&
+      incomingTeams <= 0 &&
+      !priorStageHasAdvancement &&
+      fromStageName
+    ) {
+      messages.push(
+        `Set advancement on ${fromStageName} first (e.g. top 10 per group), then add finals.`,
+      );
+    } else if ((isFinal ? planningCount : effectiveIncoming) <= 0) {
+      messages.push(
+        'Set tournament capacity (max teams) in tournament settings, or register participants.',
+      );
+    }
+    messages.push(...validationErrors);
+    if (messages.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        {messages.map((err) => (
+          <p
+            key={err}
+            className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg p-3"
+          >
+            {err}
+          </p>
+        ))}
+      </div>
+    );
+  };
 
   const renderStep = () => {
     if (mode === 'add' && step === 0) {
@@ -382,10 +441,8 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
               type="button"
               onClick={() => {
                 setIsFinal(true);
-                if (maxLobbySize && incomingTeams <= maxLobbySize) {
-                  setStageFormat('single_lobby');
-                  setGroupCount(1);
-                }
+                setStageFormat('single_lobby');
+                setGroupCount(1);
               }}
               className={`flex-1 py-3 px-3 rounded-lg border text-sm font-medium ${
                 isFinal ? 'border-amber-500/40 bg-amber-500/15 text-amber-200' : 'border-white/10 text-zinc-400'
@@ -431,7 +488,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
             )}
           </div>
           <p className="text-xs text-zinc-500">
-            Max {maxLobbySize ?? '—'} {unitsLabel} per physical game lobby (from game catalog).
+            Max {maxLobbySize ?? '—'} {unitsLabel} per lobby (from game catalog).
           </p>
           <div className="space-y-2">
             {visibleFormats.map((opt) => {
@@ -469,20 +526,33 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
     }
 
     if (step === structureStepIndex) {
+      const structurePreview = formatBRStageStructureSummary({
+        format: stageFormat,
+        seedGroups: stageFormat === 'single_lobby' ? 1 : effectiveGroups,
+        gamesPerLobby,
+        lobbyCapacity: lobbySize,
+        unitsLabel,
+      });
+
       return (
         <div className="space-y-4">
+          <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] p-3 text-sm">
+            <p className="font-medium text-white">{structurePreview.title}</p>
+            <p className="text-xs text-zinc-400 mt-1">{structurePreview.subtitle}</p>
+          </div>
+
           {stageFormat === 'single_lobby' && (
             <p className="text-sm text-zinc-400">
-              All <strong className="text-white">{effectiveIncoming}</strong> {unitsLabel} in one lobby
-              {maxLobbySize ? ` (max ${maxLobbySize})` : ''}.
+              All <strong className="text-white">{structureIncoming}</strong> {unitsLabel} play together in one room.
+              {maxLobbySize ? ` The lobby fits up to ${maxLobbySize} ${unitsLabel}.` : ''}
             </p>
           )}
           {stageFormat === 'group_rotation' && (
             <>
               <p className="text-xs text-zinc-500 leading-relaxed">
-                Seed groups are roster buckets (A, B, C…). Each <strong className="text-zinc-300">wave</strong> runs several
-                parallel <strong className="text-zinc-300">matches</strong> (e.g. A+B, C+F, D+E). Players stay in their seed group;
-                matches merge two groups into one game lobby. Schedule times per match are set in the Schedule tab after seeding.
+                Groups are roster buckets (A, B, C…). Each <strong className="text-zinc-300">round</strong> runs several
+                parallel <strong className="text-zinc-300">matches</strong> (e.g. Group A + Group B). Teams stay in their group;
+                each match combines two groups into one room. Set times in Schedule after seeding, then create matches.
               </p>
               <div className="space-y-1.5">
                 <Label>Seed groups (even)</Label>
@@ -494,7 +564,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
                   <SelectContent>
                     {Array.from({ length: 15 }, (_, k) => (k + 2) * 2).map((n) => (
                       <SelectItem key={n} value={String(n)}>
-                        {n} groups — ~{deriveLobbySize(effectiveIncoming, n)} {unitsLabel}/group
+                        {n} groups — {formatUnitsPerGroup(deriveLobbySize(effectiveIncoming, n), unitsLabel)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -503,17 +573,17 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
               {schedulePreview && (
                 <div className="rounded-lg border border-white/10 p-3 text-xs text-zinc-400 space-y-2">
                   <p className="text-zinc-300 font-medium">
-                    {schedulePreview.totalWaves} waves · {schedulePreview.totalLobbies} lobbies
+                    {schedulePreview.totalWaves} rounds · {schedulePreview.totalLobbies} matches
                   </p>
                   {schedulePreview.waves.slice(0, 3).map((wave) => (
                     <div key={wave.wave}>
-                      Wave {wave.wave}: {wave.lobbies.map((l) => l.join('+')).join(' · ')}
+                      {formatRoundLabel(wave.wave)}: {wave.lobbies.map((l) => formatMatchPairing(l)).join(' · ')}
                     </div>
                   ))}
                   {schedulePreview.waves.length > 3 && (
-                    <p className="text-zinc-600">+{schedulePreview.waves.length - 3} more waves</p>
+                    <p className="text-zinc-600">+{schedulePreview.waves.length - 3} more rounds</p>
                   )}
-                  <p className="text-zinc-600">Commit the schedule in the Schedule tab after seeding.</p>
+                  <p className="text-zinc-600">Create matches in the Schedule tab after seeding.</p>
                 </div>
               )}
             </>
@@ -521,47 +591,36 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
           {stageFormat === 'static_groups' && (
             <>
               <p className="text-xs text-zinc-500 leading-relaxed">
-                Each seed group plays in its own lobby. Top N per group advance using per-group standings.
+                Split the field into seed groups. Each group plays in its own lobby for all scored
+                matches. Top N per group advance using per-group standings.
               </p>
               <div className="space-y-1.5">
                 <Label>Seed groups</Label>
-                <Select value={String(groupCount)} onValueChange={(v) => setGroupCount(parseInt(v, 10))}>
+                <Select
+                  value={String(groupCount)}
+                  onValueChange={(v) => {
+                    const next = parseInt(v, 10);
+                    setGroupCount(next);
+                    const nextLobby = deriveLobbySize(effectiveIncoming, next);
+                    setAdvancementCount(
+                      defaultAdvancementForLobby(nextLobby, false, effectiveIncoming),
+                    );
+                  }}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Array.from({ length: Math.min(32, Math.max(2, effectiveIncoming)) }, (_, k) => k + 1).map((n) => (
                       <SelectItem key={n} value={String(n)}>
-                        {n} groups — ~{deriveLobbySize(effectiveIncoming, n)} {unitsLabel}/group
+                        {n} groups — {formatUnitsPerGroup(deriveLobbySize(effectiveIncoming, n), unitsLabel)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            </>
-          )}
-          {stageFormat === 'multi_lobby_cut' && (
-            <>
-              <div className="space-y-1.5">
-                <Label>Parallel lobbies</Label>
-                <Select value={String(groupCount)} onValueChange={(v) => setGroupCount(parseInt(v, 10))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: Math.min(32, Math.max(2, effectiveIncoming)) }, (_, k) => k + 1).map((n) => (
-                      <SelectItem key={n} value={String(n)}>
-                        {n} lobbies — ~{deriveLobbySize(effectiveIncoming, n)} {unitsLabel}/lobby
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {lobbySize != null && (
-                <p className="text-xs text-zinc-500">
-                  Derived lobby size: <span className="text-white">{lobbySize}</span> {unitsLabel}
-                </p>
-              )}
             </>
           )}
           <div className="space-y-1.5">
-            <Label>Games per lobby</Label>
+            <Label>Scored matches per lobby</Label>
             <Input
               type="number"
               min={1}
@@ -571,9 +630,17 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
               className="[color-scheme:dark]"
             />
             <p className="text-xs text-zinc-500">
-              Scored games inside each physical lobby (tournament default: {defaultGameCount}).
+              How many games count toward standings in each lobby for this stage (catalog default: {defaultGameCount}).
             </p>
           </div>
+
+          {renderValidationBanner()}
+
+          <p className="text-xs text-zinc-600 border-t border-white/5 pt-3">
+            After saving: <span className="text-zinc-400">Stages → seed {unitsLabel}</span> →{' '}
+            <span className="text-zinc-400">Schedule → set match times</span> →{' '}
+            <span className="text-zinc-400">Games → start matches</span>
+          </p>
         </div>
       );
     }
@@ -588,9 +655,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
       const advLabel =
         stageFormat === 'group_rotation'
           ? 'Top N overall (stage-global standings)'
-          : stageFormat === 'multi_lobby_cut'
-            ? 'Top N per lobby'
-            : 'Top N per group';
+          : 'Top N per group';
 
       return (
         <div className="space-y-4">
@@ -606,11 +671,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
               ))}
             </SelectContent>
           </Select>
-          {stageFormat === 'multi_lobby_cut' && (
-            <p className="text-sm text-amber-400/90">
-              → <strong>{advancementCount * effectiveGroups}</strong> {unitsLabel} advance total
-            </p>
-          )}
+          {renderValidationBanner()}
         </div>
       );
     }
@@ -619,31 +680,26 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
     const reviewBr = review.config?.br as { format?: string } | undefined;
     return (
       <div className="space-y-4">
-        {validationErrors.map((err) => (
-          <p key={err} className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-            {err}
-          </p>
-        ))}
+        {renderValidationBanner()}
         <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02] space-y-2 text-sm">
           <div className="font-medium text-white">{review.name}</div>
           <div className="text-xs text-zinc-500 space-y-1">
             <div>Format: {(reviewBr?.format ?? stageFormat).replace(/_/g, ' ')}</div>
             {review.capacity != null && <div>Lobby size: {review.capacity} {unitsLabel}</div>}
+            <div>Matches per lobby: {gamesPerLobby}</div>
             {review.advancementCount != null && (
               <div>
                 Advance:{' '}
                 {stageFormat === 'group_rotation'
                   ? `top ${review.advancementCount} overall`
-                  : stageFormat === 'multi_lobby_cut'
-                    ? `top ${review.advancementCount} per lobby`
-                    : `top ${review.advancementCount} per group`}
+                  : `top ${review.advancementCount} per group`}
               </div>
             )}
             {!skipAdvancement && review.advancementCount == null && <div>No advancement (final)</div>}
           </div>
         </div>
         <p className="text-xs text-zinc-500">
-          Next: seed participants in Stages → set matchup and lobby times in Schedule → run games in Games.
+          Next: seed participants in Stages → create matches and set times in Schedule → run games in Games.
         </p>
       </div>
     );

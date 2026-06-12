@@ -28,6 +28,7 @@ import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import { getMapImageUrl } from '@/utils/gameCatalogBr';
 import { BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
+import { formatMatchPairingFromLabel, formatRoundLabel } from '@/utils/brWaveScheduleDisplay';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { BRScoringPreset } from '@/types/battleRoyale';
 
@@ -172,7 +173,8 @@ const BRGameRoom: React.FC = () => {
   const [historyExpanded, setHistoryExpanded] = useState(false);
 
   const activeRoundNumber = activeRound?.round_number ?? context.activeRound?.waveNumber ?? context.activeRound?.roundNumber ?? null;
-  const activeMatchup = context.activeRound?.matchupLabel ?? null;
+  const activeMatchupRaw = context.activeRound?.matchupLabel ?? null;
+  const activeMatchup = activeMatchupRaw ? formatMatchPairingFromLabel(activeMatchupRaw) : null;
   const activeCode = activeRound?.lobby_code ?? context.activeRound?.lobbyCode ?? null;
   const queueTimerMinutes = activeRound?.queue_timer_minutes ?? context.activeRound?.queueTimerMinutes ?? null;
   const queueStartedAt = activeRound?.queue_started_at ?? context.activeRound?.queueStartedAt ?? null;
@@ -353,7 +355,7 @@ const BRGameRoom: React.FC = () => {
                 <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest truncate">{context.groupName}</span>
               )}
               {activeMatchup && (
-                <span className="text-[10px] font-mono text-zinc-500">Lobby: {activeMatchup}</span>
+                <span className="text-[10px] font-mono text-zinc-500">{activeMatchup}</span>
               )}
               <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">
                 {gamesCompleted}/{totalGames} games
@@ -381,8 +383,8 @@ const BRGameRoom: React.FC = () => {
                 {context.lobbies.map((lobby) => (
                   <div key={lobby.lobbyId} className="rounded-lg border border-white/5 p-3">
                     <p className="text-zinc-300 font-medium">
-                      Wave {lobby.waveNumber}
-                      {lobby.matchupLabel ? ` · ${lobby.matchupLabel}` : ''}
+                      {formatRoundLabel(lobby.waveNumber)}
+                      {lobby.matchupLabel ? ` · ${formatMatchPairingFromLabel(lobby.matchupLabel)}` : ''}
                     </p>
                     <ul className="mt-2 space-y-1">
                       {lobby.games.map((game) => (
@@ -425,7 +427,7 @@ const BRGameRoom: React.FC = () => {
                       </div>
                       <div>
                         <CardTitle className="text-base sm:text-lg font-bold text-white tracking-tight">
-                          {activeGameNumber ? `Game ${activeGameNumber}` : `Wave ${activeRoundNumber}`}
+                          {activeGameNumber ? `Game ${activeGameNumber}` : formatRoundLabel(activeRoundNumber)}
                           {activeMatchup ? ` · ${activeMatchup}` : ''}
                         </CardTitle>
                         <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest mt-0.5">
@@ -600,7 +602,7 @@ const BRGameRoom: React.FC = () => {
                     <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15">
                       <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                       <p className="text-sm text-emerald-300/80">
-                        Evidence submitted for {activeGameNumber ? `Game ${activeGameNumber}` : `Wave ${activeRoundNumber}`}.
+                        Evidence submitted for {activeGameNumber ? `Game ${activeGameNumber}` : formatRoundLabel(activeRoundNumber)}.
                         {userEvidence?.reviewed
                           ? ' Your submission has been reviewed.'
                           : ' Awaiting organizer review.'}
@@ -734,8 +736,8 @@ const BRGameRoom: React.FC = () => {
                       ? results.find((r) => userEntityIds.has(r.team_id))
                       : null;
                     const label = slot.gameNumber > 1
-                      ? `Wave ${roundOrdinal} · Game ${slot.gameNumber}`
-                      : `Wave ${roundOrdinal}`;
+                      ? `${formatRoundLabel(roundOrdinal)} · Game ${slot.gameNumber}`
+                      : formatRoundLabel(roundOrdinal);
                     return (
                       <div
                         key={`${slot.lobby.id}-${slot.gameNumber}`}

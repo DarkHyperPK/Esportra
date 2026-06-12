@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layers, Users, Trophy, Filter, ChevronRight, RefreshCw } from 'lucide-react';
 import { useBRGroupLeaderboard, useBRGroupRounds, useBRStageLeaderboard } from '@/hooks/useBRGroupLeaderboard';
-import { useBRGroupTeams, useBRGroups } from '@/hooks/useBRGroups';
+import { useBRGroupTeams, useBRGroups, useBRGroupsDetail } from '@/hooks/useBRGroups';
 import { useStageLobbiesDeduped } from '@/hooks/useBRLobbies';
 import { LobbyManagementPanel } from '@/components/organizer/br/LobbyManagementPanel';
 import { BRWaveLobbyPanel } from '@/components/organizer/br/BRWaveLobbyPanel';
@@ -14,6 +14,7 @@ import { useStageCompletion } from '@/hooks/useStageCompletion';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import type { Database } from '@/integrations/supabase/types';
 import { resolveStageBRConfig, getQualificationCutoff, sortBRLeaderboardEntries } from '@/utils/brConfigResolve';
+import { computeStageFlows } from '@/utils/brStageFlow';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import { getCatalogMapItems } from '@/utils/gameCatalogBr';
 import type { BRMapConfig } from '@/types/battleRoyale';
@@ -32,6 +33,7 @@ interface BRGamesTabProps {
     game: string;
     tournamentSettings?: Record<string, unknown> | null;
     teamSize?: number;
+    maxTeams?: number | null;
     /** @deprecated use resolved stage config instead */
     scoringPreset?: ScoringPreset;
 }
@@ -42,6 +44,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     game,
     tournamentSettings,
     teamSize = 1,
+    maxTeams,
     scoringPreset: legacyScoringPreset,
 }) => {
     const stages = useMemo(() => stagesProp ?? [], [stagesProp]);
@@ -92,7 +95,25 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
         error: groupsError,
         refetch: refetchGroups,
         bootstrapLobby,
+        generateLobbies,
     } = useBRGroups(selectedStageId || null);
+
+    const { data: groupsDetail } = useBRGroupsDetail(selectedStageId || null, { includeTeams: false });
+    const hasRounds = groupsDetail?.has_rounds === true;
+
+    const registeredUnitCount = maxTeams ?? 0;
+    const stageFlows = useMemo(
+        () => computeStageFlows(sortedStages, registeredUnitCount),
+        [sortedStages, registeredUnitCount],
+    );
+    const selectedStageFlow = stageFlows.get(selectedStageId);
+    const expectedUnits = selectedStageFlow?.teamsEntering ?? registeredUnitCount;
+    const totalAssigned = groups.reduce((sum, group) => sum + group.team_count, 0);
+    const seedingComplete =
+        groups.length > 0
+        && totalAssigned > 0
+        && (expectedUnits <= 0 || totalAssigned >= expectedUnits)
+        && !groups.some((group) => group.team_count === 0);
 
     // Auto-select first group when groups load
     React.useEffect(() => {
@@ -132,6 +153,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     const isGroupRotation = stageFormat === 'group_rotation';
     const isMultiLobbyCut = stageFormat === 'multi_lobby_cut';
     const useWaveLobbyView = isGroupRotation;
+    const needsMatchGeneration = !useWaveLobbyView && seedingComplete && !hasRounds;
 
     const leaderboardScope = resolvedStageConfig?.leaderboardScope ?? 'per_seed_group';
     const leaderboard = leaderboardScope === 'stage_global' ? stageLeaderboard : groupLeaderboard;
@@ -152,7 +174,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     }, [resolvedStageConfig, selectedStage, groups.length]);
 
     // Fetch round summary for accurate totalGames/gamesCompleted in leaderboard
-    const { totalRounds, completedRounds } = useBRGroupRounds(
+    const { totalGames, completedGames } = useBRGroupRounds(
         selectedStageId || null,
         selectedGroupId || null
     );
@@ -235,7 +257,16 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                     disabled={bootstrapLobby.isPending}
                                     className="h-8 bg-white text-black hover:bg-white/90 font-mono text-[11px] font-bold uppercase tracking-wider"
                                 >
-                                    {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Lobby'}
+                                    {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Groups'}
+                                </Button>
+                            ) : needsMatchGeneration ? (
+                                <Button
+                                    size="sm"
+                                    onClick={() => generateLobbies.mutate()}
+                                    disabled={generateLobbies.isPending}
+                                    className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[11px] font-bold uppercase tracking-wider"
+                                >
+                                    {generateLobbies.isPending ? 'Creating...' : 'Create Matches'}
                                 </Button>
                             ) : isSingleLobby ? (
                                 <div className="h-8 flex items-center border border-white/10 bg-white/[0.03] px-3 text-xs font-medium text-white">
@@ -264,7 +295,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                         )}
                         {useWaveLobbyView && groups.length > 0 && (
                             <div className="text-xs text-zinc-500 mt-4 sm:mt-0">
-                                {groups.length} seed groups · wave matches below
+                                {groups.length} groups · round matches below
                             </div>
                         )}
                     </div>
@@ -280,6 +311,22 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                     )}
                 </div>
             </Card>
+
+            {groups.length > 0 && !hasRounds && !seedingComplete && !useWaveLobbyView && (
+                <Card className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
+                    <p className="text-sm text-amber-200">
+                        Finish seeding in the Stages tab ({totalAssigned}/{expectedUnits || '—'} assigned) before creating matches.
+                    </p>
+                </Card>
+            )}
+
+            {needsMatchGeneration && (
+                <Card className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
+                    <p className="text-sm text-amber-200">
+                        Seed participants in the Stages tab, then create matches to unlock the Games panel.
+                    </p>
+                </Card>
+            )}
 
             {groupsError && (
                 <Card className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
@@ -324,7 +371,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                             </div>
                         ) : sortedLeaderboard.length === 0 ? (
                             <p className="text-xs text-gray-500 text-center py-6">
-                                No results yet. Complete wave matches below.
+                                No results yet. Complete round matches below.
                             </p>
                         ) : (
                             <BRLeaderboard
@@ -347,7 +394,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                         />
                     </Card>
                 </>
-            ) : !groupsError && selectedStageId && selectedGroupId && selectedGroup ? (
+            ) : !groupsError && selectedStageId && selectedGroupId && selectedGroup && hasRounds ? (
                 <>
                     {/* Group Leaderboard */}
                     <Card className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-5">
@@ -374,8 +421,8 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                             <>
                             <BRLeaderboard
                                 entries={sortedLeaderboard}
-                                totalGames={totalRounds}
-                                gamesCompleted={completedRounds}
+                                totalGames={totalGames}
+                                gamesCompleted={completedGames}
                                 qualificationCutoff={qualificationCutoff}
                                 pageSize={20}
                             />

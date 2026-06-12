@@ -47,7 +47,7 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
   if (games.length === 0) {
     return (
       <p className="text-xs text-zinc-500 px-2 py-3">
-        No games materialized yet. Save the stage or create a lobby to generate games.
+        No games yet. Create matches from the Schedule tab to generate games.
       </p>
     );
   }
@@ -140,10 +140,10 @@ const BRGameRunRow: React.FC<{
         <div className="px-3 pb-3 space-y-3 border-t border-white/5">
           {mapConfig.mode !== 'none' && (
             <BRMapOptionList
-              value={mapInput}
-              onChange={setMapInput}
               items={mapCatalogItems}
-              label="Map"
+              selected={mapInput ? [mapInput] : []}
+              onToggle={(mapName, checked) => setMapInput(checked ? mapName : '')}
+              columns={2}
             />
           )}
           <div className="flex flex-wrap gap-2">

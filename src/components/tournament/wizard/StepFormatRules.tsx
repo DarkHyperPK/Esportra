@@ -9,7 +9,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
-import { Trophy, Users, Target, Plus, Trash2, Layers, FileText, MapIcon } from 'lucide-react';
+import { Trophy, Users, Plus, Trash2, Layers, FileText, MapIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import TournamentMapPoolSelector, { MapPoolSectionLabel } from './TournamentMapPoolSelector';
@@ -231,32 +231,6 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                 <>
                     {/* Game Mode (Solo / Duo / Squad) */}
                     {renderGameModeSelector()}
-
-                    {/* Game Count */}
-                    <div className="space-y-3">
-                        <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <Target className="w-4 h-4" />
-                            Number of Games
-                        </Label>
-                        <Select
-                            value={String(data.brGameCount)}
-                            onValueChange={(v) => updateData({ brGameCount: parseInt(v) })}
-                        >
-                            <SelectTrigger className="w-full font-bold tracking-tight">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {[3, 4, 5, 6, 7, 8, 9, 10, 12].map(n => (
-                                    <SelectItem key={n} value={String(n)}>
-                                        {n} Games {n === brConfig.defaultGameCount ? '(Recommended)' : ''}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <p className="text-sm text-gray-400">
-                            Total games to be played. Points accumulate across all games.
-                        </p>
-                    </div>
 
                     {/* Scoring System */}
                     <div className="space-y-3">

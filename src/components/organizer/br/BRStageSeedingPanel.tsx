@@ -41,7 +41,7 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
   const groups = data?.groups ?? [];
   const hasLobbies = data?.has_rounds === true;
 
-  const { assignTeams, bootstrapLobby, deleteGroup } = useBRGroupsMutations(stageId);
+  const { assignTeams, bootstrapLobby, generateLobbies, deleteGroup } = useBRGroupsMutations(stageId);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [method, setMethod] = useState<BRDistributionMethod>('random');
@@ -76,7 +76,8 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
     finally { setConfirmDistribute(false); }
   };
 
-  const readyForGames = seedingComplete && (!isRotation || hasLobbies);
+  const readyForGames = seedingComplete && hasLobbies;
+  const needsMatchGeneration = !isRotation && seedingComplete && !hasLobbies;
 
   return (
     <div className="space-y-4 mt-4 border-t border-white/5 pt-4">
@@ -100,23 +101,37 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
                   : 'All participants seeded.'}
             </p>
           </div>
-          <div className={`rounded-xl border px-3 py-3 ${readyForGames ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
+          <div className={`rounded-xl border px-3 py-3 ${readyForGames ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : needsMatchGeneration ? 'border-amber-500/20 bg-amber-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
             <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Step 3</p>
-            <p className="mt-1 text-sm font-semibold text-white">Ready for Games</p>
+            <p className="mt-1 text-sm font-semibold text-white">
+              {readyForGames ? 'Ready for Games' : needsMatchGeneration ? 'Create Matches' : 'Ready for Games'}
+            </p>
             <p className="mt-1 text-xs text-zinc-400">
               {!seedingComplete
                 ? 'Finish seeding first.'
                 : isRotation && !hasLobbies
-                  ? 'Set matchup schedule in the Schedule tab, then use Games.'
-                  : 'Use the Games tab to run lobbies and submit results.'}
+                  ? 'Create matches in the Schedule tab, then use Games.'
+                  : needsMatchGeneration
+                    ? 'Generate lobbies and games to lock the roster.'
+                    : 'Use the Games tab to run matches and submit results.'}
             </p>
+            {needsMatchGeneration && (
+              <Button
+                size="sm"
+                className="mt-3 h-7 text-[11px] bg-emerald-600 hover:bg-emerald-500 text-white"
+                disabled={generateLobbies.isPending}
+                onClick={() => generateLobbies.mutate(undefined, { onSuccess: () => onUpdate() })}
+              >
+                {generateLobbies.isPending ? 'Creating matches...' : 'Create matches'}
+              </Button>
+            )}
           </div>
         </div>
       )}
 
       {isRotation && seedingComplete && !hasLobbies && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-3 py-2 text-xs text-amber-200">
-          Group rotation needs a committed matchup schedule — open the <strong className="text-amber-100">Schedule</strong> tab for this stage.
+          Create matches from the round schedule — open the <strong className="text-amber-100">Schedule</strong> tab for this stage.
         </div>
       )}
 
@@ -175,7 +190,7 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
 
           {rosterLocked && (
             <div className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-xs text-zinc-400">
-              Roster locked — this stage already has materialized lobbies.
+              Roster locked — matches already exist for this stage.
             </div>
           )}
           {hasTeamsToSeed && hasUnassignedTeams && (

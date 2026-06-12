@@ -83,14 +83,13 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
             items: isBR ? [
                 { label: 'Tournament Type', value: 'Points-Based (Battle Royale)' },
                 { label: 'Team Format', value: teamSizeLabel },
-                { label: 'Games per Stage', value: `${data.brGameCount} games` },
                 { label: 'Scoring', value: data.brScoringPreset === 'custom' ? 'Custom' : (brConfig?.scoringPresets?.[data.brScoringPreset]?.name || data.brScoringPreset) },
                 { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
                 { label: 'Tiebreaker', value: data.brTiebreaker === 'most_wins' ? 'Most Wins' : data.brTiebreaker === 'most_kills' ? 'Most Kills' : 'Best Placement' },
                 { label: 'Max Participants', value: data.maxTeams ? `${data.maxTeams} ${maxParticipantsUnit}` : 'Unlimited' },
                 { label: 'Default Lobby Size', value: `${data.brDefaultLobbySize} per lobby` },
                 ...(gameHasBRMaps(data.game) ? [{ label: 'Default Map Mode', value: data.brDefaultMapMode.replace('_', ' ') }] : []),
-                { label: 'Stages', value: 'Configure after creation in Stages tab' },
+                { label: 'Stages', value: 'Configure format and matches per lobby in Stages tab' },
             ] : [
                 { label: 'Total Stages', value: `${data.stages.length} stage(s)` },
                 ...data.stages.map((stage, i) => ({

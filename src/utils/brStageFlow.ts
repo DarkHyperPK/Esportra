@@ -1,11 +1,71 @@
 /** Shared BR stage flow calculations for setup wizard and management tab. */
 
+import { getStageBRConfig } from '@/utils/brConfigResolve';
+import type { BRStageConfig } from '@/types/battleRoyale';
+
 export interface BrStageFlowInfo {
   teamsEntering: number;
   groupsFormed: number;
   teamsAdvancing: number | null;
   isFinal: boolean;
   isConfigured: boolean;
+}
+
+export type StageFlowInput = {
+  capacity: number | null;
+  advancement_count: number | null;
+  config?: unknown;
+};
+
+function resolveLobbyCount(
+  stage: StageFlowInput,
+  teamsEntering: number,
+  br: BRStageConfig | null,
+): number {
+  const formation = br?.lobbyFormation;
+  if (formation?.lobbyCount != null && formation.lobbyCount > 0) {
+    return formation.lobbyCount;
+  }
+  if (formation?.seedGroupCount != null && formation.seedGroupCount > 0) {
+    return formation.seedGroupCount;
+  }
+  if (stage.capacity && stage.capacity > 0 && teamsEntering > 0) {
+    return Math.ceil(teamsEntering / stage.capacity);
+  }
+  return 1;
+}
+
+/** How many units advance from a stage to the next, respecting advancement mode in stage config. */
+export function computeOutgoingFromStage(
+  stage: StageFlowInput,
+  teamsEntering: number,
+): number | null {
+  const advCount = stage.advancement_count;
+  if (advCount == null || advCount <= 0) return null;
+
+  const br = getStageBRConfig(stage);
+  const advancement = br?.advancement;
+
+  if (advancement?.mode === 'none') return null;
+
+  const format = br?.format;
+  const mode =
+    advancement?.mode
+    ?? (format === 'group_rotation' ? 'top_n_overall' : 'top_n_per_group');
+
+  if (mode === 'top_n_overall') {
+    return advancement?.overall ?? advCount;
+  }
+
+  const lobbyCount = resolveLobbyCount(stage, teamsEntering, br);
+
+  if (mode === 'top_n_per_lobby') {
+    const perLobby = advancement?.perLobby ?? advCount;
+    return perLobby * lobbyCount;
+  }
+
+  const perGroup = advancement?.perGroup ?? advCount;
+  return perGroup * lobbyCount;
 }
 
 export function deriveLobbySize(incomingTeams: number, groupCount: number): number {
@@ -22,7 +82,7 @@ export function deriveGroupCount(incomingTeams: number, maxLobbySize: number | n
 }
 
 export function computeStageFlows(
-  stages: Array<{ id: string; capacity: number | null; advancement_count: number | null }>,
+  stages: Array<{ id: string; capacity: number | null; advancement_count: number | null; config?: unknown }>,
   registeredUnitCount: number,
 ): Map<string, BrStageFlowInfo> {
   const flows = new Map<string, BrStageFlowInfo>();
@@ -35,9 +95,9 @@ export function computeStageFlows(
       stage.capacity && stage.capacity > 0
         ? Math.ceil(teamsEntering / stage.capacity)
         : 1;
-    const advPerGroup = stage.advancement_count ?? null;
-    const teamsAdvancing =
-      advPerGroup != null && !isFinal ? advPerGroup * groupsFormed : null;
+    const teamsAdvancing = isFinal
+      ? null
+      : computeOutgoingFromStage(stage, teamsEntering);
     const isConfigured = isFinal ? true : stage.advancement_count != null;
 
     flows.set(stage.id, {

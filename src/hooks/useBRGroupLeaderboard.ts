@@ -17,10 +17,11 @@ interface GroupLeaderboardResponse {
   best_placement: number;
 }
 
-function mapToLeaderboardEntry(row: GroupLeaderboardResponse): BRLeaderboardEntry {
+function mapToLeaderboardEntry(row: GroupLeaderboardResponse): BRLeaderboardEntry | null {
+  if (!row.team_id) return null;
   return {
     teamId: row.team_id,
-    teamName: row.team_name,
+    teamName: row.team_name || 'Unknown',
     teamLogo: row.logo_url ?? undefined,
     totalPoints: Number(row.total_points) || 0,
     totalKills: Number(row.total_kills) || 0,
@@ -92,7 +93,7 @@ export const useBRGroupLeaderboard = (
       const raw = await apiClient.get<GroupLeaderboardResponse[]>(
         `/api/stages/${stageId}/br/groups/${groupId}/leaderboard`
       );
-      return raw.map(mapToLeaderboardEntry);
+      return raw.map(mapToLeaderboardEntry).filter((entry): entry is BRLeaderboardEntry => entry != null);
     },
     enabled: !!stageId && !!groupId,
     staleTime: 1000 * 30,
@@ -119,7 +120,7 @@ export const useBRStageLeaderboard = (
       const raw = await apiClient.get<GroupLeaderboardResponse[]>(
         `/api/stages/${stageId}/br/leaderboard`,
       );
-      return raw.map(mapToLeaderboardEntry);
+      return raw.map(mapToLeaderboardEntry).filter((entry): entry is BRLeaderboardEntry => entry != null);
     },
     enabled: !!stageId,
     staleTime: 1000 * 30,

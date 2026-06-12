@@ -85,8 +85,5 @@ export function resolveFormatFromWizard(params: {
   if (params.splitFormation === 'rotation') {
     return 'group_rotation';
   }
-  if (params.maxLobbySize != null && params.registeredUnits > params.maxLobbySize * 4) {
-    return 'multi_lobby_cut';
-  }
   return 'static_groups';
 }

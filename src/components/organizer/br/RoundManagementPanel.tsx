@@ -4,6 +4,7 @@ import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { useToast } from '@/hooks/use-toast';
 import { RoundResultsGrid } from './RoundResultsGrid';
 import { BRGameRunList } from './BRGameRunList';
+import { formatRoundLabel } from '@/utils/brWaveScheduleDisplay';
 import { RoundEvidencePanel } from './RoundEvidencePanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +63,7 @@ interface RoundManagementPanelProps {
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
   mapCatalogItems?: BRMapCatalogItem[];
-  /** When false, hides manual lobby creation (rotation stages use Schedule commit). */
+  /** When false, hides manual lobby creation (rotation stages use Schedule → Create matches). */
   allowCreateLobby?: boolean;
 }
 
@@ -418,10 +419,10 @@ export const RoundRow: React.FC<RoundRowProps> = ({
           <ChevronRight className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
         )}
         <span className="text-sm font-medium text-white">
-          {matchupLabel ? `Match: ${matchupLabel}` : `Lobby ${round.round_number ?? round.wave_number}`}
+          {matchupLabel ? matchupLabel : `Match ${round.round_number ?? round.wave_number}`}
         </span>
         {matchupLabel && (
-          <span className="text-[10px] text-zinc-500 font-mono">W{round.wave_number ?? round.round_number}</span>
+          <span className="text-[10px] text-zinc-500">{formatRoundLabel(round.wave_number ?? round.round_number ?? 1)}</span>
         )}
         <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${statusCfg.color}`}>
           {statusCfg.label}

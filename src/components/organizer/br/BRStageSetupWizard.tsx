@@ -538,8 +538,8 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
                         : 'border-white/10 text-zinc-400'
                     }`}
                   >
-                    Group rotation
-                    <p className="mt-1 text-xs text-zinc-500">Pairwise schedule — every group meets once.</p>
+                    Round-robin groups
+                    <p className="mt-1 text-xs text-zinc-500">Each round pairs two groups — everyone meets once.</p>
                   </button>
                 </div>
               </div>

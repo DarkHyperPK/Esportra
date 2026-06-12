@@ -1,6 +1,7 @@
 import type {
   EconomyTimelineEntry,
   RiotMatchInfo,
+  RiotRoundResult,
   RoundTimelineEntry,
   WeaponSummaryEntry,
 } from '@/types/riotMatchDetails';
@@ -43,7 +44,7 @@ export interface EnrichedRiotMatchData {
       };
     };
   }>;
-  roundResults?: unknown[];
+  roundResults?: RiotRoundResult[];
   enrichedPlayers?: ScoreboardPlayer[];
   matchInfoParsed?: RiotMatchInfo | null;
   roundTimeline?: RoundTimelineEntry[];

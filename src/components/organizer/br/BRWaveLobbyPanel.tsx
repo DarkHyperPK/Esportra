@@ -27,6 +27,8 @@ import type { BRGroup } from '@/types/brGroups';
 import type { BRRound } from '@/types/brLobbies';
 import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
 import {
+  formatMatchPairingFromLabel,
+  formatRoundLabel,
   groupLobbiesByWave,
   resolveLobbyMatchupLabel,
   seedGroupShortLabel,
@@ -111,7 +113,7 @@ const RotationLobbyRow: React.FC<{
       onRoundSettingsSave={onRoundSettingsSave}
       isUpdating={isUpdating}
       realtimeConnected={connected}
-      matchupLabel={matchupLabel}
+      matchupLabel={formatMatchPairingFromLabel(matchupLabel)}
     />
   );
 };
@@ -210,10 +212,11 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
   if (lobbies.length === 0) {
     return (
       <div className="text-center py-8 space-y-2">
-        <p className="text-sm text-zinc-400">No match lobbies yet.</p>
+        <p className="text-sm text-zinc-400">No matches yet.</p>
         <p className="text-xs text-zinc-500 max-w-md mx-auto">
-          Go to the <strong className="text-zinc-300">Schedule</strong> tab → commit the matchup schedule.
-          That creates one playable lobby per pairing (e.g. A+B, C+F) for each wave.
+          Go to the <strong className="text-zinc-300">Schedule</strong> tab and click{' '}
+          <strong className="text-zinc-300">Create matches</strong>. Each round pairs two groups
+          (e.g. Group A + Group B) into one playable match.
         </p>
       </div>
     );
@@ -222,15 +225,15 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-zinc-400">
-        <strong className="text-rose-200">Group rotation</strong> — each row is one physical match.
-        Rosters are merged from the paired seed groups (e.g. A+B = all players from Group A and Group B).
-        Do not use per-group &quot;New Lobby&quot;; schedules come from the Schedule tab.
+        <strong className="text-rose-200">Round-robin groups</strong> — each row is one match.
+        Rosters combine the paired groups (e.g. Group A + Group B = all teams from both groups).
+        Match pairings are set in the Schedule tab.
       </div>
 
       {[...waves.entries()].map(([waveNumber, waveLobbies]) => (
         <section key={waveNumber} className="space-y-2">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            Wave {waveNumber} · {waveLobbies.length} match{waveLobbies.length === 1 ? '' : 'es'}
+            {formatRoundLabel(waveNumber)} · {waveLobbies.length} match{waveLobbies.length === 1 ? '' : 'es'}
           </h4>
           <div className="space-y-2">
             {waveLobbies.map((lobby) => (

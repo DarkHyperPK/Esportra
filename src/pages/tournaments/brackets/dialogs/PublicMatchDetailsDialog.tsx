@@ -142,8 +142,8 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
                                         {visibleAutomatedResults.map((game: any, idx: number) => {
                                             const gameId = game.id || `game-${idx}`;
                                             const mapName = getMapName(game) || `Game ${idx + 1}`;
-                                            const theme = MAP_THEMES[mapName] || MAP_THEMES.default;
-                                            const splash = getMapSplash(mapName);
+                                            const mapTheme = MAP_THEMES[mapName.toLowerCase()] ?? MAP_THEMES.bind;
+                                            const splash = getMapSplash(mapTheme.id);
                                             const isExpanded = expandedGames[gameId];
 
                                             return (
@@ -170,11 +170,15 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
                                                     {isExpanded && game.match_details?.players && (
                                                         <div className="p-3 border-t border-white/10">
                                                             <FullScoreboard
-                                                                matchDetails={game.match_details}
-                                                                mapTheme={theme}
+                                                                players={game.match_details.players}
                                                                 team1Name={match.team1?.name || 'Team 1'}
                                                                 team2Name={match.team2?.name || 'Team 2'}
+                                                                team1Score={game.team1_score ?? 0}
+                                                                team2Score={game.team2_score ?? 0}
+                                                                reporterSide={game.match_details.reporterSide}
+                                                                reportedByTeamId={game.match_details.reportedByTeamId}
                                                                 team1Id={match.team1?.id}
+                                                                t1Side={game.match_details.t1Side}
                                                             />
                                                         </div>
                                                     )}

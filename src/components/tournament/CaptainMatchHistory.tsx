@@ -10,7 +10,8 @@ import { VetoHistoryTimeline } from './map-veto/VetoHistoryTimeline';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
 import { mergeMatchDetails, useRiotGameDetails } from '@/hooks/useRiotGameDetails';
 import type { MatchDetailsPayload } from '@/types/matchDetails';
-import { RiotEconomyChart, RiotRoundTimeline, RiotWeaponSummaries } from '@/components/tournament/RiotMatchAnalytics';
+import { RiotEconomyChart, RiotRoundTimeline } from '@/components/tournament/RiotMatchAnalytics';
+import { formatMatchQueueLabel } from '@/utils/riotMatchLabels';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -239,20 +240,28 @@ const FullMatchDataPanel: React.FC<{
     team2Name: string;
     team1Id?: string;
     team2Id?: string;
-}> = ({ game, details, riotLoading = false, team1Name, team2Name, team1Id, team2Id }) => {
+    teamId?: string;
+    isTeam1: boolean;
+}> = ({
+    game,
+    details,
+    riotLoading = false,
+    team1Name,
+    team2Name,
+    team1Id,
+    team2Id,
+    teamId,
+    isTeam1,
+}) => {
     const splash = resolveMapSplash(game.map_name);
     const duration = formatGameDuration(details?.gameLengthMillis ?? details?.matchInfo?.gameLengthMillis);
     const startedAt = formatStartTime(details?.startTime ?? details?.matchInfo?.gameStartMillis);
-    const matchInfo = details?.matchInfo;
+    const queueLabel = formatMatchQueueLabel(details);
     const reporterTeamName = resolveReporterTeamName(details, game, team1Name, team2Name, team1Id, team2Id);
-    const hasMetadata = Boolean(
-        game.riot_match_id
-        || duration
-        || startedAt
-        || reporterTeamName
-        || matchInfo?.gameMode
-        || matchInfo?.region,
-    );
+    const hasMetadata = Boolean(duration || startedAt || reporterTeamName || queueLabel);
+    const hasScoreboard = (details?.players?.length ?? 0) > 0;
+    const hasRoundData = (details?.roundTimeline?.length ?? 0) > 0;
+    const hasEconomyData = (details?.economyTimeline?.length ?? 0) > 0;
 
     return (
         <div className="space-y-6">
@@ -282,11 +291,11 @@ const FullMatchDataPanel: React.FC<{
                 )}
 
                 {hasMetadata ? (
-                    <div className="grid gap-4 p-5 sm:grid-cols-2">
-                        {game.riot_match_id ? (
+                    <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
+                        {queueLabel ? (
                             <div>
-                                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Riot match ID</p>
-                                <p className="mt-1 break-all font-mono text-xs text-zinc-300">{game.riot_match_id}</p>
+                                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Queue</p>
+                                <p className="mt-1 text-sm font-semibold text-white">{queueLabel}</p>
                             </div>
                         ) : null}
                         {duration ? (
@@ -307,21 +316,6 @@ const FullMatchDataPanel: React.FC<{
                                 <p className="mt-1 text-sm font-semibold text-white">{reporterTeamName}</p>
                             </div>
                         ) : null}
-                        {matchInfo?.gameMode ? (
-                            <div>
-                                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Game mode</p>
-                                <p className="mt-1 text-sm font-semibold text-white">
-                                    {matchInfo.gameMode}
-                                    {matchInfo.isRanked ? ' · Ranked' : ''}
-                                </p>
-                            </div>
-                        ) : null}
-                        {matchInfo?.region ? (
-                            <div>
-                                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Region</p>
-                                <p className="mt-1 text-sm font-semibold text-white">{matchInfo.region}</p>
-                            </div>
-                        ) : null}
                     </div>
                 ) : (
                     <div className="border-t border-white/5 px-5 py-8 text-center text-sm text-zinc-500">
@@ -331,15 +325,84 @@ const FullMatchDataPanel: React.FC<{
             </div>
 
             {riotLoading ? (
-                <div className="flex items-center justify-center gap-2 py-8 text-sm text-zinc-500">
+                <div className="flex items-center justify-center gap-2 py-12 text-sm text-zinc-500">
                     <Loader2 className="h-4 w-4 animate-spin text-rose-400" />
-                    Loading Riot round and economy data…
+                    Loading match data…
                 </div>
             ) : (
-                <div className="space-y-8 border border-white/10 bg-black/20 p-5">
-                    <RiotRoundTimeline rounds={details?.roundTimeline ?? []} />
-                    <RiotEconomyChart economy={details?.economyTimeline ?? []} />
-                    <RiotWeaponSummaries weapons={details?.weaponSummaries ?? []} />
+                <div className="border border-white/10 bg-black/20">
+                    <div className="border-b border-white/10 px-5 py-4">
+                        <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">Match data</p>
+                    </div>
+
+                    <Tabs defaultValue="scoreboard" className="p-5">
+                        <TabsList className="mb-6 h-auto w-full justify-start gap-1 rounded-none border border-white/10 bg-black/40 p-1">
+                            <TabsTrigger
+                                value="scoreboard"
+                                className="rounded-none font-mono text-[10px] uppercase tracking-[0.18em]"
+                            >
+                                Scoreboard
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="rounds"
+                                className="rounded-none font-mono text-[10px] uppercase tracking-[0.18em]"
+                            >
+                                Rounds
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="economy"
+                                className="rounded-none font-mono text-[10px] uppercase tracking-[0.18em]"
+                            >
+                                Economy
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="scoreboard" className="mt-0">
+                            {hasScoreboard ? (
+                                <div className="overflow-x-auto border border-white/10 bg-black/40 p-3">
+                                    <FullScoreboard
+                                        players={details?.players}
+                                        team1Name={team1Name}
+                                        team2Name={team2Name}
+                                        team1Score={game.team1_score}
+                                        team2Score={game.team2_score}
+                                        reporterSide={details?.reporterSide}
+                                        reportedByTeamId={
+                                            game.reported_by_team_id
+                                            || details?.reportedByTeamId
+                                            || (isTeam1 ? teamId : team2Id)
+                                        }
+                                        team1Id={team1Id}
+                                        t1Side={details?.t1Side}
+                                    />
+                                </div>
+                            ) : (
+                                <p className="py-12 text-center text-sm text-zinc-500">
+                                    No player scoreboard data for this game yet.
+                                </p>
+                            )}
+                        </TabsContent>
+
+                        <TabsContent value="rounds" className="mt-0">
+                            {hasRoundData ? (
+                                <RiotRoundTimeline rounds={details?.roundTimeline ?? []} />
+                            ) : (
+                                <p className="py-12 text-center text-sm text-zinc-500">
+                                    No round timeline available for this game.
+                                </p>
+                            )}
+                        </TabsContent>
+
+                        <TabsContent value="economy" className="mt-0">
+                            {hasEconomyData ? (
+                                <RiotEconomyChart economy={details?.economyTimeline ?? []} />
+                            ) : (
+                                <p className="py-12 text-center text-sm text-zinc-500">
+                                    No economy data available for this game.
+                                </p>
+                            )}
+                        </TabsContent>
+                    </Tabs>
                 </div>
             )}
         </div>
@@ -389,7 +452,6 @@ const MatchStatisticsDetail: React.FC<{
     const opponentName = resolveOpponentName(match, teamId);
     const team1Name = match.team1?.name || 'Team 1';
     const team2Name = match.team2?.name || 'Team 2';
-    const hasScoreboard = (mergedDetails?.players?.length ?? 0) > 0;
 
     return (
         <div className="space-y-6">
@@ -436,59 +498,17 @@ const MatchStatisticsDetail: React.FC<{
                 </div>
             ) : null}
 
-            <Tabs defaultValue="full" className="space-y-6">
-                <TabsList className="rounded-none border border-white/10 bg-black/30 p-1">
-                    <TabsTrigger value="full" className="rounded-none font-mono text-[10px] uppercase tracking-[0.22em]">
-                        Full match data
-                    </TabsTrigger>
-                    <TabsTrigger value="scoreboard" className="rounded-none font-mono text-[10px] uppercase tracking-[0.22em]">
-                        Scoreboard
-                    </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="full" className="mt-0">
-                    <FullMatchDataPanel
-                        game={selectedGame}
-                        details={mergedDetails}
-                        riotLoading={riotLoading}
-                        team1Name={team1Name}
-                        team2Name={team2Name}
-                        team1Id={match.team1?.id}
-                        team2Id={match.team2?.id}
-                    />
-                </TabsContent>
-
-                <TabsContent value="scoreboard" className="mt-0">
-                    {riotLoading ? (
-                        <div className="flex items-center justify-center gap-2 py-16 text-sm text-zinc-500">
-                            <Loader2 className="h-4 w-4 animate-spin text-rose-400" />
-                            Loading player scoreboard…
-                        </div>
-                    ) : hasScoreboard ? (
-                        <div className="overflow-x-auto border border-white/10 bg-black/40 p-3">
-                            <FullScoreboard
-                                players={mergedDetails?.players}
-                                team1Name={team1Name}
-                                team2Name={team2Name}
-                                team1Score={selectedGame.team1_score}
-                                team2Score={selectedGame.team2_score}
-                                reporterSide={mergedDetails?.reporterSide}
-                                reportedByTeamId={
-                                    selectedGame.reported_by_team_id
-                                    || mergedDetails?.reportedByTeamId
-                                    || (isTeam1 ? teamId : match.team2?.id)
-                                }
-                                team1Id={match.team1?.id}
-                                t1Side={mergedDetails?.t1Side}
-                            />
-                        </div>
-                    ) : (
-                        <div className="border border-dashed border-white/10 py-16 text-center text-sm text-zinc-500">
-                            No player scoreboard data for this game yet.
-                        </div>
-                    )}
-                </TabsContent>
-            </Tabs>
+            <FullMatchDataPanel
+                game={selectedGame}
+                details={mergedDetails}
+                riotLoading={riotLoading}
+                team1Name={team1Name}
+                team2Name={team2Name}
+                team1Id={match.team1?.id}
+                team2Id={match.team2?.id}
+                teamId={teamId}
+                isTeam1={isTeam1}
+            />
         </div>
     );
 };

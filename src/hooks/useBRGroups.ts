@@ -39,12 +39,31 @@ export const useBRGroupsMutations = (stageId: string | null) => {
       apiClient.post<{ bootstrapped: boolean }>(`/api/stages/${stageId}/br/bootstrap`, {}),
     onSuccess: () => {
       invalidateBRGroups(queryClient, stageId);
-      toast({ title: 'Lobby initialized' });
+      toast({ title: 'Groups initialized' });
     },
     onError: (error: unknown) => {
       toast({
-        title: 'Failed to initialize lobby',
-        description: getApiErrorMessage(error, 'We could not initialize the lobby for this stage.'),
+        title: 'Failed to initialize groups',
+        description: getApiErrorMessage(error, 'We could not initialize groups for this stage.'),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const generateLobbies = useMutation({
+    mutationFn: () =>
+      apiClient.post<{ generated: boolean }>(`/api/stages/${stageId}/br/lobbies/generate`, {}),
+    onSuccess: () => {
+      invalidateBRGroups(queryClient, stageId);
+      queryClient.invalidateQueries({ queryKey: ['br-lobbies'] });
+      queryClient.invalidateQueries({ queryKey: ['br-group-rounds'] });
+      queryClient.invalidateQueries({ queryKey: ['stage-completion', stageId] });
+      toast({ title: 'Matches created' });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: 'Failed to create matches',
+        description: getApiErrorMessage(error, 'We could not create matches for this stage.'),
         variant: 'destructive',
       });
     },
@@ -104,7 +123,7 @@ export const useBRGroupsMutations = (stageId: string | null) => {
     },
   });
 
-  return { createGroups, bootstrapLobby, assignTeams, deleteGroup, updateGroupTeams };
+  return { createGroups, bootstrapLobby, generateLobbies, assignTeams, deleteGroup, updateGroupTeams };
 };
 
 // ── useBRGroups ──────────────────────────────────────────────────────────────

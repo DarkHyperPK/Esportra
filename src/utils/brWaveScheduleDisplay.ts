@@ -6,6 +6,26 @@ import { generateBrSchedule } from '@/utils/brScheduleGenerator';
 export const seedGroupShortLabel = (name: string): string =>
   name.replace(/^group\s+/i, '').trim() || name;
 
+/** User-facing round label, e.g. "Round 1" */
+export const formatRoundLabel = (roundNumber: number): string => `Round ${roundNumber}`;
+
+/** Pairing display, e.g. ["A", "B"] → "Group A + Group B" */
+export function formatMatchPairing(labels: string[]): string {
+  return labels
+    .map((label) => {
+      const trimmed = label.trim();
+      if (/^group\s/i.test(trimmed)) return trimmed;
+      return `Group ${trimmed}`;
+    })
+    .join(' + ');
+}
+
+/** Normalize stored matchup label (A + B) to display form */
+export function formatMatchPairingFromLabel(label: string): string {
+  if (!label.includes('+')) return label;
+  return formatMatchPairing(label.split('+').map((part) => part.trim()));
+}
+
 export function resolveLobbyMatchupLabel(
   waveNumber: number,
   lobbyIndex: number,

@@ -21,9 +21,10 @@ import BRProStageWizard from '@/components/organizer/br/BRProStageWizard';
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
-import { getBRConfig, getDefaultGameMode, getDefaultTeamSize } from '@/utils/gameFeatures';
+import { getBRConfig, getDefaultTeamSize, getGameMode, getParticipantMode } from '@/utils/gameFeatures';
+import { getBRStageUnitLabels } from '@/utils/brGameContext';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
-import { computeStageFlows } from '@/utils/brStageFlow';
+import { computeOutgoingFromStage, computeStageFlows } from '@/utils/brStageFlow';
 import { getStageBRConfig } from '@/utils/brConfigResolve';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
@@ -64,8 +65,11 @@ interface BRStageManagementTabProps {
     tournamentId: string;
     stages: TournamentStage[];
   participants?: Participant[];
+    maxTeams?: number | null;
     maxParticipants?: number | null;
     teamSize?: number | null;
+    gameMode?: string | null;
+    participantMode?: 'solo' | 'team' | null;
     game?: string;
     tournamentSettings?: Record<string, unknown> | null;
   scoringPreset: unknown;
@@ -75,8 +79,12 @@ interface BRStageManagementTabProps {
 export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
   tournamentId,
   stages: stagesProp,
+  participants,
+  maxTeams,
   maxParticipants,
   teamSize,
+  gameMode,
+  participantMode: participantModeProp,
   game,
   tournamentSettings,
   onUpdate,
@@ -106,28 +114,52 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
     () => catalogBrConfig ?? getBRConfig(game || ''),
     [catalogBrConfig, game],
   );
+  const catalogDefaultGameCount = brConfig?.defaultGameCount ?? 6;
   const brGameCount =
     (typeof tournamentSettings?.brGameCount === 'number' ? tournamentSettings.brGameCount : null)
     ?? (typeof tournamentSettings?.brDefaultGameCount === 'number' ? tournamentSettings.brDefaultGameCount : null)
-    ?? brConfig?.defaultGameCount
-    ?? 6;
+    ?? catalogDefaultGameCount;
+
+  const participantMode = useMemo(() => {
+    if (participantModeProp) return participantModeProp;
+    if (!game) return 'solo' as const;
+    return getParticipantMode(game, gameMode);
+  }, [participantModeProp, game, gameMode]);
 
   const effectiveTeamSize = useMemo(() => {
+    if (participantMode === 'solo') return 1;
+    if (teamSize != null && teamSize > 1) return teamSize;
+    if (game) {
+      const modeTeamSize = getGameMode(game, gameMode)?.teamSize;
+      if (modeTeamSize != null && modeTeamSize > 1) return modeTeamSize;
+      const fallback = getDefaultTeamSize(game, gameMode);
+      if (fallback > 1) return fallback;
+    }
     if (teamSize != null && teamSize > 0) return teamSize;
-    if (!game) return 1;
-    const defaultMode = getDefaultGameMode(game);
-    return defaultMode?.teamSize ?? getDefaultTeamSize(game) ?? 1;
-  }, [teamSize, game]);
+    return 1;
+  }, [participantMode, teamSize, game, gameMode]);
 
-  const unitLabel = effectiveTeamSize === 1 ? 'player' : effectiveTeamSize === 2 ? 'duo' : effectiveTeamSize === 3 ? 'trio' : 'team';
-  const unitsLabel = effectiveTeamSize === 1 ? 'players' : effectiveTeamSize === 2 ? 'duos' : effectiveTeamSize === 3 ? 'trios' : 'teams';
+  const { unitLabel, unitsLabel } = useMemo(
+    () => getBRStageUnitLabels(effectiveTeamSize, participantMode),
+    [effectiveTeamSize, participantMode],
+  );
   const UnitsLabel = unitsLabel.charAt(0).toUpperCase() + unitsLabel.slice(1);
 
   const maxLobbySize = brConfig
     ? Math.floor(brConfig.playersPerLobby / Math.max(1, effectiveTeamSize))
     : null;
 
-  const registeredUnitCount = maxParticipants || 0;
+  const tournamentMaxUnits = maxTeams ?? maxParticipants ?? 0;
+  const confirmedUnitCount = useMemo(
+    () =>
+      participants?.filter(
+        (p) => p.status === 'confirmed' || p.status === 'checked_in',
+      ).length ?? 0,
+    [participants],
+  );
+  const registeredUnitCount =
+    tournamentMaxUnits > 0 ? tournamentMaxUnits : confirmedUnitCount;
+
   const defaultLobbySize =
     typeof tournamentSettings?.brDefaultLobbySize === 'number'
       ? tournamentSettings.brDefaultLobbySize
@@ -169,13 +201,20 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
 
   const addStageContext = useMemo(() => {
     if (sortedStages.length === 0) {
-      return { fromStageName: null as string | null, incomingTeams: registeredUnitCount };
+      return {
+        fromStageName: null as string | null,
+        incomingTeams: registeredUnitCount,
+        priorStageHasAdvancement: false,
+      };
     }
     const lastStage = sortedStages[sortedStages.length - 1];
     const lastFlow = stageFlows.get(lastStage.id);
+    const teamsEntering = lastFlow?.teamsEntering ?? registeredUnitCount;
     return {
       fromStageName: lastStage.name,
-      incomingTeams: lastFlow?.teamsAdvancing ?? 0,
+      incomingTeams: computeOutgoingFromStage(lastStage, teamsEntering) ?? 0,
+      priorStageHasAdvancement:
+        lastStage.advancement_count != null && lastStage.advancement_count > 0,
     };
   }, [sortedStages, stageFlows, registeredUnitCount]);
 
@@ -309,18 +348,17 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
 
                 <CardContent className="p-0">
                     {sortedStages.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed border-white/10 rounded-xl px-6">
+            <div className="py-12 border-2 border-dashed border-white/10 rounded-xl px-6 text-center">
               <p className="text-white font-medium mb-2">No stages configured yet</p>
               <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">
-                Choose a pro stage format: one lobby, group rotation, or multi-lobby cut.
-                Add more stages later for hybrid flows (e.g. qualifiers → finals).
+                Add stages one at a time — choose format, lobby size, advancement, and matches per lobby for each.
               </p>
-                                <Button
+              <Button
                 onClick={() => openWizard('initial')}
-                                    className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                                >
+                className="bg-rose-600 hover:bg-rose-500 text-white"
+              >
                 Set up stages
-                                </Button>
+              </Button>
                         </div>
                     ) : (
             <div className="space-y-3">
@@ -501,9 +539,10 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
         registeredUnitCount={registeredUnitCount}
         incomingTeams={addStageContext.incomingTeams}
         fromStageName={addStageContext.fromStageName}
+        priorStageHasAdvancement={addStageContext.priorStageHasAdvancement}
         maxLobbySize={maxLobbySize}
         defaultLobbySize={defaultLobbySize}
-        defaultGameCount={brGameCount}
+        defaultGameCount={catalogDefaultGameCount}
         unitLabel={unitLabel}
         unitsLabel={unitsLabel}
         onComplete={onUpdate}

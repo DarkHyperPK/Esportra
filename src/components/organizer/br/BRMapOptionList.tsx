@@ -4,7 +4,8 @@ import type { BRMapCatalogItem } from '@/types/battleRoyale';
 
 interface BRMapOptionListProps {
   items: BRMapCatalogItem[];
-  selected: string[];
+  /** Selected map names — defaults to [] when omitted. */
+  selected?: string[];
   onToggle: (mapName: string, checked: boolean) => void;
   selectable?: boolean;
   columns?: 2 | 3;
@@ -12,7 +13,7 @@ interface BRMapOptionListProps {
 
 export const BRMapOptionList: React.FC<BRMapOptionListProps> = ({
   items,
-  selected,
+  selected = [],
   onToggle,
   selectable = true,
   columns = 3,

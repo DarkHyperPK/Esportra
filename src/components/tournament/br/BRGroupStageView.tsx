@@ -222,7 +222,7 @@ const GroupContent: React.FC<GroupContentProps> = ({
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-white">
-              Lobby {(activeRound.round_number ?? activeRound.wave_number)} is Live
+              Match live — Round {activeRound.round_number ?? activeRound.wave_number}
               {activeLobbyGames.length > 0 && (
                 <span className="text-zinc-400 font-normal">
                   {' '}· Game {activeLobbyGames.find((g) => g.status === 'active')?.game_number
@@ -262,7 +262,7 @@ const GroupContent: React.FC<GroupContentProps> = ({
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-zinc-400" />
-              <h3 className="text-sm font-semibold text-white">Lobby schedule</h3>
+              <h3 className="text-sm font-semibold text-white">Match schedule</h3>
             </div>
             <div className="space-y-2">
               {rounds.map((lobby) => (
@@ -272,8 +272,8 @@ const GroupContent: React.FC<GroupContentProps> = ({
                 >
                   <div>
                     <p className="text-sm text-white font-medium">
-                      Wave {lobby.wave_number ?? lobby.round_number}
-                      {lobby.lobby_index != null ? ` · Lobby ${lobby.lobby_index + 1}` : ''}
+                      Round {lobby.wave_number ?? lobby.round_number}
+                      {lobby.lobby_index != null ? ` · Match ${lobby.lobby_index + 1}` : ''}
                     </p>
                     <p className="text-[10px] text-zinc-500">
                       {(lobby.games_completed ?? 0)}/{(lobby.game_count ?? 1)} games · {lobby.status}

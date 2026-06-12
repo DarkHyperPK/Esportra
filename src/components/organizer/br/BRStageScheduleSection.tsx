@@ -6,11 +6,19 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, Save, Wand2 } from 'lucide-react';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { useBRGroupsDetail } from '@/hooks/useBRGroups';
+import { useBRGroupsDetail, useBRGroupsMutations } from '@/hooks/useBRGroups';
+import { formatBRStageStructureSummary } from '@/utils/brGameContext';
+import { computeStageFlows } from '@/utils/brStageFlow';
 import { useBRStageSchedule } from '@/hooks/useBRStageSchedule';
 import { getStageBRConfig } from '@/utils/brConfigResolve';
 import { generateBrSchedule } from '@/utils/brScheduleGenerator';
-import { groupLobbiesByWave, resolveLobbyMatchupLabel } from '@/utils/brWaveScheduleDisplay';
+import {
+  formatMatchPairing,
+  formatMatchPairingFromLabel,
+  formatRoundLabel,
+  groupLobbiesByWave,
+  resolveLobbyMatchupLabel,
+} from '@/utils/brWaveScheduleDisplay';
 import type { BRRound, BRGame } from '@/types/brLobbies';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -20,6 +28,7 @@ interface BRStageScheduleSectionProps {
   stage: TournamentStage;
   tournamentId: string;
   allStages: TournamentStage[];
+  registeredUnitCount?: number;
   onUpdate: () => void;
 }
 
@@ -37,6 +46,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   stage,
   tournamentId,
   allStages,
+  registeredUnitCount = 0,
   onUpdate,
 }) => {
   const { toast } = useToast();
@@ -48,8 +58,19 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   const groups = groupsDetail?.groups ?? [];
   const hasLobbies = groupsDetail?.has_rounds === true;
   const totalAssigned = groups.reduce((sum, g) => sum + g.team_count, 0);
+  const stageFlows = useMemo(
+    () => computeStageFlows(allStages, registeredUnitCount),
+    [allStages, registeredUnitCount],
+  );
+  const expectedUnits = stageFlows.get(stage.id)?.teamsEntering ?? registeredUnitCount;
+  const seedingComplete =
+    groups.length > 0
+    && totalAssigned > 0
+    && (expectedUnits <= 0 || totalAssigned >= expectedUnits)
+    && !groups.some((group) => group.team_count === 0);
 
-  const { schedule: committedFormation, generatePreview, commitSchedule } = useBRStageSchedule(stage.id);
+  const { schedule: committedFormation, commitSchedule } = useBRStageSchedule(stage.id);
+  const { generateLobbies } = useBRGroupsMutations(stage.id);
 
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
@@ -149,7 +170,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     }
   };
 
-  const handleCommitMatchupSchedule = async () => {
+  const handleCreateMatches = async () => {
     if (!schedulePreview) return;
     try {
       await commitSchedule.mutateAsync({
@@ -233,6 +254,14 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
 
   const formatLabel = (brConfig?.format ?? 'static_groups').replace(/_/g, ' ');
   const lobbiesByWave = useMemo(() => groupLobbiesByWave(lobbies), [lobbies]);
+  const gamesPerLobby = brConfig?.gamesPerLobby ?? brConfig?.gameCount ?? 6;
+  const structureSummary = formatBRStageStructureSummary({
+    format: brConfig?.format ?? 'static_groups',
+    seedGroups: groups.length || 1,
+    gamesPerLobby,
+    lobbyCapacity: stage.capacity,
+    unitsLabel: 'teams',
+  });
 
   return (
     <div className="space-y-6">
@@ -242,9 +271,25 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
           <p className="text-xs text-zinc-500 mt-0.5">
             Stage {stage.stage_order} · {groups.length} seed group{groups.length === 1 ? '' : 's'} · {totalAssigned} assigned
           </p>
+          <p className="text-xs text-zinc-400 mt-1 max-w-xl">{structureSummary.title} — {structureSummary.subtitle}</p>
         </div>
         <Badge className="border-white/10 bg-white/5 text-zinc-300 capitalize">{formatLabel}</Badge>
       </div>
+
+      <section className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+        <h4 className="text-sm font-semibold text-white mb-2">Scheduling checklist</h4>
+        <ol className="text-xs text-zinc-400 space-y-1.5 list-decimal list-inside">
+          <li>Seed participants into groups (Stages tab → Manage lobbies)</li>
+          <li>
+            {isRotation
+              ? 'Create matches from the round schedule below'
+              : 'Create matches (button below, or Games tab)'}
+          </li>
+          <li>Set the stage time window, then lobby start times</li>
+          <li>Optional: set per-game start times under each lobby</li>
+          <li>Run matches in the Games tab (start game → enter results)</li>
+        </ol>
+      </section>
 
       {groupsLoading ? (
         <div className="h-24 rounded-xl bg-white/5 animate-pulse" />
@@ -257,60 +302,48 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
           {isRotation && (
             <section className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4">
               <div>
-                <h4 className="text-sm font-semibold text-white">Matchup schedule</h4>
+                <h4 className="text-sm font-semibold text-white">Round schedule</h4>
                 <p className="text-xs text-zinc-500 mt-1">
-                  Pairwise rotation — materializes physical lobbies for each wave. Requires seeded groups first.
+                  Each round pairs two groups into one match. Review below, then create matches.
                 </p>
               </div>
 
               {hasLobbies ? (
                 <p className="text-sm text-emerald-300/90">
-                  Schedule committed — {lobbies.length} lobby instance{lobbies.length === 1 ? '' : 's'} on this stage.
+                  {lobbies.length} match{lobbies.length === 1 ? '' : 'es'} created — set start times below or run them in Games.
                 </p>
               ) : schedulePreview ? (
                 <>
                   <p className="text-xs text-zinc-400">
-                    {schedulePreview.totalWaves} waves · {schedulePreview.totalLobbies} lobbies · ~{schedulePreview.estimatedDurationMinutes} min est.
+                    {schedulePreview.totalWaves} round{schedulePreview.totalWaves === 1 ? '' : 's'} ·{' '}
+                    {schedulePreview.totalLobbies} match{schedulePreview.totalLobbies === 1 ? '' : 'es'} · ~{schedulePreview.estimatedDurationMinutes} min est.
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {schedulePreview.waves.map((wave) => (
                       <div key={wave.wave} className="rounded-lg border border-white/5 px-3 py-2 text-xs text-zinc-400">
-                        <span className="text-zinc-300 font-medium">Wave {wave.wave}</span>
+                        <span className="text-zinc-300 font-medium">{formatRoundLabel(wave.wave)}</span>
                         <ul className="mt-1 space-y-0.5">
-                          {wave.lobbies.map((lobby, idx) => (
-                            <li key={idx}>{lobby.join(' vs ')}</li>
+                          {wave.lobbies.map((pairing, idx) => (
+                            <li key={idx}>
+                              Match {idx + 1}: {formatMatchPairing(pairing)}
+                            </li>
                           ))}
                         </ul>
                       </div>
                     ))}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-white/10"
-                      disabled={generatePreview.isPending}
-                      onClick={() => generatePreview.mutate({
-                        seedGroupCount: groups.length,
-                        groupsPerLobby: 2,
-                        matchesPerWave: 1,
-                      })}
-                    >
-                      Validate on server
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-500"
-                      disabled={commitSchedule.isPending}
-                      onClick={handleCommitMatchupSchedule}
-                    >
-                      {commitSchedule.isPending ? 'Committing...' : 'Commit matchup schedule'}
-                    </Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-500"
+                    disabled={commitSchedule.isPending}
+                    onClick={handleCreateMatches}
+                  >
+                    {commitSchedule.isPending ? 'Creating matches...' : 'Create matches'}
+                  </Button>
                 </>
               ) : (
                 <p className="text-sm text-amber-300/90">
-                  Need at least 2 even seed groups for rotation scheduling.
+                  Need at least 2 even groups for round scheduling.
                 </p>
               )}
             </section>
@@ -360,12 +393,12 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
             <div>
               <h4 className="text-sm font-semibold text-white flex items-center gap-2">
                 <Clock className="w-4 h-4 text-rose-400" />
-                Lobby start times
+                Match start times
               </h4>
               <p className="text-xs text-zinc-500 mt-1">
                 {isRotation
-                  ? 'Set when each wave lobby goes live. Commit the matchup schedule first.'
-                  : 'Set scheduled starts per lobby. Create lobbies in the Games tab if none exist yet.'}
+                  ? 'Set when each round’s matches go live. Create matches first.'
+                  : 'Set scheduled starts per match. Create matches below or in the Games tab if none exist yet.'}
               </p>
             </div>
 
@@ -382,11 +415,28 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                 ))}
               </div>
             ) : lobbies.length === 0 ? (
-              <p className="text-sm text-zinc-500 py-4 text-center">
-                {isRotation && !hasLobbies
-                  ? 'Commit the matchup schedule to create lobbies.'
-                  : 'No lobbies yet — create them from the Games tab.'}
-              </p>
+              <div className="py-4 text-center space-y-3">
+                <p className="text-sm text-zinc-500">
+                  {isRotation && !hasLobbies
+                    ? 'Create matches from the round schedule above first.'
+                    : 'No matches yet. Create group matches, then set start times here.'}
+                </p>
+                {!isRotation && groups.length > 0 && (
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-500"
+                    disabled={generateLobbies.isPending || !seedingComplete}
+                    onClick={() => generateLobbies.mutate(undefined, { onSuccess: () => onUpdate() })}
+                  >
+                    {generateLobbies.isPending ? 'Creating matches...' : 'Create matches'}
+                  </Button>
+                )}
+                {!isRotation && groups.length > 0 && !seedingComplete && (
+                  <p className="text-xs text-amber-300/90">
+                    Seed all participants in the Stages tab first ({totalAssigned}/{expectedUnits || '—'} assigned).
+                  </p>
+                )}
+              </div>
             ) : (
               <>
                 {startsAt && endsAt && (
@@ -397,32 +447,37 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                     className="border-white/10 text-zinc-300"
                   >
                     <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-                    Auto-distribute across {lobbies.length} lobbies
+                    Auto-distribute across {lobbies.length} matches
                   </Button>
                 )}
                 <div className="space-y-4 max-h-96 overflow-y-auto">
                   {[...lobbiesByWave.entries()].map(([waveNumber, waveLobbies]) => (
                     <div key={waveNumber} className="space-y-2">
                       <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
-                        Wave {waveNumber} · {waveLobbies.length} match{waveLobbies.length === 1 ? '' : 'es'}
+                        {formatRoundLabel(waveNumber)} · {waveLobbies.length} match{waveLobbies.length === 1 ? '' : 'es'}
                       </p>
                       {waveLobbies.map((lobby) => {
-                        const matchup = isRotation
+                        const rawMatchup = isRotation
                           ? resolveLobbyMatchupLabel(
                               waveNumber,
                               lobby.lobby_index ?? 0,
                               committedFormation ?? brConfig?.lobbyFormation,
                               groups.length,
                             )
-                          : `Lobby ${(lobby.lobby_index ?? 0) + 1}`;
+                          : null;
+                        const matchup = isRotation && rawMatchup
+                          ? formatMatchPairingFromLabel(rawMatchup)
+                          : `Match ${(lobby.lobby_index ?? 0) + 1}`;
                         return (
                           <div
                             key={lobby.id}
                             className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border border-white/5 rounded-lg bg-black/20"
                           >
-                            <div className="sm:w-36 shrink-0">
+                            <div className="sm:w-48 shrink-0">
                               <span className="text-xs font-medium text-zinc-300">{matchup}</span>
-                              <span className="block text-[10px] text-zinc-600 font-mono">W{waveNumber}</span>
+                              {isRotation && (
+                                <span className="block text-[10px] text-zinc-600">{formatRoundLabel(waveNumber)}</span>
+                              )}
                             </div>
                             <Input
                               type="datetime-local"

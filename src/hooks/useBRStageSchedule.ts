@@ -34,11 +34,11 @@ export function useBRStageSchedule(stageId: string | null) {
       queryClient.invalidateQueries({ queryKey: ['br-groups-detail', stageId] });
       queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId] });
       queryClient.invalidateQueries({ queryKey: ['br-games'] });
-      toast({ title: 'Schedule committed', description: 'Lobbies were materialized for this stage.' });
+      toast({ title: 'Matches created', description: 'Round schedule is ready — set start times below.' });
     },
     onError: (error: unknown) => {
       toast({
-        title: 'Could not commit schedule',
+        title: 'Could not create matches',
         description: getApiErrorMessage(error, 'Please try again.'),
         variant: 'destructive',
       });
