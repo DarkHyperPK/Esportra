@@ -41,5 +41,7 @@ export function mergeMatchDetails(
     players: fetched?.players?.length ? fetched.players : stored?.players,
     roundTimeline: fetched?.roundTimeline?.length ? fetched.roundTimeline : stored?.roundTimeline,
     economyTimeline: fetched?.economyTimeline?.length ? fetched.economyTimeline : stored?.economyTimeline,
+    weaponSummaries: fetched?.weaponSummaries?.length ? fetched.weaponSummaries : stored?.weaponSummaries,
+    matchInfo: fetched?.matchInfo ?? stored?.matchInfo,
   };
 }

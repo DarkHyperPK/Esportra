@@ -10,7 +10,7 @@ import { VetoHistoryTimeline } from './map-veto/VetoHistoryTimeline';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
 import { mergeMatchDetails, useRiotGameDetails } from '@/hooks/useRiotGameDetails';
 import type { MatchDetailsPayload } from '@/types/matchDetails';
-import { RiotEconomyChart, RiotRoundTimeline } from '@/components/tournament/RiotMatchAnalytics';
+import { RiotEconomyChart, RiotRoundTimeline, RiotWeaponSummaries } from '@/components/tournament/RiotMatchAnalytics';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -241,14 +241,17 @@ const FullMatchDataPanel: React.FC<{
     team2Id?: string;
 }> = ({ game, details, riotLoading = false, team1Name, team2Name, team1Id, team2Id }) => {
     const splash = resolveMapSplash(game.map_name);
-    const duration = formatGameDuration(details?.gameLengthMillis);
-    const startedAt = formatStartTime(details?.startTime);
+    const duration = formatGameDuration(details?.gameLengthMillis ?? details?.matchInfo?.gameLengthMillis);
+    const startedAt = formatStartTime(details?.startTime ?? details?.matchInfo?.gameStartMillis);
+    const matchInfo = details?.matchInfo;
     const reporterTeamName = resolveReporterTeamName(details, game, team1Name, team2Name, team1Id, team2Id);
     const hasMetadata = Boolean(
         game.riot_match_id
         || duration
         || startedAt
-        || reporterTeamName,
+        || reporterTeamName
+        || matchInfo?.gameMode
+        || matchInfo?.region,
     );
 
     return (
@@ -304,6 +307,21 @@ const FullMatchDataPanel: React.FC<{
                                 <p className="mt-1 text-sm font-semibold text-white">{reporterTeamName}</p>
                             </div>
                         ) : null}
+                        {matchInfo?.gameMode ? (
+                            <div>
+                                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Game mode</p>
+                                <p className="mt-1 text-sm font-semibold text-white">
+                                    {matchInfo.gameMode}
+                                    {matchInfo.isRanked ? ' · Ranked' : ''}
+                                </p>
+                            </div>
+                        ) : null}
+                        {matchInfo?.region ? (
+                            <div>
+                                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Region</p>
+                                <p className="mt-1 text-sm font-semibold text-white">{matchInfo.region}</p>
+                            </div>
+                        ) : null}
                     </div>
                 ) : (
                     <div className="border-t border-white/5 px-5 py-8 text-center text-sm text-zinc-500">
@@ -321,6 +339,7 @@ const FullMatchDataPanel: React.FC<{
                 <div className="space-y-8 border border-white/10 bg-black/20 p-5">
                     <RiotRoundTimeline rounds={details?.roundTimeline ?? []} />
                     <RiotEconomyChart economy={details?.economyTimeline ?? []} />
+                    <RiotWeaponSummaries weapons={details?.weaponSummaries ?? []} />
                 </div>
             )}
         </div>

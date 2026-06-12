@@ -10,7 +10,8 @@ import {
   YAxis,
 } from 'recharts';
 import { cn } from '@/lib/utils';
-import type { EconomyTimelineEntry, RoundTimelineEntry } from '@/types/riotMatchDetails';
+import type { EconomyTimelineEntry, RoundTimelineEntry, WeaponSummaryEntry } from '@/types/riotMatchDetails';
+import { resolveRoundResultCode } from '@/types/riotMatchDetails';
 
 const roundResultIcon = (code?: string | null) => {
   if (code === 'Elimination') return Skull;
@@ -33,11 +34,16 @@ export const RiotRoundTimeline: React.FC<{ rounds: RoundTimelineEntry[] }> = ({ 
       <div className="flex flex-wrap gap-2">
         {rounds.map((round) => {
           const isBlueWin = round.winningTeam === 'Blue';
-          const Icon = roundResultIcon(round.resultCode);
+          const resultCode = resolveRoundResultCode(round);
+          const Icon = roundResultIcon(resultCode);
+          const title = [resultCode, round.plantSite ? `Site ${round.plantSite}` : null]
+            .filter(Boolean)
+            .join(' · ') || round.winningTeam;
+
           return (
             <div
               key={round.round}
-              title={round.resultCode || round.winningTeam}
+              title={title}
               className={cn(
                 'flex h-12 w-10 flex-col items-center justify-center gap-1 border',
                 isBlueWin
@@ -62,10 +68,13 @@ export const RiotEconomyChart: React.FC<{ economy: EconomyTimelineEntry[] }> = (
     );
   }
 
+  const hasLoadout = economy.some((entry) => (entry.blueLoadout ?? 0) > 0 || (entry.redLoadout ?? 0) > 0);
   const chartData = economy.map((entry) => ({
     round: entry.round,
     blueSpent: entry.blueSpent,
     redSpent: entry.redSpent,
+    blueLoadout: entry.blueLoadout ?? 0,
+    redLoadout: entry.redLoadout ?? 0,
   }));
 
   return (
@@ -93,8 +102,48 @@ export const RiotEconomyChart: React.FC<{ economy: EconomyTimelineEntry[] }> = (
             />
             <Area type="monotone" dataKey="blueSpent" stroke="#3b82f6" strokeWidth={2} fill="url(#riotBlueEconomy)" name="Blue spent" />
             <Area type="monotone" dataKey="redSpent" stroke="#f43f5e" strokeWidth={2} fill="url(#riotRedEconomy)" name="Red spent" />
+            {hasLoadout ? (
+              <>
+                <Area type="monotone" dataKey="blueLoadout" stroke="#60a5fa" strokeWidth={1.5} strokeDasharray="4 4" fill="none" name="Blue loadout" />
+                <Area type="monotone" dataKey="redLoadout" stroke="#fb7185" strokeWidth={1.5} strokeDasharray="4 4" fill="none" name="Red loadout" />
+              </>
+            ) : null}
           </AreaChart>
         </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
+
+export const RiotWeaponSummaries: React.FC<{ weapons: WeaponSummaryEntry[] }> = ({ weapons }) => {
+  if (!weapons.length) {
+    return (
+      <p className="py-6 text-center text-sm text-zinc-500">No weapon usage data available.</p>
+    );
+  }
+
+  const maxCount = Math.max(...weapons.map((entry) => entry.roundCount));
+
+  return (
+    <div className="space-y-4">
+      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">Weapon usage</p>
+      <div className="space-y-2">
+        {weapons.slice(0, 8).map((entry) => (
+          <div key={entry.weapon} className="grid grid-cols-[1fr_auto] items-center gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-zinc-200">{entry.weapon}</span>
+                <span className="font-mono text-[10px] text-zinc-500">{entry.roundCount} rounds</span>
+              </div>
+              <div className="h-1.5 overflow-hidden bg-zinc-900">
+                <div
+                  className="h-full bg-rose-500/70"
+                  style={{ width: `${Math.max(8, (entry.roundCount / maxCount) * 100)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

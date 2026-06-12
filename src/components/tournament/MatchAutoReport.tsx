@@ -25,8 +25,15 @@ interface MatchCandidate {
     blueTeam: { roundsWon: number; won: boolean };
     redTeam: { roundsWon: number; won: boolean };
     players: any[];
-    roundTimeline?: Array<{ round: number; winningTeam: string; resultCode?: string | null }>;
-    economyTimeline?: Array<{ round: number; blueSpent: number; redSpent: number }>;
+    roundTimeline?: Array<{ round: number; winningTeam: string; resultCode?: string | null; result?: string | null; plantSite?: string | null }>;
+    economyTimeline?: Array<{ round: number; blueSpent: number; redSpent: number; blueLoadout?: number; redLoadout?: number }>;
+    weaponSummaries?: Array<{ weapon: string; roundCount: number }>;
+    matchInfo?: {
+        mapId?: string | null;
+        gameMode?: string | null;
+        region?: string | null;
+        isRanked?: boolean;
+    } | null;
 }
 
 interface MatchAutoReportProps {
@@ -158,6 +165,8 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                     t1Side: t1Side,
                     roundTimeline: candidate.roundTimeline,
                     economyTimeline: candidate.economyTimeline,
+                    weaponSummaries: candidate.weaponSummaries,
+                    matchInfo: candidate.matchInfo,
                 },
             });
 

@@ -1,5 +1,10 @@
 import type { ScoreboardPlayer } from '@/types/scoreboardPlayer';
-import type { EconomyTimelineEntry, RoundTimelineEntry } from '@/types/riotMatchDetails';
+import type {
+  EconomyTimelineEntry,
+  RiotMatchInfo,
+  RoundTimelineEntry,
+  WeaponSummaryEntry,
+} from '@/types/riotMatchDetails';
 
 export interface MatchDetailsPayload {
   players?: ScoreboardPlayer[];
@@ -13,6 +18,8 @@ export interface MatchDetailsPayload {
   reporterSide?: 'Blue' | 'Red';
   reportedByTeamId?: string;
   t1Side?: 'Blue' | 'Red';
+  matchInfo?: RiotMatchInfo | null;
   roundTimeline?: RoundTimelineEntry[];
   economyTimeline?: EconomyTimelineEntry[];
+  weaponSummaries?: WeaponSummaryEntry[];
 }

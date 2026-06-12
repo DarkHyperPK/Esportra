@@ -1,5 +1,12 @@
 export type RiotTeamSide = 'Blue' | 'Red';
 
+export interface AbilityCasts {
+  grenadeCasts?: number;
+  ability1Casts?: number;
+  ability2Casts?: number;
+  ultimateCasts?: number;
+}
+
 export interface ScoreboardPlayer {
   puuid?: string;
   gameName?: string;
@@ -16,6 +23,7 @@ export interface ScoreboardPlayer {
   hsPct?: number;
   kdRatio?: number;
   firstBloods?: number;
+  abilityCasts?: AbilityCasts | null;
   isTeam1?: boolean;
   isTeam2?: boolean;
 }
@@ -48,4 +56,13 @@ export function formatStat(value: number | null | undefined, digits = 0): string
 export function formatPercent(value: number | null | undefined): string {
   if (value === null || value === undefined || Number.isNaN(value)) return '-';
   return `${Math.round(value)}%`;
+}
+
+export function formatAbilityCasts(casts?: AbilityCasts | null): string {
+  if (!casts) return '-';
+  const total = (casts.grenadeCasts ?? 0)
+    + (casts.ability1Casts ?? 0)
+    + (casts.ability2Casts ?? 0)
+    + (casts.ultimateCasts ?? 0);
+  return total > 0 ? String(total) : '-';
 }
