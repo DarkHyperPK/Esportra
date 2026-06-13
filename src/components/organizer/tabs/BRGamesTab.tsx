@@ -14,7 +14,7 @@ import { useStageCompletion } from '@/hooks/useStageCompletion';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import type { Database } from '@/integrations/supabase/types';
 import { resolveStageBRConfig, getQualificationCutoff, sortBRLeaderboardEntries } from '@/utils/brConfigResolve';
-import { resolveBRRegisteredUnitCount } from '@/utils/brStageFlow';
+import { computeStageFlows, resolveBRRegisteredUnitCount } from '@/utils/brStageFlow';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import { getCatalogMapItems } from '@/utils/gameCatalogBr';
 import type { BRMapConfig } from '@/types/battleRoyale';
