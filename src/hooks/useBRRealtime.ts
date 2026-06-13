@@ -28,6 +28,8 @@ interface BrScopedPayload extends BrEventScope {
 
 const matchesScope = (payload: BrScopedPayload, scope: BrEventScope) => {
   if (scope.stageId && payload.stageId && payload.stageId !== scope.stageId) return false;
+  // Lobby events (code updates, reset, etc.) apply to all groups sharing this lobby.
+  if (scope.lobbyId && payload.lobbyId && payload.lobbyId === scope.lobbyId) return true;
   if (scope.groupId && payload.groupId && payload.groupId !== scope.groupId) return false;
   if (scope.lobbyId && payload.lobbyId && payload.lobbyId !== scope.lobbyId) return false;
   return true;

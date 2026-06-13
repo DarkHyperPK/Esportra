@@ -353,6 +353,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   groupLobbyMode = false,
   matchupLabel,
 }) => {
+  const { toast } = useToast();
   const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
     isExpanded ? round.id : null,
     stageId,
@@ -409,6 +410,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
     if (!settingsDirty) return;
 
     const settings = getRoundSettings();
+    const previousCode = round.lobby_code ?? '';
     await onRoundSettingsSave({
       lobbyCode: settings.lobbyCode ?? '',
       scheduledAt: settings.scheduledAt,
@@ -416,6 +418,16 @@ export const RoundRow: React.FC<RoundRowProps> = ({
       map: settings.map,
     });
     setSettingsDirty(false);
+    if (
+      round.status === 'active'
+      && settings.lobbyCode
+      && settings.lobbyCode !== previousCode
+    ) {
+      toast({
+        title: 'Lobby code updated',
+        description: 'Players will see the new code in Match Room.',
+      });
+    }
   };
 
   const handleResultSave = async (resultInputs: BRResultInput[]) => {
@@ -583,7 +595,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                   <p className="text-[11px] font-medium text-white">{groupLobbyMode ? 'Lobby controls' : 'Round controls'}</p>
                   <p className="text-[10px] leading-relaxed text-zinc-500">
                     {groupLobbyMode
-                      ? 'Start the lobby to publish the code. Save settings anytime to update the code for the next game batch.'
+                      ? 'Start the lobby to publish the code. Save settings updates the live code instantly in Match Room.'
                       : 'Saving updates the round draft instantly. Starting a round also publishes the current lobby code and queue timer.'}
                   </p>
                   {hasPendingEvidenceReview && round.status === 'active' && (
