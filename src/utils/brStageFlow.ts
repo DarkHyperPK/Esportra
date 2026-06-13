@@ -3,6 +3,39 @@
 import { getStageBRConfig } from '@/utils/brConfigResolve';
 import type { BRStageConfig } from '@/types/battleRoyale';
 
+import {
+  countBRSeedEligibleParticipants,
+  getBRSeedEligibleStatuses,
+  hasRegisteredParticipantsAwaitingCheckIn,
+} from '@/utils/brCheckIn';
+
+export const BR_SEED_ELIGIBLE_STATUSES = ['approved', 'checked_in'] as const;
+
+export function countBRSeedEligibleParticipantsFromList(
+  participants: Array<{ status?: string | null; checked_in_at?: string | null }> | null | undefined,
+  checkInRequired = false,
+): number {
+  return countBRSeedEligibleParticipants(participants, checkInRequired);
+}
+
+export { getBRSeedEligibleStatuses };
+
+/**
+ * BR lobby/schedule math should follow registered players when the field is smaller
+ * than tournament capacity. Falls back to max teams only when nobody is eligible yet.
+ */
+export function resolveBRRegisteredUnitCount(
+  participants: Array<{ status?: string | null; checked_in_at?: string | null }> | null | undefined,
+  maxTeams = 0,
+  checkInRequired = false,
+): number {
+  const eligible = countBRSeedEligibleParticipants(participants, checkInRequired);
+  if (eligible > 0) return eligible;
+  // Registered but waiting on check-in — don't fall back to tournament capacity.
+  if (checkInRequired && hasRegisteredParticipantsAwaitingCheckIn(participants)) return 0;
+  return Math.max(0, maxTeams);
+}
+
 export interface BrStageFlowInfo {
   teamsEntering: number;
   groupsFormed: number;

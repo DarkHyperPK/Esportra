@@ -24,7 +24,8 @@ import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 import { getBRConfig, getDefaultTeamSize, getGameMode, getParticipantMode } from '@/utils/gameFeatures';
 import { getBRStageUnitLabels, formatBRStageFormatLabel, formatBRAdvancementLabel } from '@/utils/brGameContext';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
-import { computeOutgoingFromStage, computeStageFlows } from '@/utils/brStageFlow';
+import { computeOutgoingFromStage, computeStageFlows, resolveBRRegisteredUnitCount } from '@/utils/brStageFlow';
+import { countPendingCheckInParticipants, countCheckedInParticipants } from '@/utils/brCheckIn';
 import { getStageBRConfig } from '@/utils/brConfigResolve';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
@@ -73,6 +74,7 @@ interface BRStageManagementTabProps {
     game?: string;
     tournamentSettings?: Record<string, unknown> | null;
   scoringPreset: unknown;
+    checkInRequired?: boolean;
     onUpdate: () => void;
 }
 
@@ -87,6 +89,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
   participantMode: participantModeProp,
   game,
   tournamentSettings,
+  checkInRequired = false,
   onUpdate,
 }) => {
     const stages = useMemo(() => stagesProp ?? [], [stagesProp]);
@@ -150,15 +153,9 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
     : null;
 
   const tournamentMaxUnits = maxTeams ?? maxParticipants ?? 0;
-  const confirmedUnitCount = useMemo(
-    () =>
-      participants?.filter(
-        (p) => p.status === 'confirmed' || p.status === 'checked_in',
-      ).length ?? 0,
-    [participants],
-  );
-  const registeredUnitCount =
-    tournamentMaxUnits > 0 ? tournamentMaxUnits : confirmedUnitCount;
+  const registeredUnitCount = resolveBRRegisteredUnitCount(participants, tournamentMaxUnits, checkInRequired);
+  const pendingCheckInCount = countPendingCheckInParticipants(participants);
+  const checkedInCount = countCheckedInParticipants(participants);
 
   const defaultLobbySize =
     typeof tournamentSettings?.brDefaultLobbySize === 'number'
@@ -235,7 +232,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
         } catch (error: unknown) {
             toast({
         title: 'Could not rename stage',
-        description: getApiErrorMessage(error, 'Please try again.'),
+        description: getApiErrorMessage(error, { context: 'brStageSchedule' }),
                 variant: 'destructive',
             });
         }
@@ -258,7 +255,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
         } catch (error: unknown) {
             toast({
                 title: 'Could not delete stage',
-        description: getApiErrorMessage(error, 'Please try again.'),
+        description: getApiErrorMessage(error, { context: 'brStageSchedule' }),
                 variant: 'destructive',
             });
         }
@@ -277,7 +274,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
         } catch (error: unknown) {
             toast({
                 title: 'Could not reset stages',
-        description: getApiErrorMessage(error, 'Please try again.'),
+        description: getApiErrorMessage(error, { context: 'brStageSchedule' }),
                 variant: 'destructive',
             });
         } finally {
@@ -298,7 +295,10 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
         } catch (error: unknown) {
             toast({
                 title: 'Advancement failed',
-        description: getApiErrorMessage(error, 'Complete all group rounds first.'),
+        description: getApiErrorMessage(error, {
+          context: 'brStageSchedule',
+          fallback: 'Complete all group rounds first.',
+        }),
                 variant: 'destructive',
             });
         } finally {
@@ -319,6 +319,11 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400">
                 {formatLabel}
                                 </span>
+                            {checkInRequired && (
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300">
+                                Check-in {checkedInCount}/{checkedInCount + pendingCheckInCount}
+                              </span>
+                            )}
                         </div>
                         <p className="text-sm text-gray-400 mt-1">
               Configure how {unitsLabel} are split across lobbies and who advances between stages.
@@ -536,6 +541,8 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                           registeredTeamCount={flow?.teamsEntering ?? registeredUnitCount}
                                                         hasNextStage={!isLast}
                                                         advancementCount={stage.advancement_count}
+                                                        checkInRequired={checkInRequired}
+                                                        pendingCheckInCount={pendingCheckInCount}
                                                         onUpdate={onUpdate}
                                                     />
                                             </div>

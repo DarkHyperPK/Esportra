@@ -14,7 +14,7 @@ import { useStageCompletion } from '@/hooks/useStageCompletion';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import type { Database } from '@/integrations/supabase/types';
 import { resolveStageBRConfig, getQualificationCutoff, sortBRLeaderboardEntries } from '@/utils/brConfigResolve';
-import { computeStageFlows } from '@/utils/brStageFlow';
+import { resolveBRRegisteredUnitCount } from '@/utils/brStageFlow';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import { getCatalogMapItems } from '@/utils/gameCatalogBr';
 import type { BRMapConfig } from '@/types/battleRoyale';
@@ -34,6 +34,8 @@ interface BRGamesTabProps {
     tournamentSettings?: Record<string, unknown> | null;
     teamSize?: number;
     maxTeams?: number | null;
+    participants?: Array<{ status?: string | null; checked_in_at?: string | null }>;
+    checkInRequired?: boolean;
     /** @deprecated use resolved stage config instead */
     scoringPreset?: ScoringPreset;
 }
@@ -45,6 +47,8 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     tournamentSettings,
     teamSize = 1,
     maxTeams,
+    participants,
+    checkInRequired = false,
     scoringPreset: legacyScoringPreset,
 }) => {
     const stages = useMemo(() => stagesProp ?? [], [stagesProp]);
@@ -101,7 +105,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     const { data: groupsDetail } = useBRGroupsDetail(selectedStageId || null, { includeTeams: false });
     const hasRounds = groupsDetail?.has_rounds === true;
 
-    const registeredUnitCount = maxTeams ?? 0;
+    const registeredUnitCount = resolveBRRegisteredUnitCount(participants, maxTeams ?? 0, checkInRequired);
     const stageFlows = useMemo(
         () => computeStageFlows(sortedStages, registeredUnitCount),
         [sortedStages, registeredUnitCount],

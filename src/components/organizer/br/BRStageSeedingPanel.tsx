@@ -25,6 +25,8 @@ interface BRStageSeedingPanelProps {
   registeredTeamCount: number;
   hasNextStage: boolean;
   advancementCount: number | null;
+  checkInRequired?: boolean;
+  pendingCheckInCount?: number;
   onUpdate: () => void;
 }
 
@@ -32,6 +34,8 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
   stageId,
   registeredTeamCount,
   stageConfig,
+  checkInRequired = false,
+  pendingCheckInCount = 0,
   onUpdate,
 }) => {
   const brConfig = getStageBRConfig({ config: stageConfig });
@@ -67,6 +71,7 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
   const seedingComplete = hasGroups && (!hasTeamsToSeed || !hasUnassignedTeams);
   const remainingTeams = Math.max(registeredTeamCount - totalAssigned, 0);
   const rosterLocked = hasLobbies;
+  const awaitingCheckIn = checkInRequired && pendingCheckInCount > 0;
 
   const handleDistribute = async () => {
     try {
@@ -95,7 +100,9 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
             <p className="mt-1 text-sm font-semibold text-white">Seed Participants</p>
             <p className="mt-1 text-xs text-zinc-400">
               {!hasTeamsToSeed
-                ? 'No accepted participants yet.'
+                ? checkInRequired && pendingCheckInCount > 0
+                  ? `${pendingCheckInCount} registered — waiting on check-in.`
+                  : 'No seed-eligible participants yet.'
                 : hasUnassignedTeams
                   ? `${remainingTeams} participant${remainingTeams === 1 ? '' : 's'} remain unassigned.`
                   : 'All participants seeded.'}
@@ -126,6 +133,12 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
               </Button>
             )}
           </div>
+        </div>
+      )}
+
+      {awaitingCheckIn && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] px-3 py-2 text-xs text-amber-200">
+          Check-in is required. Only checked-in players are seeded — {pendingCheckInCount} still pending on the Participants tab.
         </div>
       )}
 
@@ -180,6 +193,7 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
                 size="sm"
                 onClick={() => totalAssigned > 0 ? setConfirmDistribute(true) : handleDistribute()}
                 disabled={assignTeams.isPending || registeredTeamCount === 0 || rosterLocked}
+                title={registeredTeamCount === 0 && awaitingCheckIn ? 'Waiting for players to check in' : undefined}
                 className="h-7 text-[11px] border border-rose-500/20 bg-rose-600/10 text-rose-300 hover:bg-rose-600/20"
               >
                 <Shuffle className="w-3 h-3 mr-1" />
