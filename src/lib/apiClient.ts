@@ -16,6 +16,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { readGhostModeSession } from '@/lib/ghostModeSession';
+import { type ApiErrorContext, getApiErrorFallback } from '@/utils/apiErrorFallbacks';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 if (!API_BASE_URL) {
@@ -106,10 +107,23 @@ function buildApiErrorMessage(
   return message || `Request failed (${status}).`;
 }
 
+export type GetApiErrorMessageOptions = {
+  context?: ApiErrorContext;
+  fallback?: string;
+};
+
+function resolveApiErrorFallback(options?: string | GetApiErrorMessageOptions): string {
+  if (typeof options === 'string') return options;
+  if (options?.fallback) return options.fallback;
+  return getApiErrorFallback(options?.context ?? 'generic');
+}
+
 export function getApiErrorMessage(
   error: unknown,
-  fallback = 'We couldn\'t complete that request. Please refresh and try again.',
+  options?: string | GetApiErrorMessageOptions,
 ): string {
+  const fallback = resolveApiErrorFallback(options);
+
   if (error instanceof ApiError) {
     const body = readApiErrorBody(error.body);
     const errorsField = formatErrorsField(body.errors);

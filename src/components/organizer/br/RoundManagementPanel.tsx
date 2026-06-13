@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { BRGameRunList } from './BRGameRunList';
 import { formatRotationMatchdayLabel } from '@/utils/brWaveScheduleDisplay';
 import { RoundEvidencePanel } from './RoundEvidencePanel';
-import { Button } from '@/components/ui/button';
+import { CtaButton, DangerButton, GhostButton, OutlineButton, SettingsButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -169,9 +169,9 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
     return (
       <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 rounded-xl px-4 py-3">
         <span>Failed to load rounds</span>
-        <Button variant="ghost" size="sm" onClick={() => refetch()} className="h-6 text-xs text-red-300">
+        <GhostButton size="sm" onClick={() => refetch()} className="h-6 text-xs">
           <RefreshCw className="w-3 h-3 mr-1" /> Retry
-        </Button>
+        </GhostButton>
       </div>
     );
   }
@@ -184,15 +184,15 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
           {groupLobbyMode ? `${groupName} — Group lobby` : `${groupName} — Rounds`}
         </h4>
         {canCreateAdditionalLobby && (
-          <Button
+          <OutlineButton
             onClick={handleCreateRound}
             disabled={createLobby.isPending}
             size="sm"
-            className="h-7 text-xs bg-white/5 border border-white/10 text-white hover:bg-white/10"
+            className="h-7 text-xs"
           >
             <Plus className="w-3 h-3 mr-1" />
             {createLobby.isPending ? 'Creating...' : 'New Lobby'}
-          </Button>
+          </OutlineButton>
         )}
       </div>
 
@@ -287,9 +287,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10">
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleStatusChange}
               className={
@@ -611,53 +609,52 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                 </div>
 
                 <div className="flex flex-wrap gap-2 lg:justify-end">
-                  <Button
+                  <SettingsButton
                     size="sm"
                     onClick={handleSettingsSave}
                     disabled={!settingsDirty || isUpdating}
-                    className="h-9 text-xs bg-white/10 hover:bg-white/15 text-white disabled:bg-white/5 disabled:text-zinc-600"
+                    className="h-9 text-xs"
                   >
                     Save settings
-                  </Button>
+                  </SettingsButton>
                   {round.status === 'pending' && (
-                    <Button
+                    <CtaButton
                       size="sm"
                       onClick={() => onStatusAction('start', getRoundSettings())}
                       disabled={isUpdating}
-                      className="h-9 text-xs bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/20"
+                      className="h-9 text-xs"
                     >
                       <Play className="w-3 h-3 mr-1" /> Start
-                    </Button>
+                    </CtaButton>
                   )}
                   {round.status === 'active' && (
-                    <Button
+                    <CtaButton
                       size="sm"
                       onClick={() => onStatusAction('complete')}
                       disabled={isUpdating || hasPendingEvidenceReview || !hasSavedFullResults}
-                      className="h-9 text-xs bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/20"
+                      className="h-9 text-xs"
                     >
                       <CheckCircle className="w-3 h-3 mr-1" /> Complete
-                    </Button>
+                    </CtaButton>
                   )}
                   {round.status === 'completed' && (
-                    <Button
+                    <OutlineButton
                       size="sm"
                       onClick={() => onStatusAction('reopen')}
                       disabled={isUpdating}
-                      className="h-9 text-xs bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border border-indigo-500/20"
+                      className="h-9 text-xs"
                     >
                       <Undo2 className="w-3 h-3 mr-1" /> Re-open
-                    </Button>
+                    </OutlineButton>
                   )}
-                  <Button
+                  <DangerButton
                     size="sm"
-                    variant="outline"
                     onClick={() => onStatusAction('reset')}
                     disabled={!hasRoundState || isUpdating}
-                    className="h-9 text-xs border-rose-500/20 bg-rose-500/10 text-rose-300 hover:bg-rose-500/15 disabled:border-white/10 disabled:bg-white/5 disabled:text-zinc-600"
+                    className="h-9 text-xs"
                   >
                     <RotateCcw className="w-3 h-3 mr-1" /> Reset
-                  </Button>
+                  </DangerButton>
                 </div>
               </div>
             </div>

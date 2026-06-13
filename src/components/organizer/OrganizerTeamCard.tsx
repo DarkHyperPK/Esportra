@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getEffectiveGameFeatures } from '@/utils/gameFeatures';
+import { preferSoloRiotTagDisplay, resolveSoloParticipantDisplayName } from '@/utils/gameFeatures';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -38,21 +38,11 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
     };
 
     const isSolo = participant.entry_kind === 'solo_player' || participant.participant_type === 'solo';
-    const preferRiotTag = getEffectiveGameFeatures(
-        participant.tournament?.game || '',
-        participant.tournament?.game_mode ?? participant.tournament?.gameMode,
-    ).assistedReporting;
-    const userTag = isSolo ? (
-        (preferRiotTag && participant.user?.riot_tag) ||
-        participant.user?.riot_tag ||
-        participant.user?.steam_tag ||
-        participant.gamer_tag ||
-        participant.user?.username ||
-        participant.display_name ||
-        'Solo Player'
-    ) : null;
-
-    const displayName = isSolo ? userTag : (participant.display_name || participant.team_name || 'Unknown Team');
+    const tournamentGame = participant.tournament?.game || '';
+    const tournamentMode = participant.tournament?.game_mode ?? participant.tournament?.gameMode;
+    const displayName = isSolo
+        ? resolveSoloParticipantDisplayName(participant, tournamentGame, tournamentMode)
+        : (participant.display_name || participant.team_name || 'Unknown Team');
     const displayLogo = isSolo
         ? (participant.display_logo_url || participant.user?.avatar_url)
         : (participant.display_logo_url || participant.team_logo);

@@ -58,7 +58,7 @@ export const useUpdateBRGame = (
     onError: (error: unknown) => {
       toast({
         title: 'Failed to update game',
-        description: getApiErrorMessage(error, 'Could not save game changes.'),
+        description: getApiErrorMessage(error, { context: 'brResults' }),
         variant: 'destructive',
       });
     },
@@ -90,7 +90,7 @@ export const useBRGameResults = (gameId: string | null) => {
     onError: (error: unknown) => {
       toast({
         title: 'Failed to save results',
-        description: getApiErrorMessage(error, 'Could not save game results.'),
+        description: getApiErrorMessage(error, { context: 'brResults' }),
         variant: 'destructive',
       });
     },

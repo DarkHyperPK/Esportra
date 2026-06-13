@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
+import { evaluateRegistrationEligibility, getRegistrationOpensFromSettings } from '@/utils/tournamentLifecycle';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
+import { CancelButton, CtaButton } from '@/components/ui/app-buttons';
 import { gameSupportsRiotAccountLink } from '@/utils/gameFeatures';
 import {
   User,
@@ -31,6 +32,8 @@ interface SoloTournamentRegistrationProps {
     prize_pool?: number;
     max_teams: number;
     registration_deadline?: string;
+    status?: string;
+    settings?: Record<string, unknown>;
     description?: string;
   };
   onRegistrationComplete?: () => void;
@@ -128,8 +131,14 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
         throw new Error(`Tournament registration is not open. Current status: ${tournamentData.status}`);
       }
 
-      if (tournamentData.registration_deadline && new Date(tournamentData.registration_deadline) < new Date()) {
-        throw new Error('Registration deadline has passed');
+      const eligibility = evaluateRegistrationEligibility({
+        status: tournamentData.status,
+        registrationOpens: getRegistrationOpensFromSettings(tournamentData.settings),
+        registrationDeadline: tournamentData.registration_deadline,
+        startDate: tournamentData.start_date,
+      });
+      if (!eligibility.allowed) {
+        throw new Error(eligibility.reason ?? 'Registration is not available.');
       }
 
       // Check current registration count
@@ -192,7 +201,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
       }
       toast({
         title: 'Registration Failed',
-        description: error.message || 'An error occurred while registering. Please try again.',
+        description: getApiErrorMessage(error, { context: 'registration' }),
         variant: 'destructive',
       });
     } finally {
@@ -312,10 +321,10 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
 
         {/* Action Buttons */}
         <div className="flex gap-3 pt-2">
-          <Button
+          <CtaButton
             type="submit"
             disabled={loading || !registrationData.gamer_tag.trim()}
-            className="flex-1 bg-rose-500 hover:bg-rose-600 transition-all text-white disabled:opacity-50 disabled:cursor-not-allowed h-11 font-semibold"
+            className="flex-1 h-11 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
@@ -328,15 +337,14 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
                 Register Solo
               </>
             )}
-          </Button>
-          <Button
+          </CtaButton>
+          <CancelButton
             type="button"
             onClick={onCancel}
-            variant="outline"
-            className="border-gray-600 text-gray-300 hover:bg-gray-800 h-11 px-6"
+            className="h-11 px-6"
           >
             Cancel
-          </Button>
+          </CancelButton>
         </div>
       </form>
     </div>

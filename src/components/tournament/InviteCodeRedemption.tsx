@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Loader2, Mail, Users, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { CtaButton, OutlineButton } from '@/components/ui/app-buttons';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -190,12 +190,12 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
         if (slug) navigate(`/tournaments/${slug}`);
       }
     } catch (error: unknown) {
-      const message = getApiErrorMessage(
-        error,
-        isSoloInvite
+      const message = getApiErrorMessage(error, {
+        context: 'inviteRedeem',
+        fallback: isSoloInvite
           ? 'Check that the code belongs to your email and that registration is still open.'
           : 'Check that the code belongs to your email and that you are a team captain.',
-      );
+      });
       if (message.toLowerCase().includes('already registered')) {
         setAlreadyRegistered(true);
       }
@@ -221,9 +221,9 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
           <AlertDescription className="text-amber-100">
             Sign in with the email address that received this invitation.
             <div className="mt-3">
-              <Button asChild className="bg-white text-black hover:bg-white/90">
+              <CtaButton asChild>
                 <Link to={signInHref}>Sign in to redeem</Link>
-              </Button>
+              </CtaButton>
             </div>
           </AlertDescription>
         </Alert>
@@ -246,15 +246,14 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
             disabled={!user || redeemCode.isPending}
             className="border-white/10 bg-black/40 font-mono tracking-widest text-white"
           />
-          <Button
+          <CtaButton
             type="button"
             onClick={() => void handleRedeem()}
             disabled={!user || redeemDisabled}
-            className="bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider"
           >
             {redeemCode.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Join with Code
-          </Button>
+          </CtaButton>
         </div>
         <p className="text-xs text-gray-500">
           {isSoloInvite
@@ -305,11 +304,11 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
           ) : captainTeams.length === 0 ? (
             <div className="space-y-3 text-sm text-gray-400">
               <p>You need an active team where you are captain before redeeming this invitation.</p>
-              <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+              <OutlineButton asChild>
                 <Link to={`/player/teams?redirect=${encodeURIComponent(returnPath || '/invitations/redeem')}`}>
                   Create a team
                 </Link>
-              </Button>
+              </OutlineButton>
             </div>
           ) : (
             <>
@@ -366,14 +365,12 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
           <AlertDescription className="space-y-2">
             <p>{submitError}</p>
             {alreadyRegistered && previewTournament?.slug && (
-              <Button
+              <OutlineButton
                 type="button"
-                variant="outline"
-                className="border-white/10 bg-white/5 text-white hover:bg-white/10"
                 onClick={() => navigate(`/tournaments/${previewTournament.slug}`)}
               >
                 View tournament registration
-              </Button>
+              </OutlineButton>
             )}
           </AlertDescription>
         </Alert>

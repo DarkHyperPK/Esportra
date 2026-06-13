@@ -20,7 +20,10 @@ export function useBRStageSchedule(stageId: string | null) {
     onError: (error: unknown) => {
       toast({
         title: 'Could not generate schedule',
-        description: getApiErrorMessage(error, 'Check that seed group count is even and at least 2.'),
+        description: getApiErrorMessage(error, {
+          context: 'brStageSchedule',
+          fallback: 'Check that seed group count is even and at least 2.',
+        }),
         variant: 'destructive',
       });
     },
@@ -39,7 +42,7 @@ export function useBRStageSchedule(stageId: string | null) {
     onError: (error: unknown) => {
       toast({
         title: 'Could not create matches',
-        description: getApiErrorMessage(error, 'Please try again.'),
+        description: getApiErrorMessage(error, { context: 'brStageSchedule' }),
         variant: 'destructive',
       });
     },

@@ -4,7 +4,7 @@ import { Copy, Loader2, Ticket } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
+import { CtaButton, OutlineButton, GhostButton } from '@/components/ui/app-buttons';
 import {
   Dialog,
   DialogContent,
@@ -137,31 +137,29 @@ export function TournamentInvitePrompt() {
           </div>
 
           <DialogFooter className="mt-6 flex-col gap-2 sm:flex-col sm:space-x-0">
-            <Button
+            <CtaButton
               type="button"
+              className="w-full"
               onClick={() => void handleRedeem()}
-              className="w-full bg-rose-500 hover:bg-rose-600"
             >
               Redeem Invite
-            </Button>
-            <Button
+            </CtaButton>
+            <OutlineButton
               type="button"
-              variant="outline"
+              className="w-full"
               onClick={() => void handleCopyCode()}
               disabled={copying}
-              className="w-full border-white/10 bg-white/5 text-white hover:bg-white/10"
             >
               {copying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
               Copy Code
-            </Button>
-            <Button
+            </OutlineButton>
+            <GhostButton
               type="button"
-              variant="ghost"
+              className="w-full"
               onClick={() => void handleDismiss()}
-              className="w-full text-gray-400 hover:text-white"
             >
               Dismiss
-            </Button>
+            </GhostButton>
           </DialogFooter>
         </div>
       </DialogContent>

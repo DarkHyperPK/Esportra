@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
+import { evaluateRegistrationEligibility, getRegistrationOpensFromSettings } from '@/utils/tournamentLifecycle';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
+import { CancelButton, CtaButton } from '@/components/ui/app-buttons';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -39,6 +40,7 @@ interface TeamTournamentRegistrationProps {
     max_teams: number;
     team_size?: number;
     registration_deadline?: string;
+    status?: string;
     description?: string;
     settings?: Record<string, unknown>;
   };
@@ -439,6 +441,20 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     }
     setLoading(true);
     try {
+      const tournamentData = await apiClient.get<any>(`/api/tournaments/${tournament.id}`);
+      const liveTournament = tournamentData?.tournament || tournamentData;
+      const eligibility = evaluateRegistrationEligibility({
+        status: liveTournament?.status ?? tournament.status,
+        registrationOpens: getRegistrationOpensFromSettings(
+          liveTournament?.settings ?? tournament.settings,
+        ),
+        registrationDeadline: liveTournament?.registration_deadline ?? tournament.registration_deadline,
+        startDate: liveTournament?.start_date ?? tournament.start_date,
+      });
+      if (!eligibility.allowed) {
+        throw new Error(eligibility.reason ?? 'Registration is not available.');
+      }
+
       const team = captainTeams.find(t => t.id === selectedTeamId)!;
 
       // Fetch roster members with status (include captain in count)
@@ -557,7 +573,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     } catch (e: unknown) {
       toast({
         title: 'Registration Failed',
-        description: getApiErrorMessage(e, 'Please try again.'),
+        description: getApiErrorMessage(e, { context: 'registration' }),
         variant: 'destructive',
       });
     } finally {
@@ -941,10 +957,10 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
         {/* Actions - Clean */}
         <div className="flex gap-3 pt-2 border-t border-[#1a1a1a]">
-          <Button
+          <CtaButton
             disabled={!selectedTeamId || !eligibleTeamIds.has(selectedTeamId) || !selectedRosterId || loading}
             onClick={handleRegister}
-            className="flex-1 bg-white text-[#0a0a0a] hover:bg-gray-100 font-semibold py-3 text-base transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 py-3 text-base disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
@@ -957,19 +973,18 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                 <span>Register Team</span>
               </>
             )}
-          </Button>
-          <Button
+          </CtaButton>
+          <CancelButton
             type="button"
             onClick={() => {
               if (onCancel) {
                 onCancel();
               }
             }}
-            variant="outline"
-            className="border-[#2a2a2a] text-gray-300 hover:bg-[#151515] hover:border-[#3a3a3a] hover:text-white px-6 py-3 transition-colors"
+            className="px-6 py-3"
           >
             Cancel
-          </Button>
+          </CancelButton>
         </div>
       </CardContent>
     </Card>

@@ -7,6 +7,7 @@ import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRawgGame } from '@/hooks/useRawgGame';
+import { GameLogoImage } from '@/components/games/GameLogoImage';
 
 const REGION_LABELS: Record<string, string> = {
   'na-east': 'NA East', 'na-west': 'NA West', 'latam': 'LATAM',
@@ -146,7 +147,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
           {hasCustomImage ? (
             <img
               src={image_url}
-              className="w-full h-full object-cover object-center opacity-50 group-hover:opacity-60 transition-opacity"
+              className="w-full h-full object-cover object-center opacity-45 group-hover:opacity-55 transition-opacity"
               alt={name}
               onError={() => setBannerFailed(true)}
             />
@@ -159,27 +160,28 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 1.5, ease: "easeInOut" }}
-                className="absolute inset-0 w-full h-full object-cover object-center opacity-50"
+                className="absolute inset-0 w-full h-full object-cover object-center opacity-45"
                 alt={`${game} screenshot`}
               />
             </AnimatePresence>
           ) : gameBanner ? (
             <img
               src={gameBanner}
-              className="w-full h-full object-cover object-center opacity-50"
+              className="w-full h-full object-cover object-center opacity-45"
               alt={game}
             />
           ) : (
             <img
               src="/placeholder.svg"
-              className="w-full h-full object-cover object-center opacity-50"
+              className="w-full h-full object-cover object-center opacity-45"
               alt={name}
             />
           )}
         </div>
 
-        {/* Gradient Overlay for Text Readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/50 to-transparent" />
+        {/* Darken banner so title and metadata stay readable */}
+        <div className="absolute inset-0 bg-black/15" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/55 to-transparent" />
       </div>
 
       {/* 2. Top Bar (Floating) */}
@@ -218,9 +220,11 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
         {/* Main Info */}
         <div className="transform transition-transform duration-300 group-hover:-translate-y-2">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-bold tracking-widest text-rose-400 uppercase font-heading">
-              {game}
-            </span>
+            <GameLogoImage
+              gameName={game}
+              className="h-9 w-auto max-w-[140px] object-contain object-left"
+              alt={`${game} logo`}
+            />
             {region && REGION_LABELS[region] && (
               <span className="text-[10px] font-bold tracking-wider text-white/60 uppercase px-1.5 py-0.5 bg-white/5 border border-white/10">
                 {REGION_LABELS[region]}
@@ -233,14 +237,14 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
             {name}
           </h3>
 
-          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-400 mb-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-300 mb-4">
             <div className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-gray-500" />
+              <Calendar className="w-4 h-4 text-gray-400" />
               <span>{date}</span>
             </div>
             {venue && !is_online && (
               <div className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-gray-500" />
+                <MapPin className="w-4 h-4 text-gray-400" />
                 <span className="line-clamp-1 max-w-[120px]">{venue.replace('Venue ', '')}</span>
               </div>
             )}

@@ -26,7 +26,7 @@ export const useBRGroupsMutations = (stageId: string | null) => {
       toast({ title: 'Groups created' });
     },
     onError: (error: unknown) => {
-      const message = getApiErrorMessage(error, 'We could not create the groups for this stage.');
+      const message = getApiErrorMessage(error, { context: 'brGroups' });
       const msg = message.toLowerCase().includes('force') || message.toLowerCase().includes('existing round')
         ? 'Groups have existing rounds. Delete all rounds first, or enable "Force recreate" to override.'
         : message;
@@ -44,7 +44,7 @@ export const useBRGroupsMutations = (stageId: string | null) => {
     onError: (error: unknown) => {
       toast({
         title: 'Failed to initialize groups',
-        description: getApiErrorMessage(error, 'We could not initialize groups for this stage.'),
+        description: getApiErrorMessage(error, { context: 'brGroups' }),
         variant: 'destructive',
       });
     },
@@ -63,7 +63,7 @@ export const useBRGroupsMutations = (stageId: string | null) => {
     onError: (error: unknown) => {
       toast({
         title: 'Failed to create lobbies',
-        description: getApiErrorMessage(error, 'We could not create group lobbies for this stage.'),
+        description: getApiErrorMessage(error, { context: 'brGroups' }),
         variant: 'destructive',
       });
     },
@@ -82,7 +82,7 @@ export const useBRGroupsMutations = (stageId: string | null) => {
     onError: (error: unknown) => {
       toast({
         title: 'Failed to distribute teams',
-        description: getApiErrorMessage(error, 'We could not seed participants into the current BR lobbies.'),
+        description: getApiErrorMessage(error, { context: 'brGroups' }),
         variant: 'destructive',
       });
     },
@@ -98,7 +98,7 @@ export const useBRGroupsMutations = (stageId: string | null) => {
     onError: (error: unknown) => {
       toast({
         title: 'Failed to delete group',
-        description: getApiErrorMessage(error, 'We could not delete this group right now.'),
+        description: getApiErrorMessage(error, { context: 'brGroups' }),
         variant: 'destructive',
       });
     },
@@ -117,7 +117,7 @@ export const useBRGroupsMutations = (stageId: string | null) => {
     onError: (error: unknown) => {
       toast({
         title: 'Failed to update teams',
-        description: getApiErrorMessage(error, 'We could not update the lobby assignments for this group.'),
+        description: getApiErrorMessage(error, { context: 'brGroups' }),
         variant: 'destructive',
       });
     },

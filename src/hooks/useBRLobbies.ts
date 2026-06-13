@@ -71,7 +71,7 @@ export const useBRLobbies = (
     onError: (error: unknown) => {
       toast({
         title: 'Failed to create lobby',
-        description: getApiErrorMessage(error, 'We could not create this lobby. Check the group setup and try again.'),
+        description: getApiErrorMessage(error, { context: 'brLobbyCreate' }),
         variant: 'destructive',
       });
     },
@@ -90,7 +90,7 @@ export const useBRLobbies = (
     onError: (error: unknown) => {
       toast({
         title: 'Failed to update lobby',
-        description: getApiErrorMessage(error, 'We could not update this lobby. Check the schedule and try again.'),
+        description: getApiErrorMessage(error, { context: 'brLobbyUpdate' }),
         variant: 'destructive',
       });
     },
@@ -109,7 +109,7 @@ export const useBRLobbies = (
     onError: (error: unknown) => {
       toast({
         title: 'Failed to reset lobby',
-        description: getApiErrorMessage(error, 'We could not reset this lobby. Please try again.'),
+        description: getApiErrorMessage(error, { context: 'brLobbyReset' }),
         variant: 'destructive',
       });
     },
@@ -169,7 +169,7 @@ export const useBRLobbyResults = (
     onError: (error: unknown) => {
       toast({
         title: 'Failed to save results',
-        description: getApiErrorMessage(error, 'We could not save these results. Check every placement and try again.'),
+        description: getApiErrorMessage(error, { context: 'brResults' }),
         variant: 'destructive',
       });
     },
@@ -325,7 +325,7 @@ export const useBRLobbyEvidence = (
     onError: (error: unknown) => {
       toast({
         title: 'Failed to update evidence',
-        description: getApiErrorMessage(error, 'We could not update this evidence review. Please try again.'),
+        description: getApiErrorMessage(error, { context: 'brEvidence' }),
         variant: 'destructive',
       });
     },
