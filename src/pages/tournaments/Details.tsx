@@ -62,7 +62,7 @@ import {
   getOpenRegistrationCapacity,
   getReservedInviteSlotsFromTournament,
 } from '@/utils/tournamentInviteUtils';
-import { getRegistrationOpensFromSettings } from '@/utils/tournamentLifecycle';
+import { getRegistrationOpensFromSettings, resolveCheckInWindow } from '@/utils/tournamentLifecycle';
 
 const TournamentDetails = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -118,10 +118,16 @@ const TournamentDetails = () => {
 
   const isOrganizer = (currentRole === 'organizer' && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id)) || admin.hasPermission('tournaments:edit');
   const requiresCheckIn = Boolean(tournament?.check_in_required);
-  const checkInDeadlineDate = useMemo(
-    () => (tournament?.check_in_deadline ? new Date(tournament.check_in_deadline) : null),
-    [tournament?.check_in_deadline]
+  const checkInWindow = useMemo(
+    () => resolveCheckInWindow({
+      startDate: tournament?.start_date,
+      checkInDeadline: tournament?.check_in_deadline,
+      settings: tournament?.settings,
+    }),
+    [tournament?.start_date, tournament?.check_in_deadline, tournament?.settings],
   );
+  const checkInDeadlineDate = checkInWindow.closesAt;
+  const checkInStartTime = checkInWindow.opensAt;
   const registrationStatus = (registrationDetails?.status || '').toLowerCase();
   const hasCheckedIn = Boolean(registrationDetails?.checked_in_at) || registrationStatus === 'checked_in';
   const awaitingApproval = registrationStatus === 'pending';
@@ -134,8 +140,6 @@ const TournamentDetails = () => {
     now instanceof Date &&
     now > checkInDeadlineDate &&
     !hasCheckedIn;
-  const checkInWindowMinutes = (tournament?.settings as any)?.checkInWindowMinutes || 60; // Default to 60 if not set
-  const checkInStartTime = checkInDeadlineDate ? new Date(checkInDeadlineDate.getTime() - (checkInWindowMinutes * 60 * 1000)) : null;
   const tournamentRegistrationType = tournament?.registration_type ?? (tournament?.settings as any)?.registrationType ?? 'open';
   const tournamentReservedInviteSlots = getReservedInviteSlotsFromTournament(tournament);
   const tournamentMaxTeams = tournament?.max_participants ?? (tournament as { max_teams?: number })?.max_teams ?? 0;

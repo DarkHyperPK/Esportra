@@ -217,3 +217,67 @@ export function getDerivedPhaseColorClass(phase: TournamentDerivedPhase): string
       return 'text-gray-400';
   }
 }
+
+export function getCheckInWindowMinutes(settings: unknown): number {
+  const mins = Number((settings as { checkInWindowMinutes?: number } | null)?.checkInWindowMinutes);
+  if (Number.isFinite(mins) && mins >= 5) return mins;
+  return 30;
+}
+
+export interface CheckInWindow {
+  opensAt: Date | null;
+  closesAt: Date | null;
+  windowMinutes: number;
+}
+
+/**
+ * Check-in opens `checkInWindowMinutes` before tournament start and closes at start.
+ * Uses start_date + settings as source of truth (matches wizard copy).
+ */
+export function resolveCheckInWindow(params: {
+  startDate?: string | Date | null;
+  checkInDeadline?: string | Date | null;
+  settings?: unknown;
+}): CheckInWindow {
+  const windowMinutes = getCheckInWindowMinutes(params.settings);
+  const start = parseTournamentInstant(params.startDate);
+
+  if (!start) {
+    return {
+      opensAt: null,
+      closesAt: parseTournamentInstant(params.checkInDeadline),
+      windowMinutes,
+    };
+  }
+
+  return {
+    opensAt: new Date(start.getTime() - windowMinutes * 60_000),
+    closesAt: start,
+    windowMinutes,
+  };
+}
+
+export function isCheckInOpen(
+  window: Pick<CheckInWindow, 'opensAt' | 'closesAt'>,
+  now: Date = new Date(),
+): boolean {
+  if (!window.opensAt || !window.closesAt) return false;
+  const t = now.getTime();
+  return t >= window.opensAt.getTime() && t <= window.closesAt.getTime();
+}
+
+export function hasCheckInClosed(
+  window: Pick<CheckInWindow, 'closesAt'>,
+  now: Date = new Date(),
+): boolean {
+  if (!window.closesAt) return false;
+  return now.getTime() > window.closesAt.getTime();
+}
+
+export function hasCheckInNotOpenedYet(
+  window: Pick<CheckInWindow, 'opensAt'>,
+  now: Date = new Date(),
+): boolean {
+  if (!window.opensAt) return false;
+  return now.getTime() < window.opensAt.getTime();
+}

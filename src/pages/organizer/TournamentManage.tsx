@@ -100,6 +100,11 @@ import {
   countPendingCheckInParticipants,
   isActiveRegistration,
 } from '@/utils/brCheckIn';
+import {
+  hasCheckInClosed,
+  hasCheckInNotOpenedYet,
+  resolveCheckInWindow,
+} from '@/utils/tournamentLifecycle';
 import { StageGuidelineModal } from '@/components/organizer/wizard/StageGuidelineModal';
 import { CommandButton, CommandTabButton } from '@/components/management/CommandSurface';
 
@@ -976,9 +981,14 @@ const TournamentDashboard = () => {
   }, []);
 
   const effectiveCheckInRequired = !!tournament?.check_in_required;
-  const effectiveDeadlineMs = tournament?.check_in_deadline
-    ? new Date(tournament.check_in_deadline).getTime()
-    : null;
+  const checkInWindow = useMemo(
+    () => resolveCheckInWindow({
+      startDate: tournament?.start_date,
+      checkInDeadline: tournament?.check_in_deadline,
+      settings: tournament?.settings,
+    }),
+    [tournament?.start_date, tournament?.check_in_deadline, tournament?.settings],
+  );
 
   const checkInEligibleParticipants = useMemo(
     () => participants.filter((participant) => isActiveRegistration(participant.status)),
@@ -995,11 +1005,18 @@ const TournamentDashboard = () => {
   const checkInProgress = checkInEligibleParticipants.length
     ? Math.round((checkedInParticipants / checkInEligibleParticipants.length) * 100)
     : 0;
-  const isCheckInClosed = effectiveDeadlineMs ? now > effectiveDeadlineMs : false;
-  const checkInCountdown =
-    effectiveDeadlineMs && !isCheckInClosed
-      ? formatCountdown(effectiveDeadlineMs - now)
+  const isCheckInNotYetOpen = hasCheckInNotOpenedYet(checkInWindow, new Date(now));
+  const isCheckInClosed = hasCheckInClosed(checkInWindow, new Date(now));
+  const checkInCountdownTargetMs = isCheckInNotYetOpen
+    ? checkInWindow.opensAt?.getTime()
+    : !isCheckInClosed
+      ? checkInWindow.closesAt?.getTime()
       : null;
+  const checkInCountdown =
+    checkInCountdownTargetMs != null && checkInCountdownTargetMs > now
+      ? formatCountdown(checkInCountdownTargetMs - now)
+      : null;
+  const checkInCountdownLabel = isCheckInNotYetOpen ? 'until open' : 'left';
   const showCheckInSummary = Boolean(
     (effectiveCheckInRequired || canActAsOwner) && checkInEligibleParticipants.length > 0,
   );
@@ -1879,9 +1896,9 @@ const TournamentDashboard = () => {
                               />
                             </CardTitle>
                             <p className="text-xs font-medium text-gray-400 mt-1 font-mono uppercase tracking-wider">
-                              {tournament.check_in_deadline
-                                ? `Deadline: ${new Date(tournament.check_in_deadline).toLocaleString()}`
-                                : 'Deadline not set'}
+                              {checkInWindow.opensAt && checkInWindow.closesAt
+                                ? `Opens ${checkInWindow.opensAt.toLocaleString()} · Closes ${checkInWindow.closesAt.toLocaleString()}`
+                                : 'Check-in schedule not set'}
                               {checkInCountdown && (
                                 <motion.span
                                   key={checkInCountdown}
@@ -1889,7 +1906,7 @@ const TournamentDashboard = () => {
                                   animate={{ opacity: 1, y: 0 }}
                                   className="text-rose-400 font-bold ml-2"
                                 >
-                                  · {checkInCountdown} left
+                                  · {checkInCountdown} {checkInCountdownLabel}
                                 </motion.span>
                               )}
                             </p>
@@ -1904,6 +1921,8 @@ const TournamentDashboard = () => {
                           >
                             {isCheckInClosed
                               ? 'Closed'
+                              : isCheckInNotYetOpen
+                                ? 'Opens Soon'
                               : checkInProgress === 100
                                 ? 'Ready'
                                 : 'Check-In Open'}
