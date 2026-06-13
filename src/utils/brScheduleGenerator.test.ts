@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateBrSchedule } from './brScheduleGenerator';
+import { formatBRStageStructureSummary, formatBRStageFormatLabel, formatBRAdvancementLabel } from './brGameContext';
 import { resolveMatchupLabelFromLobby, summarizeGroupRotationSchedule } from './brWaveScheduleDisplay';
 import type { BRRound } from '@/types/brLobbies';
 
@@ -43,6 +44,37 @@ describe('summarizeGroupRotationSchedule', () => {
     expect(summary.gamesPerMatch).toBe(6);
     expect(summary.title).toContain('Single round-robin');
     expect(summary.notDoubleRoundRobinNote).toContain('not double');
+  });
+});
+
+describe('formatBRAdvancementLabel', () => {
+  it('includes teams or players in advancement copy', () => {
+    expect(formatBRAdvancementLabel({ count: 5, scope: 'overall', unitsLabel: 'teams' }))
+      .toBe('Top 5 teams overall');
+    expect(formatBRAdvancementLabel({ count: 3, scope: 'per_group', unitsLabel: 'players' }))
+      .toBe('Top 3 players per group');
+  });
+});
+
+describe('formatBRStageFormatLabel', () => {
+  it('maps group_rotation to Single Round-Robin', () => {
+    expect(formatBRStageFormatLabel('group_rotation')).toBe('Single Round-Robin');
+  });
+});
+
+describe('formatBRStageStructureSummary', () => {
+  it('finals single lobby lists all finalists, not a per-lobby cap', () => {
+    const summary = formatBRStageStructureSummary({
+      format: 'single_lobby',
+      seedGroups: 1,
+      gamesPerLobby: 6,
+      fieldSize: 5,
+      isFinal: true,
+      unitsLabel: 'teams',
+    });
+    expect(summary.title).toContain('Grand finals');
+    expect(summary.subtitle).toContain('all 5 teams play together');
+    expect(summary.subtitle).not.toContain('up to');
   });
 });
 

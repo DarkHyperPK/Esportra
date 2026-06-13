@@ -26,8 +26,8 @@ export function getBRScheduleCopy(format: BRStageFormat | string): BRScheduleCop
     return {
       createAction: 'Create cross-group matches',
       createPending: 'Creating matches...',
-      startTimesTitle: 'Match start times',
-      startTimesHint: 'Set when each cross-group match goes live. Each match is one lobby with multiple scored games.',
+      startTimesTitle: 'Start times',
+      startTimesHint: '',
       emptyHint: 'Create cross-group matches from the matchday schedule above first.',
       autoDistribute: (n) => `Auto-distribute across ${n} match${n === 1 ? '' : 'es'}`,
       waveHeader: (wave, n) => `${formatRotationMatchdayLabel(wave)} · ${n} match${n === 1 ? '' : 'es'}`,
@@ -40,8 +40,8 @@ export function getBRScheduleCopy(format: BRStageFormat | string): BRScheduleCop
     return {
       createAction: 'Create lobby & games',
       createPending: 'Creating lobby...',
-      startTimesTitle: 'Lobby start time',
-      startTimesHint: 'Set when the main lobby goes live. Create the lobby below or in the Games tab if it does not exist yet.',
+      startTimesTitle: 'Start times',
+      startTimesHint: '',
       emptyHint: 'No lobby yet. Create the lobby and scored games, then set start times here.',
       autoDistribute: () => 'Set lobby start from stage window',
       waveHeader: (_wave, n) => `${n} lobby`,
@@ -54,8 +54,8 @@ export function getBRScheduleCopy(format: BRStageFormat | string): BRScheduleCop
   return {
     createAction: 'Create group lobbies',
     createPending: 'Creating lobbies...',
-    startTimesTitle: 'Group lobby start times',
-    startTimesHint: 'Each seed group plays in its own lobby. Create group lobbies first, then set start times.',
+    startTimesTitle: 'Start times',
+    startTimesHint: '',
     emptyHint: 'No group lobbies yet. Create one lobby per group, then set start times here.',
     autoDistribute: (n) => `Auto-distribute across ${n} group lobby${n === 1 ? '' : 'ies'}`,
     waveHeader: (_wave, n) => `${n} group lobby${n === 1 ? '' : 'ies'}`,

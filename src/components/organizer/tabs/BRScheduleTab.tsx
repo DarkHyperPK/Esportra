@@ -1,6 +1,4 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar } from 'lucide-react';
 import { BRStageScheduleSection } from '@/components/organizer/br/BRStageScheduleSection';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -21,41 +19,26 @@ export const BRScheduleTab: React.FC<BRScheduleTabProps> = ({
 }) => {
   const sortedStages = [...stages].sort((a, b) => a.stage_order - b.stage_order);
 
-  return (
-    <div className="space-y-6">
-      <Card className="border-white/10 bg-[#0a0a0c]/90 rounded-3xl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
-            <Calendar className="h-5 w-5 text-rose-400" />
-            BR Scheduling
-          </CardTitle>
-          <p className="text-sm text-zinc-400">
-            Create cross-group matches (round-robin) or group lobbies, set manual start times, then run games in Games.
-          </p>
-        </CardHeader>
-      </Card>
+  if (sortedStages.length === 0) {
+    return (
+      <p className="text-sm text-zinc-500 py-12 text-center">
+        Add a stage first.
+      </p>
+    );
+  }
 
-      {sortedStages.length === 0 ? (
-        <Card className="border-dashed border-white/10 bg-[#0a0a0c]/70 rounded-3xl">
-          <CardContent className="p-10 text-center text-sm text-zinc-500">
-            Add a stage in the Stages tab before configuring schedules.
-          </CardContent>
-        </Card>
-      ) : (
-        sortedStages.map((stage) => (
-          <Card key={stage.id} className="border-white/10 bg-[#0a0a0c]/90 rounded-3xl">
-            <CardContent className="p-6 sm:p-8">
-              <BRStageScheduleSection
-                stage={stage}
-                tournamentId={tournamentId}
-                allStages={sortedStages}
-                registeredUnitCount={registeredUnitCount}
-                onUpdate={onUpdate}
-              />
-            </CardContent>
-          </Card>
-        ))
-      )}
+  return (
+    <div className="space-y-10">
+      {sortedStages.map((stage) => (
+        <BRStageScheduleSection
+          key={stage.id}
+          stage={stage}
+          tournamentId={tournamentId}
+          allStages={sortedStages}
+          registeredUnitCount={registeredUnitCount}
+          onUpdate={onUpdate}
+        />
+      ))}
     </div>
   );
 };

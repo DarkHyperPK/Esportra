@@ -1,4 +1,5 @@
 import React from 'react';
+import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BRMapCatalogItem } from '@/types/battleRoyale';
 
@@ -73,6 +74,41 @@ interface BRMapBadgeProps {
   imageUrl?: string | null;
   className?: string;
 }
+
+interface BRMapHeroProps {
+  mapName: string;
+  imageUrl?: string | null;
+  className?: string;
+}
+
+/** Player-facing map card — prominent in match room. */
+export const BRMapHero: React.FC<BRMapHeroProps> = ({ mapName, imageUrl, className }) => (
+  <div className={cn('relative rounded-xl overflow-hidden border border-white/10', className)}>
+    {imageUrl ? (
+      <div className="aspect-[21/9] relative bg-black/40">
+        <img
+          src={imageUrl}
+          alt={mapName}
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold mb-0.5">Map</p>
+          <p className="text-lg sm:text-xl font-bold text-white tracking-tight">{mapName}</p>
+        </div>
+      </div>
+    ) : (
+      <div className="flex items-center gap-3 px-4 py-3 bg-white/[0.03]">
+        <MapPin className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Map</p>
+          <p className="text-base font-bold text-white truncate">{mapName}</p>
+        </div>
+      </div>
+    )}
+  </div>
+);
 
 export const BRMapBadge: React.FC<BRMapBadgeProps> = ({ mapName, imageUrl, className }) => (
   <div className={cn('flex items-center gap-2 min-w-0', className)}>

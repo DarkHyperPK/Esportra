@@ -19,6 +19,7 @@ import { apiClient } from '@/lib/apiClient';
 import type { BRStageFormat } from '@/types/battleRoyale';
 import type { BRGame } from '@/types/brLobbies';
 import { formatPublicLobbyLabel, getPublicBRScheduleCopy } from '@/utils/brScheduleLabels';
+import { resolveActiveBRGameMap } from '@/utils/brGameContext';
 import { formatRotationMatchdayLabel, seedGroupShortLabel } from '@/utils/brWaveScheduleDisplay';
 
 interface BRGroupStageViewProps {
@@ -186,6 +187,7 @@ const GroupContent: React.FC<GroupContentProps> = ({
 
   const scheduleCopy = getPublicBRScheduleCopy(stageFormat);
   const shortGroupName = seedGroupShortLabel(groupName);
+  const activeGameMap = resolveActiveBRGameMap(activeLobbyGames);
 
   const lobbyGameQueries = useQueries({
     queries: rounds.map((lobby) => ({
@@ -276,11 +278,11 @@ const GroupContent: React.FC<GroupContentProps> = ({
             <p className="text-xs text-zinc-400 mt-1">
               Lobby codes are only shared in the Match Room for registered players.
             </p>
-            {BR_FEATURE_FLAGS.mapsEnabled && activeRound.map && (
+            {BR_FEATURE_FLAGS.mapsEnabled && activeGameMap && (
               <div className="mt-1.5">
                 <BRMapBadge
-                  mapName={activeRound.map}
-                  imageUrl={getMapImageUrl(catalogGame?.brConfig, activeRound.map)}
+                  mapName={activeGameMap}
+                  imageUrl={getMapImageUrl(catalogGame?.brConfig, activeGameMap)}
                 />
               </div>
             )}
@@ -392,7 +394,12 @@ const GroupContent: React.FC<GroupContentProps> = ({
                           className="flex flex-wrap items-center justify-between gap-2 border-t border-white/5 first:border-t-0 first:pt-0 pt-2"
                         >
                           <div>
-                            <p className="text-sm text-white font-medium">Game {game.game_number}</p>
+                            <p className="text-sm text-white font-medium">
+                              Game {game.game_number}
+                              {BR_FEATURE_FLAGS.mapsEnabled && game.map ? (
+                                <span className="text-zinc-400 font-normal"> · {game.map}</span>
+                              ) : null}
+                            </p>
                             <p className="text-[10px] text-zinc-500 capitalize">{game.status}</p>
                           </div>
                           {(game.scheduled_at || lobby.scheduled_at) && (

@@ -22,7 +22,7 @@ import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 import { getBRConfig, getDefaultTeamSize, getGameMode, getParticipantMode } from '@/utils/gameFeatures';
-import { getBRStageUnitLabels } from '@/utils/brGameContext';
+import { getBRStageUnitLabels, formatBRStageFormatLabel, formatBRAdvancementLabel } from '@/utils/brGameContext';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import { computeOutgoingFromStage, computeStageFlows } from '@/utils/brStageFlow';
 import { getStageBRConfig } from '@/utils/brConfigResolve';
@@ -390,7 +390,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                             if (!format) return null;
                             return (
                               <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-300 font-semibold">
-                                {format.replace(/_/g, ' ')}
+                                {formatBRStageFormatLabel(format)}
                               </span>
                             );
                           })()}
@@ -464,9 +464,27 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                                                         </div>
                           <div className="rounded-lg border border-white/8 bg-white/[0.02] p-3">
                             <div className="text-[10px] uppercase tracking-wider text-zinc-500">Advance</div>
-                            <div className="text-white font-semibold mt-1">
-                              {isLast ? 'Winner' : flow?.teamsAdvancing ?? 'Not set'}
-                                                    </div>
+                            <div className="text-white font-semibold mt-1 text-sm leading-snug">
+                              {isLast
+                                ? 'Winner'
+                                : stage.advancement_count != null
+                                  ? formatBRAdvancementLabel({
+                                      count: stage.advancement_count,
+                                      scope: (() => {
+                                        const br = getStageBRConfig(stage);
+                                        const mode = br?.advancement?.mode
+                                          ?? (br?.format === 'group_rotation' ? 'top_n_overall' : 'top_n_per_group');
+                                        return mode === 'top_n_overall' ? 'overall' : 'per_group';
+                                      })(),
+                                      unitsLabel,
+                                    })
+                                  : 'Not set'}
+                            </div>
+                            {!isLast && stage.advancement_count != null && (flow?.teamsAdvancing ?? 0) > 0 && (
+                              <div className="text-[10px] text-zinc-600 mt-0.5">
+                                {flow?.teamsAdvancing} {unitsLabel} total to next stage
+                              </div>
+                            )}
                             {!isLast && !stage.advancement_count && (
                               <div className="text-[10px] text-amber-400/80 mt-0.5">Use setup wizard</div>
                                                         )}

@@ -34,6 +34,44 @@ export function formatUnitsPerGroup(count: number, unitsLabel: string): string {
   return `~${count} ${unitsLabel}/group`;
 }
 
+/** User-facing label for a BR stage format (internal id stays snake_case). */
+export function formatBRStageFormatLabel(format: BRStageFormat | string | null | undefined): string {
+  switch (format) {
+    case 'single_lobby':
+      return 'Single lobby';
+    case 'static_groups':
+      return 'Group qualifiers';
+    case 'group_rotation':
+      return 'Single Round-Robin';
+    case 'multi_lobby_cut':
+      return 'Multi-lobby cut';
+    default:
+      if (!format) return 'Battle Royale';
+      return String(format).replace(/_/g, ' ');
+  }
+}
+
+export type BRAdvancementScope = 'overall' | 'per_group';
+
+/** e.g. "Top 5 teams overall" or "Top 3 players per group" */
+export function formatBRAdvancementLabel(opts: {
+  count: number;
+  scope: BRAdvancementScope;
+  unitsLabel: string;
+}): string {
+  const { count, scope, unitsLabel } = opts;
+  return scope === 'overall'
+    ? `Top ${count} ${unitsLabel} overall`
+    : `Top ${count} ${unitsLabel} per group`;
+}
+
+/** Prompt for advancement wizard step subtitle */
+export function formatBRAdvancementPrompt(scope: BRAdvancementScope, unitsLabel: string): string {
+  return scope === 'overall'
+    ? `How many ${unitsLabel} advance from merged stage standings?`
+    : `How many ${unitsLabel} advance from each seed group?`;
+}
+
 /** Registration/capacity copy for BR wizard — teams for squad/duo, players for solo. */
 export function getBRWizardTerminology(
   teamSize: number,
@@ -118,20 +156,26 @@ export function formatBRStageStructureSummary(opts: {
   seedGroups: number;
   gamesPerLobby: number;
   lobbyCapacity?: number | null;
+  fieldSize?: number | null;
+  isFinal?: boolean;
   unitsLabel: string;
 }): { title: string; subtitle: string } {
-  const { format, seedGroups, gamesPerLobby, lobbyCapacity, unitsLabel } = opts;
+  const { format, seedGroups, gamesPerLobby, lobbyCapacity, fieldSize, isFinal, unitsLabel } = opts;
   const gamesText = `${gamesPerLobby} scored game${gamesPerLobby === 1 ? '' : 's'} per lobby`;
-  const capText = lobbyCapacity != null && lobbyCapacity > 0
-    ? ` · up to ${lobbyCapacity} ${unitsLabel} per lobby`
-    : '';
+
+  const fieldCount = fieldSize != null && fieldSize > 0 ? fieldSize : null;
 
   switch (format) {
-    case 'single_lobby':
-      return {
-        title: 'One shared lobby for everyone',
-        subtitle: `${gamesText}${capText}`,
-      };
+    case 'single_lobby': {
+      const title = isFinal ? 'Grand finals — one shared lobby' : 'One shared lobby for everyone';
+      let subtitle = gamesText;
+      if (fieldCount != null) {
+        subtitle += ` · all ${fieldCount} ${unitsLabel} play together`;
+      } else if (!isFinal && lobbyCapacity != null && lobbyCapacity > 0) {
+        subtitle += ` · fits up to ${lobbyCapacity} ${unitsLabel}`;
+      }
+      return { title, subtitle };
+    }
     case 'static_groups':
       return {
         title: `${seedGroups} group${seedGroups === 1 ? '' : 's'} — each group gets its own lobby`,
@@ -165,3 +209,14 @@ export const recommendBRStageFormat = (
   if (registeredUnits <= maxLobbySize * 4) return 'group_rotation';
   return 'static_groups';
 };
+
+/** Map for the live or next pending game in a lobby (per-game maps, not lobby-level). */
+export function resolveActiveBRGameMap(
+  games: ReadonlyArray<{ status: string; map: string | null }>,
+): string | null {
+  const active = games.find((g) => g.status === 'active');
+  if (active?.map) return active.map;
+  const pendingWithMap = games.find((g) => g.status === 'pending' && g.map);
+  if (pendingWithMap?.map) return pendingWithMap.map;
+  return active?.map ?? games.find((g) => g.status !== 'completed')?.map ?? null;
+}

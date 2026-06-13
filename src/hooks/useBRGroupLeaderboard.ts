@@ -229,6 +229,7 @@ export interface BRPlayerContext {
     queueTimerMinutes: number | null;
     queueStartedAt: string | null;
     scheduledAt: string | null;
+    map?: string | null;
   } | null;
   activeGame?: {
     id: string;

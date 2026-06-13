@@ -255,7 +255,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                     size="sm"
                                     onClick={() => bootstrapLobby.mutate()}
                                     disabled={bootstrapLobby.isPending}
-                                    className="h-8 bg-white text-black hover:bg-white/90 font-mono text-[11px] font-bold uppercase tracking-wider"
+                                    className="h-8 bg-emerald-600 text-white hover:bg-emerald-500 hover:text-white border-emerald-500/40 font-mono text-[11px] font-bold uppercase tracking-wider"
                                 >
                                     {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Groups'}
                                 </Button>

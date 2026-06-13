@@ -227,7 +227,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
             size="sm"
             onClick={() => bootstrapLobby.mutate()}
             disabled={bootstrapLobby.isPending}
-            className="mt-4 bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider"
+            className="mt-4 bg-emerald-600 text-white hover:bg-emerald-500 hover:text-white border-emerald-500/40 font-mono text-xs font-bold uppercase tracking-wider"
           >
             {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Groups'}
           </Button>

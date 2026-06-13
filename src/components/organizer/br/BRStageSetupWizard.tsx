@@ -25,6 +25,7 @@ import {
   validateIntermediateStage,
 } from '@/utils/brStageFlow';
 import { buildProStageConfig, resolveFormatFromWizard } from '@/utils/brStageConfigBuilder';
+import { formatBRStageFormatLabel, formatBRAdvancementLabel } from '@/utils/brGameContext';
 import type { BRStageFormat } from '@/types/battleRoyale';
 
 type WizardMode = 'initial' | 'add';
@@ -538,7 +539,7 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
                         : 'border-white/10 text-zinc-400'
                     }`}
                   >
-                    Round-robin groups
+                    Single Round-Robin
                     <p className="mt-1 text-xs text-zinc-500">Each round pairs two groups — everyone meets once.</p>
                   </button>
                 </div>
@@ -589,7 +590,7 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
             based on total points. Scoring is set in the tournament wizard and applies to every stage.
           </p>
           <div className="space-y-1.5">
-            <Label>Top N per group</Label>
+            <Label>Top N {unitsLabel} per group</Label>
             <Select
               value={String(Math.min(advancementPerGroup, maxAdv))}
               onValueChange={(v) => setAdvancementPerGroup(parseInt(v))}
@@ -597,7 +598,9 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {Array.from({ length: maxAdv }, (_, k) => k + 1).map((n) => (
-                  <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
+                  <SelectItem key={n} value={String(n)}>
+                    {formatBRAdvancementLabel({ count: n, scope: 'per_group', unitsLabel })}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -638,10 +641,10 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
                   <div>Single merged finals lobby</div>
                 )}
                 {dto.config?.br && typeof dto.config.br === 'object' && 'format' in (dto.config.br as object) ? (
-                  <div>Format: {String((dto.config.br as { format?: string }).format).replace(/_/g, ' ')}</div>
+                  <div>Format: {formatBRStageFormatLabel((dto.config.br as { format?: string }).format)}</div>
                 ) : null}
                 {dto.advancementCount != null ? (
-                  <div>Advance: top {dto.advancementCount} per group</div>
+                  <div>Advance: {formatBRAdvancementLabel({ count: dto.advancementCount, scope: 'per_group', unitsLabel })}</div>
                 ) : (
                   <div>No advancement (final stage)</div>
                 )}

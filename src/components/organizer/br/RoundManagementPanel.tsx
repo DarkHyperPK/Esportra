@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useBRLobbies, useBRLobbyResults } from '@/hooks/useBRLobbies';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { useToast } from '@/hooks/use-toast';
-import { RoundResultsGrid } from './RoundResultsGrid';
 import { BRGameRunList } from './BRGameRunList';
 import { formatRotationMatchdayLabel } from '@/utils/brWaveScheduleDisplay';
 import { RoundEvidencePanel } from './RoundEvidencePanel';
@@ -536,19 +535,6 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                   Countdown starts when the round is live and the lobby code is visible.
                 </p>
               </div>
-            </div>
-
-            <div className="rounded-xl border border-white/6 bg-white/[0.02] px-3 py-2.5 text-[10px] text-zinc-500">
-              {round.status === 'active' && (
-                <span className="flex items-center gap-1 text-emerald-400/80">
-                  Lobby is live — players see the code in Match Room.
-                </span>
-              )}
-              {round.status === 'pending' && (
-                <span className="text-zinc-500">
-                  Set a lobby code and click Start to publish it to players.
-                </span>
-              )}
             </div>
 
             {BR_FEATURE_FLAGS.mapsEnabled && mapConfig.mode !== 'none' && (

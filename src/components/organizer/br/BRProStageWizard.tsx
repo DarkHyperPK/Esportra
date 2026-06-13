@@ -27,6 +27,9 @@ import {
 import { buildProStageConfig } from '@/utils/brStageConfigBuilder';
 import {
   formatBRStageStructureSummary,
+  formatBRStageFormatLabel,
+  formatBRAdvancementLabel,
+  formatBRAdvancementPrompt,
   formatUnitsPerGroup,
   recommendBRStageFormat,
 } from '@/utils/brGameContext';
@@ -34,6 +37,8 @@ import { formatMatchPairing, formatRotationMatchdayLabel, summarizeGroupRotation
 import { generateBrSchedule } from '@/utils/brScheduleGenerator';
 import type { BRStageFormat } from '@/types/battleRoyale';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
+import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
 type WizardMode = 'initial' | 'add';
 
@@ -82,12 +87,12 @@ const FORMAT_OPTIONS: Array<{
   {
     id: 'static_groups',
     title: 'Group qualifiers',
-    desc: 'Split into seed groups (A, B, C…). Each group plays in its own lobby. Top N per group advance.',
+    desc: 'Split into seed groups (A, B, C…). Each group plays in its own lobby. Top N teams or players per group advance.',
   },
   {
     id: 'group_rotation',
-    title: 'Round-robin groups',
-    desc: 'Groups rotate pairings each round — two groups per lobby. Stage-global standings.',
+    title: 'Single Round-Robin',
+    desc: 'Groups rotate pairings each matchday — two groups per lobby. Stage-global standings.',
     requiresPro: true,
   },
 ];
@@ -114,6 +119,65 @@ function resolveGroupsForFormat(
     return groups % 2 === 0 ? groups : groups + 1;
   }
   return Math.max(1, baseGroups);
+}
+
+function selectionOptionClass(selected: boolean, disabled = false): string {
+  return cn(
+    'rounded-xl border text-left transition-colors',
+    disabled && 'cursor-not-allowed opacity-40',
+    selected
+      ? 'border-rose-500/60 bg-rose-500/10 ring-1 ring-rose-500/30'
+      : 'border-white/10 bg-transparent hover:border-white/25 hover:bg-white/[0.03]',
+  );
+}
+
+function segmentClass(selected: boolean, tone: 'emerald' | 'amber'): string {
+  return cn(
+    'flex-1 rounded-xl border px-5 py-3.5 text-sm font-medium transition-colors',
+    selected
+      ? tone === 'emerald'
+        ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-200 ring-1 ring-emerald-500/30'
+        : 'border-amber-500/60 bg-amber-500/10 text-amber-200 ring-1 ring-amber-500/30'
+      : 'border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300',
+  );
+}
+
+function WizardField({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-3">
+      <Label className="text-sm font-medium text-zinc-200">{label}</Label>
+      {children}
+      {hint ? <p className="text-sm text-zinc-500 leading-relaxed max-w-prose">{hint}</p> : null}
+    </div>
+  );
+}
+
+function WizardSummaryPanel({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-7 sm:p-8 space-y-4">
+      <div className="space-y-2">
+        <p className="text-lg font-semibold text-white leading-snug">{title}</p>
+        {subtitle ? <p className="text-sm text-zinc-400 leading-relaxed">{subtitle}</p> : null}
+      </div>
+      {children}
+    </div>
+  );
 }
 
 const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
@@ -235,6 +299,11 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
     }
   }, [stageFormat, effectiveGroups]);
 
+  const rotationSummary = useMemo(() => {
+    if (stageFormat !== 'group_rotation') return null;
+    return summarizeGroupRotationSchedule(groupCount, gamesPerLobby);
+  }, [stageFormat, groupCount, gamesPerLobby]);
+
   const validationErrors = useMemo(() => {
     if (isFinal) {
       if (stageFormat === 'single_lobby' && maxLobbySize && structureIncoming > maxLobbySize) {
@@ -246,13 +315,13 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
     }
     if (stageFormat === 'single_lobby') {
       if (maxLobbySize && effectiveIncoming > maxLobbySize) {
-        return [`${effectiveIncoming} ${unitsLabel} exceed one lobby (max ${maxLobbySize}). Choose Group qualifiers or Round-robin groups.`];
+        return [`${effectiveIncoming} ${unitsLabel} exceed one lobby (max ${maxLobbySize}). Choose Group qualifiers or Single Round-Robin.`];
       }
       return [];
     }
     if (stageFormat === 'group_rotation') {
       const errors: string[] = [];
-      if (effectiveGroups % 2 !== 0) errors.push('Round-robin requires an even number of groups.');
+      if (effectiveGroups % 2 !== 0) errors.push('Single Round-Robin requires an even number of groups.');
       if (effectiveGroups < 2) errors.push('Need at least 2 groups for round-robin scheduling.');
       const perGroup = deriveLobbySize(effectiveIncoming, effectiveGroups);
       if (maxLobbySize && perGroup * 2 > maxLobbySize) {
@@ -420,7 +489,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
       fromStageName
     ) {
       messages.push(
-        `Set advancement on ${fromStageName} first (e.g. top 10 per group), then add finals.`,
+        `Set advancement on ${fromStageName} first (e.g. top 10 ${unitsLabel} per group), then add finals.`,
       );
     } else if ((isFinal ? planningCount : effectiveIncoming) <= 0) {
       messages.push(
@@ -430,12 +499,9 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
     messages.push(...validationErrors);
     if (messages.length === 0) return null;
     return (
-      <div className="space-y-2">
+      <div className="space-y-1">
         {messages.map((err) => (
-          <p
-            key={err}
-            className="text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg p-3"
-          >
+          <p key={err} className="text-sm text-red-400">
             {err}
           </p>
         ))}
@@ -446,49 +512,41 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
   const renderStep = () => {
     if (mode === 'add' && step === 0) {
       return (
-        <div className="space-y-4">
+        <div className="max-w-2xl space-y-10">
           {fromStageName && (
-            <p className="text-sm text-emerald-300/90 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
-              ~{incomingTeams} {unitsLabel} expected from <strong>{fromStageName}</strong>
+            <p className="text-sm text-zinc-400">
+              ~{incomingTeams} {unitsLabel} expected from <span className="text-white">{fromStageName}</span>
             </p>
           )}
-          <p className="text-sm text-zinc-400">
-            An <strong className="text-white">intermediate</strong> stage cuts the field.
-            A <strong className="text-white">final</strong> stage crowns the winner.
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            An intermediate stage cuts the field. A final stage crowns the winner.
           </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setIsFinal(false)}
-              className={`flex-1 py-3 px-3 rounded-lg border text-sm font-medium ${
-                !isFinal ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200' : 'border-white/10 text-zinc-400'
-              }`}
-            >
-              Intermediate
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsFinal(true);
-                setStageFormat('single_lobby');
-                setGroupCount(1);
-              }}
-              className={`flex-1 py-3 px-3 rounded-lg border text-sm font-medium ${
-                isFinal ? 'border-amber-500/40 bg-amber-500/15 text-amber-200' : 'border-white/10 text-zinc-400'
-              }`}
-            >
-              Final
-            </button>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Stage name</Label>
+          <WizardField label="Stage role">
+            <div className="flex gap-4 max-w-lg">
+              <button type="button" onClick={() => setIsFinal(false)} className={segmentClass(!isFinal, 'emerald')}>
+                Intermediate
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFinal(true);
+                  setStageFormat('single_lobby');
+                  setGroupCount(1);
+                }}
+                className={segmentClass(isFinal, 'amber')}
+              >
+                Final
+              </button>
+            </div>
+          </WizardField>
+          <WizardField label="Stage name">
             <Input
               value={stageName}
               onChange={(e) => setStageName(e.target.value)}
               placeholder={isFinal ? 'Grand Finals' : 'Qualifiers'}
-              className="[color-scheme:dark]"
+              className="max-w-lg [color-scheme:dark] h-12 text-base"
             />
-          </div>
+          </WizardField>
         </div>
       );
     }
@@ -506,22 +564,22 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
 
     if (step === formatStep) {
       return (
-        <div className="space-y-4">
-          <div className="rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2.5 text-xs text-zinc-400 space-y-1">
-            <p>
-              <strong className="text-zinc-200">One stage per save.</strong>{' '}
-              Multi-stage events (e.g. qualifiers → league → finals) are built by adding stages one at a time — not in a single wizard pass.
+        <div className="space-y-10">
+          <div className="flex flex-wrap items-baseline justify-between gap-4 text-sm">
+            <p className="text-zinc-400 leading-relaxed max-w-3xl text-base">
+              Add one stage at a time. Build qualifiers → league → finals across multiple saves.
             </p>
-            {existingStages.length > 0 && (
-              <p>Stage {existingStages.length + 1} · {effectiveIncoming} {unitsLabel} entering this stage.</p>
-            )}
+            <p className="text-zinc-500 shrink-0 text-sm">
+              Lobby cap: {maxLobbySize ?? '—'} {unitsLabel}
+              {existingStages.length > 0 && (
+                <> · Stage {existingStages.length + 1} · {effectiveIncoming} entering</>
+              )}
+            </p>
           </div>
-          <p className="text-xs text-zinc-500">
-            Max {maxLobbySize ?? '—'} {unitsLabel} per lobby (from game catalog).
-          </p>
-          <div className="space-y-2">
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {visibleFormats.map((opt) => {
               const blocked = formatBlockReason(opt.id);
+              const selected = stageFormat === opt.id;
               return (
                 <button
                   key={opt.id}
@@ -532,17 +590,23 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
                     setStageFormat(opt.id);
                     applyFormatDefaults(opt.id);
                   }}
-                  className={`w-full text-left p-4 rounded-xl border transition-colors ${
-                    blocked
-                      ? 'border-white/5 bg-white/[0.01] opacity-50 cursor-not-allowed'
-                      : stageFormat === opt.id
-                        ? 'border-rose-500/50 bg-rose-500/10'
-                        : 'border-white/10 bg-white/[0.02] hover:border-white/20'
-                  }`}
+                  className={cn(
+                    selectionOptionClass(selected, Boolean(blocked)),
+                    'flex h-full min-h-[9.5rem] flex-col justify-between gap-4 p-6',
+                  )}
                 >
-                  <div className="font-medium text-white text-sm">{opt.title}</div>
-                  <div className="text-xs text-zinc-500 mt-1">{opt.desc}</div>
-                  {blocked && <div className="text-xs text-amber-400/90 mt-2">{blocked}</div>}
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className={cn('font-medium text-base leading-snug', selected ? 'text-white' : 'text-zinc-300')}>
+                        {opt.title}
+                      </div>
+                      {selected && !blocked && (
+                        <Check className="w-4 h-4 text-rose-400 shrink-0" aria-hidden />
+                      )}
+                    </div>
+                    <div className="text-sm text-zinc-500 leading-relaxed">{opt.desc}</div>
+                    {blocked && <div className="text-xs text-amber-400/90">{blocked}</div>}
+                  </div>
                 </button>
               );
             })}
@@ -556,128 +620,151 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
         format: stageFormat,
         seedGroups: stageFormat === 'single_lobby' ? 1 : effectiveGroups,
         gamesPerLobby,
-        lobbyCapacity: lobbySize,
+        lobbyCapacity: maxLobbySize,
+        fieldSize: structureIncoming > 0 ? structureIncoming : null,
+        isFinal,
         unitsLabel,
       });
 
       return (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] p-3 text-sm">
-            <p className="font-medium text-white">{structurePreview.title}</p>
-            <p className="text-xs text-zinc-400 mt-1">{structurePreview.subtitle}</p>
-          </div>
-
-          {stageFormat === 'single_lobby' && (
-            <p className="text-sm text-zinc-400">
-              All <strong className="text-white">{structureIncoming}</strong> {unitsLabel} play together in one room.
-              {maxLobbySize ? ` The lobby fits up to ${maxLobbySize} ${unitsLabel}.` : ''}
-            </p>
-          )}
-          {stageFormat === 'group_rotation' && (
-            <>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                <strong className="text-zinc-300">Single round-robin</strong> across seed groups (A, B, C…).
-                Each <strong className="text-zinc-300">matchday</strong> runs parallel{' '}
-                <strong className="text-zinc-300">cross-group matches</strong> (e.g. Group A + Group B in one lobby).
-                Each match has multiple <strong className="text-zinc-300">scored games</strong> with the same combined roster.
-                This is not double round-robin.
-              </p>
-              <div className="space-y-1.5">
-                <Label>Seed groups (even)</Label>
-                <Select
-                  value={String(groupCount)}
-                  onValueChange={(v) => {
-                    const next = parseInt(v, 10);
-                    setGroupCount(next);
-                    const nextLobby = deriveLobbySize(effectiveIncoming, next);
-                    setAdvancementCount(
-                      defaultAdvancementForLobby(nextLobby, true, effectiveIncoming),
-                    );
-                  }}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 15 }, (_, k) => (k + 2) * 2).map((n) => (
-                      <SelectItem key={n} value={String(n)}>
-                        {n} groups — {formatUnitsPerGroup(deriveLobbySize(effectiveIncoming, n), unitsLabel)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {schedulePreview && (
-                <div className="rounded-lg border border-white/10 p-3 text-xs text-zinc-400 space-y-2">
-                  <p className="text-zinc-300 font-medium">
-                    {summarizeGroupRotationSchedule(groupCount, gamesPerLobby).title}
+        <div className="space-y-10">
+          <div className="grid gap-10 xl:gap-14 xl:grid-cols-2 xl:items-start">
+            <div className="space-y-8">
+              <WizardSummaryPanel title={structurePreview.title} subtitle={structurePreview.subtitle}>
+                {stageFormat === 'single_lobby' && (
+                  <p className="text-sm text-zinc-400 leading-relaxed">
+                    {isFinal ? (
+                      <>
+                        All qualified <span className="text-white">{structureIncoming}</span> {unitsLabel} share one in-game room for every scored game.
+                      </>
+                    ) : (
+                      <>
+                        All <span className="text-white">{structureIncoming}</span> {unitsLabel} play together in one room.
+                        {maxLobbySize && structureIncoming > maxLobbySize
+                          ? ` Exceeds the ${maxLobbySize}-team lobby cap — use groups instead.`
+                          : ''}
+                      </>
+                    )}
                   </p>
-                  <p>{summarizeGroupRotationSchedule(groupCount, gamesPerLobby).subtitle}</p>
-                  {schedulePreview.waves.slice(0, 3).map((wave) => (
-                    <div key={wave.wave}>
-                      {formatRotationMatchdayLabel(wave.wave)}: {wave.lobbies.map((l) => formatMatchPairing(l)).join(' · ')}
+                )}
+                {isFinal && mode === 'add' && (
+                  <p className="text-sm text-zinc-500 leading-relaxed">
+                    Teams reach this stage after you complete the prior stage and click Advance on the Stages tab.
+                  </p>
+                )}
+              </WizardSummaryPanel>
+
+              {stageFormat === 'group_rotation' && (
+                <WizardField
+                  label="Seed groups"
+                  hint="Even count required. Each matchday pairs two groups in one lobby."
+                >
+                  <Select
+                    value={String(groupCount)}
+                    onValueChange={(v) => {
+                      const next = parseInt(v, 10);
+                      setGroupCount(next);
+                      const nextLobby = deriveLobbySize(effectiveIncoming, next);
+                      setAdvancementCount(
+                        defaultAdvancementForLobby(nextLobby, true, effectiveIncoming),
+                      );
+                    }}
+                  >
+                    <SelectTrigger className="h-12 max-w-lg text-base"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 15 }, (_, k) => (k + 2) * 2).map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n} groups — {formatUnitsPerGroup(deriveLobbySize(effectiveIncoming, n), unitsLabel)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </WizardField>
+              )}
+
+              {stageFormat === 'static_groups' && (
+                <WizardField
+                  label="Seed groups"
+                  hint={`Each group gets its own lobby. Top N ${unitsLabel} per group advance.`}
+                >
+                  <Select
+                    value={String(groupCount)}
+                    onValueChange={(v) => {
+                      const next = parseInt(v, 10);
+                      setGroupCount(next);
+                      const nextLobby = deriveLobbySize(effectiveIncoming, next);
+                      setAdvancementCount(
+                        defaultAdvancementForLobby(nextLobby, false, effectiveIncoming),
+                      );
+                    }}
+                  >
+                    <SelectTrigger className="h-12 max-w-lg text-base"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: Math.min(32, Math.max(2, effectiveIncoming)) }, (_, k) => k + 1).map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n} groups — {formatUnitsPerGroup(deriveLobbySize(effectiveIncoming, n), unitsLabel)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </WizardField>
+              )}
+
+              <WizardField
+                label="Scored games per match"
+                hint={
+                  stageFormat === 'group_rotation'
+                    ? 'Same roster plays this many games in each cross-group match lobby.'
+                    : `Games that count toward standings in each lobby (catalog default: ${defaultGameCount}).`
+                }
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={gamesPerLobby}
+                  onChange={(e) => setGamesPerLobby(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                  className="max-w-[9rem] [color-scheme:dark] h-12 text-base"
+                />
+              </WizardField>
+
+              {renderValidationBanner()}
+            </div>
+
+            {stageFormat === 'group_rotation' && schedulePreview && rotationSummary && (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-7 sm:p-8 space-y-6">
+                <div className="space-y-2">
+                  <p className="text-base font-medium text-white">Matchday preview</p>
+                  <p className="text-sm text-zinc-500 leading-relaxed">
+                    {rotationSummary.notDoubleRoundRobinNote}
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {schedulePreview.waves.map((wave) => (
+                    <div
+                      key={wave.wave}
+                      className="rounded-xl border border-white/8 bg-black/20 px-5 py-4"
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                        {formatRotationMatchdayLabel(wave.wave)}
+                      </p>
+                      <ul className="mt-3 space-y-2 text-sm text-zinc-300">
+                        {wave.lobbies.map((pairing, idx) => (
+                          <li key={idx}>{formatMatchPairing(pairing)}</li>
+                        ))}
+                      </ul>
                     </div>
                   ))}
-                  {schedulePreview.waves.length > 3 && (
-                    <p className="text-zinc-600">+{schedulePreview.waves.length - 3} more matchdays</p>
-                  )}
-                  <p className="text-zinc-600">Create matches in the Schedule tab after seeding.</p>
                 </div>
-              )}
-            </>
-          )}
-          {stageFormat === 'static_groups' && (
-            <>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                Split the field into seed groups. Each group plays in its own lobby for all scored
-                matches. Top N per group advance using per-group standings.
-              </p>
-              <div className="space-y-1.5">
-                <Label>Seed groups</Label>
-                <Select
-                  value={String(groupCount)}
-                  onValueChange={(v) => {
-                    const next = parseInt(v, 10);
-                    setGroupCount(next);
-                    const nextLobby = deriveLobbySize(effectiveIncoming, next);
-                    setAdvancementCount(
-                      defaultAdvancementForLobby(nextLobby, false, effectiveIncoming),
-                    );
-                  }}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: Math.min(32, Math.max(2, effectiveIncoming)) }, (_, k) => k + 1).map((n) => (
-                      <SelectItem key={n} value={String(n)}>
-                        {n} groups — {formatUnitsPerGroup(deriveLobbySize(effectiveIncoming, n), unitsLabel)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <p className="text-sm text-zinc-600">
+                  Create matches in Schedule after seeding teams into groups.
+                </p>
               </div>
-            </>
-          )}
-          <div className="space-y-1.5">
-            <Label>Scored games per match</Label>
-            <Input
-              type="number"
-              min={1}
-              max={20}
-              value={gamesPerLobby}
-              onChange={(e) => setGamesPerLobby(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              className="[color-scheme:dark]"
-            />
-            <p className="text-xs text-zinc-500">
-              {stageFormat === 'group_rotation'
-                ? 'How many scored games teams play in each cross-group match lobby (same roster each game).'
-                : `How many games count toward standings in each lobby for this stage (catalog default: ${defaultGameCount}).`}
-            </p>
+            )}
           </div>
 
-          {renderValidationBanner()}
-
-          <p className="text-xs text-zinc-600 border-t border-white/5 pt-3">
-            After saving: <span className="text-zinc-400">Stages → seed {unitsLabel}</span> →{' '}
-            <span className="text-zinc-400">Schedule → set match times</span> →{' '}
-            <span className="text-zinc-400">Games → start matches</span>
+          <p className="text-sm text-zinc-600 border-t border-white/5 pt-6">
+            After saving: Stages → seed {unitsLabel} → Schedule → Games
           </p>
         </div>
       );
@@ -690,25 +777,35 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
           : lobbySize && lobbySize > 1
             ? lobbySize - 1
             : 1;
-      const advLabel =
-        stageFormat === 'group_rotation'
-          ? 'Top N overall (stage-global standings)'
-          : 'Top N per group';
+      const advScope: 'overall' | 'per_group' =
+        stageFormat === 'group_rotation' ? 'overall' : 'per_group';
 
       return (
-        <div className="space-y-4">
-          <p className="text-sm text-zinc-400">{advLabel}</p>
-          <Select
-            value={String(Math.min(advancementCount, maxAdv))}
-            onValueChange={(v) => setAdvancementCount(parseInt(v, 10))}
+        <div className="grid gap-10 xl:gap-14 xl:grid-cols-2 xl:items-start max-w-4xl">
+          <WizardSummaryPanel
+            title="Who advances?"
+            subtitle={formatBRAdvancementPrompt(advScope, unitsLabel)}
+          />
+          <WizardField
+            label={
+              advScope === 'overall'
+                ? `${unitsLabel.charAt(0).toUpperCase()}${unitsLabel.slice(1)} advancing overall`
+                : `${unitsLabel.charAt(0).toUpperCase()}${unitsLabel.slice(1)} per group`}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: Math.min(maxAdv, 64) }, (_, k) => k + 1).map((n) => (
-                <SelectItem key={n} value={String(n)}>Top {n}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <Select
+              value={String(Math.min(advancementCount, maxAdv))}
+              onValueChange={(v) => setAdvancementCount(parseInt(v, 10))}
+            >
+              <SelectTrigger className="h-12 text-base"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: Math.min(maxAdv, 64) }, (_, k) => k + 1).map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    {formatBRAdvancementLabel({ count: n, scope: advScope, unitsLabel })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </WizardField>
           {renderValidationBanner()}
         </div>
       );
@@ -717,27 +814,39 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
     const review = buildStageDtos()[0];
     const reviewBr = review.config?.br as { format?: string } | undefined;
     return (
-      <div className="space-y-4">
+      <div className="space-y-10">
         {renderValidationBanner()}
-        <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02] space-y-2 text-sm">
-          <div className="font-medium text-white">{review.name}</div>
-          <div className="text-xs text-zinc-500 space-y-1">
-            <div>Format: {(reviewBr?.format ?? stageFormat).replace(/_/g, ' ')}</div>
-            {review.capacity != null && <div>Lobby size: {review.capacity} {unitsLabel}</div>}
-            <div>Matches per lobby: {gamesPerLobby}</div>
-            {review.advancementCount != null && (
-              <div>
-                Advance:{' '}
-                {stageFormat === 'group_rotation'
-                  ? `top ${review.advancementCount} overall`
-                  : `top ${review.advancementCount} per group`}
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {[
+            { label: 'Name', value: review.name },
+            { label: 'Format', value: formatBRStageFormatLabel(reviewBr?.format ?? stageFormat) },
+            review.capacity != null
+              ? { label: isFinal ? 'Finalists' : 'Lobby size', value: `${review.capacity} ${unitsLabel}` }
+              : null,
+            { label: 'Scored games per match', value: String(gamesPerLobby) },
+            review.advancementCount != null
+              ? {
+                  label: 'Advancement',
+                  value: formatBRAdvancementLabel({
+                    count: review.advancementCount,
+                    scope: stageFormat === 'group_rotation' ? 'overall' : 'per_group',
+                    unitsLabel,
+                  }),
+                }
+              : skipAdvancement
+                ? { label: 'Advancement', value: 'None — final stage' }
+                : null,
+          ]
+            .filter((row): row is { label: string; value: string } => row != null)
+            .map((row) => (
+              <div key={row.label} className="rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
+                <dt className="text-xs text-zinc-500 uppercase tracking-wide">{row.label}</dt>
+                <dd className="text-base text-white font-medium mt-2">{row.value}</dd>
               </div>
-            )}
-            {!skipAdvancement && review.advancementCount == null && <div>No advancement (final)</div>}
-          </div>
+            ))}
         </div>
-        <p className="text-xs text-zinc-500">
-          Next: seed participants in Stages → create matches and set times in Schedule → run games in Games.
+        <p className="text-sm text-zinc-500">
+          Next: seed participants → create matches → run games.
         </p>
       </div>
     );
@@ -745,30 +854,46 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="bg-[#0a0a0c] border-white/10 max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="text-white">
-            {mode === 'initial' ? 'Add first stage' : 'Add stage'}
-          </DialogTitle>
-          <DialogDescription className="text-zinc-500">
-            Step {step + 1} of {stepLabels.length}: {stepLabels[step]}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="bg-[#0a0a0c] border-white/10 !max-w-[min(100vw-3rem,72rem)] w-full min-h-[min(88vh,44rem)] max-h-[min(94vh,56rem)] flex flex-col gap-0 p-0 overflow-hidden sm:rounded-2xl">
+        <div className="shrink-0 px-10 sm:px-12 pt-10 pb-7 border-b border-white/5">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="text-white text-2xl tracking-tight">
+              {mode === 'initial' ? 'Add first stage' : 'Add stage'}
+            </DialogTitle>
+            <DialogDescription className="text-zinc-500 text-base">
+              Step {step + 1} of {stepLabels.length} — {stepLabels[step]}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="flex gap-1 mb-2">
-          {stepLabels.map((label, i) => (
-            <div
-              key={label}
-              className={`h-1 flex-1 rounded-full ${i <= step ? 'bg-rose-500' : 'bg-white/10'}`}
-            />
-          ))}
+          <div className="mt-8 flex gap-3">
+            {stepLabels.map((label, i) => (
+              <div key={label} className="flex-1 min-w-0">
+                <div
+                  className={cn(
+                    'h-1.5 rounded-full transition-colors',
+                    i <= step ? 'bg-rose-500' : 'bg-white/10',
+                  )}
+                />
+                <p
+                  className={cn(
+                    'mt-3 text-[11px] uppercase tracking-wider truncate',
+                    i === step ? 'text-zinc-300 font-medium' : 'text-zinc-600',
+                  )}
+                >
+                  {label}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {renderStep()}
+        <div className="flex-1 overflow-y-auto px-10 sm:px-12 py-10 min-h-[20rem]">
+          {renderStep()}
+        </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+        <DialogFooter className="shrink-0 gap-4 px-10 sm:px-12 py-7 border-t border-white/5">
           {step > 0 && (
-            <Button type="button" variant="ghost" onClick={goBack} disabled={saving}>
+            <Button type="button" variant="ghost" onClick={goBack} disabled={saving} className="mr-auto">
               Back
             </Button>
           )}
@@ -777,7 +902,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
               type="button"
               onClick={goNext}
               disabled={!canProceed && step >= structureStepIndex}
-              className="bg-emerald-600 hover:bg-emerald-500"
+              className="bg-emerald-600 hover:bg-emerald-500 min-w-[8.5rem] h-11"
             >
               Continue
             </Button>
@@ -786,7 +911,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
               type="button"
               onClick={handleSave}
               disabled={saving || !canProceed || validationErrors.length > 0}
-              className="bg-emerald-600 hover:bg-emerald-500"
+              className="bg-emerald-600 hover:bg-emerald-500 min-w-[8.5rem] h-11"
             >
               {saving ? 'Saving...' : 'Save stage'}
             </Button>

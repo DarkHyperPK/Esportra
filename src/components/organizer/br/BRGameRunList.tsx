@@ -1,15 +1,23 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useBRGames, useUpdateBRGame } from '@/hooks/useBRGames';
 import { useBRLobbyResults } from '@/hooks/useBRLobbies';
 import { RoundResultsGrid } from '@/components/organizer/br/RoundResultsGrid';
 import { RoundEvidencePanel } from '@/components/organizer/br/RoundEvidencePanel';
 import type { BRGroupTeam } from '@/types/brGroups';
 import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
-import { BRMapOptionList } from '@/components/organizer/br/BRMapOptionList';
+import { BRMapOptionList, BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
 import { resolveMapForRound } from '@/utils/brConfigResolve';
-import { Play, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
+import { MapPin, Play, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface ScoringPreset {
   placements: number[];
@@ -95,6 +103,16 @@ const STATUS_COLORS: Record<string, string> = {
   completed: 'border-emerald-500/30 text-emerald-400',
 };
 
+function gameMapPool(mapConfig: BRMapConfig, mapCatalogItems: BRMapCatalogItem[]): string[] {
+  if (mapCatalogItems.length > 0) return mapCatalogItems.map((item) => item.name);
+  return mapConfig.pool ?? [];
+}
+
+function supportsPerGameMaps(mapConfig: BRMapConfig, mapCatalogItems: BRMapCatalogItem[]): boolean {
+  if (!BR_FEATURE_FLAGS.mapsEnabled) return false;
+  return gameMapPool(mapConfig, mapCatalogItems).length > 0;
+}
+
 const BRGameRunRow: React.FC<{
   game: { id: string; game_number: number; map: string | null; status: string; scheduled_at: string | null };
   lobbyId: string;
@@ -130,7 +148,25 @@ const BRGameRunRow: React.FC<{
     groupId,
     { gameNumber: game.game_number },
   );
-  const [mapInput, setMapInput] = useState(game.map ?? resolveMapForRound(mapConfig, game.game_number) ?? '');
+  const [mapInput, setMapInput] = useState(
+    game.map ?? resolveMapForRound(mapConfig, game.game_number) ?? '',
+  );
+
+  const showMapPicker = supportsPerGameMaps(mapConfig, mapCatalogItems);
+  const mapPool = gameMapPool(mapConfig, mapCatalogItems);
+  const selectedMapItem = mapCatalogItems.find((item) => item.name === mapInput);
+
+  useEffect(() => {
+    setMapInput(game.map ?? resolveMapForRound(mapConfig, game.game_number) ?? '');
+  }, [game.id, game.map, game.game_number, mapConfig]);
+
+  const handleMapChange = async (mapName: string) => {
+    const next = mapName.trim();
+    setMapInput(next);
+    if (game.status === 'completed') return;
+    if ((game.map ?? '') === next) return;
+    await onUpdateGame({ gameId: game.id, map: next || null });
+  };
 
   const statusClass = STATUS_COLORS[game.status] ?? STATUS_COLORS.pending;
 
@@ -143,6 +179,9 @@ const BRGameRunRow: React.FC<{
       >
         {isExpanded ? <ChevronDown className="w-4 h-4 text-zinc-500" /> : <ChevronRight className="w-4 h-4 text-zinc-500" />}
         <span className="text-sm font-medium text-white">Game {game.game_number}</span>
+        {mapInput && showMapPicker && (
+          <span className="text-[10px] text-zinc-500 truncate max-w-[8rem]">{mapInput}</span>
+        )}
         <Badge variant="outline" className={`ml-auto text-[10px] ${statusClass}`}>{game.status}</Badge>
         {game.scheduled_at && (
           <span className="text-[10px] text-zinc-500">
@@ -153,13 +192,41 @@ const BRGameRunRow: React.FC<{
 
       {isExpanded && (
         <div className="px-3 pb-3 space-y-3 border-t border-white/5">
-          {mapConfig.mode !== 'none' && (
-            <BRMapOptionList
-              items={mapCatalogItems}
-              selected={mapInput ? [mapInput] : []}
-              onToggle={(mapName, checked) => setMapInput(checked ? mapName : '')}
-              columns={2}
-            />
+          {showMapPicker && (
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wide text-zinc-500 flex items-center gap-1">
+                <MapPin className="w-3 h-3" /> Map
+              </p>
+              {mapCatalogItems.length > 0 ? (
+                <BRMapOptionList
+                  items={mapCatalogItems}
+                  selected={mapInput ? [mapInput] : []}
+                  selectable={game.status !== 'completed'}
+                  onToggle={(mapName, checked) => {
+                    void handleMapChange(checked ? mapName : '');
+                  }}
+                  columns={2}
+                />
+              ) : (
+                <Select
+                  value={mapInput || undefined}
+                  onValueChange={(value) => { void handleMapChange(value); }}
+                  disabled={game.status === 'completed'}
+                >
+                  <SelectTrigger className="h-9 text-sm max-w-xs bg-white/5 border-white/10">
+                    <SelectValue placeholder="Select map" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mapPool.map((mapName) => (
+                      <SelectItem key={mapName} value={mapName}>{mapName}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {selectedMapItem && game.status === 'completed' && (
+                <BRMapBadge mapName={selectedMapItem.name} imageUrl={selectedMapItem.imageUrl} />
+              )}
+            </div>
           )}
           <div className="flex flex-wrap gap-2">
             {game.status === 'pending' && (

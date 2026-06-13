@@ -260,15 +260,19 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
 
       {/* Save */}
       {!isLocked && (
-        <Button
-          onClick={handleSave}
-          disabled={!canSave || isSaving}
-          title={saveBlockReason ?? undefined}
-          className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Save className="w-3.5 h-3.5 mr-2" />
-          {isSaving ? 'Saving...' : 'Save Results'}
-        </Button>
+        <div className="flex justify-end pt-1">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleSave}
+            disabled={!canSave || isSaving}
+            title={saveBlockReason ?? undefined}
+            className="h-8 px-3 text-xs border-white/15 bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save className="w-3 h-3 mr-1.5" />
+            {isSaving ? 'Saving...' : 'Save results'}
+          </Button>
+        </div>
       )}
     </div>
   );

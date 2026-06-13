@@ -10,6 +10,7 @@ import {
   useBRGroupRounds,
 } from '@/hooks/useBRGroupLeaderboard';
 import { useBRLobbyEvidence, useBRCompletedLobbyResults } from '@/hooks/useBRLobbies';
+import { useBRGames } from '@/hooks/useBRGames';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { isBattleRoyaleTournament, getBRConfig, getPersistedTournamentFormat } from '@/utils/gameFeatures';
 import { resolveStageBRConfig, getQualificationCutoff } from '@/utils/brConfigResolve';
@@ -21,13 +22,14 @@ import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import PremiumBackground from '@/components/ui/PremiumBackground';
 import {
   Trophy, Copy, ArrowLeft, Radio, Clock, CheckCircle, Key, Send,
-  Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown, Medal, Shield, MapPin,
+  Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown, Medal, Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import { getMapImageUrl } from '@/utils/gameCatalogBr';
-import { BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
+import { resolveActiveBRGameMap } from '@/utils/brGameContext';
+import { BRMapHero } from '@/components/organizer/br/BRMapOptionList';
 import { formatMatchPairingFromLabel, formatRoundLabel } from '@/utils/brWaveScheduleDisplay';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { BRScoringPreset } from '@/types/battleRoyale';
@@ -85,9 +87,12 @@ const BRGameRoom: React.FC = () => {
     context.groupId,
     { refetchIntervalMs: fallbackPollingMs, realtimeConnected: connected },
   );
-  const effectiveActiveRoundId = activeRound?.id ?? context.activeRound?.id ?? null;
+  const effectiveActiveRoundId = activeRound?.id ?? context.activeRound?.id ?? context.activeRound?.lobbyId ?? null;
   const hasActiveRound = Boolean(activeRound ?? context.activeRound);
   const activeGameNumber = context.activeGame?.gameNumber ?? null;
+  const { data: lobbyGames = [] } = useBRGames(effectiveActiveRoundId, {
+    enabled: Boolean(effectiveActiveRoundId),
+  });
   const { evidence, submitEvidence, isSubmitting, refetch: refetchEvidence } = useBRLobbyEvidence(
     effectiveActiveRoundId,
     context.stageId,
@@ -203,7 +208,23 @@ const BRGameRoom: React.FC = () => {
     });
     return getQualificationCutoff(resolved, 1);
   }, [tournamentStages, context.stageId, game, tournament?.settings, catalogGame?.brConfig]);
-  const activeMap = context.activeGame?.map ?? activeRound?.map ?? null;
+  const activeMap = useMemo(() => {
+    return (
+      context.activeGame?.map
+      ?? resolveActiveBRGameMap(lobbyGames)
+      ?? activeRound?.map
+      ?? null
+    );
+  }, [context.activeGame?.map, lobbyGames, activeRound?.map]);
+  const activeMapImageUrl = activeMap ? getMapImageUrl(catalogGame?.brConfig, activeMap) : null;
+  const activeGameStatus = useMemo(() => {
+    if (context.activeGame?.status) return context.activeGame.status;
+    if (activeGameNumber != null) {
+      return lobbyGames.find((g) => g.game_number === activeGameNumber)?.status ?? null;
+    }
+    return lobbyGames.find((g) => g.status === 'active')?.status ?? null;
+  }, [context.activeGame?.status, lobbyGames, activeGameNumber]);
+  const isGameLive = activeGameStatus === 'active';
   const gamesCompleted = completedGames;
   const allGamesFinished = totalGames > 0 && gamesCompleted >= totalGames && !hasActiveRound && !context.activeGame;
   const winner = allGamesFinished && leaderboard.length > 0 ? leaderboard[0] : null;
@@ -437,7 +458,9 @@ const BRGameRoom: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20">
                       <Radio className="w-3 h-3 text-rose-400 animate-pulse" />
-                      <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">Live</span>
+                      <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">
+                        {isGameLive ? 'In game' : 'Lobby live'}
+                      </span>
                     </div>
                   </div>
                 </CardHeader>
@@ -454,6 +477,10 @@ const BRGameRoom: React.FC = () => {
                         {String(queueRemainingSec % 60).padStart(2, '0')}
                       </span>
                     </div>
+                  )}
+
+                  {BR_FEATURE_FLAGS.mapsEnabled && activeMap && (
+                    <BRMapHero mapName={activeMap} imageUrl={activeMapImageUrl} />
                   )}
 
                   {activeCode ? (
@@ -492,20 +519,23 @@ const BRGameRoom: React.FC = () => {
                     </div>
                   )}
 
-                  {BR_FEATURE_FLAGS.mapsEnabled && activeMap && (
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-white/[0.03]">
-                      <MapPin className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Map</p>
-                        <BRMapBadge
-                          mapName={activeMap}
-                          imageUrl={getMapImageUrl(catalogGame?.brConfig, activeMap)}
-                        />
+                  {userTeam && !isGameLive && !userAlreadySubmitted && activeCode && (
+                    <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+                      <Clock className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-zinc-300 font-medium">
+                          {activeGameNumber
+                            ? `Game ${activeGameNumber} hasn't started yet`
+                            : 'Waiting for the match to start'}
+                        </p>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          Join with the lobby code above. Result reporting opens when the organizer starts the game.
+                        </p>
                       </div>
                     </div>
                   )}
 
-                  {userTeam && !userAlreadySubmitted && (
+                  {userTeam && isGameLive && !userAlreadySubmitted && (
                     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-4">
                       <div className="flex items-center gap-2">
                         <Target className="w-3.5 h-3.5 text-zinc-500" />
