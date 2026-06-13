@@ -257,6 +257,7 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
             cardHeight={86}
             roundGap={64}
             matchGap={18}
+            isSingleElimination={data.format !== "double_elimination"}
           />
         </section>
 

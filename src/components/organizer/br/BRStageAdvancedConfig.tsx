@@ -123,7 +123,7 @@ export const BRStageAdvancedConfig: React.FC<BRStageAdvancedConfigProps> = ({
     } catch (error: unknown) {
       toast({
         title: 'Could not save stage settings',
-        description: getApiErrorMessage(error, 'Please try again.'),
+        description: getApiErrorMessage(error, { context: 'brStageSetup' }),
         variant: 'destructive',
       });
     } finally {

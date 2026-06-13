@@ -347,7 +347,7 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
     } catch (error: unknown) {
       toast({
         title: 'Could not save stages',
-        description: getApiErrorMessage(error, 'Please try again.'),
+        description: getApiErrorMessage(error, { context: 'brStageSetup' }),
         variant: 'destructive',
       });
     } finally {

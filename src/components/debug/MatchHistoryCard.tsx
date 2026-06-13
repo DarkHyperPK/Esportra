@@ -3,14 +3,14 @@ import { Card } from '@/components/ui/card';
 import { Trophy, Skull, Map as MapIcon, ChevronDown, ChevronUp, Zap, List, BarChart3, Crosshair } from 'lucide-react';
 import {
     RiotEconomyChart,
-    RiotRoundTimeline,
     RiotWeaponSummaries,
 } from '@/components/tournament/RiotMatchAnalytics';
 import { RiotTimelineMap, type ValorantMapMetadata } from '@/components/debug/RiotTimelineMap';
 import type { EnrichedRiotMatchData } from '@/types/enrichedRiotMatch';
 import { resolveEnrichedPlayer } from '@/types/enrichedRiotMatch';
 import { formatAbilityCasts, formatStat } from '@/types/scoreboardPlayer';
-import { resolveRoundResultCode } from '@/types/riotMatchDetails';
+import { resolveRoundResultCode, type RiotRoundResult, type RoundTimelineEntry } from '@/types/riotMatchDetails';
+import { cn } from '@/lib/utils';
 
 interface MatchHistoryCardProps {
     matchData: EnrichedRiotMatchData;
@@ -23,6 +23,17 @@ interface CompetitiveTierMetadata {
     divisionName?: string;
     smallIcon?: string;
     largeIcon?: string;
+}
+
+interface ValorantAgentMetadata {
+    uuid: string;
+    displayIcon?: string;
+    displayName?: string;
+    abilities?: Array<{
+        slot?: string;
+        displayIcon?: string;
+        displayName?: string;
+    }>;
 }
 
 function buildCompetitiveTierMap(
@@ -57,12 +68,58 @@ function formatRankName(rank?: CompetitiveTierMetadata, tierNumber?: number): st
         .replace('Iron', 'Iron');
 }
 
+function getRoundResultMeta(code?: string | null) {
+    if (code === 'Elimination') return { label: 'Elimination', short: 'ELIM', tone: 'text-white' };
+    if (code === 'Detonate') return { label: 'Spike detonated', short: 'BOOM', tone: 'text-amber-100' };
+    if (code === 'Defuse') return { label: 'Spike defused', short: 'DEF', tone: 'text-cyan-100' };
+    if (code === 'TimeOut') return { label: 'Time expired', short: 'TIME', tone: 'text-slate-100' };
+    return { label: code || 'Round win', short: 'WIN', tone: 'text-white' };
+};
+
+function formatRoundNumber(round: RiotRoundResult, index: number): number {
+    return typeof round.roundNum === 'number' ? round.roundNum + 1 : index + 1;
+}
+
+function normalizeRoundResult(round: RiotRoundResult, roundNumber: number): RoundTimelineEntry {
+    return {
+        round: roundNumber,
+        winningTeam: round.winningTeam ?? '',
+        resultCode: round.roundResultCode,
+        result: round.roundResult,
+        plantSite: round.plantSite,
+    };
+}
+
+type ValorantTeamId = 'Blue' | 'Red';
+
+function isValorantTeamId(value?: string | null): value is ValorantTeamId {
+    return value === 'Blue' || value === 'Red';
+}
+
+function getOppositeTeam(team: ValorantTeamId): ValorantTeamId {
+    return team === 'Red' ? 'Blue' : 'Red';
+}
+
+function getRoundSideSegment(round: number): 'first' | 'second' | 'ot-attack-red' | 'ot-attack-blue' {
+    if (round <= 12) return 'first';
+    if (round <= 24) return 'second';
+    return round % 2 === 1 ? 'ot-attack-red' : 'ot-attack-blue';
+}
+
+function getFallbackAttackingTeam(round: number): ValorantTeamId {
+    if (round <= 12) return 'Red';
+    if (round <= 24) return 'Blue';
+    return round % 2 === 1 ? 'Red' : 'Blue';
+}
+
 const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPuuid }) => {
     const [agentData, setAgentData] = useState<{ displayIcon?: string } | null>(null);
     const [mapData, setMapData] = useState<ValorantMapMetadata | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
     const [activeTab, setActiveTab] = useState<'scoreboard' | 'timeline' | 'economy' | 'rounds' | 'weapons'>('scoreboard');
-    const [allAgents, setAllAgents] = useState<Record<string, { displayIcon?: string; displayName?: string }>>({});
+    const [selectedPuuid, setSelectedPuuid] = useState(targetPuuid);
+    const [selectedRoundNumber, setSelectedRoundNumber] = useState<number | null>(null);
+    const [allAgents, setAllAgents] = useState<Record<string, ValorantAgentMetadata>>({});
     const [competitiveTiers, setCompetitiveTiers] = useState<Record<number, CompetitiveTierMetadata>>({});
 
     const player = matchData.players.find((entry) => entry.puuid === targetPuuid);
@@ -222,6 +279,10 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
         : 0;
 
     useEffect(() => {
+        setSelectedPuuid(targetPuuid);
+    }, [targetPuuid, matchData.matchInfo.matchId]);
+
+    useEffect(() => {
         if (player?.characterId) {
             fetch(`https://valorant-api.com/v1/agents/${player.characterId}`)
                 .then((res) => res.json())
@@ -231,8 +292,8 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
         fetch('https://valorant-api.com/v1/agents?isPlayableCharacter=true')
             .then((res) => res.json())
             .then((data) => {
-                const map: Record<string, { displayIcon?: string; displayName?: string }> = {};
-                data.data.forEach((agent: { uuid: string; displayIcon?: string; displayName?: string }) => {
+                const map: Record<string, ValorantAgentMetadata> = {};
+                data.data.forEach((agent: ValorantAgentMetadata) => {
                     map[agent.uuid.toLowerCase()] = agent;
                 });
                 setAllAgents(map);
@@ -255,6 +316,64 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
             })
             .catch(() => undefined);
     }, [player?.characterId, matchData.matchInfo.mapId]);
+
+    const roundTimeline = matchData.roundTimeline ?? [];
+    const economyTimeline = matchData.economyTimeline ?? [];
+    const weaponSummaries = matchData.weaponSummaries ?? [];
+
+    const debugRounds = useMemo(() => {
+        const rawRounds = roundResults as RiotRoundResult[];
+        const rawByRound = new Map<number, RiotRoundResult>();
+        rawRounds.forEach((round, index) => {
+            rawByRound.set(formatRoundNumber(round, index), round);
+        });
+
+        if (roundTimeline.length) {
+            return roundTimeline.map((round) => ({
+                summary: round,
+                raw: rawByRound.get(round.round) ?? null,
+            }));
+        }
+
+        return rawRounds.map((round, index) => {
+            const roundNumber = formatRoundNumber(round, index);
+            return {
+                summary: normalizeRoundResult(round, roundNumber),
+                raw: round,
+            };
+        });
+    }, [roundResults, roundTimeline]);
+
+    const playersByPuuid = useMemo(
+        () => new Map(matchData.players.map((entry) => [entry.puuid, entry])),
+        [matchData.players],
+    );
+
+    const attackingTeamsBySegment = useMemo(() => {
+        const segmentAttackers: Record<string, ValorantTeamId> = {};
+        (roundResults as RiotRoundResult[]).forEach((round, index) => {
+            if (!round.bombPlanter) return;
+            const planterTeam = playersByPuuid.get(round.bombPlanter)?.teamId;
+            if (!isValorantTeamId(planterTeam)) return;
+            segmentAttackers[getRoundSideSegment(formatRoundNumber(round, index))] = planterTeam;
+        });
+
+        if (segmentAttackers.first && !segmentAttackers.second) {
+            segmentAttackers.second = getOppositeTeam(segmentAttackers.first);
+        }
+        if (segmentAttackers.second && !segmentAttackers.first) {
+            segmentAttackers.first = getOppositeTeam(segmentAttackers.second);
+        }
+
+        return segmentAttackers;
+    }, [playersByPuuid, roundResults]);
+
+    useEffect(() => {
+        setSelectedRoundNumber((current) => {
+            if (current && debugRounds.some((round) => round.summary.round === current)) return current;
+            return debugRounds[0]?.summary.round ?? null;
+        });
+    }, [debugRounds]);
 
     if (!player) {
         return (
@@ -380,123 +499,400 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
         </div>
     );
 
-    const roundTimeline = matchData.roundTimeline ?? [];
-    const economyTimeline = matchData.economyTimeline ?? [];
-    const weaponSummaries = matchData.weaponSummaries ?? [];
     const gameModeLabel = parsedInfo?.gameMode || matchData.matchInfo.gameMode;
     const rankedLabel = parsedInfo?.isRanked ?? matchData.matchInfo.isRanked;
 
-    return (
-        <Card className={`group relative overflow-hidden border border-zinc-900 border-l-4 bg-zinc-950/60 shadow-2xl backdrop-blur-xl transition-all duration-500 ${isWin ? 'border-l-emerald-600' : 'border-l-rose-600'}`}>
-            <div
-                className="relative z-10 flex cursor-pointer items-center gap-6 p-5 transition-colors hover:bg-white/5"
-                onClick={() => setIsExpanded(!isExpanded)}
-            >
-                <div className="relative h-16 w-16 flex-shrink-0">
-                    {agentData?.displayIcon ? (
-                        <img
-                            src={agentData.displayIcon}
-                            loading="lazy"
-                            className="h-full w-full rounded-xl border border-zinc-800 bg-zinc-900 object-cover shadow-xl transition-transform duration-500 group-hover:scale-110"
-                            alt=""
-                        />
-                    ) : null}
-                    <div className={`absolute -bottom-2 -right-2 rounded-full border p-1.5 ${isWin ? 'border-emerald-400 bg-emerald-500' : 'border-rose-400 bg-rose-500'}`}>
-                        {isWin ? <Trophy className="h-3 w-3 text-white" /> : <Skull className="h-3 w-3 text-white" />}
+    const selectedPlayer = matchData.players.find((entry) => entry.puuid === selectedPuuid) ?? player;
+    const selectedEnrichedPlayer = resolveEnrichedPlayer(matchData, selectedPlayer.puuid);
+    const selectedAgent = selectedPlayer.characterId ? allAgents[selectedPlayer.characterId.toLowerCase()] : undefined;
+    const selectedRank = competitiveTiers[selectedPlayer.competitiveTier ?? 0];
+    const selectedAnalytics = analytics?.playerStatsMap[selectedPlayer.puuid];
+    const selectedHits = selectedAnalytics?.hits ?? { head: 0, body: 0, leg: 0 };
+    const selectedTotalHits = selectedHits.head + selectedHits.body + selectedHits.leg;
+    const selectedHsPct = selectedEnrichedPlayer?.hsPct ?? (selectedTotalHits > 0 ? Math.round((selectedHits.head / selectedTotalHits) * 100) : 0);
+    const selectedAdr = selectedEnrichedPlayer?.adr ?? Math.round(selectedPlayer.stats.score / Math.max(1, roundCount));
+    const selectedAcs = selectedEnrichedPlayer?.acs ?? Math.round(selectedPlayer.stats.score / Math.max(1, roundCount));
+    const selectedKd = selectedEnrichedPlayer?.kdRatio
+        ?? (selectedPlayer.stats.deaths > 0
+            ? (selectedPlayer.stats.kills / selectedPlayer.stats.deaths).toFixed(2)
+            : String(selectedPlayer.stats.kills));
+    const selectedKast = analytics
+        ? Math.round((selectedAnalytics?.kastCount ?? 0) / roundCount * 100)
+        : 0;
+    const selectedRound = debugRounds.find((round) => round.summary.round === selectedRoundNumber) ?? debugRounds[0] ?? null;
+    const targetTeam = matchData.teams.find((team) => team.teamId === teamId);
+    const opponentTeam = matchData.teams.find((team) => team.teamId !== teamId);
+    const targetRounds = targetTeam?.roundsWon ?? 0;
+    const opponentRounds = opponentTeam?.roundsWon ?? 0;
+    const resultTone = isWin
+        ? {
+            rail: 'border-l-[#20f5c6]',
+            text: 'text-[#20f5c6]',
+            soft: 'text-[#8fffe6]',
+            badge: 'border-[#20f5c6]/45 bg-[#20f5c6]/16 text-[#b8fff0]',
+            glow: 'shadow-[0_0_30px_rgba(32,245,198,0.18)]',
+        }
+        : {
+            rail: 'border-l-[#ff4d6d]',
+            text: 'text-[#ff4d6d]',
+            soft: 'text-[#ff9aad]',
+            badge: 'border-[#ff4d6d]/45 bg-[#ff4d6d]/16 text-[#ffd0d8]',
+            glow: 'shadow-[0_0_30px_rgba(255,77,109,0.18)]',
+        };
+
+    const renderPremiumRounds = () => {
+        if (!debugRounds.length) {
+            return (
+                <div className="border border-white/5 bg-[#0e1a24] px-6 py-10 text-center">
+                    <p className="text-sm font-bold text-slate-300">No round timeline available.</p>
+                    <p className="mt-1 text-xs text-slate-500">This match did not include round-level Riot data.</p>
+                </div>
+            );
+        }
+
+        const getRoundSideInfo = (roundNumber: number) => {
+            const attackingTeam = attackingTeamsBySegment[getRoundSideSegment(roundNumber)] ?? getFallbackAttackingTeam(roundNumber);
+            const defendingTeam = getOppositeTeam(attackingTeam);
+            return { attackingTeam, defendingTeam };
+        };
+
+        const selectedSummary = selectedRound?.summary ?? debugRounds[0].summary;
+        const selectedRaw = selectedRound?.raw ?? null;
+        const selectedResult = resolveRoundResultCode(selectedSummary);
+        const selectedMeta = getRoundResultMeta(selectedResult);
+        const sideInfo = getRoundSideInfo(selectedSummary.round);
+        const winningTeam = selectedSummary.winningTeam;
+        const isBlueWinner = winningTeam === 'Blue';
+        const winningTone = isBlueWinner ? 'text-blue-100' : 'text-rose-100';
+        const winningSurface = isBlueWinner
+            ? 'from-blue-500/20 via-[#0d1d31] to-[#08131f]'
+            : 'from-rose-500/22 via-[#28121d] to-[#0f1118]';
+
+        const allRoundKills = (selectedRaw?.playerStats ?? [])
+            .flatMap((stats) => (stats.kills ?? []).map((kill) => ({
+                ...kill,
+                killer: kill.killer || stats.puuid,
+            })))
+            .filter((kill) => kill.killer && kill.victim && kill.killer !== kill.victim);
+
+        const getPlayerRoundStats = (entry: EnrichedRiotMatchData['players'][number]) => {
+            const rawStats = selectedRaw?.playerStats?.find((stats) => stats.puuid === entry.puuid);
+            const kills = (rawStats?.kills ?? []).filter((kill) => (kill.killer || entry.puuid) === entry.puuid && kill.victim !== entry.puuid).length;
+            const deaths = allRoundKills.some((kill) => kill.victim === entry.puuid) ? 1 : 0;
+            const assists = allRoundKills.filter((kill) => kill.assistants?.includes(entry.puuid)).length;
+            const damage = (rawStats?.damage ?? []).reduce((sum, damageEntry) => sum + (damageEntry.damage ?? 0), 0);
+            return {
+                kills,
+                deaths,
+                assists,
+                damage,
+                spent: rawStats?.economy?.spent ?? 0,
+                loadout: rawStats?.economy?.loadoutValue ?? 0,
+            };
+        };
+
+        const renderTeamRoundTable = (team: string) => {
+            const teamPlayers = matchData.players
+                .filter((entry) => entry.teamId === team)
+                .map((entry) => ({ entry, roundStats: getPlayerRoundStats(entry) }))
+                .sort((a, b) => b.roundStats.kills - a.roundStats.kills || b.roundStats.damage - a.roundStats.damage);
+            const isBlue = team === 'Blue';
+
+            return (
+                <div className="min-w-0 bg-[#0e1a24]">
+                    <div className={cn(
+                        'flex items-center justify-between border-b border-white/5 px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em]',
+                        isBlue ? 'bg-blue-500/10 text-blue-100' : 'bg-rose-500/10 text-rose-100',
+                    )}>
+                        <span className="flex items-center gap-2">
+                            <span className={cn('h-2 w-2', isBlue ? 'bg-blue-300' : 'bg-rose-300')} />
+                            Team {team}
+                        </span>
+                        <span className="text-slate-300/70">{sideInfo.attackingTeam === team ? 'Attack' : 'Defense'}</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-[11px]">
+                            <thead className="bg-[#101d28] text-[9px] uppercase tracking-wider text-slate-500">
+                                <tr>
+                                    <th className="px-3 py-2">Player</th>
+                                    <th className="px-2 py-2 text-center">K</th>
+                                    <th className="px-2 py-2 text-center">D</th>
+                                    <th className="px-2 py-2 text-center">A</th>
+                                    <th className="px-2 py-2 text-right">DMG</th>
+                                    <th className="px-3 py-2 text-right">Spend</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {teamPlayers.map(({ entry, roundStats }) => {
+                                    const agent = entry.characterId ? allAgents[entry.characterId.toLowerCase()] : undefined;
+                                    return (
+                                        <tr
+                                            key={entry.puuid}
+                                            className={cn(
+                                                'border-t border-black/40 bg-[#0b141d] text-slate-300 transition-colors',
+                                                selectedPlayer.puuid === entry.puuid && (isBlue
+                                                    ? 'bg-blue-300/[0.08] text-white'
+                                                    : 'bg-rose-300/[0.08] text-white'),
+                                            )}
+                                        >
+                                            <td className="px-3 py-2">
+                                                <div className="flex min-w-[140px] items-center gap-2">
+                                                    <div className={cn(
+                                                        'h-7 w-7 overflow-hidden border bg-black/30 shadow-[0_0_10px_rgba(0,0,0,0.35)]',
+                                                        isBlue ? 'border-blue-300/45' : 'border-rose-300/45',
+                                                    )}>
+                                                        {agent?.displayIcon ? (
+                                                            <img src={agent.displayIcon} loading="lazy" className="h-full w-full object-cover" alt="" />
+                                                        ) : null}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="truncate font-black">{entry.gameName}</div>
+                                                        <div className="text-[9px] text-slate-500">#{entry.tagLine}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-2 py-2 text-center font-black text-white">{roundStats.kills}</td>
+                                            <td className="px-2 py-2 text-center text-slate-400">{roundStats.deaths}</td>
+                                            <td className="px-2 py-2 text-center text-slate-400">{roundStats.assists}</td>
+                                            <td className="px-2 py-2 text-right font-mono text-slate-200">{roundStats.damage}</td>
+                                            <td className="px-3 py-2 text-right font-mono text-slate-400">{roundStats.spent.toLocaleString()}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        return (
+            <div className="space-y-4">
+                <div className="overflow-hidden border border-white/5 bg-[#07111a] shadow-[0_18px_55px_rgba(0,0,0,0.35)]">
+                    <div className="flex items-center justify-between border-b border-white/5 bg-[linear-gradient(90deg,#2a4054,#172636)] px-4 py-2.5">
+                        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-100/85">Round Control</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {debugRounds.length} rounds
+                        </p>
+                    </div>
+                    <div className="scroller-hide flex gap-1 overflow-x-auto bg-[linear-gradient(180deg,#0c1824,#070c12)] p-2">
+                        {debugRounds.map(({ summary }) => {
+                            const result = resolveRoundResultCode(summary);
+                            const meta = getRoundResultMeta(result);
+                            const isBlueWin = summary.winningTeam === 'Blue';
+                            const isActive = selectedSummary.round === summary.round;
+                            const roundSide = getRoundSideInfo(summary.round);
+
+                            return (
+                                <button
+                                    key={summary.round}
+                                    type="button"
+                                    onClick={() => setSelectedRoundNumber(summary.round)}
+                                    className={cn(
+                                        'group relative min-w-[82px] overflow-hidden border px-2 py-2 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30',
+                                        isBlueWin
+                                            ? 'border-blue-300/20 bg-blue-950/45 text-blue-100 hover:border-blue-200/45'
+                                            : 'border-rose-300/20 bg-rose-950/45 text-rose-100 hover:border-rose-200/45',
+                                        isActive && (isBlueWin
+                                            ? 'border-blue-100 bg-blue-500/20 shadow-[0_0_22px_rgba(96,165,250,0.28)]'
+                                            : 'border-rose-100 bg-rose-500/20 shadow-[0_0_22px_rgba(251,113,133,0.28)]'),
+                                    )}
+                                >
+                                    <span className={cn(
+                                        'absolute inset-x-0 top-0 h-0.5',
+                                        isBlueWin ? 'bg-blue-300' : 'bg-rose-300',
+                                    )} />
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-mono text-[10px] font-black">R{summary.round}</span>
+                                        <span className={cn('font-mono text-[9px] font-black tracking-wider', meta.tone)}>
+                                            {meta.short}
+                                        </span>
+                                    </div>
+                                    <div className="mt-1 truncate text-[8px] font-black uppercase tracking-wide text-white/45">
+                                        {roundSide.attackingTeam} attack
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
-                <div className="grid flex-grow grid-cols-2 items-center gap-4 md:grid-cols-4">
-                    <div>
-                        <div className="flex items-center gap-2 text-sm font-black text-white">
-                            <MapIcon className="h-4 w-4 text-rose-500" /> {mapData?.displayName || 'Loading…'}
+                <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
+                    <div className={cn('relative overflow-hidden bg-gradient-to-br p-5 shadow-[0_18px_55px_rgba(0,0,0,0.3)]', winningSurface)}>
+                        <div className={cn(
+                            'absolute inset-y-0 left-0 w-1',
+                            isBlueWinner ? 'bg-blue-300' : 'bg-rose-300',
+                        )} />
+                        <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-slate-300/70">Round {selectedSummary.round}</p>
+                                <div className="mt-2 flex items-center gap-3">
+                                    <div className={cn(
+                                        'flex h-12 w-12 items-center justify-center border font-mono text-[11px] font-black tracking-wider',
+                                        isBlueWinner
+                                            ? 'border-blue-200/50 bg-blue-200/10 text-blue-100'
+                                            : 'border-rose-200/50 bg-rose-200/10 text-rose-100',
+                                    )}>
+                                        {selectedMeta.short}
+                                    </div>
+                                    <div>
+                                        <div className={cn('text-lg font-black', winningTone)}>Team {winningTeam || 'Unknown'} won</div>
+                                        <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                            {selectedMeta.label}
+                                            {selectedSummary.plantSite ? ` · Site ${selectedSummary.plantSite}` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="mt-0.5 text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                            {matchData.matchInfo.queueId || 'Custom'}
-                            {gameModeLabel ? ` · ${gameModeLabel}` : ''}
-                            {rankedLabel ? ' · Ranked' : ''}
-                            {' · '}
-                            {Math.round((matchData.matchInfo.gameLengthMillis ?? 0) / 60000)}M
+                        <div className="mt-5 grid grid-cols-2 gap-2 text-xs">
+                            <div className="border border-white/5 bg-black/20 p-3">
+                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Attack</div>
+                                <div className="mt-1 font-black text-slate-100">Team {sideInfo.attackingTeam}</div>
+                            </div>
+                            <div className="border border-white/5 bg-black/20 p-3">
+                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Defense</div>
+                                <div className="mt-1 font-black text-slate-100">Team {sideInfo.defendingTeam}</div>
+                            </div>
+                            <div className="border border-white/5 bg-black/20 p-3">
+                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Kills</div>
+                                <div className="mt-1 font-mono text-lg font-black text-white">{allRoundKills.length}</div>
+                            </div>
+                            <div className="border border-white/5 bg-black/20 p-3">
+                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Spike</div>
+                                <div className="mt-1 font-black text-white">{selectedSummary.plantSite ? `Site ${selectedSummary.plantSite}` : '-'}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                        {renderTeamRoundTable('Blue')}
+                        {renderTeamRoundTable('Red')}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <Card className={cn(
+            'group relative overflow-hidden rounded-none border border-white/10 border-l-4 bg-[#070d13] shadow-[0_22px_80px_rgba(0,0,0,0.45)] transition-all duration-500 hover:border-white/20',
+            resultTone.rail,
+            resultTone.glow,
+        )}>
+            <div
+                className="relative z-10 grid cursor-pointer gap-4 overflow-hidden border-b border-white/10 bg-[linear-gradient(90deg,#101a24_0%,#0c151e_48%,#091017_100%)] px-5 py-4 transition-colors hover:bg-[#101b26] md:grid-cols-[minmax(260px,1fr)_auto_auto]"
+                onClick={() => setIsExpanded(!isExpanded)}
+            >
+                {mapData?.listViewIcon ? (
+                    <div
+                        className="pointer-events-none absolute inset-y-0 left-[34%] right-0 opacity-35 transition-all duration-500 group-hover:opacity-50"
+                        style={{
+                            backgroundImage: `linear-gradient(to right, rgba(7, 13, 19, 0.98) 0%, rgba(7, 13, 19, 0.62) 38%, rgba(7, 13, 19, 0.86) 100%), url(${mapData.listViewIcon})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            filter: 'contrast(1.18) saturate(1.18) brightness(0.78)',
+                        }}
+                    />
+                ) : null}
+
+                <div className="relative z-10 flex min-w-0 items-center gap-4">
+                    <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden border border-white/10 bg-black/40">
+                        {agentData?.displayIcon ? (
+                            <img
+                                src={agentData.displayIcon}
+                                loading="lazy"
+                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                alt=""
+                            />
+                        ) : null}
+                        <div className={cn('absolute bottom-0 right-0 border-l border-t p-1.5', resultTone.badge)}>
+                            {isWin ? <Trophy className="h-3.5 w-3.5" /> : <Skull className="h-3.5 w-3.5" />}
+                        </div>
+                    </div>
+                    <div className="min-w-0">
+                        <div className="flex min-w-0 items-center gap-2">
+                            <MapIcon className={cn('h-4 w-4 flex-shrink-0', resultTone.text)} />
+                            <div className="truncate text-lg font-black leading-none text-white">
+                                {mapData?.displayName || 'Loading…'}
+                            </div>
+                            <span className={cn('hidden border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider sm:inline-flex', resultTone.badge)}>
+                                {isWin ? 'Win' : 'Loss'}
+                            </span>
+                        </div>
+                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-black uppercase tracking-wider text-slate-300/65">
+                            <span>{matchData.matchInfo.queueId || 'Custom'}</span>
+                            {gameModeLabel ? <span>{gameModeLabel}</span> : null}
+                            {rankedLabel ? <span>Ranked</span> : null}
+                            <span>{Math.round((matchData.matchInfo.gameLengthMillis ?? 0) / 60000)}m</span>
                         </div>
                         {parsedInfo?.region ? (
-                            <div className="mt-1 text-[9px] uppercase tracking-wider text-zinc-600">
+                            <div className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">
                                 Region {parsedInfo.region}
                             </div>
                         ) : null}
                     </div>
+                </div>
 
-                    <div className="text-center">
-                        <div className="text-2xl font-black leading-none tracking-tighter text-white drop-shadow-lg">
+                <div className="relative z-10 grid grid-cols-2 items-center gap-4 md:grid-cols-[minmax(130px,auto)_minmax(110px,auto)]">
+                    <div className="text-left md:text-right">
+                        <div className="text-2xl font-black leading-none tracking-tight text-white drop-shadow-lg">
                             {player.stats.kills}
-                            <span className="mx-1 text-zinc-500">/</span>
+                            <span className="mx-1.5 text-slate-600">/</span>
                             {player.stats.deaths}
-                            <span className="mx-1 text-zinc-500">/</span>
+                            <span className="mx-1.5 text-slate-600">/</span>
                             {player.stats.assists}
                         </div>
-                        <div className="mt-1 flex items-center justify-center gap-3">
-                            <div className="text-[10px] font-black uppercase text-zinc-400 drop-shadow-md">
+                        <div className="mt-1 flex justify-start gap-3 md:justify-end">
+                            <div className="text-[9px] font-black uppercase tracking-wider text-slate-400">
                                 KD{' '}
-                                <span className="text-white">
+                                <span className="text-slate-100">
                                     {(player.stats.kills / Math.max(1, player.stats.deaths)).toFixed(2)}
                                 </span>
                             </div>
-                            <div className="h-1 w-1 rounded-full bg-zinc-600" />
-                            <div className="text-[10px] font-black uppercase text-zinc-400 drop-shadow-md">
-                                ACS <span className="text-white">{enrichedTarget?.acs ?? '-'}</span>
+                            <div className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+                                ACS <span className="text-slate-100">{enrichedTarget?.acs ?? '-'}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="hidden text-center md:block">
-                        <div className="flex justify-center gap-3 text-2xl font-black">
-                            <span className={isWin ? 'text-emerald-500' : 'text-rose-500'}>
-                                {matchData.teams.find((team) => team.teamId === teamId)?.roundsWon}
+                    <div className="text-left md:text-center">
+                        <div className="flex items-baseline gap-2 text-2xl font-black">
+                            <span className={resultTone.text}>
+                                {targetRounds}
                             </span>
-                            <span className="text-zinc-500">/</span>
-                            <span className={!isWin ? 'text-emerald-500' : 'text-rose-500'}>
-                                {matchData.teams.find((team) => team.teamId !== teamId)?.roundsWon}
-                            </span>
+                            <span className="text-slate-600">/</span>
+                            <span className="text-[#ff4d6d]">{opponentRounds}</span>
                         </div>
-                        <div className="mt-1 text-[10px] font-black uppercase text-zinc-400 drop-shadow-md">
+                        <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-slate-400">
                             Match Score
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col items-end pr-4">
-                        <div className="flex gap-4 text-right">
-                            <div>
-                                <div className="text-[9px] font-black text-zinc-400 drop-shadow-md">KAST</div>
-                                <div className="font-mono text-xs text-zinc-300 drop-shadow-md">{targetKAST}%</div>
-                            </div>
-                            <div>
-                                <div className="text-[9px] font-black text-zinc-400 drop-shadow-md">FK</div>
-                                <div className="font-mono text-xs text-emerald-400 drop-shadow-md">
-                                    {enrichedTarget?.firstBloods ?? analytics?.playerStatsMap[targetPuuid]?.fb ?? 0}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="mt-2 text-zinc-700 transition-colors">
-                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4 animate-bounce" />}
                         </div>
                     </div>
                 </div>
 
-                {mapData?.listViewIcon ? (
-                    <div
-                        className="pointer-events-none absolute right-0 top-0 h-full w-2/3 opacity-40 transition-all duration-500 group-hover:opacity-60"
-                        style={{
-                            backgroundImage: `linear-gradient(to left, rgba(9, 9, 11, 1) 20%, rgba(9, 9, 11, 0.6) 60%, rgba(9, 9, 11, 0.2)), url(${mapData.listViewIcon})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'right center',
-                            filter: 'contrast(1.1) brightness(0.7)',
-                        }}
-                    />
-                ) : null}
+                <div className="relative z-10 flex items-center justify-between gap-4 md:justify-end">
+                    <div className="grid grid-cols-2 gap-2 text-right">
+                        <div className="border border-white/10 bg-black/20 px-3 py-2">
+                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-500">KAST</div>
+                            <div className="font-mono text-sm font-black text-slate-100">{targetKAST}%</div>
+                        </div>
+                        <div className="border border-white/10 bg-black/20 px-3 py-2">
+                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-500">FK</div>
+                            <div className={cn('font-mono text-sm font-black', resultTone.text)}>
+                                {enrichedTarget?.firstBloods ?? analytics?.playerStatsMap[targetPuuid]?.fb ?? 0}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="text-slate-500 transition-colors group-hover:text-white/70">
+                        {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    </div>
+                </div>
             </div>
 
             {isExpanded ? (
-                <div className="animate-in slide-in-from-top-4 border-t border-white/10 bg-black/60 duration-500 backdrop-blur-3xl">
-                    <div className="scroller-hide flex items-center gap-8 overflow-x-auto border-b border-white/5 px-8 py-4">
+                <div className="animate-in slide-in-from-top-4 bg-[#0b141d] duration-500">
+                    <div className="grid border-b border-rose-500/40 bg-[#263b4d] text-center sm:grid-cols-5">
                         {[
                             { id: 'scoreboard', label: 'Scoreboard', icon: List },
                             { id: 'timeline', label: 'Timeline', icon: MapIcon },
@@ -508,18 +904,103 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                                 key={tab.id}
                                 type="button"
                                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                className={`flex items-center gap-2 border-b-2 pb-1 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+                                className={`flex items-center justify-center gap-2 border-b-2 px-4 py-3 text-[11px] font-black transition-all ${
                                     activeTab === tab.id
-                                        ? 'border-rose-500 text-rose-500'
-                                        : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                                        ? 'border-rose-400 bg-[#0f1c28] text-white'
+                                        : 'border-transparent text-slate-200/75 hover:bg-[#203141] hover:text-white'
                                 }`}
                             >
-                                <tab.icon className="h-3.5 w-3.5" /> {tab.label}
+                                <tab.icon className="h-3.5 w-3.5 text-slate-300/80" /> {tab.label}
                             </button>
                         ))}
                     </div>
 
-                    <div className="p-6">
+                    <div className="border-b border-white/5 bg-[#0f1c28] px-5 py-4">
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                            <span className="mr-2 text-xs font-bold text-teal-300">Team {teamId}</span>
+                            {matchData.players
+                                .slice()
+                                .sort((a, b) => (a.teamId === teamId ? -1 : 1) - (b.teamId === teamId ? -1 : 1))
+                                .map((entry, index) => {
+                                    const agent = entry.characterId ? allAgents[entry.characterId.toLowerCase()] : undefined;
+                                    const isFriendly = entry.teamId === teamId;
+
+                                    return (
+                                        <React.Fragment key={entry.puuid}>
+                                            {index === 5 ? (
+                                                <span className="mx-1 bg-[#203141] px-2 py-1 text-[10px] font-black uppercase text-slate-300">
+                                                    vs
+                                                </span>
+                                            ) : null}
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedPuuid(entry.puuid)}
+                                                title={`${entry.gameName}#${entry.tagLine}`}
+                                                className={cn(
+                                                    'relative h-9 w-9 overflow-hidden border bg-[#0b141d] transition-all duration-200',
+                                                    'hover:-translate-y-0.5 hover:brightness-125 focus:outline-none focus:ring-2 focus:ring-white/40',
+                                                    isFriendly ? 'border-teal-400/70' : 'border-rose-400/70',
+                                                    selectedPlayer.puuid === entry.puuid && (isFriendly
+                                                        ? 'border-teal-200 brightness-125 shadow-[0_0_16px_rgba(45,212,191,0.45)]'
+                                                        : 'border-rose-200 brightness-125 shadow-[0_0_16px_rgba(251,113,133,0.45)]'),
+                                                    selectedPlayer.puuid !== entry.puuid && 'opacity-75',
+                                                )}
+                                            >
+                                                {agent?.displayIcon ? (
+                                                    <img src={agent.displayIcon} loading="lazy" className="h-full w-full object-cover" alt="" />
+                                                ) : null}
+                                                {selectedPlayer.puuid === entry.puuid ? (
+                                                    <span className={cn(
+                                                        'absolute inset-x-1 bottom-0 h-0.5',
+                                                        isFriendly ? 'bg-teal-200' : 'bg-rose-200',
+                                                    )} />
+                                                ) : null}
+                                            </button>
+                                        </React.Fragment>
+                                    );
+                                })}
+                            <span className="ml-2 text-xs font-bold text-rose-300">
+                                Team {matchData.teams.find((entry) => entry.teamId !== teamId)?.teamId}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="bg-[#0b141d] p-4 lg:p-5">
+                        <div className="mb-4 grid gap-4 bg-[#092f31] p-4 md:grid-cols-[120px_minmax(0,1fr)_auto]">
+                            <div className="hidden h-28 items-end justify-center md:flex">
+                                {selectedAgent?.displayIcon ? (
+                                    <img src={selectedAgent.displayIcon} loading="lazy" className="max-h-28 object-contain opacity-85 drop-shadow-[0_0_20px_rgba(45,212,191,0.12)]" alt="" />
+                                ) : null}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h3 className="truncate text-2xl font-black text-white">{selectedPlayer.gameName}</h3>
+                                    <span className="bg-white/10 px-2 py-1 text-xs font-black text-slate-200">#{selectedPlayer.tagLine}</span>
+                                    {selectedRank?.smallIcon || selectedRank?.largeIcon ? (
+                                        <img src={selectedRank.smallIcon || selectedRank.largeIcon} loading="lazy" className="h-6 w-6 object-contain" alt="" />
+                                    ) : null}
+                                </div>
+                                <div className="mt-4 grid grid-cols-3 gap-4 text-sm sm:grid-cols-6">
+                                    {[
+                                        ['K/D/A', `${selectedPlayer.stats.kills} / ${selectedPlayer.stats.deaths} / ${selectedPlayer.stats.assists}`],
+                                        ['K/D', selectedKd],
+                                        ['ADR', selectedAdr],
+                                        ['ACS', selectedAcs],
+                                        ['HS%', `${formatStat(selectedHsPct)}%`],
+                                        ['KAST', `${selectedKast}%`],
+                                    ].map(([label, value]) => (
+                                        <div key={label}>
+                                            <div className="text-[10px] font-black uppercase text-slate-300/65">{label}</div>
+                                            <div className="text-lg font-black text-slate-100">{value}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="text-right text-xs font-black uppercase tracking-wider text-slate-300/70">
+                                {formatRankName(selectedRank, selectedPlayer.competitiveTier)}
+                            </div>
+                        </div>
+
                         {activeTab === 'scoreboard' ? (
                             <div className="animate-in fade-in space-y-8 duration-500">
                                 <div>
@@ -568,40 +1049,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
 
                         {activeTab === 'rounds' ? (
                             <div className="animate-in slide-in-from-right-4 duration-500">
-                                {roundTimeline.length > 0 ? (
-                                    <RiotRoundTimeline rounds={roundTimeline} />
-                                ) : (
-                                    <div className="space-y-4">
-                                        <p className="px-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/50">
-                                            Round Timeline
-                                        </p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {(roundResults as Array<{ roundNum?: number; winningTeam?: string; roundResultCode?: string; roundResult?: string }>).map((round, index) => {
-                                                const roundNumber = round.roundNum && round.roundNum > 0 ? round.roundNum : index + 1;
-                                                const isBlueWin = round.winningTeam === 'Blue';
-                                                const resultCode = resolveRoundResultCode({
-                                                    round: roundNumber,
-                                                    winningTeam: round.winningTeam ?? '',
-                                                    resultCode: round.roundResultCode,
-                                                    result: round.roundResult,
-                                                });
-                                                return (
-                                                    <div
-                                                        key={roundNumber}
-                                                        title={resultCode ?? round.winningTeam}
-                                                        className={`flex h-12 w-10 flex-col items-center justify-center gap-1 border ${
-                                                            isBlueWin
-                                                                ? 'border-blue-500/40 bg-blue-500/10 text-blue-300'
-                                                                : 'border-rose-500/40 bg-rose-500/10 text-rose-300'
-                                                        }`}
-                                                    >
-                                                        <span className="text-[8px] font-bold opacity-70">{roundNumber}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
+                                {renderPremiumRounds()}
                             </div>
                         ) : null}
 
@@ -614,13 +1062,17 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                 </div>
             ) : null}
 
-            <div className="mt-4 flex items-center justify-between border-t border-white/5 px-8 pb-6 pt-4 opacity-30">
-                <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">
-                    <Zap className="h-3 w-3 text-rose-500" />
-                    ENRICHED MATCH DATA • ID: {matchData.matchInfo.matchId?.slice(0, 12)}…
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/5 bg-[#050a0f] px-5 py-3">
+                <div className="flex min-w-0 items-center gap-2 text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">
+                    <span className={cn('h-1.5 w-1.5 rounded-full shadow-[0_0_12px_currentColor]', resultTone.text)} />
+                    <span className="truncate">Enriched match data</span>
+                    <span className="hidden text-slate-700 sm:inline">/</span>
+                    <span className="hidden font-mono text-slate-600 sm:inline">{matchData.matchInfo.matchId?.slice(0, 12)}…</span>
                 </div>
-                <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">
-                    {roundTimeline.length} rounds • {weaponSummaries.length} weapon types
+                <div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                    <span>{roundTimeline.length || roundResults.length} rounds</span>
+                    <span className="h-1 w-1 rounded-full bg-slate-700" />
+                    <span>{weaponSummaries.length} weapons</span>
                 </div>
             </div>
         </Card>

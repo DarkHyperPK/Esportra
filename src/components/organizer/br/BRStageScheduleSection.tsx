@@ -211,7 +211,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     } catch (error: unknown) {
       toast({
         title: 'Could not save lobby times',
-        description: getApiErrorMessage(error, 'Please try again.'),
+        description: getApiErrorMessage(error, { context: 'brStageSchedule' }),
         variant: 'destructive',
       });
     } finally {
@@ -254,7 +254,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     } catch (error: unknown) {
       toast({
         title: 'Could not save game times',
-        description: getApiErrorMessage(error, 'Please try again.'),
+        description: getApiErrorMessage(error, { context: 'brStageSchedule' }),
         variant: 'destructive',
       });
     } finally {

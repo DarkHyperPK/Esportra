@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
+import { AccentButton, CancelButton, CtaButton, DangerButton, GhostButton, OutlineButton } from '@/components/ui/app-buttons';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -55,6 +55,52 @@ const SortablePlayerCard: React.FC<{
     </div>
   );
 };
+
+function resolveCaptainUserId(
+  ownerId?: string | null,
+  teamMembers?: Array<{ user_id?: string; role?: string }>,
+): string | undefined {
+  const byRole = teamMembers?.find((member) => member.role === 'captain')?.user_id;
+  return byRole || ownerId || undefined;
+}
+
+function sortCaptainFirst<T extends { user_id: string }>(members: T[], captainId?: string): T[] {
+  if (!captainId) return members;
+  const captain = members.find((member) => member.user_id === captainId);
+  if (!captain) return members;
+  return [captain, ...members.filter((member) => member.user_id !== captainId)];
+}
+
+function buildTeamMemberOrderPayload(
+  orderedMembers: Array<{ user_id: string }>,
+  captainId: string | undefined,
+  allTeamMembers: Array<{ user_id: string }>,
+): Array<{ userId: string; displayOrder: number }> {
+  if (!captainId) {
+    return orderedMembers.map((member, index) => ({
+      userId: member.user_id,
+      displayOrder: index,
+    }));
+  }
+
+  const rosterIds = new Set(orderedMembers.map((member) => member.user_id));
+  const withoutCaptain = orderedMembers.filter((member) => member.user_id !== captainId);
+  const notInRoster = allTeamMembers.filter(
+    (member) => member.user_id !== captainId && !rosterIds.has(member.user_id),
+  );
+
+  return [
+    { userId: captainId, displayOrder: 0 },
+    ...withoutCaptain.map((member, index) => ({
+      userId: member.user_id,
+      displayOrder: index + 1,
+    })),
+    ...notInRoster.map((member, index) => ({
+      userId: member.user_id,
+      displayOrder: withoutCaptain.length + 1 + index,
+    })),
+  ];
+}
 
 const TeamsPage = () => {
   useGameCatalog();
@@ -272,7 +318,7 @@ const TeamsPage = () => {
     try {
       const data = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/rosters`);
       const rosterList: Roster[] = (data || []).map((r: any) => {
-        const members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
+        let members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
           .map((m: any) => ({
             user_id: m.user_id,
             username: m.username || 'Unknown',
@@ -295,6 +341,8 @@ const TeamsPage = () => {
             roster_role: 'starter',
           });
         }
+
+        members = sortCaptainFirst(members, currentTeam.owner_id);
 
         return {
           id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
@@ -784,31 +832,35 @@ const TeamsPage = () => {
     const { active, over } = event;
     if (!over || active.id === over.id || !currentTeam?.id) return;
 
+    const captainId = resolveCaptainUserId(currentTeam.owner_id, teamMembers);
     const members = roster.members || [];
     const oldIndex = members.findIndex((m: any) => m.user_id === active.id);
     const newIndex = members.findIndex((m: any) => m.user_id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    // Don't allow moving anything to position 0 (captain) or moving captain
-    if (members[oldIndex]?.user_id === currentTeam.owner_id) return;
-    if (newIndex === 0 && members[0]?.user_id === currentTeam.owner_id) return;
+    if (captainId && members[oldIndex]?.user_id === captainId) return;
+    if (captainId && newIndex === 0) return;
 
-    // Reorder locally
-    const reordered = [...members];
-    const [moved] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, moved);
+    const reordered = sortCaptainFirst(
+      (() => {
+        const next = [...members];
+        const [moved] = next.splice(oldIndex, 1);
+        next.splice(newIndex, 0, moved);
+        return next;
+      })(),
+      captainId,
+    );
 
-    // Optimistic update
     setRosters(prev => prev.map(r =>
       r.id === roster.id ? { ...r, members: reordered } : r
     ));
 
-    // Persist order
     try {
-      const order = reordered.map((m: any, i: number) => ({ userId: m.user_id, displayOrder: i }));
+      const order = buildTeamMemberOrderPayload(reordered, captainId, teamMembers);
       await apiClient.put(`/api/teams/${currentTeam.id}/members/order`, { order });
     } catch {
       toast({ title: 'Failed to save order', variant: 'destructive' });
+      fetchRosters();
     }
   };
 
@@ -1163,8 +1215,8 @@ const TeamsPage = () => {
                           )}
                         </div>
                         <div className="flex gap-3">
-                          <Button size="sm" className="bg-emerald-500/80 hover:bg-emerald-500 text-white rounded-full px-6" onClick={() => acceptInvite(inv.id)}>JOIN</Button>
-                          <Button size="sm" variant="ghost" className="text-white/40 hover:text-white hover:bg-white/10 rounded-full" onClick={() => declineInvite(inv.id)}>DECLINE</Button>
+                          <CtaButton size="sm" className="rounded-full px-6" onClick={() => acceptInvite(inv.id)}>JOIN</CtaButton>
+                          <GhostButton size="sm" className="rounded-full px-6" onClick={() => declineInvite(inv.id)}>DECLINE</GhostButton>
                         </div>
                       </div>
                     ))}
@@ -1192,9 +1244,9 @@ const TeamsPage = () => {
                     Every champion starts somewhere. Register your team name, upload your logo, and begin your journey to the top of the leaderboard.
                   </p>
 
-                  <Button
+                  <CtaButton
                     size="lg"
-                    className="h-14 px-10 bg-white text-black hover:bg-white/90 rounded-full font-heading font-bold uppercase tracking-widest text-sm transition-all hover:scale-105 shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+                    className="h-14 rounded-full px-10 text-sm shadow-[0_0_40px_rgba(244,63,94,0.35)] transition-all hover:scale-105"
                     onClick={() => {
                       if (!hasSeenTour('captain')) {
                         setShowJourneyTour(true);
@@ -1204,7 +1256,7 @@ const TeamsPage = () => {
                     }}
                   >
                     Create Team
-                  </Button>
+                  </CtaButton>
                 </div>
 
                 {/* Decorative Grid */}
@@ -1364,8 +1416,8 @@ const TeamsPage = () => {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => acceptInvite(inv.id)}>Accept</Button>
-                    <Button size="sm" variant="ghost" className="text-white/40 hover:text-red-400 hover:bg-red-500/10" onClick={() => declineInvite(inv.id)}>Decline</Button>
+                    <CtaButton size="sm" onClick={() => acceptInvite(inv.id)}>Accept</CtaButton>
+                    <DangerButton size="sm" variant="ghost" className="h-9" onClick={() => declineInvite(inv.id)}>Decline</DangerButton>
                   </div>
                 </div>
               ))}
@@ -1395,7 +1447,7 @@ const TeamsPage = () => {
                         <SortablePlayerCard
                           key={`${r.id}-${member.user_id}`}
                           id={member.user_id}
-                          disabled={member.user_id === currentTeam?.owner_id}
+                          disabled={member.user_id === resolveCaptainUserId(currentTeam?.owner_id, teamMembers)}
                         >
                           <div className="relative">
                             <PlayerCard
@@ -1457,10 +1509,10 @@ const TeamsPage = () => {
               Active Rosters
             </h2>
             {isCaptain && (
-              <Button onClick={openCreateRoster} className="bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-full px-6">
+              <OutlineButton onClick={openCreateRoster} className="rounded-full px-6">
                 <Plus className="w-4 h-4 mr-2" />
                 CREATE ROSTER
-              </Button>
+              </OutlineButton>
             )}
           </div>
 
@@ -1494,15 +1546,15 @@ const TeamsPage = () => {
 
                   {isCaptain && (
                     <div className="flex gap-2 pt-4 border-t border-white/5">
-                      <Button size="sm" variant="ghost" className="h-9 flex-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 uppercase text-xs tracking-wider" onClick={() => openManageRoster(r)}>Manage</Button>
-                      <Button
+                      <GhostButton size="sm" className="h-9 flex-1 uppercase text-xs tracking-wider" onClick={() => openManageRoster(r)}>Manage</GhostButton>
+                      <DangerButton
                         size="sm"
                         variant="ghost"
-                        className="h-9 w-9 p-0 text-white/40 hover:text-red-400 hover:bg-red-500/10"
+                        className="h-9 w-9 p-0"
                         onClick={() => deleteRoster(r)}
                       >
                         <Trash2 className="w-4 h-4" />
-                      </Button>
+                      </DangerButton>
                     </div>
                   )}
                 </div>
@@ -1648,26 +1700,18 @@ const TeamsPage = () => {
         {/* Team Actions */}
         <div className="flex justify-center space-x-4">
           {!isCaptain && (
-            <Button
-              onClick={handleLeaveTeam}
-              variant="outline"
-              className="border-red-400 text-red-400 hover:bg-red-400/20"
-            >
+            <DangerButton onClick={handleLeaveTeam}>
               <UserMinus className="w-4 h-4 mr-2" />
               Leave Team
-            </Button>
+            </DangerButton>
           )}
 
           {isCaptain && (
             <>
-              <Button
-                onClick={() => setShowDisbandTeam(true)}
-                variant="outline"
-                className="border-red-400 text-red-400 hover:bg-red-400/20"
-              >
+              <DangerButton onClick={() => setShowDisbandTeam(true)}>
                 <Trash2 className="w-4 h-4 mr-2" />
                 Disband Team
-              </Button>
+              </DangerButton>
             </>
           )}
         </div>
@@ -1715,16 +1759,15 @@ const TeamsPage = () => {
                         <p className="text-white/30 text-xs">{user.email}</p>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() => toggleUserSelection(user)}
-                      variant={selectedUsers.some(u => u.id === user.id) ? "default" : "outline"}
-                      className={selectedUsers.some(u => u.id === user.id)
-                        ? "bg-indigo-600 hover:bg-indigo-700 text-white border-0 shadow-[0_0_15px_rgba(79,70,229,0.3)]"
-                        : "border-white/10 text-white/60 hover:text-white hover:bg-white/10 hover:border-white/30"}
-                    >
-                      {selectedUsers.some(u => u.id === user.id) ? "Selected" : "Select"}
-                    </Button>
+                    {selectedUsers.some(u => u.id === user.id) ? (
+                      <CtaButton size="sm" onClick={() => toggleUserSelection(user)}>
+                        Selected
+                      </CtaButton>
+                    ) : (
+                      <OutlineButton size="sm" onClick={() => toggleUserSelection(user)}>
+                        Select
+                      </OutlineButton>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1740,14 +1783,14 @@ const TeamsPage = () => {
                       className="flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-3 py-1 animate-in fade-in"
                     >
                       <span className="text-indigo-300 text-xs font-medium">{user.username}</span>
-                      <Button
+                      <GhostButton
                         size="sm"
                         variant="ghost"
                         onClick={() => removeFromSelection(user.id)}
-                        className="text-indigo-400 hover:text-white p-0 h-4 w-4 rounded-full"
+                        className="p-0 h-4 w-4 rounded-full"
                       >
                         <X className="w-3 h-3" />
-                      </Button>
+                      </GhostButton>
                     </div>
                   ))}
                 </div>
@@ -1766,20 +1809,18 @@ const TeamsPage = () => {
             </div>
 
             <div className="flex justify-end space-x-2 pt-2">
-              <Button
+              <CancelButton
                 onClick={() => setShowInviteModal(false)}
-                variant="outline"
-                className="border-white/10 text-white/60 hover:text-white hover:bg-white/5"
               >
                 Cancel
-              </Button>
-              <Button
+              </CancelButton>
+              <CtaButton
                 onClick={sendInvites}
                 disabled={selectedUsers.length === 0}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)] disabled:opacity-50 disabled:shadow-none"
+                className="disabled:opacity-50"
               >
                 Send Invites ({selectedUsers.length})
-              </Button>
+              </CtaButton>
             </div>
           </div>
         </DialogContent>
@@ -1804,7 +1845,7 @@ const TeamsPage = () => {
                   onChange={(e) => setInviteSearch(e.target.value)}
                   className="bg-white/5 border-white/10 text-white flex-1 focus:border-indigo-500/50"
                 />
-                <Button onClick={async () => {
+                <CtaButton onClick={async () => {
                   if (!inviteSearch || !inviteSearch.includes('@') || !currentTeam?.id) return;
                   try {
                     setInvitingUserId('team');
@@ -1824,9 +1865,9 @@ const TeamsPage = () => {
                   } finally {
                     setInvitingUserId(null);
                   }
-                }} disabled={!!invitingUserId} className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)]">
+                }} disabled={!!invitingUserId}>
                   {invitingUserId ? 'Sending...' : 'Send'}
-                </Button>
+                </CtaButton>
               </div>
             </div>
             <div>
@@ -1841,12 +1882,12 @@ const TeamsPage = () => {
                         <span className="text-indigo-300 font-mono">{inv.invited_email || inv.invited_user_id?.slice(0, 8)}</span>
                         <span className="text-white/30 text-xs ml-2">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''}</span>
                       </div>
-                      <Button size="sm" variant="ghost" className="text-white/40 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0" onClick={async () => {
+                      <DangerButton size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={async () => {
                         await revokeTeamInvite(inv.id);
                         setTeamInvites(prev => prev.filter(i => i.id !== inv.id));
                       }}>
                         <Trash2 className="w-4 h-4" />
-                      </Button>
+                      </DangerButton>
                     </div>
                   ))}
                 </div>
@@ -1960,20 +2001,19 @@ const TeamsPage = () => {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button
-                variant="outline"
-                className="flex-1 border-white/10 text-white/60 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-[10px]"
+              <CancelButton
+                className="flex-1 h-12 rounded-xl text-[10px]"
                 onClick={() => setRosterModalOpen(false)}
               >
                 DISCARD
-              </Button>
-              <Button
+              </CancelButton>
+              <AccentButton
                 onClick={createRosterNow}
                 disabled={rosterSubmitting || !newRosterName || !newRosterGame}
-                className="flex-1 bg-white text-black hover:bg-white/90 h-12 rounded-xl font-heading font-bold tracking-widest text-[10px] shadow-[0_0_30px_rgba(255,255,255,0.1)] disabled:opacity-20 transition-all hover:scale-[1.02]"
+                className="flex-1 h-12 rounded-xl text-[10px] shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:scale-[1.02] disabled:opacity-20"
               >
                 {rosterSubmitting ? 'INITIALIZING...' : 'CREATE ROSTER'}
-              </Button>
+              </AccentButton>
             </div>
           </div>
         </DialogContent>
@@ -2122,10 +2162,10 @@ const TeamsPage = () => {
                             </div>
                             <div className="flex items-center gap-1 relative z-10 opacity-0 group-hover:opacity-100 transition-all">
                               {isCaptain && uid !== currentTeam?.owner_id && (
-                                <Button
+                                <GhostButton
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 w-8 p-0 text-white/20 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-full transition-all"
+                                  className="h-8 w-8 p-0 rounded-full"
                                   title="Transfer Captaincy"
                                   onClick={() => {
                                     setMemberToRemove(member as any);
@@ -2133,16 +2173,16 @@ const TeamsPage = () => {
                                   }}
                                 >
                                   <Shield className="w-4 h-4" />
-                                </Button>
+                                </GhostButton>
                               )}
-                              <Button
+                              <DangerButton
                                 size="sm"
                                 variant="ghost"
-                                className="h-8 w-8 p-0 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-all"
+                                className="h-8 w-8 p-0 rounded-full"
                                 onClick={() => handleRemoveFromRoster(uid)}
                               >
                                 <X className="w-4 h-4" />
-                              </Button>
+                              </DangerButton>
                             </div>
                           </motion.div>
                         );
@@ -2166,14 +2206,14 @@ const TeamsPage = () => {
                               </Avatar>
                               <span className="text-xs text-white/70">{member.username}</span>
                             </div>
-                            <Button
+                            <OutlineButton
                               size="sm"
                               variant="ghost"
-                              className="h-8 px-3 text-[10px] text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 uppercase tracking-widest"
+                              className="h-8 px-3 text-[10px] uppercase tracking-widest"
                               onClick={() => handleAddMemberToRoster(member.user_id)}
                             >
                               Add to Lineup
-                            </Button>
+                            </OutlineButton>
                           </div>
                         ))}
                     </div>
@@ -2193,9 +2233,9 @@ const TeamsPage = () => {
                     onChange={(e) => setInviteInput(e.target.value)}
                     className="bg-white/[0.03] border-white/10 text-white flex-1 focus:border-indigo-500/50 h-12 rounded-xl px-4"
                   />
-                  <Button size="icon" onClick={addInviteeByEmail} className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)] w-12 h-12 rounded-xl transition-all hover:scale-105 active:scale-95">
+                  <CtaButton size="icon" onClick={addInviteeByEmail} className="w-12 h-12 rounded-xl">
                     <Plus className="w-6 h-6" />
-                  </Button>
+                  </CtaButton>
                 </div>
 
                 {/* Typeahead suggestions */}
@@ -2252,14 +2292,14 @@ const TeamsPage = () => {
                       })()}
                     </span>
                   </p>
-                  <Button
+                  <CtaButton
                     size="sm"
                     onClick={sendBatchRosterInvites}
                     disabled={selectedInvitees.length === 0}
-                    className="bg-emerald-500/80 hover:bg-emerald-500 text-white px-6 h-9 rounded-full font-heading uppercase tracking-widest text-[10px] transition-all disabled:opacity-30"
+                    className="px-6 h-9 rounded-full font-heading uppercase tracking-widest text-[10px] disabled:opacity-30"
                   >
                     Send Invites ({selectedInvitees.length})
-                  </Button>
+                  </CtaButton>
                 </div>
               </div>
 
@@ -2275,14 +2315,14 @@ const TeamsPage = () => {
                           <span className="text-sm text-white/80 font-medium">{(inv as any).profiles?.username || inv.invited_email || inv.invited_user_id?.slice(0, 8)}</span>
                           <span className="text-[10px] text-white/20 uppercase tracking-tight">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''} at {inv.created_at ? new Date(inv.created_at).toLocaleTimeString() : ''}</span>
                         </div>
-                        <Button
+                        <DangerButton
                           size="sm"
                           variant="ghost"
-                          className="text-red-400/50 hover:text-red-400 hover:bg-red-500/10 rounded-full h-8 px-4 text-[10px] uppercase tracking-widest"
+                          className="rounded-full h-8 px-4 text-[10px] uppercase tracking-widest"
                           onClick={() => cancelRosterInvite(inv.id)}
                         >
                           Revoke
-                        </Button>
+                        </DangerButton>
                       </div>
                     ))}
                   </div>
@@ -2290,8 +2330,8 @@ const TeamsPage = () => {
               )}
 
               <div className="flex gap-3 pt-6">
-                <Button variant="outline" className="flex-1 border-white/10 text-white/60 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-xs" onClick={() => setManageRosterModalOpen(false)}>DISMISS</Button>
-                <Button onClick={saveManageRoster} className="flex-1 bg-white text-black hover:bg-white/90 h-12 rounded-xl font-heading font-bold tracking-widest text-xs shadow-xl transition-all hover:scale-[1.02]">SAVE CHANGES</Button>
+                <CancelButton className="flex-1 h-12 rounded-xl text-xs" onClick={() => setManageRosterModalOpen(false)}>DISMISS</CancelButton>
+                <AccentButton onClick={saveManageRoster} className="flex-1 h-12 rounded-xl text-xs shadow-xl transition-all hover:scale-[1.02]">SAVE CHANGES</AccentButton>
               </div>
             </div>
           )}
@@ -2311,7 +2351,7 @@ const TeamsPage = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3">
-            <AlertDialogCancel className="bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 h-11 rounded-xl px-6 transition-all">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-11 rounded-xl px-6">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRemoveMember}
               className="bg-red-600/80 hover:bg-red-600 text-white h-11 rounded-xl px-6 font-heading tracking-widest text-xs transition-all hover:scale-105"
@@ -2335,10 +2375,10 @@ const TeamsPage = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3">
-            <AlertDialogCancel className="bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 h-11 rounded-xl px-6 transition-all">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-11 rounded-xl px-6">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleTransferCaptaincy}
-              className="bg-white text-black hover:bg-white/90 h-11 rounded-xl px-6 font-heading font-bold tracking-widest text-xs transition-all hover:scale-105 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+              className="h-11 rounded-xl px-6 text-xs transition-all hover:scale-105"
             >
               TRANSFER CONTROL
             </AlertDialogAction>
@@ -2359,7 +2399,7 @@ const TeamsPage = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3">
-            <AlertDialogCancel className="bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 h-11 rounded-xl px-6 transition-all">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-11 rounded-xl px-6">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDisbandTeam}
               className="bg-red-600 hover:bg-red-500 text-white h-11 rounded-xl px-6 font-heading font-bold tracking-widest text-xs transition-all hover:scale-105 shadow-[0_0_30px_rgba(239,68,68,0.2)]"
@@ -2406,12 +2446,14 @@ const TeamsPage = () => {
                       </Badge>
                     </div>
                   </div>
-                  <Link
-                    to={selectedTournament.slug ? `/tournaments/${selectedTournament.slug}` : '#'}
-                    className="bg-white text-black hover:bg-white/90 px-6 py-3 rounded-xl font-heading font-bold tracking-widest text-xs transition-all hover:scale-105 shadow-xl"
+                  <AccentButton
+                    asChild
+                    className="px-6 py-3 rounded-xl font-heading tracking-widest text-xs hover:scale-105 shadow-xl"
                   >
-                    GO TO TOURNAMENT
-                  </Link>
+                    <Link to={selectedTournament.slug ? `/tournaments/${selectedTournament.slug}` : '#'}>
+                      GO TO TOURNAMENT
+                    </Link>
+                  </AccentButton>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-8">
@@ -2436,13 +2478,12 @@ const TeamsPage = () => {
               </div>
 
               <div className="p-8 border-t border-white/5 bg-white/[0.01]">
-                <Button
-                  variant="outline"
-                  className="w-full border-white/10 text-white/40 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-xs"
+                <CancelButton
+                  className="w-full h-12 rounded-xl font-heading tracking-widest text-xs"
                   onClick={() => setIsTournamentModalOpen(false)}
                 >
                   DISMISS
-                </Button>
+                </CancelButton>
               </div>
             </div>
           )}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Button } from "@/components/ui/button";
+import { AccentButton, CancelButton, CtaButton, OutlineButton } from "@/components/ui/app-buttons";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -326,7 +326,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <Button
+                <OutlineButton
                   onClick={() => {
                     if (userTeam) {
                       setEditName(userTeam.name);
@@ -335,12 +335,10 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                     }
                     setShowEditModal(true);
                   }}
-                  variant="outline"
-                  className="border-purple-500/50 text-purple-400 hover:bg-purple-500/20 backdrop-blur-xl"
                 >
                   <Settings className="mr-2 h-5 w-5" />
                   Edit Team
-                </Button>
+                </OutlineButton>
               </div>
             </div>
           </div>
@@ -485,8 +483,8 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setShowEditModal(false)} className="border-white/30 text-white hover:bg-white/10">Cancel</Button>
-                <Button onClick={async () => {
+                <CancelButton onClick={() => setShowEditModal(false)}>Cancel</CancelButton>
+                <AccentButton onClick={async () => {
                   if (!userTeam) return;
                   try {
                     await apiClient.put(`/api/teams/${userTeam.id}`, {
@@ -502,7 +500,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
                     console.error('Update team error', err);
                     toast({ title: 'Update failed', description: err.message || 'Could not update team', variant: 'destructive' });
                   }
-                }} className="bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider">Save Changes</Button>
+                }}>Save Changes</AccentButton>
               </div>
             </div>
           </DialogContent>
@@ -600,20 +598,16 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
 
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-3 pt-6 border-t border-white/20">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentStep(1)}
-                    className="border-gray-600/30 text-esports-secondary hover:bg-gray-800/50"
-                  >
+                  <CancelButton onClick={() => setCurrentStep(1)}>
                     Back
-                  </Button>
-                  <Button
+                  </CancelButton>
+                  <CtaButton
                     onClick={handleCreateTeam}
                     disabled={submitting || !teamName || !teamTag}
-                    className="btn-esports-blue px-8 py-3 rounded-lg font-semibold"
+                    className="px-8 py-3"
                   >
                     {submitting ? 'Creating Team...' : 'Create Team'}
-                  </Button>
+                  </CtaButton>
                 </div>
               </div>
             )}

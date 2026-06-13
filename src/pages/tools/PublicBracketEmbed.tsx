@@ -35,6 +35,14 @@ const PublicBracketEmbed = () => {
     );
   }
 
+  if (matches.length === 0) {
+    return (
+      <main className="flex h-dvh items-center justify-center bg-[#09090b] px-4 text-center text-sm text-zinc-400">
+        This bracket has no matches to embed yet.
+      </main>
+    );
+  }
+
   return (
     <main className="h-dvh w-full overflow-auto bg-[#09090b] p-2 sm:p-3">
       <div className="mb-2 px-1">
@@ -51,6 +59,7 @@ const PublicBracketEmbed = () => {
         cardHeight={86}
         roundGap={64}
         matchGap={18}
+        isSingleElimination={data.format !== "double_elimination"}
       />
     </main>
   );

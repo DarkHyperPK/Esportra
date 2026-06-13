@@ -298,7 +298,7 @@ const BRGameRoom: React.FC = () => {
       });
       clearEvidence();
     } catch (error) {
-      const message = getApiErrorMessage(error, 'Could not submit your report. Please try again.');
+      const message = getApiErrorMessage(error, { context: 'brEvidence' });
       if (message.includes('409') || message.toLowerCase().includes('already')) {
         await refetchEvidence();
         clearEvidence();

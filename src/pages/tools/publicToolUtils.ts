@@ -15,6 +15,16 @@ const asNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+const parseMaybeJson = (value: unknown): AnyRecord | undefined => {
+  if (!value) return undefined;
+  if (typeof value !== "string") return value as AnyRecord;
+  try {
+    return JSON.parse(value) as AnyRecord;
+  } catch {
+    return undefined;
+  }
+};
+
 export type PublicToolTeam = {
   id: string;
   name: string;
@@ -47,13 +57,9 @@ const resolveToolBracketPayloadSource = (raw: AnyRecord): AnyRecord => {
   const nested = pick<AnyRecord>(raw, "payload", "Payload");
   if (nested) return nested;
 
-  const graphJson = pick<string>(raw, "graph_json", "graphJson");
+  const graphJson = pick<string | AnyRecord>(raw, "graph_json", "graphJson", "GraphJson");
   if (graphJson) {
-    try {
-      return typeof graphJson === "string" ? JSON.parse(graphJson) : graphJson;
-    } catch {
-      return raw;
-    }
+    return parseMaybeJson(graphJson) ?? raw;
   }
 
   return raw;
@@ -78,6 +84,12 @@ export const normalizeToolBracketPayload = (raw: AnyRecord): PublicBracketPayloa
     name: String(pick(team, "name", "Name") ?? `Team ${index + 1}`),
     seed: asNumber(pick(team, "seed", "Seed"), index + 1),
   }));
+  const graphSource = pick(raw, "graph", "Graph", "graphJson", "graph_json", "GraphJson");
+  const graph = parseMaybeJson(graphSource) ?? (
+    Array.isArray(pick(raw, "nodes", "Nodes")) || Array.isArray(pick(raw, "edges", "Edges"))
+      ? raw
+      : { nodes: [], edges: [] }
+  );
 
   return {
     title: String(pick(raw, "title", "Title") ?? "Untitled bracket"),
@@ -85,7 +97,7 @@ export const normalizeToolBracketPayload = (raw: AnyRecord): PublicBracketPayloa
     bestOf: asNumber(pick(raw, "bestOf", "BestOf"), 1),
     bracketSize: asNumber(pick(raw, "bracketSize", "BracketSize"), Math.max(teams.length, 2)),
     teams,
-    graph: pick(raw, "graph", "Graph") ?? { nodes: [], edges: [] },
+    graph,
   };
 };
 
@@ -148,14 +160,19 @@ export const adaptPublicBracketPayload = (payload: PublicBracketPayload): Bracke
     const winnerId = pick<string>(node, "winnerId", "winner_id", "WinnerId");
     const bracketType = String(pick(node, "bracketType", "bracket_type", "BracketType") ?? "winners");
     const bracketSide = bracketType === "losers" ? "losers" : bracketType === "final" ? "final" : "winners";
+    const team1 = resolveNodeTeam(node, 1, teamsById);
+    const team2 = resolveNodeTeam(node, 2, teamsById);
+    const winner = winnerId
+      ? teamsById.get(String(winnerId)) ?? (team1?.id === winnerId ? team1 : team2?.id === winnerId ? team2 : null)
+      : null;
 
     return {
       id,
       round: asNumber(pick(node, "roundIndex", "round_index", "RoundIndex"), 0) + 1,
       matchNumber: asNumber(pick(node, "matchNumber", "match_number", "MatchNumber"), 0),
-      team1: team1Id ? teamsById.get(String(team1Id)) ?? null : null,
-      team2: team2Id ? teamsById.get(String(team2Id)) ?? null : null,
-      winner: winnerId ? teamsById.get(String(winnerId)) ?? null : null,
+      team1,
+      team2,
+      winner,
       score: null,
       team1_score: pick<number>(node, "team1Score", "team1_score", "Team1Score") ?? null,
       team2_score: pick<number>(node, "team2Score", "team2_score", "Team2Score") ?? null,
@@ -167,6 +184,25 @@ export const adaptPublicBracketPayload = (payload: PublicBracketPayload): Bracke
       loserNextMatchId: loserNextBySource.get(id) ?? null,
     };
   });
+};
+
+const resolveNodeTeam = (
+  node: AnyRecord,
+  slot: 1 | 2,
+  teamsById: Map<string, BracketTeam>,
+): BracketTeam | null => {
+  const id = pick<string>(node, `team${slot}Id`, `team${slot}_id`, `Team${slot}Id`);
+  const name = pick<string>(node, `team${slot}Name`, `team${slot}_name`, `Team${slot}Name`);
+  if (!id && !name) return null;
+
+  const existing = id ? teamsById.get(String(id)) : undefined;
+  if (existing) return existing;
+
+  return {
+    id: String(id ?? `slot-${slot}-${pick(node, "id", "Id") ?? "team"}`),
+    name: String(name ?? "TBD"),
+    seed: asNumber(pick(node, `team${slot}Seed`, `team${slot}_seed`, `Team${slot}Seed`), 0),
+  };
 };
 
 export const copyText = async (text: string) => {

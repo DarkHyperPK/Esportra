@@ -163,7 +163,7 @@ const RiotTest = () => {
     };
 
     return (
-        <div className="container mx-auto max-w-4xl space-y-8 py-10 pb-40">
+        <div className="mx-auto w-full max-w-[1280px] space-y-8 px-4 py-8 pb-40 sm:px-6 lg:px-8">
             <div className="space-y-2 text-center md:text-left">
                 <h1 className="text-4xl font-bold italic tracking-tight text-white">
                     RIOT<span className="text-rose-600">TRACKER</span> DEBUG
@@ -173,7 +173,7 @@ const RiotTest = () => {
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 <Card className="border-zinc-800 bg-zinc-900/50 backdrop-blur-xl">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-lg text-white">

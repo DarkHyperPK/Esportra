@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from "@/components/ui/button";
+import { CtaButton, DangerButton } from "@/components/ui/app-buttons";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { useTeamManagement, TeamInvite } from '@/hooks/useTeamManagement';
@@ -116,21 +116,20 @@ const TeamInvites = () => {
 
             {/* Action Buttons */}
             <div className="flex gap-3">
-              <Button
+              <CtaButton
                 onClick={() => acceptTeamInvite(invite.id)}
-                className="flex-1 bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider transition-all"
+                className="flex-1"
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
                 Accept
-              </Button>
-              <Button
+              </CtaButton>
+              <DangerButton
                 onClick={() => declineTeamInvite(invite.id)}
-                variant="outline"
-                className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/20 backdrop-blur-xl rounded-xl"
+                className="flex-1"
               >
                 <XCircle className="h-4 w-4 mr-2" />
                 Decline
-              </Button>
+              </DangerButton>
             </div>
           </div>
         ))}

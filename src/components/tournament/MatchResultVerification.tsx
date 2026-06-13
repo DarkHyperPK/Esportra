@@ -110,7 +110,7 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
     } catch (err: unknown) {
       toast({
         title: 'Dispute failed',
-        description: getApiErrorMessage(err, 'Could not file dispute. Please try again.'),
+        description: getApiErrorMessage(err, { context: 'dispute' }),
         variant: 'destructive',
       });
     }
