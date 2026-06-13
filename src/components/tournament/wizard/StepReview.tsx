@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { TournamentWizardData } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS, SEEDING_TYPE_LABELS } from '@/schemas/tournamentSchema';
 import { LAUNCH_STATE_LABELS } from '@/utils/tournamentVisibilityUtils';
-import { getEffectiveGameFeatures, getGameMode, getParticipantMode, isBattleRoyale, getBRConfig, gameHasBRMaps } from '@/utils/gameFeatures';
+import { getEffectiveGameFeatures, getGameMode, getParticipantMode, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 
 interface StepReviewProps {
     data: TournamentWizardData;
@@ -88,7 +88,6 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 { label: 'Tiebreaker', value: data.brTiebreaker === 'most_wins' ? 'Most Wins' : data.brTiebreaker === 'most_kills' ? 'Most Kills' : 'Best Placement' },
                 { label: 'Max Participants', value: data.maxTeams ? `${data.maxTeams} ${maxParticipantsUnit}` : 'Unlimited' },
                 { label: 'Default Lobby Size', value: `${data.brDefaultLobbySize} per lobby` },
-                ...(gameHasBRMaps(data.game) ? [{ label: 'Default Map Mode', value: data.brDefaultMapMode.replace('_', ' ') }] : []),
                 { label: 'Stages', value: 'Configure format and matches per lobby in Stages tab' },
             ] : [
                 { label: 'Total Stages', value: `${data.stages.length} stage(s)` },

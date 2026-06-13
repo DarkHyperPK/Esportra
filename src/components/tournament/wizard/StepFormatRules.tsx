@@ -9,7 +9,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
-import { Trophy, Users, Plus, Trash2, Layers, FileText, MapIcon } from 'lucide-react';
+import { Trophy, Users, Plus, Trash2, Layers, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import TournamentMapPoolSelector, { MapPoolSectionLabel } from './TournamentMapPoolSelector';
@@ -17,8 +17,7 @@ import TournamentMapPoolSelector, { MapPoolSectionLabel } from './TournamentMapP
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode, getGameModeGroups, getEffectiveGameFeatures, gameHasBRMaps } from '@/utils/gameFeatures';
-import type { BRMapMode } from '@/types/battleRoyale';
+import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode, getGameModeGroups, getEffectiveGameFeatures } from '@/utils/gameFeatures';
 import { deriveDefaultLobbyUnits } from '@/utils/brGameContext';
 
 /* ──────────────────────────────────────────────────────────────
@@ -532,32 +531,6 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                             })()}
                         </p>
                     </div>
-
-                    {/* Default map mode */}
-                    {gameHasBRMaps(data.game) && (
-                        <div className="space-y-3">
-                            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                <MapIcon className="w-4 h-4" />
-                                Default Map Mode
-                            </Label>
-                            <Select
-                                value={data.brDefaultMapMode}
-                                onValueChange={(v) => updateData({ brDefaultMapMode: v as BRMapMode })}
-                            >
-                                <SelectTrigger className="w-full font-bold tracking-tight">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="per_round">Organizer picks per round</SelectItem>
-                                    <SelectItem value="fixed_stage">One map per stage</SelectItem>
-                                    <SelectItem value="rotation">Auto-rotate map pool</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <p className="text-sm text-gray-400">
-                                How maps are chosen for rounds. Override per stage after creation.
-                            </p>
-                        </div>
-                    )}
 
                 </>
             ) : (

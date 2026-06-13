@@ -101,19 +101,19 @@ export function TournamentInvitePrompt() {
 
   return (
     <Dialog open={shouldShow} onOpenChange={(open) => { if (!open) void handleDismiss(); }}>
-      <DialogContent className="max-w-md border-white/10 bg-[#0a0a0c] p-0 overflow-hidden">
+      <DialogContent className="max-w-md gap-0 overflow-hidden border-white/10 bg-[#0a0a0c] p-0 sm:max-w-md [&>button]:z-20 [&>button]:border-white/20 [&>button]:bg-black/50 [&>button]:text-white [&>button]:backdrop-blur-sm">
         {bannerUrl ? (
-          <div className="relative h-32 w-full overflow-hidden">
+          <div className="relative aspect-[16/9] w-full overflow-hidden bg-black">
             <img
               src={bannerUrl}
               alt=""
-              className="h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover object-top"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/40 to-transparent" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/30 to-black/10" />
           </div>
         ) : null}
 
-        <div className="px-6 pb-6 pt-5">
+        <div className={bannerUrl ? 'px-6 pb-6 pt-4' : 'px-6 pb-6 pt-5'}>
           <DialogHeader className="space-y-3 text-left">
             <div className="flex items-center gap-2 text-rose-400">
               <Ticket className="h-4 w-4" />

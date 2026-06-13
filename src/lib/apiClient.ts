@@ -108,7 +108,7 @@ function buildApiErrorMessage(
 
 export function getApiErrorMessage(
   error: unknown,
-  fallback = 'Something went wrong. Please try again.',
+  fallback = 'We couldn\'t complete that request. Please refresh and try again.',
 ): string {
   if (error instanceof ApiError) {
     const body = readApiErrorBody(error.body);
