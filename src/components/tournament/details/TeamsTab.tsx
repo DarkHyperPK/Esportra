@@ -12,11 +12,13 @@ import {
 interface TeamsTabProps {
     participants: any[]; // enriched participants
     isSolo?: boolean;
+    game?: string;
+    gameMode?: string | null;
 }
 
 const TEAMS_PAGE_SIZE = 24;
 
-export const TeamsTab: React.FC<TeamsTabProps> = ({ participants, isSolo = false }) => {
+export const TeamsTab: React.FC<TeamsTabProps> = ({ participants, isSolo = false, game, gameMode }) => {
     const [page, setPage] = useState(1);
     const visibleParticipants = useMemo(
         () => participants.filter((participant) => {
@@ -65,6 +67,8 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({ participants, isSolo = false
                                 key={participant.id}
                                 participant={participant}
                                 isSolo={isSolo}
+                                game={game}
+                                gameMode={gameMode}
                                 renderStatusBadge={(p) => (
                                     <div className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border ${p.status === 'checked_in' || p.checked_in_at
                                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'

@@ -13,6 +13,8 @@ interface EntityAvatarProps {
     entityId?: string;
     /** Entity type — controls the DiceBear style. */
     type?: EntityType;
+    /** `circle` clips to a round frame; `natural` shows the image without a shape container. */
+    shape?: 'circle' | 'natural';
     /** Tailwind size classes (e.g. "w-10 h-10"). Defaults to "w-10 h-10". */
     size?: string;
     /** Additional className for the wrapper. */
@@ -64,12 +66,14 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({
     name,
     entityId,
     type = 'team',
+    shape = 'circle',
     size = 'w-10 h-10',
     className,
     imgClassName,
     fallbackClassName,
 }) => {
     const [imgError, setImgError] = useState(false);
+    const isNatural = shape === 'natural';
 
     // Reset error state when src changes (e.g. after new upload)
     useEffect(() => {
@@ -90,12 +94,24 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({
     return (
         <div
             className={cn(
-                'relative rounded-full overflow-hidden bg-zinc-900 flex-shrink-0 flex items-center justify-center',
+                'relative flex-shrink-0 flex items-center justify-center',
+                isNatural ? 'bg-transparent' : 'rounded-full overflow-hidden bg-zinc-900',
                 size,
                 className
             )}
         >
             {showFallback ? (
+                isNatural ? (
+                    <span
+                        aria-label={name || 'Avatar'}
+                        className={cn(
+                            'select-none text-2xl font-bold uppercase tracking-wider text-zinc-400',
+                            fallbackClassName
+                        )}
+                    >
+                        {initials}
+                    </span>
+                ) : (
                 <div
                     aria-label={name || 'Avatar'}
                     className={cn(
@@ -107,11 +123,17 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({
                 >
                     <span className="select-none">{initials}</span>
                 </div>
+                )
             ) : (
                 <img
                     src={resolvedSrc}
                     alt={name || 'Avatar'}
-                    className={cn('w-full h-full object-cover', imgClassName)}
+                    className={cn(
+                        isNatural
+                            ? 'max-h-full max-w-full h-auto w-auto object-contain'
+                            : 'w-full h-full object-cover',
+                        imgClassName
+                    )}
                     loading="lazy"
                     decoding="async"
                     onError={() => setImgError(true)}

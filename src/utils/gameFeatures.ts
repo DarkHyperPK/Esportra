@@ -295,6 +295,65 @@ export function gameSupportsRiotAccountLink(gameName: string, modeKey?: string |
   return getEffectiveGameFeatures(gameName, modeKey).assistedReporting;
 }
 
+/**
+ * Solo participant display: Riot ID for Riot esports titles (e.g. Valorant),
+ * Esportra username for BR games (PUBG and other BR solo modes) even when a Riot tag exists.
+ */
+export function preferSoloRiotTagDisplay(gameName: string, modeKey?: string | null): boolean {
+  const features = getEffectiveGameFeatures(gameName, modeKey);
+  if (!features.assistedReporting) return false;
+  if (isBattleRoyale(gameName)) return false;
+  const mode = getGameMode(gameName, modeKey);
+  if (mode?.features?.isBattleRoyale) return false;
+  return true;
+}
+
+/** Esportra account name for solo participant cards (never Riot ID). */
+export function resolveSoloEsportraDisplayName(
+  participant: {
+    solo_username?: string | null;
+    display_name?: string | null;
+    team_name?: string | null;
+    gamer_tag?: string | null;
+    user?: { username?: string | null } | null;
+  },
+): string {
+  return (
+    participant.solo_username ||
+    participant.user?.username ||
+    participant.display_name ||
+    participant.gamer_tag ||
+    participant.team_name ||
+    'Unknown Player'
+  );
+}
+
+/** Resolve the primary label for a solo participant on public/organizer cards. */
+export function resolveSoloParticipantDisplayName(
+  participant: {
+    solo_riot_tag?: string | null;
+    solo_username?: string | null;
+    display_name?: string | null;
+    team_name?: string | null;
+    gamer_tag?: string | null;
+    user?: { riot_tag?: string | null; username?: string | null; steam_tag?: string | null } | null;
+  },
+  gameName: string,
+  modeKey?: string | null,
+): string {
+  const preferRiotTag = preferSoloRiotTagDisplay(gameName, modeKey);
+  const riotTag = participant.solo_riot_tag || participant.user?.riot_tag;
+  const username =
+    participant.solo_username ||
+    participant.user?.username ||
+    participant.display_name ||
+    participant.gamer_tag ||
+    participant.team_name;
+
+  if (preferRiotTag && riotTag) return riotTag;
+  return username || participant.user?.steam_tag || 'Unknown Player';
+}
+
 /** Tournament has assisted reporting enabled and catalog supports it. */
 export function isAssistedMatchReportingEnabled(
   gameName: string,
