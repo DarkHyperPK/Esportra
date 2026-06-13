@@ -94,7 +94,12 @@ import {
   getInviteExpiryDaysFromTournament,
   getReservedInviteSlotsFromTournament,
 } from '@/utils/tournamentInviteUtils';
-import { launchStateToUpdatePayload, makePrivateUpdatePayload } from '@/utils/tournamentVisibilityUtils';
+import { resolveBRRegisteredUnitCount } from '@/utils/brStageFlow';
+import {
+  countCheckedInParticipants,
+  countPendingCheckInParticipants,
+  isActiveRegistration,
+} from '@/utils/brCheckIn';
 import { StageGuidelineModal } from '@/components/organizer/wizard/StageGuidelineModal';
 import { CommandButton, CommandTabButton } from '@/components/management/CommandSurface';
 
@@ -388,6 +393,10 @@ const TournamentDashboard = () => {
   const openRegistrationSlots = maxTeams > 0
     ? Math.max(maxTeams - effectiveReservedInviteSlots, 0)
     : null;
+  const brRegisteredUnitCount = useMemo(
+    () => resolveBRRegisteredUnitCount(participants, maxTeams, !!tournament?.check_in_required),
+    [participants, maxTeams, tournament?.check_in_required],
+  );
 
   const { clear: clearMockForPublish } = useMockTournament({
     tournamentId: tournament?.id ?? '',
@@ -417,7 +426,7 @@ const TournamentDashboard = () => {
     } catch (err: unknown) {
       toast({
         title: 'Publish failed',
-        description: getApiErrorMessage(err, 'We could not publish this tournament. Check required settings and try again.'),
+        description: getApiErrorMessage(err, { context: 'tournamentPublish' }),
         variant: 'destructive',
       });
     } finally {
@@ -449,7 +458,7 @@ const TournamentDashboard = () => {
     } catch (err: unknown) {
       toast({
         title: 'Update failed',
-        description: getApiErrorMessage(err, 'We could not make this tournament private. Try again.'),
+        description: getApiErrorMessage(err, { context: 'tournamentPrivate' }),
         variant: 'destructive',
       });
     }
@@ -971,24 +980,29 @@ const TournamentDashboard = () => {
     ? new Date(tournament.check_in_deadline).getTime()
     : null;
 
-  const teamParticipants = useMemo(
-    () => participants.filter((p) => p.participant_type === 'team'),
-    [participants]
+  const checkInEligibleParticipants = useMemo(
+    () => participants.filter((participant) => isActiveRegistration(participant.status)),
+    [participants],
   );
-  const checkedInTeams = useMemo(
-    () => teamParticipants.filter((p) => Boolean(p.checked_in_at)),
-    [teamParticipants]
+  const checkedInParticipants = useMemo(
+    () => countCheckedInParticipants(participants),
+    [participants],
   );
-  const pendingTeams = Math.max(0, teamParticipants.length - checkedInTeams.length);
-  const checkInProgress = teamParticipants.length
-    ? Math.round((checkedInTeams.length / teamParticipants.length) * 100)
+  const pendingCheckInParticipants = useMemo(
+    () => countPendingCheckInParticipants(participants),
+    [participants],
+  );
+  const checkInProgress = checkInEligibleParticipants.length
+    ? Math.round((checkedInParticipants / checkInEligibleParticipants.length) * 100)
     : 0;
   const isCheckInClosed = effectiveDeadlineMs ? now > effectiveDeadlineMs : false;
   const checkInCountdown =
     effectiveDeadlineMs && !isCheckInClosed
       ? formatCountdown(effectiveDeadlineMs - now)
       : null;
-  const showCheckInSummary = Boolean((effectiveCheckInRequired || canActAsOwner) && teamParticipants.length > 0);
+  const showCheckInSummary = Boolean(
+    (effectiveCheckInRequired || canActAsOwner) && checkInEligibleParticipants.length > 0,
+  );
 
   const staffPermissionSummary =
     staffPermissions.map((perm) => STAFF_PERMISSION_LABELS[perm] || perm).join(', ') || 'Limited access';
@@ -1739,6 +1753,7 @@ const TournamentDashboard = () => {
                         game={tournament.game || ''}
                         tournamentSettings={brSettings as Record<string, unknown> | null}
                         scoringPreset={brScoringPreset}
+                        checkInRequired={!!tournament.check_in_required}
                         onUpdate={() => refetchDashboard()}
                       />
                     ) : (
@@ -1761,7 +1776,7 @@ const TournamentDashboard = () => {
                       <BRScheduleTab
                         tournamentId={tournament.id}
                         stages={stages}
-                        registeredUnitCount={tournament.max_teams ?? tournament.max_participants ?? 0}
+                        registeredUnitCount={brRegisteredUnitCount}
                         onUpdate={() => refetchDashboard()}
                       />
                     ) : (
@@ -1840,7 +1855,9 @@ const TournamentDashboard = () => {
                       tournamentSettings={brSettings as Record<string, unknown> | null}
                       teamSize={tournament.team_size ?? 1}
                       maxTeams={tournament.max_teams ?? tournament.max_participants ?? null}
+                      participants={participants}
                       scoringPreset={brScoringPreset}
+                      checkInRequired={!!tournament.check_in_required}
                     />
                   </TabTransition>
                 </TabsContent>
@@ -1896,15 +1913,15 @@ const TournamentDashboard = () => {
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-0">
                             <div className="flex flex-col sm:border-r border-white/10 px-4 gap-1">
                               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Participants</span>
-                              <span className="text-3xl font-black text-white tracking-tight">{participants.filter(p => p.status !== 'rejected').length}</span>
+                              <span className="text-3xl font-black text-white tracking-tight">{checkInEligibleParticipants.length}</span>
                             </div>
                             <div className="flex flex-col sm:border-r border-white/10 px-4 gap-1">
                               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Checked In</span>
-                              <span className="text-3xl font-black text-rose-400 tracking-tight">{participants.filter(p => p.status === 'checked_in').length}</span>
+                              <span className="text-3xl font-black text-rose-400 tracking-tight">{checkedInParticipants}</span>
                             </div>
                             <div className="flex flex-col px-4 gap-1">
                               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Pending</span>
-                              <span className="text-3xl font-black text-amber-400 tracking-tight">{Math.max(0, participants.filter(p => p.status === 'approved' || p.status === 'pending').length)}</span>
+                              <span className="text-3xl font-black text-amber-400 tracking-tight">{pendingCheckInParticipants}</span>
                             </div>
                           </div>
                           <div>
@@ -1938,11 +1955,15 @@ const TournamentDashboard = () => {
                               </div>
                               <Button
                                 onClick={handleRemoveUncheckedParticipants}
-                                disabled={pendingTeams <= 0 || removingUnchecked}
+                                disabled={pendingCheckInParticipants <= 0 || removingUnchecked}
                                 className="bg-red-600 hover:bg-red-500 text-white w-full sm:w-auto shadow-lg shadow-red-900/20"
                                 size="sm"
                               >
-                                {removingUnchecked ? 'Clearing...' : 'Remove unchecked teams'}
+                                {removingUnchecked
+                                  ? 'Clearing...'
+                                  : registrationParticipantMode === 'solo'
+                                    ? 'Remove unchecked players'
+                                    : 'Remove unchecked teams'}
                               </Button>
                             </div>
                           )}
