@@ -503,7 +503,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                 />
                 <p className="mt-2 text-[10px] leading-relaxed text-zinc-600">
                   {round.status === 'active'
-                    ? 'Change the code before the next game batch — updates instantly in Match Room when you save.'
+                    ? 'Updates instantly in Match Room when you save — including mid-lobby code changes.'
                     : 'The code becomes visible to players only when the lobby is live.'}
                 </p>
               </div>

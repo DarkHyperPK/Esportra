@@ -132,6 +132,7 @@ export function useBRRealtime({
     const handleLobbyUpdated = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
       invalidateLobbies();
+      invalidateGames(payload.lobbyId);
       invalidatePlayerContext();
       invalidateLeaderboard();
       invalidateStageCompletion();
@@ -140,6 +141,7 @@ export function useBRRealtime({
     const handleLobbyReset = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
       invalidateLobbies();
+      invalidateGames(payload.lobbyId);
       invalidateLobbyResults(payload.lobbyId);
       invalidateLobbyEvidence(payload.lobbyId);
       invalidateLeaderboard();
