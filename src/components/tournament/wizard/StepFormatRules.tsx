@@ -225,6 +225,17 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                 </p>
             </div>
 
+            {Object.keys(errors).length > 0 && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
+                    <p className="text-sm font-medium text-red-400">Fix these before continuing:</p>
+                    <ul className="mt-2 space-y-1">
+                        {Object.entries(errors).map(([key, value]) => (
+                            <li key={key} className="text-sm text-red-300">• {value}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
             {/* ── Battle Royale Format ─────────────────────────────────── */}
             {isBR && brConfig ? (
                 <>
@@ -480,7 +491,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                     value={String(data.maxTeams)}
                                     onValueChange={(value) => updateData({ maxTeams: parseInt(value) })}
                                 >
-                                    <SelectTrigger className="w-full font-bold tracking-tight">
+                                    <SelectTrigger className={cn('w-full font-bold tracking-tight', errors.maxTeams && 'border-red-500')}>
                                         <SelectValue placeholder={`Select max ${unitPlural}`} />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -493,44 +504,15 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 </Select>
                                 <p className="text-sm text-gray-400">
                                     {brConfig.playersPerLobby
-                                        ? `Each lobby fits up to ${unitsPerLobby} ${unitPlural}. ${ts > 1 ? `Each ${unitSingular} has ${ts} players.` : ''}`
+                                        ? `Each lobby fits up to ${unitsPerLobby} ${unitPlural}. ${ts > 1 ? `Each ${unitSingular} has ${ts} players.` : ''} Lobby capacity is set per stage after creation.`
                                         : `Set the maximum number of ${unitPlural}.`}
                                 </p>
+                                {errors.maxTeams && (
+                                    <p className="text-sm text-red-500">{errors.maxTeams}</p>
+                                )}
                             </div>
                         );
                     })()}
-
-                    {/* Default lobby size */}
-                    <div className="space-y-3">
-                        <div className="w-full h-px bg-white/5 my-6" />
-                        <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <Layers className="w-4 h-4" />
-                            Default Lobby Size
-                        </Label>
-                        <Input
-                            type="number"
-                            min={1}
-                            max={200}
-                            value={data.brDefaultLobbySize}
-                            onChange={(e) => updateData({ brDefaultLobbySize: Math.max(1, parseInt(e.target.value) || 1) })}
-                            className="[color-scheme:dark]"
-                        />
-                        <p className="text-sm text-gray-400">
-                            {(() => {
-                                const ts = data.teamSize ?? 1;
-                                const playersCap = brConfig?.playersPerLobby ?? 100;
-                                const suggested = deriveDefaultLobbyUnits(ts, playersCap);
-                                const unit =
-                                    ts === 1 ? 'players' : ts === 2 ? 'duos' : ts === 3 ? 'trios' : 'squads';
-                                return (
-                                    <>
-                                        Suggested for this mode: <span className="text-zinc-300">{suggested} {unit}</span>{' '}
-                                        ({playersCap} players per lobby). Override here or per stage after creation.
-                                    </>
-                                );
-                            })()}
-                        </p>
-                    </div>
 
                 </>
             ) : (

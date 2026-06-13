@@ -233,7 +233,25 @@ container: {
 
 ### Buttons
 
-**Gradient Button Classes**
+**App button catalog (preferred)**
+
+Import from `@/components/ui/app-buttons` instead of styling raw `Button` with `bg-white` / `hover:bg-white*`. Partial color overrides leave orphan hover classes (e.g. white text on white background).
+
+| Component | Use for |
+|-----------|---------|
+| `CtaButton` | Primary actions — register, save, join, confirm |
+| `CancelButton` | Dialog cancel, dismiss, back |
+| `OutlineButton` | Tertiary / bordered actions |
+| `GhostButton` | Toolbar, inline low-emphasis |
+| `DangerButton` | Delete, withdraw, revoke |
+| `AccentButton` | Rare high-contrast white emphasis |
+| `SettingsButton` | Secondary panel actions |
+
+Use `className` only for layout (`w-full`, `h-12`, spacing). Variants live in `button-variants.ts`.
+
+Organizer wizard shell uses `CommandButton` from `CommandSurface.tsx` — separate from this catalog.
+
+**Legacy gradient button classes**
 | Class | Gradient |
 |-------|---------|
 | `.btn-esports-blue` | `#3b82f6` → `#2563eb` |
