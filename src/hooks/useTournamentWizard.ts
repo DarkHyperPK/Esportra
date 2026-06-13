@@ -18,6 +18,7 @@ import { apiClient } from '@/lib/apiClient';
 import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { validateStep } from '@/schemas/tournamentSchema';
+import { firstWizardErrorStep, summarizeWizardErrors } from '@/utils/wizardValidation';
 import { getGameByName, getDefaultGameMode, getDefaultTeamSize, isBattleRoyale, getBRConfig, getEffectiveGameFeatures } from '@/utils/gameFeatures';
 import { catalogGameHasBRMaps } from '@/utils/gameCatalogBr';
 import { deriveDefaultLobbyUnits } from '@/utils/brGameContext';
@@ -161,12 +162,35 @@ export const useTournamentWizard = (
     }, [currentStep, data]);
 
     const nextStep = useCallback(() => {
-        if (validateCurrentStep()) {
-            setCurrentStep(prev => Math.min(prev + 1, WIZARD_STEPS.length));
-        } else {
-            toast({ title: 'Validation Error', description: 'Please fix the errors before proceeding.', variant: 'destructive' });
+        const result = validateStep(currentStep, data);
+        if (currentStep === 2 && data.game) {
+            const modeFeatures = getEffectiveGameFeatures(data.game, data.gameMode);
+            const mapVetoEnabled = modeFeatures.mapVeto && (data.mapVetoEnabled ?? true);
+            if (modeFeatures.mapPool && mapVetoEnabled) {
+                const requiredCount = modeFeatures.mapPoolSize ?? 7;
+                const selectedCount = data.mapPoolIds?.length ?? 0;
+                if (selectedCount !== requiredCount) {
+                    result.valid = false;
+                    result.errors.mapPoolIds = `Select exactly ${requiredCount} maps for the veto pool (${selectedCount} selected).`;
+                }
+            }
         }
-    }, [validateCurrentStep, toast, setCurrentStep]);
+
+        if (result.valid) {
+            setErrors({});
+            setStepValidation(prev => ({ ...prev, [currentStep]: true }));
+            setCurrentStep(prev => Math.min(prev + 1, WIZARD_STEPS.length));
+            return;
+        }
+
+        setErrors(result.errors);
+        setStepValidation(prev => ({ ...prev, [currentStep]: false }));
+        toast({
+            title: 'Fix these items to continue',
+            description: summarizeWizardErrors(result.errors),
+            variant: 'destructive',
+        });
+    }, [currentStep, data, toast, setCurrentStep]);
 
     const prevStep = useCallback(() => {
         setCurrentStep(prev => Math.max(prev - 1, 1));
@@ -193,7 +217,13 @@ export const useTournamentWizard = (
         const allValid = validateStep(6, data);
         if (!allValid.valid) {
             setErrors(allValid.errors);
-            toast({ title: 'Validation Error', description: 'Please fix the errors before submitting.', variant: 'destructive' });
+            const errorStep = firstWizardErrorStep(allValid.errors);
+            if (errorStep < 6) setCurrentStep(errorStep);
+            toast({
+                title: 'Fix these items before creating',
+                description: summarizeWizardErrors(allValid.errors),
+                variant: 'destructive',
+            });
             return;
         }
 
@@ -224,6 +254,9 @@ export const useTournamentWizard = (
             const registrationCloses = data.registrationCloses
                 ? new Date(data.registrationCloses)
                 : new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000);
+            const registrationOpens = data.registrationOpens
+                ? new Date(data.registrationOpens)
+                : null;
             const resolvedGameMode = data.gameMode || getDefaultGameMode(data.game)?.value || undefined;
             const modeFeatures = getEffectiveGameFeatures(data.game, resolvedGameMode);
 
@@ -265,6 +298,7 @@ export const useTournamentWizard = (
                         mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
                         reservedInviteSlots: data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
                         inviteExpiryDays: data.inviteExpiryDays || 7,
+                        ...(registrationOpens ? { registrationOpensAt: registrationOpens.toISOString() } : {}),
                         ...(data.tournamentType === 'battle_royale' ? {
                             brScoringPreset: data.brScoringPreset,
                             brCustomScoring: data.brCustomScoring,
@@ -362,6 +396,7 @@ export const useTournamentWizard = (
                         mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
                         reservedInviteSlots: data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
                         inviteExpiryDays: data.inviteExpiryDays || 7,
+                        ...(registrationOpens ? { registrationOpensAt: registrationOpens.toISOString() } : {}),
                         // BR-specific settings
                         ...(data.tournamentType === 'battle_royale' ? {
                             brScoringPreset: data.brScoringPreset,

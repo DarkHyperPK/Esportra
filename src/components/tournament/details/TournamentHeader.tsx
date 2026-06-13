@@ -6,6 +6,12 @@ import { JackButton } from '@/components/ui/JackButton';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Countdown } from '@/components/ui/Countdown';
+import {
+  deriveTournamentPhase,
+  getDerivedPhaseColorClass,
+  getDerivedPhaseLabel,
+  getRegistrationOpensFromSettings,
+} from '@/utils/tournamentLifecycle';
 import { isBattleRoyale } from '@/utils/gameFeatures';
 import { useRawgGame } from '@/hooks/useRawgGame';
 
@@ -48,6 +54,14 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
     awaitingApproval = false
 }) => {
     const navigate = useNavigate();
+    const derivedPhase = deriveTournamentPhase({
+        status: tournament.status,
+        registrationOpens: getRegistrationOpensFromSettings(tournament.settings),
+        registrationDeadline: tournament.registration_deadline,
+        startDate: tournament.start_date,
+    });
+    const phaseLabel = getDerivedPhaseLabel(derivedPhase);
+    const phaseColorClass = getDerivedPhaseColorClass(derivedPhase);
     const gameData = useRawgGame(tournament.game || '', {
         enabled: !tournament.image_url,
         skipRawg: true,
@@ -131,14 +145,9 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                 )}
                                 <span className={cn(
                                     "px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs font-mono tracking-[0.2em] uppercase backdrop-blur-md",
-                                    tournament.status === 'published' ? "text-blue-400" :
-                                        tournament.status === 'open' ? "text-emerald-400" :
-                                            tournament.status === 'closed' ? "text-amber-400" :
-                                                tournament.status === 'ongoing' ? "text-red-400" :
-                                                    tournament.status === 'completed' ? "text-zinc-400" :
-                                                        "text-gray-400"
+                                    phaseColorClass
                                 )}>
-                                    STATUS: {tournament.status}
+                                    STATUS: {phaseLabel}
                                 </span>
                             </div>
 
@@ -202,9 +211,11 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                         {!isRegistered && !hasMissedCheckIn && (showOpenRegistration || showInviteRedemption) && (
                                             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                                                 {showOpenRegistration && (
-                                                    <Button onClick={onRegister} className="h-14 md:h-16 px-8 md:px-12 bg-green-600 hover:bg-green-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(22,163,74,0.3)]">
-                                                        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none" />
-                                                        <span className="relative z-10 flex items-center gap-2">INITIATE REGISTRATION <ChevronRight className="w-5 h-5" /></span>
+                                                    <Button
+                                                        onClick={onRegister}
+                                                        className="h-14 md:h-16 px-8 md:px-12 border-green-600 bg-green-600 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none shadow-[0_0_40px_rgba(22,163,74,0.3)] hover:border-green-600 hover:bg-green-600 hover:text-white focus-visible:ring-green-500/70 active:scale-[0.98] active:bg-green-700 active:border-green-700 transition-transform"
+                                                    >
+                                                        <span className="flex items-center gap-2">INITIATE REGISTRATION <ChevronRight className="w-5 h-5" /></span>
                                                     </Button>
                                                 )}
                                                 {showInviteRedemption && onRedeemInvite && (

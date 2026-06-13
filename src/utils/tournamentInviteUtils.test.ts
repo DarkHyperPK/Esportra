@@ -40,14 +40,31 @@ describe('tournamentInviteUtils', () => {
   });
 
   describe('isTournamentRegistrationOpen', () => {
-    it('accepts published and open statuses', () => {
-      expect(isTournamentRegistrationOpen('published')).toBe(true);
-      expect(isTournamentRegistrationOpen('open')).toBe(true);
+    const futureDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const futureStart = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+
+    it('accepts published and open statuses within the registration window', () => {
+      expect(isTournamentRegistrationOpen('published', {
+        registrationDeadline: futureDeadline,
+        startDate: futureStart,
+      })).toBe(true);
+      expect(isTournamentRegistrationOpen('open', {
+        registrationDeadline: futureDeadline,
+        startDate: futureStart,
+      })).toBe(true);
     });
 
     it('rejects closed or draft statuses', () => {
       expect(isTournamentRegistrationOpen('draft')).toBe(false);
       expect(isTournamentRegistrationOpen('completed')).toBe(false);
+    });
+
+    it('rejects when registration deadline has passed', () => {
+      const pastDeadline = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      expect(isTournamentRegistrationOpen('open', {
+        registrationDeadline: pastDeadline,
+        startDate: futureStart,
+      })).toBe(false);
     });
   });
 
@@ -67,6 +84,8 @@ describe('tournamentInviteUtils', () => {
       registrationType: 'open' as const,
       reservedSlots: 0,
       isPublic: true,
+      registrationDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      startDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
     };
 
     it('shows for invite-only tournaments when registration is open', () => {
@@ -100,6 +119,8 @@ describe('tournamentInviteUtils', () => {
       reservedSlots: 0,
       isPublic: true,
       maxTeams: 16,
+      registrationDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      startDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
     };
 
     it('shows for public open-registration tournaments', () => {

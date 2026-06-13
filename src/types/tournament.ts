@@ -40,6 +40,7 @@ export interface BaseTournament {
     slug?: string;
     check_in_required?: boolean;
     check_in_deadline?: string | null;
+    registration_deadline?: string | null;
     auto_remove_unchecked?: boolean;
     settings?: any;
     rules?: string | null;

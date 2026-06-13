@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import slugify from 'slugify';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { apiClient, ApiError } from '@/lib/apiClient';
+import { apiClient, ApiError, getApiErrorMessage } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import {
   TournamentHeader
@@ -14,7 +14,7 @@ import { StagesTab } from '@/components/tournament/details/StagesTab';
 import { RulesTab } from '@/components/tournament/details/RulesTab';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import { usePublicBracketData } from '@/hooks/usePublicBracketData';
-import { Button } from '@/components/ui/button';
+import { CancelButton, CtaButton, OutlineButton } from '@/components/ui/app-buttons';
 import { Trophy, Swords, EyeOff, LogIn } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -62,6 +62,7 @@ import {
   getOpenRegistrationCapacity,
   getReservedInviteSlotsFromTournament,
 } from '@/utils/tournamentInviteUtils';
+import { getRegistrationOpensFromSettings } from '@/utils/tournamentLifecycle';
 
 const TournamentDetails = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -149,6 +150,9 @@ const TournamentDetails = () => {
     maxTeams: tournamentMaxTeams,
     isPublic: tournamentIsPublic,
     status: tournament?.status,
+    registrationOpens: getRegistrationOpensFromSettings(tournament?.settings),
+    registrationDeadline: tournament?.registration_deadline,
+    startDate: tournament?.start_date ?? undefined,
   }), [
     isOrganizer,
     isRegistered,
@@ -157,6 +161,9 @@ const TournamentDetails = () => {
     tournamentMaxTeams,
     tournamentIsPublic,
     tournament?.status,
+    tournament?.settings,
+    tournament?.registration_deadline,
+    tournament?.start_date,
   ]);
 
   const showInviteRedemption = canShowInviteRedemption(registrationVisibilityInput);
@@ -288,6 +295,8 @@ const TournamentDetails = () => {
         game: t.game,
         date: t.start_date ? formatDate(t.start_date) : '',
         time: t.start_date ? formatTime(t.start_date) : '',
+        start_date: t.start_date ?? undefined,
+        registration_deadline: t.registration_deadline ?? null,
         venue: t.venue_name || '',
         is_online: !t.venue_id,
         is_public: t.is_public ?? t.isPublic ?? true,
@@ -520,7 +529,7 @@ const TournamentDetails = () => {
       console.error('Error withdrawing from tournament:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to withdraw from tournament. Please try again.',
+        description: getApiErrorMessage(error, { context: 'tournamentWithdraw' }),
         variant: 'destructive',
       });
     }
@@ -605,20 +614,17 @@ const TournamentDetails = () => {
             )}
             <div className="flex flex-col sm:flex-row gap-3 mt-6">
               {accessState === 'sign_in_required' && (
-                <Button
-                  className="bg-rose-500 hover:bg-rose-600"
+                <CtaButton
                   onClick={() => navigate(`/auth/signin?returnTo=${returnTo}`)}
                 >
                   Sign in
-                </Button>
+                </CtaButton>
               )}
-              <Button
-                variant="outline"
-                className="border-white/10"
+              <OutlineButton
                 onClick={() => navigate('/tournaments')}
               >
                 Browse tournaments
-              </Button>
+              </OutlineButton>
             </div>
           </div>
         </div>
@@ -672,22 +678,11 @@ const TournamentDetails = () => {
         awaitingApproval={awaitingApproval}
       />
 
-      {tournamentReservedInviteSlots > 0 && tournamentMaxTeams > 0 && !isOrganizer && (
-        <div className="container mx-auto px-4 relative z-30 -mt-4 mb-6">
-          <p className="mx-auto max-w-3xl text-center text-xs text-gray-500">
-            {openRegistrationCapacity !== null && openRegistrationCapacity > 0
-              ? `${openRegistrationCapacity} open registration slot${openRegistrationCapacity === 1 ? '' : 's'} available · ${tournamentReservedInviteSlots} reserved for invited teams`
-              : `All ${tournamentMaxTeams} slots are reserved for invited teams`}
-          </p>
-        </div>
-      )}
-
-      {/* --- TABS NAVIGATION (Sticky) --- */}
       {/* --- TABS NAVIGATION (Sticky) --- */}
       <div className="relative z-30 -mt-20">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="container mx-auto px-4">
-            <div className="sticky top-4 z-40 bg-[#0a0a0c]/90 border border-white/10 p-2 mb-12 mx-auto max-w-3xl">
+            <div className="sticky top-4 z-40 bg-[#0a0a0c] border border-white/10 p-2 mb-12 mx-auto max-w-3xl backdrop-blur-md">
               <TabsList className="bg-transparent h-auto p-0 w-full flex justify-between">
                 {(() => {
                   const tabs = isBR
@@ -715,7 +710,12 @@ const TournamentDetails = () => {
 
           <TabsContent value={competitorTabValue}>
             <div className="container mx-auto px-4">
-              <TeamsTab participants={enrichedParticipants} isSolo={terminology.isSolo} />
+              <TeamsTab
+                participants={enrichedParticipants}
+                isSolo={terminology.isSolo}
+                game={tournament.game}
+                gameMode={tournament.game_mode}
+              />
             </div>
           </TabsContent>
 
@@ -913,6 +913,10 @@ const TournamentDetails = () => {
             game={tournament.game}
             gameMode={tournament.game_mode}
             settings={tournament.settings}
+            status={tournament.status}
+            startDate={tournament.start_date ?? null}
+            registrationDeadline={tournament.registration_deadline ?? null}
+            maxTeams={tournamentMaxTeams || undefined}
             entryFee={tournament.entry_fee}
             currency={tournament.currency}
             paymentInstructions={tournament.payment_instructions}
@@ -943,7 +947,7 @@ const TournamentDetails = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-gray-600 text-gray-300 hover:bg-white/5">CANCEL</AlertDialogCancel>
+            <AlertDialogCancel>CANCEL</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleWithdraw}
               className="bg-red-600 hover:bg-red-700 text-white font-mono tracking-widest"
@@ -1016,9 +1020,9 @@ const TournamentDetails = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowBannerDialog(false)} className="border-white/10 text-white hover:bg-white/5">
+            <CancelButton onClick={() => setShowBannerDialog(false)}>
               CANCEL
-            </Button>
+            </CancelButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

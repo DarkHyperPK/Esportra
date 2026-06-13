@@ -182,8 +182,14 @@ export const validateStep = (step: number, data: any): { valid: boolean; errors:
     const schema = schemas[step];
     if (!schema) return { valid: true, errors: {} };
 
+    // BR tournaments use tournamentType + stage format battle_royale; bracketType is legacy/unused.
+    const payload =
+        data?.tournamentType === 'battle_royale' && (step === 2 || step === 6)
+            ? (({ bracketType: _ignored, ...rest }) => rest)(data)
+            : data;
+
     try {
-        schema.parse(data);
+        schema.parse(payload);
         console.log('[Wizard Validation] Step', step, 'passed');
         return { valid: true, errors: {} };
     } catch (e) {

@@ -74,8 +74,11 @@ const EditTournament = () => {
       const regDeadline = new Date(tournamentData.registration_deadline);
       const checkInDeadline = tournamentData.check_in_deadline ? new Date(tournamentData.check_in_deadline) : null;
 
-      // Calculate registration opens (default to 7 days before deadline if not set)
-      const regOpensDate = new Date(regDeadline.getTime() - (7 * 24 * 60 * 60 * 1000));
+      // Calculate registration opens (prefer persisted settings, else 7 days before deadline)
+      const regOpensFromSettings = (tournamentData.settings as { registrationOpensAt?: string } | null)?.registrationOpensAt;
+      const regOpensDate = regOpensFromSettings
+        ? new Date(regOpensFromSettings)
+        : new Date(regDeadline.getTime() - (7 * 24 * 60 * 60 * 1000));
 
       // Helper: format Date to local YYYY-MM-DD
       const toLocalDate = (d: Date) => {
@@ -111,7 +114,16 @@ const EditTournament = () => {
         // Step 2: Format & Rules
         tournamentType: persistedFormat === 'battle_royale' ? 'battle_royale' : 'bracket',
         gameMode: tournamentData.game_mode || '',
-        bracketType: (stages.length > 0 ? stages[0].format : 'single_elimination') as any, // Derive from first stage
+        bracketType: (() => {
+          if (persistedFormat === 'battle_royale') {
+            return DEFAULT_WIZARD_DATA.bracketType;
+          }
+          const stageFormat = stages[0]?.format;
+          const bracketFormats = ['single_elimination', 'double_elimination', 'swiss', 'round_robin'] as const;
+          return bracketFormats.includes(stageFormat)
+            ? stageFormat
+            : DEFAULT_WIZARD_DATA.bracketType;
+        })(),
         stages: stages.map(s => ({
           id: s.id,
           name: s.name,

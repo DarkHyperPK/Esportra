@@ -7,6 +7,7 @@ import { Calendar, Clock, UserCheck, Bell, Mail } from 'lucide-react';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import { cn } from '@/lib/utils';
 import { getInviteParticipantLabel } from '@/utils/tournamentInviteUtils';
+import { toLocalDateTimeInputValue } from '@/utils/tournamentLifecycle';
 
 const StepRegistration: React.FC<WizardStepProps> = ({
     data,
@@ -43,8 +44,10 @@ const StepRegistration: React.FC<WizardStepProps> = ({
     const getDefaultRegistrationClose = useCallback(() => {
         if (!data.startDate) return '';
         const startDate = new Date(`${data.startDate}T${data.startTime || '00:00'}`);
-        startDate.setDate(startDate.getDate() - 1);
-        return startDate.toISOString().slice(0, 16);
+        const closeDate = new Date(startDate);
+        closeDate.setDate(closeDate.getDate() - 1);
+        closeDate.setHours(23, 59, 0, 0);
+        return toLocalDateTimeInputValue(closeDate);
     }, [data.startDate, data.startTime]);
 
     // Auto-set defaults and mandatory fields on mount

@@ -1,3 +1,5 @@
+import { evaluateRegistrationEligibility, isRegistrationStatusOpen } from '@/utils/tournamentLifecycle';
+
 export function getReservedInviteSlotsFromTournament(tournament: {
   reserved_invite_slots?: number;
   reservedInviteSlots?: number;
@@ -52,6 +54,9 @@ export interface TournamentRegistrationVisibilityInput {
   maxTeams: number;
   isPublic?: boolean;
   status?: string;
+  registrationOpens?: string | Date | null;
+  registrationDeadline?: string | Date | null;
+  startDate?: string | Date | null;
 }
 
 export function getOpenRegistrationCapacity(maxTeams: number, reservedSlots: number): number | null {
@@ -60,13 +65,30 @@ export function getOpenRegistrationCapacity(maxTeams: number, reservedSlots: num
   return Math.max(maxTeams - reservedSlots, 0);
 }
 
-export function isTournamentRegistrationOpen(status?: string): boolean {
-  return status === 'published' || status === 'open';
+export function isTournamentRegistrationOpen(
+  status?: string,
+  timing?: {
+    registrationOpens?: string | Date | null;
+    registrationDeadline?: string | Date | null;
+    startDate?: string | Date | null;
+  },
+): boolean {
+  if (!isRegistrationStatusOpen(status)) return false;
+  return evaluateRegistrationEligibility({
+    status,
+    registrationOpens: timing?.registrationOpens,
+    registrationDeadline: timing?.registrationDeadline,
+    startDate: timing?.startDate,
+  }).allowed;
 }
 
 export function canShowInviteRedemption(input: TournamentRegistrationVisibilityInput): boolean {
   if (input.isOrganizer || input.isRegistered) return false;
-  if (!isTournamentRegistrationOpen(input.status)) return false;
+  if (!isTournamentRegistrationOpen(input.status, {
+    registrationOpens: input.registrationOpens,
+    registrationDeadline: input.registrationDeadline,
+    startDate: input.startDate,
+  })) return false;
   const isInviteOnly = input.registrationType === 'invite_only';
   const isPrivate = input.isPublic === false;
   return isInviteOnly || input.reservedSlots > 0 || isPrivate;
@@ -76,7 +98,11 @@ export function canShowOpenRegistration(input: TournamentRegistrationVisibilityI
   if (input.isOrganizer || input.isRegistered) return false;
   if (input.isPublic === false) return false;
   if (input.registrationType === 'invite_only') return false;
-  if (!isTournamentRegistrationOpen(input.status)) return false;
+  if (!isTournamentRegistrationOpen(input.status, {
+    registrationOpens: input.registrationOpens,
+    registrationDeadline: input.registrationDeadline,
+    startDate: input.startDate,
+  })) return false;
 
   const openCapacity = getOpenRegistrationCapacity(input.maxTeams, input.reservedSlots);
   if (input.reservedSlots > 0 && input.maxTeams > 0) {

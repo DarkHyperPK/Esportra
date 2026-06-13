@@ -18,6 +18,10 @@ interface TournamentRegistrationProps {
   participantMode?: 'solo' | 'team' | string | null;
   structure?: string;
   settings?: any;
+  status?: string;
+  startDate?: string | null;
+  registrationDeadline?: string | null;
+  maxTeams?: number;
   entryFee?: number | string | null;
   currency?: string;
   paymentInstructions?: string | null;
@@ -36,6 +40,10 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   teamSize = 1,
   participantMode,
   settings,
+  status,
+  startDate,
+  registrationDeadline,
+  maxTeams = 100,
   entryFee,
   currency = 'USD',
   paymentInstructions,
@@ -61,6 +69,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
     ? (entryFee.toLowerCase() === 'free' ? 0 : parseFloat(entryFee) || 0)
     : (entryFee ?? 0);
   const isPaid = parsedFee > 0;
+  const resolvedStartDate = startDate ?? new Date().toISOString();
 
   // Check if this is a team tournament (catalog/tournament mode, not game-name heuristics)
   const isTeamTournament = isTeamRegistrationMode(game, gameMode, participantMode);
@@ -283,10 +292,12 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
           game: game || '',
           game_mode: gameMode ?? undefined,
           gameMode: gameMode ?? undefined,
-          start_date: new Date().toISOString(),
+          status,
+          start_date: resolvedStartDate,
+          registration_deadline: registrationDeadline ?? undefined,
           entry_fee: parsedFee || undefined,
           prize_pool: undefined,
-          max_teams: 100,
+          max_teams: maxTeams,
           team_size: teamSize,
           settings,
         }}
@@ -304,11 +315,14 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
         id: tournamentId,
         name: tournamentName,
         game: game || '',
-        start_date: new Date().toISOString(),
+        status,
+        start_date: resolvedStartDate,
+        registration_deadline: registrationDeadline ?? undefined,
         entry_fee: parsedFee,
         prize_pool: 0,
-        max_teams: 100,
-        description: ''
+        max_teams: maxTeams,
+        description: '',
+        settings,
       }}
       onRegistrationComplete={handleRegistrationComplete}
       onCancel={onCancel || onRegisterSuccess}
