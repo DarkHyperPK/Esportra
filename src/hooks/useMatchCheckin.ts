@@ -30,13 +30,31 @@ interface CheckinStatus {
   bothCheckedIn: boolean;
 }
 
+const isCheckinWindowOpenAt = (scheduledTime: string, windowMinutes: number): boolean => {
+  const scheduled = new Date(scheduledTime);
+  const now = new Date();
+  const windowStart = new Date(scheduled.getTime() - windowMinutes * 60_000);
+  return now >= windowStart && now < scheduled;
+};
+
+const isCheckinWindowClosedAt = (scheduledTime: string): boolean => {
+  const scheduled = new Date(scheduledTime);
+  return Date.now() >= scheduled.getTime();
+};
+
 export const useMatchCheckin = (
   matchId: string | undefined,
   team1Id: string | undefined,
   team2Id: string | undefined,
-  options?: { subscribeRealtime?: boolean },
+  options?: {
+    subscribeRealtime?: boolean;
+    scheduledTime?: string | null;
+    checkInWindowMinutes?: number;
+  },
 ) => {
   const subscribeRealtime = options?.subscribeRealtime !== false;
+  const scheduledTimeForGuard = options?.scheduledTime ?? null;
+  const checkInWindowMinutesForGuard = options?.checkInWindowMinutes ?? 15;
   const queryClient = useQueryClient();
   const { toast }   = useToast();
   const { user }    = useAuth();
@@ -64,7 +82,6 @@ export const useMatchCheckin = (
   };
   checkinStatus.bothCheckedIn = checkinStatus.team1CheckedIn && checkinStatus.team2CheckedIn;
 
-  // Live check-in updates via SignalR MatchHub (skip when parent owns MatchHub subscription)
   useMatchRealtime({
     matchId,
     enabled: subscribeRealtime && !!matchId,
@@ -77,6 +94,9 @@ export const useMatchCheckin = (
   const checkIn = useMutation({
     mutationFn: (teamId: string) => {
       if (!matchId || !user) throw new Error('Missing required data');
+      if (scheduledTimeForGuard && isCheckinWindowClosedAt(scheduledTimeForGuard)) {
+        throw new Error('checkin_window_closed: The check-in window has closed.');
+      }
       return apiClient.post(`/api/matches/${matchId}/checkin`, { teamId });
     },
     onSuccess: () => {
@@ -88,22 +108,21 @@ export const useMatchCheckin = (
       const msg = err.message;
       if (msg.includes('duplicate') || msg.includes('conflict')) {
         toast({ title: 'Already Checked In', description: 'Your team has already checked in.' });
+      } else if (msg.includes('checkin_window_closed')) {
+        toast({
+          title: 'Check-in Closed',
+          description: 'The check-in window has closed. A walkover will be awarded if your opponent did not check in.',
+          variant: 'destructive',
+        });
       } else {
         toast({ title: 'Check-in Failed', description: msg, variant: 'destructive' });
       }
     },
   });
 
-  // ── Scheduling helpers (pure client-side time calculations) ──────────────────
-
   const isCheckinWindowOpen = (scheduledTime: string | null, windowMinutes = 15): boolean => {
     if (!scheduledTime) return false;
-    const scheduled   = new Date(scheduledTime);
-    const now         = new Date();
-    const windowStart = new Date(scheduled.getTime() - windowMinutes * 60_000);
-    // Grace period: allow check-in until windowMinutes after scheduled time
-    const windowEnd   = new Date(scheduled.getTime() + windowMinutes * 60_000);
-    return now >= windowStart && now < windowEnd;
+    return isCheckinWindowOpenAt(scheduledTime, windowMinutes);
   };
 
   const getTimeUntilCheckinOpens = (scheduledTime: string | null, windowMinutes = 15): number | null => {
@@ -114,20 +133,15 @@ export const useMatchCheckin = (
     return diff > 0 ? diff : null;
   };
 
-  const isCheckinWindowClosed = (scheduledTime: string | null, windowMinutes = 15): boolean => {
+  const isCheckinWindowClosed = (scheduledTime: string | null, _windowMinutes = 15): boolean => {
     if (!scheduledTime) return false;
-    // Only closed after the grace period (windowMinutes after scheduled time)
-    const scheduled = new Date(scheduledTime);
-    const windowEnd = new Date(scheduled.getTime() + windowMinutes * 60_000);
-    return Date.now() >= windowEnd.getTime();
+    return isCheckinWindowClosedAt(scheduledTime);
   };
 
-  const getTimeUntilWindowCloses = (scheduledTime: string | null, windowMinutes = 15): number | null => {
+  const getTimeUntilWindowCloses = (scheduledTime: string | null, _windowMinutes = 15): number | null => {
     if (!scheduledTime) return null;
     const scheduled = new Date(scheduledTime);
-    // Countdown to end of grace period
-    const windowEnd = new Date(scheduled.getTime() + windowMinutes * 60_000);
-    const diff = windowEnd.getTime() - Date.now();
+    const diff = scheduled.getTime() - Date.now();
     return diff > 0 ? diff : null;
   };
 
