@@ -140,12 +140,18 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
     });
   };
 
-  const handleReopenGame = async (gameId: string) => {
-    await updateGame.mutateAsync({ gameId, status: 'active' });
-    toast({
-      title: 'Game re-opened',
-      description: 'You can approve evidence and edit results again.',
-    });
+  const handleReopenGame = (gameId: string) => {
+    updateGame.mutate(
+      { gameId, status: 'active' },
+      {
+        onSuccess: () => {
+          toast({
+            title: 'Game re-opened',
+            description: 'You can approve evidence and edit results again.',
+          });
+        },
+      },
+    );
   };
 
   return (
@@ -412,11 +418,6 @@ const BRGameRunRow: React.FC<{
               </OutlineButton>
             )}
           </div>
-          {game.status === 'completed' && (game.evidence_count ?? 0) > 0 && (
-            <p className="text-[11px] text-amber-200/90 leading-relaxed">
-              This game is completed. Re-open it to approve pending evidence or edit results.
-            </p>
-          )}
           {resultsLoading ? (
             <div className="h-8 bg-white/5 rounded-lg animate-pulse" />
           ) : (
@@ -444,7 +445,6 @@ const BRGameRunRow: React.FC<{
             gameId={game.id}
             gameStatus={game.status}
             lobbyStatus={lobbyStatus}
-            onReopenGame={onReopenGame}
             realtimeConnected={realtimeConnected}
           />
         </div>

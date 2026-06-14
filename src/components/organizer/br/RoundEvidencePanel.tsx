@@ -17,7 +17,6 @@ interface RoundEvidencePanelProps {
   gameId?: string;
   gameStatus?: 'pending' | 'active' | 'completed';
   lobbyStatus?: string;
-  onReopenGame?: () => Promise<unknown>;
   realtimeConnected?: boolean;
 }
 
@@ -29,7 +28,6 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
   gameId,
   gameStatus,
   lobbyStatus,
-  onReopenGame,
   realtimeConnected = false,
 }) => {
   const {
@@ -55,18 +53,12 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
   return (
     <div className="space-y-3">
       {(gameBlocksApproval || lobbyBlocksApproval) && hasPendingEvidence && (
-        <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 space-y-2">
+        <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5">
           <p className="text-[11px] leading-relaxed text-amber-100">
             {lobbyBlocksApproval
               ? 'The lobby is completed. Re-open the lobby before approving evidence.'
-              : 'This game is completed. Re-open the game to approve pending evidence.'}
+              : 'This game is completed. Use Re-open game above to approve pending evidence.'}
           </p>
-          {!lobbyBlocksApproval && gameBlocksApproval && onReopenGame && (
-            <OutlineButton type="button" size="sm" disabled={isUpdating} onClick={() => { void onReopenGame(); }}>
-              <Undo2 className="mr-1.5 h-3.5 w-3.5" />
-              Re-open game
-            </OutlineButton>
-          )}
         </div>
       )}
       <div className="flex items-center justify-between">
