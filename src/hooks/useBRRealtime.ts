@@ -197,6 +197,7 @@ export function useBRRealtime({
     const handleLobbyReadinessUpdated = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
       queryClient.invalidateQueries({ queryKey: ['br-lobby-readiness', payload.lobbyId] });
+      invalidateLobbies();
     };
 
     const handleResultsUpdated = (payload: BrScopedPayload) => {

@@ -11,6 +11,8 @@ import { normalizeBREvidenceList } from '@/utils/brEvidenceNormalize';
 const withRoundAlias = (lobby: BRRound): BRRound => ({
   ...lobby,
   round_number: lobby.round_number ?? lobby.wave_number,
+  ready_count: lobby.ready_count ?? (lobby as { readyCount?: number }).readyCount,
+  total_assigned: lobby.total_assigned ?? (lobby as { totalAssigned?: number }).totalAssigned,
 });
 
 export const useBRLobbies = (

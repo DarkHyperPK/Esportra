@@ -35,6 +35,10 @@ export interface BRRound {
   group_ids?: string[];
   game_count?: number;
   games_completed?: number;
+  /** Staff lobby list: players/teams checked in for the active lobby. */
+  ready_count?: number;
+  /** Staff lobby list: roster size for this group. */
+  total_assigned?: number;
 }
 
 /** Lobby row with nested scored games (client-side aggregate). */

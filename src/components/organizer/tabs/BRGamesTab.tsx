@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { SuccessButton } from '@/components/ui/app-buttons';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layers, Users, Trophy, Filter, ChevronRight, RefreshCw } from 'lucide-react';
 import { useBRGroupLeaderboard, useBRGroupRounds, useBRStageLeaderboard } from '@/hooks/useBRGroupLeaderboard';
 import { useBRGroupTeams, useBRGroups, useBRGroupsDetail } from '@/hooks/useBRGroups';
 import { useStageLobbiesDeduped } from '@/hooks/useBRLobbies';
+import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { LobbyManagementPanel } from '@/components/organizer/br/LobbyManagementPanel';
 import { BRWaveLobbyPanel } from '@/components/organizer/br/BRWaveLobbyPanel';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
@@ -141,6 +142,12 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     const isSingleLobby = groups.length === 1;
     const selectedGroupName = isSingleLobby ? 'Main Lobby' : selectedGroup?.name;
 
+    const { connected: brRealtimeConnected } = useBRRealtime({
+        stageId: selectedStageId || null,
+        groupId: selectedGroupId || null,
+        enabled: Boolean(selectedStageId && selectedGroupId),
+    });
+
     const {
         data: groupTeams = [],
         isLoading: groupTeamsLoading,
@@ -257,23 +264,23 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                             {groupsLoading ? (
                                 <div className="h-8 w-[180px] bg-white/5 rounded-md animate-pulse" />
                             ) : groups.length === 0 ? (
-                                <Button
+                                <SuccessButton
                                     size="sm"
                                     onClick={() => bootstrapLobby.mutate()}
                                     disabled={bootstrapLobby.isPending}
-                                    className="h-8 bg-emerald-600 text-white hover:bg-emerald-500 hover:text-white border-emerald-500/40 font-mono text-[11px] font-bold uppercase tracking-wider"
+                                    className="h-8 font-mono text-[11px] font-bold uppercase tracking-wider"
                                 >
                                     {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Groups'}
-                                </Button>
+                                </SuccessButton>
                             ) : needsMatchGeneration ? (
-                                <Button
+                                <SuccessButton
                                     size="sm"
                                     onClick={() => generateLobbies.mutate()}
                                     disabled={generateLobbies.isPending}
-                                    className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-[11px] font-bold uppercase tracking-wider"
+                                    className="h-8 font-mono text-[11px] font-bold uppercase tracking-wider"
                                 >
                                     {generateLobbies.isPending ? 'Creating...' : 'Create Matches'}
-                                </Button>
+                                </SuccessButton>
                             ) : isSingleLobby ? (
                                 <div className="h-8 flex items-center border border-white/10 bg-white/[0.03] px-3 text-xs font-medium text-white">
                                     Main Lobby
@@ -343,15 +350,14 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                 {getApiErrorMessage(groupsError, 'We could not load BR groups for this stage.')}
                             </p>
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="sm"
+                        <button
+                            type="button"
                             onClick={() => refetchGroups()}
-                            className="text-red-200 hover:text-white hover:bg-red-500/10"
+                            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-none border border-transparent px-3 font-mono text-xs font-bold uppercase tracking-wider text-red-200 transition-colors hover:bg-red-500/10 hover:text-white"
                         >
-                            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                            <RefreshCw className="w-3.5 h-3.5" />
                             Retry
-                        </Button>
+                        </button>
                     </div>
                 </Card>
             )}
@@ -466,6 +472,8 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                 allowCreateLobby={!isGroupRotation}
                                 gamesPerLobby={resolvedStageConfig?.gamesPerLobby ?? resolvedStageConfig?.gameCount ?? 6}
                                 gamesModelActive={gamesModelActive}
+                                realtimeConnected={brRealtimeConnected}
+                                teamSize={teamSize}
                             />
                         </Card>
                     )}

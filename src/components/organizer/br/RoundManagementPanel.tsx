@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useBRLobbies, useBRLobbyResults } from '@/hooks/useBRLobbies';
 import { useBRGames } from '@/hooks/useBRGames';
-import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { useToast } from '@/hooks/use-toast';
 import { BRGameRunList } from './BRGameRunList';
 import { formatRotationMatchdayLabel } from '@/utils/brWaveScheduleDisplay';
@@ -74,6 +73,8 @@ interface RoundManagementPanelProps {
   allowCreateLobby?: boolean;
   gamesPerLobby?: number;
   gamesModelActive?: boolean;
+  realtimeConnected?: boolean;
+  teamSize?: number;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -95,13 +96,14 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   allowCreateLobby = true,
   gamesPerLobby = 6,
   gamesModelActive = false,
+  realtimeConnected = false,
+  teamSize = 1,
 }) => {
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
-  const { connected } = useBRRealtime({ stageId, groupId, lobbyId: expandedRoundId });
   const { lobbies: rounds, isLoading, error, refetch, createLobby, updateLobby, resetLobby } = useBRLobbies(
     stageId,
     groupId,
-    { realtimeConnected: connected },
+    { realtimeConnected },
   );
   const { toast } = useToast();
   // Reset expansion if the expanded round was deleted
@@ -313,7 +315,8 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
                 settings.map,
               )}
               isUpdating={isMutatingRound}
-              realtimeConnected={connected}
+              realtimeConnected={realtimeConnected}
+              teamSize={teamSize}
               tournamentStartDate={tournamentStartDate}
               tournamentEndDate={tournamentEndDate}
             />
@@ -392,6 +395,7 @@ export interface RoundRowProps {
   matchupLabel?: string;
   gamesPerLobby?: number;
   gamesModelActive?: boolean;
+  teamSize?: number;
 }
 
 export const RoundRow: React.FC<RoundRowProps> = ({
@@ -414,14 +418,23 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   tournamentEndDate,
   gamesPerLobby = 6,
   gamesModelActive = false,
+  teamSize = 1,
 }) => {
   const { toast } = useToast();
   const perGameLobbyUi = usesPerGameLobbyUi(gamesModelActive, gamesPerLobby);
+  const isSolo = teamSize <= 1;
+  const unitLabel = isSolo ? 'players' : 'teams';
   const { data: lobbyGames = [] } = useBRGames(isExpanded && perGameLobbyUi ? round.id : null);
-  const { readyCount, totalAssigned, entries: readinessEntries } = useBRLobbyReadiness(
-    round.status === 'active' ? round.id : null,
-    { enabled: round.status === 'active', realtimeConnected },
+  const { readyCount: expandedReadyCount, totalAssigned: expandedTotalAssigned, entries: readinessEntries } = useBRLobbyReadiness(
+    isExpanded && round.status === 'active' ? round.id : null,
+    { enabled: isExpanded && round.status === 'active', realtimeConnected },
   );
+  const readyCount = isExpanded
+    ? expandedReadyCount
+    : (round.ready_count ?? 0);
+  const totalAssigned = isExpanded
+    ? expandedTotalAssigned
+    : (round.total_assigned ?? teams.length);
   const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
     isExpanded && !perGameLobbyUi ? round.id : null,
     stageId,
@@ -594,7 +607,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
           {round.status === 'active' && totalAssigned > 0 ? (
             <span className="inline-flex items-center gap-1 text-emerald-400/90">
               <Users className="w-3 h-3" />
-              {readyCount}/{totalAssigned} ready
+              {readyCount}/{totalAssigned} {unitLabel} checked in
             </span>
           ) : null}
         </span>
@@ -640,13 +653,17 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                       Lobby readiness
                     </p>
                     <p className="text-sm text-emerald-100 font-semibold">
-                      {readyCount} of {totalAssigned} teams checked in
+                      {readyCount} of {totalAssigned} {unitLabel} checked in
                     </p>
-                    {readinessEntries.length > 0 && (
+                    {readinessEntries.length > 0 ? (
                       <p className="mt-1.5 text-[11px] text-emerald-200/80 truncate">
                         {readinessEntries.map((entry) => entry.displayName).join(', ')}
                       </p>
-                    )}
+                    ) : readyCount === 0 ? (
+                      <p className="mt-1.5 text-[11px] text-emerald-200/60">
+                        No {unitLabel} have checked in yet. Players check in from Match Room.
+                      </p>
+                    ) : null}
                   </div>
                 )}
               </div>
