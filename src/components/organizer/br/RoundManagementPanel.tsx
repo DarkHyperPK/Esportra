@@ -797,13 +797,15 @@ export const RoundRow: React.FC<RoundRowProps> = ({
             </div>
           </div>
 
-          {/* Evidence — lobby-wide for staff (all games when per-game model) */}
-          <RoundEvidencePanel
-            roundId={round.id}
-            stageId={stageId}
-            groupId={groupId}
-            realtimeConnected={realtimeConnected}
-          />
+          {/* Evidence — lobby-wide when not using per-game rows */}
+          {!perGameLobbyUi && (
+            <RoundEvidencePanel
+              roundId={round.id}
+              stageId={stageId}
+              groupId={groupId}
+              realtimeConnected={realtimeConnected}
+            />
+          )}
 
           <BRGameRunList
             lobbyId={round.id}
@@ -817,6 +819,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
             mapCatalogItems={mapCatalogItems}
             tournamentStartDate={tournamentStartDate}
             tournamentEndDate={tournamentEndDate}
+            realtimeConnected={realtimeConnected}
           />
         </div>
       )}

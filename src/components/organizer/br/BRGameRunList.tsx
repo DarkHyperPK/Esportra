@@ -12,6 +12,7 @@ import {
 import { useBRGames, useUpdateBRGame } from '@/hooks/useBRGames';
 import { useBRLobbyResults } from '@/hooks/useBRLobbies';
 import { RoundResultsGrid } from '@/components/organizer/br/RoundResultsGrid';
+import { RoundEvidencePanel } from '@/components/organizer/br/RoundEvidencePanel';
 import type { BRGroupTeam } from '@/types/brGroups';
 import type { BRGame } from '@/types/brLobbies';
 import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
@@ -39,6 +40,7 @@ interface BRGameRunListProps {
   mapCatalogItems?: BRMapCatalogItem[];
   tournamentStartDate?: string | null;
   tournamentEndDate?: string | null;
+  realtimeConnected?: boolean;
 }
 
 export const BRGameRunList: React.FC<BRGameRunListProps> = ({
@@ -53,6 +55,7 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
   mapCatalogItems = [],
   tournamentStartDate,
   tournamentEndDate,
+  realtimeConnected = false,
 }) => {
   const { toast } = useToast();
   const { data: games = [], isLoading } = useBRGames(lobbyId);
@@ -167,6 +170,7 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
           onMapUpdate={(map) => updateGame.mutateAsync({ gameId: game.id, map })}
           onQueueSave={(queueTimerMinutes) => updateGame.mutateAsync({ gameId: game.id, queueTimerMinutes })}
           isUpdating={updateGame.isPending}
+          realtimeConnected={realtimeConnected}
         />
       ))}
     </div>
@@ -206,6 +210,7 @@ const BRGameRunRow: React.FC<{
   onMapUpdate: (map: string | null) => Promise<unknown>;
   onQueueSave: (queueTimerMinutes: number | null) => Promise<unknown>;
   isUpdating: boolean;
+  realtimeConnected?: boolean;
 }> = ({
   game,
   lobbyId,
@@ -223,6 +228,7 @@ const BRGameRunRow: React.FC<{
   onMapUpdate,
   onQueueSave,
   isUpdating,
+  realtimeConnected = false,
 }) => {
   const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
     isExpanded ? lobbyId : null,
@@ -364,25 +370,22 @@ const BRGameRunRow: React.FC<{
           )}
           <div className="flex flex-wrap gap-2">
             {game.status === 'pending' && (
-              <Button
+              <button type="button"
                 size="sm"
-                variant="outline"
-                className="border-amber-500/30 text-amber-300"
                 disabled={isUpdating || !canStartGame}
                 onClick={() => void onStartGame(mapInput || null, parseQueueTimerMinutes())}
               >
                 <Play className="w-3.5 h-3.5 mr-1" /> Start game
-              </Button>
+              </button>
             )}
             {game.status === 'active' && (
-              <Button
+              <button type="button"
                 size="sm"
-                className="bg-emerald-600 hover:bg-emerald-500"
                 disabled={isUpdating}
                 onClick={() => onCompleteGame(mapInput || null)}
               >
                 <CheckCircle className="w-3.5 h-3.5 mr-1" /> Complete game
-              </Button>
+              </button>
             )}
           </div>
           {resultsLoading ? (
@@ -404,6 +407,14 @@ const BRGameRunRow: React.FC<{
               isLocked={game.status === 'completed'}
             />
           )}
+          <RoundEvidencePanel
+            roundId={lobbyId}
+            stageId={stageId}
+            groupId={groupId}
+            gameNumber={game.game_number}
+            gameId={game.id}
+            realtimeConnected={realtimeConnected}
+          />
         </div>
       )}
     </div>
