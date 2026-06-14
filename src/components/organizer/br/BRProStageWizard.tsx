@@ -7,7 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { GhostButton, SuccessButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -37,7 +38,6 @@ import { formatMatchPairing, formatRotationMatchdayLabel, summarizeGroupRotation
 import { generateBrSchedule } from '@/utils/brScheduleGenerator';
 import type { BRStageFormat } from '@/types/battleRoyale';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
-import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 
 type WizardMode = 'initial' | 'add';
@@ -893,28 +893,28 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
 
         <DialogFooter className="shrink-0 gap-4 px-10 sm:px-12 py-7 border-t border-white/5">
           {step > 0 && (
-            <Button type="button" variant="ghost" onClick={goBack} disabled={saving} className="mr-auto">
+            <GhostButton type="button" onClick={goBack} disabled={saving} className="mr-auto">
               Back
-            </Button>
+            </GhostButton>
           )}
           {step < maxStep ? (
-            <button type="button"
+            <SuccessButton
               type="button"
               onClick={goNext}
               disabled={!canProceed && step >= structureStepIndex}
-              className="bg-emerald-600 hover:bg-emerald-500 min-w-[8.5rem] h-11"
+              className="min-w-[8.5rem] h-11"
             >
               Continue
-            </button>
+            </SuccessButton>
           ) : (
-            <button type="button"
+            <SuccessButton
               type="button"
               onClick={handleSave}
               disabled={saving || !canProceed || validationErrors.length > 0}
-              className="bg-emerald-600 hover:bg-emerald-500 min-w-[8.5rem] h-11"
+              className="min-w-[8.5rem] h-11"
             >
               {saving ? 'Saving...' : 'Save stage'}
-            </button>
+            </SuccessButton>
           )}
         </DialogFooter>
       </DialogContent>
