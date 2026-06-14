@@ -462,6 +462,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                 tournamentStartDate={tournamentStartDate}
                                 tournamentEndDate={tournamentEndDate}
                                 allowCreateLobby={!isGroupRotation}
+                                gamesPerLobby={resolvedStageConfig?.gamesPerLobby ?? resolvedStageConfig?.gameCount ?? 6}
                             />
                         </Card>
                     )}

@@ -31,6 +31,7 @@ import {
   Clock,
   RotateCcw,
   MapPin,
+  AlertTriangle,
 } from 'lucide-react';
 import type { BRGroupTeam } from '@/types/brGroups';
 import type { BRRound, BRResultInput } from '@/types/brRounds';
@@ -67,6 +68,7 @@ interface RoundManagementPanelProps {
   tournamentEndDate?: string | null;
   /** When false, hides manual lobby creation (rotation stages use Schedule → Create matches). */
   allowCreateLobby?: boolean;
+  gamesPerLobby?: number;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -86,6 +88,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   tournamentStartDate,
   tournamentEndDate,
   allowCreateLobby = true,
+  gamesPerLobby = 6,
 }) => {
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
   const { connected } = useBRRealtime({ stageId, groupId, lobbyId: expandedRoundId });
@@ -236,6 +239,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               mapConfig={mapConfig}
               mapCatalogItems={mapCatalogItems}
               groupLobbyMode={allowCreateLobby}
+              gamesPerLobby={gamesPerLobby}
               isExpanded={expandedRoundId === round.id}
                onToggle={() => setExpandedRoundId(expandedRoundId === round.id ? null : round.id)}
                onStatusAction={(action, settings) => {
@@ -368,6 +372,7 @@ export interface RoundRowProps {
   groupLobbyMode?: boolean;
   /** e.g. "A + B" for rotation lobbies */
   matchupLabel?: string;
+  gamesPerLobby?: number;
 }
 
 export const RoundRow: React.FC<RoundRowProps> = ({
@@ -388,6 +393,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   matchupLabel,
   tournamentStartDate,
   tournamentEndDate,
+  gamesPerLobby = 6,
 }) => {
   const { toast } = useToast();
   const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
@@ -406,7 +412,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   );
   const [settingsDirty, setSettingsDirty] = useState(false);
   const statusCfg = STATUS_CONFIG[round.status] ?? STATUS_CONFIG.pending;
-  const usesPerGameQueue = (round.game_count ?? 0) > 0;
+  const usesPerGameQueue = (round.game_count ?? 0) > 0 || gamesPerLobby > 1;
   const hasPendingEvidenceReview = (round.pending_evidence_count ?? 0) > 0;
   const hasSavedFullResults = useMemo(() => {
     if (teams.length === 0 || results.length !== teams.length) return false;
@@ -439,7 +445,9 @@ export const RoundRow: React.FC<RoundRowProps> = ({
       lobbyCode: trimmedLobbyCode === '' ? null : trimmedLobbyCode,
       scheduledAt: round.scheduled_at ?? null,
       queueTimerMinutes: usesPerGameQueue ? null : (Number.isFinite(parsedTimer) ? parsedTimer : null),
-      map: BR_FEATURE_FLAGS.mapsEnabled && mapConfig.mode !== 'none' ? (mapInput.trim() || null) : null,
+      map: !usesPerGameQueue && BR_FEATURE_FLAGS.mapsEnabled && mapConfig.mode !== 'none'
+        ? (mapInput.trim() || null)
+        : null,
     };
   };
 
@@ -452,7 +460,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
       lobbyCode: settings.lobbyCode ?? '',
       scheduledAt: settings.scheduledAt,
       queueTimerMinutes: settings.queueTimerMinutes,
-      map: settings.map,
+      ...(settings.map != null ? { map: settings.map } : {}),
     });
     setSettingsDirty(false);
     if (
@@ -466,6 +474,28 @@ export const RoundRow: React.FC<RoundRowProps> = ({
       });
     }
   };
+
+  useEffect(() => {
+    if (round.status !== 'active') return;
+    const trimmed = lobbyCode.trim();
+    if (trimmed === (round.lobby_code ?? '')) return;
+
+    const timer = window.setTimeout(() => {
+      void onRoundSettingsSave({
+        lobbyCode: trimmed || null,
+        scheduledAt: round.scheduled_at ?? null,
+        queueTimerMinutes: null,
+        map: null,
+      }).then(() => {
+        setSettingsDirty(false);
+        toast({
+          title: 'Lobby code updated',
+          description: 'Match Room updated for all players.',
+        });
+      });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [lobbyCode, round.status, round.lobby_code, round.scheduled_at, onRoundSettingsSave, toast]);
 
   const handleResultSave = async (resultInputs: BRResultInput[]) => {
     await submitResults.mutateAsync({ lobbyId: round.id, results: resultInputs });
@@ -513,14 +543,14 @@ export const RoundRow: React.FC<RoundRowProps> = ({
           </Badge>
         )}
         <span className="ml-auto flex flex-wrap items-center justify-end gap-3 text-[10px] text-zinc-600">
-          {round.scheduled_at && (
+          {round.scheduled_at && !usesPerGameQueue && (
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
               {new Date(round.scheduled_at).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}
             </span>
           )}
           {!usesPerGameQueue && round.queue_timer_minutes ? `Queue ${round.queue_timer_minutes}m` : null}
-          {BR_FEATURE_FLAGS.mapsEnabled && round.map ? (
+          {!usesPerGameQueue && BR_FEATURE_FLAGS.mapsEnabled && round.map ? (
             <span className="inline-flex items-center gap-1 text-emerald-400/80">
               <MapPin className="w-3 h-3" />
               <BRMapBadge
@@ -536,6 +566,16 @@ export const RoundRow: React.FC<RoundRowProps> = ({
       {/* Expanded Content */}
       {isExpanded && (
         <div className="border-t border-white/5 px-4 py-4 space-y-4">
+          {settingsDirty && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <p className="text-[11px] leading-relaxed text-amber-100">
+                {round.status === 'active' && lobbyCode.trim() !== (round.lobby_code ?? '')
+                  ? 'Lobby code changed — saving automatically. Players will see it in Match Room shortly.'
+                  : 'You have unsaved lobby settings. Save or go live before leaving this panel.'}
+              </p>
+            </div>
+          )}
           {/* Round Settings + Actions Row */}
           <div className="space-y-3">
             <div className={`grid gap-3 ${usesPerGameQueue ? '' : 'xl:grid-cols-[minmax(0,1fr)_280px]'}`}>
@@ -590,7 +630,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
               )}
             </div>
 
-            {BR_FEATURE_FLAGS.mapsEnabled && mapConfig.mode !== 'none' && (
+            {BR_FEATURE_FLAGS.mapsEnabled && mapConfig.mode !== 'none' && !usesPerGameQueue && (
               <div className="rounded-xl border border-white/6 bg-white/[0.02] p-3">
                 <label className="mb-2 flex text-[10px] text-zinc-500 uppercase tracking-wider items-center gap-1">
                   <MapPin className="w-3 h-3" /> Map
@@ -633,7 +673,9 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                   <p className="text-[11px] font-medium text-white">{groupLobbyMode ? 'Lobby controls' : 'Round controls'}</p>
                   <p className="text-[10px] leading-relaxed text-zinc-500">
                     {groupLobbyMode
-                      ? 'Start the lobby to publish the code. Save settings updates the live code instantly in Match Room.'
+                      ? usesPerGameQueue
+                        ? 'Go live to publish the lobby code. Set map and queue timer on each game below.'
+                        : 'Start the lobby to publish the code. Save settings updates the live code instantly in Match Room.'
                       : 'Saving updates the round draft instantly. Starting a round also publishes the current lobby code and queue timer.'}
                   </p>
                   {hasPendingEvidenceReview && round.status === 'active' && (
@@ -664,7 +706,8 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                       disabled={isUpdating}
                       className="h-9 text-xs"
                     >
-                      <Play className="w-3 h-3 mr-1" /> Start
+                      <Play className="w-3 h-3 mr-1" />
+                      {groupLobbyMode && usesPerGameQueue ? 'Go live' : 'Start'}
                     </CtaButton>
                   )}
                   {round.status === 'active' && (

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Save } from 'lucide-react';
+import { Clock, Save, AlertTriangle } from 'lucide-react';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useBRGroupsDetail, useBRGroupsMutations } from '@/hooks/useBRGroups';
@@ -149,6 +149,33 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   }, [stage.id, hasLobbies]);
 
   const gamesPerLobby = brConfig?.gamesPerLobby ?? brConfig?.gameCount ?? 6;
+  const hasGamesModel = useMemo(() => {
+    if (gamesPerLobby > 1) return true;
+    return Object.values(gamesByLobby).some((games) => games.length > 0);
+  }, [gamesPerLobby, gamesByLobby]);
+
+  const gameSchedulesDirty = useMemo(() => {
+    for (const games of Object.values(gamesByLobby)) {
+      for (const game of games) {
+        const local = gameSchedules[game.id] ?? '';
+        const committed = utcToLocalInput(game.scheduled_at ?? '');
+        if (local !== committed) return true;
+      }
+    }
+    return false;
+  }, [gamesByLobby, gameSchedules]);
+
+  const lobbySchedulesDirty = useMemo(() => {
+    if (hasGamesModel) return false;
+    for (const lobby of lobbies) {
+      const local = lobbySchedules[lobby.id] ?? '';
+      const committed = utcToLocalInput(lobby.scheduled_at ?? '');
+      if (local !== committed) return true;
+    }
+    return false;
+  }, [hasGamesModel, lobbies, lobbySchedules]);
+
+  const scheduleDirty = gameSchedulesDirty || lobbySchedulesDirty;
   const formatLabel = formatBRStageFormatLabel(brConfig?.format ?? 'static_groups');
 
   const rotationSummary = useMemo(() => {
@@ -181,18 +208,20 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     () => collectGameScheduleErrors(gamesByLobby, gameSchedules, {
       tournamentStart: tournamentStartDate,
       tournamentEnd: tournamentEndDate,
-      lobbySchedules: lobbySchedules,
+      lobbySchedules: hasGamesModel ? {} : lobbySchedules,
     }),
-    [gamesByLobby, gameSchedules, tournamentStartDate, tournamentEndDate, lobbySchedules],
+    [gamesByLobby, gameSchedules, tournamentStartDate, tournamentEndDate, lobbySchedules, hasGamesModel],
   );
 
   const lobbyScheduleErrors = useMemo(
-    () => collectLobbyScheduleErrors(lobbies, lobbySchedules, {
-      tournamentStart: tournamentStartDate,
-      tournamentEnd: tournamentEndDate,
-      isRotation,
-    }),
-    [lobbies, lobbySchedules, tournamentStartDate, tournamentEndDate, isRotation],
+    () => hasGamesModel
+      ? []
+      : collectLobbyScheduleErrors(lobbies, lobbySchedules, {
+          tournamentStart: tournamentStartDate,
+          tournamentEnd: tournamentEndDate,
+          isRotation,
+        }),
+    [hasGamesModel, lobbies, lobbySchedules, tournamentStartDate, tournamentEndDate, isRotation],
   );
 
   const scheduleErrors = useMemo(
@@ -309,7 +338,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   const renderGameRows = (lobby: BRRound) => {
     const lobbyGames = [...(gamesByLobby[lobby.id] ?? [])].sort((a, b) => a.game_number - b.game_number);
     if (lobbyGames.length === 0) return null;
-    const lobbyScheduleLocal = lobbySchedules[lobby.id] ?? '';
+    const lobbyScheduleLocal = hasGamesModel ? '' : (lobbySchedules[lobby.id] ?? '');
     const gameValidationOptions = {
       tournamentStart: tournamentStartDate,
       tournamentEnd: tournamentEndDate,
@@ -381,37 +410,53 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
         <p className="text-sm text-zinc-300">
           {resolveLobbyDisplayLabel(lobby, groups, stageFormat, null)}
         </p>
-        <Input
-          type="datetime-local"
-          value={lobbySchedules[lobby.id] || ''}
-          onChange={(e) =>
-            setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))
-          }
-          min={scheduleBounds.min || undefined}
-          max={scheduleBounds.max || undefined}
-          className="h-9 text-sm max-w-xs [color-scheme:dark] bg-white/5 border-white/10"
-        />
+        {!hasGamesModel && (
+          <Input
+            type="datetime-local"
+            value={lobbySchedules[lobby.id] || ''}
+            onChange={(e) =>
+              setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))
+            }
+            min={scheduleBounds.min || undefined}
+            max={scheduleBounds.max || undefined}
+            className="h-9 text-sm max-w-xs [color-scheme:dark] bg-white/5 border-white/10"
+          />
+        )}
         {renderGameRows(lobby)}
         <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            className="bg-rose-600 hover:bg-rose-500"
-            disabled={savingLobbies || lobbyScheduleErrors.length > 0}
-            onClick={() => handleSaveLobbyTimes([lobby.id])}
-          >
-            <Save className="w-3.5 h-3.5 mr-1.5" />
-            {savingLobbies ? 'Saving...' : 'Save lobby time'}
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="border-white/10"
-            disabled={savingGames || gameScheduleErrors.length > 0}
-            onClick={() => handleSaveGameTimes([lobby.id])}
-          >
-            <Save className="w-3.5 h-3.5 mr-1.5" />
-            {savingGames ? 'Saving...' : 'Save game times'}
-          </Button>
+          {hasGamesModel ? (
+            <Button
+              size="sm"
+              className="bg-rose-600 hover:bg-rose-500"
+              disabled={savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
+              onClick={() => handleSaveGameTimes([lobby.id])}
+            >
+              <Save className="w-3.5 h-3.5 mr-1.5" />
+              {savingGames ? 'Saving...' : 'Save schedule'}
+            </Button>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                className="bg-rose-600 hover:bg-rose-500"
+                disabled={savingLobbies || lobbyScheduleErrors.length > 0 || !lobbySchedulesDirty}
+                onClick={() => handleSaveLobbyTimes([lobby.id])}
+              >
+                <Save className="w-3.5 h-3.5 mr-1.5" />
+                {savingLobbies ? 'Saving...' : 'Save lobby time'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-white/10"
+                disabled={savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
+                onClick={() => handleSaveGameTimes([lobby.id])}
+              >
+                <Save className="w-3.5 h-3.5 mr-1.5" />
+                {savingGames ? 'Saving...' : 'Save game times'}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -421,9 +466,17 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     <div className="space-y-8">
       {(tournamentStartDate || tournamentEndDate) && (
         <p className="text-xs text-zinc-500">
-          All lobby and game times must fall within the tournament window:{' '}
+          {hasGamesModel ? 'Game start times' : 'Lobby and game start times'} must fall within the tournament window:{' '}
           <span className="text-zinc-400">{scheduleBounds.windowLabel}</span>
         </p>
+      )}
+      {scheduleDirty && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2.5">
+          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] leading-relaxed text-amber-100">
+            You have unsaved schedule changes. Save schedule before leaving this tab.
+          </p>
+        </div>
       )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -539,16 +592,18 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                               className="py-3 border-b border-white/5 last:border-0"
                             >
                               <p className="text-sm text-zinc-300 mb-2">{matchup}</p>
-                              <Input
-                                type="datetime-local"
-                                value={lobbySchedules[lobby.id] || ''}
-                                onChange={(e) =>
-                                  setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))
-                                }
-                                min={scheduleBounds.min || undefined}
-                                max={scheduleBounds.max || undefined}
-                                className="h-8 text-xs [color-scheme:dark] bg-white/5 border-white/10"
-                              />
+                              {!hasGamesModel && (
+                                <Input
+                                  type="datetime-local"
+                                  value={lobbySchedules[lobby.id] || ''}
+                                  onChange={(e) =>
+                                    setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))
+                                  }
+                                  min={scheduleBounds.min || undefined}
+                                  max={scheduleBounds.max || undefined}
+                                  className="h-8 text-xs [color-scheme:dark] bg-white/5 border-white/10"
+                                />
+                              )}
                               {renderGameRows(lobby)}
                             </div>
                           );
@@ -557,25 +612,39 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                     ))}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      className="bg-rose-600 hover:bg-rose-500"
-                      disabled={savingLobbies || lobbyScheduleErrors.length > 0}
-                      onClick={() => handleSaveLobbyTimes(lobbies.map((l) => l.id))}
-                    >
-                      <Save className="w-3.5 h-3.5 mr-1.5" />
-                      {savingLobbies ? 'Saving...' : 'Save all lobby times'}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-white/10"
-                      disabled={savingGames || gameScheduleErrors.length > 0}
-                      onClick={() => handleSaveGameTimes(lobbies.map((l) => l.id))}
-                    >
-                      <Save className="w-3.5 h-3.5 mr-1.5" />
-                      {savingGames ? 'Saving...' : 'Save all game times'}
-                    </Button>
+                    {hasGamesModel ? (
+                      <Button
+                        size="sm"
+                        className="bg-rose-600 hover:bg-rose-500"
+                        disabled={savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
+                        onClick={() => handleSaveGameTimes(lobbies.map((l) => l.id))}
+                      >
+                        <Save className="w-3.5 h-3.5 mr-1.5" />
+                        {savingGames ? 'Saving...' : 'Save schedule'}
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          className="bg-rose-600 hover:bg-rose-500"
+                          disabled={savingLobbies || lobbyScheduleErrors.length > 0 || !lobbySchedulesDirty}
+                          onClick={() => handleSaveLobbyTimes(lobbies.map((l) => l.id))}
+                        >
+                          <Save className="w-3.5 h-3.5 mr-1.5" />
+                          {savingLobbies ? 'Saving...' : 'Save all lobby times'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-white/10"
+                          disabled={savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
+                          onClick={() => handleSaveGameTimes(lobbies.map((l) => l.id))}
+                        >
+                          <Save className="w-3.5 h-3.5 mr-1.5" />
+                          {savingGames ? 'Saving...' : 'Save all game times'}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </>
               ) : (

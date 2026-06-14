@@ -20,7 +20,7 @@ import { resolveMapFromConfig } from '@/hooks/useBRStageConfig';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import { validateLiveActionInTournamentWindow } from '@/utils/tournamentScheduleValidation';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Play, CheckCircle, ChevronDown, ChevronRight, Clock } from 'lucide-react';
+import { MapPin, Play, CheckCircle, ChevronDown, ChevronRight, Clock, AlertTriangle } from 'lucide-react';
 
 interface ScoringPreset {
   placements: number[];
@@ -246,6 +246,10 @@ const BRGameRunRow: React.FC<{
     return Number.isFinite(parsed) ? parsed : null;
   };
 
+  const queueDirty = game.status === 'pending'
+    && parseQueueTimerMinutes() !== (game.queue_timer_minutes ?? null)
+    && queueTimerInput.trim() !== '';
+
   const statusClass = STATUS_COLORS[game.status] ?? STATUS_COLORS.pending;
 
   return (
@@ -296,6 +300,14 @@ const BRGameRunRow: React.FC<{
           )}
           {game.status === 'pending' && (
             <div className="space-y-2">
+              {queueDirty && (
+                <div className="flex items-start gap-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-2.5 py-2">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-amber-100/90 leading-relaxed">
+                    Queue timer not saved yet — tab away from the field or start the game to apply.
+                  </p>
+                </div>
+              )}
               <p className="text-[10px] uppercase tracking-wide text-zinc-500 flex items-center gap-1">
                 <Clock className="w-3 h-3" /> Queue timer (minutes)
               </p>

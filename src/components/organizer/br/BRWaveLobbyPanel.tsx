@@ -126,6 +126,7 @@ const RotationLobbyRow: React.FC<{
       tournamentStartDate={tournamentStartDate}
       tournamentEndDate={tournamentEndDate}
       matchupLabel={matchupLabel}
+      gamesPerLobby={gamesPerMatch}
     />
   );
 };
