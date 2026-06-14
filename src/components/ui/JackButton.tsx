@@ -17,14 +17,14 @@ import { cn } from "@/lib/utils";
  * The component is polymorphic: pass `as` to render as a `Link`, `a`, etc.
  */
 const jackButtonVariants = cva(
-  "jack-button-motion group relative isolate inline-flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap font-mono font-bold uppercase tracking-wider outline-none transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-rose-500/70",
+  "jack-button-motion group relative isolate inline-flex items-center justify-center gap-2 overflow-hidden whitespace-nowrap font-mono font-bold uppercase tracking-wider outline-none transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-white/30",
   {
     variants: {
       variant: {
         // Default: white surface, black text. Rose slides up on hover.
-        primary: "bg-white text-black",
+        primary: "bg-white text-matte-black",
         // Inverse: matte-black surface, white text. Rose slides up on hover.
-        invert: "border border-white/15 bg-[#0a0a0c] text-white",
+        invert: "border border-white/15 bg-matte-black text-white",
         // Outline: transparent surface, white text. Rose slides up on hover.
         ghost:
           "border border-white/25 bg-white/5 text-white backdrop-blur-md hover:border-white/50",

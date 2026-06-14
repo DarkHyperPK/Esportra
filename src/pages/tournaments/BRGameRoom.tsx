@@ -899,7 +899,7 @@ const BRGameRoom: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate(`/user/raise-dispute?tournament_id=${tournament.id}`)}
-                className="text-xs text-zinc-500 hover:text-rose-400 border border-white/[0.06] hover:border-rose-500/20 rounded-lg px-3 py-1.5 h-auto flex-shrink-0"
+                className="text-xs text-zinc-500 hover:text-rose-400 border border-white/[0.06] hover:border-white/20 rounded-lg px-3 py-1.5 h-auto flex-shrink-0"
               >
                 Raise Dispute
               </Button>

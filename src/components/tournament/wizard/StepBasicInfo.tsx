@@ -208,8 +208,8 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                                                     className={cn(
                                                         "rounded-none border px-3 py-2 text-sm font-mono font-bold uppercase tracking-wider transition-colors",
                                                         isSelected
-                                                            ? "border-white bg-white text-black"
-                                                            : "border-white/10 bg-white/[0.02] text-gray-400 hover:border-rose-500/50 hover:text-white"
+                                                            ? "border-white bg-white text-matte-black"
+                                                            : "border-white/10 bg-white/[0.02] text-gray-400 hover:border-white/25 hover:text-white"
                                                     )}
                                                 >
                                                     {mode.variantLabel || mode.name}

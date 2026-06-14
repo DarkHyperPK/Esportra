@@ -3,6 +3,7 @@ import { useQueries } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SuccessButton } from '@/components/ui/app-buttons';
 import { cn } from '@/lib/utils';
 import { Users, Swords, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
@@ -95,7 +96,7 @@ const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
           <button
             type="button"
             onClick={() => navigate(`/tournaments/${tournamentSlug}/br-game-room`)}
-            className="flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-semibold px-3 py-1.5 rounded-lg bg-rose-500/8 border border-rose-500/20 hover:bg-rose-500/12 transition-colors"
+            className="flex items-center gap-1.5 text-xs text-white font-semibold px-3 py-1.5 rounded-lg bg-green-600 border border-transparent hover:bg-green-500 transition-colors"
           >
             <Swords className="w-3.5 h-3.5" />
             Match Room
@@ -113,7 +114,7 @@ const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
             className={cn(
               'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap border',
               activeGroupId === group.id
-                ? 'bg-rose-500/15 border-rose-500/40 text-rose-400'
+                ? 'bg-rose-500/15 border-transparent text-rose-400'
                 : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white hover:bg-white/[0.06]'
             )}
           >
@@ -288,15 +289,14 @@ const GroupContent: React.FC<GroupContentProps> = ({
             )}
           </div>
           {tournamentSlug && (
-            <Button
+            <SuccessButton
               type="button"
               size="sm"
-              variant="outline"
-              className="flex-shrink-0 border-rose-500/30 text-rose-300 hover:text-white hover:border-rose-500"
+              className="flex-shrink-0"
               onClick={() => navigate(`/tournaments/${tournamentSlug}/br-game-room`)}
             >
               Match Room
-            </Button>
+            </SuccessButton>
           )}
         </div>
       )}

@@ -86,7 +86,7 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
                             onClick={() => copyLink(team2LinkToken, 'team2', team2Name)}
                             variant="outline"
                             size="sm"
-                            className="gap-1.5 px-3 py-1.5 text-xs font-semibold border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/50"
+                            className="gap-1.5 px-3 py-1.5 text-xs font-semibold border-white/15 text-rose-400 hover:bg-rose-500/10 hover:border-white/25"
                         >
                             {copiedTeam === 'team2' ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
                             {team2Name} Link

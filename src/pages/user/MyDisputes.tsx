@@ -424,7 +424,7 @@ const MyDisputes = () => {
                         transition={{ delay: index * 0.03 }}
                       >
                         <button
-                          className="w-full text-left bg-[#0a0a0c] border border-white/[0.06] rounded-2xl overflow-hidden hover:-translate-y-0.5 hover:shadow-lg hover:shadow-rose-500/5 hover:border-rose-500/20 transition-all duration-200"
+                          className="w-full text-left bg-[#0a0a0c] border border-white/[0.06] rounded-2xl overflow-hidden hover:-translate-y-0.5 hover:shadow-lg hover:border-white/20 transition-all duration-200"
                           onClick={() => openDisputeDialog(dispute)}
                         >
                           <div className="flex">

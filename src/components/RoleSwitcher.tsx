@@ -45,12 +45,12 @@ const RoleTile: React.FC<{
     className={cn(
       'group relative block w-full overflow-hidden border px-4 py-3 text-left font-mono text-[12px] font-bold uppercase tracking-wider transition-colors',
       isCurrent
-        ? 'border-rose-500 bg-rose-500 text-white'
-        : 'border-white/10 bg-white text-black disabled:opacity-50',
+        ? 'border-transparent bg-rose-500 text-white'
+        : 'border-white/10 bg-white text-matte-black disabled:opacity-50',
     )}
   >
     <span className="relative z-10 flex w-full items-center gap-2">
-      <span className={cn('flex h-7 w-7 items-center justify-center', isCurrent ? 'text-white' : 'text-black')}>
+      <span className={cn('flex h-7 w-7 items-center justify-center', isCurrent ? 'text-white' : 'text-matte-black')}>
         {getRoleIcon(role)}
       </span>
       <span className="flex-1">{getRoleLabel(role)}</span>
@@ -58,7 +58,7 @@ const RoleTile: React.FC<{
         <span
           className={cn(
             'border px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider',
-            isCurrent ? 'border-white/40 text-white' : 'border-black/40 text-black',
+            isCurrent ? 'border-white/40 text-white' : 'border-matte-black/40 text-matte-black',
           )}
         >
           {badge}

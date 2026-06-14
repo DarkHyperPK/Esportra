@@ -366,7 +366,7 @@ const AdminManagement = () => {
               variant="outline"
               size="sm"
               onClick={() => setShowAlertPanel(!showAlertPanel)}
-              className="border-zinc-800 text-zinc-400 hover:text-white hover:border-rose-500/30 relative"
+              className="border-zinc-800 text-zinc-400 hover:text-white hover:border-white/25 relative"
             >
               <Bell className="w-4 h-4" />
               {(alertSummary?.active_count ?? 0) > 0 && (
@@ -392,7 +392,7 @@ const AdminManagement = () => {
             size="sm"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="border-zinc-800 text-zinc-400 hover:text-white hover:border-rose-500/30"
+            className="border-zinc-800 text-zinc-400 hover:text-white hover:border-white/25"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh

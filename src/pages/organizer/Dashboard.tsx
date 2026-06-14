@@ -205,8 +205,8 @@ const OrganizerDashboard = () => {
                       className={cn(
                         "relative z-20 flex h-10 w-full items-center gap-3 border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70",
                         active
-                          ? "border-rose-500 bg-rose-500 text-white"
-                          : "border-white/15 bg-black text-zinc-200 hover:border-rose-500/45 hover:bg-white/[0.06] hover:text-white",
+                          ? "border-transparent bg-rose-500 text-white"
+                          : "border-white/15 bg-black text-zinc-200 hover:border-white/25 hover:bg-white/[0.06] hover:text-white",
                       )}
                     >
                       <Icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-zinc-400")} />

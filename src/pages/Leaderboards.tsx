@@ -119,7 +119,7 @@ const Leaderboards: React.FC = () => {
                     <div className="relative">
                         <button
                             onClick={() => setCountryMenuOpen(!countryMenuOpen)}
-                            className="flex items-center gap-2 border border-white/10 bg-[#0a0a0c]/90 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-rose-500/30 transition-all"
+                            className="flex items-center gap-2 border border-white/10 bg-[#0a0a0c]/90 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-white/25 transition-all"
                         >
                             <Globe className="w-3.5 h-3.5 text-rose-400" />
                             {country || 'All Countries'}

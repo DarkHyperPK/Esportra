@@ -132,7 +132,7 @@ const TournamentsList = () => {
             <button
               key={tournament.id}
               type="button"
-              className="group grid gap-4 border border-white/10 bg-[#0a0a0c]/92 p-4 text-left transition-colors hover:border-rose-500/45 sm:grid-cols-[1fr_auto]"
+              className="group grid gap-4 border border-white/10 bg-[#0a0a0c]/92 p-4 text-left transition-colors hover:border-white/25 sm:grid-cols-[1fr_auto]"
               onClick={() => navigate(`/organizer/tournament/${tournament.slug || tournament.id}`)}
             >
               <div className="min-w-0">

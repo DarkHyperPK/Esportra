@@ -149,7 +149,7 @@ const UserMenu = ({
         <FramerDropdownTrigger>
           <button
             type="button"
-            className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium text-white/85 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-rose-500/70"
+            className="flex items-center gap-2 px-2 py-1.5 text-sm font-medium text-white/85 outline-none transition-colors hover:text-white focus-visible:ring-2 focus-visible:ring-white/30"
           >
             <span className="flex h-8 w-8 items-center justify-center overflow-hidden border border-white/10 bg-[#0a0a0c]">
               {showAvatarImage ? (
@@ -180,7 +180,7 @@ const UserMenu = ({
         <FramerDropdownContent
           align="end"
           width={280}
-          className="!rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0"
+          className="!rounded-none !border-white/10 !bg-matte-black !p-0 !backdrop-blur-0"
         >
           {/* Identity header */}
           <div className="border-b border-white/10 bg-[#0a0a0c] px-4 py-4">

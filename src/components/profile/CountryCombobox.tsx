@@ -43,7 +43,7 @@ export function CountryCombobox({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            'h-11 w-full justify-between border-zinc-800 bg-zinc-900/50 font-normal text-white hover:bg-zinc-900/70 hover:text-white focus:border-rose-500 focus:ring-rose-500/20',
+            'h-11 w-full justify-between border-zinc-800 bg-zinc-900/50 font-normal text-white hover:bg-zinc-900/70 hover:text-white focus:border-white/30 focus:ring-white/20',
             !value && 'text-zinc-500',
             className,
           )}

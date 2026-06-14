@@ -80,7 +80,10 @@ export default {
 				// Legacy gaming colors for compatibility
 				gaming: {
 					'darker': '#0a0a0a'
-				}
+				},
+				matte: {
+					black: '#0a0a0c',
+				},
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

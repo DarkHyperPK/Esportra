@@ -264,7 +264,7 @@ function ConnectedAccountsTab() {
             acc.connected ? (
               acc.onUnlink && (
                 <Button size="sm" variant="outline"
-                  className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 shrink-0 text-xs"
+                  className="border-white/15 text-rose-400 hover:bg-rose-500/10 shrink-0 text-xs"
                   disabled={acc.unlinking} onClick={acc.onUnlink}>
                   {acc.unlinking
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin" />

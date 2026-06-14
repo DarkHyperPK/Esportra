@@ -8,35 +8,35 @@ import { cva } from "class-variance-authority"
  * Prefer semantic components from `@/components/ui/app-buttons` over raw variants.
  */
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none border font-mono text-xs font-bold uppercase tracking-wider ring-offset-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none border font-mono text-xs font-bold uppercase tracking-wider ring-offset-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         /** Primary CTA — rose fill (Register, Save, Join, Confirm). */
         default:
-          "border-rose-500 bg-rose-500 text-white hover:border-rose-400 hover:bg-rose-400 hover:text-white",
+          "border-transparent bg-rose-500 text-white hover:border-transparent hover:bg-rose-400 hover:text-white focus-visible:ring-white/25",
         /** Alias for default — explicit imports in app-buttons. */
         cta:
-          "border-rose-500 bg-rose-500 text-white hover:border-rose-400 hover:bg-rose-400 hover:text-white",
+          "border-transparent bg-rose-500 text-white hover:border-transparent hover:bg-rose-400 hover:text-white focus-visible:ring-white/25",
         /** High-contrast white pill — rare emphasis (modal confirm on dark). */
         accent:
-          "border-white bg-white text-black hover:border-zinc-200 hover:bg-zinc-200 hover:text-black",
+          "border-white bg-white text-matte-black hover:border-zinc-200 hover:bg-zinc-200 hover:text-matte-black focus-visible:ring-white/30",
         /** Settings, cancel-adjacent, low-emphasis actions. */
         secondary:
-          "border-white/10 bg-white/[0.03] text-zinc-300 hover:border-white/20 hover:bg-white/10 hover:text-white",
+          "border-white/10 bg-white/[0.03] text-zinc-300 hover:border-white/20 hover:bg-white/10 hover:text-white focus-visible:ring-white/25",
         /** Bordered glass — filters, tertiary actions. */
         outline:
-          "border-white/15 bg-transparent text-white hover:border-white/30 hover:bg-white/5 hover:text-white",
+          "border-white/15 bg-transparent text-white hover:border-white/30 hover:bg-white/5 hover:text-white focus-visible:ring-white/25",
         /** Minimal — toolbars, icon-adjacent actions. */
         ghost:
-          "border-transparent bg-transparent text-zinc-400 hover:border-white/10 hover:bg-white/5 hover:text-white",
+          "border-transparent bg-transparent text-zinc-400 hover:border-white/10 hover:bg-white/5 hover:text-white focus-visible:ring-white/25",
         destructive:
-          "border-red-500/40 bg-red-950/20 text-red-200 hover:border-red-500 hover:bg-red-600 hover:text-white",
+          "border-red-500/40 bg-red-950/20 text-red-200 hover:border-red-500 hover:bg-red-600 hover:text-white focus-visible:ring-red-500/50",
         /** Live / match actions — enter room, check-in, go live. */
         success:
-          "border-green-600 bg-green-600 text-white shadow-[0_0_40px_rgba(22,163,74,0.25)] hover:border-green-500 hover:bg-green-500 hover:text-white active:border-green-700 active:bg-green-700 focus-visible:ring-green-500/70",
+          "border-transparent bg-green-600 text-white shadow-[0_0_40px_rgba(22,163,74,0.25)] hover:border-transparent hover:bg-green-500 hover:text-white active:border-transparent active:bg-green-700 focus-visible:ring-green-500/70",
         link:
-          "border-transparent bg-transparent px-0 text-white underline-offset-4 hover:border-transparent hover:bg-transparent hover:text-rose-300 hover:underline",
+          "border-transparent bg-transparent px-0 text-white underline-offset-4 hover:border-transparent hover:bg-transparent hover:text-rose-300 hover:underline focus-visible:ring-white/20",
       },
       size: {
         default: "h-10 px-5",

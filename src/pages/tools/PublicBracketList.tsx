@@ -7,6 +7,7 @@ import { getApiErrorMessage } from "@/lib/apiClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { CtaButton } from "@/components/ui/app-buttons";
 import { JackButton } from "@/components/ui/JackButton";
 import {
   AlertDialog,
@@ -82,9 +83,9 @@ const PublicBracketList = () => {
           <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
             <Link to="/tools/map-veto">Map veto</Link>
           </Button>
-          <Button asChild className="bg-rose-600 text-white hover:bg-rose-500">
+          <CtaButton asChild>
             <Link to="/tools/brackets/new"><Plus className="mr-2 h-4 w-4" /> New bracket</Link>
-          </Button>
+          </CtaButton>
         </div>
       </div>
 
@@ -134,9 +135,9 @@ const PublicBracketList = () => {
                   {shareToken && <Share2 className="h-4 w-4 shrink-0 text-rose-300" />}
                 </div>
                 <div className="mt-4 flex gap-2">
-                  <Button asChild size="sm" className="flex-1 border-rose-600 bg-rose-600 text-white hover:border-rose-500 hover:bg-rose-500 hover:text-white">
+                  <CtaButton asChild size="sm" className="flex-1">
                     <Link to={`/tools/brackets/${id}`}>Open runner</Link>
-                  </Button>
+                  </CtaButton>
                   <Button
                     type="button"
                     size="sm"

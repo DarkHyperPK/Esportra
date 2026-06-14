@@ -580,7 +580,7 @@ const ContentModeration = () => {
           variant="outline"
           size="sm"
           onClick={() => refetch()}
-          className="border-zinc-800 text-zinc-400 hover:text-white hover:border-rose-500/30 self-start sm:self-auto"
+          className="border-zinc-800 text-zinc-400 hover:text-white hover:border-white/25 self-start sm:self-auto"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
@@ -659,7 +659,7 @@ const ContentModeration = () => {
             variant="outline"
             size="sm"
             onClick={() => refetch()}
-            className="border-zinc-800 text-zinc-400 hover:text-white hover:border-rose-500/30"
+            className="border-zinc-800 text-zinc-400 hover:text-white hover:border-white/25"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Retry

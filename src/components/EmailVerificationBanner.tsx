@@ -43,7 +43,7 @@ const EmailVerificationBanner = () => {
           <button
             onClick={handleResend}
             disabled={resending}
-            className="flex items-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider text-rose-300 hover:text-white border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1.5 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider text-white border border-transparent bg-rose-500 hover:bg-rose-400 px-3 py-1.5 transition-colors disabled:opacity-50"
           >
             <Mail className="w-3.5 h-3.5" />
             {resending ? "Sending..." : "Resend email"}

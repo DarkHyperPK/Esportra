@@ -237,11 +237,17 @@ container: {
 
 | Button role | Component | Notes |
 |-------------|-----------|-------|
-| White primary CTA (license apply, accept invite, contact submit) | `JackButton` (`variant="primary"`) | Rose panel slides up on hover; black text default |
-| Rose primary CTA (save, register, confirm) | `CtaButton` | Rose fill |
-| Live / match actions (enter match room, check-in, go live) | `SuccessButton` | Green fill; green border and focus ring |
-| Cancel / secondary | `CancelButton`, `OutlineButton` | Muted / glass |
-| Rare solid white (no animation) | `AccentButton` | White → zinc hover; black text throughout |
+| White primary CTA (license apply, accept invite, contact submit) | `JackButton` (`variant="primary"`) | Rose panel slides up on hover; matte black text (`text-matte-black`) |
+| Rose primary CTA (save, register, confirm) | `CtaButton` | Rose fill only — `border-transparent`, no rose outline |
+| Live / match actions (enter match room, check-in, go live) | `SuccessButton` | Green fill; green focus ring; no rose strokes |
+| Cancel / secondary | `CancelButton`, `OutlineButton` | Muted / glass; white/zinc borders and focus rings |
+| Rare solid white (no animation) | `AccentButton` | White → zinc hover; `text-matte-black` throughout |
+
+**Button stroke rules**
+
+- On white button surfaces, use `text-matte-black` (`#0a0a0c`) — never Tailwind `text-black` (`#000000`).
+- **No rose pink strokes on buttons** — no `border-rose-*` or `ring-rose-*` on any button. Rose is fill/hover animation only (`CtaButton`, JackButton slide-up panel).
+- Focus rings: white/zinc for neutral buttons, green for `SuccessButton`, red for `DangerButton`.
 
 **App button catalog**
 

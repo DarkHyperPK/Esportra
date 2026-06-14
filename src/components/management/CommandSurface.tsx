@@ -7,12 +7,12 @@ type CommandButtonSize = 'icon' | 'sm' | 'md' | 'lg';
 
 const variantClasses: Record<CommandButtonVariant, { base: string; fill: string; text: string }> = {
   primary: {
-    base: 'border-white bg-white text-black',
+    base: 'border-white bg-white text-matte-black',
     fill: 'bg-rose-500',
     text: 'group-hover:text-white',
   },
   secondary: {
-    base: 'border-white/15 bg-[#0a0a0c] text-white',
+    base: 'border-white/15 bg-matte-black text-white',
     fill: 'bg-rose-500',
     text: 'group-hover:text-white',
   },
@@ -70,7 +70,7 @@ export const CommandButton = React.forwardRef<HTMLButtonElement, CommandButtonPr
       {...(!asChild ? { type } : {})}
       ref={ref}
       className={cn(
-        'group relative inline-flex items-center justify-center overflow-hidden rounded-none border font-mono font-bold uppercase tracking-wider transition-colors duration-300 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70',
+        'group relative inline-flex items-center justify-center overflow-hidden rounded-none border font-mono font-bold uppercase tracking-wider transition-colors duration-300 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30',
         sizeClasses[size],
         styles.base,
         styles.text,
@@ -127,10 +127,10 @@ export function CommandTabButton({
     <button
       type="button"
       className={cn(
-        'group relative overflow-hidden rounded-none border px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70 disabled:pointer-events-none disabled:opacity-50',
+        'group relative overflow-hidden rounded-none border px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:pointer-events-none disabled:opacity-50',
         active
-          ? 'border-rose-500 bg-rose-500 text-white'
-          : 'border-white/10 bg-white/[0.02] text-zinc-400 hover:border-rose-500/60 hover:text-white',
+          ? 'border-transparent bg-rose-500 text-white'
+          : 'border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/25 hover:text-white',
         className,
       )}
       {...props}
