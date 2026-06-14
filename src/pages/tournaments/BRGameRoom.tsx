@@ -20,7 +20,6 @@ import { Button, SuccessButton } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
-import PremiumBackground from '@/components/ui/PremiumBackground';
 import {
   Trophy, Copy, ArrowLeft, Radio, Clock, CheckCircle, Key, Send,
   Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown, Medal, Shield, User, Users,
@@ -382,21 +381,21 @@ const BRGameRoom: React.FC = () => {
             : 'You are not assigned to a BR lobby yet. Ask the organizer to confirm you are seeded into a group.';
 
     return (
-      <PremiumBackground className="min-h-screen">
-        <div className="max-w-lg mx-auto px-4 py-16 text-center space-y-4">
+      <div className="esportra-ambient-page relative min-h-screen overflow-hidden text-white">
+        <div className="relative z-10 max-w-lg mx-auto px-4 py-16 text-center space-y-4">
           <Shield className="w-10 h-10 text-zinc-600 mx-auto" />
           <h1 className="text-lg font-bold text-white">{tournament.name}</h1>
           <p className="text-sm text-zinc-400">{message}</p>
           <Button variant="outline" onClick={() => navigate(`/tournaments/${slug}`)}>Back to tournament</Button>
         </div>
-      </PremiumBackground>
+      </div>
     );
   }
 
   return (
-    <PremiumBackground className="min-h-screen">
+    <div className="esportra-ambient-page relative min-h-screen overflow-hidden text-white">
       <motion.div
-        className="max-w-3xl mx-auto px-4 py-6 sm:py-10 space-y-6"
+        className="relative z-10 max-w-3xl mx-auto px-4 py-6 sm:py-10 space-y-6"
         variants={stagger.container}
         initial="hidden"
         animate="visible"
@@ -959,7 +958,7 @@ const BRGameRoom: React.FC = () => {
           </motion.div>
         )}
       </motion.div>
-    </PremiumBackground>
+    </div>
   );
 };
 
