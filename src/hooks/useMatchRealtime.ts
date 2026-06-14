@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useHub } from '@/hooks/useSignalR';
+import { useSignalR } from '@/hooks/useSignalR';
 import { useHubGroupJoin } from '@/hooks/useHubGroupJoin';
 import { HubPaths } from '@/lib/signalrClient';
 import { toRawMatchId } from '@/utils/bracketMatchId';
@@ -86,7 +86,8 @@ export function useMatchRealtime({
 }: Options) {
   const rawMatchId = matchId ? toRawMatchId(matchId) : '';
   const isEnabled = enabled && !!rawMatchId;
-  const conn = useHub(HubPaths.Match);
+  const { getConnection, ensureHubStarted } = useSignalR();
+  const conn = getConnection(HubPaths.Match);
   const queryClient = useQueryClient();
 
   const callbacksRef = useRef({
@@ -127,6 +128,7 @@ export function useMatchRealtime({
 
   const { joined, connectionState } = useHubGroupJoin(conn, {
     enabled: isEnabled,
+    ensureConnected: () => ensureHubStarted(HubPaths.Match),
     join: joinGroup,
     leave: leaveGroup,
   });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock, Mail } from 'lucide-react';
-import { Button, SuccessButton } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { JackButton } from '@/components/ui/JackButton';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -115,9 +115,8 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                         {isOrganizer && (
                             <div className="absolute top-8 right-8 z-30">
                                 <button type="button"
-                                    size="sm"
                                     onClick={() => (window as any).dispatchBannerEdit?.()}
-                                    className="bg-black/40 border-white/10 text-white backdrop-blur-md hover:bg-white/10 flex items-center gap-2"
+                                    className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'bg-black/40 border-white/10 text-white backdrop-blur-md hover:bg-white/10 flex items-center gap-2')}
                                 >
                                     <Edit className="w-4 h-4" />
                                     EDIT BANNER

@@ -6,8 +6,9 @@ import { apiClient } from "@/lib/apiClient";
 import { getApiErrorMessage } from "@/lib/apiClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { CtaButton } from "@/components/ui/app-buttons";
+import { CtaButton, OutlineButton } from "@/components/ui/app-buttons";
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { JackButton } from "@/components/ui/JackButton";
 import {
   AlertDialog,
@@ -80,9 +81,9 @@ const PublicBracketList = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <button type="button" asChild>
+          <OutlineButton asChild>
             <Link to="/tools/map-veto">Map veto</Link>
-          </button>
+          </OutlineButton>
           <CtaButton asChild>
             <Link to="/tools/brackets/new"><Plus className="mr-2 h-4 w-4" /> New bracket</Link>
           </CtaButton>
@@ -101,9 +102,9 @@ const PublicBracketList = () => {
       ) : error ? (
         <section className="border border-red-500/30 bg-red-500/10 p-5">
           <p className="text-sm text-red-200">{getApiErrorMessage(error, "Could not load your saved brackets.")}</p>
-          <button type="button"
+          <button
             type="button"
-            className="mt-4 border-red-400/30 bg-transparent text-red-100 hover:bg-red-500/10"
+            className={cn(buttonVariants({ variant: 'outline' }), 'mt-4 border-red-400/30 bg-transparent text-red-100 hover:bg-red-500/10')}
             disabled={isFetching}
             onClick={() => void refetch()}
           >
@@ -137,10 +138,10 @@ const PublicBracketList = () => {
                   <CtaButton asChild size="sm" className="flex-1">
                     <Link to={`/tools/brackets/${id}`}>Open runner</Link>
                   </CtaButton>
-                  <button type="button"
+                  <button
                     type="button"
-                    size="sm"
                     onClick={() => setDeleteTarget({ id: String(id), title: value(row, "title") || "Untitled bracket" })}
+                    className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'border-red-500/30 text-red-300 hover:bg-red-500/10')}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

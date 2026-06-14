@@ -4,7 +4,9 @@ import { Download, FileUp, Save, Shuffle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient, ApiError, getApiErrorMessage } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
-import { CtaButton } from '@/components/ui/app-buttons';
+import { CtaButton, OutlineButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -167,9 +169,9 @@ const PublicBracketBuilder = () => {
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-rose-400">Bracket tool</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight">Create Bracket</h1>
         </div>
-        <button type="button" asChild>
+        <OutlineButton asChild>
           <Link to="/tools/brackets">Saved brackets</Link>
-        </button>
+        </OutlineButton>
       </div>
 
       <div className="grid gap-5 lg:min-h-[calc(100dvh-11rem)] lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] lg:items-stretch">
@@ -232,9 +234,9 @@ const PublicBracketBuilder = () => {
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" type="button" disabled={busy || Boolean(teamCountError)} onClick={generatePreview}>
+              <OutlineButton type="button" disabled={busy || Boolean(teamCountError)} onClick={generatePreview}>
                 <Shuffle className="mr-2 h-4 w-4" /> Preview
-              </button>
+              </OutlineButton>
               <CtaButton type="button" disabled={busy || Boolean(teamCountError)} onClick={saveBracket}>
                 <Save className="mr-2 h-4 w-4" /> Save
               </CtaButton>
@@ -253,9 +255,9 @@ const PublicBracketBuilder = () => {
                 matches={matches}
                 downloadFileName={`${slugifyBracketFileName(title)}-preview.png`}
                 triggerButton={(
-                  <button type="button" type="button" size="sm">
+                  <OutlineButton type="button" size="sm">
                     <Download className="mr-2 h-4 w-4" /> Export PNG
-                  </button>
+                  </OutlineButton>
                 )}
               />
             ) : null}

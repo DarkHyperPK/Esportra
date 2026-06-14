@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Check, Map as MapIcon, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { CtaButton, GhostButton, OutlineButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { getWebsiteAssetUrl } from '@/lib/storage';
@@ -195,28 +195,21 @@ const TournamentMapPoolSelector: React.FC<TournamentMapPoolSelectorProps> = ({
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                            <button type="button"
-                                type="button"
-                                size="sm"
-                                onClick={() => onChange(recommendedIds)}
-                            >
+                            <OutlineButton type="button" size="sm" onClick={() => onChange(recommendedIds)}>
                                 Select Recommended
-                            </button>
-                            <button type="button"
-                                type="button"
-                                size="sm"
-                                onClick={() => onChange([])}
-                            >
+                            </OutlineButton>
+                            <GhostButton type="button" size="sm" onClick={() => onChange([])}>
                                 Clear All
-                            </button>
-                            <button type="button"
-                                type="button"
-                                variant={showSelectedOnly ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setShowSelectedOnly((prev) => !prev)}
-                            >
+                            </GhostButton>
+                            {showSelectedOnly ? (
+                              <CtaButton type="button" size="sm" onClick={() => setShowSelectedOnly(false)}>
                                 Show Selected Only
-                            </button>
+                              </CtaButton>
+                            ) : (
+                              <OutlineButton type="button" size="sm" onClick={() => setShowSelectedOnly(true)}>
+                                Show Selected Only
+                              </OutlineButton>
+                            )}
                         </div>
                     </div>
 

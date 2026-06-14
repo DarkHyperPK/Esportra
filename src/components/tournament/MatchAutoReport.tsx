@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { JackButton } from '@/components/ui/JackButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Loader2, Trophy, Clock, Swords, Check, Search, Info, SearchX, RefreshCcw, AlertTriangle } from 'lucide-react';
@@ -192,7 +193,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
             {isCaptain ? (
                 <button type="button"
                     onClick={() => setScanOpen(true)}
-                    className={`w-full bg-rose-500 hover:bg-rose-600 transition-all text-white font-bold font-mono tracking-wider shadow-lg shadow-rose-900/20 ${className}`}
+                    className={cn(buttonVariants(), 'w-full shadow-lg shadow-rose-900/20', className)}
                 >
                     <Search className="w-4 h-4 mr-2" />
                     Auto-Fetch Game {gameNumber} Result
@@ -235,7 +236,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                 </div>
                             )}
                             <div className="flex justify-center mt-6">
-                                <button type="button" onClick={handleScan} className="w-full max-w-[280px] bg-indigo-600 hover:bg-indigo-700">
+                                <button type="button" onClick={handleScan} className={cn(buttonVariants(), 'w-full max-w-[280px] border-transparent bg-indigo-600 hover:bg-indigo-700')}>
                                     <Search className="w-4 h-4 mr-2" />
                                     Scan Recent Matches
                                 </button>
@@ -291,10 +292,9 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                 <p className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.2em]">Select Sequence</p>
                                 <div className="flex items-center gap-2">
                                     <button type="button"
-                                        size="sm"
                                         onClick={handleScan}
                                         disabled={submitting}
-                                        className="h-6 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10"
+                                        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-6 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10')}
                                     >
                                         <RefreshCcw className="w-3 h-3 mr-1.5" />
                                         Refetch
@@ -323,7 +323,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                         </p>
                                         <button type="button"
                                             onClick={handleScan}
-                                            className="border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 hover:border-indigo-500/50 text-indigo-400 h-10 px-8 font-black uppercase tracking-widest text-xs transition-all"
+                                            className={cn(buttonVariants({ variant: 'outline' }), 'border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 hover:border-indigo-500/50 text-indigo-400 h-10 px-8 font-black uppercase tracking-widest text-xs transition-all')}
                                         >
                                             <RefreshCcw className="w-3 h-3 mr-2" /> Try Again
                                         </button>

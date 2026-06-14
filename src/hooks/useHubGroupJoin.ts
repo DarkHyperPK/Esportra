@@ -12,14 +12,23 @@ export interface UseHubGroupJoinOptions {
   join: () => Promise<void>;
   /** Optional leave on cleanup */
   leave?: () => Promise<void>;
+  /** Use SignalRProvider's shared start lock instead of calling conn.start() directly. */
+  ensureConnected?: () => Promise<void>;
   onJoinError?: (error: unknown) => void;
+}
+
+function isBenignConnectionError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('stopped during negotiation')
+    || message.includes('Connection was stopped')
+    || message.includes('AbortError');
 }
 
 export function useHubGroupJoin(
   conn: HubConnection,
   options: UseHubGroupJoinOptions,
 ): { joined: boolean; connectionState: HubConnectionState } {
-  const { enabled = true, join, leave, onJoinError } = options;
+  const { enabled = true, join, leave, ensureConnected, onJoinError } = options;
   const onJoinErrorRef = useRef(onJoinError);
   onJoinErrorRef.current = onJoinError;
   const [joined, setJoined] = useState(false);
@@ -61,11 +70,18 @@ export function useHubGroupJoin(
       syncConnectionState();
 
       if (conn.state === HubConnectionState.Disconnected) {
-        try {
-          await conn.start();
-        } catch (error) {
-          onJoinErrorRef.current?.(error);
-          if (active) scheduleJoin(1500);
+        if (ensureConnected) {
+          try {
+            await ensureConnected();
+          } catch (error) {
+            if (!isBenignConnectionError(error)) {
+              onJoinErrorRef.current?.(error);
+            }
+            if (active) scheduleJoin(isBenignConnectionError(error) ? 500 : 1500);
+            return;
+          }
+        } else if (active) {
+          scheduleJoin(500);
           return;
         }
       }
@@ -109,7 +125,7 @@ export function useHubGroupJoin(
         void leave().catch(() => {});
       }
     };
-  }, [conn, enabled, join, leave]);
+  }, [conn, enabled, join, leave, ensureConnected]);
 
   return { joined, connectionState };
 }

@@ -4,7 +4,9 @@ import { Code2, Copy, Download, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
-import { CtaButton } from '@/components/ui/app-buttons';
+import { CtaButton, OutlineButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { JackButton } from "@/components/ui/JackButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -195,36 +197,41 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
           <p className="mt-1 text-sm text-zinc-500">{formatBracketFormat(data.format)} · BO{data.bestOf} · {matches.length} matches</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" asChild>
+          <OutlineButton asChild>
             <Link to="/tools/brackets">Saved brackets</Link>
-          </button>
+          </OutlineButton>
           {matches.length > 0 && (
             <BracketExporter
               matches={matches}
               downloadFileName={exportFileName}
               triggerButton={(
-                <button type="button">
+                <OutlineButton type="button">
                   <Download className="mr-2 h-4 w-4" /> Export PNG
-                </button>
+                </OutlineButton>
               )}
             />
           )}
           {mode === "owner" && canEmbed && (
-            <button type="button" onClick={openEmbedDialog}>
+            <OutlineButton type="button" onClick={openEmbedDialog}>
               <Code2 className="mr-2 h-4 w-4" /> Embed
-            </button>
+            </OutlineButton>
           )}
           {mode === "owner" && (
             <>
-              <button type="button" disabled={saving} onClick={toggleSharing}>
+              <OutlineButton type="button" disabled={saving} onClick={toggleSharing}>
                 <Share2 className="mr-2 h-4 w-4" /> {data.visibility === "unlisted" ? "Disable share" : "Enable share"}
-              </button>
-              <button type="button" disabled={saving} onClick={resetBracket}>
+              </OutlineButton>
+              <OutlineButton type="button" disabled={saving} onClick={resetBracket}>
                 <RotateCcw className="mr-2 h-4 w-4" /> Reset
-              </button>
-              <button type="button"
+              </OutlineButton>
+              <button
+                type="button"
                 disabled={saving}
                 onClick={() => setDeleteOpen(true)}
+                className={cn(
+                  buttonVariants({ variant: 'outline' }),
+                  'border-red-500/30 bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-200',
+                )}
               >
                 <Trash2 className="mr-2 h-4 w-4" /> Delete
               </button>
@@ -237,9 +244,9 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
         <section className="mb-4 flex flex-col gap-2 border border-white/10 bg-black/35 p-3 text-sm sm:flex-row sm:items-center">
           <span className="text-zinc-400">Share:</span>
           <code className="min-w-0 flex-1 truncate text-xs text-zinc-300">{shareUrl}</code>
-          <button type="button" size="sm" onClick={() => copyText(shareUrl).then(() => toast({ title: "Link copied" }))}>
+          <OutlineButton type="button" size="sm" onClick={() => copyText(shareUrl).then(() => toast({ title: "Link copied" }))}>
             <Copy className="mr-2 h-4 w-4" /> Copy
-          </button>
+          </OutlineButton>
         </section>
       )}
 

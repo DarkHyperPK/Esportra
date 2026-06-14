@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Bot, Trash2, AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Badge } from '@/components/ui/badge';
 import {
     AlertDialog,
@@ -55,8 +56,7 @@ export function MockModePanel({ tournamentId, slug, maxTeams, mockCount, canGene
                     <div className="mt-4 flex items-center gap-2 flex-wrap">
                         {canGenerate && (
                             <button type="button"
-                                size="sm"
-                                className="border-amber-500/30 text-amber-300 hover:bg-amber-500/10 h-8 text-xs"
+                                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'border-amber-500/30 text-amber-300 hover:bg-amber-500/10 h-8 text-xs')}
                                 disabled={generate.isPending}
                                 onClick={() => generate.mutate(maxTeams)}
                             >
@@ -73,8 +73,7 @@ export function MockModePanel({ tournamentId, slug, maxTeams, mockCount, canGene
                             <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
                                 <AlertDialogTrigger asChild>
                                     <button type="button"
-                                        size="sm"
-                                        className="text-red-400 hover:bg-red-500/10 h-8 text-xs"
+                                        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-red-400 hover:bg-red-500/10 h-8 text-xs')}
                                         disabled={clear.isPending}
                                     >
                                         <Trash2 className="mr-1.5 h-3.5 w-3.5" />

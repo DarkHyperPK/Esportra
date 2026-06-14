@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { DangerButton } from '@/components/ui/app-buttons';
+import { DangerButton, GhostButton, SuccessButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Swords, CheckCircle2, AlertCircle, Check, ShieldAlert, Clock, ImagePlus, X as XIcon } from 'lucide-react';
@@ -175,14 +177,15 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
 
             {acceptedReport.match_data?.players && (
               <div className="space-y-3">
-                <button type="button"
+                <GhostButton
+                  type="button"
                   size="sm"
                   onClick={() => setShowScoreboard(!showScoreboard)}
-                  className="w-full text-zinc-500 hover:text-white hover:bg-white/5 text-[10px] font-black uppercase tracking-widest h-8"
+                  className="w-full h-8 text-[10px] font-black uppercase tracking-widest"
                 >
                   <Swords className="w-3 h-3 mr-2" />
                   {showScoreboard ? 'Hide Scoreboard' : 'View Full Scoreboard'}
-                </button>
+                </GhostButton>
 
                 <AnimatePresence>
                   {showScoreboard && (
@@ -293,14 +296,15 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
               </div>
               {activeReport.match_data?.players && (
                 <div className="mt-4 pt-4 border-t border-blue-500/10">
-                  <button type="button"
+                  <GhostButton
+                    type="button"
                     size="sm"
                     onClick={() => setShowScoreboard(!showScoreboard)}
-                    className="w-full text-zinc-500 hover:text-white hover:bg-white/5 text-[10px] font-black uppercase tracking-widest h-8"
+                    className="w-full h-8 text-[10px] font-black uppercase tracking-widest"
                   >
                     <Swords className="w-3 h-3 mr-2" />
                     {showScoreboard ? 'Hide Scoreboard' : 'View Full Scoreboard'}
-                  </button>
+                  </GhostButton>
 
                   <AnimatePresence>
                     {showScoreboard && (
@@ -368,10 +372,11 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
                   {acceptError}
                 </div>
               )}
-              <button type="button"
+              <SuccessButton
+                type="button"
                 onClick={handleAccept}
                 disabled={acceptReport.isPending || submitting}
-                className="w-full border-transparent bg-emerald-600 text-white hover:border-transparent hover:bg-emerald-600 focus-visible:ring-0 active:bg-emerald-700 active:scale-[0.98] transition-transform duration-75"
+                className="w-full active:scale-[0.98] transition-transform duration-75"
               >
                 {acceptReport.isPending || submitting ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -379,7 +384,7 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
                   <Check className="w-4 h-4 mr-2" />
                 )}
                 Accept Result
-              </button>
+              </SuccessButton>
               <DangerButton
                 onClick={() => setDisputeOpen(true)}
                 className="w-full active:scale-[0.98] transition-transform duration-75"

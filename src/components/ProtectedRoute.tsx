@@ -1,4 +1,5 @@
 import { Navigate, useLocation, useParams } from "react-router-dom";
+import React from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useRole } from "@/hooks/useRole";
@@ -23,6 +24,42 @@ interface ProtectedRouteProps {
    */
   allowOrganizationStaff?: boolean;
   requiresAuth?: boolean;
+}
+
+class RouteErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-[50vh] flex items-center justify-center px-4 py-12">
+          <div className="max-w-md text-center space-y-4">
+            <h2 className="text-lg font-semibold text-red-400">This page failed to load</h2>
+            <p className="text-sm text-zinc-400">{this.state.error.message}</p>
+            <button
+              type="button"
+              className="rounded-md border border-white/15 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
+              onClick={() => window.location.reload()}
+            >
+              Reload page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 const ProtectedRoute = ({
@@ -94,7 +131,11 @@ const ProtectedRoute = ({
     }
   }
 
-  return <>{children}</>;
+  return (
+    <RouteErrorBoundary>
+      {children}
+    </RouteErrorBoundary>
+  );
 };
 
 export default ProtectedRoute;

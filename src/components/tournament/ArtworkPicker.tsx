@@ -3,6 +3,7 @@ import { apiClient } from '@/lib/apiClient';
 import { Check, Image, Film, Loader2, Sun, Crop as CropIcon, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CtaButton } from '@/components/ui/app-buttons';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Slider } from '@/components/ui/slider';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/imageUtils';
@@ -287,15 +288,15 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
                   {video.name && (
                     <p className="text-xs text-zinc-400 truncate flex-1">{video.name}</p>
                   )}
-                  <button type="button"
+                  <button
                     type="button"
-                    size="sm"
                     onClick={() => handleSelectVideo(video.videoId)}
                     className={cn(
+                      buttonVariants({ size: 'sm' }),
                       'text-xs ml-2',
                       isSelected
-                        ? 'bg-rose-500 text-white'
-                        : 'bg-white/5 text-zinc-300 hover:bg-white/10 border border-white/10'
+                        ? 'border-transparent bg-rose-500 text-white hover:bg-rose-400'
+                        : 'bg-white/5 text-zinc-300 hover:bg-white/10 border-white/10',
                     )}
                   >
                     {isSelected ? <><Check className="w-3 h-3 mr-1" /> Selected</> : 'Use as Banner'}

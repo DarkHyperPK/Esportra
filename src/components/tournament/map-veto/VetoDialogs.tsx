@@ -1,6 +1,6 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { CtaButton } from '@/components/ui/app-buttons';
+import { CancelButton, CtaButton, GhostButton } from '@/components/ui/app-buttons';
 import { cn } from '@/lib/utils';
 import { MatchMapVeto, getVetoFormat, getSidePickerTeam, GameMap, VetoService } from '@/hooks/useMapVetoMachine';
 
@@ -80,11 +80,11 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                         </p>
                     </div>
                     <DialogFooter>
-                        <button type="button"
+                        <GhostButton type="button"
                             onClick={() => setShowRoleSwitchPrompt(false)}
                         >
                             Stay as Organizer (View Only)
-                        </button>
+                        </GhostButton>
                         <CtaButton
                             onClick={handleRoleSwitch}
                         >
@@ -221,7 +221,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                         </CtaButton>
                     </div>
                     <DialogFooter>
-                        <button type="button"
+                        <CancelButton type="button"
                             onClick={() => {
                                 setShowSideDialog(false);
                                 setPendingMapId(null);
@@ -229,7 +229,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                             }}
                         >
                             Cancel
-                        </button>
+                        </CancelButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

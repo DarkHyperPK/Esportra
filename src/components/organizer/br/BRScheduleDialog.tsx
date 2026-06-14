@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { CtaButton } from '@/components/ui/app-buttons';
+import { CancelButton, CtaButton, OutlineButton } from '@/components/ui/app-buttons';
+import { buttonVariants } from '@/components/ui/button-variants';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar, Clock, Save, ChevronRight } from 'lucide-react';
@@ -358,17 +360,17 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
         <div className="px-6 py-4 border-t border-white/5 flex items-center gap-3">
           {step === 'stage' ? (
             <>
-              <button type="button" onClick={() => onOpenChange(false)}>
+              <CancelButton type="button" onClick={() => onOpenChange(false)}>
                 Cancel
-              </button>
+              </CancelButton>
               {hasRoundsConfigured && (
-                <button type="button"
+                <OutlineButton type="button"
                   onClick={handleSaveAndContinue}
                   disabled={savingStage || !startsAt || !endsAt}
                 >
                   <ChevronRight className="w-3.5 h-3.5 mr-1.5" />
                   {savingStage ? 'Saving...' : 'Save & Continue'}
-                </button>
+                </OutlineButton>
               )}
               <CtaButton
                 className="flex-1"
@@ -381,9 +383,9 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
             </>
           ) : (
             <>
-              <button type="button" onClick={() => setStep('stage')}>
+              <OutlineButton type="button" onClick={() => setStep('stage')}>
                 Back
-              </button>
+              </OutlineButton>
               <CtaButton
                 className="flex-1"
                 onClick={handleSaveRoundSchedules}

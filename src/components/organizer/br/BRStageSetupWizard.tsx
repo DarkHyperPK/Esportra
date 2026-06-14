@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { GhostButton, SuccessButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -681,26 +681,24 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
 
         <DialogFooter className="gap-2 sm:gap-0">
           {step > 0 && (
-            <Button type="button" variant="ghost" onClick={goBack} disabled={saving}>
+            <GhostButton type="button" onClick={goBack} disabled={saving}>
               Back
-            </Button>
+            </GhostButton>
           )}
           {step < maxStep ? (
-            <button type="button"
-              type="button"
+            <SuccessButton type="button"
               onClick={goNext}
               disabled={!canProceed && step > 0}
             >
               Continue
-            </button>
+            </SuccessButton>
           ) : (
-            <button type="button"
-              type="button"
+            <SuccessButton type="button"
               onClick={handleSave}
               disabled={saving || !canProceed || validationErrors.length > 0}
             >
               {saving ? 'Saving...' : 'Save stages'}
-            </button>
+            </SuccessButton>
           )}
         </DialogFooter>
       </DialogContent>

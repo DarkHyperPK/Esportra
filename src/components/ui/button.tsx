@@ -3,13 +3,11 @@ import { Slot } from "@radix-ui/react-slot"
 import { type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { classNameHasColorUtilities } from "@/lib/buttonColorClassOverride"
 import { buttonVariants } from "@/components/ui/button-variants"
 
-const COLOR_CLASS_PATTERN =
-  /\b(?:hover:|focus-visible:|active:)?(?:bg-|text-|border-|ring-)/
-
 function warnOnColorClassNameOverride(className: string | undefined) {
-  if (import.meta.env.DEV && className && COLOR_CLASS_PATTERN.test(className)) {
+  if (import.meta.env.DEV && className && classNameHasColorUtilities(className)) {
     console.warn(
       "[Button] Avoid color utilities in className — use semantic components from @/components/ui/app-buttons or JackButton.",
       className,

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -243,7 +244,11 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
     return (
       <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 rounded-xl px-4 py-3">
         <span>Failed to load lobbies</span>
-        <button type="button" size="sm" onClick={() => refetch()} className="h-6 text-xs text-red-300">
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-6 text-xs text-red-300 hover:text-red-200 hover:bg-red-500/10')}
+        >
           <RefreshCw className="w-3 h-3 mr-1" /> Retry
         </button>
       </div>

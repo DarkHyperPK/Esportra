@@ -12,7 +12,7 @@ import {
     EyeOff,
     Settings
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { GhostButton } from '@/components/ui/app-buttons';
 import { TournamentWizardData } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS, SEEDING_TYPE_LABELS } from '@/schemas/tournamentSchema';
 import { LAUNCH_STATE_LABELS } from '@/utils/tournamentVisibilityUtils';
@@ -207,13 +207,14 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                                 <div className="text-emerald-400">{section.icon}</div>
                                 <h3 className="font-semibold text-white">{section.title}</h3>
                             </div>
-                            <button type="button"
+                            <GhostButton
+                                type="button"
                                 size="sm"
                                 onClick={() => onEdit(section.step)}
                             >
                                 <Edit2 className="w-4 h-4 mr-1" />
                                 Edit
-                            </button>
+                            </GhostButton>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {section.items.map((item, i) => (

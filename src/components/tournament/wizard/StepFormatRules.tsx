@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
 import { Trophy, Users, Plus, Trash2, Layers, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { OutlineButton } from '@/components/ui/app-buttons';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import TournamentMapPoolSelector, { MapPoolSectionLabel } from './TournamentMapPoolSelector';
 
@@ -353,7 +354,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 ))}
                             </div>
                             <div className="flex items-center gap-2">
-                                <button type="button"
+                                <OutlineButton
                                     type="button"
                                     size="sm"
                                     onClick={() => {
@@ -364,9 +365,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                     }}
                                 >
                                     <Plus className="w-3 h-3 mr-1" /> Add Position
-                                </button>
+                                </OutlineButton>
                                 {data.brCustomScoring.placements.length > 3 && (
-                                    <button type="button"
+                                    <OutlineButton
                                         type="button"
                                         size="sm"
                                         onClick={() => {
@@ -377,7 +378,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                         }}
                                     >
                                         <Trash2 className="w-3 h-3 mr-1" /> Remove Last
-                                    </button>
+                                    </OutlineButton>
                                 )}
                             </div>
                             <div className="grid grid-cols-2 gap-4">

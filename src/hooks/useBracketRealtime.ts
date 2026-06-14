@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useHub } from '@/hooks/useSignalR';
+import { useSignalR } from '@/hooks/useSignalR';
 import { useHubGroupJoin } from '@/hooks/useHubGroupJoin';
 import { HubPaths } from '@/lib/signalrClient';
 import { matchRoomStateQueryKey } from '@/hooks/useMatchRoomState';
@@ -29,7 +29,8 @@ export function useBracketRealtime({
   onMatchUpdated,
   onBracketReset,
 }: Options) {
-  const conn = useHub(HubPaths.Bracket);
+  const { getConnection, ensureHubStarted } = useSignalR();
+  const conn = getConnection(HubPaths.Bracket);
   const queryClient = useQueryClient();
   const isEnabled = enabled && !!versionId;
 
@@ -44,6 +45,7 @@ export function useBracketRealtime({
 
   const { joined } = useHubGroupJoin(conn, {
     enabled: isEnabled,
+    ensureConnected: () => ensureHubStarted(HubPaths.Bracket),
     join: joinGroup,
     leave: leaveGroup,
     onJoinError: (error) => {

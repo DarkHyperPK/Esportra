@@ -1,5 +1,6 @@
 import React from 'react';
-import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Trophy, Swords, Calendar, Loader2 } from 'lucide-react';
 
 type EndState = 'winner' | 'runner_up' | 'eliminated' | 'waiting' | 'no_match';
@@ -67,10 +68,18 @@ const TournamentEndScreen: React.FC<TournamentEndScreenProps> = ({ state, exitRo
                     )}
                 </div>
                 <div className="mt-6 flex gap-3 justify-center">
-                    <button type="button" size="sm" onClick={() => onNavigate(`/tournaments/${slug}`)}>
+                    <button
+                        type="button"
+                        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'border-zinc-700 hover:bg-zinc-800 text-zinc-400')}
+                        onClick={() => onNavigate(`/tournaments/${slug}`)}
+                    >
                         View Tournament
                     </button>
-                    <button type="button" size="sm" onClick={() => onNavigate('/tournaments')}>
+                    <button
+                        type="button"
+                        className={cn(buttonVariants({ size: 'sm' }), 'border-transparent bg-zinc-800 hover:bg-zinc-700 text-white')}
+                        onClick={() => onNavigate('/tournaments')}
+                    >
                         Find More Tournaments
                     </button>
                 </div>
@@ -108,7 +117,11 @@ const TournamentEndScreen: React.FC<TournamentEndScreenProps> = ({ state, exitRo
                     ? 'The organizer is still finalizing the bracket.'
                     : 'No active matches in this round. Stay tuned!'}
             </p>
-            <button type="button" size="sm" onClick={() => onNavigate(`/tournaments/${slug}`)}>
+            <button
+                type="button"
+                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'border-zinc-700 hover:bg-zinc-800 text-zinc-400')}
+                onClick={() => onNavigate(`/tournaments/${slug}`)}
+            >
                 Return to Tournament
             </button>
         </div>

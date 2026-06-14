@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useBRGroupTeams, useBRGroupsDetail, useBRGroupsMutations } from '@/hooks/useBRGroups';
 import { GroupCard } from '@/components/organizer/br/GroupCard';
-import { CtaButton } from '@/components/ui/app-buttons';
+import { CtaButton, SuccessButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle, LayoutGrid, RefreshCw, Shuffle } from 'lucide-react';
 import {
@@ -123,14 +125,15 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
                     : 'Use the Games tab to run matches and submit results.'}
             </p>
             {needsMatchGeneration && (
-              <button type="button"
+              <SuccessButton
+                type="button"
                 size="sm"
-                className="mt-3 h-7 text-[11px] bg-emerald-600 hover:bg-emerald-500 text-white"
+                className="mt-3 h-7 text-[11px]"
                 disabled={generateLobbies.isPending}
                 onClick={() => generateLobbies.mutate(undefined, { onSuccess: () => onUpdate() })}
               >
                 {generateLobbies.isPending ? 'Creating matches...' : 'Create matches'}
-              </button>
+              </SuccessButton>
             )}
           </div>
         </div>
@@ -165,7 +168,11 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
               {getApiErrorMessage(error, 'We could not load the BR lobby setup for this stage.')}
             </p>
           </div>
-          <button type="button" size="sm" onClick={() => refetch()}>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-red-300 hover:text-red-200 hover:bg-red-500/10')}
+          >
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Retry
           </button>
         </div>
@@ -239,14 +246,15 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
           <p className="text-zinc-600 text-xs mt-1">
             Initialize groups from the stage format before seeding participants.
           </p>
-          <button type="button"
+          <SuccessButton
+            type="button"
             size="sm"
             onClick={() => bootstrapLobby.mutate()}
             disabled={bootstrapLobby.isPending}
-            className="mt-4 bg-emerald-600 text-white hover:bg-emerald-500 hover:text-white border-emerald-500/40 font-mono text-xs font-bold uppercase tracking-wider"
+            className="mt-4 font-mono text-xs font-bold uppercase tracking-wider"
           >
             {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Groups'}
-          </button>
+          </SuccessButton>
         </div>
       )}
 

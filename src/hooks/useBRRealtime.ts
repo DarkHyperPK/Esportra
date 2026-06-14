@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useHub } from '@/hooks/useSignalR';
+import { useSignalR } from '@/hooks/useSignalR';
 import { useHubGroupJoin } from '@/hooks/useHubGroupJoin';
 import { HubPaths } from '@/lib/signalrClient';
 
@@ -43,7 +43,8 @@ export function useBRRealtime({
   enabled = true,
 }: UseBRRealtimeOptions) {
   const effectiveLobbyId = lobbyId ?? roundId ?? null;
-  const conn = useHub(HubPaths.BR);
+  const { getConnection, ensureHubStarted } = useSignalR();
+  const conn = getConnection(HubPaths.BR);
   const queryClient = useQueryClient();
   const isEnabled = enabled && Boolean(stageId || groupId || effectiveLobbyId);
 
@@ -65,6 +66,7 @@ export function useBRRealtime({
 
   const { joined } = useHubGroupJoin(conn, {
     enabled: isEnabled,
+    ensureConnected: () => ensureHubStarted(HubPaths.BR),
     join: joinGroups,
     leave: leaveGroups,
     onJoinError: (error) => {

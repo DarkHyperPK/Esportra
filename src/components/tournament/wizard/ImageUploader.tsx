@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Upload, X, Loader2, RotateCcw, Check, Sun } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { CtaButton, DangerButton } from '@/components/ui/app-buttons';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Cropper from 'react-easy-crop';
@@ -186,9 +187,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end justify-center pb-4 gap-2">
                         <button type="button"
-                            type="button"
-                            size="sm"
-                            className="bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 text-white text-xs"
+                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'bg-white/10 backdrop-blur-md border-white/10 hover:bg-white/20 text-white text-xs')}
                             onClick={() => inputRef.current?.click()}
                         >
                             <RotateCcw className="w-3.5 h-3.5 mr-1.5" />

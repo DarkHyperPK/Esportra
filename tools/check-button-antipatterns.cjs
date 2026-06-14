@@ -17,8 +17,7 @@ const BUTTON_PRIMITIVE_FILES = [
   'src/components/ui/app-buttons.tsx',
 ]
 
-const COLOR_CLASS_PATTERN =
-  /\b(?:hover:|focus-visible:|active:)?(?:bg-|text-|border-|ring-)/
+const { classNameHasColorUtilities } = require('./button-color-classname.cjs')
 
 function walk(dir) {
   const files = []
@@ -52,7 +51,7 @@ function isEnforcedScope(rel) {
 }
 
 function hasColorUtilities(value) {
-  return Boolean(value && COLOR_CLASS_PATTERN.test(value))
+  return classNameHasColorUtilities(value)
 }
 
 function extractButtonOpeningTags(content) {
@@ -108,6 +107,45 @@ function extractClassNameValue(tag) {
 
   return ''
 }
+
+function extractNativeButtonOpeningTags(content) {
+  const tags = []
+  const openRe = /<button\b/g
+  let match
+  while ((match = openRe.exec(content)) !== null) {
+    const start = match.index
+    let i = start
+    let quote = null
+    let braceDepth = 0
+  outer:
+    while (i < content.length) {
+      const ch = content[i]
+      if (quote) {
+        if (ch === quote && content[i - 1] !== '\\') quote = null
+        i++
+        continue
+      }
+      if (ch === '"' || ch === "'" || ch === '`') {
+        quote = ch
+        i++
+        continue
+      }
+      if (ch === '{') braceDepth++
+      if (ch === '}') braceDepth = Math.max(0, braceDepth - 1)
+      if ((ch === '>' || ch === '/') && braceDepth === 0) {
+        const next = content[i + 1]
+        if (ch === '>' || (ch === '/' && next === '>')) {
+          const end = ch === '/' ? i + 2 : i + 1
+          tags.push(content.slice(start, end))
+          break outer
+        }
+      }
+      i++
+    }
+  }
+  return tags
+}
+
 
 let failures = 0
 let scopedColorFailures = 0
@@ -199,6 +237,41 @@ for (const file of walk(SRC)) {
       failures++
     } else {
       legacyColorViolations++
+    }
+  }
+  const reportedNativeIssues = new Set()
+  for (const tag of extractNativeButtonOpeningTags(content)) {
+    if (!isEnforcedScope(rel)) continue
+
+    const classValue = extractClassNameValue(tag)
+    const hasClassNameAttr = /\bclassName=/.test(tag)
+    const key = tag.replace(/\s+/g, ' ').slice(0, 180)
+
+    if (/\bvariant=/.test(tag) || /\basChild\b/.test(tag)) {
+      if (!reportedNativeIssues.has(`prop:${key}`)) {
+        reportedNativeIssues.add(`prop:${key}`)
+        console.error(`FAIL: native <button> uses Button-only prop (variant/asChild) in ${rel}`)
+        console.error(`  ${key}...`)
+        failures++
+      }
+    }
+
+    if (/\bsize="(?:sm|lg|default|icon|hero)"\b/.test(tag)) {
+      if (!reportedNativeIssues.has(`size:${key}`)) {
+        reportedNativeIssues.add(`size:${key}`)
+        console.error(`FAIL: native <button> uses Button-only size prop in ${rel}`)
+        console.error(`  ${key}...`)
+        failures++
+      }
+    }
+
+    if (!hasClassNameAttr) {
+      if (!reportedNativeIssues.has(`noclass:${key}`)) {
+        reportedNativeIssues.add(`noclass:${key}`)
+        console.error(`FAIL: native <button> missing className in ${rel}`)
+        console.error(`  ${key}...`)
+        failures++
+      }
     }
   }
 }

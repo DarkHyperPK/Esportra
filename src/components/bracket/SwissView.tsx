@@ -6,6 +6,8 @@ import { BracketMatch } from '@/types/bracketTypes';
 import { MatchCard } from '@/pages/tournaments/brackets/MatchCard';
 import { ReadOnlyMatchCard } from '@/components/bracket/ReadOnlyMatchCard';
 import { Button, SuccessButton } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
+import { cn } from '@/lib/utils';
 import { SwissGenerator } from '@/services/bracket/SwissGenerator';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
@@ -497,13 +499,14 @@ export const SwissView: React.FC<SwissViewProps> = ({
                     <div className="flex gap-2">
                         <button type="button"
                             onClick={handleAutoAdvanceByes}
-                            className="bg-amber-600 hover:bg-amber-500 text-white font-medium"
+                            className={cn(buttonVariants(), 'border-transparent bg-amber-600 hover:bg-amber-500 text-white font-medium')}
                         >
                             Auto Advance Byes
                         </button>
                         <button type="button"
                             onClick={handleUndoRound}
                             disabled={currentRound <= 1 || isGenerating}
+                            className={cn(buttonVariants({ variant: 'outline' }), 'border-red-500/20 hover:bg-red-500/10 text-red-400')}
                         >
                             <Undo2 className="w-4 h-4 mr-2" />
                             Undo Round
@@ -524,6 +527,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
                             <button type="button"
                                 onClick={handleGenerateNextRound}
                                 disabled={!isRoundComplete || isGenerating}
+                                className={cn(buttonVariants(), 'border-transparent bg-indigo-600 hover:bg-indigo-500')}
                             >
                                 <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
                                 Generate Round {currentRound + 1}

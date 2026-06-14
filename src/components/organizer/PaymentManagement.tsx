@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, Clock, Eye, DollarSign, AlertTriangle } from 'lucide-react';
-import { DangerButton, SuccessButton } from '@/components/ui/app-buttons';
+import { CancelButton, CtaButton, DangerButton, OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -150,12 +152,14 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
             </CardTitle>
             <div className="flex gap-2 flex-wrap">
               {(['pending', 'approved', 'rejected', 'all'] as PaymentFilter[]).map(f => (
-                <button type="button"
+                <button
+                  type="button"
                   key={f}
-                  size="sm"
-                  variant={filter === f ? 'default' : 'outline'}
                   onClick={() => setFilter(f)}
-                  className={filter === f ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'border-zinc-700 text-zinc-400 hover:text-white'}
+                  className={cn(
+                    buttonVariants({ variant: filter === f ? 'default' : 'outline', size: 'sm' }),
+                    filter === f ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'border-zinc-700 text-zinc-400 hover:text-white',
+                  )}
                 >
                   {f.charAt(0).toUpperCase() + f.slice(1)}
                   {f !== 'all' && <span className="ml-1 text-xs opacity-70">({counts[f]})</span>}
@@ -211,9 +215,9 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                     {/* Receipt + actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {p.payment_receipt_url && (
-                        <button type="button" size="sm" onClick={() => viewReceipt(p)} disabled={loadingReceipt} className="border-zinc-700 text-zinc-400 hover:text-white gap-1">
+                        <OutlineButton type="button" size="sm" onClick={() => viewReceipt(p)} disabled={loadingReceipt} className="gap-1">
                           <Eye className="w-3.5 h-3.5" /> Receipt
-                        </button>
+                        </OutlineButton>
                       )}
                       {!p.payment_receipt_url && p.payment_status === 'pending' && (
                         <span className="text-xs text-amber-500 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> No receipt</span>
@@ -223,7 +227,12 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                           <SuccessButton size="sm" onClick={() => handleApprove(p)} disabled={processingId === p.id} className="gap-1">
                             <CheckCircle className="w-3.5 h-3.5" /> Approve
                           </SuccessButton>
-                          <button type="button" size="sm" onClick={() => openRejectDialog(p)} disabled={processingId === p.id} className="border-red-500/50 text-red-400 hover:bg-red-500/10 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openRejectDialog(p)}
+                            disabled={processingId === p.id}
+                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'border-red-500/50 text-red-400 hover:bg-red-500/10 gap-1')}
+                          >
                             <XCircle className="w-3.5 h-3.5" /> Reject
                           </button>
                         </>
@@ -325,7 +334,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
             rows={3}
           />
           <DialogFooter>
-            <button type="button" onClick={() => setRejectDialogOpen(false)}>Cancel</button>
+            <CancelButton type="button" onClick={() => setRejectDialogOpen(false)}>Cancel</CancelButton>
             <DangerButton onClick={handleReject} disabled={processingId === rejectTarget?.id}>
               Reject Payment
             </DangerButton>

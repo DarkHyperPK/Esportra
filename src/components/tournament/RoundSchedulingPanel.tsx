@@ -2,6 +2,8 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CtaButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -613,10 +615,9 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                                     className="h-8 bg-[#0a0a0c] border-white/5 text-[11px] text-white rounded-lg focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
                                                                 />
                                                                 <button type="button"
-                                                                    size="sm"
                                                                     onClick={() => handleSaveMatch(matchId)}
                                                                     disabled={saving || !matchEdits.has(matchId)}
-                                                                    className="h-8 px-3 bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 text-[10px] rounded-lg transition-all"
+                                                                    className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 px-3 hover:text-rose-300 text-[10px] rounded-lg transition-all')}
                                                                 >
                                                                     {saving ? '...' : 'Set Time'}
                                                                 </button>

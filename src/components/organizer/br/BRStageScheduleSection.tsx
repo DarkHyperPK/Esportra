@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CtaButton } from '@/components/ui/app-buttons';
+import { CtaButton, OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Save, AlertTriangle } from 'lucide-react';
@@ -444,14 +444,15 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                 <Save className="w-3.5 h-3.5 mr-1.5" />
                 {savingLobbies ? 'Saving...' : 'Save lobby time'}
               </CtaButton>
-              <button type="button"
+              <OutlineButton
+                type="button"
                 size="sm"
                 disabled={savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
                 onClick={() => handleSaveGameTimes([lobby.id])}
               >
                 <Save className="w-3.5 h-3.5 mr-1.5" />
                 {savingGames ? 'Saving...' : 'Save game times'}
-              </button>
+              </OutlineButton>
             </>
           )}
         </div>
@@ -517,13 +518,14 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                       </div>
                     ))}
                   </div>
-                  <button type="button"
+                  <SuccessButton
+                    type="button"
                     size="sm"
                     disabled={commitSchedule.isPending}
                     onClick={handleCreateMatches}
                   >
                     {commitSchedule.isPending ? 'Creating...' : 'Create matches'}
-                  </button>
+                  </SuccessButton>
                 </>
               ) : !hasLobbies ? (
                 <p className="text-sm text-amber-400/90">Need an even number of groups.</p>
@@ -533,13 +535,14 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
             <div className="space-y-4">
               {!hasLobbies ? (
                 <div className="flex flex-wrap items-center gap-3">
-                  <button type="button"
+                  <SuccessButton
+                    type="button"
                     size="sm"
                     disabled={generateLobbies.isPending || !seedingComplete}
                     onClick={() => generateLobbies.mutate(undefined, { onSuccess: () => onUpdate() })}
                   >
                     {generateLobbies.isPending ? scheduleCopy.createPending : scheduleCopy.createAction}
-                  </button>
+                  </SuccessButton>
                   {!seedingComplete && (
                     <span className="text-xs text-zinc-500">
                       {totalAssigned}/{expectedUnits || '—'} seeded
@@ -626,14 +629,15 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                           <Save className="w-3.5 h-3.5 mr-1.5" />
                           {savingLobbies ? 'Saving...' : 'Save all lobby times'}
                         </CtaButton>
-                        <button type="button"
+                        <OutlineButton
+                          type="button"
                           size="sm"
                           disabled={savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
                           onClick={() => handleSaveGameTimes(lobbies.map((l) => l.id))}
                         >
                           <Save className="w-3.5 h-3.5 mr-1.5" />
                           {savingGames ? 'Saving...' : 'Save all game times'}
-                        </button>
+                        </OutlineButton>
                       </>
                     )}
                   </div>

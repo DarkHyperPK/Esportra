@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { SuccessButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -211,13 +211,14 @@ export const BRStageAdvancedConfig: React.FC<BRStageAdvancedConfigProps> = ({
         </div>
       )}
 
-      <button type="button"
+      <SuccessButton
+        type="button"
         size="sm"
         onClick={handleSave}
         disabled={saving}
       >
         {saving ? 'Saving...' : 'Save stage options'}
-      </button>
+      </SuccessButton>
     </div>
   );
 };

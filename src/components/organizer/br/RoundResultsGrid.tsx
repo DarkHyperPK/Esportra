@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { OutlineButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { Users, Save, AlertTriangle } from 'lucide-react';
 import type { BRRoundResult, BRResultInput } from '@/types/brRounds';
@@ -260,16 +261,16 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
       {/* Save */}
       {!isLocked && (
         <div className="flex justify-end pt-1">
-          <button type="button"
+          <OutlineButton
             size="sm"
             onClick={handleSave}
             disabled={!canSave || isSaving}
             title={saveBlockReason ?? undefined}
-            className="h-8 px-3 text-xs border-white/15 bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-8 px-3 text-xs disabled:cursor-not-allowed"
           >
             <Save className="w-3 h-3 mr-1.5" />
             {isSaving ? 'Saving...' : 'Save results'}
-          </button>
+          </OutlineButton>
         </div>
       )}
     </div>

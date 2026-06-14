@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, PlayCircle, Swords, Eye, ChevronDown, X, Bot, MessageCircle, ExternalLink } from 'lucide-react';
 import { Button, SuccessButton } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { cn } from '@/lib/utils';
 import ManualAdjustmentMenu from '@/components/tournament/ManualAdjustmentMenu';
 
@@ -325,8 +326,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                         {/* BYE Button - Show when match has exactly one team and is not complete */}
                         {canAct && isByeMatch && !isComplete && onByeAdvance && (
                             <button type="button"
-                                size="sm"
-                                className="h-6 px-3 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded text-xs"
+                                className={cn(buttonVariants({ size: 'sm' }), 'h-6 px-3 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded text-xs')}
                                 onClick={(e) => { e.stopPropagation(); onByeAdvance(getRawId(id)); }}
                                 disabled={isProcessing}
                             >
@@ -335,8 +335,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                         )}
                         {canAct && isComplete && !isEditing && (
                             <button type="button"
-                                size="sm"
-                                className="h-6 px-3 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 font-medium rounded text-xs"
+                                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-6 px-3 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 font-medium rounded text-xs')}
                                 onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
                                 disabled={isProcessing}
                             >
@@ -346,8 +345,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                         {canAct && (isLive || isEditing) && (
                             isEditing ? (
                             <button type="button"
-                                size="sm"
-                                className="h-6 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded text-xs"
+                                className={cn(buttonVariants({ size: 'sm' }), 'h-6 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded text-xs')}
                                 onClick={async (e) => {
                                     e.stopPropagation();
                                     if (onSaveScore) await onSaveScore(match);
@@ -419,10 +417,10 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                 layout
                                             >
                                                 <button type="button"
-                                                    size="sm"
                                                     className={cn(
-                                                        "flex-1 min-w-[80px] h-8 bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800",
-                                                        automatedStatus === 'verified' && "border-blue-500/30 text-blue-400 bg-blue-500/5 hover:bg-blue-500/10"
+                                                        buttonVariants({ variant: 'outline', size: 'sm' }),
+                                                        'flex-1 min-w-[80px] h-8 bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800',
+                                                        automatedStatus === 'verified' && 'border-blue-500/30 text-blue-400 bg-blue-500/5 hover:bg-blue-500/10',
                                                     )}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -445,8 +443,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                     <>
                                                         {!isLive && !isComplete && (
                                                             <button type="button"
-                                                                size="sm"
-                                                                className="flex-1 min-w-[80px] h-8 bg-green-900/20 border-green-900/30 text-green-400 hover:bg-green-900/40 hover:text-green-300"
+                                                                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 min-w-[80px] h-8 bg-green-900/20 border-green-900/30 text-green-400 hover:bg-green-900/40 hover:text-green-300')}
                                                                 onClick={(e) => { e.stopPropagation(); onGoLive?.(match); }}
                                                                 disabled={isProcessing}
                                                             >
@@ -456,8 +453,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
                                                         {onMapVeto && (
                                                             <button type="button"
-                                                                size="sm"
-                                                                className="flex-1 min-w-[80px] h-8 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300"
+                                                                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 min-w-[80px] h-8 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300')}
                                                                 onClick={(e) => { e.stopPropagation(); onMapVeto(match); }}
                                                             >
                                                                 <Swords className="w-3.5 h-3.5 mr-1.5" /> Veto
@@ -466,8 +462,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
                                                         {canOpenMatchRoom && (
                                                             <button type="button"
-                                                                size="sm"
-                                                                className="h-8 px-2 bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300"
+                                                                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-8 px-2 bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300')}
                                                                 onClick={(e) => { e.stopPropagation(); onMatchRoom(match); }}
                                                                 title="Open match room"
                                                                 aria-label="Open match room"
@@ -517,8 +512,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                     {isSubmitting ? '...' : 'Start'}
                                                 </SuccessButton>
                                                 <button type="button"
-                                                    size="sm"
-                                                    className="h-8 px-2 text-zinc-400 hover:text-white"
+                                                    className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 px-2 text-zinc-400 hover:text-white')}
                                                     onClick={() => {
                                                         setActionMode('default');
                                                         setPartyCode('');

@@ -98,12 +98,9 @@ function ActionRow({
         <p className="mt-1 text-sm font-semibold text-white">{title}</p>
         <p className="mt-1 text-xs text-zinc-500">{description}</p>
       </div>
-      <button type="button"
-        asChild
-        className="pointer-events-none h-9 shrink-0 rounded-none bg-zinc-900 px-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white hover:bg-zinc-800"
-      >
-        <span>{disabled ? 'Locked' : 'Open'}</span>
-      </button>
+      <span className="pointer-events-none inline-flex h-9 shrink-0 items-center justify-center rounded-none bg-zinc-900 px-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white">
+        {disabled ? 'Locked' : 'Open'}
+      </span>
     </button>
   );
 }

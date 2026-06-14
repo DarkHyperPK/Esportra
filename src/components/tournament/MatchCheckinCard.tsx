@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { GhostButton } from '@/components/ui/app-buttons';
 import { JackButton } from "@/components/ui/JackButton";
 import { Check, Clock, Copy } from 'lucide-react';
 import { useMatchCheckin } from '@/hooks/useMatchCheckin';
@@ -256,9 +256,9 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                                 <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Party Code</p>
                                 <div className="flex items-center justify-between">
                                     <code className="text-2xl font-mono font-bold text-rose-400 tracking-wider">{partyCode}</code>
-                                    <button type="button" size="sm" onClick={copyCode}>
+                                    <GhostButton type="button" size="sm" onClick={copyCode}>
                                         <Copy className="w-4 h-4" />
-                                    </button>
+                                    </GhostButton>
                                 </div>
                             </div>
                         )}
