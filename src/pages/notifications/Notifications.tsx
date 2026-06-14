@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -9,6 +9,9 @@ import { Trash2, CheckCheck, Bell, Inbox, ShieldAlert, Users, Info, ExternalLink
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { resolveCaptainMatchNotificationLinkAsync } from '@/utils/notificationLinks';
+import { getDenseScheduleNotificationMeta } from '@/utils/notificationDisplay';
+import { MatchScheduleNotificationBody } from '@/components/notifications/MatchScheduleNotificationBody';
 
 
 
@@ -63,6 +66,25 @@ const NotificationsPage = () => {
     setSelectedNotifications(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
+  const openNotification = useCallback(async (n: any) => {
+    if (!n.is_read) markAsRead(n.id);
+
+    const destination =
+      await resolveCaptainMatchNotificationLinkAsync(n)
+      ?? n.link
+      ?? n.data?.link
+      ?? null;
+
+    if (destination) {
+      navigate(destination);
+      return;
+    }
+
+    if (n.type === 'team_invite') {
+      navigate('/player/teams');
+    }
+  }, [markAsRead, navigate]);
+
   const typeMeta = (n: any) => {
     switch (n.type) {
       case 'team_invite': return { icon: <Users className="h-4 w-4" />, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' };
@@ -71,6 +93,8 @@ const NotificationsPage = () => {
       case 'staff_invite': return { icon: <Users className="h-4 w-4" />, color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20' };
       case 'result_reported': return { icon: <Info className="h-4 w-4" />, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' };
       case 'match_schedule_changed': return { icon: <Calendar className="h-4 w-4" />, color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' };
+      case 'br_game_schedule_changed':
+      case 'br_lobby_schedule_changed': return { icon: <Calendar className="h-4 w-4" />, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' };
       case 'result_disputed': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
       case 'result_accepted': return { icon: <CheckCheck className="h-4 w-4" />, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' };
       case 'dispute_filed': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' };
@@ -181,6 +205,7 @@ const NotificationsPage = () => {
             ) : (
               filtered.map((n, i) => {
                 const meta = typeMeta(n);
+                const scheduleMeta = getDenseScheduleNotificationMeta(n);
                 return (
                   <motion.div
                     key={n.id}
@@ -209,11 +234,7 @@ const NotificationsPage = () => {
                     </div>
 
                     <div
-                      onClick={() => {
-                        if (!n.is_read) markAsRead(n.id);
-                        if (n.link) navigate(n.link);
-                        else if (n.type === 'team_invite') navigate('/player/teams');
-                      }}
+                      onClick={() => { void openNotification(n); }}
                       className={cn(
                         "flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 pl-4 group-hover:pl-12 transition-[padding] cursor-pointer",
                         !n.is_read && "bg-gradient-to-r from-white/5 to-transparent"
@@ -234,9 +255,16 @@ const NotificationsPage = () => {
                             <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                           )}
                         </div>
-                        <p className="text-white/50 text-xs sm:text-sm line-clamp-2 leading-relaxed">
-                          {n.message}
+                        <p className={cn(
+                          "text-white/50 text-xs sm:text-sm leading-relaxed",
+                          !scheduleMeta && "line-clamp-2"
+                        )}>
+                          {scheduleMeta ? null : n.message}
                         </p>
+
+                        {scheduleMeta && (
+                          <MatchScheduleNotificationBody notification={n} />
+                        )}
 
                         {/* Helper for Invites */}
                         {n.type === 'team_invite' && (
@@ -265,12 +293,12 @@ const NotificationsPage = () => {
                           </Button>
 
                           {/* Link Button */}
-                          {n.link && (
+                          {(n.link || n.type === 'match_schedule_changed' || n.type === 'br_game_schedule_changed' || n.type === 'br_lobby_schedule_changed' || n.data?.match_id) && (
                             <Button
                               size="icon"
                               variant="ghost"
                               className="h-6 w-6 text-white/20 hover:text-white hover:bg-white/10"
-                              onClick={(e) => { e.stopPropagation(); navigate(n.link!); }}
+                              onClick={(e) => { e.stopPropagation(); void openNotification(n); }}
                             >
                               <ExternalLink className="h-3 w-3" />
                             </Button>

@@ -12,6 +12,8 @@ import { respondToOrgStaffInvite } from '@/lib/organizationStaff';
 import { useToast } from '@/hooks/use-toast';
 import { resolveCaptainMatchNotificationLinkAsync } from '@/utils/notificationLinks';
 import { buildRedeemInvitePath, getTournamentInviteFromNotification } from '@/utils/tournamentInviteNotification';
+import { getDenseScheduleNotificationMeta } from '@/utils/notificationDisplay';
+import { MatchScheduleNotificationBody } from '@/components/notifications/MatchScheduleNotificationBody';
 
 export const NotificationDropdown = () => {
     const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications } = useNotifications();
@@ -159,6 +161,8 @@ export const NotificationDropdown = () => {
             case 'veto_your_turn':
             case 'match_ready': return 'bg-rose-500/10 border-rose-500/20';
             case 'match_schedule_changed': return 'bg-sky-500/10 border-sky-500/20';
+            case 'br_game_schedule_changed':
+            case 'br_lobby_schedule_changed': return 'bg-violet-500/10 border-violet-500/20';
             case 'veto_completed': return 'bg-blue-500/10 border-blue-500/20';
             case 'match_completed': return 'bg-amber-500/10 border-amber-500/20';
             default: return 'bg-zinc-500/10 border-zinc-500/20';
@@ -200,6 +204,9 @@ export const NotificationDropdown = () => {
                 return <Swords className="h-4 w-4 text-rose-400" />;
             case 'match_schedule_changed':
                 return <Calendar className="h-4 w-4 text-sky-400" />;
+            case 'br_game_schedule_changed':
+            case 'br_lobby_schedule_changed':
+                return <Calendar className="h-4 w-4 text-violet-400" />;
             case 'veto_completed':
                 return <Map className="h-4 w-4 text-blue-400" />;
             case 'match_completed':
@@ -214,6 +221,7 @@ export const NotificationDropdown = () => {
         const isStaffInvite = n.type === 'staff_invite' && n.data?.organization_staff_id;
         const processing = processingInvites[n.id];
         const resolved = resolvedInvites[n.id];
+        const scheduleMeta = getDenseScheduleNotificationMeta(n);
 
         return (
             <div
@@ -236,11 +244,15 @@ export const NotificationDropdown = () => {
                         {n.title}
                     </p>
                     <p className={cn(
-                        "text-xs text-gray-500 mt-1 leading-relaxed whitespace-pre-wrap break-all transition-all",
-                        expandedAnnouncementId !== n.id && "line-clamp-2"
+                        "text-xs text-gray-500 mt-1 leading-relaxed whitespace-pre-wrap break-words transition-all",
+                        !scheduleMeta && expandedAnnouncementId !== n.id && "line-clamp-2"
                     )}>
-                        {n.message}
+                        {scheduleMeta ? null : n.message}
                     </p>
+
+                    {scheduleMeta && (
+                        <MatchScheduleNotificationBody notification={n} compact />
+                    )}
 
                     {n.type === 'tournament_announcement' && (
                         <div className="flex items-center gap-3 mt-1.5">

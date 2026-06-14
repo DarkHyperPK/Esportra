@@ -268,14 +268,20 @@ export const fetchAuditLogs = async ({
     limit = 50,
     offset = 0,
     actionFilter,
+    actorId,
+    tournamentId,
 }: {
     organizationId: string;
     limit?: number;
     offset?: number;
     actionFilter?: string;
+    actorId?: string;
+    tournamentId?: string;
 }): Promise<{ logs: AuditLogEntry[]; total: number }> => {
     const qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (actionFilter) qs.set('action', actionFilter);
+    if (actorId) qs.set('actorId', actorId);
+    if (tournamentId) qs.set('tournamentId', tournamentId);
     return apiClient.get(`/api/organizations/${organizationId}/audit-logs?${qs}`);
 };
 

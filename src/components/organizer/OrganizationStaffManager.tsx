@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -30,6 +31,7 @@ import {
     ChevronRight,
     ClipboardList,
     Crown,
+    Filter,
     History,
     Loader2,
     Plus,
@@ -43,6 +45,23 @@ import {
     X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Audit log filter options
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+const AUDIT_ACTION_OPTIONS: { value: string; label: string }[] = [
+    { value: "staff.invite", label: "Staff invited" },
+    { value: "staff.accept", label: "Invite accepted" },
+    { value: "staff.decline", label: "Invite declined" },
+    { value: "staff.update_permissions", label: "Permissions updated" },
+    { value: "staff.update_assignment_permissions", label: "Tournament permissions updated" },
+    { value: "staff.assign_tournament", label: "Assigned to tournament" },
+    { value: "staff.unassign_tournament", label: "Unassigned from tournament" },
+    { value: "staff.remove", label: "Staff removed" },
+    { value: "venue.add", label: "Venue added" },
+    { value: "venue.remove", label: "Venue removed" },
+];
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Role presets (permissions are editable independently)
@@ -138,6 +157,9 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
     const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
     const [auditLoading, setAuditLoading] = useState(false);
     const [auditTotal, setAuditTotal] = useState(0);
+    const [auditActorId, setAuditActorId] = useState<string>("all");
+    const [auditAction, setAuditAction] = useState<string>("all");
+    const [auditTournamentId, setAuditTournamentId] = useState<string>("all");
 
     // Search
     const [searchQuery, setSearchQuery] = useState("");
@@ -168,7 +190,13 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
     const loadAuditLogs = useCallback(async () => {
         try {
             setAuditLoading(true);
-            const { logs, total } = await fetchAuditLogs({ organizationId, limit: 50 });
+            const { logs, total } = await fetchAuditLogs({
+                organizationId,
+                limit: 50,
+                actionFilter: auditAction !== "all" ? auditAction : undefined,
+                actorId: auditActorId !== "all" ? auditActorId : undefined,
+                tournamentId: auditTournamentId !== "all" ? auditTournamentId : undefined,
+            });
             setAuditLogs(logs);
             setAuditTotal(total);
         } catch (e: any) {
@@ -176,7 +204,39 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
         } finally {
             setAuditLoading(false);
         }
-    }, [organizationId]);
+    }, [organizationId, auditAction, auditActorId, auditTournamentId]);
+
+    const refreshAfterStaffChange = useCallback((silent = true) => {
+        void loadStaff(silent);
+        if (activeSection === 'audit') {
+            void loadAuditLogs();
+        }
+    }, [loadStaff, loadAuditLogs, activeSection]);
+
+    const auditActorOptions = useMemo(() => {
+        const options: { id: string; label: string }[] = [
+            { id: ownerId, label: ownerName ? `${ownerName} (Owner)` : "Organization owner" },
+        ];
+        for (const member of staff) {
+            if (member.user_id === ownerId) continue;
+            const name =
+                member.profiles?.full_name ||
+                member.profiles?.username ||
+                member.profiles?.email ||
+                "Staff member";
+            options.push({ id: member.user_id, label: name });
+        }
+        return options;
+    }, [staff, ownerId, ownerName]);
+
+    const hasAuditFilters =
+        auditActorId !== "all" || auditAction !== "all" || auditTournamentId !== "all";
+
+    const clearAuditFilters = () => {
+        setAuditActorId("all");
+        setAuditAction("all");
+        setAuditTournamentId("all");
+    };
 
     useEffect(() => {
         loadStaff();
@@ -297,7 +357,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
             setShowInvitePanel(false);
 
             // Reload to get actual DB record
-            loadStaff(true);
+            refreshAfterStaffChange();
         } catch (err: any) {
             // Revert optimistic update
             setStaff(prev => prev.filter(s => s.id !== optimisticId));
@@ -317,7 +377,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                 staffEmail: s.profiles?.email || undefined,
             });
             toast({ title: "Staff removed" });
-            loadStaff(true);
+            refreshAfterStaffChange();
         } catch (err: any) {
             toast({ title: "Remove failed", description: err.message, variant: "destructive" });
         }
@@ -355,7 +415,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
             });
             toast({ title: "Role preset applied" });
             invalidateAccessForStaff(s);
-            loadStaff(true);
+            refreshAfterStaffChange();
         } catch (err: any) {
             setStaff(originalStaff);
             toast({ title: "Update failed", description: err.message, variant: "destructive" });
@@ -381,7 +441,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
             });
             toast({ title: "Permissions saved" });
             invalidateAccessForStaff(s);
-            loadStaff(true);
+            refreshAfterStaffChange();
         } catch (err: any) {
             setStaff(originalStaff);
             toast({ title: "Save failed", description: err.message, variant: "destructive" });
@@ -429,7 +489,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
             invalidateAccessForStaff(s);
             void queryClient.invalidateQueries({ queryKey: ['tournament-access', assignment.tournament_id] });
             setAssignmentEditId(null);
-            loadStaff(true);
+            refreshAfterStaffChange();
         } catch (err: any) {
             setStaff(originalStaff);
             toast({ title: "Save failed", description: err.message, variant: "destructive" });
@@ -478,7 +538,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
             if (member) invalidateAccessForStaff(member);
             else invalidateStaffAccessCaches(queryClient);
             void queryClient.invalidateQueries({ queryKey: ['tournament-access', tournamentId] });
-            loadStaff(true);
+            refreshAfterStaffChange();
         } catch (err: any) {
             setStaff(originalStaff);
             toast({ title: "Assignment failed", description: err.message, variant: "destructive" });
@@ -511,7 +571,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                 invalidateStaffAccessCaches(queryClient);
             }
             if (assignmentEditId === assignmentId) setAssignmentEditId(null);
-            loadStaff(true);
+            refreshAfterStaffChange();
         } catch (err: any) {
             setStaff(originalStaff);
             toast({ title: "Unassign failed", description: err.message, variant: "destructive" });
@@ -1026,6 +1086,70 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
             {/* ─── Audit Log ─── */}
             {activeSection === "audit" && (
                 <div className="space-y-3">
+                    <div className="flex flex-col gap-3 p-4 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+                                <Filter className="w-4 h-4 text-zinc-500" />
+                                Filters
+                            </div>
+                            {hasAuditFilters && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={clearAuditFilters}
+                                    className="text-zinc-400 hover:text-white h-8 px-2"
+                                >
+                                    Clear filters
+                                </Button>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <Select value={auditActorId} onValueChange={setAuditActorId}>
+                                <SelectTrigger className="bg-zinc-900/50 border-zinc-800 text-white">
+                                    <SelectValue placeholder="All members" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                    <SelectItem value="all">All members</SelectItem>
+                                    {auditActorOptions.map((option) => (
+                                        <SelectItem key={option.id} value={option.id}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select value={auditAction} onValueChange={setAuditAction}>
+                                <SelectTrigger className="bg-zinc-900/50 border-zinc-800 text-white">
+                                    <SelectValue placeholder="All actions" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                    <SelectItem value="all">All actions</SelectItem>
+                                    {AUDIT_ACTION_OPTIONS.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select value={auditTournamentId} onValueChange={setAuditTournamentId}>
+                                <SelectTrigger className="bg-zinc-900/50 border-zinc-800 text-white">
+                                    <SelectValue placeholder="All tournaments" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                    <SelectItem value="all">All tournaments</SelectItem>
+                                    {orgTournaments.map((tournament) => (
+                                        <SelectItem key={tournament.id} value={tournament.id}>
+                                            {tournament.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <p className="text-xs text-zinc-500">
+                            Showing {auditTotal} event{auditTotal === 1 ? "" : "s"}
+                        </p>
+                    </div>
+
                     {auditLoading ? (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
@@ -1033,7 +1157,11 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                     ) : auditLogs.length === 0 ? (
                         <div className="text-center py-12 text-zinc-500">
                             <History className="w-10 h-10 mx-auto mb-3 text-zinc-700" />
-                            <p className="text-sm">No audit events recorded yet.</p>
+                            <p className="text-sm">
+                                {hasAuditFilters
+                                    ? "No events match these filters."
+                                    : "No audit events recorded yet."}
+                            </p>
                         </div>
                     ) : (
                         <div className="space-y-1">
@@ -1084,9 +1212,13 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
 /** Format audit log details into a human-readable string */
 function formatAuditDetails(log: AuditLogEntry): string {
     const d = log.details;
+    const formatPerms = (perms: unknown) => {
+        if (!Array.isArray(perms) || perms.length === 0) return "default permissions";
+        return perms.join(", ");
+    };
     switch (log.action) {
         case "staff.invite":
-            return `Invited ${d.invitedEmail || "user"} as ${d.role || "staff"}`;
+            return `Invited ${d.invitedEmail || "user"} as ${d.role || "staff"} (${formatPerms(d.Permissions ?? d.permissions)})`;
         case "staff.accept":
             return "Accepted staff invitation";
         case "staff.decline":
@@ -1094,11 +1226,21 @@ function formatAuditDetails(log: AuditLogEntry): string {
         case "staff.remove":
             return `Removed ${d.removedEmail || "a staff member"}`;
         case "staff.update_permissions":
-            return `Updated to role: ${d.role || "unknown"}`;
+            return `Updated role to ${d.role || d.Role || "unknown"} — ${formatPerms(d.Permissions ?? d.permissions)}`;
+        case "staff.update_assignment_permissions":
+            return d.Permissions === null || d.permissions === null
+                ? "Reset tournament permissions to org defaults"
+                : `Updated tournament permissions — ${formatPerms(d.Permissions ?? d.permissions)}`;
         case "staff.assign_tournament":
             return `Assigned to ${Array.isArray(d.tournamentIds) ? d.tournamentIds.length : 1} tournament(s)`;
         case "staff.unassign_tournament":
-            return `Unassigned from a tournament`;
+            return d.tournamentName
+                ? `Unassigned from ${d.tournamentName}`
+                : "Unassigned from a tournament";
+        case "venue.add":
+            return "Added venue to organization";
+        case "venue.remove":
+            return "Removed venue from organization";
         default:
             return JSON.stringify(d).slice(0, 80);
     }
