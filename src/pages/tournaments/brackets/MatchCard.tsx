@@ -91,7 +91,14 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     const draft = scoreDraftRef?.current?.[getRawId(id)] || { t1: '', t2: '' };
     const isLive = match.status === 'in_progress';
     const isComplete = match.status === 'completed';
-    const hasBoth = match.team1?.name && match.team2?.name && !match.team1.name.includes('TBD');
+    const hasBoth = Boolean(
+        match.team1?.id
+        && match.team2?.id
+        && match.team1?.name
+        && match.team2?.name
+        && !String(match.team1.name).includes('TBD')
+        && !String(match.team2.name).includes('TBD'),
+    );
     const canAct = isOrganizer && isDbMatch(id);
     const w1 = match.winner?.id === match.team1?.id;
 
