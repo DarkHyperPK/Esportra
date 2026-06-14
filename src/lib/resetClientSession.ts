@@ -1,8 +1,8 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { clearGhostModeSession } from '@/lib/ghostModeSession';
+import { clearAllStoredSessionRoles } from '@/lib/sessionRole';
 
 const USER_LOCAL_KEYS = [
-  'sessionRole',
   'steam_just_linked',
   'admin_roles_updated',
   'tournament_wizard_draft',
@@ -43,6 +43,7 @@ export function clearUserBrowserStorage(): void {
     /* ignore */
   }
 
+  clearAllStoredSessionRoles();
   clearGhostModeSession();
 }
 

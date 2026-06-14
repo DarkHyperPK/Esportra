@@ -19,6 +19,7 @@ import {
 } from "@/hooks/useNavTeamStatus";
 import { useOrgStaffContext } from "@/hooks/useOrgStaffContext";
 import { deriveHasApprovedLicense, deriveHasOrganization, meRolesQueryKey } from "@/lib/meRoles";
+import { getStoredSessionRole } from "@/lib/sessionRole";
 import { RoleSwitcherDialog } from "@/components/RoleSwitcher";
 
 // Pill row showing current role + a JACK IN-style switch button
@@ -77,9 +78,7 @@ const UserMenu = ({
   const hasPendingInvite = teamInvites.length > 0;
   const hasStaffInvites = staffInvites.length > 0;
   const hasStaffAssignments = staffAssignments.length > 0;
-  const sessionRoleHint = typeof localStorage !== 'undefined'
-    ? localStorage.getItem('sessionRole')
-    : null;
+  const sessionRoleHint = user?.id ? getStoredSessionRole(user.id) : null;
   const hasApprovedLicense = deriveHasApprovedLicense(meRoles)
     || (!meRolesReady && (sessionRoleHint === 'organizer' || sessionRoleHint === 'venue_owner'));
   const hasOrganization = userRole === 'organizer' && deriveHasOrganization(meRoles);
