@@ -758,7 +758,7 @@ const BRGameRoom: React.FC = () => {
                       <p className="text-sm text-emerald-300/80">
                         Evidence submitted for {liveGameNumber ? `Game ${liveGameNumber}` : formatRoundLabel(activeRoundNumber)}.
                         {userEvidence?.reviewed
-                          ? ' Your submission has been reviewed.'
+                          ? ' Your reported result has been approved.'
                           : ' Awaiting organizer review.'}
                       </p>
                     </div>

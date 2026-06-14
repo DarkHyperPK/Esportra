@@ -189,6 +189,7 @@ export function useBRRealtime({
     const handleEvidenceReviewed = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
       invalidateLobbyEvidence(payload.lobbyId);
+      invalidateLobbyResults(payload.lobbyId);
       invalidateGames(payload.lobbyId);
       invalidateLobbies();
     };

@@ -570,7 +570,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
         )}
         {!!round.pending_evidence_count && (
           <Badge variant="outline" className="border-amber-500/30 text-[10px] text-amber-300">
-            {round.pending_evidence_count} pending review
+            {round.pending_evidence_count} pending approval
           </Badge>
         )}
         <span className="ml-auto flex flex-wrap items-center justify-end gap-3 text-[10px] text-zinc-600">
@@ -732,7 +732,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                   </p>
                   {hasPendingEvidenceReview && round.status === 'active' && (
                     <p className="text-[10px] leading-relaxed text-amber-300/80">
-                      Complete is locked until all submitted evidence is reviewed.
+                      Complete is locked until all submitted evidence is approved.
                     </p>
                   )}
                   {!canCompleteLobby && round.status === 'active' && (

@@ -311,8 +311,15 @@ export const useBRLobbyEvidence = (
 
   const invalidateRelatedQueries = async () => {
     await queryClient.invalidateQueries({ queryKey: ['br-lobby-evidence', lobbyId, gameNumber, gameId] });
+    if (lobbyId) {
+      await queryClient.invalidateQueries({ queryKey: ['br-lobby-results', lobbyId] });
+    }
     if (stageId && groupId) {
       await queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, groupId] });
+      await queryClient.invalidateQueries({ queryKey: ['br-group-leaderboard', stageId, groupId] });
+    }
+    if (stageId) {
+      await queryClient.invalidateQueries({ queryKey: ['br-stage-leaderboard', stageId] });
     }
   };
 
@@ -332,24 +339,48 @@ export const useBRLobbyEvidence = (
     },
   });
 
-  const markReviewedMutation = useMutation({
-    mutationFn: async (payload: { entityId: string; reviewed: boolean; gameNumber?: number }) => {
+  const approveEvidenceMutation = useMutation({
+    mutationFn: async (payload: { entityId: string; gameNumber?: number }) => {
+      if (!lobbyId) throw new Error('No lobby selected');
+      const suffix = (payload.gameNumber ?? gameNumber) != null
+        ? `?gameNumber=${payload.gameNumber ?? gameNumber}`
+        : '';
+      return apiClient.patch<{ success: boolean; approved: boolean }>(
+        `/api/br/lobbies/${lobbyId}/evidence/${payload.entityId}${suffix}`,
+        { approve: true },
+      );
+    },
+    onSuccess: async () => {
+      await invalidateRelatedQueries();
+      toast({ title: 'Result approved', description: 'Reported placement and kills were applied to standings.' });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: 'Failed to approve result',
+        description: getApiErrorMessage(error, { context: 'brEvidence' }),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const reopenEvidenceMutation = useMutation({
+    mutationFn: async (payload: { entityId: string; gameNumber?: number }) => {
       if (!lobbyId) throw new Error('No lobby selected');
       const suffix = (payload.gameNumber ?? gameNumber) != null
         ? `?gameNumber=${payload.gameNumber ?? gameNumber}`
         : '';
       return apiClient.patch<{ success: boolean }>(
         `/api/br/lobbies/${lobbyId}/evidence/${payload.entityId}${suffix}`,
-        { reviewed: payload.reviewed },
+        { reviewed: false },
       );
     },
-    onSuccess: async (_data, variables) => {
+    onSuccess: async () => {
       await invalidateRelatedQueries();
-      toast({ title: variables.reviewed ? 'Evidence reviewed' : 'Evidence reopened' });
+      toast({ title: 'Approval reopened' });
     },
     onError: (error: unknown) => {
       toast({
-        title: 'Failed to update evidence',
+        title: 'Failed to reopen evidence',
         description: getApiErrorMessage(error, { context: 'brEvidence' }),
         variant: 'destructive',
       });
@@ -363,9 +394,10 @@ export const useBRLobbyEvidence = (
     isError,
     refetch,
     submitEvidence: submitEvidenceMutation.mutateAsync,
-    markReviewed: markReviewedMutation.mutateAsync,
+    approveEvidence: approveEvidenceMutation.mutateAsync,
+    reopenEvidence: reopenEvidenceMutation.mutateAsync,
     isSubmitting: submitEvidenceMutation.isPending,
-    isUpdating: markReviewedMutation.isPending,
+    isUpdating: approveEvidenceMutation.isPending || reopenEvidenceMutation.isPending,
   };
 };
 

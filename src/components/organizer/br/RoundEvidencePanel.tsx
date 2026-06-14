@@ -4,7 +4,7 @@ import { OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
 import { useBRLobbyEvidence } from '@/hooks/useBRLobbies';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { getBREvidenceRowKey } from '@/utils/brEvidenceNormalize';
-import { CheckCircle2, ExternalLink, ImageIcon, RefreshCw, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, ExternalLink, ImageIcon, RefreshCw, Undo2 } from 'lucide-react';
 
 interface RoundEvidencePanelProps {
   roundId: string;
@@ -15,6 +15,10 @@ interface RoundEvidencePanelProps {
   realtimeConnected?: boolean;
 }
 
+function canApproveReportedResult(placement?: number, kills?: number): boolean {
+  return placement != null && placement >= 1 && kills != null && kills >= 0;
+}
+
 export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
   roundId,
   stageId,
@@ -23,7 +27,16 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
   gameId,
   realtimeConnected = false,
 }) => {
-  const { evidence, isLoading, error, isError, refetch, markReviewed, isUpdating } = useBRLobbyEvidence(
+  const {
+    evidence,
+    isLoading,
+    error,
+    isError,
+    refetch,
+    approveEvidence,
+    reopenEvidence,
+    isUpdating,
+  } = useBRLobbyEvidence(
     roundId,
     stageId,
     groupId,
@@ -38,7 +51,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
             Evidence submissions{gameNumber != null ? ` — Game ${gameNumber}` : ''}
           </h5>
           <p className="text-[11px] text-zinc-500">
-            Review player screenshots before finalizing game standings.
+            Approve screenshots to apply reported placement and kills to standings.
           </p>
         </div>
         <Badge variant="outline" className="border-white/10 text-zinc-300">
@@ -73,101 +86,110 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
         </div>
       ) : (
         <div className="grid gap-3">
-          {evidence.map((entry) => (
-            <div
-              key={getBREvidenceRowKey(entry, gameNumber)}
-              className="rounded-xl border border-white/8 bg-white/[0.02] p-3"
-            >
-              <div className="flex flex-col gap-3 md:flex-row md:items-start">
-                <button
-                  type="button"
-                  onClick={() => window.open(entry.imageUrl, '_blank', 'noopener,noreferrer')}
-                  className="group relative h-24 w-full overflow-hidden rounded-lg border border-white/10 bg-black/30 md:w-40"
-                >
-                  <img
-                    src={entry.imageUrl}
-                    alt={`${entry.teamName} evidence`}
-                    className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
-                  />
-                </button>
+          {evidence.map((entry) => {
+            const approvable = canApproveReportedResult(entry.placement, entry.kills);
+            const approved = entry.reviewed === true;
 
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate text-sm font-semibold text-white">{entry.teamName}</p>
-                    {(entry.gameNumber ?? gameNumber) != null && (
-                      <Badge variant="outline" className="border-white/10 text-zinc-400">
-                        Game {entry.gameNumber ?? gameNumber}
-                      </Badge>
-                    )}
-                    <Badge
-                      variant="outline"
-                      className={
-                        entry.reviewed
-                          ? 'border-emerald-500/30 text-emerald-300'
-                          : 'border-amber-500/30 text-amber-300'
-                      }
-                    >
-                      {entry.reviewed ? 'Reviewed' : 'Pending review'}
-                    </Badge>
-                  </div>
+            return (
+              <div
+                key={getBREvidenceRowKey(entry, gameNumber)}
+                className="rounded-xl border border-white/8 bg-white/[0.02] p-3"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start">
+                  <button
+                    type="button"
+                    onClick={() => window.open(entry.imageUrl, '_blank', 'noopener,noreferrer')}
+                    className="group relative h-24 w-full overflow-hidden rounded-lg border border-white/10 bg-black/30 md:w-40"
+                  >
+                    <img
+                      src={entry.imageUrl}
+                      alt={`${entry.teamName} evidence`}
+                      className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                    />
+                  </button>
 
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-400">
-                    <span>Placement: <span className="text-zinc-200">#{entry.placement ?? '—'}</span></span>
-                    <span>Kills: <span className="text-zinc-200">{entry.kills ?? '—'}</span></span>
-                    <span>
-                      Submitted:{' '}
-                      <span className="text-zinc-200">
-                        {new Date(entry.submittedAt).toLocaleString()}
-                      </span>
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <OutlineButton
-                      type="button"
-                      size="sm"
-                      onClick={() => window.open(entry.imageUrl, '_blank', 'noopener,noreferrer')}
-                    >
-                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                      Open
-                    </OutlineButton>
-
-                    {!entry.reviewed && (
-                      <SuccessButton
-                        type="button"
-                        size="sm"
-                        onClick={() => markReviewed({
-                          entityId: entry.teamId,
-                          reviewed: true,
-                          gameNumber: entry.gameNumber ?? gameNumber,
-                        })}
-                        disabled={isUpdating}
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-white">{entry.teamName}</p>
+                      {(entry.gameNumber ?? gameNumber) != null && (
+                        <Badge variant="outline" className="border-white/10 text-zinc-400">
+                          Game {entry.gameNumber ?? gameNumber}
+                        </Badge>
+                      )}
+                      <Badge
+                        variant="outline"
+                        className={
+                          approved
+                            ? 'border-emerald-500/30 text-emerald-300'
+                            : 'border-amber-500/30 text-amber-300'
+                        }
                       >
-                        <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                        Mark reviewed
-                      </SuccessButton>
+                        {approved ? 'Approved' : 'Pending approval'}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-400">
+                      <span>Placement: <span className="text-zinc-200">#{entry.placement ?? '—'}</span></span>
+                      <span>Kills: <span className="text-zinc-200">{entry.kills ?? '—'}</span></span>
+                      <span>
+                        Submitted:{' '}
+                        <span className="text-zinc-200">
+                          {new Date(entry.submittedAt).toLocaleString()}
+                        </span>
+                      </span>
+                    </div>
+
+                    {!approved && !approvable && (
+                      <p className="text-[11px] text-amber-300/80">
+                        Player did not report placement and kills. Ask them to resubmit before approving.
+                      </p>
                     )}
 
-                    {entry.reviewed && (
+                    <div className="flex flex-wrap gap-2">
                       <OutlineButton
                         type="button"
                         size="sm"
-                        onClick={() => markReviewed({
-                          entityId: entry.teamId,
-                          reviewed: false,
-                          gameNumber: entry.gameNumber ?? gameNumber,
-                        })}
-                        disabled={isUpdating}
+                        onClick={() => window.open(entry.imageUrl, '_blank', 'noopener,noreferrer')}
                       >
-                        <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
-                        Re-open
+                        <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                        Open
                       </OutlineButton>
-                    )}
+
+                      {!approved && (
+                        <SuccessButton
+                          type="button"
+                          size="sm"
+                          onClick={() => approveEvidence({
+                            entityId: entry.teamId,
+                            gameNumber: entry.gameNumber ?? gameNumber,
+                          })}
+                          disabled={isUpdating || !approvable}
+                        >
+                          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                          Approve result
+                        </SuccessButton>
+                      )}
+
+                      {approved && (
+                        <OutlineButton
+                          type="button"
+                          size="sm"
+                          onClick={() => reopenEvidence({
+                            entityId: entry.teamId,
+                            gameNumber: entry.gameNumber ?? gameNumber,
+                          })}
+                          disabled={isUpdating}
+                        >
+                          <Undo2 className="mr-1.5 h-3.5 w-3.5" />
+                          Reopen
+                        </OutlineButton>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
