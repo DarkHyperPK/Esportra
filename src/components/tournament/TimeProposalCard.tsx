@@ -19,7 +19,7 @@ interface TimeProposalCardProps {
     isCaptain: boolean;
     /** Tournament start time — offers a one-click propose for round 1 self-play. */
     suggestedStartTime?: string | null;
-    onTimeAccepted?: () => void;
+    onTimeAccepted?: (acceptedTime: string) => void;
     /** When false, parent page handles MatchHub realtime (avoids duplicate JoinMatch). */
     subscribeRealtime?: boolean;
 }
@@ -62,8 +62,9 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
 
     const handleAccept = async () => {
         if (activeProposal) {
+            const acceptedTime = activeProposal.proposed_time;
             await acceptProposal.mutateAsync(activeProposal.id);
-            onTimeAccepted?.();
+            onTimeAccepted?.(acceptedTime);
         }
     };
 

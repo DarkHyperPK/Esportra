@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { useMatchRealtime } from '@/hooks/useMatchRealtime';
 import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
+import { normalizeScheduledTime } from '@/utils/scheduledTime';
 
 export type MatchRoomPhase =
   | 'needs_schedule'
@@ -100,7 +101,7 @@ export const useMatchRoomState = (
         phase: normalizePhase(data.phase),
         nextAction: normalizeNextAction(data.nextAction),
         message: readString(data.message),
-        effectiveScheduledTime: readString(data.effectiveScheduledTime),
+        effectiveScheduledTime: normalizeScheduledTime(data.effectiveScheduledTime),
         scheduleSource: readString(data.scheduleSource),
         checkinWindowMinutes: typeof data.checkinWindowMinutes === 'number' ? data.checkinWindowMinutes : 15,
         checkinWindowOpen: Boolean(data.checkinWindowOpen),

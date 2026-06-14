@@ -39,6 +39,7 @@ import ServerConnectionCard from '@/components/match/ServerConnectionCard';
 import { LiveScoreCardView, useLiveScoreState } from '@/components/match/LiveScoreCard';
 import { useMatchRoomState } from '@/hooks/useMatchRoomState';
 import { useTimeProposal } from '@/hooks/useTimeProposal';
+import { normalizeScheduledTime, parseScheduledTimeMs } from '@/utils/scheduledTime';
 import { useMatchLifecycleInvalidation } from '@/hooks/useMatchLifecycleInvalidation';
 import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import {
@@ -410,7 +411,9 @@ const CaptainMatchPage = () => {
         versionId: lifecycleScope.versionId,
     });
 
-    const { acceptedProposal } = useTimeProposal(activeMatchRawId, { subscribeRealtime: false });
+    const { acceptedProposal, acceptedProposalTime } = useTimeProposal(activeMatchRawId, { subscribeRealtime: false });
+
+    const [pendingAcceptedTime, setPendingAcceptedTime] = useState<string | null>(null);
 
     const organizerFocusTeamIds = useMemo(() => {
         if (!canManageMatchRoom || !activeMatch) return undefined;
@@ -526,8 +529,23 @@ const CaptainMatchPage = () => {
 
     const selfPlayEnabled = roomState?.selfPlayEnabled ?? false;
     const effectiveScheduledTime = roomState?.effectiveScheduledTime ?? null;
-    const agreedScheduledTime = effectiveScheduledTime ?? acceptedProposal?.proposed_time ?? null;
+    const agreedScheduledTime = useMemo(() => {
+        for (const candidate of [pendingAcceptedTime, acceptedProposalTime, effectiveScheduledTime]) {
+            const normalized = normalizeScheduledTime(candidate);
+            if (normalized) return normalized;
+        }
+        return null;
+    }, [pendingAcceptedTime, acceptedProposalTime, effectiveScheduledTime]);
     const nextAction = roomState?.nextAction ?? null;
+
+    useEffect(() => {
+        if (!pendingAcceptedTime || !effectiveScheduledTime) return;
+        const pendingMs = parseScheduledTimeMs(pendingAcceptedTime);
+        const effectiveMs = parseScheduledTimeMs(effectiveScheduledTime);
+        if (pendingMs != null && effectiveMs != null && Math.abs(pendingMs - effectiveMs) < 1000) {
+            setPendingAcceptedTime(null);
+        }
+    }, [pendingAcceptedTime, effectiveScheduledTime]);
 
     const canVerifyResult = useMemo(() => {
         if (isOrganizerMatchView || !user) return false;
@@ -955,7 +973,8 @@ const CaptainMatchPage = () => {
                                                     team1Id={activeMatch.team1?.id}
                                                     isCaptain={!isOrganizerMatchView && isCaptain}
                                                     suggestedStartTime={null}
-                                                    onTimeAccepted={() => {
+                                                    onTimeAccepted={(acceptedTime) => {
+                                                        setPendingAcceptedTime(normalizeScheduledTime(acceptedTime));
                                                         refetchBracket();
                                                         toast({ title: 'Match Scheduled!', description: 'Now proceed to check-in.' });
                                                     }}
@@ -972,7 +991,7 @@ const CaptainMatchPage = () => {
                                         && (selfPlayEnabled
                                             ? (nextAction === 'check_in'
                                                 || nextAction === 'submit_party_code'
-                                                || Boolean(acceptedProposal))
+                                                || Boolean(acceptedProposalTime ?? pendingAcceptedTime))
                                             : true) && (
                                         <MatchCheckinCard
                                             matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}

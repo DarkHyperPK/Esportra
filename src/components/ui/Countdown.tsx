@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { differenceInSeconds } from 'date-fns';
 
 interface CountdownProps {
-    targetDate: Date | string;
+    targetDate: Date | string | number;
     onComplete?: () => void;
     className?: string;
     showSeconds?: boolean;
@@ -22,15 +22,31 @@ export const Countdown: React.FC<CountdownProps> = ({
         totalSeconds: number;
     } | null>(null);
 
+    const targetTimeMs = useMemo(() => {
+        if (typeof targetDate === 'number') {
+            return Number.isFinite(targetDate) ? targetDate : null;
+        }
+        const ms = new Date(targetDate).getTime();
+        return Number.isNaN(ms) ? null : ms;
+    }, [targetDate]);
+
+    const onCompleteRef = useRef(onComplete);
+    onCompleteRef.current = onComplete;
+
     useEffect(() => {
+        if (targetTimeMs == null) {
+            setTimeLeft(null);
+            return;
+        }
+
         const calculateTimeLeft = () => {
             const now = new Date();
-            const target = new Date(targetDate);
+            const target = new Date(targetTimeMs);
             const diff = differenceInSeconds(target, now);
 
             if (diff <= 0) {
                 setTimeLeft(null);
-                onComplete?.();
+                onCompleteRef.current?.();
                 return;
             }
 
@@ -46,7 +62,7 @@ export const Countdown: React.FC<CountdownProps> = ({
         const timer = setInterval(calculateTimeLeft, 1000);
 
         return () => clearInterval(timer);
-    }, [targetDate, onComplete]);
+    }, [targetTimeMs]);
 
     if (!timeLeft) return null;
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { JackButton } from "@/components/ui/JackButton";
@@ -10,6 +10,11 @@ import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { Countdown } from '@/components/ui/Countdown';
 import { competitorIdsMatch } from '@/utils/competitorId';
 import PartyCodeGoLiveCard from '@/components/tournament/PartyCodeGoLiveCard';
+import {
+    checkinWindowStartMs,
+    normalizeScheduledTime,
+    parseScheduledTimeMs,
+} from '@/utils/scheduledTime';
 
 interface MatchCheckinCardProps {
     matchId: string;
@@ -54,10 +59,33 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
         checkIn,
         isCheckinWindowOpen,
         isCheckinWindowClosed,
-    } = useMatchCheckin(matchId, team1Id, team2Id, { subscribeRealtime });
+    } = useMatchCheckin(matchId, team1Id, team2Id, {
+        subscribeRealtime,
+        scheduledTime,
+        checkInWindowMinutes,
+    });
     const { toast } = useToast();
     const [partyCode, setPartyCode] = useState<string | null>(initialPartyCode);
     const [clockTick, setClockTick] = useState(0);
+
+    const scheduledTimeIso = useMemo(
+        () => normalizeScheduledTime(scheduledTime),
+        [scheduledTime],
+    );
+
+    const checkinOpensAtMs = useMemo(
+        () => (scheduledTimeIso ? checkinWindowStartMs(scheduledTimeIso, checkInWindowMinutes) : null),
+        [scheduledTimeIso, checkInWindowMinutes],
+    );
+
+    const matchStartsAtMs = useMemo(
+        () => (scheduledTimeIso ? parseScheduledTimeMs(scheduledTimeIso) : null),
+        [scheduledTimeIso],
+    );
+
+    const handleWindowTransition = useCallback(() => {
+        setClockTick((t) => t + 1);
+    }, []);
 
     useEffect(() => {
         if (initialPartyCode) {
@@ -67,31 +95,22 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
 
     // Re-evaluate local window boundaries as time advances.
     useEffect(() => {
-        if (!scheduledTime || checkinStatus.bothCheckedIn) return;
+        if (!scheduledTimeIso || checkinStatus.bothCheckedIn) return;
         const id = window.setInterval(() => setClockTick((t) => t + 1), 1000);
         return () => window.clearInterval(id);
-    }, [scheduledTime, checkinStatus.bothCheckedIn]);
+    }, [scheduledTimeIso, checkinStatus.bothCheckedIn]);
 
     const windowOpen = useMemo(() => {
-        const localOpen = scheduledTime
-            ? isCheckinWindowOpen(scheduledTime, checkInWindowMinutes)
-            : false;
-        const localClosed = scheduledTime
-            ? isCheckinWindowClosed(scheduledTime, checkInWindowMinutes)
-            : false;
-        if (localClosed) return false;
-        return checkinWindowOpen ?? localOpen;
-    // clockTick drives recompute when relying on local schedule math
+        if (scheduledTimeIso) return isCheckinWindowOpen(scheduledTimeIso, checkInWindowMinutes);
+        return Boolean(checkinWindowOpen);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional tick dependency
-    }, [scheduledTime, checkInWindowMinutes, checkinWindowOpen, clockTick, isCheckinWindowOpen, isCheckinWindowClosed]);
+    }, [scheduledTimeIso, checkInWindowMinutes, checkinWindowOpen, clockTick, isCheckinWindowOpen]);
 
     const windowClosed = useMemo(() => {
-        const localClosed = scheduledTime
-            ? isCheckinWindowClosed(scheduledTime, checkInWindowMinutes)
-            : false;
-        return localClosed || Boolean(checkinWindowClosed);
+        if (scheduledTimeIso) return isCheckinWindowClosed(scheduledTimeIso, checkInWindowMinutes);
+        return Boolean(checkinWindowClosed);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional tick dependency
-    }, [scheduledTime, checkInWindowMinutes, checkinWindowClosed, clockTick, isCheckinWindowClosed]);
+    }, [scheduledTimeIso, checkInWindowMinutes, checkinWindowClosed, clockTick, isCheckinWindowClosed]);
 
     const isTeam1 = competitorIdsMatch(userTeamId, team1Id);
     const myTeamCheckedIn = isTeam1 ? checkinStatus.team1CheckedIn : checkinStatus.team2CheckedIn;
@@ -114,9 +133,9 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                 <div className="p-4 border-b border-white/10">
                     <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-white">Match Check-in</h3>
-                        {scheduledTime && (
+                        {scheduledTimeIso && (
                             <span className="text-sm text-zinc-400">
-                                {format(new Date(scheduledTime), 'MMM d, h:mm a')} {getTimezoneAbbr()}
+                                {format(new Date(scheduledTimeIso), 'MMM d, h:mm a')} {getTimezoneAbbr()}
                             </span>
                         )}
                     </div>
@@ -152,26 +171,27 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                     </div>
 
                     <div className="pt-2">
-                        {!windowOpen && !windowClosed && scheduledTime && (
+                        {!windowOpen && !windowClosed && checkinOpensAtMs != null && (
                             <div className="text-center p-4 bg-zinc-800/30 rounded-lg border border-zinc-800/30">
                                 <Clock className="w-6 h-6 text-zinc-500 mx-auto mb-2" />
                                 <p className="text-zinc-400 text-sm mb-1">Check-in opens in</p>
                                 <div className="text-xl font-mono text-cyan-400">
                                     <Countdown
-                                        targetDate={new Date(new Date(scheduledTime).getTime() - (checkInWindowMinutes * 60 * 1000))}
-                                        onComplete={() => setClockTick((t) => t + 1)}
+                                        targetDate={checkinOpensAtMs}
+                                        onComplete={handleWindowTransition}
                                     />
                                 </div>
                             </div>
                         )}
 
-                        {windowOpen && !checkinStatus.bothCheckedIn && scheduledTime && (
+                        {windowOpen && !windowClosed && !checkinStatus.bothCheckedIn && matchStartsAtMs != null && (
                             <div className="text-center p-4 bg-zinc-800/40 rounded-lg border border-zinc-800/50 mb-4">
-                                <p className="text-zinc-400 text-xs mb-1 uppercase tracking-wider">Match starts in</p>
+                                <p className="text-zinc-400 text-xs mb-1 uppercase tracking-wider">Check-in closes in</p>
                                 <div className="text-2xl font-mono font-bold text-white">
                                     <Countdown
-                                        targetDate={new Date(scheduledTime)}
+                                        targetDate={matchStartsAtMs}
                                         className="text-emerald-400"
+                                        onComplete={handleWindowTransition}
                                     />
                                 </div>
                             </div>
@@ -210,7 +230,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
 
                         {isCaptain && (
                             <div className="space-y-4">
-                                {windowOpen && !myTeamCheckedIn && (
+                                {windowOpen && !windowClosed && !myTeamCheckedIn && (
                                     <JackButton
                                         onClick={handleCheckIn}
                                         disabled={checkIn.isPending}

@@ -3,6 +3,8 @@ import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useMatchRealtime } from '@/hooks/useMatchRealtime';
+import { matchRoomStateQueryKey } from '@/hooks/useMatchRoomState';
+import { normalizeScheduledTime } from '@/utils/scheduledTime';
 
 interface TimeProposal {
     id: string;
@@ -33,6 +35,9 @@ export const useTimeProposal = (
 
     const activeProposal = proposals?.find(p => p.status === 'pending') ?? null;
     const acceptedProposal = proposals?.find(p => p.status === 'accepted') ?? null;
+    const acceptedProposalTime = acceptedProposal
+        ? normalizeScheduledTime(acceptedProposal.proposed_time)
+        : null;
 
     // Live updates via SignalR MatchHub (skip when parent owns MatchHub subscription)
     useMatchRealtime({
@@ -70,13 +75,48 @@ export const useTimeProposal = (
             if (!matchId) throw new Error('Match ID required');
             return apiClient.post(`/api/matches/${matchId}/time-proposals/${proposalId}/accept`, {});
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['match-time-proposals', matchId] });
-            queryClient.invalidateQueries({ queryKey: ['match-room-state', matchId] });
+        onMutate: async (proposalId) => {
+            await queryClient.cancelQueries({ queryKey: ['match-time-proposals', matchId] });
+            const previous = queryClient.getQueryData<TimeProposal[]>(['match-time-proposals', matchId]);
+            const accepted = previous?.find((p) => p.id === proposalId);
+
+            if (previous && accepted) {
+                queryClient.setQueryData<TimeProposal[]>(
+                    ['match-time-proposals', matchId],
+                    previous.map((p) => {
+                        if (p.id === proposalId) {
+                            return {
+                                ...p,
+                                status: 'accepted' as const,
+                                responded_at: new Date().toISOString(),
+                            };
+                        }
+                        if (p.status === 'pending') {
+                            return { ...p, status: 'rejected' as const };
+                        }
+                        return p;
+                    }),
+                );
+            }
+
+            return { previous, acceptedTime: accepted?.proposed_time ?? null };
+        },
+        onError: (error: Error, _proposalId, context) => {
+            if (context?.previous) {
+                queryClient.setQueryData(['match-time-proposals', matchId], context.previous);
+            }
+            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        },
+        onSuccess: async () => {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['match-time-proposals', matchId] }),
+                queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(matchId) }),
+            ]);
             toast({ title: 'Time Accepted!', description: 'Match time has been scheduled.' });
         },
-        onError: (error: Error) => {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        onSettled: () => {
+            void queryClient.invalidateQueries({ queryKey: ['match-time-proposals', matchId] });
+            void queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(matchId) });
         },
     });
 
@@ -116,6 +156,7 @@ export const useTimeProposal = (
         proposals,
         activeProposal,
         acceptedProposal,
+        acceptedProposalTime,
         isLoading,
         proposeTime,
         acceptProposal,
