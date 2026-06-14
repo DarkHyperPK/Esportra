@@ -17,15 +17,19 @@ import {
   formatRotationMatchdayLabel,
   groupLobbiesByWave,
   resolveMatchupLabelFromLobby,
+  seedGroupShortLabel,
   summarizeGroupRotationSchedule,
 } from '@/utils/brWaveScheduleDisplay';
 import {
   collectGameScheduleErrors,
+  collectLobbyScheduleErrors,
   getBRScheduleCopy,
+  resolveGameScheduleMin,
   resolveLobbyDisplayLabel,
   validateLobbyGameSchedules,
 } from '@/utils/brScheduleLabels';
-import { seedGroupShortLabel } from '@/utils/brWaveScheduleDisplay';
+import { getTournamentDatetimeLocalBounds } from '@/utils/tournamentScheduleValidation';
+import { utcToLocalInput } from '@/lib/timeUtils';
 import type { BRRound, BRGame } from '@/types/brLobbies';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -34,20 +38,17 @@ type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 interface BRStageScheduleSectionProps {
   stage: TournamentStage;
   tournamentId: string;
+  tournamentStartDate?: string | null;
+  tournamentEndDate?: string | null;
   allStages: TournamentStage[];
   registeredUnitCount?: number;
   onUpdate: () => void;
 }
 
-const toLocalInput = (iso: string | null | undefined): string => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-
 export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   stage,
+  tournamentStartDate,
+  tournamentEndDate,
   allStages,
   registeredUnitCount = 0,
   onUpdate,
@@ -115,12 +116,12 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
         const gameSchedMap: Record<string, string> = {};
         await Promise.all(
           list.map(async (lobby) => {
-            schedMap[lobby.id] = toLocalInput(lobby.scheduled_at);
+            schedMap[lobby.id] = utcToLocalInput(lobby.scheduled_at ?? '');
             try {
               const games = await apiClient.get<BRGame[]>(`/api/lobbies/${lobby.id}/games`);
               gameMap[lobby.id] = games;
               for (const game of games) {
-                gameSchedMap[game.id] = toLocalInput(game.scheduled_at);
+                gameSchedMap[game.id] = utcToLocalInput(game.scheduled_at ?? '');
               }
             } catch {
               gameMap[lobby.id] = [];
@@ -171,9 +172,32 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
 
   const lobbiesByWave = useMemo(() => groupLobbiesByWave(lobbies), [lobbies]);
 
+  const scheduleBounds = useMemo(
+    () => getTournamentDatetimeLocalBounds(tournamentStartDate, tournamentEndDate),
+    [tournamentStartDate, tournamentEndDate],
+  );
+
   const gameScheduleErrors = useMemo(
-    () => collectGameScheduleErrors(gamesByLobby, gameSchedules),
-    [gamesByLobby, gameSchedules],
+    () => collectGameScheduleErrors(gamesByLobby, gameSchedules, {
+      tournamentStart: tournamentStartDate,
+      tournamentEnd: tournamentEndDate,
+      lobbySchedules: lobbySchedules,
+    }),
+    [gamesByLobby, gameSchedules, tournamentStartDate, tournamentEndDate, lobbySchedules],
+  );
+
+  const lobbyScheduleErrors = useMemo(
+    () => collectLobbyScheduleErrors(lobbies, lobbySchedules, {
+      tournamentStart: tournamentStartDate,
+      tournamentEnd: tournamentEndDate,
+      isRotation,
+    }),
+    [lobbies, lobbySchedules, tournamentStartDate, tournamentEndDate, isRotation],
+  );
+
+  const scheduleErrors = useMemo(
+    () => [...lobbyScheduleErrors, ...gameScheduleErrors],
+    [lobbyScheduleErrors, gameScheduleErrors],
   );
 
   const handleCreateMatches = async () => {
@@ -192,6 +216,21 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   };
 
   const handleSaveLobbyTimes = async (lobbyIds: string[]) => {
+    const targetLobbies = lobbies.filter((l) => lobbyIds.includes(l.id));
+    const errors = collectLobbyScheduleErrors(targetLobbies, lobbySchedules, {
+      tournamentStart: tournamentStartDate,
+      tournamentEnd: tournamentEndDate,
+      isRotation,
+    });
+    if (errors.length > 0) {
+      toast({
+        title: 'Lobby times are invalid',
+        description: errors[0],
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSavingLobbies(true);
     try {
       let updated = 0;
@@ -227,6 +266,11 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     const errors = collectGameScheduleErrors(
       Object.fromEntries(lobbyIds.map((id) => [id, gamesByLobby[id] ?? []])),
       relevantSchedules,
+      {
+        tournamentStart: tournamentStartDate,
+        tournamentEnd: tournamentEndDate,
+        lobbySchedules,
+      },
     );
     if (errors.length > 0) {
       toast({
@@ -265,6 +309,12 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   const renderGameRows = (lobby: BRRound) => {
     const lobbyGames = [...(gamesByLobby[lobby.id] ?? [])].sort((a, b) => a.game_number - b.game_number);
     if (lobbyGames.length === 0) return null;
+    const lobbyScheduleLocal = lobbySchedules[lobby.id] ?? '';
+    const gameValidationOptions = {
+      tournamentStart: tournamentStartDate,
+      tournamentEnd: tournamentEndDate,
+      lobbyScheduleLocal,
+    };
 
     return (
       <div className="mt-3 space-y-2 pl-2 border-l border-white/10">
@@ -272,8 +322,13 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
         {lobbyGames.map((game, gameIdx) => {
           const prevGame = gameIdx > 0 ? lobbyGames[gameIdx - 1] : null;
           const prevTime = prevGame ? gameSchedules[prevGame.id] : '';
-          const rowError = gameSchedules[game.id] && prevGame
-            ? validateLobbyGameSchedules(lobbyGames, gameSchedules)
+          const gameMin = resolveGameScheduleMin(
+            prevTime,
+            lobbyScheduleLocal,
+            scheduleBounds.min,
+          );
+          const rowError = gameSchedules[game.id]
+            ? validateLobbyGameSchedules(lobbyGames, gameSchedules, gameValidationOptions)
             : null;
           return (
             <div key={game.id} className="space-y-0.5">
@@ -285,7 +340,8 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                   onChange={(e) =>
                     setGameSchedules((prev) => ({ ...prev, [game.id]: e.target.value }))
                   }
-                  min={prevTime || undefined}
+                  min={gameMin || scheduleBounds.min || undefined}
+                  max={scheduleBounds.max || undefined}
                   className="h-7 text-[10px] flex-1 [color-scheme:dark] bg-white/5 border-white/10"
                 />
               </div>
@@ -331,6 +387,8 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
           onChange={(e) =>
             setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))
           }
+          min={scheduleBounds.min || undefined}
+          max={scheduleBounds.max || undefined}
           className="h-9 text-sm max-w-xs [color-scheme:dark] bg-white/5 border-white/10"
         />
         {renderGameRows(lobby)}
@@ -338,7 +396,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
           <Button
             size="sm"
             className="bg-rose-600 hover:bg-rose-500"
-            disabled={savingLobbies}
+            disabled={savingLobbies || lobbyScheduleErrors.length > 0}
             onClick={() => handleSaveLobbyTimes([lobby.id])}
           >
             <Save className="w-3.5 h-3.5 mr-1.5" />
@@ -361,6 +419,12 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
 
   return (
     <div className="space-y-8">
+      {(tournamentStartDate || tournamentEndDate) && (
+        <p className="text-xs text-zinc-500">
+          All lobby and game times must fall within the tournament window:{' '}
+          <span className="text-zinc-400">{scheduleBounds.windowLabel}</span>
+        </p>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-white">{stage.name}</h3>
@@ -453,8 +517,8 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                 </div>
               ) : isRotation ? (
                 <>
-                  {gameScheduleErrors.length > 0 && (
-                    <p className="text-xs text-amber-300/90">{gameScheduleErrors[0]}</p>
+                  {scheduleErrors.length > 0 && (
+                    <p className="text-xs text-amber-300/90">{scheduleErrors[0]}</p>
                   )}
                   <div className="space-y-4 max-h-[28rem] overflow-y-auto">
                     {[...lobbiesByWave.entries()].map(([waveNumber, waveLobbies]) => (
@@ -481,6 +545,8 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                                 onChange={(e) =>
                                   setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))
                                 }
+                                min={scheduleBounds.min || undefined}
+                                max={scheduleBounds.max || undefined}
                                 className="h-8 text-xs [color-scheme:dark] bg-white/5 border-white/10"
                               />
                               {renderGameRows(lobby)}
@@ -494,7 +560,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                     <Button
                       size="sm"
                       className="bg-rose-600 hover:bg-rose-500"
-                      disabled={savingLobbies}
+                      disabled={savingLobbies || lobbyScheduleErrors.length > 0}
                       onClick={() => handleSaveLobbyTimes(lobbies.map((l) => l.id))}
                     >
                       <Save className="w-3.5 h-3.5 mr-1.5" />

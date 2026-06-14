@@ -15,6 +15,10 @@ import {
 import { isBattleRoyale } from '@/utils/gameFeatures';
 import { useRawgGame } from '@/hooks/useRawgGame';
 
+/** Matches Initiate Registration — explicit border/bg so default rose CTA stroke does not leak through. */
+const HEADER_GREEN_ACTION_CLASS =
+  'h-14 md:h-16 px-8 md:px-12 border-green-600 bg-green-600 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none shadow-[0_0_40px_rgba(22,163,74,0.3)] hover:border-green-600 hover:bg-green-600 hover:text-white focus-visible:ring-green-500/70 active:scale-[0.98] active:bg-green-700 active:border-green-700 transition-transform';
+
 interface TournamentHeaderProps {
     tournament: any;
     isOrganizer: boolean;
@@ -213,7 +217,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                 {showOpenRegistration && (
                                                     <Button
                                                         onClick={onRegister}
-                                                        className="h-14 md:h-16 px-8 md:px-12 border-green-600 bg-green-600 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none shadow-[0_0_40px_rgba(22,163,74,0.3)] hover:border-green-600 hover:bg-green-600 hover:text-white focus-visible:ring-green-500/70 active:scale-[0.98] active:bg-green-700 active:border-green-700 transition-transform"
+                                                        className={HEADER_GREEN_ACTION_CLASS}
                                                     >
                                                         <span className="flex items-center gap-2">INITIATE REGISTRATION <ChevronRight className="w-5 h-5" /></span>
                                                     </Button>
@@ -245,11 +249,11 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                         {isRegistered && !awaitingApproval && isCaptain && (
                                             <div className="flex gap-4">
                                                 {isBattleRoyale(tournament.game || '') ? (
-                                                    <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/br-game-room`)} className="h-14 md:h-16 px-8 md:px-12 bg-emerald-600 hover:bg-emerald-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-pulse">
+                                                    <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/br-game-room`)} className={HEADER_GREEN_ACTION_CLASS}>
                                                         <span className="relative z-10 flex items-center gap-2"><Swords className="w-5 h-5" /> ENTER GAME ROOM</span>
                                                     </Button>
                                                 ) : (
-                                                    <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/captain-match`)} className="h-14 md:h-16 px-8 md:px-12 bg-emerald-600 hover:bg-emerald-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-pulse">
+                                                    <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/captain-match`)} className={HEADER_GREEN_ACTION_CLASS}>
                                                         <span className="relative z-10 flex items-center gap-2"><Swords className="w-5 h-5" /> ENTER MATCH ROOM</span>
                                                     </Button>
                                                 )}
@@ -262,7 +266,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                         )}
 
                                         {canSelfCheckIn && (
-                                            <Button onClick={onCheckIn} disabled={checkInSubmitting} className="ml-4 h-14 md:h-16 px-8 md:px-12 bg-green-600 hover:bg-green-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none animate-pulse">
+                                            <Button onClick={onCheckIn} disabled={checkInSubmitting} className={cn('ml-4', HEADER_GREEN_ACTION_CLASS)}>
                                                 CONFIRM PRESENCE
                                             </Button>
                                         )}

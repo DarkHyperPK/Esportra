@@ -105,6 +105,12 @@ export const fetchUserStaffAssignments = async (
   );
 };
 
+/** Invalidate client caches after staff assignment or permission changes. */
+export function invalidateStaffAccessCaches(queryClient: import('@tanstack/react-query').QueryClient) {
+  void queryClient.invalidateQueries({ queryKey: ['tournaments', 'staff', 'my-assignments'] });
+  void queryClient.invalidateQueries({ queryKey: ['tournament-dashboard'] });
+}
+
 export const respondToStaffInvite = async ({
   inviteId,
   accept,

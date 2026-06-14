@@ -46,4 +46,6 @@ export function invalidateMatchLifecycleQueries(
 
   void queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
   void queryClient.invalidateQueries({ queryKey: ['bracket'] });
+  void queryClient.invalidateQueries({ queryKey: ['stage-matches-for-scheduling'] });
+  void queryClient.invalidateQueries({ queryKey: ['schedule-matches'] });
 }

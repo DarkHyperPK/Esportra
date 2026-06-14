@@ -6,6 +6,8 @@ type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
 interface BRScheduleTabProps {
   tournamentId: string;
+  tournamentStartDate?: string | null;
+  tournamentEndDate?: string | null;
   stages: TournamentStage[];
   registeredUnitCount?: number;
   onUpdate: () => void;
@@ -13,6 +15,8 @@ interface BRScheduleTabProps {
 
 export const BRScheduleTab: React.FC<BRScheduleTabProps> = ({
   tournamentId,
+  tournamentStartDate,
+  tournamentEndDate,
   stages,
   registeredUnitCount = 0,
   onUpdate,
@@ -34,6 +38,8 @@ export const BRScheduleTab: React.FC<BRScheduleTabProps> = ({
           key={stage.id}
           stage={stage}
           tournamentId={tournamentId}
+          tournamentStartDate={tournamentStartDate}
+          tournamentEndDate={tournamentEndDate}
           allStages={sortedStages}
           registeredUnitCount={registeredUnitCount}
           onUpdate={onUpdate}

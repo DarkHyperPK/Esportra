@@ -57,4 +57,28 @@ describe('hasTournamentStaffAccess', () => {
     expect(hasTournamentStaffAccess([], 'alpha-cup')).toBe(false);
     expect(hasTournamentStaffAccess(assignments, undefined)).toBe(false);
   });
+
+  it('grants access for org admin assignments without explicit permissions', () => {
+    const adminAssignments: TournamentStaffInvite[] = [
+      {
+        id: 'admin-1',
+        tournament_id: 't-3',
+        user_id: 'u-1',
+        role: 'admin',
+        permissions: ['scores:update', 'teams:manage', 'bracket:edit', 'announcements:send', 'disputes:assist'],
+        status: 'active',
+        assigned_by: 'owner-1',
+        created_at: '',
+        updated_at: '',
+        tournament: {
+          id: 't-3',
+          name: 'Org Cup',
+          slug: 'org-cup',
+          game: 'cs2',
+          start_date: null,
+        },
+      },
+    ];
+    expect(hasTournamentStaffAccess(adminAssignments, 'org-cup')).toBe(true);
+  });
 });

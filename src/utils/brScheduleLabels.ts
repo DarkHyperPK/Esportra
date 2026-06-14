@@ -5,9 +5,14 @@ import {
   seedGroupShortLabel,
   formatRotationMatchdayLabel,
   formatRotationMatchLabel,
+  groupLobbiesByWave,
   resolveLobbyMatchupLabel,
   resolveMatchupLabelFromLobby,
 } from '@/utils/brWaveScheduleDisplay';
+import {
+  validateLocalDatetimeInTournamentWindow,
+  maxDatetimeLocal,
+} from '@/utils/tournamentScheduleValidation';
 
 export interface BRScheduleCopy {
   createAction: string;
@@ -86,13 +91,23 @@ export function resolveLobbyDisplayLabel(
   return `Group ${(lobby.lobby_index ?? 0) + 1} lobby`;
 }
 
+export interface BRScheduleValidationOptions {
+  tournamentStart?: string | null;
+  tournamentEnd?: string | null;
+  lobbyScheduleLocal?: string;
+}
+
 /** Games in the same lobby share a roster — scheduled starts must be strictly increasing. */
 export function validateLobbyGameSchedules(
   games: BRGame[],
   gameSchedules: Record<string, string>,
+  options?: BRScheduleValidationOptions,
 ): string | null {
   const sorted = [...games].sort((a, b) => a.game_number - b.game_number);
   const scheduled: { gameNumber: number; time: number }[] = [];
+  const lobbyFloor = options?.lobbyScheduleLocal?.trim()
+    ? new Date(options.lobbyScheduleLocal).getTime()
+    : null;
 
   for (const game of sorted) {
     const local = gameSchedules[game.id]?.trim();
@@ -101,6 +116,19 @@ export function validateLobbyGameSchedules(
     if (Number.isNaN(time)) {
       return `Game ${game.game_number} has an invalid start time.`;
     }
+
+    const windowErr = validateLocalDatetimeInTournamentWindow(
+      local,
+      options?.tournamentStart,
+      options?.tournamentEnd,
+      'Game schedule',
+    );
+    if (windowErr) return windowErr;
+
+    if (lobbyFloor !== null && !Number.isNaN(lobbyFloor) && time < lobbyFloor) {
+      return `Game ${game.game_number} cannot be scheduled before its lobby start time.`;
+    }
+
     scheduled.push({ gameNumber: game.game_number, time });
   }
 
@@ -113,16 +141,118 @@ export function validateLobbyGameSchedules(
   return null;
 }
 
+export function validateLobbySchedule(
+  localDatetime: string,
+  tournamentStart?: string | null,
+  tournamentEnd?: string | null,
+): string | null {
+  return validateLocalDatetimeInTournamentWindow(
+    localDatetime,
+    tournamentStart,
+    tournamentEnd,
+    'Lobby schedule',
+  );
+}
+
+/** Rotation: each matchday must start after the previous matchday's latest lobby time. */
+export function validateRotationWaveSchedules(
+  lobbies: BRRound[],
+  lobbySchedules: Record<string, string>,
+  tournamentStart?: string | null,
+  tournamentEnd?: string | null,
+): string | null {
+  const waves = groupLobbiesByWave(lobbies);
+  const waveNumbers = [...waves.keys()].sort((a, b) => a - b);
+  let previousWaveMax: number | null = null;
+  let previousWaveNumber: number | null = null;
+
+  for (const waveNumber of waveNumbers) {
+    const waveLobbies = waves.get(waveNumber) ?? [];
+    let waveMax: number | null = null;
+
+    for (const lobby of waveLobbies) {
+      const local = lobbySchedules[lobby.id]?.trim();
+      if (!local) continue;
+
+      const windowErr = validateLobbySchedule(local, tournamentStart, tournamentEnd);
+      if (windowErr) return windowErr;
+
+      const time = new Date(local).getTime();
+      if (Number.isNaN(time)) {
+        return 'Lobby schedule has an invalid start time.';
+      }
+      waveMax = waveMax === null ? time : Math.max(waveMax, time);
+    }
+
+    if (previousWaveMax !== null && waveMax !== null && waveMax <= previousWaveMax) {
+      return `${formatRotationMatchdayLabel(waveNumber)} must be scheduled after ${formatRotationMatchdayLabel(previousWaveNumber!)}.`;
+    }
+
+    if (waveMax !== null) {
+      previousWaveMax = waveMax;
+      previousWaveNumber = waveNumber;
+    }
+  }
+
+  return null;
+}
+
 export function collectGameScheduleErrors(
   gamesByLobby: Record<string, BRGame[]>,
   gameSchedules: Record<string, string>,
+  options?: BRScheduleValidationOptions & { lobbySchedules?: Record<string, string> },
 ): string[] {
   const errors: string[] = [];
-  for (const games of Object.values(gamesByLobby)) {
-    const err = validateLobbyGameSchedules(games, gameSchedules);
+  for (const [lobbyId, games] of Object.entries(gamesByLobby)) {
+    const err = validateLobbyGameSchedules(games, gameSchedules, {
+      tournamentStart: options?.tournamentStart,
+      tournamentEnd: options?.tournamentEnd,
+      lobbyScheduleLocal: options?.lobbySchedules?.[lobbyId],
+    });
     if (err) errors.push(err);
   }
   return errors;
+}
+
+export function collectLobbyScheduleErrors(
+  lobbies: BRRound[],
+  lobbySchedules: Record<string, string>,
+  opts?: {
+    tournamentStart?: string | null;
+    tournamentEnd?: string | null;
+    isRotation?: boolean;
+  },
+): string[] {
+  const errors: string[] = [];
+  const { tournamentStart, tournamentEnd, isRotation } = opts ?? {};
+
+  for (const lobby of lobbies) {
+    const local = lobbySchedules[lobby.id]?.trim();
+    if (!local) continue;
+    const err = validateLobbySchedule(local, tournamentStart, tournamentEnd);
+    if (err) errors.push(err);
+  }
+
+  if (isRotation) {
+    const waveErr = validateRotationWaveSchedules(
+      lobbies,
+      lobbySchedules,
+      tournamentStart,
+      tournamentEnd,
+    );
+    if (waveErr) errors.push(waveErr);
+  }
+
+  return errors;
+}
+
+/** Min datetime-local for game N: after previous game, lobby start, and tournament start. */
+export function resolveGameScheduleMin(
+  prevGameLocal: string,
+  lobbyScheduleLocal: string,
+  tournamentMin: string,
+): string {
+  return maxDatetimeLocal(maxDatetimeLocal(prevGameLocal, lobbyScheduleLocal), tournamentMin);
 }
 
 export function getPublicBRScheduleCopy(format: BRStageFormat | string | undefined): {

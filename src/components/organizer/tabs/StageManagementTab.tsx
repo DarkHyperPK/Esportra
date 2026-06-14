@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -22,6 +22,7 @@ import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 import { buildStageSyncPayload } from '@/utils/stageSync';
 import { runInChunks } from '@/utils/runInChunks';
+import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
 // import { useStageRealtime } from '@/hooks/useStageRealtime';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
@@ -36,6 +37,7 @@ interface StageManagementTabProps {
 
 export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic = false }) => {
     const { toast } = useToast();
+    const queryClient = useQueryClient();
     const navigate = useNavigate();
     const { slug } = useParams<{ slug: string }>();
     const [addStageDialogOpen, setAddStageDialogOpen] = useState(false);
@@ -336,6 +338,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             setHasBrackets({});
 
             toast({ title: 'All stages reset', description: 'All brackets and team data have been cleared. Stages are ready to generate new brackets.' });
+            invalidateMatchLifecycleQueries(queryClient, {});
             setResetAllDialogOpen(false);
             onUpdate();
         } catch (error: any) {

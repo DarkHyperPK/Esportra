@@ -14,9 +14,10 @@ import { RoundResultsGrid } from '@/components/organizer/br/RoundResultsGrid';
 import { RoundEvidencePanel } from '@/components/organizer/br/RoundEvidencePanel';
 import type { BRGroupTeam } from '@/types/brGroups';
 import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
-import { BRMapOptionList, BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
-import { resolveMapForRound } from '@/utils/brConfigResolve';
+import { resolveMapFromConfig } from '@/hooks/useBRStageConfig';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
+import { validateLiveActionInTournamentWindow } from '@/utils/tournamentScheduleValidation';
+import { useToast } from '@/hooks/use-toast';
 import { MapPin, Play, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface ScoringPreset {
@@ -35,6 +36,8 @@ interface BRGameRunListProps {
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
   mapCatalogItems?: BRMapCatalogItem[];
+  tournamentStartDate?: string | null;
+  tournamentEndDate?: string | null;
 }
 
 export const BRGameRunList: React.FC<BRGameRunListProps> = ({
@@ -47,7 +50,10 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
   scoringPreset,
   mapConfig,
   mapCatalogItems = [],
+  tournamentStartDate,
+  tournamentEndDate,
 }) => {
+  const { toast } = useToast();
   const { data: games = [], isLoading } = useBRGames(lobbyId);
   const updateGame = useUpdateBRGame(stageId, groupId, lobbyId);
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
@@ -65,17 +71,57 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
   }
 
   const lobbyIsLive = lobbyStatus === 'active' && Boolean(lobbyCode?.trim());
-  const canStartGames = lobbyIsLive;
+  const sortedGames = [...games].sort((a, b) => a.game_number - b.game_number);
+  const liveWindowError = validateLiveActionInTournamentWindow(
+    tournamentStartDate,
+    tournamentEndDate,
+    'Starting a game',
+  );
+
+  const canStartGame = (gameNumber: number, status: string) => {
+    if (!lobbyIsLive || status !== 'pending') return false;
+    if (liveWindowError) return false;
+    if (gameNumber <= 1) return true;
+    const previous = sortedGames.find((g) => g.game_number === gameNumber - 1);
+    return previous?.status === 'completed';
+  };
+
+  const handleStartGame = async (
+    gameId: string,
+    gameNumber: number,
+    map: string | null,
+  ) => {
+    if (liveWindowError) {
+      toast({
+        title: 'Outside tournament window',
+        description: liveWindowError,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!canStartGame(gameNumber, 'pending')) {
+      toast({
+        title: 'Complete the previous game first',
+        description: `Game ${gameNumber} can only start after Game ${gameNumber - 1} is completed.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    await updateGame.mutateAsync({ gameId, status: 'active', map });
+  };
 
   return (
     <div className="space-y-2 border-t border-white/5 pt-3 mt-3">
       <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide px-1">Games in this lobby</p>
-      {!canStartGames && (
+      {!lobbyIsLive && (
         <p className="text-[10px] text-amber-300/90 px-1 leading-relaxed">
           Start the group lobby with a lobby code above before starting individual games.
         </p>
       )}
-      {games.map((game) => (
+      {lobbyIsLive && liveWindowError && (
+        <p className="text-[10px] text-amber-300/90 px-1 leading-relaxed">{liveWindowError}</p>
+      )}
+      {sortedGames.map((game) => (
         <BRGameRunRow
           key={game.id}
           game={game}
@@ -86,10 +132,12 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
           scoringPreset={scoringPreset}
           mapConfig={mapConfig}
           mapCatalogItems={mapCatalogItems}
-          canStartGame={canStartGames}
+          canStartGame={canStartGame(game.game_number, game.status)}
           isExpanded={expandedGameId === game.id}
           onToggle={() => setExpandedGameId((id) => (id === game.id ? null : game.id))}
-          onUpdateGame={updateGame.mutateAsync}
+          onStartGame={(map) => handleStartGame(game.id, game.game_number, map)}
+          onCompleteGame={(map) => updateGame.mutateAsync({ gameId: game.id, status: 'completed', map })}
+          onMapUpdate={(map) => updateGame.mutateAsync({ gameId: game.id, map })}
           isUpdating={updateGame.isPending}
         />
       ))}
@@ -125,7 +173,9 @@ const BRGameRunRow: React.FC<{
   canStartGame: boolean;
   isExpanded: boolean;
   onToggle: () => void;
-  onUpdateGame: (params: { gameId: string; map?: string | null; status?: 'pending' | 'active' | 'completed' }) => Promise<unknown>;
+  onStartGame: (map: string | null) => Promise<unknown>;
+  onCompleteGame: (map: string | null) => Promise<unknown>;
+  onMapUpdate: (map: string | null) => Promise<unknown>;
   isUpdating: boolean;
 }> = ({
   game,
@@ -139,7 +189,9 @@ const BRGameRunRow: React.FC<{
   canStartGame,
   isExpanded,
   onToggle,
-  onUpdateGame,
+  onStartGame,
+  onCompleteGame,
+  onMapUpdate,
   isUpdating,
 }) => {
   const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
@@ -149,15 +201,14 @@ const BRGameRunRow: React.FC<{
     { gameNumber: game.game_number },
   );
   const [mapInput, setMapInput] = useState(
-    game.map ?? resolveMapForRound(mapConfig, game.game_number) ?? '',
+    game.map ?? resolveMapFromConfig(mapConfig, game.game_number) ?? '',
   );
 
   const showMapPicker = supportsPerGameMaps(mapConfig, mapCatalogItems);
   const mapPool = gameMapPool(mapConfig, mapCatalogItems);
-  const selectedMapItem = mapCatalogItems.find((item) => item.name === mapInput);
 
   useEffect(() => {
-    setMapInput(game.map ?? resolveMapForRound(mapConfig, game.game_number) ?? '');
+    setMapInput(game.map ?? resolveMapFromConfig(mapConfig, game.game_number) ?? '');
   }, [game.id, game.map, game.game_number, mapConfig]);
 
   const handleMapChange = async (mapName: string) => {
@@ -165,7 +216,7 @@ const BRGameRunRow: React.FC<{
     setMapInput(next);
     if (game.status === 'completed') return;
     if ((game.map ?? '') === next) return;
-    await onUpdateGame({ gameId: game.id, map: next || null });
+    await onMapUpdate(next || null);
   };
 
   const statusClass = STATUS_COLORS[game.status] ?? STATUS_COLORS.pending;
@@ -197,35 +248,20 @@ const BRGameRunRow: React.FC<{
               <p className="text-[10px] uppercase tracking-wide text-zinc-500 flex items-center gap-1">
                 <MapPin className="w-3 h-3" /> Map
               </p>
-              {mapCatalogItems.length > 0 ? (
-                <BRMapOptionList
-                  items={mapCatalogItems}
-                  selected={mapInput ? [mapInput] : []}
-                  selectable={game.status !== 'completed'}
-                  onToggle={(mapName, checked) => {
-                    void handleMapChange(checked ? mapName : '');
-                  }}
-                  columns={2}
-                />
-              ) : (
-                <Select
-                  value={mapInput || undefined}
-                  onValueChange={(value) => { void handleMapChange(value); }}
-                  disabled={game.status === 'completed'}
-                >
-                  <SelectTrigger className="h-9 text-sm max-w-xs bg-white/5 border-white/10">
-                    <SelectValue placeholder="Select map" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mapPool.map((mapName) => (
-                      <SelectItem key={mapName} value={mapName}>{mapName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {selectedMapItem && game.status === 'completed' && (
-                <BRMapBadge mapName={selectedMapItem.name} imageUrl={selectedMapItem.imageUrl} />
-              )}
+              <Select
+                value={mapInput || undefined}
+                onValueChange={(value) => { void handleMapChange(value); }}
+                disabled={game.status === 'completed'}
+              >
+                <SelectTrigger className="h-9 text-sm max-w-xs bg-white/5 border-white/10 text-white">
+                  <SelectValue placeholder="Select map" />
+                </SelectTrigger>
+                <SelectContent>
+                  {mapPool.map((mapName) => (
+                    <SelectItem key={mapName} value={mapName}>{mapName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
           <div className="flex flex-wrap gap-2">
@@ -235,7 +271,7 @@ const BRGameRunRow: React.FC<{
                 variant="outline"
                 className="border-amber-500/30 text-amber-300"
                 disabled={isUpdating || !canStartGame}
-                onClick={() => onUpdateGame({ gameId: game.id, status: 'active', map: mapInput || null })}
+                onClick={() => onStartGame(mapInput || null)}
               >
                 <Play className="w-3.5 h-3.5 mr-1" /> Start game
               </Button>
@@ -245,7 +281,7 @@ const BRGameRunRow: React.FC<{
                 size="sm"
                 className="bg-emerald-600 hover:bg-emerald-500"
                 disabled={isUpdating}
-                onClick={() => onUpdateGame({ gameId: game.id, status: 'completed', map: mapInput || null })}
+                onClick={() => onCompleteGame(mapInput || null)}
               >
                 <CheckCircle className="w-3.5 h-3.5 mr-1" /> Complete game
               </Button>

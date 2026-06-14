@@ -155,6 +155,8 @@ export const optimisticBracket = {
                     team2_score: 0,
                     winner_id: null,
                     loser_id: null,
+                    scheduled_time: null,
+                    scheduledTime: null,
                 };
             }
             return node;

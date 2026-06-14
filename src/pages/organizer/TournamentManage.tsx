@@ -273,7 +273,9 @@ const TournamentDashboard = () => {
     () => (dashboardData?.staffPermissions || []) as StaffPermission[],
     [dashboardData?.staffPermissions],
   );
-  const hasTournamentStaffAccess = staffPermissions.length > 0;
+  const staffRole = dashboardData?.staffRole ?? null;
+  const isStaffAdmin = staffRole === 'admin';
+  const hasTournamentStaffAccess = Boolean(staffRole) || staffPermissions.length > 0;
 
   // Player session: leave organizer dashboard unless staff on this tournament
   useEffect(() => {
@@ -485,8 +487,8 @@ const TournamentDashboard = () => {
 
   // Sync staff access state
   useEffect(() => {
-    setHasStaffAccess(staffPermissions.length > 0);
-  }, [staffPermissions]);
+    setHasStaffAccess(hasTournamentStaffAccess);
+  }, [hasTournamentStaffAccess]);
 
   useEffect(() => {
     if (!tournament) return;
@@ -1025,14 +1027,14 @@ const TournamentDashboard = () => {
     staffPermissions.map((perm) => STAFF_PERMISSION_LABELS[perm] || perm).join(', ') || 'Limited access';
 
   const canManageStaff = canActAsOwner;
-  const canAssistDisputes = canActAsOwner || staffPermissions.includes('disputes:assist');
+  const canAssistDisputes = canActAsOwner || isStaffAdmin || staffPermissions.includes('disputes:assist');
   const { badgeCount: disputeBadgeCount, refresh: refreshDisputeUnread } = useOrganizerDisputeUnread(
     tournament?.id,
     canAssistDisputes,
   );
-  const canManageTeams = canActAsOwner || staffPermissions.includes('teams:manage');
-  const canEditBracket = canActAsOwner || staffPermissions.includes('bracket:edit');
-  const canSendAnnouncements = canActAsOwner || staffPermissions.includes('announcements:send');
+  const canManageTeams = canActAsOwner || isStaffAdmin || staffPermissions.includes('teams:manage');
+  const canEditBracket = canActAsOwner || isStaffAdmin || staffPermissions.includes('bracket:edit');
+  const canSendAnnouncements = canActAsOwner || isStaffAdmin || staffPermissions.includes('announcements:send');
 
   const PermissionNotice = ({ message }: { message: string }) => (
     <Card className="bg-[#080d18] border border-white/5">
@@ -1792,6 +1794,8 @@ const TournamentDashboard = () => {
                     {isBR ? (
                       <BRScheduleTab
                         tournamentId={tournament.id}
+                        tournamentStartDate={tournament.start_date || null}
+                        tournamentEndDate={tournament.end_date || null}
                         stages={stages}
                         registeredUnitCount={brRegisteredUnitCount}
                         onUpdate={() => refetchDashboard()}
@@ -1867,6 +1871,8 @@ const TournamentDashboard = () => {
                   <TabTransition direction={direction}>
                     <BRGamesTab
                       tournamentId={tournament!.id}
+                      tournamentStartDate={tournament.start_date || null}
+                      tournamentEndDate={tournament.end_date || null}
                       stages={stages}
                       game={tournament.game || ''}
                       tournamentSettings={brSettings as Record<string, unknown> | null}

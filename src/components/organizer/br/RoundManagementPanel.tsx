@@ -35,8 +35,9 @@ import {
 import type { BRGroupTeam } from '@/types/brGroups';
 import type { BRRound, BRResultInput } from '@/types/brRounds';
 import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
-import { resolveMapForRound } from '@/utils/brConfigResolve';
-import { BRMapOptionList, BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
+import { resolveMapFromConfig } from '@/hooks/useBRStageConfig';
+import { BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
+import { validateLiveActionInTournamentWindow } from '@/utils/tournamentScheduleValidation';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 
 interface ScoringPreset {
@@ -62,6 +63,8 @@ interface RoundManagementPanelProps {
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
   mapCatalogItems?: BRMapCatalogItem[];
+  tournamentStartDate?: string | null;
+  tournamentEndDate?: string | null;
   /** When false, hides manual lobby creation (rotation stages use Schedule → Create matches). */
   allowCreateLobby?: boolean;
 }
@@ -80,6 +83,8 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   scoringPreset,
   mapConfig,
   mapCatalogItems = [],
+  tournamentStartDate,
+  tournamentEndDate,
   allowCreateLobby = true,
 }) => {
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
@@ -111,7 +116,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
       const payload: { map?: string | null } = {};
       if (BR_FEATURE_FLAGS.mapsEnabled) {
         const nextRoundNumber = rounds.length + 1;
-        payload.map = resolveMapForRound(mapConfig, nextRoundNumber);
+        payload.map = resolveMapFromConfig(mapConfig, nextRoundNumber);
       }
       await createLobby.mutateAsync(payload);
     } catch {
@@ -233,6 +238,23 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
                    return;
                  }
 
+                 if (action === 'start') {
+                   const liveLabel = allowCreateLobby ? 'Starting the lobby' : 'Starting a round';
+                   const windowErr = validateLiveActionInTournamentWindow(
+                     tournamentStartDate,
+                     tournamentEndDate,
+                     liveLabel,
+                   );
+                   if (windowErr) {
+                     toast({
+                       title: 'Outside tournament window',
+                       description: windowErr,
+                       variant: 'destructive',
+                     });
+                     return;
+                   }
+                 }
+
                  if (BR_FEATURE_FLAGS.mapsEnabled && action === 'start' && mapConfig.mode === 'per_round' && !round.map && !settings?.map) {
                    toast({
                      title: 'Map required',
@@ -262,6 +284,8 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               )}
               isUpdating={isMutatingRound}
               realtimeConnected={connected}
+              tournamentStartDate={tournamentStartDate}
+              tournamentEndDate={tournamentEndDate}
             />
           ))}
         </div>
@@ -328,6 +352,8 @@ export interface RoundRowProps {
   realtimeConnected?: boolean;
   mapConfig: BRMapConfig;
   mapCatalogItems: BRMapCatalogItem[];
+  tournamentStartDate?: string | null;
+  tournamentEndDate?: string | null;
   /** Qualifiers / single-lobby: use group lobby labels instead of round/match */
   groupLobbyMode?: boolean;
   /** e.g. "A + B" for rotation lobbies */
@@ -350,6 +376,8 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   mapCatalogItems,
   groupLobbyMode = false,
   matchupLabel,
+  tournamentStartDate,
+  tournamentEndDate,
 }) => {
   const { toast } = useToast();
   const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
@@ -387,7 +415,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   useEffect(() => {
     setLobbyCode(round.lobby_code ?? '');
     setQueueTimerInput(round.queue_timer_minutes != null ? String(round.queue_timer_minutes) : '');
-    setMapInput(round.map ?? resolveMapForRound(mapConfig, round.round_number ?? round.wave_number) ?? '');
+    setMapInput(round.map ?? resolveMapFromConfig(mapConfig, round.round_number ?? round.wave_number) ?? '');
     setSettingsDirty(false);
   }, [round.id, round.lobby_code, round.queue_timer_minutes, round.map, round.round_number, round.wave_number, mapConfig]);
 
@@ -553,34 +581,31 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                   <MapPin className="w-3 h-3" /> Map
                 </label>
                 {mapConfig.mode === 'per_round' ? (
-                  mapCatalogItems.length > 0 ? (
-                    <BRMapOptionList
-                      items={mapCatalogItems}
-                      selected={mapInput ? [mapInput] : []}
-                      onToggle={(mapName, checked) => {
-                        setMapInput(checked ? mapName : '');
-                        setSettingsDirty(true);
-                      }}
-                      columns={2}
-                    />
-                  ) : (
-                    <Select value={mapInput || undefined} onValueChange={(value) => { setMapInput(value); setSettingsDirty(true); }}>
-                      <SelectTrigger className="h-10 text-sm bg-white/5 border-white/10 text-white">
-                        <SelectValue placeholder="Select map..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mapConfig.pool.map((mapName) => (
-                          <SelectItem key={mapName} value={mapName}>{mapName}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )
+                  <Select
+                    value={mapInput || undefined}
+                    onValueChange={(value) => {
+                      setMapInput(value);
+                      setSettingsDirty(true);
+                    }}
+                  >
+                    <SelectTrigger className="h-10 text-sm bg-white/5 border-white/10 text-white">
+                      <SelectValue placeholder="Select map..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(mapCatalogItems.length > 0
+                        ? mapCatalogItems.map((item) => item.name)
+                        : mapConfig.pool
+                      ).map((mapName) => (
+                        <SelectItem key={mapName} value={mapName}>{mapName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <div className="h-10 flex items-center px-3 rounded-md bg-white/5 border border-white/10 text-sm text-zinc-300">
                     {selectedMapItem ? (
                       <BRMapBadge mapName={selectedMapItem.name} imageUrl={selectedMapItem.imageUrl} />
                     ) : (
-                      round.map ?? resolveMapForRound(mapConfig, round.round_number ?? round.wave_number) ?? '—'
+                      round.map ?? resolveMapFromConfig(mapConfig, round.round_number ?? round.wave_number) ?? '—'
                     )}
                   </div>
                 )}
@@ -678,6 +703,8 @@ export const RoundRow: React.FC<RoundRowProps> = ({
             scoringPreset={scoringPreset}
             mapConfig={mapConfig}
             mapCatalogItems={mapCatalogItems}
+            tournamentStartDate={tournamentStartDate}
+            tournamentEndDate={tournamentEndDate}
           />
         </div>
       )}

@@ -22,7 +22,9 @@ import { MoreVertical, Award, ArrowLeftRight, RotateCcw, Loader2 } from 'lucide-
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
+import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
 
 interface ManualAdjustmentMenuProps {
     matchId: string;
@@ -190,10 +192,10 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
 
                     await apiClient.post(`/api/matches/${rawMatchId}/reset`);
 
-                    // Invalidate relevant queries to refresh the UI
-                    await queryClient.invalidateQueries({ queryKey: ['match-result-reports', rawMatchId] });
-                    await queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
-                    await queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+                    invalidateMatchLifecycleQueries(queryClient, {
+                        matchId: rawMatchId,
+                        versionId: versionId ?? undefined,
+                    });
 
                     toast({ title: 'Match Reset', description: 'Match data cleared and reset to pending.' });
                     break;

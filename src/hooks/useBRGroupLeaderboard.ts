@@ -213,6 +213,7 @@ export interface BRPlayerContext {
   stageName: string | null;
   groupId: string | null;
   groupName: string | null;
+  assignmentHint?: 'not_registered' | 'check_in_required' | 'registered_not_seeded' | null;
   gamesPerLobby?: number;
   totalRounds: number;
   completedRounds: number;

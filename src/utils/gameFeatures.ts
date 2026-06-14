@@ -328,6 +328,50 @@ export function resolveSoloEsportraDisplayName(
   );
 }
 
+/** Normalize API participant rows for list/history/card display. */
+export function formatParticipantDisplay(participant: {
+  entry_kind?: string | null;
+  participant_type?: string | null;
+  display_name?: string | null;
+  display_logo_url?: string | null;
+  solo_username?: string | null;
+  solo_full_name?: string | null;
+  solo_avatar_url?: string | null;
+  team_name?: string | null;
+  team_logo_url?: string | null;
+  gamer_tag?: string | null;
+  user?: { username?: string | null; avatar_url?: string | null } | null;
+  team?: { name?: string | null; logo_url?: string | null } | Array<{ name?: string | null; logo_url?: string | null }> | null;
+}): { name: string; avatar: string | null; type: string } {
+  const teamObj = Array.isArray(participant.team) ? participant.team[0] : participant.team;
+  const isSolo =
+    participant.entry_kind === 'solo_player' ||
+    participant.participant_type === 'solo' ||
+    participant.participant_type === 'player';
+
+  const name = isSolo
+    ? (
+        participant.display_name ||
+        participant.solo_username ||
+        participant.solo_full_name ||
+        resolveSoloEsportraDisplayName(participant)
+      )
+    : (
+        participant.display_name ||
+        participant.team_name ||
+        teamObj?.name ||
+        'Unnamed Team'
+      );
+
+  const avatar = isSolo
+    ? (participant.display_logo_url || participant.solo_avatar_url || participant.user?.avatar_url || null)
+    : (participant.display_logo_url || participant.team_logo_url || teamObj?.logo_url || null);
+
+  const type = isSolo ? 'player' : (participant.participant_type || 'team');
+
+  return { name, avatar, type };
+}
+
 /** Resolve the primary label for a solo participant on public/organizer cards. */
 export function resolveSoloParticipantDisplayName(
   participant: {

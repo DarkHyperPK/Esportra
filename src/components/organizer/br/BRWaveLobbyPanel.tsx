@@ -33,6 +33,7 @@ import {
   seedGroupShortLabel,
   summarizeGroupRotationSchedule,
 } from '@/utils/brWaveScheduleDisplay';
+import { validateLiveActionInTournamentWindow } from '@/utils/tournamentScheduleValidation';
 
 interface BRWaveLobbyPanelProps {
   stageId: string;
@@ -42,6 +43,8 @@ interface BRWaveLobbyPanelProps {
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
   mapCatalogItems?: BRMapCatalogItem[];
+  tournamentStartDate?: string | null;
+  tournamentEndDate?: string | null;
 }
 
 const groupIdsForMatchup = (matchupLabel: string, groups: BRGroup[]): string[] => {
@@ -60,6 +63,8 @@ const RotationLobbyRow: React.FC<{
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
   mapCatalogItems: BRMapCatalogItem[];
+  tournamentStartDate?: string | null;
+  tournamentEndDate?: string | null;
   isExpanded: boolean;
   onToggle: () => void;
   onStatusAction: Parameters<typeof RoundRow>[0]['onStatusAction'];
@@ -74,6 +79,8 @@ const RotationLobbyRow: React.FC<{
   scoringPreset,
   mapConfig,
   mapCatalogItems,
+  tournamentStartDate,
+  tournamentEndDate,
   isExpanded,
   onToggle,
   onStatusAction,
@@ -116,6 +123,8 @@ const RotationLobbyRow: React.FC<{
       onRoundSettingsSave={onRoundSettingsSave}
       isUpdating={isUpdating}
       realtimeConnected={connected}
+      tournamentStartDate={tournamentStartDate}
+      tournamentEndDate={tournamentEndDate}
       matchupLabel={matchupLabel}
     />
   );
@@ -129,6 +138,8 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
   scoringPreset,
   mapConfig,
   mapCatalogItems = [],
+  tournamentStartDate,
+  tournamentEndDate,
 }) => {
   const { toast } = useToast();
   const [expandedLobbyId, setExpandedLobbyId] = useState<string | null>(null);
@@ -258,6 +269,8 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
                 scoringPreset={scoringPreset}
                 mapConfig={mapConfig}
                 mapCatalogItems={mapCatalogItems}
+                tournamentStartDate={tournamentStartDate}
+                tournamentEndDate={tournamentEndDate}
                 isExpanded={expandedLobbyId === lobby.id}
                 onToggle={() =>
                   setExpandedLobbyId(expandedLobbyId === lobby.id ? null : lobby.id)
@@ -270,6 +283,21 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
                       variant: 'destructive',
                     });
                     return;
+                  }
+                  if (action === 'start') {
+                    const windowErr = validateLiveActionInTournamentWindow(
+                      tournamentStartDate,
+                      tournamentEndDate,
+                      'Starting a round',
+                    );
+                    if (windowErr) {
+                      toast({
+                        title: 'Outside tournament window',
+                        description: windowErr,
+                        variant: 'destructive',
+                      });
+                      return;
+                    }
                   }
                   setConfirmAction({ lobby, action, settings });
                 }}

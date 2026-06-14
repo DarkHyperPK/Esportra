@@ -13,7 +13,8 @@ import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import { useStageCompletion } from '@/hooks/useStageCompletion';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import type { Database } from '@/integrations/supabase/types';
-import { resolveStageBRConfig, getQualificationCutoff, sortBRLeaderboardEntries } from '@/utils/brConfigResolve';
+import { getQualificationCutoff, sortBRLeaderboardEntries } from '@/utils/brConfigResolve';
+import { useBRStageConfig } from '@/hooks/useBRStageConfig';
 import { computeStageFlows, resolveBRRegisteredUnitCount } from '@/utils/brStageFlow';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import { getCatalogMapItems } from '@/utils/gameCatalogBr';
@@ -29,6 +30,8 @@ interface ScoringPreset {
 
 interface BRGamesTabProps {
     tournamentId: string;
+    tournamentStartDate?: string | null;
+    tournamentEndDate?: string | null;
     stages: TournamentStage[];
     game: string;
     tournamentSettings?: Record<string, unknown> | null;
@@ -42,6 +45,8 @@ interface BRGamesTabProps {
 
 export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     tournamentId: _tournamentId,
+    tournamentStartDate,
+    tournamentEndDate,
     stages: stagesProp,
     game,
     tournamentSettings,
@@ -69,16 +74,12 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     const catalogBrConfig = catalogGame?.brConfig;
     const mapCatalogItems = useMemo(() => getCatalogMapItems(catalogBrConfig), [catalogBrConfig]);
 
-    const resolvedStageConfig = useMemo(() => {
-        if (!selectedStage) return null;
-        return resolveStageBRConfig({
-            gameName: game,
-            settings: tournamentSettings,
-            stage: selectedStage,
-            teamSize,
-            catalogBrConfig,
-        });
-    }, [selectedStage, game, tournamentSettings, teamSize, catalogBrConfig]);
+    const { config: resolvedStageConfig } = useBRStageConfig(selectedStage?.id, {
+        tournamentSettings,
+        stage: selectedStage ?? null,
+        gameName: game,
+        catalogBrConfig,
+    });
 
     const scoringPreset = useMemo(() => {
         if (resolvedStageConfig) {
@@ -396,6 +397,8 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                             scoringPreset={scoringPreset}
                             mapConfig={mapConfig}
                             mapCatalogItems={mapCatalogItems}
+                            tournamentStartDate={tournamentStartDate}
+                            tournamentEndDate={tournamentEndDate}
                         />
                     </Card>
                 </>
@@ -456,6 +459,8 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                 scoringPreset={scoringPreset}
                                 mapConfig={mapConfig}
                                 mapCatalogItems={mapCatalogItems}
+                                tournamentStartDate={tournamentStartDate}
+                                tournamentEndDate={tournamentEndDate}
                                 allowCreateLobby={!isGroupRotation}
                             />
                         </Card>

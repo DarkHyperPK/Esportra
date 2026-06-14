@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ import {
     fetchAuditLogs,
     fetchOrgTournaments,
 } from "@/lib/organizationStaff";
+import { invalidateStaffAccessCaches } from "@/lib/tournamentStaff";
 import { formatDistanceToNow } from "date-fns";
 import {
     ChevronDown,
@@ -106,6 +108,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
     ownerName,
 }) => {
     const { toast } = useToast();
+    const queryClient = useQueryClient();
     const { user: currentUser } = useAuth();
 
     // The actor performing the action should be the current user
@@ -267,6 +270,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
             });
 
             toast({ title: "Invitation sent!", description: `Invited ${inviteEmail} as ${selectedRole}` });
+            invalidateStaffAccessCaches(queryClient);
             setInviteEmail("");
             setInviteTournamentIds([]);
             setShowInvitePanel(false);
@@ -321,6 +325,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                 actorId,
             });
             toast({ title: "Role updated" });
+            invalidateStaffAccessCaches(queryClient);
 
             // Still load staff to ensure everything is in sync with backend
             loadStaff(true);
@@ -367,6 +372,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                 organizationId,
             });
             toast({ title: "Tournament assigned" });
+            invalidateStaffAccessCaches(queryClient);
             loadStaff(true);
         } catch (err: any) {
             setStaff(originalStaff);
@@ -389,6 +395,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                 actorId,
             });
             toast({ title: "Tournament unassigned" });
+            invalidateStaffAccessCaches(queryClient);
             loadStaff(true);
         } catch (err: any) {
             setStaff(originalStaff);
