@@ -400,8 +400,8 @@ export const useBRLobbyEvidence = (
     isError,
     refetch,
     submitEvidence: submitEvidenceMutation.mutateAsync,
-    approveEvidence: approveEvidenceMutation.mutateAsync,
-    reopenEvidence: reopenEvidenceMutation.mutateAsync,
+    approveEvidence: approveEvidenceMutation.mutate,
+    reopenEvidence: reopenEvidenceMutation.mutate,
     isSubmitting: submitEvidenceMutation.isPending,
     isUpdating: approveEvidenceMutation.isPending || reopenEvidenceMutation.isPending,
   };

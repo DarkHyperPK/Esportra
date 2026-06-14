@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -20,7 +20,7 @@ import { resolveMapFromConfig } from '@/hooks/useBRStageConfig';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import { validateLiveActionInTournamentWindow } from '@/utils/tournamentScheduleValidation';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Play, CheckCircle, ChevronDown, ChevronRight, Clock, AlertTriangle } from 'lucide-react';
+import { MapPin, Play, CheckCircle, ChevronDown, ChevronRight, Clock, AlertTriangle, Undo2 } from 'lucide-react';
 
 interface ScoringPreset {
   placements: number[];
@@ -140,6 +140,14 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
     });
   };
 
+  const handleReopenGame = async (gameId: string) => {
+    await updateGame.mutateAsync({ gameId, status: 'active' });
+    toast({
+      title: 'Game re-opened',
+      description: 'You can approve evidence and edit results again.',
+    });
+  };
+
   return (
     <div className="space-y-2 border-t border-white/5 pt-3 mt-3">
       <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide px-1">Games in this lobby</p>
@@ -158,6 +166,7 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
           lobbyId={lobbyId}
           stageId={stageId}
           groupId={groupId}
+          lobbyStatus={lobbyStatus}
           teams={teams}
           scoringPreset={scoringPreset}
           mapConfig={mapConfig}
@@ -167,6 +176,7 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
           onToggle={() => setExpandedGameId((id) => (id === game.id ? null : game.id))}
           onStartGame={(map, queueTimerMinutes) => handleStartGame(game.id, game.game_number, map, queueTimerMinutes)}
           onCompleteGame={(map) => updateGame.mutateAsync({ gameId: game.id, status: 'completed', map })}
+          onReopenGame={() => handleReopenGame(game.id)}
           onMapUpdate={(map) => updateGame.mutateAsync({ gameId: game.id, map })}
           onQueueSave={(queueTimerMinutes) => updateGame.mutateAsync({ gameId: game.id, queueTimerMinutes })}
           isUpdating={updateGame.isPending}
@@ -198,6 +208,7 @@ const BRGameRunRow: React.FC<{
   lobbyId: string;
   stageId: string;
   groupId: string;
+  lobbyStatus: string;
   teams: BRGroupTeam[];
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
@@ -207,6 +218,7 @@ const BRGameRunRow: React.FC<{
   onToggle: () => void;
   onStartGame: (map: string | null, queueTimerMinutes: number | null) => Promise<unknown>;
   onCompleteGame: (map: string | null) => Promise<unknown>;
+  onReopenGame: () => Promise<unknown>;
   onMapUpdate: (map: string | null) => Promise<unknown>;
   onQueueSave: (queueTimerMinutes: number | null) => Promise<unknown>;
   isUpdating: boolean;
@@ -216,6 +228,7 @@ const BRGameRunRow: React.FC<{
   lobbyId,
   stageId,
   groupId,
+  lobbyStatus,
   teams,
   scoringPreset,
   mapConfig,
@@ -225,6 +238,7 @@ const BRGameRunRow: React.FC<{
   onToggle,
   onStartGame,
   onCompleteGame,
+  onReopenGame,
   onMapUpdate,
   onQueueSave,
   isUpdating,
@@ -370,24 +384,39 @@ const BRGameRunRow: React.FC<{
           )}
           <div className="flex flex-wrap gap-2">
             {game.status === 'pending' && (
-              <button type="button"
-                size="sm"
+              <button
+                type="button"
                 disabled={isUpdating || !canStartGame}
                 onClick={() => void onStartGame(mapInput || null, parseQueueTimerMinutes())}
+                className="inline-flex h-8 items-center justify-center gap-2 rounded-none border border-amber-500/30 bg-transparent px-3 font-mono text-xs font-bold uppercase tracking-wider text-amber-300 transition-colors hover:border-amber-500/50 hover:bg-amber-500/10 disabled:pointer-events-none disabled:opacity-50"
               >
-                <Play className="w-3.5 h-3.5 mr-1" /> Start game
+                <Play className="w-3.5 h-3.5" /> Start game
               </button>
             )}
             {game.status === 'active' && (
-              <button type="button"
+              <SuccessButton
                 size="sm"
                 disabled={isUpdating}
                 onClick={() => onCompleteGame(mapInput || null)}
               >
                 <CheckCircle className="w-3.5 h-3.5 mr-1" /> Complete game
-              </button>
+              </SuccessButton>
+            )}
+            {game.status === 'completed' && (
+              <OutlineButton
+                size="sm"
+                disabled={isUpdating}
+                onClick={() => { void onReopenGame(); }}
+              >
+                <Undo2 className="w-3.5 h-3.5 mr-1" /> Re-open game
+              </OutlineButton>
             )}
           </div>
+          {game.status === 'completed' && (game.evidence_count ?? 0) > 0 && (
+            <p className="text-[11px] text-amber-200/90 leading-relaxed">
+              This game is completed. Re-open it to approve pending evidence or edit results.
+            </p>
+          )}
           {resultsLoading ? (
             <div className="h-8 bg-white/5 rounded-lg animate-pulse" />
           ) : (
@@ -413,6 +442,9 @@ const BRGameRunRow: React.FC<{
             groupId={groupId}
             gameNumber={game.game_number}
             gameId={game.id}
+            gameStatus={game.status}
+            lobbyStatus={lobbyStatus}
+            onReopenGame={onReopenGame}
             realtimeConnected={realtimeConnected}
           />
         </div>
