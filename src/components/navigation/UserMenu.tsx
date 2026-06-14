@@ -232,14 +232,9 @@ const UserMenu = ({
               </JackMenuItem>
             )}
             {hasStaffAssignments && (
-              <>
-                <JackMenuItem to="/staff/dashboard" trailing={dot("emerald")}>
-                  Staff Console
-                </JackMenuItem>
-                <JackMenuItem to="/organizer/dashboard?tab=schedule">
-                  Match Schedule
-                </JackMenuItem>
-              </>
+              <JackMenuItem to="/staff/dashboard" trailing={dot("emerald")}>
+                Staff Console
+              </JackMenuItem>
             )}
 
             <JackMenuItem to="/user/raise-dispute">Raise a Dispute</JackMenuItem>

@@ -3,6 +3,41 @@ import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import type { TournamentStaffInvite } from '@/lib/tournamentStaff';
 
+type TournamentRef = NonNullable<TournamentStaffInvite['tournament']>;
+
+function parseAssignmentTournament(
+  raw: TournamentStaffInvite['tournament'],
+): TournamentRef | null {
+  if (!raw) return null;
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw) as TournamentRef;
+    } catch {
+      return null;
+    }
+  }
+  return raw;
+}
+
+/** True when a my-assignments row covers the tournament slug or id in the route. */
+export function assignmentMatchesTournament(
+  assignment: TournamentStaffInvite,
+  tournamentSlugOrId: string,
+): boolean {
+  const normalized = tournamentSlugOrId.trim().toLowerCase();
+  if (!normalized) return false;
+
+  const tournament = parseAssignmentTournament(assignment.tournament);
+  const slug = tournament?.slug?.trim().toLowerCase();
+  if (slug && slug === normalized) return true;
+
+  const ids = new Set<string>();
+  if (tournament?.id) ids.add(String(tournament.id).toLowerCase());
+  if (assignment.tournament_id) ids.add(String(assignment.tournament_id).toLowerCase());
+
+  return ids.has(normalized);
+}
+
 /** Tournament-scoped staff assignments for route UX gates (backend remains source of truth). */
 export function useTournamentStaffAccess(tournamentSlug?: string) {
   const { user } = useAuth();
@@ -13,16 +48,7 @@ export function useTournamentStaffAccess(tournamentSlug?: string) {
       apiClient.get<TournamentStaffInvite[]>('/api/tournaments/staff/my-assignments'),
     enabled: !!user && !!tournamentSlug,
     staleTime: 2 * 60_000,
-    refetchOnWindowFocus: false,
-    select: (assignments) => {
-      if (!tournamentSlug) return [];
-      const normalized = tournamentSlug.toLowerCase();
-      return assignments.filter((assignment) => {
-        const slug = assignment.tournament?.slug?.toLowerCase();
-        const id = assignment.tournament?.id;
-        return slug === normalized || id === tournamentSlug;
-      });
-    },
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -31,10 +57,5 @@ export function hasTournamentStaffAccess(
   tournamentSlug?: string,
 ): boolean {
   if (!tournamentSlug || !assignments?.length) return false;
-  const normalized = tournamentSlug.toLowerCase();
-  return assignments.some((assignment) => {
-    const slug = assignment.tournament?.slug?.toLowerCase();
-    const id = assignment.tournament?.id;
-    return slug === normalized || id === tournamentSlug;
-  });
+  return assignments.some((assignment) => assignmentMatchesTournament(assignment, tournamentSlug));
 }

@@ -81,4 +81,26 @@ describe('hasTournamentStaffAccess', () => {
     ];
     expect(hasTournamentStaffAccess(adminAssignments, 'org-cup')).toBe(true);
   });
+
+  it('matches top-level tournament_id when nested tournament is missing', () => {
+    const assignments: TournamentStaffInvite[] = [
+      {
+        id: 'a3',
+        tournament_id: '550e8400-e29b-41d4-a716-446655440000',
+        user_id: 'u-1',
+        role: 'admin',
+        permissions: [],
+        status: 'active',
+        assigned_by: 'owner-1',
+        created_at: '',
+        updated_at: '',
+      },
+    ];
+    expect(
+      hasTournamentStaffAccess(
+        assignments,
+        '550e8400-e29b-41d4-a716-446655440000',
+      ),
+    ).toBe(true);
+  });
 });
