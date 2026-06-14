@@ -110,6 +110,28 @@ export const BRMapHero: React.FC<BRMapHeroProps> = ({ mapName, imageUrl, classNa
   </div>
 );
 
+/** Compact map strip for match room — smaller than BRMapHero. */
+export const BRMapCompact: React.FC<BRMapBadgeProps> = ({ mapName, imageUrl, className }) => (
+  <div className={cn('flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5', className)}>
+    {imageUrl ? (
+      <img
+        src={imageUrl}
+        alt={mapName}
+        className="h-12 w-20 rounded-lg object-cover border border-white/10 flex-shrink-0"
+        loading="lazy"
+      />
+    ) : (
+      <div className="h-12 w-20 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center flex-shrink-0">
+        <MapPin className="w-4 h-4 text-emerald-400" />
+      </div>
+    )}
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Map</p>
+      <p className="text-sm font-bold text-white truncate">{mapName}</p>
+    </div>
+  </div>
+);
+
 export const BRMapBadge: React.FC<BRMapBadgeProps> = ({ mapName, imageUrl, className }) => (
   <div className={cn('flex items-center gap-2 min-w-0', className)}>
     {imageUrl ? (

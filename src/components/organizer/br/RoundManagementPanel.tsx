@@ -33,6 +33,7 @@ import {
   RotateCcw,
   MapPin,
   AlertTriangle,
+  Users,
 } from 'lucide-react';
 import type { BRGroupTeam } from '@/types/brGroups';
 import type { BRRound, BRResultInput } from '@/types/brRounds';
@@ -42,6 +43,7 @@ import { BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
 import { validateLiveActionInTournamentWindow } from '@/utils/tournamentScheduleValidation';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import { omitLobbyGameFieldsWhenGamesModel, usesPerGameLobbyUi } from '@/utils/brLobbyPatch';
+import { useBRLobbyReadiness } from '@/hooks/useBRLobbyReadiness';
 
 interface ScoringPreset {
   placements: number[];
@@ -416,6 +418,10 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   const { toast } = useToast();
   const perGameLobbyUi = usesPerGameLobbyUi(gamesModelActive, gamesPerLobby);
   const { data: lobbyGames = [] } = useBRGames(isExpanded && perGameLobbyUi ? round.id : null);
+  const { readyCount, totalAssigned, entries: readinessEntries } = useBRLobbyReadiness(
+    round.status === 'active' ? round.id : null,
+    { enabled: round.status === 'active', realtimeConnected },
+  );
   const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
     isExpanded && !perGameLobbyUi ? round.id : null,
     stageId,
@@ -585,6 +591,12 @@ export const RoundRow: React.FC<RoundRowProps> = ({
             </span>
           ) : null}
           {round.lobby_code ? `${round.lobby_code}` : 'No lobby code'}
+          {round.status === 'active' && totalAssigned > 0 ? (
+            <span className="inline-flex items-center gap-1 text-emerald-400/90">
+              <Users className="w-3 h-3" />
+              {readyCount}/{totalAssigned} ready
+            </span>
+          ) : null}
         </span>
       </button>
 
@@ -622,6 +634,21 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                       ? 'Going live publishes the code to players. Set queue timer and map per game before starting games.'
                       : 'The code becomes visible to players only when the lobby is live.'}
                 </p>
+                {round.status === 'active' && totalAssigned > 0 && (
+                  <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5">
+                    <p className="text-[10px] uppercase tracking-widest text-emerald-400/80 font-bold mb-1">
+                      Lobby readiness
+                    </p>
+                    <p className="text-sm text-emerald-100 font-semibold">
+                      {readyCount} of {totalAssigned} teams checked in
+                    </p>
+                    {readinessEntries.length > 0 && (
+                      <p className="mt-1.5 text-[11px] text-emerald-200/80 truncate">
+                        {readinessEntries.map((entry) => entry.displayName).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {!usesPerGameQueue && (

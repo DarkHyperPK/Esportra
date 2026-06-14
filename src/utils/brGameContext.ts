@@ -228,13 +228,14 @@ export function resolveActiveBRGameQueue(
   return { queueTimerMinutes: null, queueStartedAt: null };
 }
 
-/** Map for the live or next pending game in a lobby (per-game maps, not lobby-level). */
+/** Map for the currently active game only (not pending/upcoming). */
 export function resolveActiveBRGameMap(
   games: ReadonlyArray<{ status: string; map: string | null }>,
 ): string | null {
   const active = games.find((g) => g.status === 'active');
-  if (active?.map) return active.map;
-  const pendingWithMap = games.find((g) => g.status === 'pending' && g.map);
-  if (pendingWithMap?.map) return pendingWithMap.map;
-  return active?.map ?? games.find((g) => g.status !== 'completed')?.map ?? null;
+  return active?.map ?? null;
+}
+
+export function isBrGameLive(status: string | null | undefined): boolean {
+  return status === 'active';
 }

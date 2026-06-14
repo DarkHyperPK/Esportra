@@ -173,6 +173,7 @@ export function useBRRealtime({
       invalidateGames(payload.lobbyId);
       invalidateLobbyResults(payload.lobbyId);
       invalidateLobbyEvidence(payload.lobbyId);
+      queryClient.invalidateQueries({ queryKey: ['br-lobby-readiness', payload.lobbyId] });
       invalidateLeaderboard();
       invalidatePlayerContext();
       invalidateStageCompletion();
@@ -188,6 +189,11 @@ export function useBRRealtime({
       if (!active || !matchesScope(payload, scope)) return;
       invalidateLobbyEvidence(payload.lobbyId);
       invalidateLobbies();
+    };
+
+    const handleLobbyReadinessUpdated = (payload: BrScopedPayload) => {
+      if (!active || !matchesScope(payload, scope)) return;
+      queryClient.invalidateQueries({ queryKey: ['br-lobby-readiness', payload.lobbyId] });
     };
 
     const handleResultsUpdated = (payload: BrScopedPayload) => {
@@ -212,6 +218,7 @@ export function useBRRealtime({
     conn.on('GameCompleted', handleGameUpdated);
     conn.on('EvidenceSubmitted', handleEvidenceSubmitted);
     conn.on('EvidenceReviewed', handleEvidenceReviewed);
+    conn.on('LobbyReadinessUpdated', handleLobbyReadinessUpdated);
     conn.on('ResultsUpdated', handleResultsUpdated);
     conn.on('LeaderboardUpdated', handleLeaderboardUpdated);
 
@@ -225,6 +232,7 @@ export function useBRRealtime({
       conn.off('GameCompleted', handleGameUpdated);
       conn.off('EvidenceSubmitted', handleEvidenceSubmitted);
       conn.off('EvidenceReviewed', handleEvidenceReviewed);
+      conn.off('LobbyReadinessUpdated', handleLobbyReadinessUpdated);
       conn.off('ResultsUpdated', handleResultsUpdated);
       conn.off('LeaderboardUpdated', handleLeaderboardUpdated);
     };

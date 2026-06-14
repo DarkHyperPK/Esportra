@@ -23,14 +23,15 @@ import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
 import PremiumBackground from '@/components/ui/PremiumBackground';
 import {
   Trophy, Copy, ArrowLeft, Radio, Clock, CheckCircle, Key, Send,
-  Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown, Medal, Shield, User,
+  Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown, Medal, Shield, User, Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import { getMapImageUrl } from '@/utils/gameCatalogBr';
-import { resolveActiveBRGameMap, resolveActiveBRGameQueue } from '@/utils/brGameContext';
-import { BRMapHero } from '@/components/organizer/br/BRMapOptionList';
+import { resolveActiveBRGameMap, resolveActiveBRGameQueue, isBrGameLive } from '@/utils/brGameContext';
+import { BRMapCompact } from '@/components/organizer/br/BRMapOptionList';
+import { useBRLobbyReadiness } from '@/hooks/useBRLobbyReadiness';
 import { formatMatchPairingFromLabel, formatRoundLabel } from '@/utils/brWaveScheduleDisplay';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { BRScoringPreset } from '@/types/battleRoyale';
@@ -94,14 +95,19 @@ const BRGameRoom: React.FC = () => {
   const { data: lobbyGames = [] } = useBRGames(effectiveActiveRoundId, {
     enabled: Boolean(effectiveActiveRoundId),
   });
+  const activeGameFromLobby = useMemo(
+    () => lobbyGames.find((g) => g.status === 'active') ?? null,
+    [lobbyGames],
+  );
+  const liveGameNumber = activeGameFromLobby?.game_number ?? null;
   const { evidence, submitEvidence, isSubmitting, refetch: refetchEvidence } = useBRLobbyEvidence(
     effectiveActiveRoundId,
     context.stageId,
     context.groupId,
     {
       realtimeConnected: connected,
-      gameNumber: activeGameNumber ?? undefined,
-      gameId: context.activeGame?.id ?? null,
+      gameNumber: liveGameNumber ?? undefined,
+      gameId: activeGameFromLobby?.id ?? context.activeGame?.id ?? null,
     },
   );
 
@@ -184,12 +190,6 @@ const BRGameRoom: React.FC = () => {
   const activeMatchup = activeMatchupRaw ? formatMatchPairingFromLabel(activeMatchupRaw) : null;
   const activeCode = activeRound?.lobby_code ?? context.activeRound?.lobbyCode ?? null;
   const activeGameFromContext = context.activeGame;
-  const activeGameFromLobby = useMemo(() => {
-    const active = lobbyGames.find((g) => g.status === 'active');
-    if (active) return active;
-    if (activeGameNumber == null) return null;
-    return lobbyGames.find((g) => g.game_number === activeGameNumber) ?? null;
-  }, [lobbyGames, activeGameNumber]);
 
   const gameQueueFromLobby = useMemo(
     () => resolveActiveBRGameQueue(lobbyGames),
@@ -234,22 +234,27 @@ const BRGameRoom: React.FC = () => {
     return getQualificationCutoff(resolvedStageConfig, 1);
   }, [resolvedStageConfig]);
   const activeMap = useMemo(() => {
-    return (
-      context.activeGame?.map
-      ?? resolveActiveBRGameMap(lobbyGames)
-      ?? activeRound?.map
-      ?? null
-    );
-  }, [context.activeGame?.map, lobbyGames, activeRound?.map]);
+    if (!isBrGameLive(activeGameFromLobby?.status ?? context.activeGame?.status)) return null;
+    return activeGameFromLobby?.map ?? context.activeGame?.map ?? resolveActiveBRGameMap(lobbyGames) ?? null;
+  }, [activeGameFromLobby, context.activeGame, lobbyGames]);
   const activeMapImageUrl = activeMap ? getMapImageUrl(catalogGame?.brConfig, activeMap) : null;
-  const activeGameStatus = useMemo(() => {
-    if (context.activeGame?.status) return context.activeGame.status;
-    if (activeGameNumber != null) {
-      return lobbyGames.find((g) => g.game_number === activeGameNumber)?.status ?? null;
-    }
-    return lobbyGames.find((g) => g.status === 'active')?.status ?? null;
-  }, [context.activeGame?.status, lobbyGames, activeGameNumber]);
-  const isGameLive = activeGameStatus === 'active';
+  const activeGameStatus = useMemo(
+    () => activeGameFromLobby?.status ?? context.activeGame?.status ?? null,
+    [activeGameFromLobby?.status, context.activeGame?.status],
+  );
+  const isGameLive = isBrGameLive(activeGameStatus);
+  const isLobbyLive = hasActiveRound && !isGameLive;
+  const {
+    readyCount,
+    totalAssigned,
+    isReady,
+    checkIn,
+    checkOut,
+    isCheckingIn,
+  } = useBRLobbyReadiness(effectiveActiveRoundId, {
+    enabled: Boolean(effectiveActiveRoundId && isLobbyLive && userTeam),
+    realtimeConnected: connected,
+  });
   const gamesCompleted = completedGames;
   const allGamesFinished = totalGames > 0 && gamesCompleted >= totalGames && !hasActiveRound && !context.activeGame;
   const winner = allGamesFinished && leaderboard.length > 0 ? leaderboard[0] : null;
@@ -313,16 +318,20 @@ const BRGameRoom: React.FC = () => {
         imageUrl,
         placement: reportPlacement,
         kills: reportKills,
-        gameNumber: activeGameNumber ?? undefined,
+        gameNumber: liveGameNumber ?? undefined,
       });
-
-      await refetchEvidence();
 
       toast({
         title: 'Evidence Submitted',
         description: `Placement: #${reportPlacement}, Kills: ${reportKills}. The organizer will review your submission.`,
       });
       clearEvidence();
+
+      try {
+        await refetchEvidence();
+      } catch {
+        // PUT succeeded; refetch failure should not look like a failed submission.
+      }
     } catch (error) {
       const message = getApiErrorMessage(error, { context: 'brEvidence' });
       if (message.includes('409') || message.toLowerCase().includes('already')) {
@@ -525,7 +534,9 @@ const BRGameRoom: React.FC = () => {
                     </div>
                     <div className="min-w-0">
                       <CardTitle className="text-base sm:text-lg font-bold text-white tracking-tight">
-                        {activeGameNumber ? `Game ${activeGameNumber}` : formatRoundLabel(activeRoundNumber)}
+                        {liveGameNumber
+                          ? `Game ${liveGameNumber}`
+                          : formatRoundLabel(activeRoundNumber)}
                         {activeMatchup ? ` · ${activeMatchup}` : ''}
                       </CardTitle>
                       <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mt-1">
@@ -566,8 +577,43 @@ const BRGameRoom: React.FC = () => {
                     </div>
                   )}
 
-                  {BR_FEATURE_FLAGS.mapsEnabled && activeMap && (
-                    <BRMapHero mapName={activeMap} imageUrl={activeMapImageUrl} />
+                  {BR_FEATURE_FLAGS.mapsEnabled && isGameLive && activeMap && (
+                    <BRMapCompact mapName={activeMap} imageUrl={activeMapImageUrl} />
+                  )}
+
+                  {userTeam && isLobbyLive && activeCode && (
+                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Users className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Lobby readiness</p>
+                            <p className="text-sm text-zinc-300">
+                              {readyCount}/{totalAssigned || '—'} teams checked in
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={isReady ? 'outline' : 'default'}
+                          disabled={isCheckingIn}
+                          onClick={() => { void (isReady ? checkOut() : checkIn()); }}
+                          className={cn(
+                            'flex-shrink-0',
+                            !isReady && 'bg-emerald-600 hover:bg-emerald-500 text-white',
+                          )}
+                        >
+                          {isReady ? 'Undo check-in' : "I'm in the lobby"}
+                        </Button>
+                      </div>
+                      {isReady && (
+                        <p className="text-xs text-emerald-400/90 flex items-center gap-1.5">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Organizer can see you are ready.
+                        </p>
+                      )}
+                    </div>
                   )}
 
                   {activeCode ? (
@@ -609,8 +655,8 @@ const BRGameRoom: React.FC = () => {
                       <Clock className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="text-sm text-zinc-300 font-medium">
-                          {activeGameNumber
-                            ? `Game ${activeGameNumber} hasn't started yet`
+                          {liveGameNumber
+                            ? `Game ${liveGameNumber} hasn't started yet`
                             : 'Waiting for the match to start'}
                         </p>
                         <p className="text-xs text-zinc-500 mt-1">
@@ -710,7 +756,7 @@ const BRGameRoom: React.FC = () => {
                     <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15">
                       <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                       <p className="text-sm text-emerald-300/80">
-                        Evidence submitted for {activeGameNumber ? `Game ${activeGameNumber}` : formatRoundLabel(activeRoundNumber)}.
+                        Evidence submitted for {liveGameNumber ? `Game ${liveGameNumber}` : formatRoundLabel(activeRoundNumber)}.
                         {userEvidence?.reviewed
                           ? ' Your submission has been reviewed.'
                           : ' Awaiting organizer review.'}

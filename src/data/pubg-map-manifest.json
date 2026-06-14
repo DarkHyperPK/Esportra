@@ -1,0 +1,61 @@
+{
+  "generatedAt": "2026-06-14T20:56:27.658Z",
+  "sourceDirectory": "PUBG MAPS",
+  "mapCount": 9,
+  "maps": [
+    {
+      "filename": "deston.webp",
+      "displayName": "Deston",
+      "slug": "deston",
+      "publicPath": "/games/pubg/maps/deston.webp"
+    },
+    {
+      "filename": "Erangel.webp",
+      "displayName": "Erangel",
+      "slug": "erangel",
+      "publicPath": "/games/pubg/maps/erangel.webp"
+    },
+    {
+      "filename": "karakin.webp",
+      "displayName": "Karakin",
+      "slug": "karakin",
+      "publicPath": "/games/pubg/maps/karakin.webp"
+    },
+    {
+      "filename": "MIRAMAR.webp",
+      "displayName": "Miramar",
+      "slug": "miramar",
+      "publicPath": "/games/pubg/maps/miramar.webp"
+    },
+    {
+      "filename": "paramo.webp",
+      "displayName": "Paramo",
+      "slug": "paramo",
+      "publicPath": "/games/pubg/maps/paramo.webp"
+    },
+    {
+      "filename": "rondo.webp",
+      "displayName": "Rondo",
+      "slug": "rondo",
+      "publicPath": "/games/pubg/maps/rondo.webp"
+    },
+    {
+      "filename": "sanhok.webp",
+      "displayName": "Sanhok",
+      "slug": "sanhok",
+      "publicPath": "/games/pubg/maps/sanhok.webp"
+    },
+    {
+      "filename": "taego.webp",
+      "displayName": "Taego",
+      "slug": "taego",
+      "publicPath": "/games/pubg/maps/taego.webp"
+    },
+    {
+      "filename": "vikendi.webp",
+      "displayName": "Vikendi",
+      "slug": "vikendi",
+      "publicPath": "/games/pubg/maps/vikendi.webp"
+    }
+  ]
+}
