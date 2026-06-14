@@ -21,7 +21,6 @@ interface ScoringPreset {
 import { useStageLobbiesDeduped, useBRLobbies } from '@/hooks/useBRLobbies';
 import { useBRLobbyRoster } from '@/hooks/useBRLobbyRoster';
 import { useBRStageSchedule } from '@/hooks/useBRStageSchedule';
-import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { useToast } from '@/hooks/use-toast';
 import type { BRGroup } from '@/types/brGroups';
 import type { BRRound } from '@/types/brLobbies';
@@ -48,6 +47,8 @@ interface BRWaveLobbyPanelProps {
   mapCatalogItems?: BRMapCatalogItem[];
   tournamentStartDate?: string | null;
   tournamentEndDate?: string | null;
+  realtimeConnected?: boolean;
+  teamSize?: number;
 }
 
 const groupIdsForMatchup = (matchupLabel: string, groups: BRGroup[]): string[] => {
@@ -75,6 +76,8 @@ const RotationLobbyRow: React.FC<{
   onStatusAction: Parameters<typeof RoundRow>[0]['onStatusAction'];
   onRoundSettingsSave: Parameters<typeof RoundRow>[0]['onRoundSettingsSave'];
   isUpdating: boolean;
+  realtimeConnected?: boolean;
+  teamSize?: number;
 }> = ({
   lobby,
   stageId,
@@ -93,6 +96,8 @@ const RotationLobbyRow: React.FC<{
   onStatusAction,
   onRoundSettingsSave,
   isUpdating,
+  realtimeConnected = false,
+  teamSize = 1,
 }) => {
   const matchupLabel = resolveMatchupLabelFromLobby(
     lobby,
@@ -105,11 +110,6 @@ const RotationLobbyRow: React.FC<{
     : groupIdsForMatchup(matchupLabel, groups);
   const primaryGroupId = rosterGroupIds[0] ?? groups[0]?.id ?? '';
   const { teams, isLoading } = useBRLobbyRoster(stageId, rosterGroupIds);
-  const { connected } = useBRRealtime({
-    stageId,
-    groupId: primaryGroupId,
-    lobbyId: isExpanded ? lobby.id : null,
-  });
 
   if (isLoading && teams.length === 0) {
     return <div className="h-14 bg-white/5 rounded-xl animate-pulse" />;
@@ -129,7 +129,8 @@ const RotationLobbyRow: React.FC<{
       onStatusAction={onStatusAction}
       onRoundSettingsSave={onRoundSettingsSave}
       isUpdating={isUpdating}
-      realtimeConnected={connected}
+      realtimeConnected={realtimeConnected}
+      teamSize={teamSize}
       tournamentStartDate={tournamentStartDate}
       tournamentEndDate={tournamentEndDate}
       matchupLabel={matchupLabel}
@@ -151,6 +152,8 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
   mapCatalogItems = [],
   tournamentStartDate,
   tournamentEndDate,
+  realtimeConnected = false,
+  teamSize = 1,
 }) => {
   const { toast } = useToast();
   const [expandedLobbyId, setExpandedLobbyId] = useState<string | null>(null);
@@ -164,7 +167,9 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
       map?: string | null;
     };
   } | null>(null);
-  const { lobbies, isLoading, error, refetch } = useStageLobbiesDeduped(stageId, groups);
+  const { lobbies, isLoading, error, refetch } = useStageLobbiesDeduped(stageId, groups, {
+    realtimeJoined: realtimeConnected,
+  });
   const { schedule: formation } = useBRStageSchedule(stageId);
   const { updateLobby, resetLobby } = useBRLobbies(stageId, groups[0]?.id ?? null);
   const isMutating = updateLobby.isPending || resetLobby.isPending;
@@ -352,6 +357,8 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
                   )
                 }
                 isUpdating={isMutating}
+                realtimeConnected={realtimeConnected}
+                teamSize={teamSize}
               />
             ))}
           </div>

@@ -434,7 +434,8 @@ export const RoundRow: React.FC<RoundRowProps> = ({
     : (round.ready_count ?? 0);
   const totalAssigned = isExpanded
     ? expandedTotalAssigned
-    : (round.total_assigned ?? teams.length);
+    : (round.total_assigned ?? 0);
+  const showReadiness = round.status === 'active' && (totalAssigned > 0 || readyCount > 0);
   const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
     isExpanded && !perGameLobbyUi ? round.id : null,
     stageId,
@@ -604,7 +605,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
             </span>
           ) : null}
           {round.lobby_code ? `${round.lobby_code}` : 'No lobby code'}
-          {round.status === 'active' && totalAssigned > 0 ? (
+          {showReadiness ? (
             <span className="inline-flex items-center gap-1 text-emerald-400/90">
               <Users className="w-3 h-3" />
               {readyCount}/{totalAssigned} {unitLabel} checked in
@@ -647,7 +648,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                       ? 'Going live publishes the code to players. Set queue timer and map per game before starting games.'
                       : 'The code becomes visible to players only when the lobby is live.'}
                 </p>
-                {round.status === 'active' && totalAssigned > 0 && (
+                {showReadiness && (
                   <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5">
                     <p className="text-[10px] uppercase tracking-widest text-emerald-400/80 font-bold mb-1">
                       Lobby readiness

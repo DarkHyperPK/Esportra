@@ -192,6 +192,7 @@ export function useBRRealtime({
       invalidateLobbyResults(payload.lobbyId);
       invalidateGames(payload.lobbyId);
       invalidateLobbies();
+      invalidateLeaderboard();
     };
 
     const handleLobbyReadinessUpdated = (payload: BrScopedPayload) => {

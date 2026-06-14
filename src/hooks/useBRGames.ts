@@ -50,8 +50,10 @@ export const useUpdateBRGame = (
       await queryClient.invalidateQueries({ queryKey: ['br-game', data.id] });
       if (stageId && groupId) {
         await queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, groupId] });
+        await queryClient.invalidateQueries({ queryKey: ['br-group-leaderboard', stageId, groupId] });
       }
       if (stageId) {
+        await queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, 'stage-all'] });
         await queryClient.invalidateQueries({ queryKey: ['br-stage-leaderboard', stageId] });
       }
       await queryClient.invalidateQueries({ queryKey: ['br-player-context'] });

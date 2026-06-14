@@ -142,12 +142,6 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     const isSingleLobby = groups.length === 1;
     const selectedGroupName = isSingleLobby ? 'Main Lobby' : selectedGroup?.name;
 
-    const { connected: brRealtimeConnected } = useBRRealtime({
-        stageId: selectedStageId || null,
-        groupId: selectedGroupId || null,
-        enabled: Boolean(selectedStageId && selectedGroupId),
-    });
-
     const {
         data: groupTeams = [],
         isLoading: groupTeamsLoading,
@@ -167,6 +161,12 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     const isMultiLobbyCut = stageFormat === 'multi_lobby_cut';
     const useWaveLobbyView = isGroupRotation;
     const needsMatchGeneration = !useWaveLobbyView && seedingComplete && !hasRounds;
+
+    const { connected: brRealtimeConnected } = useBRRealtime({
+        stageId: selectedStageId || null,
+        groupId: useWaveLobbyView ? null : (selectedGroupId || null),
+        enabled: Boolean(selectedStageId && (useWaveLobbyView || selectedGroupId)),
+    });
 
     const leaderboardScope = resolvedStageConfig?.leaderboardScope ?? 'per_seed_group';
     const leaderboard = leaderboardScope === 'stage_global' ? stageLeaderboard : groupLeaderboard;
@@ -407,6 +407,8 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                             mapCatalogItems={mapCatalogItems}
                             tournamentStartDate={tournamentStartDate}
                             tournamentEndDate={tournamentEndDate}
+                            realtimeConnected={brRealtimeConnected}
+                            teamSize={teamSize}
                         />
                     </Card>
                 </>
