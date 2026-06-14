@@ -14,12 +14,15 @@ import {
     fetchOrganizationStaff,
     inviteOrganizationStaff,
     updateOrganizationStaff,
+    updateAssignmentPermissions,
     removeOrganizationStaff,
     assignStaffToTournaments,
     removeStaffFromTournament,
     fetchAuditLogs,
     fetchOrgTournaments,
+    ALL_STAFF_PERMISSIONS,
 } from "@/lib/organizationStaff";
+import { StaffPermissionPicker, StaffPermissionChips } from "@/components/organizer/StaffPermissionPicker";
 import { invalidateStaffAccessCaches } from "@/lib/tournamentAccess";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -42,20 +45,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Permission Definitions
+// Role presets (permissions are editable independently)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-const STAFF_PERMISSIONS: {
-    id: StaffPermission;
-    label: string;
-    shortLabel: string;
-}[] = [
-        { id: "scores:update", label: "Update Scores", shortLabel: "Scores" },
-        { id: "teams:manage", label: "Manage Teams", shortLabel: "Teams" },
-        { id: "bracket:edit", label: "Edit Brackets", shortLabel: "Brackets" },
-        { id: "announcements:send", label: "Send Announcements", shortLabel: "Announce" },
-        { id: "disputes:assist", label: "Assist Disputes", shortLabel: "Disputes" },
-    ];
 
 const ROLE_PRESETS = {
     admin: {
@@ -64,7 +55,7 @@ const ROLE_PRESETS = {
         icon: Crown,
         color: "text-amber-400",
         bgColor: "bg-amber-500/10 border-amber-500/30",
-        permissions: ["scores:update", "teams:manage", "bracket:edit", "announcements:send", "disputes:assist"] as StaffPermission[],
+        permissions: ALL_STAFF_PERMISSIONS,
     },
     mod: {
         name: "Moderator",
@@ -133,6 +124,12 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
 
     // Expanded staff row
     const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
+    const [permissionDraft, setPermissionDraft] = useState<StaffPermission[]>([]);
+    const [savingPermissions, setSavingPermissions] = useState(false);
+    const [assignmentEditId, setAssignmentEditId] = useState<string | null>(null);
+    const [assignmentUseDefaults, setAssignmentUseDefaults] = useState(true);
+    const [assignmentDraft, setAssignmentDraft] = useState<StaffPermission[]>([]);
+    const [savingAssignmentPermissions, setSavingAssignmentPermissions] = useState(false);
 
     // Active section: "roster" | "audit"
     const [activeSection, setActiveSection] = useState<"roster" | "audit">("roster");
@@ -192,6 +189,36 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
         }
     }, [activeSection, loadAuditLogs]);
 
+    useEffect(() => {
+        if (!expandedStaffId) {
+            setPermissionDraft([]);
+            setAssignmentEditId(null);
+            return;
+        }
+        const member = staff.find((s) => s.id === expandedStaffId);
+        if (member) {
+            setPermissionDraft([...(member.permissions ?? [])]);
+        }
+        setAssignmentEditId(null);
+        // Init draft when opening a row only (not on every staff refresh while editing).
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [expandedStaffId]);
+
+    const permissionsEqual = (a: StaffPermission[], b: StaffPermission[]) => {
+        if (a.length !== b.length) return false;
+        const sortedA = [...a].sort();
+        const sortedB = [...b].sort();
+        return sortedA.every((p, i) => p === sortedB[i]);
+    };
+
+    const invalidateAccessForStaff = (member: OrganizationStaffRecord) => {
+        invalidateStaffAccessCaches(queryClient);
+        const tournamentIds = (member.tournament_assignments ?? []).map((a) => a.tournament_id);
+        tournamentIds.forEach((tid) => {
+            void queryClient.invalidateQueries({ queryKey: ['tournament-access', tid] });
+        });
+    };
+
     // ── Computed Stats ──
     const stats = useMemo(() => {
         const active = staff.filter((s) => s.status === "active");
@@ -219,12 +246,6 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
         if (preset) {
             setSelectedPermissions([...preset.permissions]);
         }
-    };
-
-    const togglePermission = (perm: StaffPermission) => {
-        setSelectedPermissions((prev) =>
-            prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
-        );
     };
 
     const handleInvite = async () => {
@@ -306,16 +327,24 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
         const preset = ROLE_PRESETS[newRole as keyof typeof ROLE_PRESETS];
         if (!preset) return;
 
-        // Keep track of original state for revert
+        const currentPerms = s.permissions ?? [];
+        const presetDiffers = !permissionsEqual(currentPerms, preset.permissions);
+        if (presetDiffers) {
+            const ok = confirm(
+                `Apply the ${preset.name} preset? This will replace current permissions with: ${preset.permissions.join(', ')}`,
+            );
+            if (!ok) return;
+        }
+
         const originalStaff = [...staff];
 
         try {
-            // Optimistically update local state
             setStaff(prev => prev.map(item =>
                 item.id === s.id
                     ? { ...item, role: newRole, permissions: preset.permissions }
                     : item
             ));
+            setPermissionDraft([...preset.permissions]);
 
             await updateOrganizationStaff({
                 staffId: s.id,
@@ -324,15 +353,88 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                 organizationId,
                 actorId,
             });
-            toast({ title: "Role updated" });
-            invalidateStaffAccessCaches(queryClient);
-
-            // Still load staff to ensure everything is in sync with backend
+            toast({ title: "Role preset applied" });
+            invalidateAccessForStaff(s);
             loadStaff(true);
         } catch (err: any) {
-            // Revert on error
             setStaff(originalStaff);
             toast({ title: "Update failed", description: err.message, variant: "destructive" });
+        }
+    };
+
+    const handleSavePermissions = async (s: OrganizationStaffRecord) => {
+        if (s.role === "admin") return;
+
+        const originalStaff = [...staff];
+        try {
+            setSavingPermissions(true);
+            setStaff(prev => prev.map(item =>
+                item.id === s.id ? { ...item, permissions: permissionDraft } : item
+            ));
+
+            await updateOrganizationStaff({
+                staffId: s.id,
+                role: s.role,
+                permissions: permissionDraft,
+                organizationId,
+                actorId,
+            });
+            toast({ title: "Permissions saved" });
+            invalidateAccessForStaff(s);
+            loadStaff(true);
+        } catch (err: any) {
+            setStaff(originalStaff);
+            toast({ title: "Save failed", description: err.message, variant: "destructive" });
+        } finally {
+            setSavingPermissions(false);
+        }
+    };
+
+    const openAssignmentEditor = (assignment: TournamentAssignment, orgPermissions: StaffPermission[]) => {
+        const hasOverride = assignment.permissions != null;
+        setAssignmentEditId(assignment.id);
+        setAssignmentUseDefaults(!hasOverride);
+        setAssignmentDraft(
+            hasOverride
+                ? [...(assignment.permissions ?? [])]
+                : [...orgPermissions],
+        );
+    };
+
+    const handleSaveAssignmentPermissions = async (
+        s: OrganizationStaffRecord,
+        assignment: TournamentAssignment,
+    ) => {
+        const originalStaff = [...staff];
+        const nextPermissions: StaffPermission[] | null = assignmentUseDefaults ? null : assignmentDraft;
+
+        try {
+            setSavingAssignmentPermissions(true);
+            setStaff(prev => prev.map(item => {
+                if (item.id !== s.id) return item;
+                return {
+                    ...item,
+                    tournament_assignments: (item.tournament_assignments ?? []).map((a) =>
+                        a.id === assignment.id ? { ...a, permissions: nextPermissions } : a
+                    ),
+                };
+            }));
+
+            await updateAssignmentPermissions({
+                organizationId,
+                assignmentId: assignment.id,
+                permissions: nextPermissions,
+            });
+            toast({ title: assignmentUseDefaults ? "Using org defaults" : "Tournament permissions saved" });
+            invalidateAccessForStaff(s);
+            void queryClient.invalidateQueries({ queryKey: ['tournament-access', assignment.tournament_id] });
+            setAssignmentEditId(null);
+            loadStaff(true);
+        } catch (err: any) {
+            setStaff(originalStaff);
+            toast({ title: "Save failed", description: err.message, variant: "destructive" });
+        } finally {
+            setSavingAssignmentPermissions(false);
         }
     };
 
@@ -372,7 +474,10 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                 organizationId,
             });
             toast({ title: "Tournament assigned" });
-            invalidateStaffAccessCaches(queryClient);
+            const member = staff.find((item) => item.id === staffId);
+            if (member) invalidateAccessForStaff(member);
+            else invalidateStaffAccessCaches(queryClient);
+            void queryClient.invalidateQueries({ queryKey: ['tournament-access', tournamentId] });
             loadStaff(true);
         } catch (err: any) {
             setStaff(originalStaff);
@@ -382,8 +487,10 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
 
     const handleUnassignTournament = async (assignmentId: string) => {
         const originalStaff = [...staff];
+        const removed = staff
+            .flatMap((item) => (item.tournament_assignments ?? []).map((a) => ({ member: item, assignment: a })))
+            .find((row) => row.assignment.id === assignmentId);
         try {
-            // Optimistically update local state
             setStaff(prev => prev.map(item => ({
                 ...item,
                 tournament_assignments: (item.tournament_assignments || []).filter(a => a.id !== assignmentId)
@@ -395,7 +502,15 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                 actorId,
             });
             toast({ title: "Tournament unassigned" });
-            invalidateStaffAccessCaches(queryClient);
+            if (removed) {
+                invalidateAccessForStaff(removed.member);
+                void queryClient.invalidateQueries({
+                    queryKey: ['tournament-access', removed.assignment.tournament_id],
+                });
+            } else {
+                invalidateStaffAccessCaches(queryClient);
+            }
+            if (assignmentEditId === assignmentId) setAssignmentEditId(null);
             loadStaff(true);
         } catch (err: any) {
             setStaff(originalStaff);
@@ -532,23 +647,10 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                 {/* Permissions */}
                                 <div>
                                     <p className="text-xs font-mono text-zinc-500 tracking-widest uppercase mb-2">Permissions</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {STAFF_PERMISSIONS.map((perm) => {
-                                            const active = selectedPermissions.includes(perm.id);
-                                            return (
-                                                <button
-                                                    key={perm.id}
-                                                    onClick={() => togglePermission(perm.id)}
-                                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${active
-                                                        ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
-                                                        : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700"
-                                                        }`}
-                                                >
-                                                    {perm.label}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                    <StaffPermissionPicker
+                                        value={selectedPermissions}
+                                        onChange={setSelectedPermissions}
+                                    />
                                 </div>
 
                                 {/* Tournament Assignment (only for non-admin) */}
@@ -671,6 +773,12 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                                     </Badge>
                                                 </div>
                                                 <p className="text-xs text-zinc-500 truncate">{s.profiles?.email}</p>
+                                                {s.role !== "admin" && (
+                                                    <StaffPermissionChips
+                                                        permissions={s.permissions ?? []}
+                                                        className="mt-1.5"
+                                                    />
+                                                )}
                                             </div>
 
                                             {/* Tournament count badge */}
@@ -716,17 +824,17 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                                             </div>
                                                         </div>
 
-                                                        {/* Role Switcher */}
+                                                        {/* Role presets */}
                                                         <div>
-                                                            <p className="text-[10px] font-mono text-zinc-500 tracking-widest uppercase mb-2">Change Role</p>
-                                                            <div className="flex gap-2">
+                                                            <p className="text-[10px] font-mono text-zinc-500 tracking-widest uppercase mb-2">Apply Role Preset</p>
+                                                            <div className="flex gap-2 flex-wrap">
                                                                 {Object.entries(ROLE_PRESETS).map(([key, preset]) => {
                                                                     const Icon = preset.icon;
                                                                     const active = s.role === key;
                                                                     return (
                                                                         <button
                                                                             key={key}
-                                                                            onClick={() => !active && handleUpdateRole(s, key)}
+                                                                            onClick={() => handleUpdateRole(s, key)}
                                                                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${active
                                                                                 ? `${preset.bgColor} ${preset.color}`
                                                                                 : "border-zinc-800 text-zinc-500 hover:border-zinc-700 bg-zinc-900"
@@ -740,6 +848,43 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                                             </div>
                                                         </div>
 
+                                                        {/* Org-level permissions */}
+                                                        {s.role !== "admin" ? (
+                                                            <div>
+                                                                <p className="text-[10px] font-mono text-zinc-500 tracking-widest uppercase mb-2">
+                                                                    Default Permissions
+                                                                </p>
+                                                                <p className="text-xs text-zinc-600 mb-2">
+                                                                    Applied to all assigned tournaments unless a tournament override is set.
+                                                                </p>
+                                                                <StaffPermissionPicker
+                                                                    value={permissionDraft}
+                                                                    onChange={setPermissionDraft}
+                                                                />
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="mt-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl"
+                                                                    disabled={
+                                                                        savingPermissions
+                                                                        || permissionsEqual(permissionDraft, s.permissions ?? [])
+                                                                    }
+                                                                    onClick={() => handleSavePermissions(s)}
+                                                                >
+                                                                    {savingPermissions ? (
+                                                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                                    ) : null}
+                                                                    Save Permissions
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
+                                                                <Crown className="w-4 h-4 text-amber-400" />
+                                                                <p className="text-xs text-amber-400/80">
+                                                                    Administrators have full access to <strong>all</strong> tournaments in this organization.
+                                                                </p>
+                                                            </div>
+                                                        )}
+
                                                         {/* Tournament Assignments (only for non-admin) */}
                                                         {s.role !== "admin" && (
                                                             <div>
@@ -752,21 +897,85 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                                                     {assignedTournaments.length === 0 && (
                                                                         <span className="text-xs text-zinc-600 italic">No tournaments assigned</span>
                                                                     )}
-                                                                    {assignedTournaments.map((a) => (
-                                                                        <span
-                                                                            key={a.id}
-                                                                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs"
-                                                                        >
-                                                                            <Trophy className="w-3 h-3" />
-                                                                            {(a.tournament as any)?.name || "Tournament"}
-                                                                            <button
-                                                                                onClick={() => handleUnassignTournament(a.id)}
-                                                                                className="ml-1 text-emerald-500/50 hover:text-red-400 transition-colors"
-                                                                            >
-                                                                                <X className="w-3 h-3" />
-                                                                            </button>
-                                                                        </span>
-                                                                    ))}
+                                                                    {assignedTournaments.map((a: TournamentAssignment) => {
+                                                                        const hasCustom = a.permissions != null;
+                                                                        const isEditing = assignmentEditId === a.id;
+                                                                        return (
+                                                                            <div key={a.id} className="w-full space-y-2">
+                                                                                <span
+                                                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs"
+                                                                                >
+                                                                                    <Trophy className="w-3 h-3" />
+                                                                                    {(a.tournament as any)?.name || "Tournament"}
+                                                                                    {hasCustom && (
+                                                                                        <Badge className="text-[9px] bg-violet-500/15 text-violet-300 border-violet-500/30">
+                                                                                            custom
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => openAssignmentEditor(a, s.permissions ?? [])}
+                                                                                        className="ml-1 text-emerald-400/70 hover:text-white transition-colors underline-offset-2 hover:underline"
+                                                                                    >
+                                                                                        perms
+                                                                                    </button>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleUnassignTournament(a.id)}
+                                                                                        className="ml-1 text-emerald-500/50 hover:text-red-400 transition-colors"
+                                                                                    >
+                                                                                        <X className="w-3 h-3" />
+                                                                                    </button>
+                                                                                </span>
+                                                                                {isEditing && (
+                                                                                    <div className="ml-1 p-3 rounded-xl border border-zinc-800 bg-zinc-900/50 space-y-3">
+                                                                                        <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer">
+                                                                                            <input
+                                                                                                type="checkbox"
+                                                                                                checked={assignmentUseDefaults}
+                                                                                                onChange={(e) => {
+                                                                                                    const useDefaults = e.target.checked;
+                                                                                                    setAssignmentUseDefaults(useDefaults);
+                                                                                                    if (useDefaults) {
+                                                                                                        setAssignmentDraft([...(s.permissions ?? [])]);
+                                                                                                    }
+                                                                                                }}
+                                                                                                className="rounded border-zinc-600"
+                                                                                            />
+                                                                                            Use org default permissions
+                                                                                        </label>
+                                                                                        {!assignmentUseDefaults && (
+                                                                                            <StaffPermissionPicker
+                                                                                                value={assignmentDraft}
+                                                                                                onChange={setAssignmentDraft}
+                                                                                            />
+                                                                                        )}
+                                                                                        <div className="flex gap-2">
+                                                                                            <Button
+                                                                                                size="sm"
+                                                                                                className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs"
+                                                                                                disabled={savingAssignmentPermissions}
+                                                                                                onClick={() => handleSaveAssignmentPermissions(s, a)}
+                                                                                            >
+                                                                                                {savingAssignmentPermissions ? (
+                                                                                                    <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                                                                                                ) : null}
+                                                                                                Save
+                                                                                            </Button>
+                                                                                            <Button
+                                                                                                size="sm"
+                                                                                                variant="ghost"
+                                                                                                className="text-zinc-500 text-xs"
+                                                                                                onClick={() => setAssignmentEditId(null)}
+                                                                                            >
+                                                                                                Cancel
+                                                                                            </Button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })}
                                                                 </div>
 
                                                                 {/* Add tournament */}
@@ -788,15 +997,6 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                                                                 ))}
                                                                         </div>
                                                                     )}
-                                                            </div>
-                                                        )}
-
-                                                        {s.role === "admin" && (
-                                                            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
-                                                                <Crown className="w-4 h-4 text-amber-400" />
-                                                                <p className="text-xs text-amber-400/80">
-                                                                    Administrators have access to <strong>all</strong> tournaments in this organization.
-                                                                </p>
                                                             </div>
                                                         )}
 

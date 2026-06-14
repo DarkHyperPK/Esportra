@@ -12,17 +12,14 @@
  */
 
 import { apiClient } from "@/lib/apiClient";
+import type { StaffPermission } from "@/types/staff";
+
+export type { StaffPermission } from "@/types/staff";
+export { STAFF_PERMISSION_OPTIONS, ALL_STAFF_PERMISSIONS } from "@/types/staff";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Types (unchanged)
+// Types
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-export type StaffPermission =
-    | "scores:update"
-    | "teams:manage"
-    | "bracket:edit"
-    | "announcements:send"
-    | "disputes:assist";
 
 export interface OrganizationStaffRecord {
     id: string;
@@ -66,6 +63,8 @@ export interface TournamentAssignment {
     tournament_id: string;
     assigned_by: string | null;
     created_at: string;
+    /** null = inherit organization_staff.permissions */
+    permissions?: StaffPermission[] | null;
     tournament?: {
         id: string;
         name: string;
@@ -195,14 +194,36 @@ export const respondToOrgStaffInvite = async ({
 export const assignStaffToTournaments = async ({
     orgStaffId,
     tournamentIds,
+    assignments,
     organizationId,
 }: {
     orgStaffId: string;
-    tournamentIds: string[];
+    tournamentIds?: string[];
+    assignments?: { tournamentId: string; permissions?: StaffPermission[] | null }[];
     assignedBy: string;
     organizationId: string;
 }) =>
-    apiClient.post(`/api/organizations/${organizationId}/staff/${orgStaffId}/assign-tournaments`, { tournamentIds });
+    apiClient.post(`/api/organizations/${organizationId}/staff/${orgStaffId}/assign-tournaments`, {
+        tournamentIds: tournamentIds ?? [],
+        assignments: assignments?.map((a) => ({
+            tournamentId: a.tournamentId,
+            permissions: a.permissions ?? undefined,
+        })),
+    });
+
+/** Update per-tournament permission override (null = inherit org defaults). */
+export const updateAssignmentPermissions = async ({
+    organizationId,
+    assignmentId,
+    permissions,
+}: {
+    organizationId: string;
+    assignmentId: string;
+    permissions: StaffPermission[] | null;
+}) =>
+    apiClient.put(`/api/organizations/${organizationId}/staff/assignments/${assignmentId}`, {
+        permissions,
+    });
 
 /** Remove a staff member from a tournament */
 export const removeStaffFromTournament = async ({
