@@ -29,8 +29,9 @@ export const useTimeProposal = (
     const { data: proposals, isLoading } = useQuery<TimeProposal[]>({
         queryKey: ['match-time-proposals', matchId],
         queryFn: () => apiClient.get<TimeProposal[]>(`/api/matches/${matchId}/time-proposals`),
-        enabled: !!matchId,
-        staleTime: 10_000,
+    enabled: !!matchId,
+    staleTime: 0,
+    refetchInterval: 15_000,
     });
 
     const activeProposal = proposals?.find(p => p.status === 'pending') ?? null;
@@ -60,12 +61,34 @@ export const useTimeProposal = (
                 proposedTime: proposedTime.toISOString(),
             });
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['match-time-proposals', matchId] });
-            toast({ title: 'Time Proposed', description: 'Waiting for opponent to accept.' });
+        onMutate: async (proposedTime) => {
+            await queryClient.cancelQueries({ queryKey: ['match-time-proposals', matchId] });
+            const previous = queryClient.getQueryData<TimeProposal[]>(['match-time-proposals', matchId]);
+            const optimistic: TimeProposal = {
+                id: `optimistic-${Date.now()}`,
+                match_id: matchId!,
+                proposed_by: user!.id,
+                proposed_time: proposedTime.toISOString(),
+                status: 'pending',
+                created_at: new Date().toISOString(),
+                responded_at: null,
+            };
+            queryClient.setQueryData<TimeProposal[]>(
+                ['match-time-proposals', matchId],
+                [optimistic, ...(previous ?? []).filter((p) => p.status !== 'pending')],
+            );
+            return { previous };
         },
-        onError: (error: Error) => {
+        onError: (error: Error, _time, context) => {
+            if (context?.previous) {
+                queryClient.setQueryData(['match-time-proposals', matchId], context.previous);
+            }
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ['match-time-proposals', matchId] });
+            void queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(matchId) });
+            toast({ title: 'Time Proposed', description: 'Waiting for opponent to accept.' });
         },
     });
 

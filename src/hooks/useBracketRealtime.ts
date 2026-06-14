@@ -12,6 +12,7 @@ import { useHub } from '@/hooks/useSignalR';
 import { useHubGroupJoin } from '@/hooks/useHubGroupJoin';
 import { HubPaths } from '@/lib/signalrClient';
 import { matchRoomStateQueryKey } from '@/hooks/useMatchRoomState';
+import { matchTimeProposalsQueryKey } from '@/hooks/useMatchRoomRealtime';
 import { toRawMatchId } from '@/utils/bracketMatchId';
 import type { BracketNode } from '@/types/bracket-graph';
 
@@ -65,6 +66,7 @@ export function useBracketRealtime({
         const rawId = toRawMatchId(matchId);
         if (rawId) {
           queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(rawId) });
+          queryClient.invalidateQueries({ queryKey: matchTimeProposalsQueryKey(rawId) });
         }
       }
     };

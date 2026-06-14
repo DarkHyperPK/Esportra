@@ -121,7 +121,7 @@ export const useMatchRoomState = (
       };
     },
     enabled,
-    staleTime: 5_000,
+    staleTime: 0,
     refetchInterval: (query) => {
       const data = query.state.data;
       if (data?.phase === 'completed') return false;

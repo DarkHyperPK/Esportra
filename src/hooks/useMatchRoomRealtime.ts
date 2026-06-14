@@ -24,7 +24,8 @@ export const matchTimeProposalsQueryKey = (matchId: string | undefined) =>
 export const matchResultReportsQueryKey = (matchId: string | undefined) =>
   ['match-result-reports', matchId] as const;
 
-const MATCH_ROOM_POLL_MS = 15_000;
+const MATCH_ROOM_POLL_MS_JOINED = 15_000;
+const MATCH_ROOM_POLL_MS_DISCONNECTED = 8_000;
 
 interface Options {
   matchId: string | null | undefined;
@@ -86,20 +87,6 @@ export function useMatchRoomRealtime({
     void queryClient.invalidateQueries({ queryKey: ['match-dispute', rawMatchId] });
   }, [rawMatchId, queryClient]);
 
-  const invalidateAllRoomQueries = useCallback(() => {
-    invalidateLifecycle();
-    invalidateRoomState();
-    invalidateCheckins();
-    invalidateProposals();
-    invalidateReports();
-  }, [
-    invalidateLifecycle,
-    invalidateRoomState,
-    invalidateCheckins,
-    invalidateProposals,
-    invalidateReports,
-  ]);
-
   const { joined } = useMatchRealtime({
     matchId: rawMatchId,
     enabled: isEnabled,
@@ -159,14 +146,24 @@ export function useMatchRoomRealtime({
   });
 
   useEffect(() => {
-    if (!isEnabled || !rawMatchId || joined) return;
+    if (!isEnabled || !rawMatchId) return;
 
+    const pollMs = joined ? MATCH_ROOM_POLL_MS_JOINED : MATCH_ROOM_POLL_MS_DISCONNECTED;
     const timer = window.setInterval(() => {
-      invalidateAllRoomQueries();
-    }, MATCH_ROOM_POLL_MS);
+      invalidateRoomState();
+      invalidateProposals();
+      invalidateCheckins();
+    }, pollMs);
 
     return () => window.clearInterval(timer);
-  }, [isEnabled, rawMatchId, joined, invalidateAllRoomQueries]);
+  }, [
+    isEnabled,
+    rawMatchId,
+    joined,
+    invalidateRoomState,
+    invalidateProposals,
+    invalidateCheckins,
+  ]);
 
   return { joined };
 }

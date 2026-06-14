@@ -40,6 +40,12 @@ import { LiveScoreCardView, useLiveScoreState } from '@/components/match/LiveSco
 import { useMatchRoomState } from '@/hooks/useMatchRoomState';
 import { useTimeProposal } from '@/hooks/useTimeProposal';
 import { normalizeScheduledTime, parseScheduledTimeMs } from '@/utils/scheduledTime';
+import {
+    isSelfPlaySchedulingEnabled,
+    readCheckinWindowMinutes,
+} from '@/utils/selfPlayScheduling';
+import { matchRoomStateQueryKey } from '@/hooks/useMatchRoomState';
+import { matchTimeProposalsQueryKey } from '@/hooks/useMatchRoomRealtime';
 import { useMatchLifecycleInvalidation } from '@/hooks/useMatchLifecycleInvalidation';
 import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import {
@@ -399,7 +405,7 @@ const CaptainMatchPage = () => {
         ],
     );
 
-    const { invalidateDebounced, invalidateNow } = useMatchLifecycleInvalidation(lifecycleScope);
+    const { invalidateNow } = useMatchLifecycleInvalidation(lifecycleScope);
 
     const {
         roomState,
@@ -525,7 +531,8 @@ const CaptainMatchPage = () => {
         return !hasUpcomingLosersMatch && tournament?.status !== 'draft';
     }, [activeMatch, isTournamentWinner, isTournamentRunnerUp, lastCompletedMatch, userTeamId, isDE, matches, tournament?.status]);
 
-    const selfPlayEnabled = roomState?.selfPlayEnabled ?? false;
+    const selfPlayEnabled = isSelfPlaySchedulingEnabled(schedulingConfig, roomState ?? null);
+    const checkInWindowMinutes = readCheckinWindowMinutes(schedulingConfig, roomState ?? null);
     const effectiveScheduledTime = roomState?.effectiveScheduledTime ?? null;
     const agreedScheduledTime = useMemo(() => {
         for (const candidate of [pendingAcceptedTime, acceptedProposalTime, effectiveScheduledTime]) {
@@ -647,7 +654,8 @@ const CaptainMatchPage = () => {
         versionId: lifecycleScope.versionId ?? null,
         enabled: Boolean(lifecycleScope.versionId),
         onMatchUpdated: () => {
-            invalidateDebounced();
+            invalidateNow();
+            refetchBracket();
         },
     });
 
@@ -689,6 +697,10 @@ const CaptainMatchPage = () => {
         onTimeProposalUpdated: () => {
             invalidateNow();
             refetchBracket();
+            if (activeMatchRawId) {
+                void queryClient.refetchQueries({ queryKey: matchTimeProposalsQueryKey(activeMatchRawId) });
+                void queryClient.refetchQueries({ queryKey: matchRoomStateQueryKey(activeMatchRawId) });
+            }
         },
         onGoingLive: liveScore.handleGoingLive,
         onScoreUpdated: liveScore.handleScoreUpdated,
@@ -990,12 +1002,7 @@ const CaptainMatchPage = () => {
                                     {agreedScheduledTime
                                         && activeMatch.status === 'pending'
                                         && !isMatchLive
-                                        && activeMatch.team2?.id
-                                        && (selfPlayEnabled
-                                            ? (nextAction === 'check_in'
-                                                || nextAction === 'submit_party_code'
-                                                || Boolean(acceptedProposalTime ?? pendingAcceptedTime))
-                                            : true) && (
+                                        && activeMatch.team2?.id && (
                                         <MatchCheckinCard
                                             matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                                             team1Id={activeMatch.team1?.id}
@@ -1006,7 +1013,7 @@ const CaptainMatchPage = () => {
                                             scheduledTime={agreedScheduledTime}
                                             isCaptain={!isOrganizerMatchView && isCaptain}
                                             selfPlayEnabled={selfPlayEnabled}
-                                            checkInWindowMinutes={roomState?.checkinWindowMinutes ?? 15}
+                                            checkInWindowMinutes={checkInWindowMinutes}
                                             checkinWindowOpen={roomState?.checkinWindowOpen}
                                             checkinWindowClosed={roomState?.checkinWindowClosed}
                                             hidePartyCodeInput={nextAction === 'submit_party_code'}
