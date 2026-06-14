@@ -140,6 +140,7 @@ const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, 
                     </div>
                     <Switch
                         checked={isSelfPlayEnabled}
+                        disabled={!canEditSchedule}
                         onCheckedChange={(checked) => handleUpdate('self_play_enabled', checked)}
                         className="data-[state=checked]:bg-rose-500"
                     />
@@ -174,6 +175,7 @@ const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, 
                                 type="number"
                                 min={5}
                                 max={60}
+                                disabled={!canEditSchedule}
                                 value={schedulingConfig.checkin_window_minutes || 15}
                                 onChange={(e) => handleUpdate('checkin_window_minutes', parseInt(e.target.value) || 15)}
                                 className="w-24 bg-[#0a0a0c] border-white/10 text-white text-center rounded-xl focus:border-rose-500"
@@ -212,6 +214,7 @@ const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, 
                             <div className="flex items-center gap-3 mt-2">
                                 <Input
                                     type="time"
+                                    disabled={!canEditSchedule}
                                     value={schedulingConfig.daily_start_time || '20:00'}
                                     onChange={(e) => handleUpdate('daily_start_time', e.target.value)}
                                     className="w-32 bg-[#0a0a0c] border-white/10 text-white text-center rounded-xl focus:border-rose-500"
