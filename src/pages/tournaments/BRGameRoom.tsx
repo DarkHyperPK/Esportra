@@ -77,7 +77,7 @@ const BRGameRoom: React.FC = () => {
     setBrStreamConnected(connected);
   }, [connected]);
 
-  const fallbackPollingMs = connected ? false : 30_000;
+  const fallbackPollingMs = connected ? 60_000 : 30_000;
   const { leaderboard } = useBRGroupLeaderboard(
     context.stageId,
     context.groupId,
@@ -183,8 +183,24 @@ const BRGameRoom: React.FC = () => {
   const activeMatchupRaw = context.activeRound?.matchupLabel ?? null;
   const activeMatchup = activeMatchupRaw ? formatMatchPairingFromLabel(activeMatchupRaw) : null;
   const activeCode = activeRound?.lobby_code ?? context.activeRound?.lobbyCode ?? null;
-  const queueTimerMinutes = activeRound?.queue_timer_minutes ?? context.activeRound?.queueTimerMinutes ?? null;
-  const queueStartedAt = activeRound?.queue_started_at ?? context.activeRound?.queueStartedAt ?? null;
+  const activeGameFromContext = context.activeGame;
+  const activeGameFromLobby = useMemo(() => {
+    if (activeGameNumber == null) return null;
+    return lobbyGames.find((g) => g.game_number === activeGameNumber) ?? null;
+  }, [lobbyGames, activeGameNumber]);
+
+  const queueTimerMinutes =
+    activeGameFromContext?.queueTimerMinutes
+    ?? activeGameFromLobby?.queue_timer_minutes
+    ?? activeRound?.queue_timer_minutes
+    ?? context.activeRound?.queueTimerMinutes
+    ?? null;
+  const queueStartedAt =
+    activeGameFromContext?.queueStartedAt
+    ?? activeGameFromLobby?.queue_started_at
+    ?? activeRound?.queue_started_at
+    ?? context.activeRound?.queueStartedAt
+    ?? null;
   const [queueRemainingSec, setQueueRemainingSec] = useState<number | null>(null);
 
   useEffect(() => {
@@ -533,7 +549,9 @@ const BRGameRoom: React.FC = () => {
                     <div className="flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-amber-400" />
-                        <span className="text-xs font-semibold text-amber-200 uppercase tracking-wider">Queue closes in</span>
+                        <span className="text-xs font-semibold text-amber-200 uppercase tracking-wider">
+                          {isGameLive ? 'Queue closes in' : 'Lobby queue closes in'}
+                        </span>
                       </div>
                       <span className="text-lg font-mono font-bold text-amber-300 tabular-nums">
                         {String(Math.floor(queueRemainingSec / 60)).padStart(2, '0')}:

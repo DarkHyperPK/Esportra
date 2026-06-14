@@ -6,11 +6,13 @@
  * Events: MatchUpdated, MatchInserted, BracketReset
  */
 
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { HubConnectionState } from '@microsoft/signalr';
 import { useHub } from '@/hooks/useSignalR';
+import { useHubGroupJoin } from '@/hooks/useHubGroupJoin';
 import { HubPaths } from '@/lib/signalrClient';
+import { matchRoomStateQueryKey } from '@/hooks/useMatchRoomState';
+import { toRawMatchId } from '@/utils/bracketMatchId';
 import type { BracketNode } from '@/types/bracket-graph';
 
 interface Options {
@@ -26,29 +28,61 @@ export function useBracketRealtime({
   onMatchUpdated,
   onBracketReset,
 }: Options) {
-  const conn        = useHub(HubPaths.Bracket);
+  const conn = useHub(HubPaths.Bracket);
   const queryClient = useQueryClient();
+  const isEnabled = enabled && !!versionId;
+
+  const joinGroup = useCallback(
+    () => conn.invoke('JoinBracket', versionId!),
+    [conn, versionId],
+  );
+  const leaveGroup = useCallback(
+    () => conn.invoke('LeaveBracket', versionId!),
+    [conn, versionId],
+  );
+
+  const { joined } = useHubGroupJoin(conn, {
+    enabled: isEnabled,
+    join: joinGroup,
+    leave: leaveGroup,
+    onJoinError: (error) => {
+      if (import.meta.env.DEV) {
+        console.warn(`[BracketRealtime] JoinBracket failed for ${versionId}`, error);
+      }
+    },
+  });
 
   useEffect(() => {
-    if (!enabled || !versionId) return;
+    if (!isEnabled || !versionId) return;
 
     let active = true;
 
+    const invalidateCaptainQueries = (matchId?: string) => {
+      queryClient.invalidateQueries({ queryKey: ['bracket-graph', versionId] });
+      queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+      queryClient.invalidateQueries({ queryKey: ['captain-organizer-graph', versionId] });
+      if (matchId) {
+        const rawId = toRawMatchId(matchId);
+        if (rawId) {
+          queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(rawId) });
+        }
+      }
+    };
+
     const handleMatchUpdated = (payload: Partial<BracketNode> & { matchId?: string }) => {
       if (!active) return;
-      // Invalidate graph bracket query to refetch full bracket data
-      queryClient.invalidateQueries({ queryKey: ['bracket-graph', versionId] });
+      invalidateCaptainQueries(payload.matchId);
       onMatchUpdated?.(payload as Partial<BracketNode> & { matchId: string });
     };
 
     const handleMatchInserted = (payload: { versionId: string }) => {
       if (!active || payload.versionId !== versionId) return;
-      queryClient.invalidateQueries({ queryKey: ['bracket-graph', versionId] });
+      invalidateCaptainQueries();
     };
 
     const handleBracketReset = () => {
       if (!active) return;
-      queryClient.invalidateQueries({ queryKey: ['bracket-graph', versionId] });
+      invalidateCaptainQueries();
       onBracketReset?.();
     };
 
@@ -56,22 +90,15 @@ export function useBracketRealtime({
     conn.on('MatchInserted', handleMatchInserted);
     conn.on('BracketReset', handleBracketReset);
 
-    const join = () => {
-      if (!active || conn.state !== HubConnectionState.Connected) return;
-      conn.invoke('JoinBracket', versionId).catch(console.warn);
-    };
-    join();
-    conn.onreconnected(join);
-
     return () => {
       active = false;
       conn.off('MatchUpdated', handleMatchUpdated);
       conn.off('MatchInserted', handleMatchInserted);
       conn.off('BracketReset', handleBracketReset);
-      if (conn.state === HubConnectionState.Connected)
-        conn.invoke('LeaveBracket', versionId).catch(() => {});
     };
-  }, [conn, versionId, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [conn, versionId, isEnabled, queryClient, onMatchUpdated, onBracketReset]);
+
+  return { joined };
 }
 
 export default useBracketRealtime;

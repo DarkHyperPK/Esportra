@@ -45,6 +45,7 @@ import {
     resolveActiveMatch,
     toRawMatchId,
 } from '@/utils/matchRoomLifecycle';
+import { format } from 'date-fns';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 import { useStageRealtime } from '@/hooks/useStageRealtime';
 
@@ -643,6 +644,20 @@ const CaptainMatchPage = () => {
         },
         onDisputeResolved: () => {
             invalidateNow();
+        },
+        onScheduleChanged: (payload) => {
+            invalidateNow();
+            refetchBracket();
+            const matchNum = payload.matchNumber ?? activeMatch?.matchNumber;
+            const timeLabel = payload.scheduledTime
+                ? format(new Date(payload.scheduledTime), 'MMM d, yyyy h:mm a')
+                : 'TBD';
+            toast({
+                title: 'Match rescheduled',
+                description: matchNum
+                    ? `Match ${matchNum} is now scheduled for ${timeLabel}.`
+                    : `Your match is now scheduled for ${timeLabel}.`,
+            });
         },
         onGoingLive: liveScore.handleGoingLive,
         onScoreUpdated: liveScore.handleScoreUpdated,

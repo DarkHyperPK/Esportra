@@ -3,20 +3,29 @@
  *
  * Groups joined: match:{matchId}
  * Events: ReportSubmitted, ReportAccepted, ReportDisputed, DisputeResolved,
- *         CheckInUpdated, TimeProposalUpdated, StatusChanged,
+ *         CheckInUpdated, TimeProposalUpdated, StatusChanged, ScheduleChanged,
  *         GoingLive, MatchScoreUpdated, MapResultFinalized (MatchZy)
  */
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { HubConnectionState } from '@microsoft/signalr';
 import { useHub } from '@/hooks/useSignalR';
+import { useHubGroupJoin } from '@/hooks/useHubGroupJoin';
 import { HubPaths } from '@/lib/signalrClient';
+import { toRawMatchId } from '@/utils/bracketMatchId';
 
 interface MatchRealtimePayload {
   matchId: string;
   status?: string;
   [key: string]: unknown;
+}
+
+export interface ScheduleChangedPayload {
+  matchId: string;
+  scheduledTime?: string | null;
+  matchNumber?: number;
+  roundIndex?: number;
+  changedBy?: string;
 }
 
 export interface MatchScorePayload {
@@ -54,6 +63,7 @@ interface Options {
   onStatusChanged?:   (payload: MatchRealtimePayload) => void;
   onCheckInUpdated?:       (payload: MatchRealtimePayload) => void;
   onTimeProposalUpdated?:  (payload: MatchRealtimePayload) => void;
+  onScheduleChanged?: (payload: ScheduleChangedPayload) => void;
   onGoingLive?:            (payload: GoingLivePayload) => void;
   onScoreUpdated?:    (payload: MatchScorePayload) => void;
   onMapResult?:       (payload: MapResultPayload) => void;
@@ -69,21 +79,66 @@ export function useMatchRealtime({
   onStatusChanged,
   onCheckInUpdated,
   onTimeProposalUpdated,
+  onScheduleChanged,
   onGoingLive,
   onScoreUpdated,
   onMapResult,
 }: Options) {
-  const conn        = useHub(HubPaths.Match);
+  const rawMatchId = matchId ? toRawMatchId(matchId) : '';
+  const isEnabled = enabled && !!rawMatchId;
+  const conn = useHub(HubPaths.Match);
   const queryClient = useQueryClient();
 
+  const callbacksRef = useRef({
+    onReportSubmitted,
+    onReportAccepted,
+    onReportDisputed,
+    onDisputeResolved,
+    onStatusChanged,
+    onCheckInUpdated,
+    onTimeProposalUpdated,
+    onScheduleChanged,
+    onGoingLive,
+    onScoreUpdated,
+    onMapResult,
+  });
+  callbacksRef.current = {
+    onReportSubmitted,
+    onReportAccepted,
+    onReportDisputed,
+    onDisputeResolved,
+    onStatusChanged,
+    onCheckInUpdated,
+    onTimeProposalUpdated,
+    onScheduleChanged,
+    onGoingLive,
+    onScoreUpdated,
+    onMapResult,
+  };
+
+  const joinGroup = useCallback(
+    () => conn.invoke('JoinMatch', rawMatchId),
+    [conn, rawMatchId],
+  );
+  const leaveGroup = useCallback(
+    () => conn.invoke('LeaveMatch', rawMatchId),
+    [conn, rawMatchId],
+  );
+
+  const { joined, connectionState } = useHubGroupJoin(conn, {
+    enabled: isEnabled,
+    join: joinGroup,
+    leave: leaveGroup,
+  });
+
   useEffect(() => {
-    if (!enabled || !matchId) return;
+    if (!isEnabled) return;
 
     let active = true;
 
     const invalidate = () => {
-      queryClient.invalidateQueries({ queryKey: ['match', matchId] });
-      queryClient.invalidateQueries({ queryKey: ['match-result', matchId] });
+      queryClient.invalidateQueries({ queryKey: ['match', rawMatchId] });
+      queryClient.invalidateQueries({ queryKey: ['match-result', rawMatchId] });
     };
 
     const wrap = (cb?: (p: MatchRealtimePayload) => void) =>
@@ -93,29 +148,34 @@ export function useMatchRealtime({
         cb?.(payload);
       };
 
-    const handleReportSubmitted  = wrap(onReportSubmitted);
-    const handleReportAccepted   = wrap(onReportAccepted);
-    const handleReportDisputed   = wrap(onReportDisputed);
-    const handleDisputeResolved  = wrap(onDisputeResolved);
-    const handleStatusChanged    = wrap(onStatusChanged);
-    const handleCheckInUpdated        = wrap(onCheckInUpdated);
-    const handleTimeProposalUpdated   = wrap(onTimeProposalUpdated);
+    const handleReportSubmitted = wrap((p) => callbacksRef.current.onReportSubmitted?.(p));
+    const handleReportAccepted = wrap((p) => callbacksRef.current.onReportAccepted?.(p));
+    const handleReportDisputed = wrap((p) => callbacksRef.current.onReportDisputed?.(p));
+    const handleDisputeResolved = wrap((p) => callbacksRef.current.onDisputeResolved?.(p));
+    const handleStatusChanged = wrap((p) => callbacksRef.current.onStatusChanged?.(p));
+    const handleCheckInUpdated = wrap((p) => callbacksRef.current.onCheckInUpdated?.(p));
+    const handleTimeProposalUpdated = wrap((p) => callbacksRef.current.onTimeProposalUpdated?.(p));
 
-    // MatchZy live events — invalidate + forward
+    const handleScheduleChanged = (payload: ScheduleChangedPayload) => {
+      if (!active) return;
+      invalidate();
+      callbacksRef.current.onScheduleChanged?.(payload);
+    };
+
     const handleGoingLive = (payload: GoingLivePayload) => {
       if (!active) return;
       invalidate();
-      onGoingLive?.(payload);
+      callbacksRef.current.onGoingLive?.(payload);
     };
     const handleScoreUpdated = (payload: MatchScorePayload) => {
       if (!active) return;
-      queryClient.invalidateQueries({ queryKey: ['match', matchId] });
-      onScoreUpdated?.(payload);
+      queryClient.invalidateQueries({ queryKey: ['match', rawMatchId] });
+      callbacksRef.current.onScoreUpdated?.(payload);
     };
     const handleMapResult = (payload: MapResultPayload) => {
       if (!active) return;
       invalidate();
-      onMapResult?.(payload);
+      callbacksRef.current.onMapResult?.(payload);
     };
 
     conn.on('ReportSubmitted',    handleReportSubmitted);
@@ -125,16 +185,10 @@ export function useMatchRealtime({
     conn.on('StatusChanged',      handleStatusChanged);
     conn.on('CheckInUpdated',        handleCheckInUpdated);
     conn.on('TimeProposalUpdated',   handleTimeProposalUpdated);
+    conn.on('ScheduleChanged',       handleScheduleChanged);
     conn.on('GoingLive',             handleGoingLive);
     conn.on('MatchScoreUpdated',  handleScoreUpdated);
     conn.on('MapResultFinalized', handleMapResult);
-
-    const join = () => {
-      if (!active || conn.state !== HubConnectionState.Connected) return;
-      conn.invoke('JoinMatch', matchId).catch(console.warn);
-    };
-    join();
-    conn.onreconnected(join);
 
     return () => {
       active = false;
@@ -145,13 +199,14 @@ export function useMatchRealtime({
       conn.off('StatusChanged',      handleStatusChanged);
       conn.off('CheckInUpdated',        handleCheckInUpdated);
       conn.off('TimeProposalUpdated',   handleTimeProposalUpdated);
+      conn.off('ScheduleChanged',       handleScheduleChanged);
       conn.off('GoingLive',             handleGoingLive);
       conn.off('MatchScoreUpdated',  handleScoreUpdated);
       conn.off('MapResultFinalized', handleMapResult);
-      if (conn.state === HubConnectionState.Connected)
-        conn.invoke('LeaveMatch', matchId).catch(() => {});
     };
-  }, [conn, matchId, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [conn, rawMatchId, isEnabled, queryClient]);
+
+  return { joined, connectionState };
 }
 
 export default useMatchRealtime;

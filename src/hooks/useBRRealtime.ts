@@ -3,10 +3,10 @@
  * Invalidates TanStack Query caches on hub events; does not push full state.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { HubConnectionState } from '@microsoft/signalr';
 import { useHub } from '@/hooks/useSignalR';
+import { useHubGroupJoin } from '@/hooks/useHubGroupJoin';
 import { HubPaths } from '@/lib/signalrClient';
 
 interface BrEventScope {
@@ -28,7 +28,6 @@ interface BrScopedPayload extends BrEventScope {
 
 const matchesScope = (payload: BrScopedPayload, scope: BrEventScope) => {
   if (scope.stageId && payload.stageId && payload.stageId !== scope.stageId) return false;
-  // Lobby events (code updates, reset, etc.) apply to all groups sharing this lobby.
   if (scope.lobbyId && payload.lobbyId && payload.lobbyId === scope.lobbyId) return true;
   if (scope.groupId && payload.groupId && payload.groupId !== scope.groupId) return false;
   if (scope.lobbyId && payload.lobbyId && payload.lobbyId !== scope.lobbyId) return false;
@@ -46,23 +45,51 @@ export function useBRRealtime({
   const effectiveLobbyId = lobbyId ?? roundId ?? null;
   const conn = useHub(HubPaths.BR);
   const queryClient = useQueryClient();
-  const [connected, setConnected] = useState(false);
+  const isEnabled = enabled && Boolean(stageId || groupId || effectiveLobbyId);
+
+  const joinGroups = useCallback(async () => {
+    await Promise.all([
+      stageId ? conn.invoke('JoinStage', stageId) : Promise.resolve(),
+      groupId ? conn.invoke('JoinGroup', groupId) : Promise.resolve(),
+      effectiveLobbyId ? conn.invoke('JoinLobby', effectiveLobbyId) : Promise.resolve(),
+    ]);
+  }, [conn, stageId, groupId, effectiveLobbyId]);
+
+  const leaveGroups = useCallback(async () => {
+    await Promise.all([
+      effectiveLobbyId ? conn.invoke('LeaveLobby', effectiveLobbyId) : Promise.resolve(),
+      groupId ? conn.invoke('LeaveGroup', groupId) : Promise.resolve(),
+      stageId ? conn.invoke('LeaveStage', stageId) : Promise.resolve(),
+    ]);
+  }, [conn, stageId, groupId, effectiveLobbyId]);
+
+  const { joined } = useHubGroupJoin(conn, {
+    enabled: isEnabled,
+    join: joinGroups,
+    leave: leaveGroups,
+    onJoinError: (error) => {
+      if (import.meta.env.DEV) {
+        console.warn('[BRRealtime] Failed to join stream', error);
+      }
+    },
+  });
 
   useEffect(() => {
-    if (!enabled) {
-      setConnected(false);
-      return;
-    }
+    if (!isEnabled) return;
 
     let active = true;
-    let joined = false;
     const scope = { stageId, groupId, lobbyId: effectiveLobbyId };
 
     const invalidateLobbies = () => {
-      if (stageId) {
+      if (stageId && groupId) {
+        queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, groupId] });
+      } else if (stageId) {
         queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId] });
       } else {
         queryClient.invalidateQueries({ queryKey: ['br-lobbies'] });
+      }
+      if (stageId) {
+        queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, 'stage-all'] });
       }
     };
 
@@ -188,47 +215,8 @@ export function useBRRealtime({
     conn.on('ResultsUpdated', handleResultsUpdated);
     conn.on('LeaderboardUpdated', handleLeaderboardUpdated);
 
-    const join = async () => {
-      if (!active || joined || conn.state !== HubConnectionState.Connected) return;
-
-      try {
-        await Promise.all([
-          stageId ? conn.invoke('JoinStage', stageId) : Promise.resolve(),
-          groupId ? conn.invoke('JoinGroup', groupId) : Promise.resolve(),
-          effectiveLobbyId ? conn.invoke('JoinLobby', effectiveLobbyId) : Promise.resolve(),
-        ]);
-
-        if (active) {
-          joined = true;
-          setConnected(true);
-        }
-      } catch (error) {
-        if (active) {
-          joined = false;
-          setConnected(false);
-          console.warn('[BRRealtime] Failed to join stream', error);
-        }
-      }
-    };
-
-    const syncConnection = () => {
-      if (!active) return;
-
-      if (conn.state !== HubConnectionState.Connected) {
-        joined = false;
-        setConnected(false);
-        return;
-      }
-
-      void join();
-    };
-
-    syncConnection();
-    const timer = window.setInterval(syncConnection, 1_000);
-
     return () => {
       active = false;
-      window.clearInterval(timer);
       conn.off('LobbyCreated', handleLobbyCreated);
       conn.off('LobbyUpdated', handleLobbyUpdated);
       conn.off('LobbyReset', handleLobbyReset);
@@ -239,16 +227,18 @@ export function useBRRealtime({
       conn.off('EvidenceReviewed', handleEvidenceReviewed);
       conn.off('ResultsUpdated', handleResultsUpdated);
       conn.off('LeaderboardUpdated', handleLeaderboardUpdated);
-
-      if (conn.state === HubConnectionState.Connected) {
-        if (effectiveLobbyId) conn.invoke('LeaveLobby', effectiveLobbyId).catch(() => {});
-        if (groupId) conn.invoke('LeaveGroup', groupId).catch(() => {});
-        if (stageId) conn.invoke('LeaveStage', stageId).catch(() => {});
-      }
     };
-  }, [conn, stageId, groupId, effectiveLobbyId, tournamentId, enabled, queryClient]);
+  }, [
+    conn,
+    stageId,
+    groupId,
+    effectiveLobbyId,
+    tournamentId,
+    isEnabled,
+    queryClient,
+  ]);
 
-  return { connected };
+  return { connected: joined, joined };
 }
 
 export default useBRRealtime;

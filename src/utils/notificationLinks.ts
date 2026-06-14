@@ -3,6 +3,7 @@ import { apiClient } from '@/lib/apiClient';
 const CAPTAIN_MATCH_NOTIFICATION_TYPES = new Set([
   'match_ready',
   'match_walkover',
+  'match_schedule_changed',
   'result_disputed',
   'dispute_resolved',
   'dispute_rejected',

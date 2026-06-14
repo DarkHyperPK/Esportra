@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, CheckCheck, Bell, Inbox, ShieldAlert, Users, Info, ExternalLink, ArrowRight } from 'lucide-react';
+import { Trash2, CheckCheck, Bell, Inbox, ShieldAlert, Users, Info, ExternalLink, ArrowRight, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -70,6 +70,7 @@ const NotificationsPage = () => {
       case 'team_announcement': return { icon: <Bell className="h-4 w-4" />, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' };
       case 'staff_invite': return { icon: <Users className="h-4 w-4" />, color: 'text-cyan-400', bg: 'bg-cyan-500/10 border-cyan-500/20' };
       case 'result_reported': return { icon: <Info className="h-4 w-4" />, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' };
+      case 'match_schedule_changed': return { icon: <Calendar className="h-4 w-4" />, color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' };
       case 'result_disputed': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
       case 'result_accepted': return { icon: <CheckCheck className="h-4 w-4" />, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' };
       case 'dispute_filed': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' };

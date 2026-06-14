@@ -3,7 +3,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Bell, CheckCheck, Users, ShieldAlert, Info, ArrowRight, Shield, Check, X, Loader2, FileText, CheckCircle2, AlertTriangle, XCircle, Swords, Map, Trophy, Ticket } from 'lucide-react';
+import { Bell, CheckCheck, Users, ShieldAlert, Info, ArrowRight, Shield, Check, X, Loader2, FileText, CheckCircle2, AlertTriangle, XCircle, Swords, Map, Trophy, Ticket, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -158,6 +158,7 @@ export const NotificationDropdown = () => {
             case 'kick': return 'bg-orange-500/10 border-orange-500/20';
             case 'veto_your_turn':
             case 'match_ready': return 'bg-rose-500/10 border-rose-500/20';
+            case 'match_schedule_changed': return 'bg-sky-500/10 border-sky-500/20';
             case 'veto_completed': return 'bg-blue-500/10 border-blue-500/20';
             case 'match_completed': return 'bg-amber-500/10 border-amber-500/20';
             default: return 'bg-zinc-500/10 border-zinc-500/20';
@@ -197,6 +198,8 @@ export const NotificationDropdown = () => {
             case 'veto_your_turn':
             case 'match_ready':
                 return <Swords className="h-4 w-4 text-rose-400" />;
+            case 'match_schedule_changed':
+                return <Calendar className="h-4 w-4 text-sky-400" />;
             case 'veto_completed':
                 return <Map className="h-4 w-4 text-blue-400" />;
             case 'match_completed':

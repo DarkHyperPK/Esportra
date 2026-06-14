@@ -40,6 +40,15 @@ describe('notificationLinks', () => {
       ).toBe('/tournaments/summer-cup/captain-match/abc-123');
     });
 
+    it('resolves match_schedule_changed with slug + match id', () => {
+      expect(
+        resolveCaptainMatchNotificationLink({
+          type: 'match_schedule_changed',
+          data: { match_id: 'abc-123', tournament_slug: 'summer-cup' },
+        }),
+      ).toBe('/tournaments/summer-cup/captain-match/abc-123');
+    });
+
     it('keeps valid captain match links', () => {
       expect(
         resolveCaptainMatchNotificationLink({

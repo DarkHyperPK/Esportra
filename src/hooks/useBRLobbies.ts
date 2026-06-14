@@ -47,13 +47,13 @@ export const useBRLobbies = (
     enabled: !!stageId,
     staleTime: 1000 * 60,
     refetchInterval: (query) => {
-      if (realtimeConnected) return false;
       const data = query.state.data;
+      if (realtimeConnected) return 60_000;
       if (!Array.isArray(data)) return false;
       const needsLiveUpdates = data.some(
         (lobby) => lobby.status === 'active' || (lobby.pending_evidence_count ?? 0) > 0,
       );
-      return needsLiveUpdates ? 60_000 : false;
+      return needsLiveUpdates ? 30_000 : false;
     },
     refetchIntervalInBackground: false,
   });
@@ -344,7 +344,12 @@ export const useBRLobbyEvidence = (
 };
 
 /** Full lobby rows for rotation stages — single stage-level fetch (deduped by lobby id). */
-export function useStageLobbiesDeduped(stageId: string | null, groups: BRGroup[]) {
+export function useStageLobbiesDeduped(
+  stageId: string | null,
+  groups: BRGroup[],
+  options?: { realtimeJoined?: boolean },
+) {
+  const realtimeJoined = options?.realtimeJoined ?? false;
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['br-lobbies', stageId, 'stage-all'],
     queryFn: async () => {
@@ -353,6 +358,10 @@ export function useStageLobbiesDeduped(stageId: string | null, groups: BRGroup[]
     },
     enabled: Boolean(stageId && groups.length > 0),
     staleTime: 1000 * 60,
+    refetchInterval: Boolean(stageId && groups.length > 0)
+      ? (realtimeJoined ? 60_000 : 30_000)
+      : false,
+    refetchIntervalInBackground: Boolean(stageId && groups.length > 0),
   });
 
   const lobbies = useMemo(() => {
