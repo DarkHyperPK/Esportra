@@ -177,6 +177,7 @@ export interface BREvidence {
   placement?: number;
   kills?: number;
   reviewed?: boolean;
+  gameNumber?: number;
 }
 
 export const DEFAULT_BR_SETTINGS: BRTournamentSettings = {

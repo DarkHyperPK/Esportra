@@ -50,6 +50,10 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
             <div key={index} className="h-24 rounded-xl bg-white/5 animate-pulse" />
           ))}
         </div>
+      ) : error ? (
+        <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] px-4 py-3 text-sm text-rose-200">
+          Could not load evidence submissions. Try refreshing this panel.
+        </div>
       ) : evidence.length === 0 ? (
         <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-6 text-center">
           <ImageIcon className="mx-auto mb-2 h-5 w-5 text-zinc-600" />
@@ -59,7 +63,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
         <div className="grid gap-3">
           {evidence.map((entry) => (
             <div
-              key={entry.teamId}
+              key={`${entry.teamId}-${entry.gameNumber ?? gameNumber ?? 'lobby'}`}
               className="rounded-xl border border-white/8 bg-white/[0.02] p-3"
             >
               <div className="flex flex-col gap-3 md:flex-row md:items-start">
@@ -78,6 +82,11 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate text-sm font-semibold text-white">{entry.teamName}</p>
+                    {(entry.gameNumber ?? gameNumber) != null && (
+                      <Badge variant="outline" className="border-white/10 text-zinc-400">
+                        Game {entry.gameNumber ?? gameNumber}
+                      </Badge>
+                    )}
                     <Badge
                       variant="outline"
                       className={
@@ -117,7 +126,11 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                       <Button
                         type="button"
                         size="sm"
-                        onClick={() => markReviewed({ entityId: entry.teamId, reviewed: true, gameNumber })}
+                        onClick={() => markReviewed({
+                          entityId: entry.teamId,
+                          reviewed: true,
+                          gameNumber: entry.gameNumber ?? gameNumber,
+                        })}
                         disabled={isUpdating}
                         className="bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 border border-emerald-500/20"
                       >
@@ -131,7 +144,11 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                         type="button"
                         size="sm"
                         variant="outline"
-                        onClick={() => markReviewed({ entityId: entry.teamId, reviewed: false, gameNumber })}
+                        onClick={() => markReviewed({
+                          entityId: entry.teamId,
+                          reviewed: false,
+                          gameNumber: entry.gameNumber ?? gameNumber,
+                        })}
                         disabled={isUpdating}
                         className="border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10"
                       >

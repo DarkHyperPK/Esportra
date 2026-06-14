@@ -1,5 +1,6 @@
-import React from 'react';
-import { MapPin } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronDown, MapPin } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { BRMapCatalogItem } from '@/types/battleRoyale';
 
@@ -110,27 +111,82 @@ export const BRMapHero: React.FC<BRMapHeroProps> = ({ mapName, imageUrl, classNa
   </div>
 );
 
-/** Compact map strip for match room — smaller than BRMapHero. */
-export const BRMapCompact: React.FC<BRMapBadgeProps> = ({ mapName, imageUrl, className }) => (
-  <div className={cn('flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5', className)}>
-    {imageUrl ? (
-      <img
-        src={imageUrl}
-        alt={mapName}
-        className="h-12 w-20 rounded-lg object-cover border border-white/10 flex-shrink-0"
-        loading="lazy"
-      />
-    ) : (
-      <div className="h-12 w-20 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center flex-shrink-0">
-        <MapPin className="w-4 h-4 text-emerald-400" />
-      </div>
-    )}
-    <div className="min-w-0">
-      <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Map</p>
-      <p className="text-sm font-bold text-white truncate">{mapName}</p>
+/** Compact map strip for match room — tap to expand full preview. */
+export const BRMapCompact: React.FC<BRMapBadgeProps> = ({ mapName, imageUrl, className }) => {
+  const [expanded, setExpanded] = useState(false);
+  const canExpand = Boolean(imageUrl);
+
+  return (
+    <div className={cn('rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden', className)}>
+      <button
+        type="button"
+        onClick={() => canExpand && setExpanded((open) => !open)}
+        disabled={!canExpand}
+        aria-expanded={expanded}
+        aria-label={canExpand ? `${expanded ? 'Collapse' : 'Expand'} ${mapName} map` : mapName}
+        className={cn(
+          'flex w-full items-center gap-3 px-3 py-2.5 text-left min-h-[44px] transition-colors',
+          canExpand && 'hover:bg-white/[0.04] cursor-pointer',
+          !canExpand && 'cursor-default',
+        )}
+      >
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt=""
+            aria-hidden
+            className="h-12 w-20 rounded-lg object-cover border border-white/10 flex-shrink-0"
+            loading="lazy"
+          />
+        ) : (
+          <div className="h-12 w-20 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center flex-shrink-0">
+            <MapPin className="w-4 h-4 text-emerald-400" />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Map</p>
+          <p className="text-sm font-bold text-white truncate">{mapName}</p>
+        </div>
+        {canExpand && (
+          <ChevronDown
+            className={cn(
+              'w-4 h-4 text-zinc-500 flex-shrink-0 transition-transform duration-200',
+              expanded && 'rotate-180',
+            )}
+          />
+        )}
+      </button>
+
+      <AnimatePresence initial={false}>
+        {expanded && imageUrl && (
+          <motion.div
+            key="map-preview"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-3">
+              <div className="relative rounded-lg overflow-hidden border border-white/10 bg-black/40">
+                <img
+                  src={imageUrl}
+                  alt={mapName}
+                  className="w-full aspect-video object-cover"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+                <p className="absolute bottom-2 left-3 right-3 text-sm font-bold text-white truncate">
+                  {mapName}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
-  </div>
-);
+  );
+};
 
 export const BRMapBadge: React.FC<BRMapBadgeProps> = ({ mapName, imageUrl, className }) => (
   <div className={cn('flex items-center gap-2 min-w-0', className)}>

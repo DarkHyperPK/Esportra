@@ -182,12 +182,14 @@ export function useBRRealtime({
     const handleEvidenceSubmitted = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
       invalidateLobbyEvidence(payload.lobbyId);
+      invalidateGames(payload.lobbyId);
       invalidateLobbies();
     };
 
     const handleEvidenceReviewed = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
       invalidateLobbyEvidence(payload.lobbyId);
+      invalidateGames(payload.lobbyId);
       invalidateLobbies();
     };
 

@@ -273,9 +273,10 @@ export const useBRLobbyEvidence = (
   lobbyId: string | null,
   stageId?: string | null,
   groupId?: string | null,
-  options?: { realtimeConnected?: boolean; gameNumber?: number; gameId?: string | null },
+  options?: { realtimeConnected?: boolean; gameNumber?: number; gameId?: string | null; enabled?: boolean },
 ) => {
   const realtimeConnected = options?.realtimeConnected ?? false;
+  const enabled = options?.enabled ?? true;
   const gameNumber = options?.gameNumber;
   const gameId = options?.gameId;
   const queryClient = useQueryClient();
@@ -290,14 +291,14 @@ export const useBRLobbyEvidence = (
       const suffix = gameNumber != null ? `?gameNumber=${gameNumber}` : '';
       return apiClient.get<BREvidence[]>(`/api/br/lobbies/${lobbyId}/evidence${suffix}`);
     },
-    enabled: !!lobbyId || !!gameId,
+    enabled: enabled && (!!lobbyId || !!gameId),
     staleTime: BR_CONFIG.ROUNDS_STALE_TIME_MS,
     refetchInterval: (query) => {
       if (realtimeConnected) return false;
       const data = query.state.data;
-      if (!Array.isArray(data)) return false;
+      if (!Array.isArray(data)) return 15_000;
       const hasPendingReview = data.some((item) => !item.reviewed);
-      return hasPendingReview ? 60_000 : false;
+      return hasPendingReview ? 15_000 : 30_000;
     },
     refetchIntervalInBackground: false,
   });

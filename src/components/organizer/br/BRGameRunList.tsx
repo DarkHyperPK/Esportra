@@ -12,7 +12,6 @@ import {
 import { useBRGames, useUpdateBRGame } from '@/hooks/useBRGames';
 import { useBRLobbyResults } from '@/hooks/useBRLobbies';
 import { RoundResultsGrid } from '@/components/organizer/br/RoundResultsGrid';
-import { RoundEvidencePanel } from '@/components/organizer/br/RoundEvidencePanel';
 import type { BRGroupTeam } from '@/types/brGroups';
 import type { BRGame } from '@/types/brLobbies';
 import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
@@ -59,6 +58,13 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
   const { data: games = [], isLoading } = useBRGames(lobbyId);
   const updateGame = useUpdateBRGame(stageId, groupId, lobbyId);
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
+
+  const activeGameId = games.find((g) => g.status === 'active')?.id ?? null;
+
+  useEffect(() => {
+    if (!activeGameId) return;
+    setExpandedGameId((current) => current ?? activeGameId);
+  }, [activeGameId]);
 
   if (isLoading) {
     return <div className="h-16 rounded-lg bg-white/5 animate-pulse" />;
@@ -280,6 +286,11 @@ const BRGameRunRow: React.FC<{
         {game.queue_timer_minutes ? (
           <span className="text-[10px] text-zinc-500">Queue {game.queue_timer_minutes}m</span>
         ) : null}
+        {(game.evidence_count ?? 0) > 0 && (
+          <span className="text-[10px] text-amber-300/90">
+            {game.evidence_count} evidence
+          </span>
+        )}
         <Badge variant="outline" className={`ml-auto text-[10px] ${statusClass}`}>{game.status}</Badge>
         {game.scheduled_at && (
           <span className="text-[10px] text-zinc-500">
@@ -393,13 +404,6 @@ const BRGameRunRow: React.FC<{
               isLocked={game.status === 'completed'}
             />
           )}
-          <RoundEvidencePanel
-            roundId={lobbyId}
-            stageId={stageId}
-            groupId={groupId}
-            gameNumber={game.game_number}
-            gameId={game.id}
-          />
         </div>
       )}
     </div>
