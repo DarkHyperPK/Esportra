@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
-import { Button } from '@/components/ui/button';
+import { GhostButton, SuccessButton, DangerButton, SettingsButton } from '@/components/ui/app-buttons';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Bell, CheckCheck, Users, ShieldAlert, Info, ArrowRight, Shield, Check, X, Loader2, FileText, CheckCircle2, AlertTriangle, XCircle, Swords, Map, Trophy, Ticket, Calendar } from 'lucide-react';
@@ -273,25 +273,24 @@ export const NotificationDropdown = () => {
                     {/* Staff Invite Action Buttons */}
                     {isStaffInvite && !resolved && (
                         <div className="flex items-center gap-2 mt-2.5">
-                            <Button
+                            <SuccessButton
                                 size="sm"
                                 disabled={!!processing}
                                 onClick={(e) => { e.stopPropagation(); handleStaffInviteAction(n, true); }}
-                                className="h-7 px-3 text-[11px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 hover:text-emerald-300"
+                                className="h-7 px-3 text-[11px]"
                             >
                                 {processing === 'accepting' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
                                 Accept
-                            </Button>
-                            <Button
+                            </SuccessButton>
+                            <DangerButton
                                 size="sm"
-                                variant="ghost"
                                 disabled={!!processing}
                                 onClick={(e) => { e.stopPropagation(); handleStaffInviteAction(n, false); }}
-                                className="h-7 px-3 text-[11px] font-semibold text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                                className="h-7 px-3 text-[11px]"
                             >
                                 {processing === 'declining' ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3 mr-1" />}
                                 Decline
-                            </Button>
+                            </DangerButton>
                         </div>
                     )}
 
@@ -319,10 +318,9 @@ export const NotificationDropdown = () => {
     return (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>
-                <Button
-                    variant="ghost"
+                <SettingsButton
                     size="icon"
-                    className="relative rounded-full border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                    className="relative rounded-full"
                 >
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
@@ -330,7 +328,7 @@ export const NotificationDropdown = () => {
                             {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                     )}
-                </Button>
+                </SettingsButton>
             </PopoverTrigger>
             <PopoverContent
                 align="end"
@@ -347,15 +345,14 @@ export const NotificationDropdown = () => {
                         )}
                     </h4>
                     {unreadCount > 0 && (
-                        <Button
-                            variant="ghost"
+                        <GhostButton
                             size="sm"
                             onClick={handleMarkAllRead}
-                            className="h-6 px-2 text-xs text-gray-400 hover:text-white hover:bg-white/10"
+                            className="h-6 px-2 text-xs"
                         >
                             <CheckCheck className="h-3 w-3 mr-1" />
                             Mark all read
-                        </Button>
+                        </GhostButton>
                     )}
                 </div>
 
@@ -375,9 +372,8 @@ export const NotificationDropdown = () => {
 
                 {/* Footer */}
                 <div className="p-2 border-t border-white/10 bg-white/5">
-                    <Button
-                        variant="ghost"
-                        className="w-full justify-between text-xs text-gray-400 hover:text-white hover:bg-white/10"
+                    <GhostButton
+                        className="w-full justify-between text-xs"
                         onClick={() => {
                             setIsOpen(false);
                             navigate('/notifications');
@@ -385,7 +381,7 @@ export const NotificationDropdown = () => {
                     >
                         View all notifications
                         <ArrowRight className="h-3 w-3" />
-                    </Button>
+                    </GhostButton>
                 </div>
             </PopoverContent>
         </Popover>

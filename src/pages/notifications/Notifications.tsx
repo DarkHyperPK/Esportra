@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
-import { Button } from '@/components/ui/button';
+import { OutlineButton, DangerButton, GhostButton, CancelButton } from '@/components/ui/app-buttons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
@@ -131,25 +131,21 @@ const NotificationsPage = () => {
           {notifications.length > 0 && (
             <div className="flex items-center gap-3">
               {selectedNotifications.length > 0 && (
-                <Button
-                  variant="destructive"
+                <DangerButton
                   size="sm"
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete ({selectedNotifications.length})
-                </Button>
+                </DangerButton>
               )}
-              <Button
-                variant="outline"
+              <OutlineButton
                 size="sm"
                 onClick={handleMarkAllRead}
-                className="border-white/10 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white"
               >
                 <CheckCheck className="h-4 w-4 mr-2" />
                 Mark all read
-              </Button>
+              </OutlineButton>
             </div>
           )}
         </div>
@@ -283,25 +279,23 @@ const NotificationsPage = () => {
 
                         <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                           {/* Delete Button */}
-                          <Button
+                          <DangerButton
                             size="icon"
-                            variant="ghost"
-                            className="h-6 w-6 text-white/20 hover:text-red-400 hover:bg-red-500/10"
+                            className="h-6 w-6"
                             onClick={(e) => { e.stopPropagation(); handleDeleteNotification(n.id); }}
                           >
                             <Trash2 className="h-3 w-3" />
-                          </Button>
+                          </DangerButton>
 
                           {/* Link Button */}
                           {(n.link || n.type === 'match_schedule_changed' || n.type === 'br_game_schedule_changed' || n.type === 'br_lobby_schedule_changed' || n.data?.match_id) && (
-                            <Button
+                            <GhostButton
                               size="icon"
-                              variant="ghost"
-                              className="h-6 w-6 text-white/20 hover:text-white hover:bg-white/10"
+                              className="h-6 w-6"
                               onClick={(e) => { e.stopPropagation(); void openNotification(n); }}
                             >
                               <ExternalLink className="h-3 w-3" />
-                            </Button>
+                            </GhostButton>
                           )}
                         </div>
                       </div>
@@ -324,24 +318,18 @@ const NotificationsPage = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-3 mt-4">
-            <Button
-              variant="ghost"
-              onClick={() => setShowDeleteConfirm(false)}
-              className="text-white/60 hover:text-white hover:bg-white/5"
-            >
+            <CancelButton onClick={() => setShowDeleteConfirm(false)}>
               Cancel
-            </Button>
-            <Button
-              variant="destructive"
+            </CancelButton>
+            <DangerButton
               onClick={() => {
                 setShowDeleteConfirm(false);
                 handleBulkDelete();
               }}
               disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white"
             >
               {isDeleting ? 'Deleting...' : 'Delete Forever'}
-            </Button>
+            </DangerButton>
           </div>
         </DialogContent>
       </Dialog>
