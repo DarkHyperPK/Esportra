@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Check, AlertCircle, ChevronDown, ChevronUp, Zap, GitBranch, Globe, Info } from 'lucide-react';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 import { format, addDays, isWithinInterval, parseISO } from 'date-fns';
-import { getTimezoneAbbr, utcToLocalInput, localInputToUTC, utcToLocalDate, utcToLocalTime, localDateTimeToUTC, dateInputToUTCEndOfDay, getTournamentScheduleDateBounds, isInvalidTournamentDateWindow } from '@/lib/timeUtils';
+import { getTimezoneAbbr, utcToLocalInput, localInputToUTC, utcToLocalDate, utcToLocalTime, localDateTimeToUTC, dateInputToUTCEndOfDay, getTournamentScheduleDateBounds, isInvalidTournamentDateWindow, toUtcIsoString } from '@/lib/timeUtils';
 
 interface RoundSchedulingPanelProps {
     stageId: string;
@@ -231,7 +231,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
 
                 const firstMatch = roundMatches[0];
                 const existingTime = firstMatch?.scheduled_time
-                    ? new Date(firstMatch.scheduled_time).toISOString().slice(0, 16)
+                    ? toUtcIsoString(firstMatch.scheduled_time)
                     : null;
 
                 const roundIndex = firstMatch.round_index;
@@ -273,7 +273,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
 
         const roundDate = addDays(startDate, daysOffset);
         roundDate.setHours(23, 59, 0, 0);
-        return roundDate.toISOString().slice(0, 16);
+        return roundDate.toISOString();
     };
 
     // Validate date is within tournament window
@@ -546,7 +546,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                             // Combine deadline date (or today) with selected time
                                                             const deadlineDate = config?.deadline
                                                                 ? utcToLocalDate(config.deadline)
-                                                                : (defaultDeadline ? defaultDeadline.split('T')[0] : utcToLocalDate(new Date().toISOString()));
+                                                                : (defaultDeadline ? utcToLocalDate(defaultDeadline) : utcToLocalDate(new Date().toISOString()));
                                                             updateRoundConfig(cfgKey, roundIndex, 'startTime', localDateTimeToUTC(deadlineDate, timeVal));
                                                         }}
                                                         className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"

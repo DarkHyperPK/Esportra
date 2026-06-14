@@ -37,6 +37,18 @@ export const getTimezoneLabel = (): string => {
     return getTimezoneAbbr();
 };
 
+/**
+ * Normalizes a DB or partial timestamp to a full UTC ISO string (with `Z`).
+ * Never use `toISOString().slice(0, 16)` for schedule state — that drops the
+ * timezone suffix and makes UTC wall-clock display as local time.
+ */
+export const toUtcIsoString = (value: string | Date | null | undefined): string => {
+    if (!value) return '';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString();
+};
+
 // ─── Input Conversion (Local → UTC) ──────────────────────────────────────
 
 /**
