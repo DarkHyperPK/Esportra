@@ -7,6 +7,7 @@ import { getApiErrorMessage } from "@/lib/apiClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { JackButton } from "@/components/ui/JackButton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,9 +93,9 @@ const PublicBracketList = () => {
           <Trophy className="mb-4 h-8 w-8 text-rose-400" />
           <h2 className="text-xl font-bold">Sign in to view saved brackets</h2>
           <p className="mt-2 text-sm text-zinc-400">Preview generation is public. Saving and running brackets keeps them attached to your account.</p>
-          <Button asChild className="mt-5 bg-white text-black hover:bg-zinc-200">
-            <Link to="/auth/signin?redirect=/tools/brackets">Sign in</Link>
-          </Button>
+          <JackButton as={Link} to="/auth/signin?redirect=/tools/brackets" className="mt-5">
+            Sign in
+          </JackButton>
         </section>
       ) : error ? (
         <section className="border border-red-500/30 bg-red-500/10 p-5">

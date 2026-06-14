@@ -5,7 +5,7 @@ import { standingsService, TeamStanding } from '@/services/bracket/StandingsServ
 import { BracketMatch } from '@/types/bracketTypes';
 import { MatchCard } from '@/pages/tournaments/brackets/MatchCard';
 import { ReadOnlyMatchCard } from '@/components/bracket/ReadOnlyMatchCard';
-import { Button } from '@/components/ui/button';
+import { Button, SuccessButton } from '@/components/ui/button';
 import { SwissGenerator } from '@/services/bracket/SwissGenerator';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
@@ -656,7 +656,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
                         />
                         <div className="flex gap-3">
                             <Button variant="ghost" onClick={() => setGoLiveDialogOpen(false)} className="flex-1">Cancel</Button>
-                            <Button onClick={() => handleGoLive()} disabled={isProcessing || !partyCodeInput.trim()} className="flex-1 bg-green-600 hover:bg-green-500">Go Live</Button>
+                            <SuccessButton onClick={() => handleGoLive()} disabled={isProcessing || !partyCodeInput.trim()} className="flex-1">Go Live</SuccessButton>
                         </div>
                     </div>
                 </DialogContent>

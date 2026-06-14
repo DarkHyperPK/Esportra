@@ -1,5 +1,5 @@
 import { AlertTriangle, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { AccentButton } from '@/components/ui/button';
 import { useGhostMode } from '@/hooks/useGhostMode';
 
 export function GhostModeBanner() {
@@ -29,14 +29,14 @@ export function GhostModeBanner() {
             </p>
           </div>
         </div>
-        <Button
+        <AccentButton
           size="sm"
           onClick={exit}
-          className="shrink-0 bg-white text-red-700 hover:bg-red-100"
+          className="shrink-0"
         >
           <LogOut className="mr-2 h-4 w-4" />
           Exit Impersonation
-        </Button>
+        </AccentButton>
       </div>
     </div>
   );

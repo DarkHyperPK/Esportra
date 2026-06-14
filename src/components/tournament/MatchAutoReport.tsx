@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Loader2, Trophy, Clock, Swords, Check, Search, Info, SearchX, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -274,12 +275,12 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                     {scanError || 'An unexpected error occurred during processing.'}
                                 </p>
                             </div>
-                            <Button
+                            <JackButton
                                 onClick={() => setScanStep('idle')}
-                                className="bg-white text-black hover:bg-zinc-200 font-bold px-8"
+                                className="px-8"
                             >
                                 TRY AGAIN
-                            </Button>
+                            </JackButton>
                         </div>
                     )}
 

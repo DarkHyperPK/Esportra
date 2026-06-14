@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { csvEscape } from '@/lib/exportUtils';
 import { Button } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
@@ -909,7 +910,7 @@ const SponsorManagement = () => {
                     </div>
 
                     <DialogFooter>
-                        <Button className="bg-white text-black hover:bg-zinc-200" onClick={() => setInviteResult({ ...inviteResult, open: false })}>Done</Button>
+                        <JackButton onClick={() => setInviteResult({ ...inviteResult, open: false })}>Done</JackButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

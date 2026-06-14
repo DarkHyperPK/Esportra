@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock, Mail } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, SuccessButton } from '@/components/ui/button';
 import { JackButton } from '@/components/ui/JackButton';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -14,10 +14,6 @@ import {
 } from '@/utils/tournamentLifecycle';
 import { isBattleRoyale } from '@/utils/gameFeatures';
 import { useRawgGame } from '@/hooks/useRawgGame';
-
-/** Matches Initiate Registration — explicit border/bg so default rose CTA stroke does not leak through. */
-const HEADER_GREEN_ACTION_CLASS =
-  'h-14 md:h-16 px-8 md:px-12 border-green-600 bg-green-600 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none shadow-[0_0_40px_rgba(22,163,74,0.3)] hover:border-green-600 hover:bg-green-600 hover:text-white focus-visible:ring-green-500/70 active:scale-[0.98] active:bg-green-700 active:border-green-700 transition-transform';
 
 interface TournamentHeaderProps {
     tournament: any;
@@ -215,12 +211,13 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                         {!isRegistered && !hasMissedCheckIn && (showOpenRegistration || showInviteRedemption) && (
                                             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
                                                 {showOpenRegistration && (
-                                                    <Button
+                                                    <SuccessButton
                                                         onClick={onRegister}
-                                                        className={HEADER_GREEN_ACTION_CLASS}
+                                                        size="hero"
+                                                        className="active:scale-[0.98] transition-transform"
                                                     >
                                                         <span className="flex items-center gap-2">INITIATE REGISTRATION <ChevronRight className="w-5 h-5" /></span>
-                                                    </Button>
+                                                    </SuccessButton>
                                                 )}
                                                 {showInviteRedemption && onRedeemInvite && (
                                                     <Button
@@ -249,13 +246,13 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                         {isRegistered && !awaitingApproval && isCaptain && (
                                             <div className="flex gap-4">
                                                 {isBattleRoyale(tournament.game || '') ? (
-                                                    <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/br-game-room`)} className={HEADER_GREEN_ACTION_CLASS}>
+                                                    <SuccessButton onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/br-game-room`)} size="hero" className="active:scale-[0.98] transition-transform">
                                                         <span className="relative z-10 flex items-center gap-2"><Swords className="w-5 h-5" /> ENTER GAME ROOM</span>
-                                                    </Button>
+                                                    </SuccessButton>
                                                 ) : (
-                                                    <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/captain-match`)} className={HEADER_GREEN_ACTION_CLASS}>
+                                                    <SuccessButton onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/captain-match`)} size="hero" className="active:scale-[0.98] transition-transform">
                                                         <span className="relative z-10 flex items-center gap-2"><Swords className="w-5 h-5" /> ENTER MATCH ROOM</span>
-                                                    </Button>
+                                                    </SuccessButton>
                                                 )}
                                                 {(tournament.status === 'published' || tournament.status === 'open') && (
                                                     <Button variant="outline" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
@@ -266,9 +263,9 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                         )}
 
                                         {canSelfCheckIn && (
-                                            <Button onClick={onCheckIn} disabled={checkInSubmitting} className={cn('ml-4', HEADER_GREEN_ACTION_CLASS)}>
+                                            <SuccessButton onClick={onCheckIn} disabled={checkInSubmitting} size="hero" className="ml-4 active:scale-[0.98] transition-transform">
                                                 CONFIRM PRESENCE
-                                            </Button>
+                                            </SuccessButton>
                                         )}
                                         {/* Countdown for Check-in */}
                                         {!canSelfCheckIn && isRegistered && isCaptain && !hasMissedCheckIn && checkInStartTime && new Date() < checkInStartTime && (

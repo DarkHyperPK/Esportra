@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run check:chunks",
+    "build": "vite build && npm run check:chunks && npm run check:buttons",
     "check:chunks": "node tools/check-vendor-chunks.cjs",
     "build:dev": "vite build --mode development",
     "check:app-routes": "node tools/check-app-route-symbols.cjs",
@@ -14,6 +14,7 @@
     "seed:game-logos": "node scripts/seed-game-logos.mjs",
     "sync:game-catalog": "node scripts/sync-game-catalog-manifest.mjs",
     "lint": "eslint src --max-warnings 0",
+    "check:buttons": "node tools/check-button-antipatterns.cjs",
     "test": "vitest run",
     "preview": "vite preview"
   },

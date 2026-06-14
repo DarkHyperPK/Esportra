@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, PlayCircle, Swords, Eye, ChevronDown, X, Bot, MessageCircle, ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, SuccessButton } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import ManualAdjustmentMenu from '@/components/tournament/ManualAdjustmentMenu';
 
@@ -338,9 +338,10 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                             </Button>
                         )}
                         {canAct && (isLive || isEditing) && (
+                            isEditing ? (
                             <Button
                                 size="sm"
-                                className={`h-6 px-3 ${isEditing ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-green-600 hover:bg-green-500'} text-white font-medium rounded text-xs`}
+                                className="h-6 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded text-xs"
                                 onClick={async (e) => {
                                     e.stopPropagation();
                                     if (onSaveScore) await onSaveScore(match);
@@ -348,8 +349,22 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                 }}
                                 disabled={isProcessing}
                             >
-                                {isEditing ? 'Update' : 'Save'}
+                                Update
                             </Button>
+                            ) : (
+                            <SuccessButton
+                                size="sm"
+                                className="h-6 px-3 rounded text-xs"
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (onSaveScore) await onSaveScore(match);
+                                    setIsEditing(false);
+                                }}
+                                disabled={isProcessing}
+                            >
+                                Save
+                            </SuccessButton>
+                            )
                         )}
                         {/* Manual Adjustment Menu for organizers */}
                         {canAct && (
@@ -491,14 +506,14 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                         }
                                                     }}
                                                 />
-                                                <Button
+                                                <SuccessButton
                                                     size="sm"
-                                                    className="h-8 px-3 bg-green-600 hover:bg-green-500 text-white"
+                                                    className="h-8 px-3"
                                                     disabled={!partyCode.trim() || isProcessing || isSubmitting}
                                                     onClick={handleStart}
                                                 >
                                                     {isSubmitting ? '...' : 'Start'}
-                                                </Button>
+                                                </SuccessButton>
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"

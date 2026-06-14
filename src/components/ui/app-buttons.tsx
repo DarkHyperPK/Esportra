@@ -63,3 +63,11 @@ export const CancelButton = React.forwardRef<HTMLButtonElement, CatalogButtonPro
   ),
 )
 CancelButton.displayName = "CancelButton"
+
+/** Live / match actions — enter room, check-in, go live. */
+export const SuccessButton = React.forwardRef<HTMLButtonElement, CatalogButtonProps>(
+  ({ variant, ...props }, ref) => (
+    <Button ref={ref} variant={variant ?? "success"} {...props} />
+  ),
+)
+SuccessButton.displayName = "SuccessButton"

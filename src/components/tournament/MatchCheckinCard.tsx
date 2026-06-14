@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { JackButton } from "@/components/ui/JackButton";
 import { Check, Clock, Copy } from 'lucide-react';
 import { useMatchCheckin } from '@/hooks/useMatchCheckin';
 import { useToast } from '@/hooks/use-toast';
@@ -187,10 +188,10 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                         {isCaptain && (
                             <div className="space-y-4">
                                 {windowOpen && !myTeamCheckedIn && (
-                                    <Button
+                                    <JackButton
                                         onClick={handleCheckIn}
                                         disabled={checkIn.isPending}
-                                        className="w-full h-12 bg-white text-black hover:bg-white/90 text-lg font-mono font-bold uppercase tracking-wider"
+                                        className="w-full h-12 text-lg"
                                     >
                                         {checkIn.isPending ? (
                                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -200,7 +201,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                                                 Check In Now
                                             </>
                                         )}
-                                    </Button>
+                                    </JackButton>
                                 )}
 
                                 {!hidePartyCodeInput && checkinStatus.bothCheckedIn && selfPlayEnabled && isTeam1 && isCaptain && !partyCode && (

@@ -16,7 +16,7 @@ import { isBattleRoyaleTournament, getBRConfig, getPersistedTournamentFormat } f
 import { getQualificationCutoff } from '@/utils/brConfigResolve';
 import { useBRStageConfig } from '@/hooks/useBRStageConfig';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
-import { Button } from '@/components/ui/button';
+import { Button, SuccessButton } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
@@ -667,22 +667,15 @@ const BRGameRoom: React.FC = () => {
                         />
                       </div>
 
-                      <motion.button
+                      <SuccessButton
                         type="button"
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.98 }}
                         onClick={submitReport}
                         disabled={isSubmitting || !evidenceFile}
-                        className={cn(
-                          'w-full h-11 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200 border',
-                          evidenceFile
-                            ? 'bg-green-600 border-green-600 hover:bg-green-500 text-white shadow-[0_0_24px_rgba(22,163,74,0.25)]'
-                            : 'bg-zinc-900 text-zinc-600 cursor-not-allowed border-white/[0.04]',
-                        )}
+                        className="w-full h-11"
                       >
                         <Send className="w-4 h-4" />
                         {isSubmitting ? 'Submitting...' : 'Submit Report'}
-                      </motion.button>
+                      </SuccessButton>
                       <p className="text-[9px] text-zinc-700 text-center">
                         The organizer will verify your results and finalize scores.
                       </p>

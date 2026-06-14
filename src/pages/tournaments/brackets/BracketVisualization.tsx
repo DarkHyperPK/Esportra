@@ -14,7 +14,7 @@ import { Copy, Check,
   Trophy, Swords, Gamepad2, Network, List
 } from 'lucide-react';
 import { MatchResultsDialog } from './dialogs/MatchResultsDialog';
-import { Button } from '@/components/ui/button';
+import { Button, SuccessButton } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { BracketMatch } from '@/types/bracketTypes';
@@ -1115,13 +1115,13 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
               >
                 Cancel
               </Button>
-              <Button
+              <SuccessButton
                 onClick={() => handleGoLive()}
                 disabled={isProcessing || !partyCodeInput.trim()}
-                className="flex-1 h-12 bg-green-600 hover:bg-green-500 text-white font-medium rounded-2xl"
+                className="flex-1 h-12"
               >
                 Go Live
-              </Button>
+              </SuccessButton>
             </div>
           </div>
         </DialogContent>

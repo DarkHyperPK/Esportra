@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { cn } from '@/lib/utils';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -45,8 +46,6 @@ const ACCENTS: Record<Accent, {
     iconBg: 'bg-rose-500/10',
     dotActive: 'bg-rose-500',
     dotDone: 'bg-rose-500/40',
-    cta: 'bg-white text-black hover:bg-white/90 font-mono font-bold uppercase tracking-wider',
-    ctaShadow: '',
   },
   cyan: {
     icon: 'text-cyan-400',
@@ -54,8 +53,6 @@ const ACCENTS: Record<Accent, {
     iconBg: 'bg-cyan-500/10',
     dotActive: 'bg-cyan-500',
     dotDone: 'bg-cyan-500/40',
-    cta: 'bg-white text-black hover:bg-white/90 font-mono font-bold uppercase tracking-wider',
-    ctaShadow: '',
   },
   violet: {
     icon: 'text-violet-400',
@@ -63,8 +60,6 @@ const ACCENTS: Record<Accent, {
     iconBg: 'bg-violet-500/10',
     dotActive: 'bg-violet-500',
     dotDone: 'bg-violet-500/40',
-    cta: 'bg-white text-black hover:bg-white/90 font-mono font-bold uppercase tracking-wider',
-    ctaShadow: '',
   },
 };
 
@@ -226,14 +221,10 @@ const JourneyTour = ({ slides, accent = 'rose', finalCta = 'Done', onComplete }:
               Back
             </Button>
 
-            <Button
+            <JackButton
               size="sm"
               onClick={goNext}
-              className={cn(
-                'h-10 px-6 text-white font-heading font-semibold uppercase tracking-wider text-xs rounded-full transition-all',
-                palette.cta,
-                palette.ctaShadow,
-              )}
+              className="h-10 px-6 rounded-full"
             >
               {isLast ? finalCta : (
                 <>
@@ -241,7 +232,7 @@ const JourneyTour = ({ slides, accent = 'rose', finalCta = 'Done', onComplete }:
                   <ChevronRight className="w-4 h-4 ml-1" />
                 </>
               )}
-            </Button>
+            </JackButton>
           </div>
         </div>
       </motion.div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Footer from '@/components/Footer';
 import { motion } from 'framer-motion';
 import { Mail, MessageSquare, MapPin, Send } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -120,9 +120,9 @@ const ContactStandalone: React.FC = () => {
                 <Textarea placeholder="How can we help?" className="min-h-[150px] resize-none" required />
               </div>
 
-              <Button
+              <JackButton
                 type="submit"
-                className="w-full h-12 bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider transition-all"
+                className="w-full h-12"
                 disabled={loading}
               >
                 {loading ? (
@@ -135,7 +135,7 @@ const ContactStandalone: React.FC = () => {
                     Send Message <Send className="w-4 h-4" />
                   </span>
                 )}
-              </Button>
+              </JackButton>
             </form>
           </motion.div>
 

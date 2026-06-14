@@ -233,23 +233,36 @@ container: {
 
 ### Buttons
 
-**App button catalog (preferred)**
+**Never override `Button` colors via `className`.** Partial Tailwind overrides leave orphan hover/focus classes from the default rose CTA variant (e.g. `hover:text-white` on a white button = invisible text). Use semantic components only.
 
-Import from `@/components/ui/app-buttons` instead of styling raw `Button` with `bg-white` / `hover:bg-white*`. Partial color overrides leave orphan hover classes (e.g. white text on white background).
+| Button role | Component | Notes |
+|-------------|-----------|-------|
+| White primary CTA (license apply, accept invite, contact submit) | `JackButton` (`variant="primary"`) | Rose panel slides up on hover; black text default |
+| Rose primary CTA (save, register, confirm) | `CtaButton` | Rose fill |
+| Live / match actions (enter match room, check-in, go live) | `SuccessButton` | Green fill; green border and focus ring |
+| Cancel / secondary | `CancelButton`, `OutlineButton` | Muted / glass |
+| Rare solid white (no animation) | `AccentButton` | White → zinc hover; black text throughout |
+
+**App button catalog**
+
+Import from `@/components/ui/app-buttons` (or `JackButton` for white CTAs). Variants live in `button-variants.ts`.
 
 | Component | Use for |
 |-----------|---------|
 | `CtaButton` | Primary actions — register, save, join, confirm |
+| `SuccessButton` | Live actions — match room, check-in, go live |
 | `CancelButton` | Dialog cancel, dismiss, back |
 | `OutlineButton` | Tertiary / bordered actions |
 | `GhostButton` | Toolbar, inline low-emphasis |
 | `DangerButton` | Delete, withdraw, revoke |
-| `AccentButton` | Rare high-contrast white emphasis |
+| `AccentButton` | Rare high-contrast white emphasis (no rose slide) |
 | `SettingsButton` | Secondary panel actions |
 
-Use `className` only for layout (`w-full`, `h-12`, spacing). Variants live in `button-variants.ts`.
+Use `className` only for layout (`w-full`, `h-12`, `flex-1`, spacing). **No** `bg-`, `text-`, `border-`, or `hover:` color utilities on `Button`.
 
 Organizer wizard shell uses `CommandButton` from `CommandSurface.tsx` — separate from this catalog.
+
+Run `npm run check:buttons` (see `tools/check-button-antipatterns.cjs`) in CI to catch antipatterns.
 
 **Legacy gradient button classes**
 | Class | Gradient |

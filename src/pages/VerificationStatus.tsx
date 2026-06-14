@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -145,12 +146,11 @@ const VerificationStatus: React.FC = () => {
           <p className="text-gray-400 mb-6">
             As an admin, you don't need verification. You have full access to all platform features.
           </p>
-          <Button
+          <JackButton
             onClick={() => navigate('/admin/dashboard')}
-            className="bg-white text-black hover:bg-rose-500 hover:text-white text-white"
           >
             Go to Admin Dashboard
-          </Button>
+          </JackButton>
         </div>
       </div>
     );
@@ -229,13 +229,13 @@ const VerificationStatus: React.FC = () => {
                     <p className="text-gray-400 text-sm mb-4">
                       Apply for an Organizer License to host and manage tournaments.
                     </p>
-                    <Button
+                    <JackButton
                       onClick={() => { setRequestFor('organizer'); setShowRequestForm(true); }}
-                      className="bg-white text-black hover:bg-rose-500 hover:text-white rounded-none text-white shadow-lg shadow-rose-500/20"
+                      className="w-full"
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
                       Apply for License
-                    </Button>
+                    </JackButton>
                   </div>
                 )}
               </CardContent>
@@ -278,13 +278,13 @@ const VerificationStatus: React.FC = () => {
                     <p className="text-gray-400 text-sm mb-4">
                       Apply for a Venue Owner License to list and manage gaming venues.
                     </p>
-                    <Button
+                    <JackButton
                       onClick={() => { setRequestFor('venue_owner'); setShowRequestForm(true); }}
-                      className="bg-white text-black hover:bg-rose-500 hover:text-white rounded-none text-white shadow-lg shadow-emerald-500/20"
+                      className="w-full"
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
                       Apply for License
-                    </Button>
+                    </JackButton>
                   </div>
                 )}
               </CardContent>

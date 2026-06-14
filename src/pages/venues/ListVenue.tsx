@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -625,9 +626,9 @@ const ListVenue = () => {
               </Button>
 
               {currentStep < 6 ? (
-                <Button onClick={handleNext} className="bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider px-8">
+                <JackButton onClick={handleNext} className="px-8">
                   Next Step <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
+                </JackButton>
               ) : (
                 <div className="flex items-center gap-3">
                   <Button
@@ -638,13 +639,13 @@ const ListVenue = () => {
                   >
                     {loading ? 'Saving...' : 'Save as Draft'}
                   </Button>
-                  <Button
+                  <JackButton
                     onClick={() => handleSubmit('pending_review')}
                     disabled={loading}
-                    className="bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider px-8"
+                    className="px-8"
                   >
                     {loading ? 'Submitting...' : 'Submit for Review'}
-                  </Button>
+                  </JackButton>
                 </div>
               )}
             </div>

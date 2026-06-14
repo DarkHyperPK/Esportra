@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { JackButton } from "@/components/ui/JackButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -176,9 +177,9 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
         <section className="border border-red-500/30 bg-red-500/10 p-5 text-sm text-red-200">
           {getApiErrorMessage(error, "Bracket was not found.")}
         </section>
-        <Button asChild className="mt-4 bg-white text-black hover:bg-zinc-200">
-          <Link to="/tools/brackets">Back to brackets</Link>
-        </Button>
+        <JackButton as={Link} to="/tools/brackets" className="mt-4">
+          Back to brackets
+        </JackButton>
       </main>
     );
   }

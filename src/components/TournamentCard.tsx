@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button, SuccessButton } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Users, Trophy, CheckCircle, MapPin, Eye } from 'lucide-react';
@@ -277,12 +278,12 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
         <div className="h-0 opacity-0 group-hover:h-auto group-hover:opacity-100 transition-all duration-300 overflow-hidden">
           {isOrganizer ? (
             <div className="flex gap-2 w-full pt-2">
-              <Button
+              <JackButton
                 onClick={(e) => { e.stopPropagation(); navigate(`/organizer/tournament/${slug || id}`); }}
-                className="flex-1 bg-white text-black hover:bg-rose-500 hover:text-white transition-colors duration-300 font-bold"
+                className="flex-1"
               >
                 Manage
-              </Button>
+              </JackButton>
               <Button
                 variant="outline"
                 size="icon"
@@ -300,13 +301,13 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
               )}
             </div>
           ) : registrationData ? (
-            <Button
-              className="w-full font-bold tracking-wide bg-green-500 hover:bg-green-400 text-white shadow-lg shadow-green-900/20"
+            <SuccessButton
+              className="w-full font-bold tracking-wide"
               onClick={() => navigate(`/tournaments/${slug || id}`)}
             >
               <CheckCircle className="w-4 h-4 mr-2" />
               Registered
-            </Button>
+            </SuccessButton>
           ) : isLive ? (
             <Button
               className="w-full font-bold tracking-wide bg-red-600 hover:bg-red-500 animate-pulse text-white font-heading"

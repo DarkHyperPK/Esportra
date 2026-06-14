@@ -7,7 +7,7 @@ import { BracketNode } from '@/types/bracket-graph';
 import { BracketMatch } from '@/types/bracketTypes';
 import { MatchCard } from '@/pages/tournaments/brackets/MatchCard';
 import { ReadOnlyMatchCard } from './ReadOnlyMatchCard';
-import { Button } from '@/components/ui/button';
+import { Button, SuccessButton } from '@/components/ui/button';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Check, Copy, Gamepad2, Swords, RefreshCw } from 'lucide-react';
@@ -608,7 +608,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                         />
                         <div className="flex gap-3">
                             <Button variant="ghost" onClick={() => setGoLiveDialogOpen(false)} className="flex-1">Cancel</Button>
-                            <Button onClick={() => handleGoLive()} disabled={isProcessing || !partyCodeInput.trim()} className="flex-1 bg-green-600 hover:bg-green-500">Go Live</Button>
+                            <SuccessButton onClick={() => handleGoLive()} disabled={isProcessing || !partyCodeInput.trim()} className="flex-1">Go Live</SuccessButton>
                         </div>
                     </div>
                 </DialogContent>

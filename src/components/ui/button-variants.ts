@@ -32,6 +32,9 @@ export const buttonVariants = cva(
           "border-transparent bg-transparent text-zinc-400 hover:border-white/10 hover:bg-white/5 hover:text-white",
         destructive:
           "border-red-500/40 bg-red-950/20 text-red-200 hover:border-red-500 hover:bg-red-600 hover:text-white",
+        /** Live / match actions — enter room, check-in, go live. */
+        success:
+          "border-green-600 bg-green-600 text-white shadow-[0_0_40px_rgba(22,163,74,0.25)] hover:border-green-500 hover:bg-green-500 hover:text-white active:border-green-700 active:bg-green-700 focus-visible:ring-green-500/70",
         link:
           "border-transparent bg-transparent px-0 text-white underline-offset-4 hover:border-transparent hover:bg-transparent hover:text-rose-300 hover:underline",
       },
@@ -39,6 +42,7 @@ export const buttonVariants = cva(
         default: "h-10 px-5",
         sm: "h-9 px-3 text-[11px]",
         lg: "h-12 px-7",
+        hero: "h-14 px-8 text-base md:h-16 md:px-12 md:text-lg",
         icon: "h-10 w-10",
       },
     },

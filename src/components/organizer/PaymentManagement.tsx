@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, Clock, Eye, DollarSign, AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, SuccessButton } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -220,9 +220,9 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                       )}
                       {p.payment_status === 'pending' && (
                         <>
-                          <Button size="sm" onClick={() => handleApprove(p)} disabled={processingId === p.id} className="bg-green-600 hover:bg-green-700 text-white gap-1">
+                          <SuccessButton size="sm" onClick={() => handleApprove(p)} disabled={processingId === p.id} className="gap-1">
                             <CheckCircle className="w-3.5 h-3.5" /> Approve
-                          </Button>
+                          </SuccessButton>
                           <Button size="sm" variant="outline" onClick={() => openRejectDialog(p)} disabled={processingId === p.id} className="border-red-500/50 text-red-400 hover:bg-red-500/10 gap-1">
                             <XCircle className="w-3.5 h-3.5" /> Reject
                           </Button>
