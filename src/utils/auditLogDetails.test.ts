@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseAuditLogDetails } from './auditLogDetails';
+import { normalizeAuditDetails, parseAuditLogDetails } from './auditLogDetails';
 
 describe('parseAuditLogDetails', () => {
   it('extracts suspend reason from nested extra payload', () => {
@@ -23,5 +23,13 @@ describe('parseAuditLogDetails', () => {
 
     expect(parsed.reason).toBe('Chargeback abuse');
     expect(parsed.status).toBe('resolved');
+  });
+
+  it('normalizes JSON string details to a record', () => {
+    expect(
+      normalizeAuditDetails(
+        JSON.stringify({ tournament_name: 'Summer Cup', team1_score: 2 }),
+      ),
+    ).toEqual({ tournament_name: 'Summer Cup', team1_score: 2 });
   });
 });

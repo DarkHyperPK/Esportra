@@ -35,26 +35,27 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
+/** Normalize audit log details from API (jsonb may arrive as a JSON string). */
+export function normalizeAuditDetails(details: unknown): Record<string, unknown> {
+  if (!details) return {};
+  if (typeof details === 'string') {
+    try {
+      const parsed = JSON.parse(details) as unknown;
+      return asRecord(parsed) ?? {};
+    } catch {
+      return {};
+    }
+  }
+  return asRecord(details) ?? {};
+}
+
 function readString(value: unknown): string | undefined {
   if (typeof value === 'string' && value.trim()) return value.trim();
   return undefined;
 }
 
 export function parseAuditLogDetails(details: unknown): ParsedAuditDetails {
-  let root: Record<string, unknown> = {};
-
-  if (typeof details === 'string') {
-    try {
-      root = JSON.parse(details) as Record<string, unknown>;
-    } catch {
-      return {
-        extraFields: [{ label: 'Details', value: details }],
-        raw: { details },
-      };
-    }
-  } else if (asRecord(details)) {
-    root = asRecord(details)!;
-  }
+  const root = normalizeAuditDetails(details);
 
   const extra = asRecord(root.extra) ?? {};
   const merged = { ...root, ...extra };

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,13 @@ import {
 } from "@/lib/organizationStaff";
 import { StaffPermissionPicker, StaffPermissionChips } from "@/components/organizer/StaffPermissionPicker";
 import { invalidateStaffAccessCaches } from "@/lib/tournamentAccess";
+import {
+    auditActionLabel,
+    formatOrganizationAuditDetails,
+    isTournamentOpsAudit,
+    resolveOrganizationAuditLogLink,
+    shouldShowOrganizationAuditDetailLine,
+} from "@/utils/auditLogFormat";
 import { formatDistanceToNow } from "date-fns";
 import {
     ChevronDown,
@@ -130,6 +138,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const { user: currentUser } = useAuth();
+    const navigate = useNavigate();
 
     // The actor performing the action should be the current user
     const actorId = currentUser?.id || ownerId;
@@ -1175,8 +1184,31 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                         </div>
                     ) : (
                         <div className="space-y-1">
-                            {auditLogs.map((log) => (
-                                <div key={log.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-zinc-900/50 transition-all">
+                            {auditLogs.map((log) => {
+                                const auditLink = resolveOrganizationAuditLogLink(log.action, log.details);
+                                const isClickable = Boolean(auditLink);
+
+                                return (
+                                <div
+                                    key={log.id}
+                                    role={isClickable ? "button" : undefined}
+                                    tabIndex={isClickable ? 0 : undefined}
+                                    onClick={() => {
+                                        if (auditLink) navigate(auditLink);
+                                    }}
+                                    onKeyDown={(event) => {
+                                        if (!auditLink) return;
+                                        if (event.key === "Enter" || event.key === " ") {
+                                            event.preventDefault();
+                                            navigate(auditLink);
+                                        }
+                                    }}
+                                    className={`flex items-start gap-3 p-3 rounded-xl transition-all ${
+                                        isClickable
+                                            ? "hover:bg-zinc-900/70 cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+                                            : "hover:bg-zinc-900/50"
+                                    }`}
+                                >
                                     {/* Avatar */}
                                     <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center overflow-hidden flex-shrink-0 mt-0.5">
                                         {(log.actor as any)?.avatar_url ? (
@@ -1194,13 +1226,19 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                             <span className="text-sm font-medium text-white">
                                                 {(log.actor as any)?.full_name || (log.actor as any)?.username || "Unknown"}
                                             </span>
-                                            <Badge className="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700">
-                                                {log.action}
+                                            <Badge className="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700 normal-case tracking-normal font-sans font-medium">
+                                                {auditActionLabel(log.action, AUDIT_ACTION_OPTIONS)}
                                             </Badge>
                                         </div>
-                                        {log.details && Object.keys(log.details).length > 0 && (
-                                            <p className="text-xs text-zinc-500 mt-0.5 truncate">
-                                                {formatAuditDetails(log)}
+                                        {shouldShowOrganizationAuditDetailLine(log) && (
+                                            <p
+                                                className={
+                                                    isTournamentOpsAudit(log.action)
+                                                        ? "text-xs text-zinc-500 mt-0.5 leading-relaxed"
+                                                        : "text-xs text-zinc-500 mt-0.5 truncate"
+                                                }
+                                            >
+                                                {formatOrganizationAuditDetails(log)}
                                             </p>
                                         )}
                                     </div>
@@ -1210,7 +1248,8 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                         {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
                                     </span>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -1218,72 +1257,5 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
         </div>
     );
 };
-
-/** Format audit log details into a human-readable string */
-function formatAuditDetails(log: AuditLogEntry): string {
-    const d = log.details;
-    const formatPerms = (perms: unknown) => {
-        if (!Array.isArray(perms) || perms.length === 0) return "default permissions";
-        return perms.join(", ");
-    };
-    switch (log.action) {
-        case "staff.invite":
-            return `Invited ${d.invitedEmail || "user"} as ${d.role || "staff"} (${formatPerms(d.Permissions ?? d.permissions)})`;
-        case "staff.accept":
-            return "Accepted staff invitation";
-        case "staff.decline":
-            return "Declined staff invitation";
-        case "staff.remove":
-            return `Removed ${d.removedEmail || "a staff member"}`;
-        case "staff.update_permissions":
-            return `Updated role to ${d.role || d.Role || "unknown"} — ${formatPerms(d.Permissions ?? d.permissions)}`;
-        case "staff.update_assignment_permissions":
-            return d.Permissions === null || d.permissions === null
-                ? "Reset tournament permissions to org defaults"
-                : `Updated tournament permissions — ${formatPerms(d.Permissions ?? d.permissions)}`;
-        case "staff.assign_tournament":
-            return `Assigned to ${Array.isArray(d.tournamentIds) ? d.tournamentIds.length : 1} tournament(s)`;
-        case "staff.unassign_tournament":
-            return d.tournamentName
-                ? `Unassigned from ${d.tournamentName}`
-                : "Unassigned from a tournament";
-        case "venue.add":
-            return "Added venue to organization";
-        case "venue.remove":
-            return "Removed venue from organization";
-        case "match.go_live":
-            return formatTournamentMatchAudit(d, "Went live");
-        case "match.score_update":
-            return formatTournamentMatchAudit(
-                d,
-                `Score set to ${d.team1_score ?? "?"}–${d.team2_score ?? "?"}`,
-            );
-        case "match.finalize":
-            return formatTournamentMatchAudit(d, "Finalized match");
-        case "match.walkover":
-            return formatTournamentMatchAudit(d, "Awarded walkover");
-        case "match.reset":
-            return formatTournamentMatchAudit(d, "Reset match");
-        case "match.swap_teams":
-            return formatTournamentMatchAudit(d, "Swapped teams");
-        case "match.schedule_update":
-            return formatTournamentMatchAudit(d, "Updated match schedule");
-        case "tournament.schedule_bulk":
-            return `${d.tournament_name || "Tournament"} — bulk schedule (${d.matches_updated ?? 0} matches)`;
-        case "dispute.resolve":
-            return formatTournamentMatchAudit(d, "Resolved dispute");
-        case "dispute.reject":
-            return formatTournamentMatchAudit(d, "Rejected dispute");
-        default:
-            return JSON.stringify(d).slice(0, 80);
-    }
-}
-
-function formatTournamentMatchAudit(d: Record<string, unknown>, verb: string): string {
-    const tournament = d.tournament_name || "Tournament";
-    const match = d.match_label || d.matchup || "match";
-    const role = d.actor_role ? ` (${d.actor_role})` : "";
-    return `${tournament} — ${match}: ${verb}${role}`;
-}
 
 export default OrganizationStaffManager;

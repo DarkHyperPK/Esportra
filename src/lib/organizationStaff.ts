@@ -12,6 +12,7 @@
  */
 
 import { apiClient } from "@/lib/apiClient";
+import { normalizeAuditDetails } from "@/utils/auditLogFormat";
 import type { StaffPermission } from "@/types/staff";
 
 export type { StaffPermission } from "@/types/staff";
@@ -282,7 +283,16 @@ export const fetchAuditLogs = async ({
     if (actionFilter) qs.set('action', actionFilter);
     if (actorId) qs.set('actorId', actorId);
     if (tournamentId) qs.set('tournamentId', tournamentId);
-    return apiClient.get(`/api/organizations/${organizationId}/audit-logs?${qs}`);
+    const result = await apiClient.get<{ logs: AuditLogEntry[]; total: number }>(
+        `/api/organizations/${organizationId}/audit-logs?${qs}`,
+    );
+    return {
+        total: result.total,
+        logs: (result.logs ?? []).map((log) => ({
+            ...log,
+            details: normalizeAuditDetails(log.details),
+        })),
+    };
 };
 
 /** Fetch org's tournaments for assignment dropdown */
