@@ -20,8 +20,22 @@ describe('getMatchScheduleNotificationMeta', () => {
       'Playoffs',
       'Round 2, Match 1',
       'Alpha vs Bravo',
-      'Sat, Jun 14 · 3:00 PM UTC',
+      'Sun, Jun 14, 3:00 PM UTC',
     ]);
+  });
+
+  it('prefers scheduled_time over stale time_label', () => {
+    const meta = getMatchScheduleNotificationMeta({
+      type: 'match_schedule_changed',
+      data: {
+        matchup: 'Alpha vs Bravo',
+        time_label: 'Sun, Jun 14 · 8:18 PM UTC',
+        scheduled_time: '2026-06-14T20:30:00.000Z',
+      },
+    });
+
+    expect(meta?.timeLabel).toContain('8:30');
+    expect(meta?.timeLabel).not.toContain('8:18');
   });
 
   it('falls back to legacy message lines when data is sparse', () => {

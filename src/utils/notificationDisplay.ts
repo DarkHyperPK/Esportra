@@ -38,24 +38,24 @@ function formatMatchLabelFromData(data: Record<string, unknown>): string | null 
 }
 
 function formatTimeLabel(data: Record<string, unknown>): string | null {
-  const explicit = readString(data, 'time_label');
-  if (explicit) return explicit;
-
   const scheduledTime = readString(data, 'scheduled_time', 'scheduled_at');
-  if (!scheduledTime) return null;
+  if (scheduledTime) {
+    const parsed = new Date(scheduledTime);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'UTC',
+        timeZoneName: 'short',
+      });
+    }
+  }
 
-  const parsed = new Date(scheduledTime);
-  if (Number.isNaN(parsed.getTime())) return null;
-
-  return parsed.toLocaleString('en-GB', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'UTC',
-    timeZoneName: 'short',
-  });
+  return readString(data, 'time_label');
 }
 
 function legacyMessageLines(message?: string | null): string[] | null {
