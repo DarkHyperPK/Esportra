@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock, Mail } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
+import { SuccessButton } from '@/components/ui/app-buttons';
 import { JackButton } from '@/components/ui/JackButton';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
