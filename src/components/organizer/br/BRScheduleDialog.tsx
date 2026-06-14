@@ -6,6 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Calendar, Clock, Save, ChevronRight } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
+import { useBRStageConfig } from '@/hooks/useBRStageConfig';
+import { getStageBRConfig } from '@/utils/brConfigResolve';
+import { usesGameOnlySchedule } from '@/utils/brLobbyPatch';
 import type { BRRound } from '@/types/brLobbies';
 import type { BRGroup } from '@/types/brGroups';
 import type { Database } from '@/integrations/supabase/types';
@@ -42,6 +45,11 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
   onUpdate,
 }) => {
   const { toast } = useToast();
+  const brConfig = getStageBRConfig(stage);
+  const { apiConfig } = useBRStageConfig(stage.id);
+  const gamesModelActive = apiConfig?.gamesModelActive ?? false;
+  const gamesPerLobby = brConfig?.gamesPerLobby ?? brConfig?.gameCount ?? 6;
+  const gameOnlySchedule = usesGameOnlySchedule(gamesModelActive, gamesPerLobby);
 
   // Step state
   const [step, setStep] = useState<Step>('stage');
@@ -147,6 +155,14 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
   };
 
   const handleSaveRoundSchedules = async () => {
+    if (gameOnlySchedule) {
+      toast({
+        title: 'Use the Schedule tab',
+        description: 'Per-game start times are set on each game in the main Schedule tab.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setSavingRounds(true);
     try {
       let updated = 0;

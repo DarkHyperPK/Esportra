@@ -110,6 +110,19 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
       });
       return;
     }
+    if (
+      BR_FEATURE_FLAGS.mapsEnabled
+      && mapConfig.mode === 'per_round'
+      && supportsPerGameMaps(mapConfig, mapCatalogItems)
+      && !map?.trim()
+    ) {
+      toast({
+        title: 'Map required',
+        description: `Select a map for Game ${gameNumber} before starting it.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     await updateGame.mutateAsync({
       gameId,
       status: 'active',

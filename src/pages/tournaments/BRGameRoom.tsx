@@ -195,15 +195,17 @@ const BRGameRoom: React.FC = () => {
     () => resolveActiveBRGameQueue(lobbyGames),
     [lobbyGames],
   );
-  const usesPerGameQueue = lobbyGames.length > 0;
+  const usesPerGameQueue = Boolean(context.gamesModelActive);
 
   const queueTimerMinutes = usesPerGameQueue
     ? (activeGameFromContext?.queueTimerMinutes
-      ?? gameQueueFromLobby.queueTimerMinutes)
+      ?? gameQueueFromLobby.queueTimerMinutes
+      ?? null)
     : (activeRound?.queue_timer_minutes ?? context.activeRound?.queueTimerMinutes ?? null);
   const queueStartedAt = usesPerGameQueue
     ? (activeGameFromContext?.queueStartedAt
-      ?? gameQueueFromLobby.queueStartedAt)
+      ?? gameQueueFromLobby.queueStartedAt
+      ?? null)
     : (activeRound?.queue_started_at ?? context.activeRound?.queueStartedAt ?? null);
   const [queueRemainingSec, setQueueRemainingSec] = useState<number | null>(null);
 
@@ -554,7 +556,7 @@ const BRGameRoom: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-amber-400" />
                         <span className="text-xs font-semibold text-amber-200 uppercase tracking-wider">
-                          {isGameLive ? 'Queue closes in' : 'Lobby queue closes in'}
+                          {usesPerGameQueue || isGameLive ? 'Queue closes in' : 'Lobby queue closes in'}
                         </span>
                       </div>
                       <span className="text-lg font-mono font-bold text-amber-300 tabular-nums">

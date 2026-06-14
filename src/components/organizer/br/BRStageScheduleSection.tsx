@@ -10,6 +10,8 @@ import { formatBRStageFormatLabel } from '@/utils/brGameContext';
 import { computeStageFlows } from '@/utils/brStageFlow';
 import { useBRStageSchedule } from '@/hooks/useBRStageSchedule';
 import { getStageBRConfig } from '@/utils/brConfigResolve';
+import { useBRStageConfig } from '@/hooks/useBRStageConfig';
+import { usesGameOnlySchedule } from '@/utils/brLobbyPatch';
 import { generateBrSchedule } from '@/utils/brScheduleGenerator';
 import {
   formatMatchPairing,
@@ -55,6 +57,8 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
 }) => {
   const { toast } = useToast();
   const brConfig = getStageBRConfig(stage);
+  const { apiConfig } = useBRStageConfig(stage.id);
+  const gamesModelActive = apiConfig?.gamesModelActive ?? false;
   const stageFormat = brConfig?.format ?? 'static_groups';
   const isRotation = stageFormat === 'group_rotation';
   const scheduleCopy = getBRScheduleCopy(stageFormat);
@@ -149,10 +153,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   }, [stage.id, hasLobbies]);
 
   const gamesPerLobby = brConfig?.gamesPerLobby ?? brConfig?.gameCount ?? 6;
-  const hasGamesModel = useMemo(() => {
-    if (gamesPerLobby > 1) return true;
-    return Object.values(gamesByLobby).some((games) => games.length > 0);
-  }, [gamesPerLobby, gamesByLobby]);
+  const hasGamesModel = usesGameOnlySchedule(gamesModelActive, gamesPerLobby);
 
   const gameSchedulesDirty = useMemo(() => {
     for (const games of Object.values(gamesByLobby)) {

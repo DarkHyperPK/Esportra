@@ -15,6 +15,7 @@ import { resolveStageBRConfig } from '@/utils/brConfigResolve';
 
 /** API response from GET /api/stages/{stageId}/br/config */
 export interface ResolvedBrStageConfigApi {
+  gamesModelActive?: boolean;
   gamesPerLobby: number;
   mapConfig: {
     mode: BRMapMode;

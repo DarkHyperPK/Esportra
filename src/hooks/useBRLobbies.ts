@@ -78,13 +78,31 @@ export const useBRLobbies = (
   });
 
   const updateLobby = useMutation({
-    mutationFn: (params: { lobbyId: string; lobbyCode?: string | null; status?: string; scheduledAt?: string | null; queueTimerMinutes?: number | null; map?: string | null }) => {
+    mutationFn: (params: {
+      lobbyId: string;
+      lobbyCode?: string | null;
+      status?: string;
+      scheduledAt?: string | null;
+      queueTimerMinutes?: number | null;
+      map?: string | null;
+    }) => {
       const { lobbyId, ...body } = params;
       return apiClient.patch<BRRound>(`/api/br/lobbies/${lobbyId}`, body);
     },
-    onSuccess: async (data) => {
+    onSuccess: async (data, variables) => {
       await invalidateLobbyQueries(data.id);
-      const action = data.status === 'active' ? 'started' : data.status === 'completed' ? 'completed' : 'updated';
+      const isCodeOnlyUpdate =
+        variables.lobbyCode !== undefined
+        && variables.status === undefined
+        && variables.scheduledAt === undefined
+        && variables.queueTimerMinutes === undefined
+        && variables.map === undefined;
+      if (isCodeOnlyUpdate) return;
+      const action = data.status === 'active' && variables.status === 'active'
+        ? 'started'
+        : data.status === 'completed' && variables.status === 'completed'
+          ? 'completed'
+          : 'updated';
       toast({ title: `Lobby ${data.wave_number} ${action}` });
     },
     onError: (error: unknown) => {

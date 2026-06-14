@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useBRLobbies, useBRLobbyResults } from '@/hooks/useBRLobbies';
+import { useBRGames } from '@/hooks/useBRGames';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
 import { useToast } from '@/hooks/use-toast';
 import { BRGameRunList } from './BRGameRunList';
@@ -40,6 +41,7 @@ import { resolveMapFromConfig } from '@/hooks/useBRStageConfig';
 import { BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
 import { validateLiveActionInTournamentWindow } from '@/utils/tournamentScheduleValidation';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
+import { omitLobbyGameFieldsWhenGamesModel, usesPerGameLobbyUi } from '@/utils/brLobbyPatch';
 
 interface ScoringPreset {
   placements: number[];
@@ -69,6 +71,7 @@ interface RoundManagementPanelProps {
   /** When false, hides manual lobby creation (rotation stages use Schedule → Create matches). */
   allowCreateLobby?: boolean;
   gamesPerLobby?: number;
+  gamesModelActive?: boolean;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -89,6 +92,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   tournamentEndDate,
   allowCreateLobby = true,
   gamesPerLobby = 6,
+  gamesModelActive = false,
 }) => {
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
   const { connected } = useBRRealtime({ stageId, groupId, lobbyId: expandedRoundId });
@@ -136,14 +140,15 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
         await resetLobby.mutateAsync({ lobbyId: roundId, roundNumber });
       } else if (action === 'start') {
         const round = rounds.find((item) => item.id === roundId);
-        const usesPerGameQueue = (round?.game_count ?? 0) > 0;
         await updateLobby.mutateAsync({
           lobbyId: roundId,
-          status: statusMap[action],
-          lobbyCode: confirmAction.settings?.lobbyCode ?? null,
-          scheduledAt: confirmAction.settings?.scheduledAt ?? null,
-          ...(usesPerGameQueue ? {} : { queueTimerMinutes: confirmAction.settings?.queueTimerMinutes ?? null }),
-          map: confirmAction.settings?.map ?? null,
+          ...omitLobbyGameFieldsWhenGamesModel(gamesModelActive, round?.game_count, gamesPerLobby, {
+            status: statusMap[action],
+            lobbyCode: confirmAction.settings?.lobbyCode ?? null,
+            scheduledAt: confirmAction.settings?.scheduledAt ?? null,
+            queueTimerMinutes: confirmAction.settings?.queueTimerMinutes ?? null,
+            map: confirmAction.settings?.map ?? null,
+          }),
         });
       } else {
         await updateLobby.mutateAsync({ lobbyId: roundId, status: statusMap[action] });
@@ -163,13 +168,14 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
     map?: string | null,
   ) => {
     const round = rounds.find((item) => item.id === roundId);
-    const usesPerGameQueue = (round?.game_count ?? 0) > 0;
     await updateLobby.mutateAsync({
       lobbyId: roundId,
-      lobbyCode: lobbyCode || null,
-      scheduledAt,
-      ...(usesPerGameQueue ? {} : { queueTimerMinutes }),
-      map,
+      ...omitLobbyGameFieldsWhenGamesModel(gamesModelActive, round?.game_count, gamesPerLobby, {
+        lobbyCode: lobbyCode || null,
+        scheduledAt,
+        queueTimerMinutes,
+        map,
+      }),
     });
   };
 
@@ -240,6 +246,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               mapCatalogItems={mapCatalogItems}
               groupLobbyMode={allowCreateLobby}
               gamesPerLobby={gamesPerLobby}
+              gamesModelActive={gamesModelActive}
               isExpanded={expandedRoundId === round.id}
                onToggle={() => setExpandedRoundId(expandedRoundId === round.id ? null : round.id)}
                onStatusAction={(action, settings) => {
@@ -269,7 +276,14 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
                    }
                  }
 
-                 if (BR_FEATURE_FLAGS.mapsEnabled && action === 'start' && mapConfig.mode === 'per_round' && !round.map && !settings?.map) {
+                 if (
+                   BR_FEATURE_FLAGS.mapsEnabled
+                   && action === 'start'
+                   && mapConfig.mode === 'per_round'
+                   && !usesPerGameLobbyUi(gamesModelActive, gamesPerLobby)
+                   && !round.map
+                   && !settings?.map
+                 ) {
                    toast({
                      title: 'Map required',
                      description: 'Select a map for this round before starting it.',
@@ -317,7 +331,9 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
             </AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
               {confirmAction?.action === 'start' && (allowCreateLobby
-                ? 'This publishes the lobby code to players in Match Room and opens the queue for this group.'
+                ? usesPerGameLobbyUi(gamesModelActive, gamesPerLobby)
+                  ? 'This publishes the lobby code to players in Match Room. Set map and queue timer on each game before starting them.'
+                  : 'This publishes the lobby code to players in Match Room and opens the queue for this group.'
                 : 'This will publish the current lobby code, schedule, and queue timer, then set the round live for players.')}
               {confirmAction?.action === 'complete' && 'This will lock the round results. You can re-open later if needed.'}
               {confirmAction?.action === 'reopen' && 'This will unlock the round for result editing. Any leaderboard standings calculated from this round may change if results are modified.'}
@@ -373,6 +389,7 @@ export interface RoundRowProps {
   /** e.g. "A + B" for rotation lobbies */
   matchupLabel?: string;
   gamesPerLobby?: number;
+  gamesModelActive?: boolean;
 }
 
 export const RoundRow: React.FC<RoundRowProps> = ({
@@ -394,10 +411,13 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   tournamentStartDate,
   tournamentEndDate,
   gamesPerLobby = 6,
+  gamesModelActive = false,
 }) => {
   const { toast } = useToast();
+  const perGameLobbyUi = usesPerGameLobbyUi(gamesModelActive, gamesPerLobby);
+  const { data: lobbyGames = [] } = useBRGames(isExpanded && perGameLobbyUi ? round.id : null);
   const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
-    isExpanded ? round.id : null,
+    isExpanded && !perGameLobbyUi ? round.id : null,
     stageId,
     groupId
   );
@@ -412,7 +432,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   );
   const [settingsDirty, setSettingsDirty] = useState(false);
   const statusCfg = STATUS_CONFIG[round.status] ?? STATUS_CONFIG.pending;
-  const usesPerGameQueue = (round.game_count ?? 0) > 0 || gamesPerLobby > 1;
+  const usesPerGameQueue = perGameLobbyUi;
   const hasPendingEvidenceReview = (round.pending_evidence_count ?? 0) > 0;
   const hasSavedFullResults = useMemo(() => {
     if (teams.length === 0 || results.length !== teams.length) return false;
@@ -421,6 +441,11 @@ export const RoundRow: React.FC<RoundRowProps> = ({
     return teams.every((team) => resultIds.has(team.team_id))
       && results.every((result) => rosterIds.has(result.team_id));
   }, [teams, results]);
+  const allGamesCompleted = useMemo(() => {
+    if (!perGameLobbyUi) return hasSavedFullResults;
+    return lobbyGames.length > 0 && lobbyGames.every((game) => game.status === 'completed');
+  }, [perGameLobbyUi, lobbyGames, hasSavedFullResults]);
+  const canCompleteLobby = perGameLobbyUi ? allGamesCompleted : hasSavedFullResults;
   const hasRoundState = round.status !== 'pending'
     || round.result_count > 0
     || (round.evidence_count ?? 0) > 0
@@ -458,7 +483,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
     const previousCode = round.lobby_code ?? '';
     await onRoundSettingsSave({
       lobbyCode: settings.lobbyCode ?? '',
-      scheduledAt: settings.scheduledAt,
+      scheduledAt: usesPerGameQueue ? null : settings.scheduledAt,
       queueTimerMinutes: settings.queueTimerMinutes,
       ...(settings.map != null ? { map: settings.map } : {}),
     });
@@ -476,26 +501,26 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   };
 
   useEffect(() => {
-    if (round.status !== 'active') return;
+    if (round.status !== 'active' || !usesPerGameQueue) return;
     const trimmed = lobbyCode.trim();
     if (trimmed === (round.lobby_code ?? '')) return;
 
     const timer = window.setTimeout(() => {
       void onRoundSettingsSave({
         lobbyCode: trimmed || null,
-        scheduledAt: round.scheduled_at ?? null,
+        scheduledAt: null,
         queueTimerMinutes: null,
         map: null,
-      }).then(() => {
-        setSettingsDirty(false);
-        toast({
-          title: 'Lobby code updated',
-          description: 'Match Room updated for all players.',
+      })
+        .then(() => {
+          setSettingsDirty(false);
+        })
+        .catch(() => {
+          /* toast handled by hook */
         });
-      });
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [lobbyCode, round.status, round.lobby_code, round.scheduled_at, onRoundSettingsSave, toast]);
+  }, [lobbyCode, round.status, round.lobby_code, onRoundSettingsSave, toast, usesPerGameQueue]);
 
   const handleResultSave = async (resultInputs: BRResultInput[]) => {
     await submitResults.mutateAsync({ lobbyId: round.id, results: resultInputs });
@@ -683,9 +708,11 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                       Complete is locked until all submitted evidence is reviewed.
                     </p>
                   )}
-                  {!hasSavedFullResults && round.status === 'active' && (
+                  {!canCompleteLobby && round.status === 'active' && (
                     <p className="text-[10px] leading-relaxed text-amber-300/80">
-                      Save Results first, then complete the round.
+                      {perGameLobbyUi
+                        ? 'Complete every game in this lobby before completing the lobby.'
+                        : 'Save Results first, then complete the round.'}
                     </p>
                   )}
                 </div>
@@ -714,7 +741,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                     <CtaButton
                       size="sm"
                       onClick={() => onStatusAction('complete')}
-                      disabled={isUpdating || hasPendingEvidenceReview || !hasSavedFullResults}
+                      disabled={isUpdating || hasPendingEvidenceReview || !canCompleteLobby}
                       className="h-9 text-xs"
                     >
                       <CheckCircle className="w-3 h-3 mr-1" /> Complete
@@ -744,12 +771,14 @@ export const RoundRow: React.FC<RoundRowProps> = ({
           </div>
 
           {/* Results Grid */}
-          <RoundEvidencePanel
-            roundId={round.id}
-            stageId={stageId}
-            groupId={groupId}
-            realtimeConnected={realtimeConnected}
-          />
+          {!perGameLobbyUi && (
+            <RoundEvidencePanel
+              roundId={round.id}
+              stageId={stageId}
+              groupId={groupId}
+              realtimeConnected={realtimeConnected}
+            />
+          )}
 
           <BRGameRunList
             lobbyId={round.id}

@@ -216,6 +216,7 @@ export interface BRPlayerContext {
   groupId: string | null;
   groupName: string | null;
   assignmentHint?: 'not_registered' | 'check_in_required' | 'registered_not_seeded' | null;
+  gamesModelActive?: boolean;
   gamesPerLobby?: number;
   totalRounds: number;
   completedRounds: number;
@@ -268,6 +269,7 @@ export const useBRPlayerContext = (
     groupId: null,
     groupName: null,
     stageName: null,
+    gamesModelActive: false,
     totalRounds: 0,
     completedRounds: 0,
     activeRound: null,

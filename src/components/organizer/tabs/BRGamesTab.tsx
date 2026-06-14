@@ -74,12 +74,13 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     const catalogBrConfig = catalogGame?.brConfig;
     const mapCatalogItems = useMemo(() => getCatalogMapItems(catalogBrConfig), [catalogBrConfig]);
 
-    const { config: resolvedStageConfig } = useBRStageConfig(selectedStage?.id, {
+    const { config: resolvedStageConfig, apiConfig } = useBRStageConfig(selectedStage?.id, {
         tournamentSettings,
         stage: selectedStage ?? null,
         gameName: game,
         catalogBrConfig,
     });
+    const gamesModelActive = apiConfig?.gamesModelActive ?? false;
 
     const scoringPreset = useMemo(() => {
         if (resolvedStageConfig) {
@@ -394,6 +395,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                             groups={groups}
                             seedGroupCount={groups.length}
                             gamesPerMatch={resolvedStageConfig?.gamesPerLobby ?? resolvedStageConfig?.gameCount ?? 6}
+                            gamesModelActive={gamesModelActive}
                             scoringPreset={scoringPreset}
                             mapConfig={mapConfig}
                             mapCatalogItems={mapCatalogItems}
@@ -463,6 +465,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                 tournamentEndDate={tournamentEndDate}
                                 allowCreateLobby={!isGroupRotation}
                                 gamesPerLobby={resolvedStageConfig?.gamesPerLobby ?? resolvedStageConfig?.gameCount ?? 6}
+                                gamesModelActive={gamesModelActive}
                             />
                         </Card>
                     )}

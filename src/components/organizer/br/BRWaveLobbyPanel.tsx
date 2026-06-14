@@ -34,12 +34,15 @@ import {
   summarizeGroupRotationSchedule,
 } from '@/utils/brWaveScheduleDisplay';
 import { validateLiveActionInTournamentWindow } from '@/utils/tournamentScheduleValidation';
+import { omitLobbyGameFieldsWhenGamesModel, usesPerGameLobbyUi } from '@/utils/brLobbyPatch';
+import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 
 interface BRWaveLobbyPanelProps {
   stageId: string;
   groups: BRGroup[];
   seedGroupCount: number;
   gamesPerMatch?: number;
+  gamesModelActive?: boolean;
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
   mapCatalogItems?: BRMapCatalogItem[];
@@ -65,6 +68,8 @@ const RotationLobbyRow: React.FC<{
   mapCatalogItems: BRMapCatalogItem[];
   tournamentStartDate?: string | null;
   tournamentEndDate?: string | null;
+  gamesPerMatch: number;
+  gamesModelActive: boolean;
   isExpanded: boolean;
   onToggle: () => void;
   onStatusAction: Parameters<typeof RoundRow>[0]['onStatusAction'];
@@ -81,6 +86,8 @@ const RotationLobbyRow: React.FC<{
   mapCatalogItems,
   tournamentStartDate,
   tournamentEndDate,
+  gamesPerMatch,
+  gamesModelActive,
   isExpanded,
   onToggle,
   onStatusAction,
@@ -126,7 +133,9 @@ const RotationLobbyRow: React.FC<{
       tournamentStartDate={tournamentStartDate}
       tournamentEndDate={tournamentEndDate}
       matchupLabel={matchupLabel}
+      groupLobbyMode
       gamesPerLobby={gamesPerMatch}
+      gamesModelActive={gamesModelActive}
     />
   );
 };
@@ -136,6 +145,7 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
   groups,
   seedGroupCount,
   gamesPerMatch = 6,
+  gamesModelActive = false,
   scoringPreset,
   mapConfig,
   mapCatalogItems = [],
@@ -174,13 +184,14 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
     map?: string | null,
   ) => {
     const lobby = lobbies.find((item) => item.id === roundId);
-    const usesPerGameQueue = (lobby?.game_count ?? 0) > 0;
     await updateLobby.mutateAsync({
       lobbyId: roundId,
-      lobbyCode: lobbyCode || null,
-      scheduledAt,
-      ...(usesPerGameQueue ? {} : { queueTimerMinutes }),
-      map,
+      ...omitLobbyGameFieldsWhenGamesModel(gamesModelActive, lobby?.game_count, gamesPerMatch, {
+        lobbyCode: lobbyCode || null,
+        scheduledAt,
+        queueTimerMinutes,
+        map,
+      }),
     });
   };
 
@@ -188,7 +199,6 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
     if (!confirmAction) return;
     const { lobby, action, settings } = confirmAction;
     const roundNumber = lobby.round_number ?? lobby.wave_number;
-    const usesPerGameQueue = (lobby.game_count ?? 0) > 0;
     const statusMap = { start: 'active', complete: 'completed', reopen: 'active' } as const;
     try {
       if (action === 'reset') {
@@ -196,11 +206,13 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
       } else if (action === 'start') {
         await updateLobby.mutateAsync({
           lobbyId: lobby.id,
-          status: statusMap[action],
-          lobbyCode: settings?.lobbyCode ?? null,
-          scheduledAt: settings?.scheduledAt ?? null,
-          ...(usesPerGameQueue ? {} : { queueTimerMinutes: settings?.queueTimerMinutes ?? null }),
-          map: settings?.map ?? null,
+          ...omitLobbyGameFieldsWhenGamesModel(gamesModelActive, lobby.game_count, gamesPerMatch, {
+            status: statusMap[action],
+            lobbyCode: settings?.lobbyCode ?? null,
+            scheduledAt: settings?.scheduledAt ?? null,
+            queueTimerMinutes: settings?.queueTimerMinutes ?? null,
+            map: settings?.map ?? null,
+          }),
         });
       } else {
         await updateLobby.mutateAsync({ lobbyId: lobby.id, status: statusMap[action] });
@@ -275,6 +287,8 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
                 mapCatalogItems={mapCatalogItems}
                 tournamentStartDate={tournamentStartDate}
                 tournamentEndDate={tournamentEndDate}
+                gamesPerMatch={gamesPerMatch}
+                gamesModelActive={gamesModelActive}
                 isExpanded={expandedLobbyId === lobby.id}
                 onToggle={() =>
                   setExpandedLobbyId(expandedLobbyId === lobby.id ? null : lobby.id)
@@ -302,6 +316,29 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
                       });
                       return;
                     }
+                  }
+                  if (
+                    BR_FEATURE_FLAGS.mapsEnabled
+                    && action === 'start'
+                    && mapConfig.mode === 'per_round'
+                    && !usesPerGameLobbyUi(gamesModelActive, gamesPerMatch)
+                    && !lobby.map
+                    && !settings?.map
+                  ) {
+                    toast({
+                      title: 'Map required',
+                      description: 'Select a map for this match before starting it.',
+                      variant: 'destructive',
+                    });
+                    return;
+                  }
+                  if (action === 'complete' && (lobby.pending_evidence_count ?? 0) > 0) {
+                    toast({
+                      title: 'Evidence review required',
+                      description: 'Review or reopen all pending evidence submissions before completing this match.',
+                      variant: 'destructive',
+                    });
+                    return;
                   }
                   setConfirmAction({ lobby, action, settings });
                 }}
