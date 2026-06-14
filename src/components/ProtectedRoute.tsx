@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useRole } from "@/hooks/useRole";
 import { hasTournamentStaffAccess, useTournamentStaffAccess } from "@/hooks/useTournamentStaffAccess";
+import { useStaffAssignmentsSummary } from "@/hooks/useNavTeamStatus";
 import { isSuperAdminUser } from "@/lib/adminAccess";
 import { ProfileLoading } from "./profile/ProfileLoading";
 import { UserRole } from "@/types/auth";
@@ -16,6 +17,10 @@ interface ProtectedRouteProps {
    * Value is the route param name that holds the tournament slug (default: slug).
    */
   allowStaffForTournamentParam?: string;
+  /**
+   * When true, active organization staff may enter (e.g. org dashboard schedule view).
+   */
+  allowOrganizationStaff?: boolean;
   requiresAuth?: boolean;
 }
 
@@ -24,6 +29,7 @@ const ProtectedRoute = ({
   redirectTo = "/auth/signin",
   allowedRoles,
   allowStaffForTournamentParam,
+  allowOrganizationStaff = false,
   requiresAuth = true
 }: ProtectedRouteProps) => {
   const location = useLocation();
@@ -41,9 +47,24 @@ const ProtectedRoute = ({
     isLoading: staffAccessLoading,
   } = useTournamentStaffAccess(tournamentSlug);
 
+  const {
+    data: orgStaffAssignments = [],
+    isLoading: orgStaffLoading,
+  } = useStaffAssignmentsSummary();
+
+  const hasOrganizationStaffAccess =
+    allowOrganizationStaff &&
+    orgStaffAssignments.some((assignment: { status?: string }) => assignment.status === 'active');
+
   const waitingOnAdmin = Boolean(allowedRoles && admin.loading);
 
-  if (loading || roleLoading || waitingOnAdmin || (allowStaffForTournamentParam && staffAccessLoading)) {
+  if (
+    loading ||
+    roleLoading ||
+    waitingOnAdmin ||
+    (allowStaffForTournamentParam && staffAccessLoading) ||
+    (allowOrganizationStaff && orgStaffLoading)
+  ) {
     return <ProfileLoading error={authError} />;
   }
 
@@ -68,7 +89,7 @@ const ProtectedRoute = ({
       !!allowStaffForTournamentParam &&
       hasTournamentStaffAccess(scopedStaffAssignments, tournamentSlug);
 
-    if (!isSuperAdmin && !hasRole && !hasAdminPerm && !hasScopedStaffAccess) {
+    if (!isSuperAdmin && !hasRole && !hasAdminPerm && !hasScopedStaffAccess && !hasOrganizationStaffAccess) {
       return <Navigate to="/unauthorized" />;
     }
   }

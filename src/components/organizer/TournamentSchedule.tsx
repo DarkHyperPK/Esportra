@@ -43,6 +43,8 @@ const TournamentSchedule = () => {
       return (await apiClient.get<any[]>(`/api/organizer/schedule?start=${startOfDay.toISOString()}&end=${endOfDay.toISOString()}`).catch(() => [])) as ScheduledMatch[];
     },
     enabled: !!user?.id && !!date,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   return (
@@ -136,7 +138,7 @@ const TournamentSchedule = () => {
           ) : (
             <CommandEmptyState
               title="No matches scheduled"
-              description="Select another date or schedule matches from a tournament bracket."
+              description="Select another date, or schedule matches from a tournament you manage or are assigned to."
               icon={<CalendarIcon className="h-5 w-5" />}
             />
           )}
