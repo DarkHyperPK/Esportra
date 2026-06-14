@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
 import { useBRLobbyEvidence } from '@/hooks/useBRLobbies';
 import { getApiErrorMessage } from '@/lib/apiClient';
+import { getBREvidenceRowKey } from '@/utils/brEvidenceNormalize';
 import { CheckCircle2, ExternalLink, ImageIcon, RefreshCw, ShieldCheck } from 'lucide-react';
 
 interface RoundEvidencePanelProps {
@@ -74,7 +75,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
         <div className="grid gap-3">
           {evidence.map((entry) => (
             <div
-              key={`${entry.teamId}-${entry.gameNumber ?? gameNumber ?? 'lobby'}`}
+              key={getBREvidenceRowKey(entry, gameNumber)}
               className="rounded-xl border border-white/8 bg-white/[0.02] p-3"
             >
               <div className="flex flex-col gap-3 md:flex-row md:items-start">

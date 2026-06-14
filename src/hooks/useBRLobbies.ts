@@ -6,6 +6,7 @@ import { BR_CONFIG } from '@/config/brConfig';
 import type { BRRound, BRRoundResult, BRResultInput } from '@/types/brLobbies';
 import type { BREvidence } from '@/types/battleRoyale';
 import type { BRGroup } from '@/types/brGroups';
+import { normalizeBREvidenceList } from '@/utils/brEvidenceNormalize';
 
 const withRoundAlias = (lobby: BRRound): BRRound => ({
   ...lobby,
@@ -284,13 +285,15 @@ export const useBRLobbyEvidence = (
 
   const { data: evidence, isLoading, error, refetch, isError } = useQuery({
     queryKey: ['br-lobby-evidence', lobbyId, gameNumber, gameId],
-    queryFn: () => {
+    queryFn: async () => {
       if (lobbyId) {
         const suffix = gameNumber != null ? `?gameNumber=${gameNumber}` : '';
-        return apiClient.get<BREvidence[]>(`/api/br/lobbies/${lobbyId}/evidence${suffix}`);
+        const rows = await apiClient.get<unknown[]>(`/api/br/lobbies/${lobbyId}/evidence${suffix}`);
+        return normalizeBREvidenceList(rows, gameNumber);
       }
       if (gameId) {
-        return apiClient.get<BREvidence[]>(`/api/br/games/${gameId}/evidence`);
+        const rows = await apiClient.get<unknown[]>(`/api/br/games/${gameId}/evidence`);
+        return normalizeBREvidenceList(rows, gameNumber);
       }
       throw new Error('No lobby or game selected');
     },
