@@ -66,14 +66,13 @@ export const MatchRoomHero: React.FC<MatchRoomHeroProps> = ({
 
       <div className="relative z-10 mx-auto flex h-full max-w-[1180px] flex-col px-4 py-8 md:px-10 md:py-10">
         <div className="flex items-center justify-between gap-4">
-          <Button
-            variant="ghost"
+          <button type="button"
             className="pl-0 text-zinc-400 hover:text-white"
             onClick={onNavigateBack}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to tournament
-          </Button>
+          </button>
           <p className="hidden font-mono text-[10px] uppercase tracking-[0.35em] text-zinc-500 sm:block">
             {slug}
           </p>

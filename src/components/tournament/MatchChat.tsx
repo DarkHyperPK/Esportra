@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { GhostButton } from "@/components/ui/app-buttons";
 import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, Minimize2, Maximize2, ChevronDown, ShieldCheck, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { useMatchChat } from '@/hooks/useMatchChat';
@@ -133,14 +133,13 @@ const MatchChat: React.FC<MatchChatProps> = ({
                     </div>
                 </div>
                 {allowMinimize && (
-                    <Button
+                    <GhostButton
                         size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0 hover:bg-zinc-800/80 rounded-lg"
+                        className="h-8 w-8 p-0 rounded-lg"
                         onClick={() => setIsMinimized(true)}
                     >
                         <Minimize2 className="w-4 h-4 text-zinc-400" />
-                    </Button>
+                    </GhostButton>
                 )}
             </div>
 
@@ -233,13 +232,13 @@ const MatchChat: React.FC<MatchChatProps> = ({
             {/* Scroll to bottom button */}
             {showScrollButton && (
                 <div className="absolute bottom-20 left-1/2 -translate-x-1/2">
-                    <Button
+                    <GhostButton
                         size="sm"
                         onClick={scrollToBottom}
-                        className="rounded-full h-8 w-8 p-0 bg-zinc-800/95 hover:bg-zinc-700 shadow-lg border border-zinc-700"
+                        className="rounded-full h-8 w-8 p-0 shadow-lg"
                     >
                         <ChevronDown className="w-4 h-4" />
-                    </Button>
+                    </GhostButton>
                 </div>
             )}
 
@@ -254,13 +253,14 @@ const MatchChat: React.FC<MatchChatProps> = ({
                     disabled={!isConnected || sendMessage.isPending}
                     className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 focus-visible:ring-cyan-500/40 rounded-xl"
                 />
-                <Button
+                <button
+                    type="button"
                     onClick={handleSend}
                     disabled={!messageText.trim() || sendMessage.isPending || !isConnected}
-                    className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-zinc-800 disabled:text-zinc-500 px-3 rounded-xl shadow-lg shadow-cyan-950/30"
+                    className="inline-flex items-center justify-center bg-cyan-600 hover:bg-cyan-500 disabled:bg-zinc-800 disabled:text-zinc-500 px-3 h-10 rounded-xl shadow-lg shadow-cyan-950/30 transition-colors"
                 >
                     <Send className="w-4 h-4" />
-                </Button>
+                </button>
             </div>
         </Card>
     );

@@ -4,7 +4,7 @@ import { Code2, Copy, Download, RotateCcw, Share2, Trash2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import { CtaButton } from '@/components/ui/app-buttons';
 import { JackButton } from "@/components/ui/JackButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -195,41 +195,39 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
           <p className="mt-1 text-sm text-zinc-500">{formatBracketFormat(data.format)} · BO{data.bestOf} · {matches.length} matches</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+          <button type="button" asChild>
             <Link to="/tools/brackets">Saved brackets</Link>
-          </Button>
+          </button>
           {matches.length > 0 && (
             <BracketExporter
               matches={matches}
               downloadFileName={exportFileName}
               triggerButton={(
-                <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+                <button type="button">
                   <Download className="mr-2 h-4 w-4" /> Export PNG
-                </Button>
+                </button>
               )}
             />
           )}
           {mode === "owner" && canEmbed && (
-            <Button variant="outline" onClick={openEmbedDialog} className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+            <button type="button" onClick={openEmbedDialog}>
               <Code2 className="mr-2 h-4 w-4" /> Embed
-            </Button>
+            </button>
           )}
           {mode === "owner" && (
             <>
-              <Button disabled={saving} variant="outline" onClick={toggleSharing} className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+              <button type="button" disabled={saving} onClick={toggleSharing}>
                 <Share2 className="mr-2 h-4 w-4" /> {data.visibility === "unlisted" ? "Disable share" : "Enable share"}
-              </Button>
-              <Button disabled={saving} variant="outline" onClick={resetBracket} className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+              </button>
+              <button type="button" disabled={saving} onClick={resetBracket}>
                 <RotateCcw className="mr-2 h-4 w-4" /> Reset
-              </Button>
-              <Button
+              </button>
+              <button type="button"
                 disabled={saving}
-                variant="outline"
                 onClick={() => setDeleteOpen(true)}
-                className="border-red-500/30 bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-200"
               >
                 <Trash2 className="mr-2 h-4 w-4" /> Delete
-              </Button>
+              </button>
             </>
           )}
         </div>
@@ -239,9 +237,9 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
         <section className="mb-4 flex flex-col gap-2 border border-white/10 bg-black/35 p-3 text-sm sm:flex-row sm:items-center">
           <span className="text-zinc-400">Share:</span>
           <code className="min-w-0 flex-1 truncate text-xs text-zinc-300">{shareUrl}</code>
-          <Button size="sm" variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10" onClick={() => copyText(shareUrl).then(() => toast({ title: "Link copied" }))}>
+          <button type="button" size="sm" onClick={() => copyText(shareUrl).then(() => toast({ title: "Link copied" }))}>
             <Copy className="mr-2 h-4 w-4" /> Copy
-          </Button>
+          </button>
         </section>
       )}
 
@@ -283,12 +281,12 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
                 <Input type="number" min={0} value={team2Score} onChange={(e) => setTeam2Score(e.target.value)} className="border-white/10 bg-black/40 text-white" />
               </div>
               <div className="grid gap-2">
-                <Button disabled={saving || !selected.team1} onClick={() => saveMatch(selected.team1?.id)} className="bg-rose-600 text-white hover:bg-rose-500">
+                <CtaButton disabled={saving || !selected.team1} onClick={() => saveMatch(selected.team1?.id)}>
                   {selected.team1?.name ?? "Team 1"} wins
-                </Button>
-                <Button disabled={saving || !selected.team2} onClick={() => saveMatch(selected.team2?.id)} className="bg-rose-600 text-white hover:bg-rose-500">
+                </CtaButton>
+                <CtaButton disabled={saving || !selected.team2} onClick={() => saveMatch(selected.team2?.id)}>
                   {selected.team2?.name ?? "Team 2"} wins
-                </Button>
+                </CtaButton>
               </div>
             </div>
           ) : (
@@ -315,12 +313,12 @@ const PublicBracketWorkspace = ({ mode }: WorkspaceProps) => {
               rows={5}
               className="w-full resize-none rounded-md border border-white/10 bg-black/50 p-3 font-mono text-xs text-zinc-300"
             />
-            <Button
-              className="w-full bg-rose-600 text-white hover:bg-rose-500"
+            <CtaButton
+              className="w-full"
               onClick={() => copyText(embedCode).then(() => toast({ title: "Embed code copied" }))}
             >
               <Copy className="mr-2 h-4 w-4" /> Copy embed code
-            </Button>
+            </CtaButton>
           </div>
         </DialogContent>
       </Dialog>

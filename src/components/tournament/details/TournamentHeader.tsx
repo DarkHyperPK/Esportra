@@ -114,15 +114,14 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                         )}
                         {isOrganizer && (
                             <div className="absolute top-8 right-8 z-30">
-                                <Button
-                                    variant="outline"
+                                <button type="button"
                                     size="sm"
                                     onClick={() => (window as any).dispatchBannerEdit?.()}
                                     className="bg-black/40 border-white/10 text-white backdrop-blur-md hover:bg-white/10 flex items-center gap-2"
                                 >
                                     <Edit className="w-4 h-4" />
                                     EDIT BANNER
-                                </Button>
+                                </button>
                             </div>
                         )}
                     </motion.div>
@@ -220,13 +219,12 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                     </SuccessButton>
                                                 )}
                                                 {showInviteRedemption && onRedeemInvite && (
-                                                    <Button
+                                                    <button type="button"
                                                         onClick={onRedeemInvite}
-                                                        variant="outline"
                                                         className="h-14 md:h-16 px-8 md:px-12 border border-purple-500/40 bg-purple-600/20 hover:bg-purple-600/40 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none shadow-[0_0_30px_rgba(147,51,234,0.15)]"
                                                     >
                                                         <span className="flex items-center gap-2">HAVE INVITATION? <Mail className="w-5 h-5" /></span>
-                                                    </Button>
+                                                    </button>
                                                 )}
                                             </div>
                                         )}
@@ -237,9 +235,9 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                     PENDING APPROVAL
                                                 </div>
                                                 {isCaptain && (tournament.status === 'published' || tournament.status === 'open') && (
-                                                    <Button variant="outline" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
+                                                    <button type="button" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
                                                         WITHDRAW
-                                                    </Button>
+                                                    </button>
                                                 )}
                                             </div>
                                         )}
@@ -255,9 +253,9 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                     </SuccessButton>
                                                 )}
                                                 {(tournament.status === 'published' || tournament.status === 'open') && (
-                                                    <Button variant="outline" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
+                                                    <button type="button" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
                                                         WITHDRAW
-                                                    </Button>
+                                                    </button>
                                                 )}
                                             </div>
                                         )}

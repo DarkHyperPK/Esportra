@@ -38,7 +38,7 @@ const CreateTournamentForm = () => {
             onCheckboxChange={handleCheckboxChange}
           />
 
-          <Button 
+          <button type="button" 
             type="submit" 
             className="w-full bg-gaming-purple hover:bg-gaming-purple/80"
             disabled={loading}
@@ -49,7 +49,7 @@ const CreateTournamentForm = () => {
                 Creating Tournament...
               </>
             ) : 'Create Tournament'}
-          </Button>
+          </button>
         </form>
       </div>
     </div>

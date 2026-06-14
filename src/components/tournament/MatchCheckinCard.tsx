@@ -11,10 +11,15 @@ import { Countdown } from '@/components/ui/Countdown';
 import { competitorIdsMatch } from '@/utils/competitorId';
 import PartyCodeGoLiveCard from '@/components/tournament/PartyCodeGoLiveCard';
 import {
-    checkinWindowStartMs,
-    normalizeScheduledTime,
-    parseScheduledTimeMs,
+  checkinWindowStartMs,
+  normalizeScheduledTime,
+  parseScheduledTimeMs,
 } from '@/utils/scheduledTime';
+import {
+  getCheckinForfeitDisplay,
+  type ForfeitReason,
+  type MatchOutcome,
+} from '@/utils/matchForfeitDisplay';
 
 interface MatchCheckinCardProps {
     matchId: string;
@@ -29,6 +34,8 @@ interface MatchCheckinCardProps {
     checkInWindowMinutes?: number;
     checkinWindowOpen?: boolean;
     checkinWindowClosed?: boolean;
+    matchOutcome?: MatchOutcome;
+    forfeitReason?: ForfeitReason;
     hidePartyCodeInput?: boolean;
     initialPartyCode?: string | null;
     onPartyCodeGenerated?: (code: string) => void;
@@ -49,6 +56,8 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
     checkInWindowMinutes = 15,
     checkinWindowOpen,
     checkinWindowClosed,
+    matchOutcome = null,
+    forfeitReason = null,
     hidePartyCodeInput = false,
     initialPartyCode = null,
     onPartyCodeGenerated,
@@ -63,6 +72,9 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
         subscribeRealtime,
         scheduledTime,
         checkInWindowMinutes,
+        userTeamId,
+        matchOutcome,
+        forfeitReason,
     });
     const { toast } = useToast();
     const [partyCode, setPartyCode] = useState<string | null>(initialPartyCode);
@@ -114,6 +126,14 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
 
     const isTeam1 = competitorIdsMatch(userTeamId, team1Id);
     const myTeamCheckedIn = isTeam1 ? checkinStatus.team1CheckedIn : checkinStatus.team2CheckedIn;
+
+    const forfeitDisplay = getCheckinForfeitDisplay({
+        matchOutcome,
+        forfeitReason,
+        userTeamId,
+        team1Id,
+        team2Id,
+    });
 
     const copyCode = () => {
         if (partyCode) {
@@ -197,10 +217,33 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                             </div>
                         )}
 
-                        {windowClosed && !checkinStatus.bothCheckedIn && (
+                        {forfeitDisplay && (
+                            <div
+                                className={`text-center p-4 rounded-lg mb-4 border ${
+                                    forfeitDisplay.tone === 'walkover_win'
+                                        ? 'bg-emerald-500/10 border-emerald-500/20'
+                                        : 'bg-red-500/10 border-red-500/20'
+                                }`}
+                            >
+                                <p
+                                    className={`font-bold ${
+                                        forfeitDisplay.tone === 'walkover_win'
+                                            ? 'text-emerald-400'
+                                            : 'text-red-400'
+                                    }`}
+                                >
+                                    {forfeitDisplay.title}
+                                </p>
+                                <p className="text-zinc-400 text-xs mt-1">{forfeitDisplay.description}</p>
+                            </div>
+                        )}
+
+                        {windowClosed && !checkinStatus.bothCheckedIn && !forfeitDisplay && (
                             <div className="text-center p-4 bg-red-500/10 border border-red-500/20 rounded-lg mb-4">
                                 <p className="text-red-400 font-bold">Check-in Closed</p>
-                                <p className="text-zinc-400 text-xs mt-1">Check-in window has closed. A walkover will be awarded automatically.</p>
+                                <p className="text-zinc-400 text-xs mt-1">
+                                    Check-in window has closed. A walkover will be awarded automatically.
+                                </p>
                             </div>
                         )}
 
@@ -213,9 +256,9 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                                 <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Party Code</p>
                                 <div className="flex items-center justify-between">
                                     <code className="text-2xl font-mono font-bold text-rose-400 tracking-wider">{partyCode}</code>
-                                    <Button size="sm" variant="ghost" onClick={copyCode} className="hover:bg-rose-500/10">
+                                    <button type="button" size="sm" onClick={copyCode}>
                                         <Copy className="w-4 h-4" />
-                                    </Button>
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -230,7 +273,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
 
                         {isCaptain && (
                             <div className="space-y-4">
-                                {windowOpen && !windowClosed && !myTeamCheckedIn && (
+                                {windowOpen && !windowClosed && !myTeamCheckedIn && !forfeitDisplay && (
                                     <JackButton
                                         onClick={handleCheckIn}
                                         disabled={checkIn.isPending}

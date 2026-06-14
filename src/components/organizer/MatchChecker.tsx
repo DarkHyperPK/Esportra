@@ -107,9 +107,9 @@ const MatchChecker: React.FC<MatchCheckerProps> = ({ tournamentId: _tournamentId
             </button>
           )}
         </div>
-        <Button onClick={handleSearch} disabled={!matchIdInput.trim() || isLoading} className="bg-emerald-600 hover:bg-emerald-700">
+        <button type="button" onClick={handleSearch} disabled={!matchIdInput.trim() || isLoading}>
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-        </Button>
+        </button>
       </div>
 
       {error && (

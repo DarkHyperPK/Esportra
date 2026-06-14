@@ -190,13 +190,13 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     return (
         <div className="space-y-4 flex flex-col items-center">
             {isCaptain ? (
-                <Button
+                <button type="button"
                     onClick={() => setScanOpen(true)}
                     className={`w-full bg-rose-500 hover:bg-rose-600 transition-all text-white font-bold font-mono tracking-wider shadow-lg shadow-rose-900/20 ${className}`}
                 >
                     <Search className="w-4 h-4 mr-2" />
                     Auto-Fetch Game {gameNumber} Result
-                </Button>
+                </button>
             ) : (
                 <div className="flex items-center gap-2 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg mb-4">
                     <Info className="w-4 h-4 text-indigo-400" />
@@ -235,10 +235,10 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                 </div>
                             )}
                             <div className="flex justify-center mt-6">
-                                <Button onClick={handleScan} className="w-full max-w-[280px] bg-indigo-600 hover:bg-indigo-700">
+                                <button type="button" onClick={handleScan} className="w-full max-w-[280px] bg-indigo-600 hover:bg-indigo-700">
                                     <Search className="w-4 h-4 mr-2" />
                                     Scan Recent Matches
-                                </Button>
+                                </button>
                             </div>
                         </div>
                     )}
@@ -290,16 +290,15 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                             <div className="flex items-center justify-between">
                                 <p className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.2em]">Select Sequence</p>
                                 <div className="flex items-center gap-2">
-                                    <Button
+                                    <button type="button"
                                         size="sm"
-                                        variant="ghost"
                                         onClick={handleScan}
                                         disabled={submitting}
                                         className="h-6 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10"
                                     >
                                         <RefreshCcw className="w-3 h-3 mr-1.5" />
                                         Refetch
-                                    </Button>
+                                    </button>
                                     <span className="bg-zinc-800 text-[10px] px-2 py-0.5 rounded-full font-bold text-zinc-400 border border-zinc-700">
                                         {candidates.length} FOUND
                                     </span>
@@ -322,13 +321,12 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                             We couldn't find any recent <strong>{mapName}</strong> matches.
                                             Ensure the match is complete and public.
                                         </p>
-                                        <Button
-                                            variant="outline"
+                                        <button type="button"
                                             onClick={handleScan}
                                             className="border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 hover:border-indigo-500/50 text-indigo-400 h-10 px-8 font-black uppercase tracking-widest text-xs transition-all"
                                         >
                                             <RefreshCcw className="w-3 h-3 mr-2" /> Try Again
-                                        </Button>
+                                        </button>
                                     </div>
                                 </motion.div>
                             ) : (

@@ -195,33 +195,28 @@ const TournamentMapPoolSelector: React.FC<TournamentMapPoolSelectorProps> = ({
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                            <Button
+                            <button type="button"
                                 type="button"
-                                variant="outline"
                                 size="sm"
                                 onClick={() => onChange(recommendedIds)}
-                                className="text-xs"
                             >
                                 Select Recommended
-                            </Button>
-                            <Button
+                            </button>
+                            <button type="button"
                                 type="button"
-                                variant="outline"
                                 size="sm"
                                 onClick={() => onChange([])}
-                                className="text-xs"
                             >
                                 Clear All
-                            </Button>
-                            <Button
+                            </button>
+                            <button type="button"
                                 type="button"
                                 variant={showSelectedOnly ? 'default' : 'outline'}
                                 size="sm"
                                 onClick={() => setShowSelectedOnly((prev) => !prev)}
-                                className="text-xs"
                             >
                                 Show Selected Only
-                            </Button>
+                            </button>
                         </div>
                     </div>
 

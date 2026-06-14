@@ -8,7 +8,7 @@ import { OrganizerTeamCard } from '@/components/organizer/OrganizerTeamCard';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Footer from '@/components/Footer';
-import { Button } from '@/components/ui/button';
+import { DangerButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -1236,12 +1236,12 @@ const TournamentDashboard = () => {
                 (dashboardError ? `Error details: ${JSON.stringify(dashboardError)}` : null) ||
                 "We couldn't find the tournament you're looking for or you don't have permission to manage it."}
             </p>
-            <Button
+            <button type="button"
               onClick={() => navigate('/organizer/tournaments')}
               className="bg-red-600 hover:bg-red-500 font-bold px-8 py-6 rounded-none transition-all hover:scale-105"
             >
               Back to Tournaments
-            </Button>
+            </button>
           </div>
         </main>
         <Footer />
@@ -1983,19 +1983,17 @@ const TournamentDashboard = () => {
                           {canActAsOwner && (
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
                               <div className="flex gap-2">
-                                <Button
+                                <button type="button"
                                   onClick={() => refetchDashboard()}
-                                  variant="outline"
                                   size="sm"
-                                  className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
                                 >
                                   Refresh
-                                </Button>
+                                </button>
                               </div>
-                              <Button
+                              <DangerButton
                                 onClick={handleRemoveUncheckedParticipants}
                                 disabled={pendingCheckInParticipants <= 0 || removingUnchecked}
-                                className="bg-red-600 hover:bg-red-500 text-white w-full sm:w-auto shadow-lg shadow-red-900/20"
+                                className="w-full sm:w-auto shadow-lg shadow-red-900/20"
                                 size="sm"
                               >
                                 {removingUnchecked
@@ -2003,7 +2001,7 @@ const TournamentDashboard = () => {
                                   : registrationParticipantMode === 'solo'
                                     ? 'Remove unchecked players'
                                     : 'Remove unchecked teams'}
-                              </Button>
+                              </DangerButton>
                             </div>
                           )}
                         </CardContent>
@@ -2078,20 +2076,17 @@ const TournamentDashboard = () => {
                               placeholder={(tournament?.team_size ?? 1) > 1 ? 'captain@team.com' : 'player@email.com'}
                               className="border-white/10 bg-black/30 text-white"
                             />
-                            <Button
+                            <button type="button"
                               type="button"
-                              variant="outline"
                               onClick={handleAddInviteEmail}
                               disabled={effectiveReservedInviteSlots <= 0}
-                              className="border-white/10 bg-white/5 text-white hover:bg-white/10"
                             >
                               Add
-                            </Button>
-                            <Button
+                            </button>
+                            <button type="button"
                               type="button"
                               onClick={handleSendInviteEmails}
                               disabled={effectiveReservedInviteSlots <= 0 || draftInviteEmails.length === 0 || createInviteDrafts.isPending || sendInvites.isPending}
-                              className="bg-purple-600 hover:bg-rose-500 text-white"
                             >
                               {(createInviteDrafts.isPending || sendInvites.isPending) ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -2099,7 +2094,7 @@ const TournamentDashboard = () => {
                                 <Mail className="mr-2 h-4 w-4" />
                               )}
                               Send Codes
-                            </Button>
+                            </button>
                           </div>
 
                           {draftInviteEmails.length > 0 && (
@@ -2121,16 +2116,14 @@ const TournamentDashboard = () => {
 
                           {/* CSV Import */}
                           <div className="flex gap-2">
-                            <Button
+                            <button type="button"
                               type="button"
-                              variant="outline"
                               size="sm"
                               onClick={() => setShowCsvImport(!showCsvImport)}
                               disabled={effectiveReservedInviteSlots <= 0 || remainingInviteSlots <= 0}
-                              className="border-white/10 bg-white/5 text-white hover:bg-white/10 text-xs"
                             >
                               {showCsvImport ? 'Hide' : 'CSV Import'}
-                            </Button>
+                            </button>
                           </div>
 
                           {showCsvImport && (
@@ -2143,7 +2136,7 @@ const TournamentDashboard = () => {
                                 rows={4}
                                 className="w-full rounded-none border border-white/10 bg-black/30 p-3 text-sm text-white placeholder:text-zinc-600 focus:border-rose-500/50 focus:outline-none"
                               />
-                              <Button
+                              <button type="button"
                                 type="button"
                                 size="sm"
                                 onClick={() => {
@@ -2158,10 +2151,9 @@ const TournamentDashboard = () => {
                                   });
                                 }}
                                 disabled={importCsv.isPending || !csvImportText.trim() || effectiveReservedInviteSlots <= 0 || remainingInviteSlots <= 0}
-                                className="bg-purple-600 hover:bg-rose-500 text-white"
                               >
                                 {importCsv.isPending ? 'Importing...' : 'Import Emails'}
-                              </Button>
+                              </button>
                             </div>
                           )}
 
@@ -2199,9 +2191,8 @@ const TournamentDashboard = () => {
                                     </span>
                                     <div className="flex gap-1">
                                       {(invite.status === 'sent' || invite.status === 'expired') && (
-                                        <Button
+                                        <button type="button"
                                           type="button"
-                                          variant="ghost"
                                           size="sm"
                                           onClick={() => {
                                             resendInvites.mutate({ invitationIds: [invite.id] }, {
@@ -2213,19 +2204,18 @@ const TournamentDashboard = () => {
                                           className="justify-start text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 text-xs px-2"
                                         >
                                           Resend
-                                        </Button>
+                                        </button>
                                       )}
                                       {invite.status === 'sent' && (
-                                        <Button
+                                        <button type="button"
                                           type="button"
-                                          variant="ghost"
                                           size="sm"
                                           onClick={() => handleRevokeInvitation(invite.id)}
                                           disabled={revokeInvite.isPending}
                                           className="justify-start text-red-300 hover:bg-red-500/10 hover:text-red-200 text-xs px-2"
                                         >
                                           Revoke
-                                        </Button>
+                                        </button>
                                       )}
                                       {invite.status !== 'sent' && invite.status !== 'expired' && (
                                         <span className="text-xs text-gray-600">—</span>
@@ -2353,12 +2343,12 @@ const TournamentDashboard = () => {
                           Staff is now managed at the <strong>organization level</strong>.
                           Staff members added to your organization automatically gain access to all your tournaments.
                         </p>
-                        <Button
+                        <button type="button"
                           onClick={() => navigate('/organizer/settings?tab=staff')}
                           className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 py-3 rounded-none transition-all hover:scale-105"
                         >
                           Go to Organization Settings
-                        </Button>
+                        </button>
                       </CardContent>
                     </Card>
                   </TabTransition>
@@ -2406,14 +2396,13 @@ const TournamentDashboard = () => {
                                 <p className="font-semibold text-white">Manual Enforcement</p>
                                 <p className="text-sm text-gray-400">You can manually trigger removal of teams who haven't checked in yet.</p>
                               </div>
-                              <Button
-                                variant="destructive"
+                              <DangerButton
                                 onClick={handleRemoveUncheckedParticipants}
                                 disabled={removingUnchecked}
                                 className="w-full sm:w-auto min-w-[200px]"
                               >
                                 {removingUnchecked ? 'Processing...' : 'Remove Unchecked Teams'}
-                              </Button>
+                              </DangerButton>
                             </div>
                           </div>
                         </CardContent>
@@ -2494,13 +2483,12 @@ const TournamentDashboard = () => {
                             )}
 
                             <div className="flex justify-end px-4 pb-2">
-                              <Button
+                              <button type="button"
                                 onClick={handleSaveInviteSettings}
                                 disabled={savingInviteSettings}
-                                className="bg-purple-600 hover:bg-rose-500 text-white"
                               >
                                 {savingInviteSettings ? 'Saving...' : 'Save Invite Settings'}
-                              </Button>
+                              </button>
                             </div>
                           </CardContent>
                         </Card>
@@ -2628,9 +2616,8 @@ const TournamentDashboard = () => {
                   )}
                 </div>
                 <div className="p-6 pt-0 flex items-center justify-end gap-3">
-                  <Button variant="ghost" onClick={() => setTeamDialogOpen(false)} className="border border-white/10 text-white hover:bg-white/5 h-10 px-5 rounded-lg">Close</Button>
-                  <Button
-                    variant="destructive"
+                  <button type="button" onClick={() => setTeamDialogOpen(false)} className="border border-white/10 text-white hover:bg-white/5 h-10 px-5 rounded-lg">Close</button>
+                  <button type="button"
                     onClick={() => {
                       if (!selectedTeam) return;
                       setBanDialogOpen(true);
@@ -2640,7 +2627,7 @@ const TournamentDashboard = () => {
                     className="bg-red-500 hover:bg-red-600 text-white h-10 px-6 rounded-lg font-bold shadow-lg shadow-red-900/20 transition-all hover:scale-105"
                   >
                     Ban Team
-                  </Button>
+                  </button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -2700,16 +2687,15 @@ const TournamentDashboard = () => {
             className="bg-white/5 border-white/10 text-white min-h-[80px]"
           />
           <DialogFooter className="gap-2">
-            <Button variant="outline" className="border-white/10 text-white hover:bg-white/10" onClick={() => setShowRejectDialog(null)}>
+            <button type="button" onClick={() => setShowRejectDialog(null)}>
               Cancel
-            </Button>
-            <Button
-              className="bg-red-600 hover:bg-red-500 text-white"
+            </button>
+            <DangerButton
               disabled={!!rejectingPayment}
               onClick={() => showRejectDialog && handleRejectPayment(showRejectDialog)}
             >
               {rejectingPayment ? 'Rejecting...' : 'Reject Payment'}
-            </Button>
+            </DangerButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

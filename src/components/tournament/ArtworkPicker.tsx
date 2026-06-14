@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { Check, Image, Film, Loader2, Sun, Crop as CropIcon, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { CtaButton } from '@/components/ui/app-buttons';
 import { Slider } from '@/components/ui/slider';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/imageUtils';
@@ -188,14 +188,14 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
           </div>
         </div>
 
-        <Button
+        <CtaButton
           type="button"
           onClick={handleSaveEdit}
           disabled={saving}
-          className="w-full bg-rose-500 hover:bg-rose-600 text-white"
+          className="w-full"
         >
           {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing…</> : 'APPLY & USE ARTWORK'}
-        </Button>
+        </CtaButton>
       </div>
     );
   }
@@ -287,7 +287,7 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
                   {video.name && (
                     <p className="text-xs text-zinc-400 truncate flex-1">{video.name}</p>
                   )}
-                  <Button
+                  <button type="button"
                     type="button"
                     size="sm"
                     onClick={() => handleSelectVideo(video.videoId)}
@@ -299,7 +299,7 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
                     )}
                   >
                     {isSelected ? <><Check className="w-3 h-3 mr-1" /> Selected</> : 'Use as Banner'}
-                  </Button>
+                  </button>
                 </div>
               </div>
             );

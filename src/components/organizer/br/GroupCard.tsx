@@ -71,15 +71,14 @@ export const GroupCard: React.FC<GroupCardProps> = ({
           {isLocked && <Lock className="w-3 h-3 text-zinc-500" />}
         </div>
         {!isLocked && (
-          <Button
-            variant="ghost"
+          <button type="button"
             size="icon"
             onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
             disabled={isDeleting}
             className="h-7 w-7 text-zinc-500 hover:text-red-400 hover:bg-red-400/10"
           >
             <Trash2 className="w-3.5 h-3.5" />
-          </Button>
+          </button>
         )}
       </div>
 

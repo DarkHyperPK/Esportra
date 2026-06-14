@@ -71,38 +71,35 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
             {effectiveIsOrganizer && (
                 <div className="flex flex-wrap items-center gap-2">
                     {showShareLinks && team1LinkToken && (
-                        <Button
+                        <button type="button"
                             onClick={() => copyLink(team1LinkToken, 'team1', team1Name)}
-                            variant="outline"
                             size="sm"
                             className="gap-1.5 px-3 py-1.5 text-xs font-semibold border-white/20 text-white/80 hover:bg-white/10 hover:border-white/30"
                         >
                             {copiedTeam === 'team1' ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
                             {team1Name} Link
-                        </Button>
+                        </button>
                     )}
                     {showShareLinks && team2LinkToken && (
-                        <Button
+                        <button type="button"
                             onClick={() => copyLink(team2LinkToken, 'team2', team2Name)}
-                            variant="outline"
                             size="sm"
                             className="gap-1.5 px-3 py-1.5 text-xs font-semibold border-white/15 text-rose-400 hover:bg-rose-500/10 hover:border-white/25"
                         >
                             {copiedTeam === 'team2' ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
                             {team2Name} Link
-                        </Button>
+                        </button>
                     )}
                     {vetoId && (
-                        <Button
+                        <button type="button"
                             onClick={handleResetVeto}
                             disabled={resetting}
-                            variant="outline"
                             size="sm"
                             className="gap-2 px-3 py-1.5 text-xs font-semibold border-white/20 text-white/80 hover:bg-white/10 hover:text-white hover:border-white/30"
                         >
                             <RotateCcw className={cn('h-3.5 w-3.5', resetting && 'animate-spin')} />
                             {resetting ? 'Resetting...' : 'Reset'}
-                        </Button>
+                        </button>
                     )}
                 </div>
             )}

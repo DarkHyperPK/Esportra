@@ -17,7 +17,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
+import { GhostButton } from '@/components/ui/app-buttons';
 import { MoreVertical, Award, ArrowLeftRight, RotateCcw, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
@@ -226,13 +226,12 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
         <>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="ghost"
+                    <GhostButton
                         size="sm"
-                        className="h-8 w-8 p-0 hover:bg-zinc-800"
+                        className="h-8 w-8 p-0"
                     >
                         <MoreVertical className="h-4 w-4" />
-                    </Button>
+                    </GhostButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                     align="end"

@@ -898,23 +898,23 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
             </Button>
           )}
           {step < maxStep ? (
-            <Button
+            <button type="button"
               type="button"
               onClick={goNext}
               disabled={!canProceed && step >= structureStepIndex}
               className="bg-emerald-600 hover:bg-emerald-500 min-w-[8.5rem] h-11"
             >
               Continue
-            </Button>
+            </button>
           ) : (
-            <Button
+            <button type="button"
               type="button"
               onClick={handleSave}
               disabled={saving || !canProceed || validationErrors.length > 0}
               className="bg-emerald-600 hover:bg-emerald-500 min-w-[8.5rem] h-11"
             >
               {saving ? 'Saving...' : 'Save stage'}
-            </Button>
+            </button>
           )}
         </DialogFooter>
       </DialogContent>

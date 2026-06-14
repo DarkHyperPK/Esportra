@@ -238,9 +238,9 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
     return (
       <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 rounded-xl px-4 py-3">
         <span>Failed to load lobbies</span>
-        <Button variant="ghost" size="sm" onClick={() => refetch()} className="h-6 text-xs text-red-300">
+        <button type="button" size="sm" onClick={() => refetch()} className="h-6 text-xs text-red-300">
           <RefreshCw className="w-3 h-3 mr-1" /> Retry
-        </Button>
+        </button>
       </div>
     );
   }

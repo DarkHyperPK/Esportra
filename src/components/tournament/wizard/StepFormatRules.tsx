@@ -353,9 +353,8 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 ))}
                             </div>
                             <div className="flex items-center gap-2">
-                                <Button
+                                <button type="button"
                                     type="button"
-                                    variant="outline"
                                     size="sm"
                                     onClick={() => {
                                         const newPlacements = [...data.brCustomScoring!.placements, 0];
@@ -363,14 +362,12 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                             brCustomScoring: { ...data.brCustomScoring!, placements: newPlacements }
                                         });
                                     }}
-                                    className="text-xs"
                                 >
                                     <Plus className="w-3 h-3 mr-1" /> Add Position
-                                </Button>
+                                </button>
                                 {data.brCustomScoring.placements.length > 3 && (
-                                    <Button
+                                    <button type="button"
                                         type="button"
-                                        variant="outline"
                                         size="sm"
                                         onClick={() => {
                                             const newPlacements = data.brCustomScoring!.placements.slice(0, -1);
@@ -378,10 +375,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                                 brCustomScoring: { ...data.brCustomScoring!, placements: newPlacements }
                                             });
                                         }}
-                                        className="text-xs"
                                     >
                                         <Trash2 className="w-3 h-3 mr-1" /> Remove Last
-                                    </Button>
+                                    </button>
                                 )}
                             </div>
                             <div className="grid grid-cols-2 gap-4">

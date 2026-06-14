@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
+import { CtaButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -223,13 +223,13 @@ const MatchResultUpload: React.FC<Props> = ({
         />
 
         <div className="text-right">
-          <Button
+          <CtaButton
             disabled={submitting || !scoresValid}
             onClick={onSubmit}
-            className="bg-rose-500 hover:bg-rose-600 text-white disabled:opacity-50"
+            className="disabled:opacity-50"
           >
             {submitting ? 'Submitting...' : 'Submit Result'}
-          </Button>
+          </CtaButton>
         </div>
 
         {!isCaptain && (

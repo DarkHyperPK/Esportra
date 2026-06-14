@@ -207,15 +207,13 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                                 <div className="text-emerald-400">{section.icon}</div>
                                 <h3 className="font-semibold text-white">{section.title}</h3>
                             </div>
-                            <Button
-                                variant="ghost"
+                            <button type="button"
                                 size="sm"
                                 onClick={() => onEdit(section.step)}
-                                className="text-gray-400 hover:text-white"
                             >
                                 <Edit2 className="w-4 h-4 mr-1" />
                                 Edit
-                            </Button>
+                            </button>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {section.items.map((item, i) => (

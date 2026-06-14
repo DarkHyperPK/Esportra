@@ -324,29 +324,28 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                     <div className="flex items-center gap-2">
                         {/* BYE Button - Show when match has exactly one team and is not complete */}
                         {canAct && isByeMatch && !isComplete && onByeAdvance && (
-                            <Button
+                            <button type="button"
                                 size="sm"
                                 className="h-6 px-3 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded text-xs"
                                 onClick={(e) => { e.stopPropagation(); onByeAdvance(getRawId(id)); }}
                                 disabled={isProcessing}
                             >
                                 Advance BYE
-                            </Button>
+                            </button>
                         )}
                         {canAct && isComplete && !isEditing && (
-                            <Button
+                            <button type="button"
                                 size="sm"
-                                variant="outline"
                                 className="h-6 px-3 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800 font-medium rounded text-xs"
                                 onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
                                 disabled={isProcessing}
                             >
                                 Edit
-                            </Button>
+                            </button>
                         )}
                         {canAct && (isLive || isEditing) && (
                             isEditing ? (
-                            <Button
+                            <button type="button"
                                 size="sm"
                                 className="h-6 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded text-xs"
                                 onClick={async (e) => {
@@ -357,7 +356,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                 disabled={isProcessing}
                             >
                                 Update
-                            </Button>
+                            </button>
                             ) : (
                             <SuccessButton
                                 size="sm"
@@ -419,8 +418,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                 className="flex gap-2 flex-wrap"
                                                 layout
                                             >
-                                                <Button
-                                                    variant="outline"
+                                                <button type="button"
                                                     size="sm"
                                                     className={cn(
                                                         "flex-1 min-w-[80px] h-8 bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800",
@@ -441,36 +439,33 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                         <Eye className="w-3.5 h-3.5 mr-1.5" />
                                                     )}
                                                     Results
-                                                </Button>
+                                                </button>
 
                                                 {isOrganizer && (
                                                     <>
                                                         {!isLive && !isComplete && (
-                                                            <Button
-                                                                variant="outline"
+                                                            <button type="button"
                                                                 size="sm"
                                                                 className="flex-1 min-w-[80px] h-8 bg-green-900/20 border-green-900/30 text-green-400 hover:bg-green-900/40 hover:text-green-300"
                                                                 onClick={(e) => { e.stopPropagation(); onGoLive?.(match); }}
                                                                 disabled={isProcessing}
                                                             >
                                                                 <PlayCircle className="w-3.5 h-3.5 mr-1.5" /> Go Live
-                                                            </Button>
+                                                            </button>
                                                         )}
 
                                                         {onMapVeto && (
-                                                            <Button
-                                                                variant="outline"
+                                                            <button type="button"
                                                                 size="sm"
                                                                 className="flex-1 min-w-[80px] h-8 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300"
                                                                 onClick={(e) => { e.stopPropagation(); onMapVeto(match); }}
                                                             >
                                                                 <Swords className="w-3.5 h-3.5 mr-1.5" /> Veto
-                                                            </Button>
+                                                            </button>
                                                         )}
 
                                                         {canOpenMatchRoom && (
-                                                            <Button
-                                                                variant="outline"
+                                                            <button type="button"
                                                                 size="sm"
                                                                 className="h-8 px-2 bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300"
                                                                 onClick={(e) => { e.stopPropagation(); onMatchRoom(match); }}
@@ -479,7 +474,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                             >
                                                                 <MessageCircle className="w-3.5 h-3.5" />
                                                                 <ExternalLink className="w-3 h-3 ml-1" />
-                                                            </Button>
+                                                            </button>
                                                         )}
                                                     </>
                                                 )}
@@ -521,9 +516,8 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                 >
                                                     {isSubmitting ? '...' : 'Start'}
                                                 </SuccessButton>
-                                                <Button
+                                                <button type="button"
                                                     size="sm"
-                                                    variant="ghost"
                                                     className="h-8 px-2 text-zinc-400 hover:text-white"
                                                     onClick={() => {
                                                         setActionMode('default');
@@ -532,7 +526,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                                     disabled={isSubmitting}
                                                 >
                                                     <X className="w-4 h-4" />
-                                                </Button>
+                                                </button>
                                             </motion.div>
                                         )}
                                     </AnimatePresence>

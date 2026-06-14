@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, Clock, Eye, DollarSign, AlertTriangle } from 'lucide-react';
-import { Button, SuccessButton } from '@/components/ui/button';
+import { DangerButton, SuccessButton } from '@/components/ui/app-buttons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -150,7 +150,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
             </CardTitle>
             <div className="flex gap-2 flex-wrap">
               {(['pending', 'approved', 'rejected', 'all'] as PaymentFilter[]).map(f => (
-                <Button
+                <button type="button"
                   key={f}
                   size="sm"
                   variant={filter === f ? 'default' : 'outline'}
@@ -159,7 +159,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                 >
                   {f.charAt(0).toUpperCase() + f.slice(1)}
                   {f !== 'all' && <span className="ml-1 text-xs opacity-70">({counts[f]})</span>}
-                </Button>
+                </button>
               ))}
             </div>
           </div>
@@ -211,9 +211,9 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                     {/* Receipt + actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {p.payment_receipt_url && (
-                        <Button size="sm" variant="outline" onClick={() => viewReceipt(p)} disabled={loadingReceipt} className="border-zinc-700 text-zinc-400 hover:text-white gap-1">
+                        <button type="button" size="sm" onClick={() => viewReceipt(p)} disabled={loadingReceipt} className="border-zinc-700 text-zinc-400 hover:text-white gap-1">
                           <Eye className="w-3.5 h-3.5" /> Receipt
-                        </Button>
+                        </button>
                       )}
                       {!p.payment_receipt_url && p.payment_status === 'pending' && (
                         <span className="text-xs text-amber-500 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> No receipt</span>
@@ -223,9 +223,9 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                           <SuccessButton size="sm" onClick={() => handleApprove(p)} disabled={processingId === p.id} className="gap-1">
                             <CheckCircle className="w-3.5 h-3.5" /> Approve
                           </SuccessButton>
-                          <Button size="sm" variant="outline" onClick={() => openRejectDialog(p)} disabled={processingId === p.id} className="border-red-500/50 text-red-400 hover:bg-red-500/10 gap-1">
+                          <button type="button" size="sm" onClick={() => openRejectDialog(p)} disabled={processingId === p.id} className="border-red-500/50 text-red-400 hover:bg-red-500/10 gap-1">
                             <XCircle className="w-3.5 h-3.5" /> Reject
-                          </Button>
+                          </button>
                         </>
                       )}
                       {p.payment_status === 'rejected' && p.payment_rejection_reason && (
@@ -325,10 +325,10 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
             rows={3}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectDialogOpen(false)} className="border-zinc-700 text-zinc-400">Cancel</Button>
-            <Button onClick={handleReject} disabled={processingId === rejectTarget?.id} className="bg-red-600 hover:bg-red-700 text-white">
+            <button type="button" onClick={() => setRejectDialogOpen(false)}>Cancel</button>
+            <DangerButton onClick={handleReject} disabled={processingId === rejectTarget?.id}>
               Reject Payment
-            </Button>
+            </DangerButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

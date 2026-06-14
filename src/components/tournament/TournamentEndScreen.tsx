@@ -67,12 +67,12 @@ const TournamentEndScreen: React.FC<TournamentEndScreenProps> = ({ state, exitRo
                     )}
                 </div>
                 <div className="mt-6 flex gap-3 justify-center">
-                    <Button variant="outline" size="sm" className="border-zinc-700 hover:bg-zinc-800 text-zinc-400" onClick={() => onNavigate(`/tournaments/${slug}`)}>
+                    <button type="button" size="sm" onClick={() => onNavigate(`/tournaments/${slug}`)}>
                         View Tournament
-                    </Button>
-                    <Button size="sm" className="bg-zinc-800 hover:bg-zinc-700 text-white" onClick={() => onNavigate('/tournaments')}>
+                    </button>
+                    <button type="button" size="sm" onClick={() => onNavigate('/tournaments')}>
                         Find More Tournaments
-                    </Button>
+                    </button>
                 </div>
             </div>
         );
@@ -108,9 +108,9 @@ const TournamentEndScreen: React.FC<TournamentEndScreenProps> = ({ state, exitRo
                     ? 'The organizer is still finalizing the bracket.'
                     : 'No active matches in this round. Stay tuned!'}
             </p>
-            <Button variant="outline" size="sm" className="border-zinc-700 hover:bg-zinc-800 text-zinc-400" onClick={() => onNavigate(`/tournaments/${slug}`)}>
+            <button type="button" size="sm" onClick={() => onNavigate(`/tournaments/${slug}`)}>
                 Return to Tournament
-            </Button>
+            </button>
         </div>
     );
 };

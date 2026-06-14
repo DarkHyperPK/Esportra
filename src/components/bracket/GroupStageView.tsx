@@ -511,21 +511,20 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
             {/* Controls */}
             {isOrganizer && (
                 <div className="flex items-center gap-2 mb-4">
-                    <Button
+                    <button type="button"
                         onClick={handleAutoAdvanceByes}
                         className="bg-amber-600 hover:bg-amber-500 text-white font-medium"
                     >
                         Auto Advance Byes
-                    </Button>
+                    </button>
                     {isAllMatchesComplete && !isComplete && (
-                        <Button
+                        <button type="button"
                             onClick={handleRefreshCompletion}
-                            variant="outline"
                             className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-medium"
                         >
                             <RefreshCw className="w-4 h-4 mr-2" />
                             Refresh Progress
-                        </Button>
+                        </button>
                     )}
                     {(isComplete || alreadyAdvanced) && (
                         <div className="flex items-center gap-2">

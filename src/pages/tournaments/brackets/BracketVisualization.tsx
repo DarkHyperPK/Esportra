@@ -15,6 +15,7 @@ import { Copy, Check,
 } from 'lucide-react';
 import { MatchResultsDialog } from './dialogs/MatchResultsDialog';
 import { Button, SuccessButton } from '@/components/ui/button';
+import { CtaButton, GhostButton, OutlineButton, CancelButton } from '@/components/ui/app-buttons';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { BracketMatch } from '@/types/bracketTypes';
@@ -757,26 +758,28 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
   const renderViewToggle = () => (
     <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-zinc-950/80 p-1">
-      <Button
-        type="button"
-        size="sm"
-        variant={viewMode === 'bracket' ? 'default' : 'ghost'}
-        className={cn('h-8 gap-2 text-xs', viewMode === 'bracket' ? 'bg-rose-500 hover:bg-rose-600' : 'text-zinc-400 hover:text-white')}
-        onClick={() => setViewMode('bracket')}
-      >
-        <Network className="h-3.5 w-3.5" />
-        Bracket
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant={viewMode === 'matches' ? 'default' : 'ghost'}
-        className={cn('h-8 gap-2 text-xs', viewMode === 'matches' ? 'bg-rose-500 hover:bg-rose-600' : 'text-zinc-400 hover:text-white')}
-        onClick={() => setViewMode('matches')}
-      >
-        <List className="h-3.5 w-3.5" />
-        Matches
-      </Button>
+      {viewMode === 'bracket' ? (
+        <CtaButton type="button" size="sm" className="h-8 gap-2 text-xs" onClick={() => setViewMode('bracket')}>
+          <Network className="h-3.5 w-3.5" />
+          Bracket
+        </CtaButton>
+      ) : (
+        <GhostButton type="button" size="sm" className="h-8 gap-2 text-xs" onClick={() => setViewMode('bracket')}>
+          <Network className="h-3.5 w-3.5" />
+          Bracket
+        </GhostButton>
+      )}
+      {viewMode === 'matches' ? (
+        <CtaButton type="button" size="sm" className="h-8 gap-2 text-xs" onClick={() => setViewMode('matches')}>
+          <List className="h-3.5 w-3.5" />
+          Matches
+        </CtaButton>
+      ) : (
+        <GhostButton type="button" size="sm" className="h-8 gap-2 text-xs" onClick={() => setViewMode('matches')}>
+          <List className="h-3.5 w-3.5" />
+          Matches
+        </GhostButton>
+      )}
     </div>
   );
 
@@ -914,10 +917,10 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
             <BracketExporter
               matches={matches}
               triggerButton={
-                <Button variant="outline" className="w-full bg-zinc-900 border-zinc-700 hover:bg-zinc-800">
+                <OutlineButton className="w-full">
                   <Download className="w-4 h-4 mr-2" />
                   Export PNG
-                </Button>
+                </OutlineButton>
               }
             />
           </div>
@@ -1108,13 +1111,12 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
             {/* Buttons */}
             <div className="flex gap-3">
-              <Button
-                variant="ghost"
+              <CancelButton
                 onClick={() => setGoLiveDialogOpen(false)}
-                className="flex-1 h-12 bg-white/5 hover:bg-white/10 text-white/80 rounded-2xl"
+                className="flex-1 h-12 rounded-2xl"
               >
                 Cancel
-              </Button>
+              </CancelButton>
               <SuccessButton
                 onClick={() => handleGoLive()}
                 disabled={isProcessing || !partyCodeInput.trim()}

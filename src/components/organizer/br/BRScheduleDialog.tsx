@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { CtaButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar, Clock, Save, ChevronRight } from 'lucide-react';
@@ -358,42 +358,40 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
         <div className="px-6 py-4 border-t border-white/5 flex items-center gap-3">
           {step === 'stage' ? (
             <>
-              <Button variant="ghost" className="text-gray-400" onClick={() => onOpenChange(false)}>
+              <button type="button" onClick={() => onOpenChange(false)}>
                 Cancel
-              </Button>
+              </button>
               {hasRoundsConfigured && (
-                <Button
-                  variant="outline"
-                  className="border-white/10 text-gray-300 hover:text-white"
+                <button type="button"
                   onClick={handleSaveAndContinue}
                   disabled={savingStage || !startsAt || !endsAt}
                 >
                   <ChevronRight className="w-3.5 h-3.5 mr-1.5" />
                   {savingStage ? 'Saving...' : 'Save & Continue'}
-                </Button>
+                </button>
               )}
-              <Button
-                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white"
+              <CtaButton
+                className="flex-1"
                 onClick={handleSaveStageSchedule}
                 disabled={savingStage || !startsAt || !endsAt}
               >
                 <Save className="w-3.5 h-3.5 mr-1.5" />
                 {savingStage ? 'Saving...' : 'Save Stage Dates'}
-              </Button>
+              </CtaButton>
             </>
           ) : (
             <>
-              <Button variant="ghost" className="text-gray-400" onClick={() => setStep('stage')}>
+              <button type="button" onClick={() => setStep('stage')}>
                 Back
-              </Button>
-              <Button
-                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white"
+              </button>
+              <CtaButton
+                className="flex-1"
                 onClick={handleSaveRoundSchedules}
                 disabled={savingRounds || rounds.length === 0}
               >
                 <Save className="w-3.5 h-3.5 mr-1.5" />
                 {savingRounds ? 'Saving...' : 'Save Round Schedule'}
-              </Button>
+              </CtaButton>
             </>
           )}
         </div>

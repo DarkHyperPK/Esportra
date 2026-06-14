@@ -111,19 +111,17 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    <Button
+                    <button type="button"
                       type="button"
                       size="sm"
-                      variant="outline"
                       onClick={() => window.open(entry.imageUrl, '_blank', 'noopener,noreferrer')}
-                      className="border-white/10 bg-white/5 text-white hover:bg-white/10"
                     >
                       <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                       Open
-                    </Button>
+                    </button>
 
                     {!entry.reviewed && (
-                      <Button
+                      <button type="button"
                         type="button"
                         size="sm"
                         onClick={() => markReviewed({
@@ -136,25 +134,23 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                       >
                         <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
                         Mark reviewed
-                      </Button>
+                      </button>
                     )}
 
                     {entry.reviewed && (
-                      <Button
+                      <button type="button"
                         type="button"
                         size="sm"
-                        variant="outline"
                         onClick={() => markReviewed({
                           entityId: entry.teamId,
                           reviewed: false,
                           gameNumber: entry.gameNumber ?? gameNumber,
                         })}
                         disabled={isUpdating}
-                        className="border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10"
                       >
                         <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
                         Re-open
-                      </Button>
+                      </button>
                     )}
                   </div>
                 </div>

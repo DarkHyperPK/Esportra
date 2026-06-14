@@ -686,23 +686,21 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
             </Button>
           )}
           {step < maxStep ? (
-            <Button
+            <button type="button"
               type="button"
               onClick={goNext}
               disabled={!canProceed && step > 0}
-              className="bg-emerald-600 hover:bg-emerald-500"
             >
               Continue
-            </Button>
+            </button>
           ) : (
-            <Button
+            <button type="button"
               type="button"
               onClick={handleSave}
               disabled={saving || !canProceed || validationErrors.length > 0}
-              className="bg-emerald-600 hover:bg-emerald-500"
             >
               {saving ? 'Saving...' : 'Save stages'}
-            </Button>
+            </button>
           )}
         </DialogFooter>
       </DialogContent>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { CtaButton } from '@/components/ui/app-buttons';
 import { cn } from '@/lib/utils';
 import { MatchMapVeto, getVetoFormat, getSidePickerTeam, GameMap, VetoService } from '@/hooks/useMapVetoMachine';
 
@@ -80,19 +80,16 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                         </p>
                     </div>
                     <DialogFooter>
-                        <Button
+                        <button type="button"
                             onClick={() => setShowRoleSwitchPrompt(false)}
-                            variant="outline"
-                            className="bg-zinc-900 border-white/10 text-zinc-300 hover:bg-zinc-800 hover:text-white"
                         >
                             Stay as Organizer (View Only)
-                        </Button>
-                        <Button
+                        </button>
+                        <CtaButton
                             onClick={handleRoleSwitch}
-                            className="bg-rose-500 hover:bg-rose-600 text-white"
                         >
                             Switch to Player Role
-                        </Button>
+                        </CtaButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -145,13 +142,12 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                         </div>
                     </div>
                     <DialogFooter className="px-8 py-6 border-t border-white/10 bg-black/50 gap-3">
-                        <Button
+                        <button type="button"
                             onClick={() => setShowBODialog(false)}
-                            variant="outline"
                             className="bg-transparent border-white/20 text-white/80 hover:bg-rose-500 hover:text-white hover:border-transparent px-6"
                         >
                             Cancel
-                        </Button>
+                        </button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -197,7 +193,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                     })()}
 
                     <div className="space-y-3 py-4">
-                        <Button
+                        <CtaButton
                             onClick={async () => {
                                 if (pendingMapId) {
                                     await performMapAction(pendingMapId, 'pick_side', 'attack');
@@ -205,12 +201,12 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                     setPendingMapId(null);
                                 }
                             }}
-                            className="w-full h-20 bg-rose-500 hover:bg-rose-600 text-white text-lg font-black gap-3 border-2 border-white/20 flex items-center justify-center"
+                            className="w-full h-20 font-black gap-3 flex items-center justify-center"
                         >
                             <span className="rounded border border-white/30 bg-white/10 px-2 py-1 text-xs tracking-widest">ATK</span>
                             <span className="text-xl">ATTACK</span>
-                        </Button>
-                        <Button
+                        </CtaButton>
+                        <CtaButton
                             onClick={async () => {
                                 if (pendingMapId) {
                                     await performMapAction(pendingMapId, 'pick_side', 'defend');
@@ -218,24 +214,22 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                     setPendingMapId(null);
                                 }
                             }}
-                            className="w-full h-20 bg-white hover:bg-rose-500 text-matte-black hover:text-white text-lg font-black gap-3 border-2 border-white/20 hover:border-transparent flex items-center justify-center"
+                            className="w-full h-20 font-black gap-3 flex items-center justify-center"
                         >
                             <span className="rounded border border-black/20 bg-black/10 px-2 py-1 text-xs tracking-widest">DEF</span>
                             <span className="text-xl">DEFEND</span>
-                        </Button>
+                        </CtaButton>
                     </div>
                     <DialogFooter>
-                        <Button
-                            variant="outline"
+                        <button type="button"
                             onClick={() => {
                                 setShowSideDialog(false);
                                 setPendingMapId(null);
                                 setActionLoading(null);
                             }}
-                            className="border-white/20 text-white/80 hover:bg-rose-500 hover:text-white hover:border-transparent"
                         >
                             Cancel
-                        </Button>
+                        </button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

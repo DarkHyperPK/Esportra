@@ -152,7 +152,7 @@ const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
                 No teams qualified. Check that rounds have results recorded.
               </p>
             ) : (
-              <Button
+              <button type="button"
                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
                 onClick={() => setShowConfirm(true)}
                 disabled={execute.isPending}
@@ -163,7 +163,7 @@ const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
                   <ArrowRight className="w-4 h-4 mr-2" />
                 )}
                 Advance {previewData.total_qualified} Teams to Finals
-              </Button>
+              </button>
             )}
           </div>
         )}

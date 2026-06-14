@@ -211,14 +211,13 @@ export const BRStageAdvancedConfig: React.FC<BRStageAdvancedConfigProps> = ({
         </div>
       )}
 
-      <Button
+      <button type="button"
         size="sm"
         onClick={handleSave}
         disabled={saving}
-        className="bg-emerald-600 hover:bg-emerald-500"
       >
         {saving ? 'Saving...' : 'Save stage options'}
-      </Button>
+      </button>
     </div>
   );
 };

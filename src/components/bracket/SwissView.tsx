@@ -495,21 +495,19 @@ export const SwissView: React.FC<SwissViewProps> = ({
                 <div className="flex items-center justify-between gap-2 mb-4 relative">
                     {/* Left: Auto Advance */}
                     <div className="flex gap-2">
-                        <Button
+                        <button type="button"
                             onClick={handleAutoAdvanceByes}
                             className="bg-amber-600 hover:bg-amber-500 text-white font-medium"
                         >
                             Auto Advance Byes
-                        </Button>
-                        <Button
-                            variant="outline"
+                        </button>
+                        <button type="button"
                             onClick={handleUndoRound}
                             disabled={currentRound <= 1 || isGenerating}
-                            className="border-red-500/20 hover:bg-red-500/10 text-red-400"
                         >
                             <Undo2 className="w-4 h-4 mr-2" />
                             Undo Round
-                        </Button>
+                        </button>
                     </div>
 
                     {/* Center: Stage Complete Indicator */}
@@ -523,24 +521,22 @@ export const SwissView: React.FC<SwissViewProps> = ({
                     {/* Right: Generate Round or Finalize Stage */}
                     <div>
                         {!isMaxRoundsReached && (
-                            <Button
+                            <button type="button"
                                 onClick={handleGenerateNextRound}
                                 disabled={!isRoundComplete || isGenerating}
-                                className="bg-indigo-600 hover:bg-indigo-500"
                             >
                                 <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
                                 Generate Round {currentRound + 1}
-                            </Button>
+                            </button>
                         )}
                         {canFinalizeStage && !isComplete && (
-                            <Button
+                            <button type="button"
                                 onClick={handleRefreshCompletion}
-                                variant="outline"
                                 className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-semibold"
                             >
                                 <RefreshCw className="w-4 h-4 mr-2" />
                                 Refresh Progress
-                            </Button>
+                            </button>
                         )}
                         {(isComplete || alreadyAdvanced) && (
                             <div className="flex items-center gap-2">

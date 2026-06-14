@@ -54,9 +54,8 @@ export function MockModePanel({ tournamentId, slug, maxTeams, mockCount, canGene
 
                     <div className="mt-4 flex items-center gap-2 flex-wrap">
                         {canGenerate && (
-                            <Button
+                            <button type="button"
                                 size="sm"
-                                variant="outline"
                                 className="border-amber-500/30 text-amber-300 hover:bg-amber-500/10 h-8 text-xs"
                                 disabled={generate.isPending}
                                 onClick={() => generate.mutate(maxTeams)}
@@ -67,21 +66,20 @@ export function MockModePanel({ tournamentId, slug, maxTeams, mockCount, canGene
                                     : hasMock
                                         ? 'Regenerate mock teams'
                                         : `Generate ${maxTeams} mock teams`}
-                            </Button>
+                            </button>
                         )}
 
                         {hasMock && (
                             <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
                                 <AlertDialogTrigger asChild>
-                                    <Button
+                                    <button type="button"
                                         size="sm"
-                                        variant="ghost"
                                         className="text-red-400 hover:bg-red-500/10 h-8 text-xs"
                                         disabled={clear.isPending}
                                     >
                                         <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                                         {clear.isPending ? 'Clearing…' : 'Clear mock data'}
-                                    </Button>
+                                    </button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
                                     <AlertDialogHeader>

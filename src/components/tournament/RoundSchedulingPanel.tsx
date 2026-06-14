@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { CtaButton } from '@/components/ui/app-buttons';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -474,9 +474,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                             }}
                                             className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
                                         />
-                                        <Button
+                                        <CtaButton
                                             size="sm"
-                                            variant="secondary"
                                             onClick={() => handleSaveRound(cfgKey, roundIndex)}
                                             disabled={saving || !dirtyKeys.has(cfgKey) || !config?.deadline}
                                             className={!dirtyKeys.has(cfgKey) && (config?.deadline || serverDeadlines[cfgKey])
@@ -484,7 +483,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                 : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-xl px-4"}
                                         >
                                             {saving ? '...' : (!dirtyKeys.has(cfgKey) && (config?.deadline || serverDeadlines[cfgKey])) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
-                                        </Button>
+                                        </CtaButton>
                                     </div>
                                     <p className="text-xs text-gray-500">
                                         Teams have until the end of this day to complete their match
@@ -551,9 +550,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                         }}
                                                         className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
                                                     />
-                                                    <Button
+                                                    <CtaButton
                                                         size="sm"
-                                                        variant="secondary"
                                                         onClick={() => handleSaveRound(cfgKey, roundIndex)}
                                                         disabled={saving || !dirtyKeys.has(cfgKey)}
                                                         className={!dirtyKeys.has(cfgKey) && config?.startTime
@@ -561,7 +559,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                             : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-xl px-4"}
                                                     >
                                                         {saving ? '...' : (!dirtyKeys.has(cfgKey) && config?.startTime) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
-                                                    </Button>
+                                                    </CtaButton>
                                                 </div>
                                             </div>
                                             <p className="text-xs text-gray-500">
@@ -614,15 +612,14 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                                     onChange={(e) => updateMatchEdit(matchId, e.target.value ? localInputToUTC(e.target.value) : '')}
                                                                     className="h-8 bg-[#0a0a0c] border-white/5 text-[11px] text-white rounded-lg focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
                                                                 />
-                                                                <Button
+                                                                <button type="button"
                                                                     size="sm"
-                                                                    variant="ghost"
                                                                     onClick={() => handleSaveMatch(matchId)}
                                                                     disabled={saving || !matchEdits.has(matchId)}
                                                                     className="h-8 px-3 bg-white/5 hover:bg-rose-500/20 hover:text-rose-300 text-[10px] rounded-lg transition-all"
                                                                 >
                                                                     {saving ? '...' : 'Set Time'}
-                                                                </Button>
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     );

@@ -4,7 +4,7 @@ import { Download, FileUp, Save, Shuffle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient, ApiError, getApiErrorMessage } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import { CtaButton } from '@/components/ui/app-buttons';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -167,9 +167,9 @@ const PublicBracketBuilder = () => {
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-rose-400">Bracket tool</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight">Create Bracket</h1>
         </div>
-        <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+        <button type="button" asChild>
           <Link to="/tools/brackets">Saved brackets</Link>
-        </Button>
+        </button>
       </div>
 
       <div className="grid gap-5 lg:min-h-[calc(100dvh-11rem)] lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] lg:items-stretch">
@@ -232,12 +232,12 @@ const PublicBracketBuilder = () => {
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Button type="button" disabled={busy || Boolean(teamCountError)} onClick={generatePreview} variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+              <button type="button" type="button" disabled={busy || Boolean(teamCountError)} onClick={generatePreview}>
                 <Shuffle className="mr-2 h-4 w-4" /> Preview
-              </Button>
-              <Button type="button" disabled={busy || Boolean(teamCountError)} onClick={saveBracket} className="bg-rose-600 text-white hover:bg-rose-500">
+              </button>
+              <CtaButton type="button" disabled={busy || Boolean(teamCountError)} onClick={saveBracket}>
                 <Save className="mr-2 h-4 w-4" /> Save
-              </Button>
+              </CtaButton>
             </div>
           </div>
         </section>
@@ -253,9 +253,9 @@ const PublicBracketBuilder = () => {
                 matches={matches}
                 downloadFileName={`${slugifyBracketFileName(title)}-preview.png`}
                 triggerButton={(
-                  <Button type="button" size="sm" variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+                  <button type="button" type="button" size="sm">
                     <Download className="mr-2 h-4 w-4" /> Export PNG
-                  </Button>
+                  </button>
                 )}
               />
             ) : null}

@@ -31,13 +31,13 @@ export const FloatingMatchChat: React.FC<FloatingMatchChatProps> = ({ children }
         </div>
       ) : null}
 
-      <Button
+      <button type="button"
         onClick={() => setOpen((value) => !value)}
         className="h-12 rounded-full bg-cyan-600 px-5 text-white shadow-2xl shadow-cyan-950/40 hover:bg-cyan-500"
       >
         <MessageCircle className="mr-2 h-4 w-4" />
         Chat
-      </Button>
+      </button>
     </div>
   );
 };

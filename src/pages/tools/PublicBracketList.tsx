@@ -80,9 +80,9 @@ const PublicBracketList = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button asChild variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+          <button type="button" asChild>
             <Link to="/tools/map-veto">Map veto</Link>
-          </Button>
+          </button>
           <CtaButton asChild>
             <Link to="/tools/brackets/new"><Plus className="mr-2 h-4 w-4" /> New bracket</Link>
           </CtaButton>
@@ -101,15 +101,14 @@ const PublicBracketList = () => {
       ) : error ? (
         <section className="border border-red-500/30 bg-red-500/10 p-5">
           <p className="text-sm text-red-200">{getApiErrorMessage(error, "Could not load your saved brackets.")}</p>
-          <Button
+          <button type="button"
             type="button"
-            variant="outline"
             className="mt-4 border-red-400/30 bg-transparent text-red-100 hover:bg-red-500/10"
             disabled={isFetching}
             onClick={() => void refetch()}
           >
             {isFetching ? "Retrying..." : "Try again"}
-          </Button>
+          </button>
         </section>
       ) : showListLoading ? (
         <section className="border border-white/10 bg-black/35 p-8 text-sm text-zinc-400">Loading saved brackets...</section>
@@ -138,15 +137,13 @@ const PublicBracketList = () => {
                   <CtaButton asChild size="sm" className="flex-1">
                     <Link to={`/tools/brackets/${id}`}>Open runner</Link>
                   </CtaButton>
-                  <Button
+                  <button type="button"
                     type="button"
                     size="sm"
-                    variant="outline"
-                    className="border-red-500/30 bg-transparent text-red-300 hover:bg-red-500/10 hover:text-red-200"
                     onClick={() => setDeleteTarget({ id: String(id), title: value(row, "title") || "Untitled bracket" })}
                   >
                     <Trash2 className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
               </article>
             );

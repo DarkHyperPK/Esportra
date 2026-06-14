@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { CtaButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
@@ -59,17 +59,17 @@ const PartyCodeGoLiveCard: React.FC<PartyCodeGoLiveCardProps> = ({
                         }
                     }}
                 />
-                <Button
+                <CtaButton
                     onClick={() => void submitPartyCode()}
                     disabled={isSubmitting || !manualCode.trim()}
-                    className="bg-rose-500 hover:bg-rose-600 transition-all text-white font-semibold px-6 shrink-0"
+                    className="transition-all font-semibold px-6 shrink-0"
                 >
                     {isSubmitting ? (
                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                         'Share & Go Live'
                     )}
-                </Button>
+                </CtaButton>
             </div>
         </div>
     );

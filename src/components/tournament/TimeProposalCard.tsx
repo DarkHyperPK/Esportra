@@ -179,7 +179,7 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                     {!activeProposal && !showPicker && isCaptain && (
                         <div className="space-y-2">
                             {suggestedStartTime && (
-                                <Button
+                                <button type="button"
                                     onClick={() => void handleProposeSuggestedStart()}
                                     disabled={proposeTime.isPending}
                                     className="w-full bg-emerald-600 hover:bg-emerald-500 transition-all text-white font-semibold"
@@ -188,9 +188,9 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                                     {proposeTime.isPending
                                         ? 'Sending...'
                                         : `Propose tournament start (${format(new Date(suggestedStartTime), 'MMM d, h:mm a')} ${getTimezoneAbbr()})`}
-                                </Button>
+                                </button>
                             )}
-                            <Button
+                            <button type="button"
                                 onClick={() => {
                                     if (suggestedStartTime) {
                                         setProposedDate(utcToLocalDate(suggestedStartTime));
@@ -205,7 +205,7 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                             >
                                 <Calendar className="w-4 h-4 mr-2" />
                                 {suggestedStartTime ? 'Pick a different time' : 'Propose Match Time'}
-                            </Button>
+                            </button>
                         </div>
                     )}
 
@@ -258,20 +258,18 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                                 })()
                             )}
                             <div className="flex gap-2">
-                                <Button
+                                <button type="button"
                                     onClick={handlePropose}
                                     disabled={proposeTime.isPending || (roundDeadline && new Date(`${proposedDate}T${proposedTime}`) > new Date(roundDeadline))}
                                     className="flex-1 bg-blue-600 hover:bg-blue-700"
                                 >
                                     {proposeTime.isPending ? 'Sending...' : 'Send Proposal'}
-                                </Button>
-                                <Button
-                                    variant="ghost"
+                                </button>
+                                <button type="button"
                                     onClick={() => setShowPicker(false)}
-                                    className="border-zinc-700"
                                 >
                                     Cancel
-                                </Button>
+                                </button>
                             </div>
                         </div>
                     )}
@@ -310,33 +308,29 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                             {/* Opponent's proposal - show actions */}
                             {!isMyProposal && isCaptain && (
                                 <div className="space-y-2">
-                                    <Button
+                                    <button type="button"
                                         onClick={handleAccept}
                                         disabled={acceptProposal.isPending}
                                         className="w-full bg-emerald-600 hover:bg-emerald-700"
                                     >
                                         <Check className="w-4 h-4 mr-2" />
                                         Accept Time
-                                    </Button>
+                                    </button>
 
                                     <div className="grid grid-cols-2 gap-2">
-                                        <Button
+                                        <button type="button"
                                             onClick={() => setShowCounter(true)}
-                                            variant="outline"
-                                            className="border-zinc-700 hover:bg-zinc-800"
                                         >
                                             <ArrowRightLeft className="w-4 h-4 mr-2" />
                                             Counter
-                                        </Button>
-                                        <Button
+                                        </button>
+                                        <button type="button"
                                             onClick={handleReject}
                                             disabled={rejectProposal.isPending}
-                                            variant="outline"
-                                            className="border-red-500/50 text-red-400 hover:bg-red-500/10"
                                         >
                                             <X className="w-4 h-4 mr-2" />
                                             Decline
-                                        </Button>
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -378,13 +372,13 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                                         })()
                                     )}
                                     <div className="flex gap-2">
-                                        <Button
+                                        <button type="button"
                                             onClick={handleCounter}
                                             disabled={counterProposal.isPending || (roundDeadline && new Date(`${proposedDate}T${proposedTime}`) > new Date(roundDeadline))}
                                             className="flex-1 bg-purple-600 hover:bg-purple-700"
                                         >
                                             Send Counter
-                                        </Button>
+                                        </button>
                                         <Button
                                             variant="ghost"
                                             onClick={() => setShowCounter(false)}
