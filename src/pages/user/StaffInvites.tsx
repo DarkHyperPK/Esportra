@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useStaffInvites } from '@/hooks/useStaffInvites';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ShieldCheck, Check, X, CalendarDays, Users } from 'lucide-react';
+import { Loader2, ShieldCheck, Check, X, Users } from 'lucide-react';
 import { PageTransition } from '@/components/PageTransition';
 
 const StaffInvitesPage = () => {
@@ -23,8 +24,8 @@ const StaffInvitesPage = () => {
       toast({
         title: accept ? 'Invite accepted' : 'Invite declined',
         description: accept
-          ? 'You now have access to the tournament staff tools.'
-          : 'The organizer has been notified of your decision.',
+          ? 'You now have access to organization staff tools.'
+          : 'The organization has been notified of your decision.',
       });
     } catch (error: unknown) {
       console.error('Failed to respond to invite', error);
@@ -54,8 +55,8 @@ const StaffInvitesPage = () => {
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold">Staff Invitations</h1>
           <p className="text-gray-400">
-            Review organizer requests to help manage tournaments. Accepting grants you the listed
-            permissions; declining notifies the organizer.
+            Review organization requests to help manage tournaments. Accepting grants you the listed
+            permissions; declining notifies the organization.
           </p>
         </div>
 
@@ -89,27 +90,21 @@ const StaffInvitesPage = () => {
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="text-lg font-semibold">
-                          {invite.tournament?.name || 'Tournament'}
+                          {invite.organization?.name || 'Organization'}
                         </p>
                         <div className="flex flex-wrap gap-4 text-sm text-slate-400 mt-1">
-                          {invite.tournament?.game && (
+                          {invite.organization?.slug && (
                             <span className="inline-flex items-center gap-1">
                               <Users className="w-3 h-3" />
-                              {invite.tournament.game}
-                            </span>
-                          )}
-                          {invite.tournament?.start_date && (
-                            <span className="inline-flex items-center gap-1">
-                              <CalendarDays className="w-3 h-3" />
-                              {new Date(invite.tournament.start_date).toLocaleDateString()}
+                              @{invite.organization.slug}
                             </span>
                           )}
                         </div>
                         <p className="text-xs text-slate-500 mt-2">
                           Invited by{' '}
-                          {invite.organizer_profile?.full_name ||
-                            invite.organizer_profile?.username ||
-                            'Organizer'}
+                          {invite.assigner_profile?.full_name ||
+                            invite.assigner_profile?.username ||
+                            'Organization admin'}
                         </p>
                       </div>
                       <Badge className="bg-amber-500/20 text-amber-200 border-amber-400/40 w-fit">
@@ -141,13 +136,12 @@ const StaffInvitesPage = () => {
                         <X className="w-4 h-4 mr-2" />
                         Decline
                       </Button>
-                      <Button
-                        className="bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider"
+                      <JackButton
                         onClick={() => handleRespond(invite.id, true)}
                       >
                         <Check className="w-4 h-4 mr-2" />
                         Accept Invite
-                      </Button>
+                      </JackButton>
                     </div>
                   </div>
                 ))}

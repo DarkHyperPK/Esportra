@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/hooks/useAuth';
+import { useOrgStaffContext } from '@/hooks/useOrgStaffContext';
 
 /** Navbar badge queries — share keys with useTeamManagement for deduplication. */
 export function useMyTeamsSummary() {
@@ -25,24 +26,14 @@ export function useMyTeamInvitesSummary() {
   });
 }
 
+/** @deprecated Prefer useOrgStaffContext — thin re-export for legacy imports */
 export function useStaffInvitesSummary() {
-  const { user } = useAuth();
-  return useQuery({
-    queryKey: ['organizations', 'staff', 'invites'],
-    queryFn: () => apiClient.get<unknown[]>('/api/organizations/staff/invites'),
-    enabled: !!user,
-    staleTime: 2 * 60_000,
-    refetchOnWindowFocus: false,
-  });
+  const { invites, isLoading } = useOrgStaffContext();
+  return { data: invites, isLoading };
 }
 
+/** @deprecated Prefer useOrgStaffContext — thin re-export for legacy imports */
 export function useStaffAssignmentsSummary() {
-  const { user } = useAuth();
-  return useQuery({
-    queryKey: ['organizations', 'staff', 'assignments'],
-    queryFn: () => apiClient.get<unknown[]>('/api/organizations/staff/assignments'),
-    enabled: !!user,
-    staleTime: 2 * 60_000,
-    refetchOnWindowFocus: false,
-  });
+  const { assignments, isLoading } = useOrgStaffContext();
+  return { data: assignments, isLoading };
 }

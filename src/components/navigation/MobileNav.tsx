@@ -3,7 +3,7 @@ import { Bell, ChevronDown, LogOut, MapPin, Medal, Plus, Shield, Trophy, User, I
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { useAdmin } from "@/hooks/useAdmin";
-import { useStaffAssignmentsSummary } from "@/hooks/useNavTeamStatus";
+import { useOrgStaffContext } from "@/hooks/useOrgStaffContext";
 import { isSuperAdminUser } from "@/lib/adminAccess";
 import { useNotifications } from "@/hooks/useNotifications";
 import { UserRole } from "@/types/auth";
@@ -25,7 +25,7 @@ const MobileNav = ({
   const { user, profile } = useAuth();
   const { currentRole } = useRole();
   const admin = useAdmin();
-  const { data: staffAssignments = [] } = useStaffAssignmentsSummary();
+  const { assignments: staffAssignments } = useOrgStaffContext();
   const { unreadCount } = useNotifications();
   const location = useLocation();
   const userRole = currentRole as UserRole;

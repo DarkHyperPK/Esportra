@@ -1,16 +1,17 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  fetchPendingStaffInvites,
-  respondToStaffInvite,
-} from '@/lib/tournamentStaff';
+  fetchPendingOrgStaffInvites,
+  respondToOrgStaffInvite,
+} from '@/lib/organizationStaff';
+import { invalidateOrgStaffContext } from '@/hooks/useOrgStaffContext';
 
 export function useStaffInvites(userId?: string) {
   const queryClient = useQueryClient();
 
   const { data: invites = [], isLoading: loading, error: queryError, refetch } = useQuery({
-    queryKey: ['staff-invites'],
-    queryFn: () => fetchPendingStaffInvites(userId!),
+    queryKey: ['organizations', 'staff', 'invites'],
+    queryFn: () => fetchPendingOrgStaffInvites(userId!),
     enabled: !!userId,
     staleTime: 2 * 60 * 1000,
   });
@@ -19,9 +20,10 @@ export function useStaffInvites(userId?: string) {
 
   const respondMutation = useMutation({
     mutationFn: ({ inviteId, accept }: { inviteId: string; accept: boolean }) =>
-      respondToStaffInvite({ inviteId, accept }),
+      respondToOrgStaffInvite({ inviteId, accept, userId: userId! }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['staff-invites'] });
+      queryClient.invalidateQueries({ queryKey: ['organizations', 'staff', 'invites'] });
+      invalidateOrgStaffContext(queryClient);
     },
   });
 
@@ -31,7 +33,7 @@ export function useStaffInvites(userId?: string) {
     async (inviteId: string, accept: boolean) => {
       await respondMutation.mutateAsync({ inviteId, accept });
     },
-    [respondMutation]
+    [respondMutation],
   );
 
   return {
@@ -42,4 +44,3 @@ export function useStaffInvites(userId?: string) {
     respond,
   };
 }
-

@@ -4,6 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { isSuperAdminUser } from '@/lib/adminAccess';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ const ManageBracketPage = () => {
     const { currentRole } = useRole();
     const admin = useAdmin();
     const queryClient = useQueryClient();
+    const { access, can, isLoading: accessLoading } = useTournamentAccess(slug);
 
     const [tournament, setTournament] = useState<any>(null);
     const [stage, setStage] = useState<any>(null);
@@ -57,18 +59,7 @@ const ManageBracketPage = () => {
             console.log('ManageBracketPage: Tournament found:', tournamentData);
             setTournament(tournamentData);
 
-            // Staff with bracket:edit permission can manage brackets too
-            const ownsOrg = user?.id === tournamentData.organization?.owner_id;
-            const isOrganizerUser = user?.id === tournamentData.organizer_id;
-            const staffPerms: string[] = tournamentData.staffPermissions || [];
-            const hasBracketPerm = staffPerms.includes('bracket:edit');
-            const isSuperAdmin = isSuperAdminUser(admin, profile);
-            const inOrganizerSession = currentRole === 'organizer' || isSuperAdmin;
-            const canManageBracket =
-                (ownsOrg || isOrganizerUser) && inOrganizerSession
-                || hasBracketPerm
-                || isSuperAdmin;
-            setIsOrganizer(canManageBracket);
+            // Bracket manage permission resolved via useTournamentAccess (see effect below)
 
             // Fetch stage
             const stageData = await apiClient.get<any>(`/api/stages/${stageId}`).catch(() => null);
@@ -103,7 +94,18 @@ const ManageBracketPage = () => {
         } finally {
             if (!silent) setLoading(false);
         }
-    }, [slug, stageId, user?.id, navigate, toast]);
+    }, [slug, stageId, navigate, toast]);
+
+    useEffect(() => {
+        if (accessLoading || authLoading) return;
+        const isSuperAdmin = isSuperAdminUser(admin, profile);
+        const inOrganizerSession = currentRole === 'organizer' || isSuperAdmin;
+        const canManageBracket =
+            Boolean(access?.isOrganizer && inOrganizerSession)
+            || can('bracket:edit')
+            || Boolean(access?.isPlatformAdmin);
+        setIsOrganizer(canManageBracket);
+    }, [access, accessLoading, authLoading, currentRole, admin, profile, can]);
 
     // Handle single BYE advancement
     const handleByeAdvance = async (matchId: string) => {

@@ -224,26 +224,6 @@ export const fetchTournamentAssignedStaff = async (
     apiClient.get<TournamentAssignment[]>(`/api/tournaments/${tournamentId}/assigned-staff`);
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Permission Helper
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/**
- * Check if the current user has staff permissions for a tournament via the organization.
- * Migrated from 2 Supabase calls to a single .NET API call.
- * Note: userId param is kept for signature compatibility but ignored — .NET reads from JWT.
- */
-export const getOrgStaffPermissionsForTournament = async (
-    _userId: string,
-    tournamentOrganizationId: string | null,
-    tournamentId?: string
-): Promise<StaffPermission[]> => {
-    if (!tournamentOrganizationId) return [];
-    const qs = new URLSearchParams({ organizationId: tournamentOrganizationId });
-    if (tournamentId) qs.set('tournamentId', tournamentId);
-    return apiClient.get<StaffPermission[]>(`/api/organizations/staff/permissions?${qs}`);
-};
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Audit Logging
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

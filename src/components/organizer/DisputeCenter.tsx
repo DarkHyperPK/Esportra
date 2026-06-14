@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { StaffPermission } from '@/lib/tournamentStaff';
+import type { StaffPermission } from '@/types/staff';
 import { apiClient } from '@/lib/apiClient';
 import { auditLog } from '@/lib/auditLog';
 import { useToast } from '@/hooks/use-toast';
@@ -12,7 +12,8 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { useTournamentStaff } from '@/hooks/useTournamentStaff';
+import { useTournamentDisputeStaff } from '@/hooks/useTournamentDisputeStaff';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 import type { DisputeReport, DisputeRiotAccount, MatchDisputeEvidence } from './DisputeEvidencePanel';
@@ -99,7 +100,8 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
   const assigneeChangedByUser = useRef(false);
 
   const actorUserId = currentUserId ?? organizerId;
-  const { staff, loading: _staffLoading, hasPermission } = useTournamentStaff(tournamentId);
+  const { staff, loading: _staffLoading } = useTournamentDisputeStaff(tournamentId);
+  const { can, access } = useTournamentAccess(tournamentId);
   const activeStaff = useMemo(
     () => staff.filter((member) => member.status === 'active'),
     [staff]
@@ -143,8 +145,11 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
     return Array.from(members.values());
   }, [organizerId, activeStaff, selectedDispute?.assigned_to_user_id, selectedDispute?.assigned_to_name]);
   const canAssistDisputes =
-    actorUserId === organizerId || hasPermission(actorUserId, 'disputes:assist');
-  const canAssignOthers = actorUserId === organizerId;
+    actorUserId === organizerId
+    || can('disputes:assist')
+    || Boolean(access?.isPlatformAdmin);
+  const canAssignOthers =
+    actorUserId === organizerId || (access?.role === 'admin' && !access?.isOrganizer);
 
   const fetchDisputes = useCallback(async () => {
     if (!tournamentId) return;

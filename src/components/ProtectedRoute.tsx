@@ -2,8 +2,9 @@ import { Navigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useRole } from "@/hooks/useRole";
-import { hasTournamentStaffAccess, useTournamentStaffAccess } from "@/hooks/useTournamentStaffAccess";
-import { useStaffAssignmentsSummary } from "@/hooks/useNavTeamStatus";
+import { useTournamentAccess } from "@/hooks/useTournamentAccess";
+import { hasTournamentAccess } from "@/types/staff";
+import { useOrgStaffContext } from "@/hooks/useOrgStaffContext";
 import { isSuperAdminUser } from "@/lib/adminAccess";
 import { ProfileLoading } from "./profile/ProfileLoading";
 import { UserRole } from "@/types/auth";
@@ -43,18 +44,17 @@ const ProtectedRoute = ({
     : undefined;
 
   const {
-    data: scopedStaffAssignments = [],
+    access: tournamentAccess,
     isLoading: staffAccessLoading,
-  } = useTournamentStaffAccess(tournamentSlug);
+  } = useTournamentAccess(tournamentSlug);
 
   const {
-    data: orgStaffAssignments = [],
+    hasActiveStaff,
     isLoading: orgStaffLoading,
-  } = useStaffAssignmentsSummary();
+  } = useOrgStaffContext();
 
   const hasOrganizationStaffAccess =
-    allowOrganizationStaff &&
-    orgStaffAssignments.some((assignment: { status?: string }) => assignment.status === 'active');
+    allowOrganizationStaff && hasActiveStaff;
 
   const waitingOnAdmin = Boolean(allowedRoles && admin.loading);
 
@@ -87,7 +87,7 @@ const ProtectedRoute = ({
 
     const hasScopedStaffAccess =
       !!allowStaffForTournamentParam &&
-      hasTournamentStaffAccess(scopedStaffAssignments, tournamentSlug);
+      hasTournamentAccess(tournamentAccess);
 
     if (!isSuperAdmin && !hasRole && !hasAdminPerm && !hasScopedStaffAccess && !hasOrganizationStaffAccess) {
       return <Navigate to="/unauthorized" />;

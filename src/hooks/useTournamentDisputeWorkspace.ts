@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { StaffPermission } from '@/lib/tournamentStaff';
+import type { StaffPermission } from '@/types/staff';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { auditLog } from '@/lib/auditLog';
 import { useToast } from '@/hooks/use-toast';
-import { useTournamentStaff } from '@/hooks/useTournamentStaff';
+import { useTournamentDisputeStaff } from '@/hooks/useTournamentDisputeStaff';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 import type { DisputeReport, DisputeRiotAccount, MatchDisputeEvidence } from '@/components/organizer/DisputeEvidencePanel';
@@ -93,7 +94,8 @@ export function useTournamentDisputeWorkspace({
   onUnreadChangeRef.current = onUnreadChange;
 
   const actorUserId = currentUserId ?? organizerId ?? '';
-  const { staff, hasPermission } = useTournamentStaff(tournamentId ?? '');
+  const { staff } = useTournamentDisputeStaff(tournamentId ?? '');
+  const { can, access } = useTournamentAccess(tournamentId);
   const activeStaff = useMemo(() => staff.filter((m) => m.status === 'active'), [staff]);
 
   const selectedDispute = useMemo(
@@ -142,8 +144,9 @@ export function useTournamentDisputeWorkspace({
   }, [organizerId, activeStaff, selectedDispute?.assigned_to_user_id, selectedDispute?.assigned_to_name]);
 
   const canAssistDisputes =
-    !!organizerId && (actorUserId === organizerId || hasPermission(actorUserId, 'disputes:assist'));
-  const canAssignOthers = !!organizerId && actorUserId === organizerId;
+    !!organizerId && (actorUserId === organizerId || can('disputes:assist') || Boolean(access?.isPlatformAdmin));
+  const canAssignOthers =
+    !!organizerId && (actorUserId === organizerId || (access?.role === 'admin' && !access?.isOrganizer));
 
   const fetchDisputes = useCallback(async (options?: { silent?: boolean }) => {
     if (!tournamentId) return;

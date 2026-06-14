@@ -20,7 +20,7 @@ import {
     fetchAuditLogs,
     fetchOrgTournaments,
 } from "@/lib/organizationStaff";
-import { invalidateStaffAccessCaches } from "@/lib/tournamentStaff";
+import { invalidateStaffAccessCaches } from "@/lib/tournamentAccess";
 import { formatDistanceToNow } from "date-fns";
 import {
     ChevronDown,

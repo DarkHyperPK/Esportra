@@ -16,9 +16,8 @@ import { useMeRoles } from "@/hooks/useMeRoles";
 import {
   useMyTeamsSummary,
   useMyTeamInvitesSummary,
-  useStaffInvitesSummary,
-  useStaffAssignmentsSummary,
 } from "@/hooks/useNavTeamStatus";
+import { useOrgStaffContext } from "@/hooks/useOrgStaffContext";
 import { deriveHasApprovedLicense, deriveHasOrganization, meRolesQueryKey } from "@/lib/meRoles";
 import { RoleSwitcherDialog } from "@/components/RoleSwitcher";
 
@@ -70,8 +69,7 @@ const UserMenu = ({
   const { data: meRoles, isSuccess: meRolesReady } = useMeRoles(!!user?.id);
   const { data: teams = [] } = useMyTeamsSummary();
   const { data: teamInvites = [] } = useMyTeamInvitesSummary();
-  const { data: staffInvites = [] } = useStaffInvitesSummary();
-  const { data: staffAssignments = [] } = useStaffAssignmentsSummary();
+  const { invites: staffInvites, assignments: staffAssignments } = useOrgStaffContext();
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [isRoleSwitcherOpen, setIsRoleSwitcherOpen] = useState(false);
 

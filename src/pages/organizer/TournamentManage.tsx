@@ -59,7 +59,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
 import { isSuperAdminUser } from '@/lib/adminAccess';
-import type { StaffPermission } from '@/lib/tournamentStaff';
+import type { StaffPermission } from '@/types/staff';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -233,6 +234,12 @@ const TournamentDashboard = () => {
     refetch: refetchDashboard
   } = useTournamentDashboard(slug);
 
+  const {
+    access: tournamentAccess,
+    isLoading: accessLoading,
+    isStaffAdmin,
+  } = useTournamentAccess(slug);
+
   const tournament = dashboardData?.tournament;
   const tournamentModeFeatures = getEffectiveGameFeatures(tournament?.game || '', tournament?.game_mode);
   const registrationParticipantMode = getParticipantMode(tournament?.game || '', tournament?.game_mode);
@@ -270,16 +277,17 @@ const TournamentDashboard = () => {
   });
 
   const staffPermissions = useMemo(
-    () => (dashboardData?.staffPermissions || []) as StaffPermission[],
-    [dashboardData?.staffPermissions],
+    () => (tournamentAccess?.permissions ?? []) as StaffPermission[],
+    [tournamentAccess?.permissions],
   );
-  const staffRole = dashboardData?.staffRole ?? null;
-  const isStaffAdmin = staffRole === 'admin';
-  const hasTournamentStaffAccess = Boolean(staffRole) || staffPermissions.length > 0;
+  const staffRole = tournamentAccess?.role ?? 'none';
+  const hasTournamentStaffAccess = Boolean(
+    tournamentAccess && !tournamentAccess.isOrganizer && tournamentAccess.role !== 'none',
+  );
 
   // Player session: leave organizer dashboard unless staff on this tournament
   useEffect(() => {
-    if (dashboardLoading || roleLoading || admin.loading) return;
+    if (dashboardLoading || accessLoading || roleLoading || admin.loading) return;
     if (inOrganizerSession || hasTournamentStaffAccess) return;
     if (slug) {
       toast({
@@ -292,6 +300,7 @@ const TournamentDashboard = () => {
     navigate('/unauthorized', { replace: true });
   }, [
     dashboardLoading,
+    accessLoading,
     roleLoading,
     admin.loading,
     inOrganizerSession,
@@ -1027,7 +1036,7 @@ const TournamentDashboard = () => {
     staffPermissions.map((perm) => STAFF_PERMISSION_LABELS[perm] || perm).join(', ') || 'Limited access';
 
   const canManageStaff = canActAsOwner;
-  const canAssistDisputes = canActAsOwner || isStaffAdmin || staffPermissions.includes('disputes:assist');
+  const canAssistDisputes = canActAsOwner || isStaffAdmin || tournamentAccess?.isPlatformAdmin || staffPermissions.includes('disputes:assist');
   const { badgeCount: disputeBadgeCount, refresh: refreshDisputeUnread } = useOrganizerDisputeUnread(
     tournament?.id,
     canAssistDisputes,
@@ -1848,6 +1857,7 @@ const TournamentDashboard = () => {
                                     />
                                     <RoundSchedulingPanel
                                       stageId={stage.id}
+                                      tournamentId={tournament.id}
                                       stageFormat={stage.format || 'single_elimination'}
                                       tournamentStartDate={tournament.start_date || null}
                                       tournamentEndDate={tournament.end_date || null}

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   CheckCircle, XCircle, UserCheck, Shield, Gavel, AlertTriangle,
 } from 'lucide-react';
-import type { StaffPermission } from '@/lib/tournamentStaff';
+import type { StaffPermission } from '@/types/staff';
 
 export interface DisputeStaffMember {
   value: string;

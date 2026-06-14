@@ -3,7 +3,7 @@ import { ChevronDown, MapPin, Trophy, Medal, Info, Handshake, Shield, Wrench } f
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { useAdmin } from "@/hooks/useAdmin";
-import { useStaffAssignmentsSummary } from "@/hooks/useNavTeamStatus";
+import { useOrgStaffContext } from "@/hooks/useOrgStaffContext";
 import { isSuperAdminUser } from "@/lib/adminAccess";
 import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import UserMenu from "./UserMenu";
@@ -26,7 +26,7 @@ const DesktopNav = ({
   const { user, profile } = useAuth();
   const { currentRole } = useRole();
   const admin = useAdmin();
-  const { data: staffAssignments = [] } = useStaffAssignmentsSummary();
+  const { assignments: staffAssignments } = useOrgStaffContext();
   const location = useLocation();
   const userRole = currentRole;
   const isSuperAdmin = isSuperAdminUser(admin, profile);

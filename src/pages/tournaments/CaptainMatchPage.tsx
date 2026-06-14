@@ -39,11 +39,14 @@ import ServerConnectionCard from '@/components/match/ServerConnectionCard';
 import { LiveScoreCardView, useLiveScoreState } from '@/components/match/LiveScoreCard';
 import { useMatchRoomState } from '@/hooks/useMatchRoomState';
 import { useMatchLifecycleInvalidation } from '@/hooks/useMatchLifecycleInvalidation';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import {
     isBracketMatchSettled,
     resolveActiveMatch,
     toRawMatchId,
 } from '@/utils/matchRoomLifecycle';
+import { useMatchScheduling } from '@/hooks/useMatchScheduling';
+import { useTournamentStageRealtime } from '@/hooks/useTournamentStageRealtime';
 
 const repo = new MatchRepository();
 
@@ -60,9 +63,6 @@ const readSchedulingConfig = (value: any): any => {
     }
 };
 
-const readRoundDeadlines = (config: any): Record<string, string> =>
-    config?.round_deadlines ?? config?.roundDeadlines ?? {};
-
 // ... existing imports
 
 const CaptainMatchPage = () => {
@@ -78,9 +78,6 @@ const CaptainMatchPage = () => {
     const [participants, setParticipants] = useState<Participant[]>([]);
     const [userTeamId, setUserTeamId] = useState<string | undefined>(undefined);
     const [isCaptain, setIsCaptain] = useState(false);
-    const [staffPermissions, setStaffPermissions] = useState<string[]>([]);
-    const stageFormat = 'single_elimination';
-    const roundDeadline: string | null = null;
     const [participantStatus, setParticipantStatus] = useState<string | null>(null);
     const [stageConfigs, setStageConfigs] = useState<Record<string, any>>({});
 
@@ -106,33 +103,16 @@ const CaptainMatchPage = () => {
         enabled: !!slug,
     });
 
+    const { access, can, isLoading: accessLoading } = useTournamentAccess(slug);
+
     const tournament = tournamentResponse?.tournament ?? null;
     const terminology = useGameTerminology(tournament?.game);
-
-    const isOrganizer = useMemo(() => {
-        if (!tournamentResponse || !user) return false;
-        const tourney = tournamentResponse.tournament;
-        const perms: string[] = tournamentResponse.staffPermissions || [];
-        const ownsOrg = user.id === tourney.organization?.owner_id;
-        const isOrganizerUser = user.id === tourney.organizer_id;
-        const hasMatchRoomStaffPerm =
-            perms.includes('bracket:edit') || perms.includes('disputes:assist');
-        return Boolean(
-            tournamentResponse.isOrganizer || ownsOrg || isOrganizerUser || hasMatchRoomStaffPerm,
-        );
-    }, [tournamentResponse, user]);
 
     useEffect(() => {
         if (tournamentResponse?.participants) {
             setParticipants(tournamentResponse.participants);
         }
     }, [tournamentResponse?.participants]);
-
-    useEffect(() => {
-        if (tournamentResponse?.staffPermissions) {
-            setStaffPermissions(tournamentResponse.staffPermissions);
-        }
-    }, [tournamentResponse?.staffPermissions]);
 
     useEffect(() => {
         if (tournamentError) {
@@ -146,10 +126,13 @@ const CaptainMatchPage = () => {
 
     const canManageMatchRoom = useMemo(
         () =>
-            isOrganizer
-            || staffPermissions.includes('bracket:edit')
-            || staffPermissions.includes('disputes:assist'),
-        [isOrganizer, staffPermissions],
+            !accessLoading
+            && (
+                Boolean(access?.isOrganizer || access?.isPlatformAdmin)
+                || can('bracket:edit')
+                || can('disputes:assist')
+            ),
+        [access, accessLoading, can],
     );
 
     const isOrganizerMatchView = !!urlMatchId && canManageMatchRoom;
@@ -203,7 +186,7 @@ const CaptainMatchPage = () => {
                 return null;
             }
         },
-        enabled: !!urlMatchId && canManageMatchRoom,
+        enabled: !!urlMatchId && !accessLoading && canManageMatchRoom,
     });
 
     const organizerVersionId = organizerMatch?.stageId;
@@ -290,7 +273,7 @@ const CaptainMatchPage = () => {
     }, [allGraphData?.nodes, allGraphData?.edges, teamsMap]);
 
     const organizerMatchLoading = isOrganizerMatchView && !organizerMatch;
-    const pageLoading = tournamentLoading || graphLoading || organizerMatchLoading;
+    const pageLoading = tournamentLoading || accessLoading || graphLoading || organizerMatchLoading;
 
     // Identify captain and team
     useEffect(() => {
@@ -521,11 +504,19 @@ const CaptainMatchPage = () => {
         return bracketVersions?.find((v: any) => v.id === activeMatch?.stageId);
     }, [isOrganizerMatchView, organizerVersionMeta, bracketVersions, activeMatch?.stageId]);
 
-    const schedulingConfig = useMemo(() => {
-        const stageId = readStageId(activeMatchVersion);
-        if (!stageId) return null;
-        return stageConfigs[stageId]?.scheduling_config ?? null;
-    }, [activeMatchVersion, stageConfigs]);
+    const activeStageId = useMemo(
+        () => readStageId(activeMatchVersion),
+        [activeMatchVersion],
+    );
+
+    const stageFormat = useMemo(() => {
+        if (!activeStageId) return 'single_elimination';
+        return stageConfigs[activeStageId]?.format ?? 'single_elimination';
+    }, [activeStageId, stageConfigs]);
+
+    useTournamentStageRealtime(tournament?.id);
+
+    const { schedulingConfig } = useMatchScheduling(activeStageId);
 
     const selfPlayEnabled = roomState?.selfPlayEnabled ?? false;
     const effectiveScheduledTime = roomState?.effectiveScheduledTime ?? null;
@@ -918,9 +909,17 @@ const CaptainMatchPage = () => {
                                         && activeMatch.team2?.id && (
                                         (() => {
                                             const roundIndex = activeMatch.round - 1;
-                                            const configDeadline = readRoundDeadlines(schedulingConfig)[String(roundIndex)];
+                                            const bracketType = activeMatch.bracketType ?? activeMatch.bracketSide ?? null;
+                                            const deadlineKey = stageFormat === 'double_elimination' && bracketType
+                                                ? `${bracketType}_${roundIndex}`
+                                                : String(roundIndex);
+                                            const deadlines = {
+                                                ...((schedulingConfig as any)?.roundDeadlines ?? {}),
+                                                ...((schedulingConfig as any)?.round_deadlines ?? {}),
+                                            };
+                                            const configDeadline = deadlines[deadlineKey] ?? deadlines[String(roundIndex)] ?? null;
                                             const defaultDeadline = getDefaultDeadline(roundIndex);
-                                            const effectiveDeadline = configDeadline || defaultDeadline || roundDeadline || activeMatch.scheduledTime;
+                                            const effectiveDeadline = configDeadline || defaultDeadline || null;
                                             return (
                                                 <TimeProposalCard
                                                     matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}

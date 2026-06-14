@@ -2,11 +2,11 @@ import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchTournamentStaff,
-  StaffPermission,
-  TournamentStaffRecord,
+  type StaffPermission,
+  type TournamentStaffRecord,
 } from '@/lib/tournamentStaff';
 
-interface UseTournamentStaffResult {
+interface UseTournamentDisputeStaffResult {
   staff: TournamentStaffRecord[];
   loading: boolean;
   error: string | null;
@@ -15,15 +15,17 @@ interface UseTournamentStaffResult {
   isStaffMember: (userId: string | null | undefined) => boolean;
 }
 
-export function useTournamentStaff(tournamentId?: string): UseTournamentStaffResult {
+/** Loads tournament staff roster for dispute assignee UI (not route authorization). */
+export function useTournamentDisputeStaff(tournamentId?: string): UseTournamentDisputeStaffResult {
   const { data: staff = [], isLoading: loading, error: queryError, refetch } = useQuery({
-    queryKey: ['tournament-staff', tournamentId],
+    queryKey: ['tournament-dispute-staff', tournamentId],
     queryFn: async () => {
       try {
         return await fetchTournamentStaff(tournamentId!);
-      } catch (err: any) {
-        // Org staff may not have access to tournament_staff endpoint — return empty gracefully
-        if (err?.status === 403 || err?.message?.includes('403')) return [];
+      } catch (err: unknown) {
+        const status = (err as { status?: number })?.status;
+        const message = err instanceof Error ? err.message : '';
+        if (status === 403 || message.includes('403')) return [];
         throw err;
       }
     },
@@ -50,7 +52,7 @@ export function useTournamentStaff(tournamentId?: string): UseTournamentStaffRes
       if (!userId) return false;
       return permissionIndex[userId]?.has(permission) ?? false;
     },
-    [permissionIndex]
+    [permissionIndex],
   );
 
   const isStaffMember = useCallback(
@@ -58,7 +60,7 @@ export function useTournamentStaff(tournamentId?: string): UseTournamentStaffRes
       if (!userId) return false;
       return Boolean(permissionIndex[userId]);
     },
-    [permissionIndex]
+    [permissionIndex],
   );
 
   return {
@@ -70,4 +72,3 @@ export function useTournamentStaff(tournamentId?: string): UseTournamentStaffRes
     isStaffMember,
   };
 }
-
