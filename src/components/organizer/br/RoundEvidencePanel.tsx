@@ -1,8 +1,9 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
 import { useBRLobbyEvidence } from '@/hooks/useBRLobbies';
-import { CheckCircle2, ExternalLink, ImageIcon, ShieldCheck } from 'lucide-react';
+import { getApiErrorMessage } from '@/lib/apiClient';
+import { CheckCircle2, ExternalLink, ImageIcon, RefreshCw, ShieldCheck } from 'lucide-react';
 
 interface RoundEvidencePanelProps {
   roundId: string;
@@ -21,7 +22,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
   gameId,
   realtimeConnected = false,
 }) => {
-  const { evidence, isLoading, error, markReviewed, isUpdating } = useBRLobbyEvidence(
+  const { evidence, isLoading, error, isError, refetch, markReviewed, isUpdating } = useBRLobbyEvidence(
     roundId,
     stageId,
     groupId,
@@ -50,9 +51,19 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
             <div key={index} className="h-24 rounded-xl bg-white/5 animate-pulse" />
           ))}
         </div>
-      ) : error ? (
-        <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] px-4 py-3 text-sm text-rose-200">
-          Could not load evidence submissions. Try refreshing this panel.
+      ) : isError ? (
+        <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] px-4 py-3 space-y-2">
+          <p className="text-sm text-rose-200">
+            {getApiErrorMessage(error, { context: 'brEvidence' })}
+          </p>
+          <OutlineButton
+            type="button"
+            size="sm"
+            onClick={() => { void refetch(); }}
+          >
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+            Retry
+          </OutlineButton>
         </div>
       ) : evidence.length === 0 ? (
         <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-6 text-center">
@@ -111,17 +122,17 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    <button type="button"
+                    <OutlineButton
                       type="button"
                       size="sm"
                       onClick={() => window.open(entry.imageUrl, '_blank', 'noopener,noreferrer')}
                     >
                       <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                       Open
-                    </button>
+                    </OutlineButton>
 
                     {!entry.reviewed && (
-                      <button type="button"
+                      <SuccessButton
                         type="button"
                         size="sm"
                         onClick={() => markReviewed({
@@ -130,15 +141,14 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                           gameNumber: entry.gameNumber ?? gameNumber,
                         })}
                         disabled={isUpdating}
-                        className="bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 border border-emerald-500/20"
                       >
                         <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
                         Mark reviewed
-                      </button>
+                      </SuccessButton>
                     )}
 
                     {entry.reviewed && (
-                      <button type="button"
+                      <OutlineButton
                         type="button"
                         size="sm"
                         onClick={() => markReviewed({
@@ -150,7 +160,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                       >
                         <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
                         Re-open
-                      </button>
+                      </OutlineButton>
                     )}
                   </div>
                 </div>

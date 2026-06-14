@@ -282,14 +282,17 @@ export const useBRLobbyEvidence = (
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: evidence, isLoading, error, refetch } = useQuery({
+  const { data: evidence, isLoading, error, refetch, isError } = useQuery({
     queryKey: ['br-lobby-evidence', lobbyId, gameNumber, gameId],
     queryFn: () => {
+      if (lobbyId) {
+        const suffix = gameNumber != null ? `?gameNumber=${gameNumber}` : '';
+        return apiClient.get<BREvidence[]>(`/api/br/lobbies/${lobbyId}/evidence${suffix}`);
+      }
       if (gameId) {
         return apiClient.get<BREvidence[]>(`/api/br/games/${gameId}/evidence`);
       }
-      const suffix = gameNumber != null ? `?gameNumber=${gameNumber}` : '';
-      return apiClient.get<BREvidence[]>(`/api/br/lobbies/${lobbyId}/evidence${suffix}`);
+      throw new Error('No lobby or game selected');
     },
     enabled: enabled && (!!lobbyId || !!gameId),
     staleTime: BR_CONFIG.ROUNDS_STALE_TIME_MS,
@@ -354,6 +357,7 @@ export const useBRLobbyEvidence = (
     evidence: evidence ?? [],
     isLoading,
     error,
+    isError,
     refetch,
     submitEvidence: submitEvidenceMutation.mutateAsync,
     markReviewed: markReviewedMutation.mutateAsync,

@@ -202,7 +202,7 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
                     alt=""
                     loading="lazy"
                     decoding="async"
-                    fetchPriority="low"
+                    fetchpriority="low"
                     className="w-5 h-5 rounded-full object-cover flex-shrink-0"
                   />
                 ) : (
