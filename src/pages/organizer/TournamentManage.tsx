@@ -84,6 +84,7 @@ import { BRScheduleTab } from '@/components/organizer/tabs/BRScheduleTab';
 import StageSchedulingConfig from '@/components/tournament/StageSchedulingConfig';
 import RoundSchedulingPanel from '@/components/tournament/RoundSchedulingPanel';
 import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTournamentDashboard';
+import { useStageRealtime } from '@/hooks/useStageRealtime';
 import { MockModePanel } from '@/components/tournament/MockModePanel';
 import { useMockTournament } from '@/hooks/useMockTournament';
 import { useTournamentInvitations } from '@/hooks/useTournamentInvitations';
@@ -238,9 +239,11 @@ const TournamentDashboard = () => {
     access: tournamentAccess,
     isLoading: accessLoading,
     isStaffAdmin,
+    can,
   } = useTournamentAccess(slug);
 
   const tournament = dashboardData?.tournament;
+  useStageRealtime({ tournamentId: tournament?.id });
   const tournamentModeFeatures = getEffectiveGameFeatures(tournament?.game || '', tournament?.game_mode);
   const registrationParticipantMode = getParticipantMode(tournament?.game || '', tournament?.game_mode);
   const participants = useMemo(
@@ -251,7 +254,7 @@ const TournamentDashboard = () => {
     () => dashboardData?.stages ?? [],
     [dashboardData?.stages],
   );
-  const isOrganizer = dashboardData?.isOrganizer || false;
+  const isOrganizer = tournamentAccess?.isOrganizer || dashboardData?.isOrganizer || false;
   const isSuperAdmin = isSuperAdminUser(admin, profile);
   const inOrganizerSession = currentRole === 'organizer' || isSuperAdmin;
   /** Owner powers only when session role is Organizer (not Player mode). */
@@ -1042,7 +1045,9 @@ const TournamentDashboard = () => {
     canAssistDisputes,
   );
   const canManageTeams = canActAsOwner || isStaffAdmin || staffPermissions.includes('teams:manage');
-  const canEditBracket = canActAsOwner || isStaffAdmin || staffPermissions.includes('bracket:edit');
+  const canEditBracket =
+    can('bracket:edit')
+    && (inOrganizerSession || hasTournamentStaffAccess || Boolean(tournamentAccess?.isPlatformAdmin));
   const canSendAnnouncements = canActAsOwner || isStaffAdmin || staffPermissions.includes('announcements:send');
 
   const PermissionNotice = ({ message }: { message: string }) => (
@@ -1857,7 +1862,6 @@ const TournamentDashboard = () => {
                                     />
                                     <RoundSchedulingPanel
                                       stageId={stage.id}
-                                      tournamentId={tournament.id}
                                       stageFormat={stage.format || 'single_elimination'}
                                       tournamentStartDate={tournament.start_date || null}
                                       tournamentEndDate={tournament.end_date || null}

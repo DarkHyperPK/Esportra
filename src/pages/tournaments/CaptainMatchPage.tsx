@@ -46,7 +46,7 @@ import {
     toRawMatchId,
 } from '@/utils/matchRoomLifecycle';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
-import { useTournamentStageRealtime } from '@/hooks/useTournamentStageRealtime';
+import { useStageRealtime } from '@/hooks/useStageRealtime';
 
 const repo = new MatchRepository();
 
@@ -514,7 +514,7 @@ const CaptainMatchPage = () => {
         return stageConfigs[activeStageId]?.format ?? 'single_elimination';
     }, [activeStageId, stageConfigs]);
 
-    useTournamentStageRealtime(tournament?.id);
+    useStageRealtime({ tournamentId: tournament?.id });
 
     const { schedulingConfig } = useMatchScheduling(activeStageId);
 

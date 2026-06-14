@@ -120,11 +120,17 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     const [roundConfigs, setRoundConfigs] = useState<Map<string, RoundConfig>>(new Map());
     const [matchEdits, setMatchEdits] = useState<Map<string, string>>(new Map());
     const [saving, setSaving] = useState(false);
-    const [savedRoundKeys, setSavedRoundKeys] = useState<Set<string>>(new Set());
+    const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
 
-    // Config key helper: for DE, scope by bracket type; for others, just roundIndex
+    const serverDeadlines = useMemo(() => ({
+        ...((schedulingConfig as any)?.roundDeadlines ?? {}),
+        ...((schedulingConfig as any)?.round_deadlines ?? {}),
+    }), [schedulingConfig]);
+
     const configKey = useCallback((roundIndex: number, bracketKey?: string | null): string =>
-        stageFormat === 'double_elimination' && bracketKey ? `${bracketKey}_${roundIndex}` : String(roundIndex),
+        stageFormat === 'double_elimination' && bracketKey
+            ? `${bracketKey}_${roundIndex}`
+            : String(roundIndex),
     [stageFormat]);
 
     // Optimistic scheduling mode with instant UI
@@ -211,45 +217,43 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
 
     const totalRounds = matchesByRound.size;
 
-    // Initialize configs from fetched matches
+    // Sync round rows from server whenever scheduling config or matches change.
+    // Rows with unsaved local edits (dirtyKeys) are left untouched.
     React.useEffect(() => {
-        if (matchesByConfigKey.size > 0 && (!selfPlayEnabled || schedulingConfig)) {
-            const newConfigs = new Map<string, RoundConfig>();
-            matchesByConfigKey.forEach((matches, key) => {
-                const firstMatch = matches[0];
+        if (matchesByConfigKey.size === 0) return;
+        if (selfPlayEnabled && !schedulingConfig) return;
+
+        setRoundConfigs(prev => {
+            const next = new Map(prev);
+
+            matchesByConfigKey.forEach((roundMatches, key) => {
+                if (dirtyKeys.has(key)) return;
+
+                const firstMatch = roundMatches[0];
                 const existingTime = firstMatch?.scheduled_time
                     ? new Date(firstMatch.scheduled_time).toISOString().slice(0, 16)
                     : null;
 
                 const roundIndex = firstMatch.round_index;
                 const configDeadline = selfPlayEnabled
-                    ? schedulingConfig?.round_deadlines?.[key] || existingTime
+                    ? serverDeadlines[key] || existingTime
                     : existingTime;
 
-                newConfigs.set(key, {
+                next.set(key, {
                     roundIndex,
                     roundName: getRoundNameForFormat(stageFormat, roundIndex, totalRounds),
-                    matchCount: matches.length,
+                    matchCount: roundMatches.length,
                     deadline: configDeadline,
                     startTime: !selfPlayEnabled ? existingTime : null,
-                    bracketKey: stageFormat === 'double_elimination' ? ((firstMatch as any).bracket_type || null) : null,
+                    bracketKey: stageFormat === 'double_elimination'
+                        ? ((firstMatch as any).bracket_type || null)
+                        : null,
                 });
             });
 
-            setRoundConfigs(prev => {
-                if (prev.size === 0) {
-                    // Mark rounds that already have server data as saved
-                    const alreadySaved = new Set<string>();
-                    newConfigs.forEach((cfg, key) => {
-                        if (cfg.deadline || cfg.startTime) alreadySaved.add(key);
-                    });
-                    setSavedRoundKeys(alreadySaved);
-                    return newConfigs;
-                }
-                return prev;
-            });
-        }
-    }, [matchesByConfigKey, stageFormat, totalRounds, selfPlayEnabled, schedulingConfig]);
+            return next;
+        });
+    }, [matchesByConfigKey, stageFormat, totalRounds, selfPlayEnabled, schedulingConfig, serverDeadlines, dirtyKeys]);
 
     // Calculate default dates based on format
     const getDefaultDeadline = (roundIndex: number): string => {
@@ -292,12 +296,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     };
 
     const updateRoundConfig = (key: string, roundIndex: number, field: 'deadline' | 'startTime', value: string) => {
-        setSavedRoundKeys(prev => {
-            if (!prev.has(key)) return prev;
-            const next = new Set(prev);
-            next.delete(key);
-            return next;
-        });
+        setDirtyKeys(prev => new Set(prev).add(key));
         setRoundConfigs(prev => {
             const newMap = new Map(prev);
             const existing = newMap.get(key) || {
@@ -319,15 +318,15 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
         setSaving(true);
         try {
             if (selfPlayEnabled) {
-                const currentDeadlines = schedulingConfig?.round_deadlines || {};
                 const newDeadlines = {
-                    ...currentDeadlines,
-                    [key]: config.deadline || getDefaultDeadline(roundIndex)
+                    ...serverDeadlines,
+                    [key]: config.deadline || getDefaultDeadline(roundIndex),
                 };
 
                 await updateConfig.mutateAsync({
                     ...(schedulingConfig as any),
-                    round_deadlines: newDeadlines
+                    round_deadlines: newDeadlines,
+                    roundDeadlines: newDeadlines,
                 });
             } else {
                 const roundMatches = matchesByConfigKey.get(key) || [];
@@ -339,7 +338,11 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                 );
                 await Promise.all(updates);
             }
-            setSavedRoundKeys(prev => new Set(prev).add(key));
+            setDirtyKeys(prev => {
+                const next = new Set(prev);
+                next.delete(key);
+                return next;
+            });
         } catch (error) {
             console.error('[RoundScheduling] Failed to save round schedule:', error);
         } finally {
@@ -475,12 +478,12 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                             size="sm"
                                             variant="secondary"
                                             onClick={() => handleSaveRound(cfgKey, roundIndex)}
-                                            disabled={saving || savedRoundKeys.has(cfgKey) || !config?.deadline}
-                                            className={savedRoundKeys.has(cfgKey)
+                                            disabled={saving || !dirtyKeys.has(cfgKey) || !config?.deadline}
+                                            className={!dirtyKeys.has(cfgKey) && (config?.deadline || serverDeadlines[cfgKey])
                                                 ? "bg-rose-500/5 text-rose-300/60 border border-rose-500/10 rounded-xl px-4 cursor-default"
                                                 : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-xl px-4"}
                                         >
-                                            {saving ? '...' : savedRoundKeys.has(cfgKey) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
+                                            {saving ? '...' : (!dirtyKeys.has(cfgKey) && (config?.deadline || serverDeadlines[cfgKey])) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
                                         </Button>
                                     </div>
                                     <p className="text-xs text-gray-500">
@@ -552,12 +555,12 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                         size="sm"
                                                         variant="secondary"
                                                         onClick={() => handleSaveRound(cfgKey, roundIndex)}
-                                                        disabled={saving || savedRoundKeys.has(cfgKey)}
-                                                        className={savedRoundKeys.has(cfgKey)
+                                                        disabled={saving || !dirtyKeys.has(cfgKey)}
+                                                        className={!dirtyKeys.has(cfgKey) && config?.startTime
                                                             ? "bg-rose-500/5 text-rose-300/60 border border-rose-500/10 rounded-xl px-4 cursor-default"
                                                             : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-xl px-4"}
                                                     >
-                                                        {saving ? '...' : savedRoundKeys.has(cfgKey) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
+                                                        {saving ? '...' : (!dirtyKeys.has(cfgKey) && config?.startTime) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
                                                     </Button>
                                                 </div>
                                             </div>

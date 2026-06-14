@@ -16,6 +16,8 @@ import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { useQueryClient } from '@tanstack/react-query';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
+import { useStageRealtime } from '@/hooks/useStageRealtime';
+import { stageSchedulingConfigQueryKey } from '@/hooks/useMatchScheduling';
 
 const ManageBracketPage = () => {
     const { slug, stageId } = useParams<{ slug: string; stageId: string }>();
@@ -35,8 +37,7 @@ const ManageBracketPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isOrganizer, setIsOrganizer] = useState(false);
 
-    // No longer using realtime updates for organizers to prevent data shifts 
-    // during management actions. Relying on explicit fetchData(true) calls.
+    useStageRealtime({ tournamentId: tournament?.id });
 
 
     const fetchData = useCallback(async (silent = false) => {
@@ -188,14 +189,24 @@ const ManageBracketPage = () => {
     const handlePublishBracket = async () => {
         if (!versionId) return;
 
-        const selfPlayEnabled = stage?.scheduling_config?.self_play_enabled || false;
+        const selfPlayEnabled = Boolean(
+            stage?.scheduling_config?.self_play_enabled
+            ?? stage?.scheduling_config?.selfPlayEnabled,
+        );
 
         // Validate scheduling before publishing
         try {
             if (selfPlayEnabled) {
-                // Self-play mode: check that round deadlines are configured
-                const schedulingConfig = queryClient.getQueryData<any>(['stage-scheduling-config', stageId]);
-                const deadlines = schedulingConfig?.round_deadlines || schedulingConfig?.roundDeadlines || {};
+                const schedulingConfig = stageId
+                    ? await queryClient.fetchQuery({
+                        queryKey: stageSchedulingConfigQueryKey(stageId),
+                        queryFn: () => apiClient.get(`/api/stages/${stageId}/scheduling-config`),
+                    })
+                    : null;
+                const deadlines = {
+                    ...((schedulingConfig as any)?.roundDeadlines ?? {}),
+                    ...((schedulingConfig as any)?.round_deadlines ?? {}),
+                };
                 const hasDeadlines = Object.keys(deadlines).length > 0;
 
                 if (!hasDeadlines) {
@@ -225,7 +236,12 @@ const ManageBracketPage = () => {
                 }
             }
         } catch {
-            // If we can't check, allow publish (data might not be cached)
+            toast({
+                title: 'Scheduling Check Failed',
+                description: 'Could not verify round deadlines. Open Round Scheduling, save deadlines, then try again.',
+                variant: 'destructive',
+            });
+            return;
         }
 
         setIsSubmitting(true);

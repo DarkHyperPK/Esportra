@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Zap, MessageCircle, CheckCircle, Users, GitBranch } from 'lucide-react';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
+import { useParams } from 'react-router-dom';
 import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { isBattleRoyale } from '@/utils/gameFeatures';
 
@@ -42,13 +44,20 @@ const formatInfo: Record<string, { label: string; description: string; roundsNot
 };
 
 const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, stageFormat, gameName, onConfigChange }) => {
+    const { slug } = useParams<{ slug: string }>();
+    const { can, isLoading: accessLoading } = useTournamentAccess(slug);
+    const canEditSchedule = can('bracket:edit');
     const { schedulingConfig, updateConfig, isLoading } = useMatchScheduling(stageId);
     const formatData = formatInfo[stageFormat] || formatInfo.single_elimination;
     const [optimisticSelfPlay, setOptimisticSelfPlay] = React.useState<boolean | null>(null);
     const isBR = gameName ? isBattleRoyale(gameName) : false;
-    const isSelfPlayEnabled = optimisticSelfPlay !== null ? optimisticSelfPlay : !!schedulingConfig?.self_play_enabled;
+    const isSelfPlayEnabled = optimisticSelfPlay !== null
+        ? optimisticSelfPlay
+        : Boolean(schedulingConfig?.self_play_enabled ?? schedulingConfig?.selfPlayEnabled);
 
     const handleUpdate = async (key: string, value: any) => {
+        if (!canEditSchedule) return;
+
         if (key === 'self_play_enabled') {
             setOptimisticSelfPlay(value);
         }
@@ -69,7 +78,7 @@ const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, 
         }
     };
 
-    if (isLoading || !schedulingConfig) {
+    if (isLoading || accessLoading || !schedulingConfig) {
         return (
             <Card className="bg-[#0a0a0c] border-white/5 rounded-3xl">
                 <CardContent className="p-8">
