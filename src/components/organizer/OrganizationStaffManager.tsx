@@ -61,6 +61,16 @@ const AUDIT_ACTION_OPTIONS: { value: string; label: string }[] = [
     { value: "staff.remove", label: "Staff removed" },
     { value: "venue.add", label: "Venue added" },
     { value: "venue.remove", label: "Venue removed" },
+    { value: "match.go_live", label: "Match went live" },
+    { value: "match.score_update", label: "Score updated" },
+    { value: "match.finalize", label: "Match finalized" },
+    { value: "match.walkover", label: "Walkover awarded" },
+    { value: "match.reset", label: "Match reset" },
+    { value: "match.swap_teams", label: "Teams swapped" },
+    { value: "match.schedule_update", label: "Match schedule updated" },
+    { value: "tournament.schedule_bulk", label: "Bulk schedule applied" },
+    { value: "dispute.resolve", label: "Dispute resolved" },
+    { value: "dispute.reject", label: "Dispute rejected" },
 ];
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1241,9 +1251,39 @@ function formatAuditDetails(log: AuditLogEntry): string {
             return "Added venue to organization";
         case "venue.remove":
             return "Removed venue from organization";
+        case "match.go_live":
+            return formatTournamentMatchAudit(d, "Went live");
+        case "match.score_update":
+            return formatTournamentMatchAudit(
+                d,
+                `Score set to ${d.team1_score ?? "?"}–${d.team2_score ?? "?"}`,
+            );
+        case "match.finalize":
+            return formatTournamentMatchAudit(d, "Finalized match");
+        case "match.walkover":
+            return formatTournamentMatchAudit(d, "Awarded walkover");
+        case "match.reset":
+            return formatTournamentMatchAudit(d, "Reset match");
+        case "match.swap_teams":
+            return formatTournamentMatchAudit(d, "Swapped teams");
+        case "match.schedule_update":
+            return formatTournamentMatchAudit(d, "Updated match schedule");
+        case "tournament.schedule_bulk":
+            return `${d.tournament_name || "Tournament"} — bulk schedule (${d.matches_updated ?? 0} matches)`;
+        case "dispute.resolve":
+            return formatTournamentMatchAudit(d, "Resolved dispute");
+        case "dispute.reject":
+            return formatTournamentMatchAudit(d, "Rejected dispute");
         default:
             return JSON.stringify(d).slice(0, 80);
     }
+}
+
+function formatTournamentMatchAudit(d: Record<string, unknown>, verb: string): string {
+    const tournament = d.tournament_name || "Tournament";
+    const match = d.match_label || d.matchup || "match";
+    const role = d.actor_role ? ` (${d.actor_role})` : "";
+    return `${tournament} — ${match}: ${verb}${role}`;
 }
 
 export default OrganizationStaffManager;
