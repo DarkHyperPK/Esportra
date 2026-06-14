@@ -11,7 +11,12 @@ import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import { getMapImageUrl } from '@/utils/gameCatalogBr';
 import { BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useBRGroupStage, useBRGroupLeaderboard, useBRGroupRounds } from '@/hooks/useBRGroupLeaderboard';
+import {
+  useBRGroupStage,
+  useBRGroupLeaderboard,
+  useBRGroupRounds,
+  useBRStageLeaderboard,
+} from '@/hooks/useBRGroupLeaderboard';
 import { useBRGames } from '@/hooks/useBRGames';
 import { useBRGroupParticipants } from '@/hooks/useBRGroups';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
@@ -164,13 +169,32 @@ const GroupContent: React.FC<GroupContentProps> = ({
 }) => {
   const navigate = useNavigate();
   const { data: catalogGame } = useGameCatalogGame(gameName);
+  const useStageGlobalLeaderboard =
+    stageFormat === 'single_lobby' || stageFormat === 'group_rotation';
   const { connected } = useBRRealtime({ stageId, groupId });
   const pollIntervalMs = connected ? false : 30_000;
-  const { leaderboard, isLoading: lbLoading, error: lbError, refetch: refetchLb } = useBRGroupLeaderboard(
-    stageId,
-    groupId,
-    { refetchIntervalMs: pollIntervalMs },
-  );
+  const {
+    leaderboard: groupLeaderboard,
+    isLoading: groupLbLoading,
+    error: groupLbError,
+    refetch: refetchGroupLb,
+  } = useBRGroupLeaderboard(stageId, groupId, {
+    enabled: !useStageGlobalLeaderboard,
+    refetchIntervalMs: pollIntervalMs,
+  });
+  const {
+    leaderboard: stageLeaderboard,
+    isLoading: stageLbLoading,
+    error: stageLbError,
+    refetch: refetchStageLb,
+  } = useBRStageLeaderboard(stageId, {
+    enabled: useStageGlobalLeaderboard,
+    refetchIntervalMs: pollIntervalMs,
+  });
+  const leaderboard = useStageGlobalLeaderboard ? stageLeaderboard : groupLeaderboard;
+  const lbLoading = useStageGlobalLeaderboard ? stageLbLoading : groupLbLoading;
+  const lbError = useStageGlobalLeaderboard ? stageLbError : groupLbError;
+  const refetchLb = useStageGlobalLeaderboard ? refetchStageLb : refetchGroupLb;
   const {
     totalRounds,
     completedRounds,

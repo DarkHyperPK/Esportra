@@ -4,32 +4,44 @@ import type { BRGroup } from '@/types/brGroups';
 import type { BRLeaderboardEntry } from '@/types/battleRoyale';
 import type { BRRound } from '@/types/brLobbies';
 
+type LeaderboardRowInput = GroupLeaderboardResponse & Record<string, unknown>;
+
 interface GroupLeaderboardResponse {
-  team_id: string;
-  team_name: string;
-  logo_url: string | null;
-  games_played: number;
-  total_placement_points: number;
-  total_kill_points: number;
-  total_points: number;
-  total_kills: number;
-  wins: number;
-  best_placement: number;
+  team_id?: string;
+  team_name?: string;
+  logo_url?: string | null;
+  games_played?: number;
+  total_placement_points?: number;
+  total_kill_points?: number;
+  total_points?: number;
+  total_kills?: number;
+  wins?: number;
+  best_placement?: number;
 }
 
-function mapToLeaderboardEntry(row: GroupLeaderboardResponse): BRLeaderboardEntry | null {
-  if (!row.team_id) return null;
+function pickLeaderboardField<T>(row: LeaderboardRowInput, snake: string, camel: string): T | undefined {
+  const value = row[snake] ?? row[camel];
+  return value as T | undefined;
+}
+
+function mapToLeaderboardEntry(row: LeaderboardRowInput): BRLeaderboardEntry | null {
+  const teamId = pickLeaderboardField<string>(row, 'team_id', 'teamId');
+  if (!teamId) return null;
+
+  const teamName = pickLeaderboardField<string>(row, 'team_name', 'teamName') || 'Unknown';
+  const logoUrl = pickLeaderboardField<string | null>(row, 'logo_url', 'logoUrl');
+
   return {
-    teamId: row.team_id,
-    teamName: row.team_name || 'Unknown',
-    teamLogo: row.logo_url ?? undefined,
-    totalPoints: Number(row.total_points) || 0,
-    totalKills: Number(row.total_kills) || 0,
-    totalPlacementPoints: Number(row.total_placement_points) || 0,
-    totalKillPoints: Number(row.total_kill_points) || 0,
-    gamesPlayed: Number(row.games_played) || 0,
-    wins: Number(row.wins) || 0,
-    bestPlacement: Number(row.best_placement) || 0,
+    teamId,
+    teamName,
+    teamLogo: logoUrl ?? undefined,
+    totalPoints: Number(pickLeaderboardField(row, 'total_points', 'totalPoints')) || 0,
+    totalKills: Number(pickLeaderboardField(row, 'total_kills', 'totalKills')) || 0,
+    totalPlacementPoints: Number(pickLeaderboardField(row, 'total_placement_points', 'totalPlacementPoints')) || 0,
+    totalKillPoints: Number(pickLeaderboardField(row, 'total_kill_points', 'totalKillPoints')) || 0,
+    gamesPlayed: Number(pickLeaderboardField(row, 'games_played', 'gamesPlayed')) || 0,
+    wins: Number(pickLeaderboardField(row, 'wins', 'wins')) || 0,
+    bestPlacement: Number(pickLeaderboardField(row, 'best_placement', 'bestPlacement')) || 0,
     perGameResults: [],
   };
 }
@@ -84,9 +96,10 @@ export const useBRGroupStage = (stageId: string | null) => {
 export const useBRGroupLeaderboard = (
   stageId: string | null,
   groupId: string | null,
-  options: { refetchIntervalMs?: number | false } = {},
+  options: { enabled?: boolean; refetchIntervalMs?: number | false } = {},
 ) => {
-  const { refetchIntervalMs = false } = options;
+  const { enabled = true, refetchIntervalMs = false } = options;
+  const queryEnabled = enabled && !!stageId && !!groupId;
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['br-group-leaderboard', stageId, groupId],
     queryFn: async () => {
@@ -95,9 +108,9 @@ export const useBRGroupLeaderboard = (
       );
       return raw.map(mapToLeaderboardEntry).filter((entry): entry is BRLeaderboardEntry => entry != null);
     },
-    enabled: !!stageId && !!groupId,
+    enabled: queryEnabled,
     staleTime: 1000 * 30,
-    refetchInterval: !!stageId && !!groupId ? refetchIntervalMs : false,
+    refetchInterval: queryEnabled ? refetchIntervalMs : false,
     refetchIntervalInBackground: Boolean(refetchIntervalMs),
   });
 
@@ -111,9 +124,10 @@ export const useBRGroupLeaderboard = (
 
 export const useBRStageLeaderboard = (
   stageId: string | null,
-  options: { refetchIntervalMs?: number | false } = {},
+  options: { enabled?: boolean; refetchIntervalMs?: number | false } = {},
 ) => {
-  const { refetchIntervalMs = false } = options;
+  const { enabled = true, refetchIntervalMs = false } = options;
+  const queryEnabled = enabled && !!stageId;
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['br-stage-leaderboard', stageId],
     queryFn: async () => {
@@ -122,9 +136,9 @@ export const useBRStageLeaderboard = (
       );
       return raw.map(mapToLeaderboardEntry).filter((entry): entry is BRLeaderboardEntry => entry != null);
     },
-    enabled: !!stageId,
+    enabled: queryEnabled,
     staleTime: 1000 * 30,
-    refetchInterval: !!stageId ? refetchIntervalMs : false,
+    refetchInterval: queryEnabled ? refetchIntervalMs : false,
     refetchIntervalInBackground: Boolean(refetchIntervalMs),
   });
 
