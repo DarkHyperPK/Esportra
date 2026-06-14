@@ -21,7 +21,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
   gameId,
   realtimeConnected = false,
 }) => {
-  const { evidence, isLoading, markReviewed, isUpdating } = useBRLobbyEvidence(
+  const { evidence, isLoading, error, markReviewed, isUpdating } = useBRLobbyEvidence(
     roundId,
     stageId,
     groupId,
