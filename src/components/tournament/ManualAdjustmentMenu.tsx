@@ -22,7 +22,6 @@ import { MoreVertical, Award, ArrowLeftRight, RotateCcw, Loader2 } from 'lucide-
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { useQueryClient } from '@tanstack/react-query';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
 
