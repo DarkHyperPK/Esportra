@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Users, Save, AlertTriangle } from 'lucide-react';
 import type { BRRoundResult, BRResultInput } from '@/types/brRounds';
@@ -202,7 +201,7 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
                     alt=""
                     loading="lazy"
                     decoding="async"
-                    fetchpriority="low"
+                    {...({ fetchpriority: 'low' } as React.ImgHTMLAttributes<HTMLImageElement>)}
                     className="w-5 h-5 rounded-full object-cover flex-shrink-0"
                   />
                 ) : (
