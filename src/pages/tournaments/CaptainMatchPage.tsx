@@ -351,6 +351,27 @@ const CaptainMatchPage = () => {
 
     const activeMatch = activeMatchResolution.activeMatch;
 
+    const activeMatchVersion = useMemo(() => {
+        if (isOrganizerMatchView && organizerVersionMeta) {
+            return organizerVersionMeta;
+        }
+        return bracketVersions?.find((v: any) => v.id === activeMatch?.stageId);
+    }, [isOrganizerMatchView, organizerVersionMeta, bracketVersions, activeMatch?.stageId]);
+
+    const activeStageId = useMemo(
+        () => readStageId(activeMatchVersion),
+        [activeMatchVersion],
+    );
+
+    const stageFormat = useMemo(() => {
+        if (!activeStageId) return 'single_elimination';
+        return stageConfigs[activeStageId]?.format ?? 'single_elimination';
+    }, [activeStageId, stageConfigs]);
+
+    useStageRealtime({ tournamentId: tournament?.id });
+
+    const { schedulingConfig } = useMatchScheduling(activeStageId);
+
     useEffect(() => {
         if (!activeMatchResolution.shouldUnpinUrl || !slug) return;
         navigate(`/tournaments/${slug}/captain-match`, { replace: true });
@@ -495,28 +516,6 @@ const CaptainMatchPage = () => {
         // Only mark eliminated if tournament is past draft and no pending match exists
         return !hasUpcomingLosersMatch && tournament?.status !== 'draft';
     }, [activeMatch, isTournamentWinner, isTournamentRunnerUp, lastCompletedMatch, userTeamId, isDE, matches, tournament?.status]);
-
-    // Derive scheduling config for the current active match
-    const activeMatchVersion = useMemo(() => {
-        if (isOrganizerMatchView && organizerVersionMeta) {
-            return organizerVersionMeta;
-        }
-        return bracketVersions?.find((v: any) => v.id === activeMatch?.stageId);
-    }, [isOrganizerMatchView, organizerVersionMeta, bracketVersions, activeMatch?.stageId]);
-
-    const activeStageId = useMemo(
-        () => readStageId(activeMatchVersion),
-        [activeMatchVersion],
-    );
-
-    const stageFormat = useMemo(() => {
-        if (!activeStageId) return 'single_elimination';
-        return stageConfigs[activeStageId]?.format ?? 'single_elimination';
-    }, [activeStageId, stageConfigs]);
-
-    useStageRealtime({ tournamentId: tournament?.id });
-
-    const { schedulingConfig } = useMatchScheduling(activeStageId);
 
     const selfPlayEnabled = roomState?.selfPlayEnabled ?? false;
     const effectiveScheduledTime = roomState?.effectiveScheduledTime ?? null;
