@@ -3,7 +3,10 @@ import { Badge } from '@/components/ui/badge';
 import { OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
 import { useBRLobbyEvidence } from '@/hooks/useBRLobbies';
 import { getApiErrorMessage } from '@/lib/apiClient';
-import { getBREvidenceRowKey } from '@/utils/brEvidenceNormalize';
+import {
+  canApproveEvidenceEntry,
+  getBREvidenceRowKey,
+} from '@/utils/brEvidenceNormalize';
 import { CheckCircle2, ExternalLink, ImageIcon, RefreshCw, Undo2 } from 'lucide-react';
 
 interface RoundEvidencePanelProps {
@@ -13,10 +16,6 @@ interface RoundEvidencePanelProps {
   gameNumber?: number;
   gameId?: string;
   realtimeConnected?: boolean;
-}
-
-function canApproveReportedResult(placement?: number, kills?: number): boolean {
-  return placement != null && placement >= 1 && kills != null && kills >= 0;
 }
 
 export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
@@ -87,7 +86,8 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
       ) : (
         <div className="grid gap-3">
           {evidence.map((entry) => {
-            const approvable = canApproveReportedResult(entry.placement, entry.kills);
+            const resolvedGameNumber = entry.gameNumber ?? gameNumber;
+            const approvable = canApproveEvidenceEntry(entry, gameNumber);
             const approved = entry.reviewed === true;
 
             return (
@@ -141,7 +141,9 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
 
                     {!approved && !approvable && (
                       <p className="text-[11px] text-amber-300/80">
-                        Player did not report placement and kills. Ask them to resubmit before approving.
+                        {resolvedGameNumber == null
+                          ? 'Missing game number for this submission. Refresh and try again.'
+                          : 'Player did not report placement and kills. Ask them to resubmit before approving.'}
                       </p>
                     )}
 
@@ -161,7 +163,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                           size="sm"
                           onClick={() => approveEvidence({
                             entityId: entry.teamId,
-                            gameNumber: entry.gameNumber ?? gameNumber,
+                            gameNumber: resolvedGameNumber,
                           })}
                           disabled={isUpdating || !approvable}
                         >
@@ -176,7 +178,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                           size="sm"
                           onClick={() => reopenEvidence({
                             entityId: entry.teamId,
-                            gameNumber: entry.gameNumber ?? gameNumber,
+                            gameNumber: resolvedGameNumber,
                           })}
                           disabled={isUpdating}
                         >

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canApproveEvidenceEntry,
+  canApproveReportedResult,
   getBREvidenceRowKey,
   normalizeBREvidence,
   normalizeBREvidenceList,
@@ -63,5 +65,52 @@ describe('brEvidenceNormalize', () => {
     });
 
     expect(key).toBe('team-1-1-2026-06-15T10:00:00.000Z-https://example.com/1.png');
+  });
+
+  it('requires placement, kills, and game number to approve', () => {
+    expect(canApproveReportedResult(1, 0)).toBe(true);
+    expect(canApproveReportedResult(undefined, 0)).toBe(false);
+    expect(
+      canApproveEvidenceEntry(
+        {
+          placement: 2,
+          kills: 1,
+          gameNumber: 1,
+          reviewed: false,
+        },
+        undefined,
+      ),
+    ).toBe(true);
+    expect(
+      canApproveEvidenceEntry(
+        {
+          placement: 2,
+          kills: 1,
+          reviewed: false,
+        },
+        1,
+      ),
+    ).toBe(true);
+    expect(
+      canApproveEvidenceEntry(
+        {
+          placement: 2,
+          kills: 1,
+          reviewed: false,
+        },
+        undefined,
+      ),
+    ).toBe(false);
+    expect(
+      canApproveEvidenceEntry(
+        {
+          placement: 2,
+          kills: 1,
+          gameNumber: 1,
+          reviewed: true,
+        },
+        undefined,
+      ),
+    ).toBe(false);
   });
 });

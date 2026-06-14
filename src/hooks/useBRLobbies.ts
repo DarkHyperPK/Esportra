@@ -309,9 +309,12 @@ export const useBRLobbyEvidence = (
     refetchIntervalInBackground: false,
   });
 
-  const invalidateRelatedQueries = async () => {
+  const invalidateRelatedQueries = async (resolvedGameNumber?: number) => {
     await queryClient.invalidateQueries({ queryKey: ['br-lobby-evidence', lobbyId, gameNumber, gameId] });
     if (lobbyId) {
+      if (resolvedGameNumber != null) {
+        await queryClient.invalidateQueries({ queryKey: ['br-lobby-results', lobbyId, resolvedGameNumber] });
+      }
       await queryClient.invalidateQueries({ queryKey: ['br-lobby-results', lobbyId] });
     }
     if (stageId && groupId) {
@@ -350,8 +353,9 @@ export const useBRLobbyEvidence = (
         { approve: true },
       );
     },
-    onSuccess: async () => {
-      await invalidateRelatedQueries();
+    onSuccess: async (_data, variables) => {
+      const resolvedGame = variables.gameNumber ?? gameNumber;
+      await invalidateRelatedQueries(resolvedGame);
       toast({ title: 'Result approved', description: 'Reported placement and kills were applied to standings.' });
     },
     onError: (error: unknown) => {
@@ -374,8 +378,8 @@ export const useBRLobbyEvidence = (
         { reviewed: false },
       );
     },
-    onSuccess: async () => {
-      await invalidateRelatedQueries();
+    onSuccess: async (_data, variables) => {
+      await invalidateRelatedQueries(variables.gameNumber ?? gameNumber);
       toast({ title: 'Approval reopened' });
     },
     onError: (error: unknown) => {

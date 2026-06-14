@@ -335,7 +335,7 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
                   if (action === 'complete' && (lobby.pending_evidence_count ?? 0) > 0) {
                     toast({
                       title: 'Evidence review required',
-                      description: 'Review or reopen all pending evidence submissions before completing this match.',
+                      description: 'Approve or reopen all pending evidence submissions before completing this match.',
                       variant: 'destructive',
                     });
                     return;

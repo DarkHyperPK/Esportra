@@ -68,7 +68,21 @@ export function normalizeBREvidenceList(
     .filter((entry): entry is BREvidence => entry !== null);
 }
 
-/** Stable React key for evidence cards. */
+/** Whether reported placement/kills are present enough to approve. */
+export function canApproveReportedResult(placement?: number, kills?: number): boolean {
+  return placement != null && placement >= 1 && kills != null && kills >= 0;
+}
+
+/** Whether an evidence row can be approved for a specific game context. */
+export function canApproveEvidenceEntry(
+  entry: Pick<BREvidence, 'placement' | 'kills' | 'gameNumber' | 'reviewed'>,
+  fallbackGameNumber?: number,
+): boolean {
+  if (entry.reviewed === true) return false;
+  const resolvedGameNumber = entry.gameNumber ?? fallbackGameNumber;
+  return resolvedGameNumber != null && canApproveReportedResult(entry.placement, entry.kills);
+}
+
 export function getBREvidenceRowKey(entry: BREvidence, fallbackGameNumber?: number): string {
   const game = entry.gameNumber ?? fallbackGameNumber ?? 'lobby';
   return `${entry.teamId}-${game}-${entry.submittedAt}-${entry.imageUrl}`;
