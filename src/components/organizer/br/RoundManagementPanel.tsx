@@ -132,12 +132,14 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
       if (action === 'reset') {
         await resetLobby.mutateAsync({ lobbyId: roundId, roundNumber });
       } else if (action === 'start') {
+        const round = rounds.find((item) => item.id === roundId);
+        const usesPerGameQueue = (round?.game_count ?? 0) > 0;
         await updateLobby.mutateAsync({
           lobbyId: roundId,
           status: statusMap[action],
           lobbyCode: confirmAction.settings?.lobbyCode ?? null,
           scheduledAt: confirmAction.settings?.scheduledAt ?? null,
-          queueTimerMinutes: confirmAction.settings?.queueTimerMinutes ?? null,
+          ...(usesPerGameQueue ? {} : { queueTimerMinutes: confirmAction.settings?.queueTimerMinutes ?? null }),
           map: confirmAction.settings?.map ?? null,
         });
       } else {
@@ -157,7 +159,15 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
     queueTimerMinutes: number | null,
     map?: string | null,
   ) => {
-    await updateLobby.mutateAsync({ lobbyId: roundId, lobbyCode: lobbyCode || null, scheduledAt, queueTimerMinutes, map });
+    const round = rounds.find((item) => item.id === roundId);
+    const usesPerGameQueue = (round?.game_count ?? 0) > 0;
+    await updateLobby.mutateAsync({
+      lobbyId: roundId,
+      lobbyCode: lobbyCode || null,
+      scheduledAt,
+      ...(usesPerGameQueue ? {} : { queueTimerMinutes }),
+      map,
+    });
   };
 
   if (isLoading) {
@@ -396,6 +406,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   );
   const [settingsDirty, setSettingsDirty] = useState(false);
   const statusCfg = STATUS_CONFIG[round.status] ?? STATUS_CONFIG.pending;
+  const usesPerGameQueue = (round.game_count ?? 0) > 0;
   const hasPendingEvidenceReview = (round.pending_evidence_count ?? 0) > 0;
   const hasSavedFullResults = useMemo(() => {
     if (teams.length === 0 || results.length !== teams.length) return false;
@@ -409,8 +420,8 @@ export const RoundRow: React.FC<RoundRowProps> = ({
     || (round.evidence_count ?? 0) > 0
     || !!round.lobby_code
     || !!round.scheduled_at
-    || round.queue_timer_minutes != null
-    || !!round.queue_started_at;
+    || (!usesPerGameQueue && round.queue_timer_minutes != null)
+    || (!usesPerGameQueue && !!round.queue_started_at);
 
   useEffect(() => {
     setLobbyCode(round.lobby_code ?? '');
@@ -427,7 +438,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
     return {
       lobbyCode: trimmedLobbyCode === '' ? null : trimmedLobbyCode,
       scheduledAt: round.scheduled_at ?? null,
-      queueTimerMinutes: Number.isFinite(parsedTimer) ? parsedTimer : null,
+      queueTimerMinutes: usesPerGameQueue ? null : (Number.isFinite(parsedTimer) ? parsedTimer : null),
       map: BR_FEATURE_FLAGS.mapsEnabled && mapConfig.mode !== 'none' ? (mapInput.trim() || null) : null,
     };
   };
@@ -508,7 +519,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
               {new Date(round.scheduled_at).toLocaleString('en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}
             </span>
           )}
-          {round.queue_timer_minutes ? `Queue ${round.queue_timer_minutes}m` : null}
+          {!usesPerGameQueue && round.queue_timer_minutes ? `Queue ${round.queue_timer_minutes}m` : null}
           {BR_FEATURE_FLAGS.mapsEnabled && round.map ? (
             <span className="inline-flex items-center gap-1 text-emerald-400/80">
               <MapPin className="w-3 h-3" />
@@ -527,7 +538,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
         <div className="border-t border-white/5 px-4 py-4 space-y-4">
           {/* Round Settings + Actions Row */}
           <div className="space-y-3">
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px]">
+            <div className={`grid gap-3 ${usesPerGameQueue ? '' : 'xl:grid-cols-[minmax(0,1fr)_280px]'}`}>
               <div className="rounded-xl border border-white/6 bg-white/[0.02] p-3">
                 <label className="mb-2 flex text-[10px] text-zinc-500 uppercase tracking-wider items-center gap-1">
                   <Key className="w-3 h-3" /> Lobby Code
@@ -542,10 +553,13 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                 <p className="mt-2 text-[10px] leading-relaxed text-zinc-600">
                   {round.status === 'active'
                     ? 'Updates instantly in Match Room when you save — including mid-lobby code changes.'
-                    : 'The code becomes visible to players only when the lobby is live.'}
+                    : usesPerGameQueue
+                      ? 'Going live publishes the code to players. Set queue timer and map per game before starting games.'
+                      : 'The code becomes visible to players only when the lobby is live.'}
                 </p>
               </div>
 
+              {!usesPerGameQueue && (
               <div className="rounded-xl border border-white/6 bg-white/[0.02] p-3">
                 <label className="mb-2 flex text-[10px] text-zinc-500 uppercase tracking-wider items-center gap-1">
                   <Clock className="w-3 h-3" /> Queue Timer (minutes)
@@ -573,6 +587,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                   Countdown starts when the round is live and the lobby code is visible.
                 </p>
               </div>
+              )}
             </div>
 
             {BR_FEATURE_FLAGS.mapsEnabled && mapConfig.mode !== 'none' && (

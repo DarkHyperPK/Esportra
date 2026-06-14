@@ -197,6 +197,8 @@ export interface BRPlayerGameSchedule {
   map: string | null;
   status: string;
   scheduledAt: string | null;
+  queueTimerMinutes?: number | null;
+  queueStartedAt?: string | null;
 }
 
 export interface BRPlayerLobbySchedule {
@@ -239,6 +241,8 @@ export interface BRPlayerContext {
     map: string | null;
     status: string;
     scheduledAt: string | null;
+    queueTimerMinutes?: number | null;
+    queueStartedAt?: string | null;
   } | null;
   lobbies?: BRPlayerLobbySchedule[];
 }

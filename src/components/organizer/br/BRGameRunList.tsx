@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -13,12 +14,13 @@ import { useBRLobbyResults } from '@/hooks/useBRLobbies';
 import { RoundResultsGrid } from '@/components/organizer/br/RoundResultsGrid';
 import { RoundEvidencePanel } from '@/components/organizer/br/RoundEvidencePanel';
 import type { BRGroupTeam } from '@/types/brGroups';
+import type { BRGame } from '@/types/brLobbies';
 import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
 import { resolveMapFromConfig } from '@/hooks/useBRStageConfig';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import { validateLiveActionInTournamentWindow } from '@/utils/tournamentScheduleValidation';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Play, CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { MapPin, Play, CheckCircle, ChevronDown, ChevronRight, Clock } from 'lucide-react';
 
 interface ScoringPreset {
   placements: number[];
@@ -90,6 +92,7 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
     gameId: string,
     gameNumber: number,
     map: string | null,
+    queueTimerMinutes: number | null,
   ) => {
     if (liveWindowError) {
       toast({
@@ -107,7 +110,12 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
       });
       return;
     }
-    await updateGame.mutateAsync({ gameId, status: 'active', map });
+    await updateGame.mutateAsync({
+      gameId,
+      status: 'active',
+      map,
+      queueTimerMinutes,
+    });
   };
 
   return (
@@ -135,9 +143,10 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
           canStartGame={canStartGame(game.game_number, game.status)}
           isExpanded={expandedGameId === game.id}
           onToggle={() => setExpandedGameId((id) => (id === game.id ? null : game.id))}
-          onStartGame={(map) => handleStartGame(game.id, game.game_number, map)}
+          onStartGame={(map, queueTimerMinutes) => handleStartGame(game.id, game.game_number, map, queueTimerMinutes)}
           onCompleteGame={(map) => updateGame.mutateAsync({ gameId: game.id, status: 'completed', map })}
           onMapUpdate={(map) => updateGame.mutateAsync({ gameId: game.id, map })}
+          onQueueSave={(queueTimerMinutes) => updateGame.mutateAsync({ gameId: game.id, queueTimerMinutes })}
           isUpdating={updateGame.isPending}
         />
       ))}
@@ -162,7 +171,7 @@ function supportsPerGameMaps(mapConfig: BRMapConfig, mapCatalogItems: BRMapCatal
 }
 
 const BRGameRunRow: React.FC<{
-  game: { id: string; game_number: number; map: string | null; status: string; scheduled_at: string | null };
+  game: BRGame;
   lobbyId: string;
   stageId: string;
   groupId: string;
@@ -173,9 +182,10 @@ const BRGameRunRow: React.FC<{
   canStartGame: boolean;
   isExpanded: boolean;
   onToggle: () => void;
-  onStartGame: (map: string | null) => Promise<unknown>;
+  onStartGame: (map: string | null, queueTimerMinutes: number | null) => Promise<unknown>;
   onCompleteGame: (map: string | null) => Promise<unknown>;
   onMapUpdate: (map: string | null) => Promise<unknown>;
+  onQueueSave: (queueTimerMinutes: number | null) => Promise<unknown>;
   isUpdating: boolean;
 }> = ({
   game,
@@ -192,6 +202,7 @@ const BRGameRunRow: React.FC<{
   onStartGame,
   onCompleteGame,
   onMapUpdate,
+  onQueueSave,
   isUpdating,
 }) => {
   const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
@@ -203,6 +214,9 @@ const BRGameRunRow: React.FC<{
   const [mapInput, setMapInput] = useState(
     game.map ?? resolveMapFromConfig(mapConfig, game.game_number) ?? '',
   );
+  const [queueTimerInput, setQueueTimerInput] = useState(
+    game.queue_timer_minutes != null ? String(game.queue_timer_minutes) : '5',
+  );
 
   const showMapPicker = supportsPerGameMaps(mapConfig, mapCatalogItems);
   const mapPool = gameMapPool(mapConfig, mapCatalogItems);
@@ -211,12 +225,25 @@ const BRGameRunRow: React.FC<{
     setMapInput(game.map ?? resolveMapFromConfig(mapConfig, game.game_number) ?? '');
   }, [game.id, game.map, game.game_number, mapConfig]);
 
+  useEffect(() => {
+    if (game.queue_timer_minutes != null) {
+      setQueueTimerInput(String(game.queue_timer_minutes));
+    }
+  }, [game.id, game.queue_timer_minutes]);
+
   const handleMapChange = async (mapName: string) => {
     const next = mapName.trim();
     setMapInput(next);
     if (game.status === 'completed') return;
     if ((game.map ?? '') === next) return;
     await onMapUpdate(next || null);
+  };
+
+  const parseQueueTimerMinutes = (): number | null => {
+    const trimmed = queueTimerInput.trim();
+    if (trimmed === '') return null;
+    const parsed = Number.parseInt(trimmed, 10);
+    return Number.isFinite(parsed) ? parsed : null;
   };
 
   const statusClass = STATUS_COLORS[game.status] ?? STATUS_COLORS.pending;
@@ -233,6 +260,9 @@ const BRGameRunRow: React.FC<{
         {mapInput && showMapPicker && (
           <span className="text-[10px] text-zinc-500 truncate max-w-[8rem]">{mapInput}</span>
         )}
+        {game.queue_timer_minutes ? (
+          <span className="text-[10px] text-zinc-500">Queue {game.queue_timer_minutes}m</span>
+        ) : null}
         <Badge variant="outline" className={`ml-auto text-[10px] ${statusClass}`}>{game.status}</Badge>
         {game.scheduled_at && (
           <span className="text-[10px] text-zinc-500">
@@ -264,6 +294,38 @@ const BRGameRunRow: React.FC<{
               </Select>
             </div>
           )}
+          {game.status === 'pending' && (
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wide text-zinc-500 flex items-center gap-1">
+                <Clock className="w-3 h-3" /> Queue timer (minutes)
+              </p>
+              <Input
+                type="number"
+                min={0}
+                max={180}
+                value={queueTimerInput}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    setQueueTimerInput('');
+                    return;
+                  }
+                  const clamped = Math.max(0, Math.min(180, Number.parseInt(raw, 10) || 0));
+                  setQueueTimerInput(String(clamped));
+                }}
+                onBlur={() => {
+                  const next = parseQueueTimerMinutes();
+                  if (next === (game.queue_timer_minutes ?? null)) return;
+                  void onQueueSave(next);
+                }}
+                placeholder="e.g. 5"
+                className="h-9 text-sm max-w-[8rem] bg-white/5 border-white/10 text-white"
+              />
+              <p className="text-[10px] text-zinc-600 leading-relaxed">
+                Countdown appears in Match Room when you start this game. Use 0 to skip the queue window.
+              </p>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             {game.status === 'pending' && (
               <Button
@@ -271,7 +333,7 @@ const BRGameRunRow: React.FC<{
                 variant="outline"
                 className="border-amber-500/30 text-amber-300"
                 disabled={isUpdating || !canStartGame}
-                onClick={() => onStartGame(mapInput || null)}
+                onClick={() => void onStartGame(mapInput || null, parseQueueTimerMinutes())}
               >
                 <Play className="w-3.5 h-3.5 mr-1" /> Start game
               </Button>

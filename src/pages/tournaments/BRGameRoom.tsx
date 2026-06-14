@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
 import { getMapImageUrl } from '@/utils/gameCatalogBr';
-import { resolveActiveBRGameMap } from '@/utils/brGameContext';
+import { resolveActiveBRGameMap, resolveActiveBRGameQueue } from '@/utils/brGameContext';
 import { BRMapHero } from '@/components/organizer/br/BRMapOptionList';
 import { formatMatchPairingFromLabel, formatRoundLabel } from '@/utils/brWaveScheduleDisplay';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -185,22 +185,26 @@ const BRGameRoom: React.FC = () => {
   const activeCode = activeRound?.lobby_code ?? context.activeRound?.lobbyCode ?? null;
   const activeGameFromContext = context.activeGame;
   const activeGameFromLobby = useMemo(() => {
+    const active = lobbyGames.find((g) => g.status === 'active');
+    if (active) return active;
     if (activeGameNumber == null) return null;
     return lobbyGames.find((g) => g.game_number === activeGameNumber) ?? null;
   }, [lobbyGames, activeGameNumber]);
 
-  const queueTimerMinutes =
-    activeGameFromContext?.queueTimerMinutes
-    ?? activeGameFromLobby?.queue_timer_minutes
-    ?? activeRound?.queue_timer_minutes
-    ?? context.activeRound?.queueTimerMinutes
-    ?? null;
-  const queueStartedAt =
-    activeGameFromContext?.queueStartedAt
-    ?? activeGameFromLobby?.queue_started_at
-    ?? activeRound?.queue_started_at
-    ?? context.activeRound?.queueStartedAt
-    ?? null;
+  const gameQueueFromLobby = useMemo(
+    () => resolveActiveBRGameQueue(lobbyGames),
+    [lobbyGames],
+  );
+  const usesPerGameQueue = lobbyGames.length > 0;
+
+  const queueTimerMinutes = usesPerGameQueue
+    ? (activeGameFromContext?.queueTimerMinutes
+      ?? gameQueueFromLobby.queueTimerMinutes)
+    : (activeRound?.queue_timer_minutes ?? context.activeRound?.queueTimerMinutes ?? null);
+  const queueStartedAt = usesPerGameQueue
+    ? (activeGameFromContext?.queueStartedAt
+      ?? gameQueueFromLobby.queueStartedAt)
+    : (activeRound?.queue_started_at ?? context.activeRound?.queueStartedAt ?? null);
   const [queueRemainingSec, setQueueRemainingSec] = useState<number | null>(null);
 
   useEffect(() => {

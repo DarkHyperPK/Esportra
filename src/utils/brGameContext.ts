@@ -210,6 +210,24 @@ export const recommendBRStageFormat = (
   return 'static_groups';
 };
 
+/** Queue timer for the live game in a lobby (per-game queue, not lobby-level). */
+export function resolveActiveBRGameQueue(
+  games: ReadonlyArray<{
+    status: string;
+    queue_timer_minutes?: number | null;
+    queue_started_at?: string | null;
+  }>,
+): { queueTimerMinutes: number | null; queueStartedAt: string | null } {
+  const active = games.find((g) => g.status === 'active');
+  if (active?.queue_started_at && (active.queue_timer_minutes ?? 0) > 0) {
+    return {
+      queueTimerMinutes: active.queue_timer_minutes ?? null,
+      queueStartedAt: active.queue_started_at,
+    };
+  }
+  return { queueTimerMinutes: null, queueStartedAt: null };
+}
+
 /** Map for the live or next pending game in a lobby (per-game maps, not lobby-level). */
 export function resolveActiveBRGameMap(
   games: ReadonlyArray<{ status: string; map: string | null }>,

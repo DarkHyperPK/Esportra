@@ -40,6 +40,7 @@ export const useUpdateBRGame = (
       status?: 'pending' | 'active' | 'completed';
       scheduledAt?: string | null;
       startedAt?: string | null;
+      queueTimerMinutes?: number | null;
     }) => {
       const { gameId, ...body } = params;
       return apiClient.patch<BRGame>(`/api/br/games/${gameId}`, body);

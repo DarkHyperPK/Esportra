@@ -172,11 +172,13 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
     queueTimerMinutes: number | null,
     map?: string | null,
   ) => {
+    const lobby = lobbies.find((item) => item.id === roundId);
+    const usesPerGameQueue = (lobby?.game_count ?? 0) > 0;
     await updateLobby.mutateAsync({
       lobbyId: roundId,
       lobbyCode: lobbyCode || null,
       scheduledAt,
-      queueTimerMinutes,
+      ...(usesPerGameQueue ? {} : { queueTimerMinutes }),
       map,
     });
   };
@@ -185,6 +187,7 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
     if (!confirmAction) return;
     const { lobby, action, settings } = confirmAction;
     const roundNumber = lobby.round_number ?? lobby.wave_number;
+    const usesPerGameQueue = (lobby.game_count ?? 0) > 0;
     const statusMap = { start: 'active', complete: 'completed', reopen: 'active' } as const;
     try {
       if (action === 'reset') {
@@ -195,7 +198,7 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
           status: statusMap[action],
           lobbyCode: settings?.lobbyCode ?? null,
           scheduledAt: settings?.scheduledAt ?? null,
-          queueTimerMinutes: settings?.queueTimerMinutes ?? null,
+          ...(usesPerGameQueue ? {} : { queueTimerMinutes: settings?.queueTimerMinutes ?? null }),
           map: settings?.map ?? null,
         });
       } else {

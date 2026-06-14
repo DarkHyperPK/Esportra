@@ -7,6 +7,8 @@ export interface BRGame {
   scheduled_at: string | null;
   started_at: string | null;
   completed_at: string | null;
+  queue_timer_minutes?: number | null;
+  queue_started_at?: string | null;
   created_at?: string;
   result_count?: number;
   evidence_count?: number;
