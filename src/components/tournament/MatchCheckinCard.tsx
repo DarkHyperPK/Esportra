@@ -65,7 +65,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
         }
     }, [initialPartyCode]);
 
-    // Re-evaluate check-in window open/closed as local time advances (no server push at window boundaries).
+    // Re-evaluate local window boundaries as time advances.
     useEffect(() => {
         if (!scheduledTime || checkinStatus.bothCheckedIn) return;
         const id = window.setInterval(() => setClockTick((t) => t + 1), 1000);
@@ -73,15 +73,23 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
     }, [scheduledTime, checkinStatus.bothCheckedIn]);
 
     const windowOpen = useMemo(() => {
-        if (scheduledTime) return isCheckinWindowOpen(scheduledTime, checkInWindowMinutes);
-        return Boolean(checkinWindowOpen);
-    // clockTick drives recompute when the local check-in window opens/closes
+        const localOpen = scheduledTime
+            ? isCheckinWindowOpen(scheduledTime, checkInWindowMinutes)
+            : false;
+        const localClosed = scheduledTime
+            ? isCheckinWindowClosed(scheduledTime, checkInWindowMinutes)
+            : false;
+        if (localClosed) return false;
+        return checkinWindowOpen ?? localOpen;
+    // clockTick drives recompute when relying on local schedule math
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional tick dependency
-    }, [scheduledTime, checkInWindowMinutes, checkinWindowOpen, clockTick, isCheckinWindowOpen]);
+    }, [scheduledTime, checkInWindowMinutes, checkinWindowOpen, clockTick, isCheckinWindowOpen, isCheckinWindowClosed]);
 
     const windowClosed = useMemo(() => {
-        if (scheduledTime) return isCheckinWindowClosed(scheduledTime, checkInWindowMinutes);
-        return Boolean(checkinWindowClosed);
+        const localClosed = scheduledTime
+            ? isCheckinWindowClosed(scheduledTime, checkInWindowMinutes)
+            : false;
+        return localClosed || Boolean(checkinWindowClosed);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional tick dependency
     }, [scheduledTime, checkInWindowMinutes, checkinWindowClosed, clockTick, isCheckinWindowClosed]);
 

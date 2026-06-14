@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { useMatchRealtime } from '@/hooks/useMatchRealtime';
+import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
 
 export type MatchRoomPhase =
   | 'needs_schedule'
@@ -76,11 +78,13 @@ export const matchRoomStateQueryKey = (matchId: string | undefined) =>
 
 export const useMatchRoomState = (
   matchId: string | undefined,
-  options?: { subscribeRealtime?: boolean; enabled?: boolean },
+  options?: { subscribeRealtime?: boolean; enabled?: boolean; versionId?: string | null },
 ) => {
   const subscribeRealtime = options?.subscribeRealtime !== false;
   const enabled = options?.enabled !== false && !!matchId;
+  const versionId = options?.versionId ?? null;
   const queryClient = useQueryClient();
+  const previousPhaseRef = useRef<MatchRoomPhase | null>(null);
 
   const invalidate = () => {
     if (!matchId) return;
@@ -119,6 +123,11 @@ export const useMatchRoomState = (
     staleTime: 5_000,
     refetchInterval: (query) => {
       const data = query.state.data;
+      if (data?.phase === 'completed') return false;
+      // Poll while check-in window is closed so walkover completion is picked up quickly
+      if (data?.checkinWindowClosed && !data?.bothCheckedIn) {
+        return 15_000;
+      }
       if (data?.bothCheckedIn) return false;
       if (data?.phase === 'awaiting_checkin' || data?.nextAction === 'check_in') {
         return 30_000;
@@ -148,6 +157,14 @@ export const useMatchRoomState = (
     onReportDisputed: invalidate,
     onDisputeResolved: invalidate,
   });
+
+  useEffect(() => {
+    const phase = query.data?.phase ?? null;
+    if (phase === 'completed' && previousPhaseRef.current !== 'completed') {
+      invalidateMatchLifecycleQueries(queryClient, { matchId, versionId });
+    }
+    previousPhaseRef.current = phase;
+  }, [query.data?.phase, matchId, versionId, queryClient]);
 
   return {
     ...query,

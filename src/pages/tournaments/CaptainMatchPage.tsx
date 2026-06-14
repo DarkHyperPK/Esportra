@@ -405,7 +405,10 @@ const CaptainMatchPage = () => {
         isLoading: roomStateLoading,
         isError: roomStateError,
         error: roomStateFetchError,
-    } = useMatchRoomState(activeMatchRawId, { subscribeRealtime: false });
+    } = useMatchRoomState(activeMatchRawId, {
+        subscribeRealtime: false,
+        versionId: lifecycleScope.versionId,
+    });
 
     const { acceptedProposal } = useTimeProposal(activeMatchRawId, { subscribeRealtime: false });
 
