@@ -422,8 +422,6 @@ const CaptainMatchPage = () => {
     }, [canManageMatchRoom, activeMatch]);
 
     const showMatchHistory = Boolean(userTeamId || canManageMatchRoom);
-    const historyIncludeLiveMatchId =
-        isMatchLive || activeMatch?.status === 'in_progress' ? activeMatch?.id : undefined;
 
     // Fetch map veto status for the active match
     const { data: vetoData } = useQuery({
@@ -571,6 +569,8 @@ const CaptainMatchPage = () => {
 
     const isMatchLive = roomState?.isMatchLive ?? activeMatch?.status === 'in_progress';
     const displayPartyCode = activeMatch?.partyCode ?? roomState?.partyCode ?? null;
+    const historyIncludeLiveMatchId =
+        isMatchLive || activeMatch?.status === 'in_progress' ? activeMatch?.id : undefined;
     const mapVetoCompleted = roomState?.mapVetoCompleted ?? isVetoCompleted;
 
     const liveScore = useLiveScoreState();
