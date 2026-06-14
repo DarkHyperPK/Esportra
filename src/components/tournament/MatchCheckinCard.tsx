@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { JackButton } from "@/components/ui/JackButton";
@@ -57,6 +57,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
     } = useMatchCheckin(matchId, team1Id, team2Id, { subscribeRealtime });
     const { toast } = useToast();
     const [partyCode, setPartyCode] = useState<string | null>(initialPartyCode);
+    const [clockTick, setClockTick] = useState(0);
 
     useEffect(() => {
         if (initialPartyCode) {
@@ -64,12 +65,25 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
         }
     }, [initialPartyCode]);
 
-    const windowOpen = checkinWindowOpen ?? (scheduledTime
-        ? isCheckinWindowOpen(scheduledTime, checkInWindowMinutes)
-        : false);
-    const windowClosed = checkinWindowClosed ?? (scheduledTime
-        ? isCheckinWindowClosed(scheduledTime, checkInWindowMinutes)
-        : false);
+    // Re-evaluate check-in window open/closed as local time advances (no server push at window boundaries).
+    useEffect(() => {
+        if (!scheduledTime || checkinStatus.bothCheckedIn) return;
+        const id = window.setInterval(() => setClockTick((t) => t + 1), 1000);
+        return () => window.clearInterval(id);
+    }, [scheduledTime, checkinStatus.bothCheckedIn]);
+
+    const windowOpen = useMemo(() => {
+        if (scheduledTime) return isCheckinWindowOpen(scheduledTime, checkInWindowMinutes);
+        return Boolean(checkinWindowOpen);
+    // clockTick drives recompute when the local check-in window opens/closes
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional tick dependency
+    }, [scheduledTime, checkInWindowMinutes, checkinWindowOpen, clockTick, isCheckinWindowOpen]);
+
+    const windowClosed = useMemo(() => {
+        if (scheduledTime) return isCheckinWindowClosed(scheduledTime, checkInWindowMinutes);
+        return Boolean(checkinWindowClosed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional tick dependency
+    }, [scheduledTime, checkInWindowMinutes, checkinWindowClosed, clockTick, isCheckinWindowClosed]);
 
     const isTeam1 = competitorIdsMatch(userTeamId, team1Id);
     const myTeamCheckedIn = isTeam1 ? checkinStatus.team1CheckedIn : checkinStatus.team2CheckedIn;
@@ -137,6 +151,7 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                                 <div className="text-xl font-mono text-cyan-400">
                                     <Countdown
                                         targetDate={new Date(new Date(scheduledTime).getTime() - (checkInWindowMinutes * 60 * 1000))}
+                                        onComplete={() => setClockTick((t) => t + 1)}
                                     />
                                 </div>
                             </div>

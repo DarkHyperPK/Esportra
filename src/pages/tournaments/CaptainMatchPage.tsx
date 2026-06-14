@@ -38,6 +38,7 @@ import { useVetoRealtime } from '@/hooks/useVetoRealtime';
 import ServerConnectionCard from '@/components/match/ServerConnectionCard';
 import { LiveScoreCardView, useLiveScoreState } from '@/components/match/LiveScoreCard';
 import { useMatchRoomState } from '@/hooks/useMatchRoomState';
+import { useTimeProposal } from '@/hooks/useTimeProposal';
 import { useMatchLifecycleInvalidation } from '@/hooks/useMatchLifecycleInvalidation';
 import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import {
@@ -406,6 +407,8 @@ const CaptainMatchPage = () => {
         error: roomStateFetchError,
     } = useMatchRoomState(activeMatchRawId, { subscribeRealtime: false });
 
+    const { acceptedProposal } = useTimeProposal(activeMatchRawId, { subscribeRealtime: false });
+
     const organizerFocusTeamIds = useMemo(() => {
         if (!canManageMatchRoom || !activeMatch) return undefined;
         const ids = [activeMatch.team1?.id, activeMatch.team2?.id].filter(Boolean) as string[];
@@ -520,6 +523,7 @@ const CaptainMatchPage = () => {
 
     const selfPlayEnabled = roomState?.selfPlayEnabled ?? false;
     const effectiveScheduledTime = roomState?.effectiveScheduledTime ?? null;
+    const agreedScheduledTime = effectiveScheduledTime ?? acceptedProposal?.proposed_time ?? null;
     const nextAction = roomState?.nextAction ?? null;
 
     const canVerifyResult = useMemo(() => {
@@ -658,6 +662,10 @@ const CaptainMatchPage = () => {
                     ? `Match ${matchNum} is now scheduled for ${timeLabel}.`
                     : `Your match is now scheduled for ${timeLabel}.`,
             });
+        },
+        onTimeProposalUpdated: () => {
+            invalidateNow();
+            refetchBracket();
         },
         onGoingLive: liveScore.handleGoingLive,
         onScoreUpdated: liveScore.handleScoreUpdated,
@@ -918,7 +926,7 @@ const CaptainMatchPage = () => {
 
                                     {/* Time Proposal Card — step 1 in self-play */}
                                     {selfPlayEnabled
-                                        && !effectiveScheduledTime
+                                        && !agreedScheduledTime
                                         && activeMatch.status === 'pending'
                                         && activeMatch.team2?.id && (
                                         (() => {
@@ -955,11 +963,13 @@ const CaptainMatchPage = () => {
                                     )}
 
                                     {/* Check-in + party code — steps 2–3 in self-play */}
-                                    {effectiveScheduledTime
+                                    {agreedScheduledTime
                                         && activeMatch.status === 'pending'
                                         && activeMatch.team2?.id
                                         && (selfPlayEnabled
-                                            ? (nextAction === 'check_in' || nextAction === 'submit_party_code')
+                                            ? (nextAction === 'check_in'
+                                                || nextAction === 'submit_party_code'
+                                                || Boolean(acceptedProposal))
                                             : true) && (
                                         <MatchCheckinCard
                                             matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
@@ -968,7 +978,7 @@ const CaptainMatchPage = () => {
                                             team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
                                             team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                                             userTeamId={isOrganizerMatchView ? undefined : userTeamId}
-                                            scheduledTime={effectiveScheduledTime}
+                                            scheduledTime={agreedScheduledTime}
                                             isCaptain={!isOrganizerMatchView && isCaptain}
                                             selfPlayEnabled={selfPlayEnabled}
                                             checkInWindowMinutes={roomState?.checkinWindowMinutes ?? 15}

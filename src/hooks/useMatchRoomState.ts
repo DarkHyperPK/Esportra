@@ -117,6 +117,18 @@ export const useMatchRoomState = (
     },
     enabled,
     staleTime: 5_000,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data?.bothCheckedIn) return false;
+      if (data?.phase === 'awaiting_checkin' || data?.nextAction === 'check_in') {
+        return 30_000;
+      }
+      // Catch room-state lag after a captain accepts a time proposal
+      if (data?.selfPlayEnabled && data?.phase === 'needs_schedule') {
+        return 15_000;
+      }
+      return false;
+    },
     retry: (failureCount, error) => {
       const message = error instanceof Error ? error.message : '';
       if (message.includes('404')) return false;
@@ -130,6 +142,7 @@ export const useMatchRoomState = (
     onStatusChanged: invalidate,
     onCheckInUpdated: invalidate,
     onTimeProposalUpdated: invalidate,
+    onScheduleChanged: invalidate,
     onReportSubmitted: invalidate,
     onReportAccepted: invalidate,
     onReportDisputed: invalidate,

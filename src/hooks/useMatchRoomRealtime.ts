@@ -36,6 +36,7 @@ interface Options {
   onReportDisputed?: () => void;
   onDisputeResolved?: () => void;
   onScheduleChanged?: (payload: ScheduleChangedPayload) => void;
+  onTimeProposalUpdated?: () => void;
   onGoingLive?: (payload: GoingLivePayload) => void;
   onScoreUpdated?: (payload: MatchScorePayload) => void;
   onMapResult?: (payload: MapResultPayload) => void;
@@ -51,6 +52,7 @@ export function useMatchRoomRealtime({
   onReportDisputed,
   onDisputeResolved,
   onScheduleChanged,
+  onTimeProposalUpdated,
   onGoingLive,
   onScoreUpdated,
   onMapResult,
@@ -111,6 +113,7 @@ export function useMatchRoomRealtime({
       invalidateProposals();
       invalidateRoomState();
       invalidateLifecycle();
+      onTimeProposalUpdated?.();
     },
     onScheduleChanged: (payload) => {
       invalidateProposals();
