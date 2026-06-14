@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getBrScheduleNotificationMeta, getMatchScheduleNotificationMeta } from './notificationDisplay';
+import {
+  getBrScheduleNotificationMeta,
+  getMatchScheduleNotificationMeta,
+  getMatchWalkoverNotificationMeta,
+} from './notificationDisplay';
 
 describe('getMatchScheduleNotificationMeta', () => {
   it('builds dense lines from structured notification data', () => {
@@ -53,6 +57,41 @@ describe('getMatchScheduleNotificationMeta', () => {
 
   it('returns null for non-schedule notifications', () => {
     expect(getMatchScheduleNotificationMeta({ type: 'team_invite' })).toBeNull();
+  });
+});
+
+describe('getMatchWalkoverNotificationMeta', () => {
+  it('builds organizer no-show lines from structured data', () => {
+    const meta = getMatchWalkoverNotificationMeta({
+      type: 'match_walkover',
+      data: {
+        tournament_name: 'Summer Cup',
+        stage_name: 'Playoffs',
+        match_label: 'Round 2, Match 1',
+        matchup: 'Alpha vs Bravo',
+        audience: 'organizer',
+        reason: 'neither_checked_in',
+      },
+    });
+
+    expect(meta).not.toBeNull();
+    expect(meta?.actionLabel).toBe('Open bracket');
+    expect(meta?.detailLines).toEqual([
+      'Playoffs',
+      'Round 2, Match 1',
+      'Alpha vs Bravo',
+      'Neither team checked in before the window closed.',
+      'Review or reset the forfeited match from the bracket.',
+    ]);
+  });
+
+  it('returns null for captain walkover notifications', () => {
+    expect(
+      getMatchWalkoverNotificationMeta({
+        type: 'match_walkover',
+        data: { audience: 'captain', reason: 'walkover' },
+      }),
+    ).toBeNull();
   });
 });
 

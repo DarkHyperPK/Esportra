@@ -68,5 +68,34 @@ describe('notificationLinks', () => {
         }),
       ).toBeNull();
     });
+
+    it('keeps organizer bracket links for double no-show alerts', () => {
+      expect(
+        resolveCaptainMatchNotificationLink({
+          type: 'match_walkover',
+          link: '/organizer/tournament/summer-cup/brackets',
+          data: {
+            match_id: 'abc-123',
+            tournament_slug: 'summer-cup',
+            audience: 'organizer',
+            reason: 'neither_checked_in',
+          },
+        }),
+      ).toBe('/organizer/tournament/summer-cup/brackets');
+    });
+
+    it('builds organizer bracket link from slug when audience is organizer', () => {
+      expect(
+        resolveCaptainMatchNotificationLink({
+          type: 'match_walkover',
+          data: {
+            match_id: 'abc-123',
+            tournament_slug: 'summer-cup',
+            audience: 'organizer',
+            reason: 'neither_checked_in',
+          },
+        }),
+      ).toBe('/organizer/tournament/summer-cup/brackets');
+    });
   });
 });

@@ -4,6 +4,12 @@ import { apiClient } from '@/lib/apiClient';
 import { useMatchRealtime } from '@/hooks/useMatchRealtime';
 import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
 import { normalizeScheduledTime } from '@/utils/scheduledTime';
+import {
+  normalizeForfeitReason,
+  normalizeMatchOutcome,
+  type ForfeitReason,
+  type MatchOutcome,
+} from '@/utils/matchForfeitDisplay';
 
 export type MatchRoomPhase =
   | 'needs_schedule'
@@ -43,6 +49,8 @@ export interface MatchRoomState {
   partyCode: string | null;
   mapVetoEnabled: boolean;
   mapVetoCompleted: boolean;
+  matchOutcome: MatchOutcome;
+  forfeitReason: ForfeitReason;
 }
 
 const normalizePhase = (value: unknown): MatchRoomPhase | null => {
@@ -118,6 +126,8 @@ export const useMatchRoomState = (
         partyCode: readString(data.partyCode),
         mapVetoEnabled: Boolean(data.mapVetoEnabled),
         mapVetoCompleted: Boolean(data.mapVetoCompleted),
+        matchOutcome: normalizeMatchOutcome(data.matchOutcome),
+        forfeitReason: normalizeForfeitReason(data.forfeitReason),
       };
     },
     enabled,
@@ -125,6 +135,7 @@ export const useMatchRoomState = (
     refetchInterval: (query) => {
       const data = query.state.data;
       if (data?.phase === 'completed') return false;
+      if (data?.matchOutcome) return false;
       // Poll while check-in window is closed so walkover completion is picked up quickly
       if (data?.checkinWindowClosed && !data?.bothCheckedIn) {
         return 15_000;

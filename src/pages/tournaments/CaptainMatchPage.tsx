@@ -585,6 +585,16 @@ const CaptainMatchPage = () => {
         subscribeRealtime: false,
     });
     const matchSettled = isBracketMatchSettled(activeMatch, roomState?.phase ?? null);
+    const checkinForfeitResolved = Boolean(roomState?.matchOutcome);
+    const showCheckinCard = Boolean(
+        agreedScheduledTime
+        && activeMatch.team2?.id
+        && !isMatchLive
+        && (
+            activeMatch.status === 'pending'
+            || checkinForfeitResolved
+        ),
+    );
     const hasDisputedReport = !matchSettled
         && (activeMatchReports?.some((r: { status: string }) => r.status === 'disputed') ?? false);
     // Track which game numbers are disputed — blocks re-submission for those specific games
@@ -999,10 +1009,7 @@ const CaptainMatchPage = () => {
                                     )}
 
                                     {/* Check-in + party code — steps 2–3 in self-play */}
-                                    {agreedScheduledTime
-                                        && activeMatch.status === 'pending'
-                                        && !isMatchLive
-                                        && activeMatch.team2?.id && (
+                                    {showCheckinCard && (
                                         <MatchCheckinCard
                                             matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                                             team1Id={activeMatch.team1?.id}
@@ -1016,6 +1023,8 @@ const CaptainMatchPage = () => {
                                             checkInWindowMinutes={checkInWindowMinutes}
                                             checkinWindowOpen={roomState?.checkinWindowOpen}
                                             checkinWindowClosed={roomState?.checkinWindowClosed}
+                                            matchOutcome={roomState?.matchOutcome ?? null}
+                                            forfeitReason={roomState?.forfeitReason ?? null}
                                             hidePartyCodeInput={nextAction === 'submit_party_code'}
                                             initialPartyCode={displayPartyCode}
                                             onPartyCodeGenerated={() => {
@@ -1029,13 +1038,19 @@ const CaptainMatchPage = () => {
                                     {/* Actions — progressively unlocked */}
                                     <div className="space-y-2">
                                         {matchSettled && (
-                                            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+                                            <div
+                                                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs ${
+                                                    roomState?.matchOutcome === 'double_forfeit'
+                                                        ? 'bg-red-500/10 border-red-500/20 text-red-300'
+                                                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                                                }`}
+                                            >
                                                 <Trophy className="w-3.5 h-3.5 shrink-0" />
                                                 <span>
-                                                    Match complete
-                                                    {activeMatch.winner?.name
-                                                        ? ` — ${activeMatch.winner.name} wins`
-                                                        : ''}.
+                                                    {roomState?.message
+                                                        ?? (activeMatch.winner?.name
+                                                            ? `Match complete — ${activeMatch.winner.name} wins`
+                                                            : 'Match complete')}.
                                                 </span>
                                             </div>
                                         )}

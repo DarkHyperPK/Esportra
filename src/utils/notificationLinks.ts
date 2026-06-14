@@ -1,5 +1,7 @@
 import { apiClient } from '@/lib/apiClient';
 
+const ORGANIZER_AUDIENCE = 'organizer';
+
 const CAPTAIN_MATCH_NOTIFICATION_TYPES = new Set([
   'match_ready',
   'match_walkover',
@@ -34,11 +36,32 @@ function isValidCaptainMatchLink(link: string | null | undefined): boolean {
   return !!link && link.includes('/captain-match/') && link !== LEGACY_CAPTAIN_LINK;
 }
 
+function resolveOrganizerNotificationLink(notification: {
+  link?: string | null;
+  data?: Record<string, unknown> | null;
+}): string | null {
+  const data = notification.data ?? {};
+  if (data.audience !== ORGANIZER_AUDIENCE) return null;
+
+  const link = notification.link ?? '';
+  if (link.startsWith('/organizer/')) return link;
+
+  const tournamentSlug = typeof data.tournament_slug === 'string' ? data.tournament_slug : null;
+  if (tournamentSlug) {
+    return `/organizer/tournament/${tournamentSlug}/brackets`;
+  }
+
+  return '/organizer/tournaments';
+}
+
 export function resolveCaptainMatchNotificationLink(notification: {
   link?: string | null;
   type?: string;
   data?: Record<string, unknown> | null;
 }): string | null {
+  const organizerLink = resolveOrganizerNotificationLink(notification);
+  if (organizerLink) return organizerLink;
+
   const data = notification.data ?? {};
   const matchId = typeof data.match_id === 'string' ? data.match_id : null;
   const tournamentSlug = typeof data.tournament_slug === 'string' ? data.tournament_slug : null;
@@ -69,6 +92,9 @@ export async function resolveCaptainMatchNotificationLinkAsync(notification: {
   type?: string;
   data?: Record<string, unknown> | null;
 }): Promise<string | null> {
+  const organizerLink = resolveOrganizerNotificationLink(notification);
+  if (organizerLink) return organizerLink;
+
   const resolved = resolveCaptainMatchNotificationLink(notification);
   if (resolved) return resolved;
 

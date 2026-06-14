@@ -4,6 +4,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useMatchRealtime } from '@/hooks/useMatchRealtime';
 import { normalizeCompetitorId } from '@/utils/competitorId';
+import {
+  getCheckinForfeitDisplay,
+  type ForfeitReason,
+  type MatchOutcome,
+} from '@/utils/matchForfeitDisplay';
 
 interface MatchCheckin {
   match_id?: string;
@@ -50,11 +55,17 @@ export const useMatchCheckin = (
     subscribeRealtime?: boolean;
     scheduledTime?: string | null;
     checkInWindowMinutes?: number;
+    userTeamId?: string;
+    matchOutcome?: MatchOutcome;
+    forfeitReason?: ForfeitReason;
   },
 ) => {
   const subscribeRealtime = options?.subscribeRealtime !== false;
   const scheduledTimeForGuard = options?.scheduledTime ?? null;
   const checkInWindowMinutesForGuard = options?.checkInWindowMinutes ?? 15;
+  const userTeamIdForDisplay = options?.userTeamId;
+  const matchOutcomeForGuard = options?.matchOutcome ?? null;
+  const forfeitReasonForGuard = options?.forfeitReason ?? null;
   const queryClient = useQueryClient();
   const { toast }   = useToast();
   const { user }    = useAuth();
@@ -109,11 +120,26 @@ export const useMatchCheckin = (
       if (msg.includes('duplicate') || msg.includes('conflict')) {
         toast({ title: 'Already Checked In', description: 'Your team has already checked in.' });
       } else if (msg.includes('checkin_window_closed')) {
-        toast({
-          title: 'Check-in Closed',
-          description: 'The check-in window has closed. A walkover will be awarded if your opponent did not check in.',
-          variant: 'destructive',
+        const forfeitDisplay = getCheckinForfeitDisplay({
+          matchOutcome: matchOutcomeForGuard,
+          forfeitReason: forfeitReasonForGuard,
+          userTeamId: userTeamIdForDisplay,
+          team1Id,
+          team2Id,
         });
+        if (forfeitDisplay) {
+          toast({
+            title: forfeitDisplay.title,
+            description: forfeitDisplay.description,
+            variant: forfeitDisplay.tone === 'forfeit' ? 'destructive' : 'default',
+          });
+        } else {
+          toast({
+            title: 'Check-in Closed',
+            description: 'The check-in window has closed. A walkover will be awarded if your opponent did not check in.',
+            variant: 'destructive',
+          });
+        }
       } else {
         toast({ title: 'Check-in Failed', description: msg, variant: 'destructive' });
       }

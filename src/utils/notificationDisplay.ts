@@ -132,6 +132,9 @@ export function getDenseScheduleNotificationMeta(notification: {
   message?: string | null;
   data?: Record<string, unknown> | null;
 }): DenseScheduleNotificationMeta | null {
+  const walkoverMeta = getMatchWalkoverNotificationMeta(notification);
+  if (walkoverMeta) return walkoverMeta;
+
   const matchMeta = getMatchScheduleNotificationMeta(notification);
   if (matchMeta) {
     return {
@@ -152,6 +155,49 @@ function formatMatchupFromData(data: Record<string, unknown>): string | null {
   if (!team1 && !team2) return null;
 
   return `${team1 ?? 'TBD'} vs ${team2 ?? 'TBD'}`;
+}
+
+export function getMatchWalkoverNotificationMeta(notification: {
+  type?: string;
+  message?: string | null;
+  data?: Record<string, unknown> | null;
+}): DenseScheduleNotificationMeta | null {
+  if (notification.type !== 'match_walkover') return null;
+
+  const data = notification.data ?? {};
+  const audience = readString(data, 'audience');
+  const reason = readString(data, 'reason');
+  if (audience !== 'organizer' || reason !== 'neither_checked_in') return null;
+
+  const tournamentName = readString(data, 'tournament_name');
+  const stageName = readString(data, 'stage_name');
+  const matchLabel = formatMatchLabelFromData(data);
+  const matchup = formatMatchupFromData(data);
+
+  const detailLines: string[] = [];
+  if (stageName) detailLines.push(stageName);
+  if (matchLabel) detailLines.push(matchLabel);
+  if (matchup) detailLines.push(matchup);
+  detailLines.push('Neither team checked in before the window closed.');
+  detailLines.push('Review or reset the forfeited match from the bracket.');
+
+  const hasStructuredContent = !!(stageName || matchLabel || matchup);
+  if (!hasStructuredContent && notification.message) {
+    const legacyLines = legacyMessageLines(notification.message);
+    if (legacyLines) {
+      return {
+        tournamentName,
+        detailLines: legacyLines,
+        actionLabel: 'Open bracket',
+      };
+    }
+  }
+
+  return {
+    tournamentName,
+    detailLines,
+    actionLabel: 'Open bracket',
+  };
 }
 
 export function getMatchScheduleNotificationMeta(notification: {
