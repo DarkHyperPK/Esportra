@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { matchRoomStateQueryKey } from '@/hooks/useMatchRoomState';
+import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
 
 interface PartyCodeGoLiveCardProps {
     matchId: string;
+    versionId?: string | null;
     onSuccess?: (code: string) => void;
     className?: string;
 }
 
 const PartyCodeGoLiveCard: React.FC<PartyCodeGoLiveCardProps> = ({
     matchId,
+    versionId,
     onSuccess,
     className = '',
 }) => {
@@ -28,12 +30,15 @@ const PartyCodeGoLiveCard: React.FC<PartyCodeGoLiveCardProps> = ({
         try {
             const code = manualCode.trim().toUpperCase();
             await apiClient.post(`/api/matches/${matchId}/go-live`, { partyCode: code });
-            queryClient.invalidateQueries({ queryKey: matchRoomStateQueryKey(matchId) });
+            invalidateMatchLifecycleQueries(queryClient, { matchId, versionId });
             onSuccess?.(code);
-            toast({ title: 'Match Started', description: `Party Code: ${code}` });
+            toast({ title: 'Match is live', description: `Party code: ${code}` });
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : 'Failed to start match';
-            toast({ title: 'Error', description: message, variant: 'destructive' });
+            toast({
+                title: 'Could not go live',
+                description: getApiErrorMessage(error, 'Failed to start match'),
+                variant: 'destructive',
+            });
         } finally {
             setIsSubmitting(false);
         }
@@ -41,7 +46,7 @@ const PartyCodeGoLiveCard: React.FC<PartyCodeGoLiveCardProps> = ({
 
     return (
         <div className={`space-y-3 ${className}`}>
-            <p className="text-sm text-zinc-400">Enter the lobby code to start the match.</p>
+            <p className="text-sm text-zinc-400">Enter the lobby code to share with your opponent and go live.</p>
             <div className="flex gap-2">
                 <Input
                     value={manualCode}
@@ -62,7 +67,7 @@ const PartyCodeGoLiveCard: React.FC<PartyCodeGoLiveCardProps> = ({
                     {isSubmitting ? (
                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
-                        'Start Match'
+                        'Share & Go Live'
                     )}
                 </Button>
             </div>

@@ -129,6 +129,10 @@ export const useMatchRoomState = (
       if (data?.checkinWindowClosed && !data?.bothCheckedIn) {
         return 15_000;
       }
+      // Poll while waiting for party code or until go-live propagates
+      if (data?.phase === 'awaiting_party_code' || (data?.bothCheckedIn && !data?.isMatchLive)) {
+        return 10_000;
+      }
       if (data?.bothCheckedIn) return false;
       if (data?.phase === 'awaiting_checkin' || data?.nextAction === 'check_in') {
         return 30_000;

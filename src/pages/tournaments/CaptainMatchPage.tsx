@@ -423,7 +423,7 @@ const CaptainMatchPage = () => {
 
     const showMatchHistory = Boolean(userTeamId || canManageMatchRoom);
     const historyIncludeLiveMatchId =
-        activeMatch?.status === 'in_progress' ? activeMatch.id : undefined;
+        isMatchLive || activeMatch?.status === 'in_progress' ? activeMatch?.id : undefined;
 
     // Fetch map veto status for the active match
     const { data: vetoData } = useQuery({
@@ -570,6 +570,7 @@ const CaptainMatchPage = () => {
     );
 
     const isMatchLive = roomState?.isMatchLive ?? activeMatch?.status === 'in_progress';
+    const displayPartyCode = activeMatch?.partyCode ?? roomState?.partyCode ?? null;
     const mapVetoCompleted = roomState?.mapVetoCompleted ?? isVetoCompleted;
 
     const liveScore = useLiveScoreState();
@@ -657,6 +658,7 @@ const CaptainMatchPage = () => {
         enabled: Boolean(activeMatchRawId || lifecycleScope.matchId),
         onStatusChanged: () => {
             invalidateNow();
+            refetchBracket();
             fetchMatchGames();
             determineMap();
         },
@@ -762,8 +764,8 @@ const CaptainMatchPage = () => {
             });
             return;
         }
-        // Block veto access until match is live
-        if (match.status !== 'in_progress') {
+        // Use room-state live flag — bracket cache may lag behind go-live
+        if (!isMatchLive && match.status !== 'in_progress') {
             toast({
                 title: 'Match not live',
                 description: 'The match must be live before starting map veto.',
@@ -908,10 +910,10 @@ const CaptainMatchPage = () => {
                 matchSettled={matchSettled}
                 nextGameNumber={nextGameNumber}
                 nextMapName={nextGameMap?.name}
-                partyCode={activeMatch?.partyCode}
+                partyCode={displayPartyCode}
                 onNavigateBack={() => navigate(`/tournaments/${slug}`)}
-                onCopyPartyCode={activeMatch?.partyCode ? () => {
-                    navigator.clipboard.writeText(activeMatch.partyCode!);
+                onCopyPartyCode={displayPartyCode ? () => {
+                    navigator.clipboard.writeText(displayPartyCode);
                     toast({ title: 'Copied', description: 'Party code copied' });
                 } : undefined}
             />
@@ -987,6 +989,7 @@ const CaptainMatchPage = () => {
                                     {/* Check-in + party code — steps 2–3 in self-play */}
                                     {agreedScheduledTime
                                         && activeMatch.status === 'pending'
+                                        && !isMatchLive
                                         && activeMatch.team2?.id
                                         && (selfPlayEnabled
                                             ? (nextAction === 'check_in'
@@ -1007,10 +1010,10 @@ const CaptainMatchPage = () => {
                                             checkinWindowOpen={roomState?.checkinWindowOpen}
                                             checkinWindowClosed={roomState?.checkinWindowClosed}
                                             hidePartyCodeInput={nextAction === 'submit_party_code'}
-                                            initialPartyCode={activeMatch.partyCode}
-                                            onPartyCodeGenerated={(code) => {
+                                            initialPartyCode={displayPartyCode}
+                                            onPartyCodeGenerated={() => {
+                                                invalidateNow();
                                                 refetchBracket();
-                                                toast({ title: 'Match Started', description: `Party Code: ${code}` });
                                             }}
                                             subscribeRealtime={false}
                                         />
@@ -1051,10 +1054,11 @@ const CaptainMatchPage = () => {
 
                                         {nextAction === 'submit_party_code'
                                             && isTeam1Captain
-                                            && activeMatch.status === 'pending'
-                                            && !activeMatch.partyCode && (
+                                            && !isMatchLive
+                                            && !displayPartyCode && (
                                             <PartyCodeGoLiveCard
                                                 matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                                                versionId={lifecycleScope.versionId}
                                                 onSuccess={() => {
                                                     refetchBracket();
                                                     invalidateNow();
@@ -1062,7 +1066,7 @@ const CaptainMatchPage = () => {
                                             />
                                         )}
 
-                                        {!selfPlayEnabled && isVetoEnabled && isMatchLive && !mapVetoCompleted && activeMatch.status !== 'completed' && (
+                                        {isVetoEnabled && isMatchLive && !mapVetoCompleted && activeMatch.status !== 'completed' && (
                                             <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 text-xs text-indigo-300">
                                                 <Swords className="w-3.5 h-3.5 shrink-0" />
                                                 <span>Complete Map Veto to unlock result reporting</span>
