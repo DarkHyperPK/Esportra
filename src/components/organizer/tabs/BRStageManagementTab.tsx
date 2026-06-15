@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
+import { CtaButton, DangerButton, GhostButton, OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   AlertDialog,
@@ -332,21 +334,18 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                     </div>
                     {sortedStages.length > 0 && (
                         <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
+                            <DangerButton
                                 size="sm"
                                 onClick={() => setResetConfirmOpen(true)}
-                className="border-red-500/20 text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
                             >
                 Reset all
-                            </Button>
-                            <Button
+                            </DangerButton>
+                            <SuccessButton
                 size="sm"
                 onClick={() => openWizard('add')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white"
               >
                 Add stage
-                            </Button>
+                            </SuccessButton>
                         </div>
                     )}
                 </CardHeader>
@@ -358,12 +357,11 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
               <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">
                 Add stages one at a time — choose format, lobby size, advancement, and matches per lobby for each.
               </p>
-              <Button
+              <CtaButton
                 onClick={() => openWizard('initial')}
-                className="bg-rose-600 hover:bg-rose-500 text-white"
               >
                 Set up stages
-              </Button>
+              </CtaButton>
                         </div>
                     ) : (
             <div className="space-y-3">
@@ -421,16 +419,15 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                                 if (e.key === 'Escape') setEditingNameId(null);
                               }}
                             />
-                            <Button
+                            <GhostButton
                               size="sm"
-                              variant="ghost"
                               onClick={() => editNameValue.trim() && saveStageName(stage.id, editNameValue)}
                             >
                               Save
-                                                                    </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setEditingNameId(null)}>
+                                                                    </GhostButton>
+                            <GhostButton size="sm" onClick={() => setEditingNameId(null)}>
                               Cancel
-                                                                    </Button>
+                                                                    </GhostButton>
                                                                 </div>
                                                             ) : (
                                                                 <button
@@ -504,31 +501,30 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                                                     </div>
 
                       <div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
-                                                    <Button
+                                                    <OutlineButton
                                                         size="sm"
-                          variant="outline"
-                          className="border-white/10"
                                                         onClick={() => setExpandedStageId(isExpanded ? null : stage.id)}
                                                     >
                           {isExpanded ? 'Hide lobbies' : 'Manage lobbies'}
-                                                    </Button>
+                                                    </OutlineButton>
                         {canAdvance && (
-                                                    <Button
+                                                    <SuccessButton
                                                         size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-500"
                             onClick={() => setAdvanceConfirmStageId(stage.id)}
                           >
                             Advance {UnitsLabel}
-                          </Button>
+                          </SuccessButton>
                         )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-400/70 hover:text-red-400"
+                        <button
+                          type="button"
+                          className={cn(
+                            buttonVariants({ variant: 'ghost', size: 'sm' }),
+                            'text-red-400/70 hover:text-red-400',
+                          )}
                           onClick={() => setDeleteConfirmId(stage.id)}
                         >
                           Delete
-                                                    </Button>
+                                                    </button>
                                                 </div>
                                             </div>
 

@@ -234,7 +234,6 @@ function HistoryBRView({
                         gameName={gameName}
                         stageFormat={getStageBRConfig(selectedStage)?.format}
                         qualificationCount={(selectedStage as { advancement_count?: number }).advancement_count}
-                        tournamentSlug={tournamentSlug || undefined}
                     />
                 </div>
             )}

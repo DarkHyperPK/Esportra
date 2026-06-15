@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useBRGroupTeams, useBRGroupsDetail, useBRGroupsMutations } from '@/hooks/useBRGroups';
 import { GroupCard } from '@/components/organizer/br/GroupCard';
-import { CtaButton, SuccessButton } from '@/components/ui/app-buttons';
+import { CtaButton } from '@/components/ui/app-buttons';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -117,17 +117,19 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
                     : 'Stage structure is ready. Use the Games tab to start games and submit results.'}
             </p>
             {needsMatchGeneration && (
-              <SuccessButton
+              <button
                 type="button"
-                size="sm"
-                className="mt-3 h-7 text-[11px]"
                 disabled={generateLobbies.isPending}
                 onClick={() => generateLobbies.mutate(undefined, { onSuccess: () => onUpdate() })}
+                className={cn(
+                  buttonVariants({ variant: 'success', size: 'sm' }),
+                  'mt-3 h-7 text-[11px]',
+                )}
               >
                 {generateLobbies.isPending
                   ? (isRotation ? 'Creating matches...' : 'Creating lobbies...')
                   : (isRotation ? 'Create matches' : 'Create group lobbies')}
-              </SuccessButton>
+              </button>
             )}
           </div>
         </div>
@@ -230,15 +232,14 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
           <p className="text-zinc-600 text-xs mt-1">
             Initialize the lobby structure before seeding participants.
           </p>
-          <SuccessButton
+          <button
             type="button"
-            size="sm"
             onClick={() => bootstrapLobby.mutate()}
             disabled={bootstrapLobby.isPending}
-            className="mt-4 font-mono text-xs font-bold uppercase tracking-wider"
+            className={cn(buttonVariants({ variant: 'success', size: 'sm' }), 'mt-4')}
           >
             {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Groups'}
-          </SuccessButton>
+          </button>
         </div>
       )}
 

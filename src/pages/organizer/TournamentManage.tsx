@@ -8,7 +8,8 @@ import { OrganizerTeamCard } from '@/components/organizer/OrganizerTeamCard';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Footer from '@/components/Footer';
-import { DangerButton } from '@/components/ui/app-buttons';
+import { CancelButton, DangerButton, OutlineButton } from '@/components/ui/app-buttons';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -1987,12 +1988,13 @@ const TournamentDashboard = () => {
                           {canActAsOwner && (
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
                               <div className="flex gap-2">
-                                <button type="button"
-                                  onClick={() => refetchDashboard()}
+                                <OutlineButton
+                                  type="button"
                                   size="sm"
+                                  onClick={() => refetchDashboard()}
                                 >
                                   Refresh
-                                </button>
+                                </OutlineButton>
                               </div>
                               <DangerButton
                                 onClick={handleRemoveUncheckedParticipants}
@@ -2080,17 +2082,18 @@ const TournamentDashboard = () => {
                               placeholder={(tournament?.team_size ?? 1) > 1 ? 'captain@team.com' : 'player@email.com'}
                               className="border-white/10 bg-black/30 text-white"
                             />
-                            <button type="button"
+                            <OutlineButton
                               type="button"
                               onClick={handleAddInviteEmail}
                               disabled={effectiveReservedInviteSlots <= 0}
                             >
                               Add
-                            </button>
-                            <button type="button"
+                            </OutlineButton>
+                            <button
                               type="button"
                               onClick={handleSendInviteEmails}
                               disabled={effectiveReservedInviteSlots <= 0 || draftInviteEmails.length === 0 || createInviteDrafts.isPending || sendInvites.isPending}
+                              className={cn(buttonVariants({ size: 'sm' }), 'border-transparent bg-purple-600 hover:bg-rose-500 text-white')}
                             >
                               {(createInviteDrafts.isPending || sendInvites.isPending) ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -2120,14 +2123,15 @@ const TournamentDashboard = () => {
 
                           {/* CSV Import */}
                           <div className="flex gap-2">
-                            <button type="button"
+                            <OutlineButton
                               type="button"
                               size="sm"
                               onClick={() => setShowCsvImport(!showCsvImport)}
                               disabled={effectiveReservedInviteSlots <= 0 || remainingInviteSlots <= 0}
+                              className="text-xs"
                             >
                               {showCsvImport ? 'Hide' : 'CSV Import'}
-                            </button>
+                            </OutlineButton>
                           </div>
 
                           {showCsvImport && (
@@ -2140,9 +2144,8 @@ const TournamentDashboard = () => {
                                 rows={4}
                                 className="w-full rounded-none border border-white/10 bg-black/30 p-3 text-sm text-white placeholder:text-zinc-600 focus:border-rose-500/50 focus:outline-none"
                               />
-                              <button type="button"
+                              <button
                                 type="button"
-                                size="sm"
                                 onClick={() => {
                                   if (!csvImportText.trim()) return;
                                   importCsv.mutate({ csvContent: csvImportText }, {
@@ -2155,6 +2158,7 @@ const TournamentDashboard = () => {
                                   });
                                 }}
                                 disabled={importCsv.isPending || !csvImportText.trim() || effectiveReservedInviteSlots <= 0 || remainingInviteSlots <= 0}
+                                className={cn(buttonVariants({ size: 'sm' }), 'border-transparent bg-purple-600 hover:bg-rose-500 text-white')}
                               >
                                 {importCsv.isPending ? 'Importing...' : 'Import Emails'}
                               </button>
@@ -2195,9 +2199,8 @@ const TournamentDashboard = () => {
                                     </span>
                                     <div className="flex gap-1">
                                       {(invite.status === 'sent' || invite.status === 'expired') && (
-                                        <button type="button"
+                                        <button
                                           type="button"
-                                          size="sm"
                                           onClick={() => {
                                             resendInvites.mutate({ invitationIds: [invite.id] }, {
                                               onSuccess: () => toast({ title: 'Invitation resent', description: `Re-sent to ${invite.email}` }),
@@ -2205,18 +2208,17 @@ const TournamentDashboard = () => {
                                             });
                                           }}
                                           disabled={resendInvites.isPending}
-                                          className="justify-start text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 text-xs px-2"
+                                          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'justify-start text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 text-xs px-2')}
                                         >
                                           Resend
                                         </button>
                                       )}
                                       {invite.status === 'sent' && (
-                                        <button type="button"
+                                        <button
                                           type="button"
-                                          size="sm"
                                           onClick={() => handleRevokeInvitation(invite.id)}
                                           disabled={revokeInvite.isPending}
-                                          className="justify-start text-red-300 hover:bg-red-500/10 hover:text-red-200 text-xs px-2"
+                                          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'justify-start text-red-300 hover:bg-red-500/10 hover:text-red-200 text-xs px-2')}
                                         >
                                           Revoke
                                         </button>
@@ -2487,9 +2489,11 @@ const TournamentDashboard = () => {
                             )}
 
                             <div className="flex justify-end px-4 pb-2">
-                              <button type="button"
+                              <button
+                                type="button"
                                 onClick={handleSaveInviteSettings}
                                 disabled={savingInviteSettings}
+                                className={cn(buttonVariants(), 'border-transparent bg-purple-600 hover:bg-rose-500 text-white')}
                               >
                                 {savingInviteSettings ? 'Saving...' : 'Save Invite Settings'}
                               </button>
@@ -2691,9 +2695,9 @@ const TournamentDashboard = () => {
             className="bg-white/5 border-white/10 text-white min-h-[80px]"
           />
           <DialogFooter className="gap-2">
-            <button type="button" onClick={() => setShowRejectDialog(null)}>
+            <CancelButton type="button" onClick={() => setShowRejectDialog(null)}>
               Cancel
-            </button>
+            </CancelButton>
             <DangerButton
               disabled={!!rejectingPayment}
               onClick={() => showRejectDialog && handleRejectPayment(showRejectDialog)}

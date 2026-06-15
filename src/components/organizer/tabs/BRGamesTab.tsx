@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
-import { SuccessButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layers, Users, Trophy, Filter, ChevronRight, RefreshCw } from 'lucide-react';
 import { useBRGroupLeaderboard, useBRGroupRounds, useBRStageLeaderboard } from '@/hooks/useBRGroupLeaderboard';
@@ -227,9 +228,9 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                         <span className="font-medium text-white">Filter</span>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-1 flex-wrap">
+                    <div className="flex items-end gap-2 flex-1 flex-wrap">
                         {/* Stage Selector */}
-                        <div className="space-y-0.5">
+                        <div className="flex flex-col gap-0.5">
                             <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">Stage</label>
                             <Select value={selectedStageId} onValueChange={handleStageChange}>
                                 <SelectTrigger className="w-[200px] h-8 text-xs bg-white/5 border-white/10">
@@ -252,35 +253,41 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                         </div>
 
                         {!useWaveLobbyView && groups.length !== 1 && (
-                            <ChevronRight className="w-4 h-4 text-gray-600 hidden sm:block mt-4" />
+                            <ChevronRight className="w-4 h-4 text-gray-600 hidden sm:block mb-2" />
                         )}
 
                         {/* Group Selector — hidden for group rotation (wave-based view) */}
                         {!useWaveLobbyView && (
-                        <div className="space-y-0.5">
+                        <div className="flex flex-col gap-0.5">
                             <label className="text-[10px] text-gray-600 uppercase tracking-wider font-medium">
                                 {isSingleLobby ? 'Lobby' : isMultiLobbyCut ? 'Parallel lobby' : 'Group'}
                             </label>
                             {groupsLoading ? (
                                 <div className="h-8 w-[180px] bg-white/5 rounded-md animate-pulse" />
                             ) : groups.length === 0 ? (
-                                <SuccessButton
-                                    size="sm"
+                                <button
+                                    type="button"
                                     onClick={() => bootstrapLobby.mutate()}
                                     disabled={bootstrapLobby.isPending}
-                                    className="h-8 font-mono text-[11px] font-bold uppercase tracking-wider"
+                                    className={cn(
+                                        buttonVariants({ variant: 'success', size: 'sm' }),
+                                        'h-8 w-[180px] shrink-0 justify-center text-[11px]',
+                                    )}
                                 >
                                     {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Groups'}
-                                </SuccessButton>
+                                </button>
                             ) : needsMatchGeneration ? (
-                                <SuccessButton
-                                    size="sm"
+                                <button
+                                    type="button"
                                     onClick={() => generateLobbies.mutate()}
                                     disabled={generateLobbies.isPending}
-                                    className="h-8 font-mono text-[11px] font-bold uppercase tracking-wider"
+                                    className={cn(
+                                        buttonVariants({ variant: 'success', size: 'sm' }),
+                                        'h-8 w-[180px] shrink-0 justify-center text-[11px]',
+                                    )}
                                 >
                                     {generateLobbies.isPending ? 'Creating...' : 'Create Matches'}
-                                </SuccessButton>
+                                </button>
                             ) : isSingleLobby ? (
                                 <div className="h-8 flex items-center border border-white/10 bg-white/[0.03] px-3 text-xs font-medium text-white">
                                     Main Lobby

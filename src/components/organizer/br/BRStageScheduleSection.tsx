@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CtaButton, OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
+import { CtaButton, OutlineButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Save, AlertTriangle } from 'lucide-react';
@@ -518,14 +520,14 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                       </div>
                     ))}
                   </div>
-                  <SuccessButton
+                  <button
                     type="button"
-                    size="sm"
                     disabled={commitSchedule.isPending}
                     onClick={handleCreateMatches}
+                    className={cn(buttonVariants({ variant: 'success', size: 'sm' }))}
                   >
                     {commitSchedule.isPending ? 'Creating...' : 'Create matches'}
-                  </SuccessButton>
+                  </button>
                 </>
               ) : !hasLobbies ? (
                 <p className="text-sm text-amber-400/90">Need an even number of groups.</p>
@@ -535,14 +537,14 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
             <div className="space-y-4">
               {!hasLobbies ? (
                 <div className="flex flex-wrap items-center gap-3">
-                  <SuccessButton
+                  <button
                     type="button"
-                    size="sm"
                     disabled={generateLobbies.isPending || !seedingComplete}
                     onClick={() => generateLobbies.mutate(undefined, { onSuccess: () => onUpdate() })}
+                    className={cn(buttonVariants({ variant: 'success', size: 'sm' }))}
                   >
                     {generateLobbies.isPending ? scheduleCopy.createPending : scheduleCopy.createAction}
-                  </SuccessButton>
+                  </button>
                   {!seedingComplete && (
                     <span className="text-xs text-zinc-500">
                       {totalAssigned}/{expectedUnits || '—'} seeded

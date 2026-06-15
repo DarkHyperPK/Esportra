@@ -15,7 +15,7 @@ import { RulesTab } from '@/components/tournament/details/RulesTab';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import { usePublicBracketData } from '@/hooks/usePublicBracketData';
 import { CancelButton, CtaButton, OutlineButton } from '@/components/ui/app-buttons';
-import { Trophy, Swords, EyeOff, LogIn } from 'lucide-react';
+import { Trophy, Swords, EyeOff, LogIn, Clock } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
@@ -99,7 +99,8 @@ const TournamentDetails = () => {
   const competitorTabValue = terminology.competitorLabelPlural.toLowerCase();
   const [activeTab, setActiveTab] = useState(requestedDetailsTab || 'overview');
   const initialInviteCode = normalizeInviteCode(detailsSearchParams?.get('code') || '');
-  const needsBracketVersions = activeTab === 'brackets' || (isBR && activeTab === 'leaderboard');
+  const isBRStageTab = isBR && (activeTab === 'leaderboard' || activeTab === 'game schedule');
+  const needsBracketVersions = activeTab === 'brackets' || isBRStageTab;
   const needsStageMetadata = activeTab === 'overview' || activeTab === 'stages' || needsBracketVersions;
 
   useEffect(() => {
@@ -205,7 +206,7 @@ const TournamentDetails = () => {
   const [selectedStageId, setSelectedStageId] = useState<string | null>(requestedBRStageId);
 
   // Multi-group stage detection — check first stage for groups
-  const firstBRStageId = isBR && activeTab === 'leaderboard' && stages.length > 0 ? stages[0].id : null;
+  const firstBRStageId = isBRStageTab && stages.length > 0 ? stages[0].id : null;
   const { hasGroups: brHasGroups, isLoading: brGroupsLoading } = useBRGroupStage(firstBRStageId);
 
   // Auto-select first stage when stages load
@@ -687,10 +688,10 @@ const TournamentDetails = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="container mx-auto px-4">
             <div className="sticky top-4 z-40 bg-[#0a0a0c] border border-white/10 p-2 mb-12 mx-auto max-w-3xl backdrop-blur-md">
-              <TabsList className="bg-transparent h-auto p-0 w-full flex justify-between">
+              <TabsList className="border-0 bg-transparent h-auto p-0 w-full flex justify-between">
                 {(() => {
                   const tabs = isBR
-                    ? ['Overview', terminology.competitorLabelPlural, 'Leaderboard', 'Rules']
+                    ? ['Overview', terminology.competitorLabelPlural, 'Stages', 'Leaderboard', 'Game Schedule', 'Rules']
                     : ['Overview', terminology.competitorLabelPlural, 'Brackets', 'Stages', 'Rules'];
                   return tabs;
                 })().map((tab) => (
@@ -725,6 +726,18 @@ const TournamentDetails = () => {
 
           {isBR ? (
             <>
+            <TabsContent value="stages">
+              <div className="container mx-auto px-4">
+                <StagesTab
+                  tournamentId={tournament.id}
+                  stages={stages}
+                  teamSize={tournament.team_size}
+                  participantMode={participantMode}
+                  tournamentSettings={tournament.settings as Record<string, unknown> | null}
+                />
+              </div>
+            </TabsContent>
+
             <TabsContent value="leaderboard">
               <div className="container mx-auto px-4 space-y-6">
                 {brHasGroups ? (
@@ -760,7 +773,7 @@ const TournamentDetails = () => {
                           stages.find((s: { id: string }) => s.id === selectedStageId) ?? {},
                         )?.format}
                         qualificationCount={(stages.find((s: any) => s.id === selectedStageId) as any)?.advancement_count}
-                        tournamentSlug={slug}
+                        mode="leaderboard"
                       />
                     )}
                   </>
@@ -815,6 +828,50 @@ const TournamentDetails = () => {
                 )}
               </div>
             </TabsContent>
+
+            <TabsContent value="game schedule">
+              <div className="container mx-auto px-4 space-y-6">
+                {brHasGroups ? (
+                  <>
+                    {stages.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {stages.map((stage: any) => (
+                          <button
+                            key={stage.id}
+                            type="button"
+                            onClick={() => setSelectedStageId(stage.id)}
+                            className={cn(
+                              'px-4 py-2 text-sm font-medium transition-all whitespace-nowrap border',
+                              selectedStageId === stage.id
+                                ? 'bg-white/10 border-white/20 text-white'
+                                : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white hover:bg-white/[0.06]'
+                            )}
+                          >
+                            {stage.name || `Stage ${stage.stage_order + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {selectedStageId && (
+                      <BRGroupStageView
+                        stageId={selectedStageId}
+                        gameName={tournament?.game || ''}
+                        stageFormat={getStageBRConfig(
+                          stages.find((s: { id: string }) => s.id === selectedStageId) ?? {},
+                        )?.format}
+                        mode="schedule"
+                      />
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-white/10 bg-white/[0.01]">
+                    <Clock className="w-4 h-4 text-zinc-600 flex-shrink-0" />
+                    <p className="text-sm text-zinc-500">Game schedule will appear here once lobbies are set up.</p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
             </>
           ) : (
             <>
@@ -832,7 +889,13 @@ const TournamentDetails = () => {
 
               <TabsContent value="stages">
                 <div className="container mx-auto px-4">
-                  <StagesTab tournamentId={tournament.id} stages={stages} />
+                  <StagesTab
+                  tournamentId={tournament.id}
+                  stages={stages}
+                  teamSize={tournament.team_size}
+                  participantMode={participantMode}
+                  tournamentSettings={tournament.settings as Record<string, unknown> | null}
+                />
                 </div>
               </TabsContent>
             </>

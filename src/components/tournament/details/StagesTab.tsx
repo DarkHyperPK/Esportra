@@ -13,13 +13,24 @@ import {
     DialogDescription
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trophy, Layers, Lock, ArrowDown, Shield, Swords, Map as MapIcon, ChevronRight, Users } from 'lucide-react';
+import { Trophy, Layers, Lock, ArrowDown, Shield, Swords, Map as MapIcon, ChevronRight, Users, Target } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
+import { getStageBRConfig } from '@/utils/brConfigResolve';
+import {
+    formatBRAdvancementLabel,
+    formatBRStageFormatLabel,
+    formatBRStageStructureSummary,
+    getBRStageUnitLabels,
+} from '@/utils/brGameContext';
+import type { BRStageFormat } from '@/types/battleRoyale';
 
 interface StagesTabProps {
     tournamentId: string;
     stages?: Stage[];
+    teamSize?: number;
+    participantMode?: 'solo' | 'team';
+    tournamentSettings?: Record<string, unknown> | null;
 }
 
 interface Stage {
@@ -44,7 +55,72 @@ const normalizeStages = (rawStages: Stage[] | undefined) =>
             : (stage.config || null),
     }));
 
-export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId, stages: stagesProp }) => {
+const isBattleRoyaleStage = (stage: Stage) =>
+    (stage.format || '').toLowerCase().replace(/-/g, '_') === 'battle_royale';
+
+const getBRGamesPerLobby = (stage: Stage, settings?: Record<string, unknown> | null) => {
+    const br = getStageBRConfig(stage);
+    if (typeof br?.gamesPerLobby === 'number') return br.gamesPerLobby;
+    if (typeof br?.gameCount === 'number') return br.gameCount;
+    if (typeof settings?.brGameCount === 'number') return settings.brGameCount;
+    if (typeof settings?.brDefaultGameCount === 'number') return settings.brDefaultGameCount;
+    return 6;
+};
+
+const getBRSubFormat = (stage: Stage): BRStageFormat | string =>
+    getStageBRConfig(stage)?.format ?? 'static_groups';
+
+const getBRSeedGroupCount = (stage: Stage) => {
+    const br = getStageBRConfig(stage);
+    return br?.lobbyFormation?.seedGroupCount ?? null;
+};
+
+const getBRAdvancementScope = (stage: Stage): 'overall' | 'per_group' => {
+    const br = getStageBRConfig(stage);
+    const mode = br?.advancement?.mode;
+    if (mode === 'top_n_overall' || mode === 'threshold') return 'overall';
+    const subFormat = getBRSubFormat(stage);
+    if (subFormat === 'single_lobby' || subFormat === 'group_rotation') return 'overall';
+    return 'per_group';
+};
+
+const getBRProgressionText = (
+    stage: Stage,
+    isLast: boolean,
+    unitsLabel: string,
+) => {
+    const br = getStageBRConfig(stage);
+    const mode = br?.advancement?.mode;
+
+    if (mode === 'none' || (!stage.advancement_count && isLast)) {
+        return isLast ? 'Winner takes the trophy' : 'All participants continue';
+    }
+
+    const count =
+        br?.advancement?.perGroup
+        ?? br?.advancement?.overall
+        ?? br?.advancement?.perLobby
+        ?? br?.advancement?.threshold
+        ?? stage.advancement_count;
+
+    if (!count) {
+        return isLast ? 'Winner takes the trophy' : 'Standard progression';
+    }
+
+    return formatBRAdvancementLabel({
+        count,
+        scope: getBRAdvancementScope(stage),
+        unitsLabel,
+    });
+};
+
+export const StagesTab: React.FC<StagesTabProps> = ({
+    tournamentId,
+    stages: stagesProp,
+    teamSize = 1,
+    participantMode,
+    tournamentSettings,
+}) => {
     const { data: fetchedStages, isLoading } = useQuery({
         queryKey: ['tournament-stages-public', tournamentId],
         queryFn: async () => {
@@ -59,6 +135,8 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId, stages: stag
     });
 
     const stages = stagesProp ? normalizeStages(stagesProp) : fetchedStages;
+    const { unitsLabel } = getBRStageUnitLabels(teamSize, participantMode);
+    const hasBRStages = stages?.some(isBattleRoyaleStage) ?? false;
 
     const [selectedStage, setSelectedStage] = React.useState<Stage | null>(null);
     const [detailsOpen, setDetailsOpen] = React.useState(false);
@@ -93,19 +171,26 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId, stages: stag
         setDetailsOpen(true);
     };
 
-    const getFormatDisplay = (format: string) => {
-        if (!format) return 'Unknown Format';
-        return format.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    const getFormatDisplay = (stage: Stage) => {
+        if (isBattleRoyaleStage(stage)) {
+            return formatBRStageFormatLabel(getBRSubFormat(stage));
+        }
+        if (!stage.format) return 'Unknown Format';
+        return stage.format.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     };
-
-    const isStageCurrent = (progressLabel: StageProgressLabel) => progressLabel === 'in_progress';
-    const isStageFinished = (progressLabel: StageProgressLabel) =>
-        progressLabel === 'ready_to_advance' || progressLabel === 'advanced';
 
     const getFlowDescription = () => {
         if (!stages || stages.length === 0) return '';
 
         const flow = stages.map((s, i) => {
+            if (isBattleRoyaleStage(s)) {
+                const subFormat = getBRSubFormat(s);
+                const label = formatBRStageFormatLabel(subFormat);
+                if (i === stages.length - 1) return `Finals (${label})`;
+                const adv = s.advancement_count;
+                return adv ? `${label} (Top ${adv})` : label;
+            }
+
             const format = s.format?.split('_')[0].charAt(0).toUpperCase() + s.format?.split('_')[0].slice(1) || 'Stage';
             if (i === stages.length - 1) return `Finals (${format})`;
             return `${format} (${s.advancement_count ? `Top ${s.advancement_count}` : 'Qualifiers'})`;
@@ -113,6 +198,10 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId, stages: stag
 
         return flow.join(' → ');
     };
+
+    const isStageCurrent = (progressLabel: StageProgressLabel) => progressLabel === 'in_progress';
+    const isStageFinished = (progressLabel: StageProgressLabel) =>
+        progressLabel === 'ready_to_advance' || progressLabel === 'advanced';
 
     return (
         <div className="space-y-8 max-w-4xl mx-auto">
@@ -124,7 +213,17 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId, stages: stag
                     <div>
                         <h4 className="text-white font-semibold">Tournament Format</h4>
                         <p className="text-sm text-zinc-400 mt-1 mb-2">
-                            Teams compete through <span className="text-white font-medium">{stages.length} stages</span> to determine the champion.
+                            {hasBRStages ? (
+                                <>
+                                    {unitsLabel.charAt(0).toUpperCase() + unitsLabel.slice(1)} compete through{' '}
+                                    <span className="text-white font-medium">{stages.length} stage{stages.length === 1 ? '' : 's'}</span>{' '}
+                                    of scored lobby play to determine the champion.
+                                </>
+                            ) : (
+                                <>
+                                    Teams compete through <span className="text-white font-medium">{stages.length} stages</span> to determine the champion.
+                                </>
+                            )}
                         </p>
                         <div className="text-xs font-mono text-purple-300/80 bg-purple-500/5 px-2 py-1 rounded border border-purple-500/10 inline-block">
                             {getFlowDescription()}
@@ -146,7 +245,21 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId, stages: stag
                     // Stage > 1: Capacity = Previous Stage Advancement Count
                     const showCapacity = index > 0;
                     const capacityValue = previousStage?.advancement_count || stage.capacity;
-                    const capacityLabel = index > 0 ? "Qualified Teams" : "Capacity";
+                    const capacityLabel = index > 0 ? `Qualified ${unitsLabel.charAt(0).toUpperCase() + unitsLabel.slice(1)}` : 'Capacity';
+                    const isBR = isBattleRoyaleStage(stage);
+                    const brSubFormat = isBR ? getBRSubFormat(stage) : null;
+                    const gamesPerLobby = isBR ? getBRGamesPerLobby(stage, tournamentSettings) : null;
+                    const seedGroups = isBR ? getBRSeedGroupCount(stage) : null;
+                    const brStructure = isBR && brSubFormat
+                        ? formatBRStageStructureSummary({
+                            format: brSubFormat,
+                            seedGroups: seedGroups ?? (brSubFormat === 'single_lobby' ? 1 : 2),
+                            gamesPerLobby: gamesPerLobby ?? 6,
+                            lobbyCapacity: stage.capacity,
+                            isFinal: isLast,
+                            unitsLabel,
+                        })
+                        : null;
 
                     return (
                         <motion.div
@@ -190,7 +303,7 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId, stages: stag
                                         <div className="flex items-center gap-3">
                                             <div className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-white/5 flex items-center gap-2">
                                                 <Trophy className="w-4 h-4 text-purple-400" />
-                                                <span className="text-zinc-300 text-sm font-medium">{getFormatDisplay(stage.format)}</span>
+                                                <span className="text-zinc-300 text-sm font-medium">{getFormatDisplay(stage)}</span>
                                             </div>
                                             {stage.is_locked && (
                                                 <div className="p-2 rounded-lg bg-zinc-900 border border-white/5" title="Stage Locked">
@@ -210,30 +323,70 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId, stages: stag
                                             <div>
                                                 <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-0.5">Progression</p>
                                                 <p className="text-sm text-zinc-300">
-                                                    {stage.advancement_count
-                                                        ? <span className="text-emerald-400 font-semibold">Top {stage.advancement_count} teams</span>
-                                                        : isLast ? 'Winner takes the trophy' : 'Standard progression'}
-                                                    {stage.advancement_count ? ' advance' : ''}
+                                                    {isBR
+                                                        ? <span className="text-emerald-400 font-semibold">{getBRProgressionText(stage, isLast, unitsLabel)}</span>
+                                                        : (
+                                                            <>
+                                                                {stage.advancement_count
+                                                                    ? <span className="text-emerald-400 font-semibold">Top {stage.advancement_count} teams</span>
+                                                                    : isLast ? 'Winner takes the trophy' : 'Standard progression'}
+                                                                {stage.advancement_count ? ' advance' : ''}
+                                                            </>
+                                                        )}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        {/* Match Settings */}
-                                        <div className="p-3 rounded-lg bg-black/20 border border-white/5 flex items-start gap-3">
-                                            <div className="p-1.5 rounded bg-zinc-800/50">
-                                                <Swords className="w-4 h-4 text-blue-400" />
+                                        {isBR ? (
+                                            <div className="p-3 rounded-lg bg-black/20 border border-white/5 flex items-start gap-3">
+                                                <div className="p-1.5 rounded bg-zinc-800/50">
+                                                    <Target className="w-4 h-4 text-blue-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-0.5">Lobby Play</p>
+                                                    <p className="text-sm text-zinc-300">
+                                                        <span className="text-white font-semibold">{gamesPerLobby}</span>
+                                                        {' '}scored game{gamesPerLobby === 1 ? '' : 's'} per lobby
+                                                    </p>
+                                                    {brStructure && (
+                                                        <p className="text-xs text-zinc-500 mt-1">{brStructure.subtitle}</p>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-0.5">Match Settings</p>
-                                                <p className="text-sm text-zinc-300">
-                                                    Best of <span className="text-white font-semibold">{stage.best_of || 1}</span>
-                                                    {stage.config?.veto_enabled && <span className="text-zinc-500 text-xs ml-1">(Veto On)</span>}
-                                                </p>
+                                        ) : (
+                                            <div className="p-3 rounded-lg bg-black/20 border border-white/5 flex items-start gap-3">
+                                                <div className="p-1.5 rounded bg-zinc-800/50">
+                                                    <Swords className="w-4 h-4 text-blue-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-0.5">Match Settings</p>
+                                                    <p className="text-sm text-zinc-300">
+                                                        Best of <span className="text-white font-semibold">{stage.best_of || 1}</span>
+                                                        {stage.config?.veto_enabled && <span className="text-zinc-500 text-xs ml-1">(Veto On)</span>}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
+
+                                        {isBR && brSubFormat && brSubFormat !== 'single_lobby' && seedGroups && seedGroups > 0 && (
+                                            <div className="p-3 rounded-lg bg-black/20 border border-white/5 flex items-start gap-3">
+                                                <div className="p-1.5 rounded bg-zinc-800/50">
+                                                    <Users className="w-4 h-4 text-cyan-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-0.5">Seed Groups</p>
+                                                    <p className="text-sm text-zinc-300">
+                                                        {seedGroups} group{seedGroups === 1 ? '' : 's'}
+                                                    </p>
+                                                    {brStructure && (
+                                                        <p className="text-xs text-zinc-500 mt-0.5">{brStructure.title}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* Groups & Rounds Info */}
-                                        {['swiss', 'round_robin'].includes(stage.format) &&
+                                        {!isBR && ['swiss', 'round_robin'].includes(stage.format) &&
                                             ((stage.config?.swiss_rounds) || (stage.config?.group_count) || (stage.config?.swiss_groups)) && (
                                                 <div className="p-3 rounded-lg bg-black/20 border border-white/5 flex items-start gap-3">
                                                     <div className="p-1.5 rounded bg-zinc-800/50">
@@ -297,7 +450,7 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId, stages: stag
                                                 <div>
                                                     <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-0.5">{capacityLabel}</p>
                                                     <p className="text-sm text-zinc-300">
-                                                        {capacityValue ? `${capacityValue} Teams` : 'Depends on Results'}
+                                                        {capacityValue ? `${capacityValue} ${unitsLabel.charAt(0).toUpperCase() + unitsLabel.slice(1)}` : 'Depends on Results'}
                                                     </p>
                                                 </div>
                                             </div>
@@ -330,13 +483,47 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId, stages: stag
                     </DialogHeader>
 
                     <div className="space-y-6 py-4">
-                        {/* Structure Details */}
+                        {selectedStage && isBattleRoyaleStage(selectedStage) ? (
+                            <div className="space-y-3">
+                                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Stage Structure</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-zinc-900/50 p-3 rounded-lg border border-white/5">
+                                        <span className="text-xs text-zinc-400 block mb-1">Format</span>
+                                        <span className="text-sm font-medium text-white">{getFormatDisplay(selectedStage)}</span>
+                                    </div>
+                                    <div className="bg-zinc-900/50 p-3 rounded-lg border border-white/5">
+                                        <span className="text-xs text-zinc-400 block mb-1">Games per lobby</span>
+                                        <span className="text-sm font-medium text-white">
+                                            {getBRGamesPerLobby(selectedStage, tournamentSettings)}
+                                        </span>
+                                    </div>
+                                    {getBRSeedGroupCount(selectedStage) && getBRSubFormat(selectedStage) !== 'single_lobby' && (
+                                        <div className="bg-zinc-900/50 p-3 rounded-lg border border-white/5">
+                                            <span className="text-xs text-zinc-400 block mb-1">Seed groups</span>
+                                            <span className="text-sm font-medium text-white">
+                                                {getBRSeedGroupCount(selectedStage)}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="bg-zinc-900/50 p-3 rounded-lg border border-white/5 col-span-2">
+                                        <span className="text-xs text-zinc-400 block mb-1">Progression</span>
+                                        <span className="text-sm font-medium text-white">
+                                            {getBRProgressionText(
+                                                selectedStage,
+                                                stages?.[stages.length - 1]?.id === selectedStage.id,
+                                                unitsLabel,
+                                            )}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
                         <div className="space-y-3">
                             <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Stage Structure</h4>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-zinc-900/50 p-3 rounded-lg border border-white/5">
                                     <span className="text-xs text-zinc-400 block mb-1">Format</span>
-                                    <span className="text-sm font-medium text-white">{getFormatDisplay(selectedStage?.format || '')}</span>
+                                    <span className="text-sm font-medium text-white">{selectedStage ? getFormatDisplay(selectedStage) : ''}</span>
                                 </div>
                                 {selectedStage?.config?.group_count && (
                                     <div className="bg-zinc-900/50 p-3 rounded-lg border border-white/5">
@@ -364,6 +551,7 @@ export const StagesTab: React.FC<StagesTabProps> = ({ tournamentId, stages: stag
                                 )}
                             </div>
                         </div>
+                        )}
 
                         {/* Map Pool List */}
                         {selectedStage?.map_pool && selectedStage.map_pool.length > 0 && (
