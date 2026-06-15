@@ -12,9 +12,15 @@ import { useToast } from '@/hooks/use-toast';
 import { useRequireVerification } from '@/hooks/useRequireVerification';
 import { useInvitationPreview, useTournamentInvitations } from '@/hooks/useTournamentInvitations';
 import { useEligibleCaptainTeams } from '@/hooks/useEligibleCaptainTeams';
+import { apiClient } from '@/lib/apiClient';
 import { getApiErrorMessage } from '@/lib/apiClient';
 import { normalizeInviteCode, isLikelyInviteCode } from '@/utils/inviteCodeUtils';
-import { isTeamRegistrationMode } from '@/utils/gameFeatures';
+import { isTeamRegistrationMode, getEffectiveGameFeatures, isAssistedMatchReportingEnabled } from '@/utils/gameFeatures';
+import TournamentLineupPicker, { isTournamentLineupComplete } from '@/components/tournament/TournamentLineupPicker';
+import {
+  buildRosterLineupPayload,
+  type TournamentLineupSelection,
+} from '@/utils/rosterEligibility';
 import type { InvitationPreview, RedeemInvitationResponse } from '@/types/invitation';
 
 export interface InviteRedemptionTournament {
@@ -65,6 +71,9 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  const [rosterMembersData, setRosterMembersData] = useState<any[]>([]);
+  const [fetchingMembers, setFetchingMembers] = useState(false);
+  const [lineupSelections, setLineupSelections] = useState<TournamentLineupSelection>({});
 
   const normalizedCode = useMemo(() => normalizeInviteCode(inviteCode), [inviteCode]);
   const canPreview = Boolean(user && isLikelyInviteCode(normalizedCode));
@@ -103,6 +112,7 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
     setSelectedRosterId,
     fetchingTeams,
     requiresExplicitTeamSelection,
+    usesLineupSelection,
   } = useEligibleCaptainTeams({
     tournament: {
       game: previewTournament?.game || tournament?.game || '',
@@ -113,6 +123,51 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
     userId: user?.id,
     enabled: Boolean(user && preview?.canRedeem && previewTournament && !isSoloInvite),
   });
+
+  const tournamentGameMode = previewTournament?.game_mode ?? previewTournament?.gameMode ?? tournament?.game_mode ?? tournament?.gameMode ?? '';
+  const tournamentGame = previewTournament?.game || tournament?.game || '';
+  const assistedReportingEnabled = isAssistedMatchReportingEnabled(
+    tournamentGame,
+    tournamentGameMode,
+    undefined,
+  );
+
+  useEffect(() => {
+    setLineupSelections({});
+    const loadMembers = async () => {
+      if (!selectedTeamId || !selectedRosterId) {
+        setRosterMembersData([]);
+        return;
+      }
+      setFetchingMembers(true);
+      try {
+        const members = await apiClient.get<any[]>(
+          `/api/teams/${selectedTeamId}/rosters/${selectedRosterId}/members`,
+        );
+        const team = captainTeams.find((entry) => entry.id === selectedTeamId);
+        const captainId = team?.owner_id;
+        const formattedMembers = (members || []).map((member) => ({
+          ...member,
+          is_captain: member.user_id === captainId,
+          profile: member.profiles || {
+            username: member.username,
+            full_name: member.full_name,
+            avatar_url: member.avatar_url,
+            riot_tag: member.riot_tag,
+          },
+        }));
+        setRosterMembersData(formattedMembers);
+      } catch {
+        setRosterMembersData([]);
+      } finally {
+        setFetchingMembers(false);
+      }
+    };
+    void loadMembers();
+  }, [captainTeams, selectedRosterId, selectedTeamId]);
+
+  const lineupComplete = !usesLineupSelection
+    || isTournamentLineupComplete(lineupSelections, tournamentGame, tournamentGameMode);
 
   useEffect(() => {
     if (initialCode) setInviteCode(initialCode);
@@ -163,9 +218,28 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
         setSubmitError('Select a roster that matches this tournament.');
         return;
       }
+
+      if (usesLineupSelection && !lineupComplete) {
+        setSubmitError('Pick starters and substitutes for this tournament lineup.');
+        return;
+      }
     }
 
     try {
+      let rosterLineup: string | undefined;
+      if (!isSoloInvite && usesLineupSelection && selectedRosterId) {
+        const memberIds = rosterMembersData.map((member) => member.user_id).filter(Boolean);
+        const profileRows = await apiClient.get<any[]>(`/api/profiles?ids=${memberIds.join(',')}`);
+        const preferRiotTag = getEffectiveGameFeatures(tournamentGame, tournamentGameMode).assistedReporting;
+        const memberMap = new Map<string, string>();
+        (profileRows || []).forEach((profile) => {
+          const name = (preferRiotTag && profile.riot_tag) || profile.username || profile.full_name || profile.id;
+          if (name) memberMap.set(profile.id, name);
+        });
+        const payload = buildRosterLineupPayload(rosterMembersData, lineupSelections, memberMap);
+        rosterLineup = JSON.stringify(payload);
+      }
+
       const result = await redeemCode.mutateAsync(
         isSoloInvite
           ? { code: normalizedCode }
@@ -173,6 +247,7 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
               code: normalizedCode,
               teamId: selectedTeamId,
               rosterId: selectedRosterId,
+              rosterLineup,
             },
       );
 
@@ -209,9 +284,11 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
     || !preview?.canRedeem
     || (!isSoloInvite && (
       fetchingTeams
+      || fetchingMembers
       || !selectedTeamId
       || !selectedRosterId
       || !eligibleTeamIds.has(selectedTeamId)
+      || !lineupComplete
     ));
 
   const content = (
@@ -354,6 +431,24 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
                   <p className="text-xs text-amber-300">No eligible roster found for this tournament. Create one in Team Management.</p>
                 )}
               </div>
+
+              {usesLineupSelection && selectedRosterId && (
+                fetchingMembers ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading roster pool...
+                  </div>
+                ) : (
+                  <TournamentLineupPicker
+                    game={tournamentGame}
+                    modeKey={tournamentGameMode}
+                    members={rosterMembersData}
+                    selections={lineupSelections}
+                    onChange={setLineupSelections}
+                    assistedReportingEnabled={assistedReportingEnabled}
+                  />
+                )
+              )}
             </>
           )}
         </div>

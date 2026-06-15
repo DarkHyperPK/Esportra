@@ -422,7 +422,7 @@ const TournamentDetails = () => {
           team_name: r.team_name || r.teamName || null,
           team_logo: r.team_logo || r.teamLogo || null,
           team_members: r.team_members || r.teamMembers || null,
-          status: r.status || 'approved',
+          status: r.status || 'pending',
           checked_in_at: r.checked_in_at || r.checkedInAt || null,
           registered_at: r.registration_date || r.registrationDate || r.registered_at || r.registeredAt || r.created_at || r.createdAt,
           created_at: r.created_at || r.createdAt,
@@ -967,7 +967,7 @@ const TournamentDetails = () => {
           setShowEditDialog(false);
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0a0a0c] border border-white/10">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar bg-[#0a0a0c] border border-white/10" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle className="text-white font-heading text-2xl tracking-wide">
               {isRegistered ? 'MODIFY_REGISTRATION' : 'INITIATE_REGISTRATION'}

@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/apiClient';
-import { getGameMode, isTeamRegistrationMode } from '@/utils/gameFeatures';
+import { getGameMode, getRosterLimits } from '@/utils/gameFeatures';
+import {
+  countRosterPlayers,
+  resolveMemberRosterRole,
+  rosterMatchesTournament,
+  usesTournamentLineupSelection,
+} from '@/utils/rosterEligibility';
 
 export type CaptainTeamRow = {
   id: string;
@@ -67,16 +73,17 @@ export function useEligibleCaptainTeams({
   const [fetchingTeams, setFetchingTeams] = useState(false);
 
   const tournamentGameMode = (tournament.gameMode || tournament.game_mode || '').trim();
+  const usesLineupSelection = usesTournamentLineupSelection(tournament.game, tournamentGameMode);
+  const modeLimits = getRosterLimits(tournament.game, tournamentGameMode);
 
   const getCoreTeamSize = useCallback((gameName: string, modeKey?: string | null): number => {
     const mode = getGameMode(gameName, modeKey);
     return mode?.teamSize || Number(tournament.team_size) || 5;
   }, [tournament.team_size]);
 
-  const rosterMatchesMode = useCallback((roster: RosterApiRow) => {
-    if (!tournamentGameMode || !roster.format) return true;
-    return normalize(roster.format) === normalize(tournamentGameMode);
-  }, [tournamentGameMode]);
+  const rosterMatchesTournamentMode = useCallback((roster: RosterApiRow) => (
+    rosterMatchesTournament(roster, tournament.game, tournamentGameMode)
+  ), [tournament.game, tournamentGameMode]);
 
   const coreMembers = getCoreTeamSize(tournament.game, tournamentGameMode);
 
@@ -173,37 +180,36 @@ export function useEligibleCaptainTeams({
           const errs: string[] = [];
           try {
             const rosters = await apiClient.get<RosterApiRow[]>(`/api/teams/${team.id}/rosters`);
-            const hasMatchingRoster = (rosters || []).some((r) =>
-              normalize(r.game) === tournamentGameNormalized && rosterMatchesMode(r),
-            );
+            const gameRosters = (rosters || []).filter((r) => normalize(r.game) === tournamentGameNormalized);
+            const hasMatchingRoster = gameRosters.some((r) => rosterMatchesTournamentMode(r));
 
-            const teamGames = Array.isArray(team.games)
-              ? team.games
-              : (typeof team.games === 'string' ? [team.games] : []);
-            const hasGameInTeam = teamGames.some((g) => normalize(String(g)) === tournamentGameNormalized);
-
-            if (!hasMatchingRoster && !hasGameInTeam) {
+            if (!hasMatchingRoster) {
               errs.push("Team doesn't include this game. Create a roster for this game first.");
             }
 
             if (hasMatchingRoster && tournament.game) {
-              const matchingRoster = (rosters || []).find((r) =>
-                normalize(r.game) === tournamentGameNormalized && rosterMatchesMode(r),
-              );
+              const matchingRoster = gameRosters.find((r) => rosterMatchesTournamentMode(r));
               if (matchingRoster) {
-                const rosterMembers = await apiClient.get<any[]>(
+                const rosterMembers = await apiClient.get<Array<{ roster_role?: string; is_starter?: boolean }>>(
                   `/api/teams/${team.id}/rosters/${matchingRoster.id}/members`,
                 );
-                const rosterMemberCount = (rosterMembers || []).length;
-                if (rosterMemberCount < coreMembers) {
-                  errs.push(`Roster needs at least ${coreMembers} members (has ${rosterMemberCount}).`);
+
+                if (usesLineupSelection) {
+                  const playerCount = countRosterPlayers(rosterMembers || []);
+                  if (playerCount < modeLimits.maxRoster) {
+                    errs.push(`Roster pool needs at least ${modeLimits.maxRoster} players (has ${playerCount}).`);
+                  }
+                } else {
+                  const starters = (rosterMembers || []).filter((m) => resolveMemberRosterRole(m) === 'starter').length;
+                  const players = countRosterPlayers(rosterMembers || []);
+
+                  if (starters !== modeLimits.starters) {
+                    errs.push(`Roster needs exactly ${modeLimits.starters} starters (has ${starters}).`);
+                  }
+                  if (players > modeLimits.maxRoster) {
+                    errs.push(`Roster exceeds ${modeLimits.maxRoster}-player limit (has ${players}).`);
+                  }
                 }
-              }
-            } else if (!hasMatchingRoster) {
-              const members = await apiClient.get<any[]>(`/api/teams/${team.id}/members/detailed`);
-              const activeCount = (members || []).length + 1;
-              if (activeCount < coreMembers) {
-                errs.push(`Need at least ${coreMembers} members (have ${activeCount}).`);
               }
             }
           } catch {
@@ -232,7 +238,7 @@ export function useEligibleCaptainTeams({
     } finally {
       setFetchingTeams(false);
     }
-  }, [coreMembers, enabled, rosterMatchesMode, tournament.game, userId]);
+  }, [modeLimits.maxRoster, modeLimits.starters, rosterMatchesTournamentMode, tournament.game, usesLineupSelection, userId, enabled]);
 
   useEffect(() => {
     void fetchCaptainTeams();
@@ -251,9 +257,10 @@ export function useEligibleCaptainTeams({
         const filtered = (data || [])
           .filter((r) => {
             const byGame = !tournament.game || normalize(r.game) === normalize(tournament.game);
-            const byMode = rosterMatchesMode(r);
-            const bySize = !coreMembers || Number(r.team_size) >= coreMembers;
-            return byGame && byMode && bySize;
+            const byMode = rosterMatchesTournamentMode(r);
+            if (!byGame || !byMode) return false;
+            if (usesLineupSelection) return true;
+            return !coreMembers || Number(r.team_size) >= coreMembers;
           })
           .map((r) => ({
             id: r.id,
@@ -272,7 +279,7 @@ export function useEligibleCaptainTeams({
     };
 
     void loadRosters();
-  }, [coreMembers, rosterMatchesMode, selectedTeamId, tournament.game]);
+  }, [coreMembers, rosterMatchesTournamentMode, selectedTeamId, tournament.game, usesLineupSelection]);
 
   return {
     captainTeams,
@@ -286,6 +293,7 @@ export function useEligibleCaptainTeams({
     fetchingTeams,
     refetchTeams: fetchCaptainTeams,
     coreMembers,
+    usesLineupSelection,
     requiresExplicitTeamSelection: captainTeams.length > 1,
   };
 }

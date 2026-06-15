@@ -24,7 +24,16 @@ import {
   Info
 } from 'lucide-react';
 import { useGameLogo, useGameLogos } from '@/hooks/useGameLogo';
+import TournamentLineupPicker, { isTournamentLineupComplete } from '@/components/tournament/TournamentLineupPicker';
 import { getGameMode, getEffectiveGameFeatures, getRosterLimits, isAssistedMatchReportingEnabled } from '@/utils/gameFeatures';
+import {
+  buildRosterLineupPayload,
+  countRosterPlayers,
+  resolveMemberRosterRole,
+  rosterMatchesTournament,
+  type TournamentLineupSelection,
+  usesTournamentLineupSelection,
+} from '@/utils/rosterEligibility';
 
 interface TeamTournamentRegistrationProps {
   tournament: {
@@ -111,6 +120,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   const [selectedRosterId, setSelectedRosterId] = useState<string>('');
   const [rosterMembersData, setRosterMembersData] = useState<any[]>([]);
   const [fetchingMembers, setFetchingMembers] = useState(false);
+  const [lineupSelections, setLineupSelections] = useState<TournamentLineupSelection>({});
 
   // Use global game logo hooks
   const gameLogo = useGameLogo(tournament.game);
@@ -125,19 +135,17 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     return mode?.teamSize || Number(tournament.team_size) || 5;
   };
 
-  const rosterMatchesMode = useCallback((roster: RosterRow) => {
-    if (!tournamentGameMode || !roster.format) return true;
-    return normalize(roster.format) === normalize(tournamentGameMode);
-  }, [tournamentGameMode]);
+  const usesLineupSelection = usesTournamentLineupSelection(tournament.game, tournamentGameMode);
+
+  const rosterMatchesTournamentMode = useCallback((roster: RosterRow) => (
+    rosterMatchesTournament(roster, tournament.game, tournamentGameMode)
+  ), [tournament.game, tournamentGameMode]);
 
   const coreMembers = getCoreTeamSize(tournament.game, tournamentGameMode);
 
-  const resolveRosterRole = (member: RosterMember): 'starter' | 'substitute' | 'coach' => {
-    if (member.roster_role === 'starter' || member.roster_role === 'substitute' || member.roster_role === 'coach') {
-      return member.roster_role;
-    }
-    return member.is_starter === false ? 'substitute' : 'starter';
-  };
+  const resolveRosterRole = (member: RosterMember): 'starter' | 'substitute' | 'coach' => (
+    resolveMemberRosterRole(member)
+  );
 
   const modeLimits = getRosterLimits(tournament.game, tournamentGameMode, coreMembers);
   const requiredStarters = modeLimits.starters;
@@ -160,9 +168,8 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         );
         const filtered = (data || []).filter((r: RosterRow) => {
         const byGame = !tournament.game || r.game?.toLowerCase() === tournament.game?.toLowerCase();
-        const byMode = rosterMatchesMode(r);
-        // Roster team_size should be >= coreMembers (filter is lenient, actual validation at registration)
-        const bySize = !coreMembers || Number(r.team_size) >= coreMembers;
+        const byMode = rosterMatchesTournamentMode(r);
+        const bySize = usesLineupSelection || !coreMembers || Number(r.team_size) >= coreMembers;
         return byGame && byMode && bySize;
       });
       setTeamRosters(filtered);
@@ -173,7 +180,11 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
       }
     };
     fetchRosters();
-  }, [coreMembers, rosterMatchesMode, selectedTeamId, tournament.game]);
+  }, [coreMembers, rosterMatchesTournamentMode, selectedTeamId, tournament.game, usesLineupSelection]);
+
+  useEffect(() => {
+    setLineupSelections({});
+  }, [selectedRosterId]);
 
   // Fetch roster members data when selectedRosterId changes
   useEffect(() => {
@@ -330,46 +341,40 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
             const normalizeGame = (s: string) => (s || '').toLowerCase().trim();
             const tournamentGameNormalized = normalizeGame(tournament.game || '');
 
-            const hasMatchingRoster = (rosters || []).some((r: RosterRow) =>
-              normalizeGame(r.game) === tournamentGameNormalized && rosterMatchesMode(r)
+            const gameRosters = (rosters || []).filter((r: RosterRow) =>
+              normalizeGame(r.game) === tournamentGameNormalized,
             );
+            const hasMatchingRoster = gameRosters.some((r: RosterRow) => rosterMatchesTournamentMode(r));
 
-            const teamGames = Array.isArray(team.games) ? team.games : (typeof team.games === 'string' ? [team.games] : []);
-            const hasGameInTeam = teamGames.some((g: string) => normalizeGame(g) === tournamentGameNormalized);
-
-            if (!hasMatchingRoster && !hasGameInTeam) {
+            if (!hasMatchingRoster) {
               errs.push("Team doesn't include this game. Create a roster for this game first.");
             }
 
             if (hasMatchingRoster && tournament.game) {
-              const matchingRoster = (rosters || []).find((r: RosterRow) =>
-                normalizeGame(r.game) === tournamentGameNormalized && rosterMatchesMode(r)
-              );
+              const matchingRoster = gameRosters.find((r: RosterRow) => rosterMatchesTournamentMode(r));
 
               if (matchingRoster) {
                 const rosterMembers = await apiClient.get<RosterMember[]>(
                   `/api/teams/${team.id}/rosters/${matchingRoster.id}/members`
                 );
                 const limits = getRosterLimits(tournament.game, tournamentGameMode, coreMembers);
-                const starters = (rosterMembers || []).filter((m) => resolveRosterRole(m) === 'starter').length;
-                const players = (rosterMembers || []).filter((m) => {
-                  const role = resolveRosterRole(m);
-                  return role === 'starter' || role === 'substitute';
-                }).length;
 
-                if (starters !== limits.starters) {
-                  errs.push(`Roster needs exactly ${limits.starters} starters (has ${starters}).`);
-                }
-                if (players > limits.maxRoster) {
-                  errs.push(`Roster exceeds ${limits.maxRoster}-player limit (has ${players}).`);
-                }
-              }
-            } else if (!hasMatchingRoster) {
-              const members = await apiClient.get<any[]>(`/api/teams/${team.id}/members/detailed`);
-              const activeCount = (members || []).length;
+                if (usesLineupSelection) {
+                  const playerCount = countRosterPlayers(rosterMembers || []);
+                  if (playerCount < limits.maxRoster) {
+                    errs.push(`Roster pool needs at least ${limits.maxRoster} players (has ${playerCount}).`);
+                  }
+                } else {
+                  const starters = (rosterMembers || []).filter((m) => resolveRosterRole(m) === 'starter').length;
+                  const players = countRosterPlayers(rosterMembers || []);
 
-              if (activeCount < coreMembers) {
-                errs.push(`Need at least ${coreMembers} members (have ${activeCount}).`);
+                  if (starters !== limits.starters) {
+                    errs.push(`Roster needs exactly ${limits.starters} starters (has ${starters}).`);
+                  }
+                  if (players > limits.maxRoster) {
+                    errs.push(`Roster exceeds ${limits.maxRoster}-player limit (has ${players}).`);
+                  }
+                }
               }
             }
           } catch (teamError) {
@@ -397,7 +402,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     } finally {
       setFetchingTeams(false);
     }
-  }, [coreMembers, rosterMatchesMode, tournament.game, user?.id]);
+  }, [coreMembers, rosterMatchesTournamentMode, tournament.game, tournamentGameMode, usesLineupSelection, user?.id]);
 
   useEffect(() => {
     void fetchCaptainTeams();
@@ -433,10 +438,17 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     }
   };
 
+  const lineupComplete = !usesLineupSelection
+    || isTournamentLineupComplete(lineupSelections, tournament.game, tournamentGameMode);
+
   const handleRegister = async () => {
     if (!user || !selectedTeamId || !eligibleTeamIds.has(selectedTeamId)) return;
     if (!selectedRosterId) {
       toast({ title: 'Select roster', description: 'Please select a roster for this tournament.', variant: 'destructive' });
+      return;
+    }
+    if (usesLineupSelection && !lineupComplete) {
+      toast({ title: 'Complete lineup', description: 'Pick starters and substitutes for this tournament.', variant: 'destructive' });
       return;
     }
     setLoading(true);
@@ -457,76 +469,109 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
       const team = captainTeams.find(t => t.id === selectedTeamId)!;
 
-      // Fetch roster members with status (include captain in count)
       const rosterMembers = await apiClient.get<RosterMember[]>(
         `/api/teams/${selectedTeamId}/rosters/${selectedRosterId}/members`
       );
 
-      const roleCounts = { starter: 0, substitute: 0, coach: 0 };
-      (rosterMembers || []).forEach((member) => {
-        const role = resolveRosterRole(member);
-        roleCounts[role] += 1;
-      });
-      const playerCount = roleCounts.starter + roleCounts.substitute;
+      let rosterLineup;
+      let memberNames: string[];
 
-      if (roleCounts.starter !== requiredStarters) {
-        throw new Error(`Your roster needs exactly ${requiredStarters} starters. It currently has ${roleCounts.starter}.`);
-      }
-      if (roleCounts.substitute > maxSubstitutes) {
-        throw new Error(`Your roster has ${roleCounts.substitute} substitutes, exceeding the limit of ${maxSubstitutes}.`);
-      }
-      if (playerCount > maxPlayers) {
-        throw new Error(`Your roster has ${playerCount} players, exceeding the ${maxPlayers}-player limit.`);
-      }
-      if (roleCounts.coach > maxCoaches) {
-        throw new Error(`Your roster has ${roleCounts.coach} coaches, exceeding the limit of ${maxCoaches}.`);
-      }
-      if ((rosterMembers || []).length === 0) {
-        throw new Error('No roster members found');
-      }
+      if (usesLineupSelection) {
+        const memberIds = (rosterMembers || []).map((r) => r.user_id);
+        const profileRows = await apiClient.get<any[]>(
+          `/api/profiles?ids=${memberIds.join(',')}`
+        );
+        const memberMap = new Map<string, string>();
+        (profileRows || []).forEach((p) => {
+          const name = (preferRiotTagForDisplay && (p as any).riot_tag) || (p as any).username || (p as any).full_name || (p as any).id;
+          if (name) memberMap.set(p.id, name);
+        });
 
-      if (assistedReportingEnabled) {
-        const captainOnRoster = rosterMembersData.find(m => m.user_id === user.id)
-          ?? rosterMembersData.find(m => m.is_captain);
-        const captainHasRiot = captainOnRoster?.is_verified || captainOnRoster?.profile?.riot_tag || captainOnRoster?.riot_tag_fallback;
-        if (!captainHasRiot) {
-          throw new Error('As the team captain, you must link your Riot account via Riot Sign-On to register for this tournament.');
+        rosterLineup = buildRosterLineupPayload(rosterMembers || [], lineupSelections, memberMap);
+        memberNames = [
+          ...rosterLineup.starters.map((entry) => entry.displayName),
+          ...rosterLineup.substitutes.map((entry) => entry.displayName),
+        ];
+
+        if (assistedReportingEnabled) {
+          const selectedIds = new Set([
+            ...rosterLineup.starters.map((entry) => entry.userId),
+            ...rosterLineup.substitutes.map((entry) => entry.userId),
+          ]);
+          const captainOnRoster = rosterMembersData.find((m) => m.user_id === user.id && selectedIds.has(m.user_id))
+            ?? rosterMembersData.find((m) => m.is_captain && selectedIds.has(m.user_id));
+          const captainHasRiot = captainOnRoster?.is_verified || captainOnRoster?.profile?.riot_tag || captainOnRoster?.riot_tag_fallback;
+          if (!captainHasRiot) {
+            throw new Error('As the team captain, you must link your Riot account via Riot Sign-On to register for this tournament.');
+          }
         }
+      } else {
+        const roleCounts = { starter: 0, substitute: 0, coach: 0 };
+        (rosterMembers || []).forEach((member) => {
+          const role = resolveRosterRole(member);
+          roleCounts[role] += 1;
+        });
+        const playerCount = roleCounts.starter + roleCounts.substitute;
+
+        if (roleCounts.starter !== requiredStarters) {
+          throw new Error(`Your roster needs exactly ${requiredStarters} starters. It currently has ${roleCounts.starter}.`);
+        }
+        if (roleCounts.substitute > maxSubstitutes) {
+          throw new Error(`Your roster has ${roleCounts.substitute} substitutes, exceeding the limit of ${maxSubstitutes}.`);
+        }
+        if (playerCount > maxPlayers) {
+          throw new Error(`Your roster has ${playerCount} players, exceeding the ${maxPlayers}-player limit.`);
+        }
+        if (roleCounts.coach > maxCoaches) {
+          throw new Error(`Your roster has ${roleCounts.coach} coaches, exceeding the limit of ${maxCoaches}.`);
+        }
+        if ((rosterMembers || []).length === 0) {
+          throw new Error('No roster members found');
+        }
+
+        if (assistedReportingEnabled) {
+          const captainOnRoster = rosterMembersData.find(m => m.user_id === user.id)
+            ?? rosterMembersData.find(m => m.is_captain);
+          const captainHasRiot = captainOnRoster?.is_verified || captainOnRoster?.profile?.riot_tag || captainOnRoster?.riot_tag_fallback;
+          if (!captainHasRiot) {
+            throw new Error('As the team captain, you must link your Riot account via Riot Sign-On to register for this tournament.');
+          }
+        }
+
+        const memberIds = (rosterMembers || []).map((r) => r.user_id);
+        const profileRows = await apiClient.get<any[]>(
+          `/api/profiles?ids=${memberIds.join(',')}`
+        );
+
+        const memberMap = new Map<string, string>();
+        (profileRows || []).forEach(p => {
+          const name = (preferRiotTagForDisplay && (p as any).riot_tag) || (p as any).username || (p as any).full_name || (p as any).id;
+          if (name) memberMap.set(p.id, name);
+        });
+
+        const buildNames = (role: 'starter' | 'substitute' | 'coach') =>
+          (rosterMembers || [])
+            .filter((m) => resolveRosterRole(m) === role)
+            .map((m) => memberMap.get(m.user_id))
+            .filter(Boolean) as string[];
+
+        const starterNames = buildNames('starter');
+        const substituteNames = buildNames('substitute');
+        const coachNames = buildNames('coach');
+        memberNames = [...starterNames, ...substituteNames, ...coachNames];
+
+        rosterLineup = {
+          starters: (rosterMembers || [])
+            .filter((m) => resolveRosterRole(m) === 'starter')
+            .map((m) => ({ userId: m.user_id, displayName: memberMap.get(m.user_id) || m.user_id })),
+          substitutes: (rosterMembers || [])
+            .filter((m) => resolveRosterRole(m) === 'substitute')
+            .map((m) => ({ userId: m.user_id, displayName: memberMap.get(m.user_id) || m.user_id })),
+          coaches: (rosterMembers || [])
+            .filter((m) => resolveRosterRole(m) === 'coach')
+            .map((m) => ({ userId: m.user_id, displayName: memberMap.get(m.user_id) || m.user_id })),
+        };
       }
-
-      const memberIds = (rosterMembers || []).map((r) => r.user_id);
-      const profileRows = await apiClient.get<any[]>(
-        `/api/profiles?ids=${memberIds.join(',')}`
-      );
-
-      const memberMap = new Map<string, string>();
-      (profileRows || []).forEach(p => {
-        const name = (preferRiotTagForDisplay && (p as any).riot_tag) || (p as any).username || (p as any).full_name || (p as any).id;
-        if (name) memberMap.set(p.id, name);
-      });
-
-      const buildNames = (role: 'starter' | 'substitute' | 'coach') =>
-        (rosterMembers || [])
-          .filter((m) => resolveRosterRole(m) === role)
-          .map((m) => memberMap.get(m.user_id))
-          .filter(Boolean) as string[];
-
-      const starterNames = buildNames('starter');
-      const substituteNames = buildNames('substitute');
-      const coachNames = buildNames('coach');
-      const memberNames = [...starterNames, ...substituteNames, ...coachNames];
-
-      const rosterLineup = {
-        starters: (rosterMembers || [])
-          .filter((m) => resolveRosterRole(m) === 'starter')
-          .map((m) => ({ userId: m.user_id, displayName: memberMap.get(m.user_id) || m.user_id })),
-        substitutes: (rosterMembers || [])
-          .filter((m) => resolveRosterRole(m) === 'substitute')
-          .map((m) => ({ userId: m.user_id, displayName: memberMap.get(m.user_id) || m.user_id })),
-        coaches: (rosterMembers || [])
-          .filter((m) => resolveRosterRole(m) === 'coach')
-          .map((m) => ({ userId: m.user_id, displayName: memberMap.get(m.user_id) || m.user_id })),
-      };
 
       const roster = teamRosters.find(r => r.id === selectedRosterId);
 
@@ -582,7 +627,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   };
 
   return (
-    <Card className="bg-[#0a0a0a] border border-[#1a1a1a] shadow-xl overflow-hidden">
+    <Card className="bg-[#0a0a0a] border border-[#1a1a1a] shadow-xl overflow-hidden max-h-[calc(90vh-8rem)] flex flex-col">
       <CardHeader className="pb-4 border-b border-[#1a1a1a]">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -598,7 +643,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-5 pt-5">
+      <CardContent className="space-y-5 pt-5 overflow-y-auto overscroll-contain custom-scrollbar flex-1 min-h-0" data-lenis-prevent>
         {/* Tournament Info - Clean Minimal */}
         <div className="bg-[#111111] border border-[#1a1a1a] rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -836,86 +881,96 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                             {/* Roster Members Preview */}
                             {selectedRosterId && (
                               <div className="mt-4 border-t border-[#1a1a1a] pt-4 space-y-3">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Roster Lineup</span>
-                                  <span className="text-[10px] text-gray-500">
-                                    {requiredStarters} starters · {maxSubstitutes} subs · {maxCoaches} coaches max
-                                  </span>
-                                </div>
-
                                 {fetchingMembers ? (
                                   <div className="flex items-center justify-center py-4">
                                     <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
                                   </div>
+                                ) : usesLineupSelection ? (
+                                  <TournamentLineupPicker
+                                    game={tournament.game}
+                                    modeKey={tournamentGameMode}
+                                    members={rosterMembersData}
+                                    selections={lineupSelections}
+                                    onChange={setLineupSelections}
+                                    assistedReportingEnabled={assistedReportingEnabled}
+                                  />
                                 ) : (
-                                  <div className="space-y-3 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
-                                    {([
-                                      { key: 'starter', label: 'Starters', badgeClass: 'text-emerald-400 border-emerald-500/20' },
-                                      { key: 'substitute', label: 'Substitutes', badgeClass: 'text-yellow-400 border-yellow-500/20' },
-                                      { key: 'coach', label: 'Coaches', badgeClass: 'text-cyan-400 border-cyan-500/20' },
-                                    ] as const).map(({ key, label, badgeClass }) => {
-                                      const group = rosterMembersData.filter((m) => (m.roster_role || resolveRosterRole(m)) === key);
-                                      if (group.length === 0) return null;
-                                      return (
-                                        <div key={key} className="space-y-2">
-                                          <div className="text-[10px] uppercase tracking-wider text-gray-500">{label} ({group.length})</div>
-                                          {group.map((m, idx) => (
-                                            <div key={m.user_id || idx} className="flex items-center justify-between p-2 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg">
-                                              <div className="flex items-center gap-2">
-                                                <div className="w-6 h-6 rounded bg-[#1a1a1a] flex items-center justify-center text-[10px] font-bold text-gray-400">
-                                                  {m.profile?.username?.[0] || '?'}
-                                                </div>
-                                                <div className="flex flex-col">
-                                                  <span className="text-sm text-white font-medium flex items-center gap-1.5">
-                                                    {m.profile?.username}
-                                                    {m.is_captain && <Badge className="bg-[#1a1a1a] text-blue-400 border-blue-500/20 text-[8px] h-3.5 px-1 uppercase">Cap</Badge>}
-                                                    <Badge variant="outline" className={`text-[8px] h-3.5 px-1 uppercase ${badgeClass}`}>{key}</Badge>
-                                                  </span>
-                                                  {assistedReportingEnabled && (
-                                                    <span className="text-[10px] text-gray-500">
-                                                      {m.profile?.riot_tag || m.riot_tag_fallback || 'No Riot ID'}
+                                  <>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Roster Lineup</span>
+                                      <span className="text-[10px] text-gray-500">
+                                        {requiredStarters} starters · {maxSubstitutes} subs · {maxCoaches} coaches max
+                                      </span>
+                                    </div>
+                                    <div className="space-y-3 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
+                                      {([
+                                        { key: 'starter', label: 'Starters', badgeClass: 'text-emerald-400 border-emerald-500/20' },
+                                        { key: 'substitute', label: 'Substitutes', badgeClass: 'text-yellow-400 border-yellow-500/20' },
+                                        { key: 'coach', label: 'Coaches', badgeClass: 'text-cyan-400 border-cyan-500/20' },
+                                      ] as const).map(({ key, label, badgeClass }) => {
+                                        const group = rosterMembersData.filter((m) => (m.roster_role || resolveRosterRole(m)) === key);
+                                        if (group.length === 0) return null;
+                                        return (
+                                          <div key={key} className="space-y-2">
+                                            <div className="text-[10px] uppercase tracking-wider text-gray-500">{label} ({group.length})</div>
+                                            {group.map((m, idx) => (
+                                              <div key={m.user_id || idx} className="flex items-center justify-between p-2 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg">
+                                                <div className="flex items-center gap-2">
+                                                  <div className="w-6 h-6 rounded bg-[#1a1a1a] flex items-center justify-center text-[10px] font-bold text-gray-400">
+                                                    {m.profile?.username?.[0] || '?'}
+                                                  </div>
+                                                  <div className="flex flex-col">
+                                                    <span className="text-sm text-white font-medium flex items-center gap-1.5">
+                                                      {m.profile?.username}
+                                                      {m.is_captain && <Badge className="bg-[#1a1a1a] text-blue-400 border-blue-500/20 text-[8px] h-3.5 px-1 uppercase">Cap</Badge>}
+                                                      <Badge variant="outline" className={`text-[8px] h-3.5 px-1 uppercase ${badgeClass}`}>{key}</Badge>
                                                     </span>
-                                                  )}
+                                                    {assistedReportingEnabled && (
+                                                      <span className="text-[10px] text-gray-500">
+                                                        {m.profile?.riot_tag || m.riot_tag_fallback || 'No Riot ID'}
+                                                      </span>
+                                                    )}
+                                                  </div>
                                                 </div>
-                                              </div>
 
-                                              {assistedReportingEnabled && (
-                                                <div className="flex items-center">
-                                                  {(m.is_verified || m.profile?.riot_tag || m.riot_tag_fallback) ? (
-                                                    <TooltipProvider delayDuration={0}>
-                                                      <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                          <div className="p-1 bg-green-500/10 rounded-full">
-                                                            <CheckCircle className="w-3.5 h-3.5 text-green-500" />
-                                                          </div>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-[10px]">
-                                                          Verified Riot Account
-                                                        </TooltipContent>
-                                                      </Tooltip>
-                                                    </TooltipProvider>
-                                                  ) : (
-                                                    <TooltipProvider delayDuration={0}>
-                                                      <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                          <div className="p-1 bg-red-500/10 rounded-full">
-                                                            <AlertCircle className="w-3.5 h-3.5 text-red-500" />
-                                                          </div>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-[10px]">
-                                                          Riot link required
-                                                        </TooltipContent>
-                                                      </Tooltip>
-                                                    </TooltipProvider>
-                                                  )}
-                                                </div>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
+                                                {assistedReportingEnabled && (
+                                                  <div className="flex items-center">
+                                                    {(m.is_verified || m.profile?.riot_tag || m.riot_tag_fallback) ? (
+                                                      <TooltipProvider delayDuration={0}>
+                                                        <Tooltip>
+                                                          <TooltipTrigger asChild>
+                                                            <div className="p-1 bg-green-500/10 rounded-full">
+                                                              <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                                                            </div>
+                                                          </TooltipTrigger>
+                                                          <TooltipContent className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-[10px]">
+                                                            Verified Riot Account
+                                                          </TooltipContent>
+                                                        </Tooltip>
+                                                      </TooltipProvider>
+                                                    ) : (
+                                                      <TooltipProvider delayDuration={0}>
+                                                        <Tooltip>
+                                                          <TooltipTrigger asChild>
+                                                            <div className="p-1 bg-red-500/10 rounded-full">
+                                                              <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                                                            </div>
+                                                          </TooltipTrigger>
+                                                          <TooltipContent className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-[10px]">
+                                                            Riot link required
+                                                          </TooltipContent>
+                                                        </Tooltip>
+                                                      </TooltipProvider>
+                                                    )}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </>
                                 )}
                               </div>
                             )}
@@ -925,8 +980,8 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                               // Only show requirements if roster doesn't meet criteria
                               const rosterMeetsCriteria = selectedRoster &&
                                 selectedRoster.game?.toLowerCase() === tournament.game?.toLowerCase() &&
-                                rosterMatchesMode(selectedRoster) &&
-                                Number(selectedRoster.team_size) >= coreMembers;
+                                rosterMatchesTournamentMode(selectedRoster) &&
+                                (usesLineupSelection || Number(selectedRoster.team_size) >= coreMembers);
 
                               // Don't show message if criteria is met
                               if (rosterMeetsCriteria) return null;
@@ -958,7 +1013,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         {/* Actions - Clean */}
         <div className="flex gap-3 pt-2 border-t border-[#1a1a1a]">
           <CtaButton
-            disabled={!selectedTeamId || !eligibleTeamIds.has(selectedTeamId) || !selectedRosterId || loading}
+            disabled={!selectedTeamId || !eligibleTeamIds.has(selectedTeamId) || !selectedRosterId || !lineupComplete || loading}
             onClick={handleRegister}
             className="flex-1 py-3 text-base disabled:opacity-40 disabled:cursor-not-allowed"
           >

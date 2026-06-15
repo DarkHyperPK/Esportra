@@ -45,6 +45,7 @@ export interface RedeemInvitationRequest {
   code: string;
   teamId?: string;
   rosterId?: string;
+  rosterLineup?: string;
 }
 
 export interface RedeemInvitationResponse {
