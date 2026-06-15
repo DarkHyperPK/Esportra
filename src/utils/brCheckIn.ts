@@ -52,7 +52,7 @@ export function countPendingCheckInParticipants(
     (participant) =>
       isActiveRegistration(participant.status)
       && !isParticipantCheckedIn(participant)
-      && (participant.status === 'approved' || participant.status === 'pending'),
+      && participant.status === 'approved',
   ).length;
 }
 

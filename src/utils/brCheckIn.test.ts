@@ -27,9 +27,9 @@ describe('brCheckIn', () => {
     expect(countBRSeedEligibleParticipants(participants, true)).toBe(1);
   });
 
-  it('counts pending and checked-in participants for monitor', () => {
+  it('counts only approved participants awaiting check-in for monitor', () => {
     expect(countCheckedInParticipants(participants)).toBe(1);
-    expect(countPendingCheckInParticipants(participants)).toBe(2);
+    expect(countPendingCheckInParticipants(participants)).toBe(1);
   });
 
   it('does not fall back to max capacity while check-in is pending', () => {

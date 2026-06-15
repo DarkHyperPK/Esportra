@@ -38,7 +38,20 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
   const [rejectTarget, setRejectTarget] = useState<DashboardParticipant | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [receiptViewUrl, setReceiptViewUrl] = useState<string | null>(null);
+  const [receiptMimeType, setReceiptMimeType] = useState<string | null>(null);
   const [loadingReceipt, setLoadingReceipt] = useState(false);
+  const receiptObjectUrlRef = React.useRef<string | null>(null);
+
+  const closeReceiptDialog = () => {
+    if (receiptObjectUrlRef.current) {
+      URL.revokeObjectURL(receiptObjectUrlRef.current);
+      receiptObjectUrlRef.current = null;
+    }
+    setReceiptViewUrl(null);
+    setReceiptMimeType(null);
+  };
+
+  React.useEffect(() => () => closeReceiptDialog(), []);
 
   const paidParticipants = useMemo(
     () => participants.filter(p => p.payment_status && p.payment_status !== 'not_required'),
@@ -110,8 +123,15 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
   const viewReceipt = async (participant: DashboardParticipant) => {
     setLoadingReceipt(true);
     try {
-      const res = await apiClient.get<{ url: string }>(`/api/tournaments/${tournamentId}/participants/${participant.id}/receipt`);
-      setReceiptViewUrl(res.url);
+      if (receiptObjectUrlRef.current) {
+        URL.revokeObjectURL(receiptObjectUrlRef.current);
+        receiptObjectUrlRef.current = null;
+      }
+      const blob = await apiClient.getBlob(`/api/tournaments/${tournamentId}/participants/${participant.id}/receipt`);
+      const objectUrl = URL.createObjectURL(blob);
+      receiptObjectUrlRef.current = objectUrl;
+      setReceiptMimeType(blob.type || null);
+      setReceiptViewUrl(objectUrl);
     } catch {
       toast({ title: 'Could not load receipt', variant: 'destructive' });
     } finally {
@@ -297,20 +317,28 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
       </Card>
 
       {/* Receipt Viewer Dialog */}
-      <Dialog open={!!receiptViewUrl} onOpenChange={() => setReceiptViewUrl(null)}>
+      <Dialog open={!!receiptViewUrl} onOpenChange={(open) => { if (!open) closeReceiptDialog(); }}>
         <DialogContent className="max-w-2xl bg-[#0a0a0c] border border-white/10">
           <DialogHeader>
             <DialogTitle className="text-white">Payment Receipt</DialogTitle>
           </DialogHeader>
           {receiptViewUrl && (
             <div className="flex items-center justify-center max-h-[70vh] overflow-auto">
-              <img
-                src={receiptViewUrl}
-                alt="Payment Receipt"
-                loading="lazy"
-                decoding="async"
-                className="max-w-full max-h-[65vh] object-contain rounded-lg"
-              />
+              {receiptMimeType === 'application/pdf' ? (
+                <iframe
+                  src={receiptViewUrl}
+                  title="Payment Receipt"
+                  className="w-full h-[65vh] rounded-lg border border-white/10"
+                />
+              ) : (
+                <img
+                  src={receiptViewUrl}
+                  alt="Payment Receipt"
+                  loading="lazy"
+                  decoding="async"
+                  className="max-w-full max-h-[65vh] object-contain rounded-lg"
+                />
+              )}
             </div>
           )}
         </DialogContent>

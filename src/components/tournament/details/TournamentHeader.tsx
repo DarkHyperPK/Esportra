@@ -266,7 +266,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                             </SuccessButton>
                                         )}
                                         {/* Countdown for Check-in */}
-                                        {!canSelfCheckIn && isRegistered && isCaptain && !hasMissedCheckIn && checkInStartTime && new Date() < checkInStartTime && (
+                                        {!canSelfCheckIn && !awaitingApproval && isRegistered && isCaptain && !hasMissedCheckIn && checkInStartTime && new Date() < checkInStartTime && (
                                             <div className="ml-4 h-14 md:h-16 px-8 flex flex-col justify-center items-center bg-gray-900/80 border border-white/10 text-white rounded-none backdrop-blur-md">
                                                 <span className="text-[10px] text-gray-400 uppercase tracking-widest leading-none mb-1">Check-in Opens In</span>
                                                 <div className="text-xl font-mono text-emerald-400 leading-none">

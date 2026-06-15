@@ -57,7 +57,7 @@ export interface DashboardParticipant {
     id: string;
     user_id: string;
     tournament_id: string;
-    status: 'registered' | 'checked_in' | 'withdrawn' | 'pending';
+    status: 'registered' | 'checked_in' | 'withdrawn' | 'pending' | 'approved' | 'rejected' | 'cancelled';
     participant_type: 'solo' | 'team';
     team_name: string | null;
     team_logo: string | null;
@@ -68,6 +68,10 @@ export interface DashboardParticipant {
     checked_in_at: string | null;
     source?: string | null;
     is_mock: boolean;
+    payment_status?: 'pending' | 'approved' | 'rejected' | 'not_required' | null;
+    payment_receipt_url?: string | null;
+    payment_rejection_reason?: string | null;
+    entry_fee_paid?: boolean | null;
     user?: {
         username: string;
         avatar_url: string | null;
@@ -160,7 +164,11 @@ export function useTournamentDashboard(slug: string | undefined) {
                 created_at:       p.created_at,
                 checked_in_at:    p.checked_in_at ?? null,
                 source:           p.source ?? p.registration_source ?? null,
-                is_mock:          p.is_mock === true || p.is_mock === 'true',
+                is_mock:                  p.is_mock === true || p.is_mock === 'true',
+                payment_status:           p.payment_status ?? null,
+                payment_receipt_url:      p.payment_receipt_url ?? null,
+                payment_rejection_reason: p.payment_rejection_reason ?? null,
+                entry_fee_paid:           p.entry_fee_paid ?? null,
                 user:             p.username ? { username: p.username, avatar_url: null, full_name: null } : undefined,
                 teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
             }));

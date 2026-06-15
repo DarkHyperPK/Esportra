@@ -804,7 +804,6 @@ const TournamentDashboard = () => {
   const [rejectingPayment, setRejectingPayment] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState<string | null>(null);
-  const [receiptViewUrl, setReceiptViewUrl] = useState<string | null>(null);
 
   const handleRejectPayment = async (participantId: string) => {
     if (!tournament?.id) return;
@@ -1091,6 +1090,14 @@ const TournamentDashboard = () => {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-red-500/40 bg-red-500/10 text-red-300">
           Rejected
+        </span>
+      );
+    }
+
+    if (participant.status === 'pending') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-amber-400/40 bg-amber-500/10 text-amber-200">
+          Pending Approval
         </span>
       );
     }
@@ -2705,27 +2712,6 @@ const TournamentDashboard = () => {
               {rejectingPayment ? 'Rejecting...' : 'Reject Payment'}
             </DangerButton>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Receipt Viewer Dialog */}
-      <Dialog open={!!receiptViewUrl} onOpenChange={(open) => { if (!open) setReceiptViewUrl(null); }}>
-        <DialogContent className="bg-[#0a0a0c] border-white/10 text-white max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Payment Receipt</DialogTitle>
-          </DialogHeader>
-          {receiptViewUrl && (
-            receiptViewUrl.toLowerCase().endsWith('.pdf') ? (
-              <div className="text-center py-4">
-                <a href={receiptViewUrl} target="_blank" rel="noopener noreferrer"
-                  className="text-rose-400 hover:text-rose-300 underline">
-                  Open PDF Receipt ↗
-                </a>
-              </div>
-            ) : (
-              <img src={receiptViewUrl} alt="Payment receipt" className="w-full rounded-lg border border-white/10" />
-            )
-          )}
         </DialogContent>
       </Dialog>
     </div >

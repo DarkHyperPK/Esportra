@@ -291,7 +291,7 @@ const CaptainMatchPage = () => {
 
             // 1. Organizer status already set from API response
 
-            const inactiveStatuses = new Set(['cancelled', 'rejected', 'disqualified']);
+            const inactiveStatuses = new Set(['cancelled', 'rejected', 'disqualified', 'pending']);
             const matchingParticipants: any[] = [];
 
             participants.forEach((p: any) => {
@@ -815,6 +815,21 @@ const CaptainMatchPage = () => {
                 <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
                 <h1 className="text-2xl font-bold mb-2">Tournament Not Found</h1>
                 <Button onClick={() => navigate('/tournaments')}>Go Back</Button>
+            </div>
+        );
+    }
+
+    if (!canManageMatchRoom && participantStatus === 'pending') {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-[#09090b] text-white p-4">
+                <AlertCircle className="w-16 h-16 text-amber-500 mb-4" />
+                <h1 className="text-2xl font-bold mb-2">Pending Approval</h1>
+                <p className="text-gray-400 max-w-md text-center mb-6">
+                    Your registration is awaiting organizer approval. You will be able to access the match room once your entry has been confirmed.
+                </p>
+                <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}`)}>
+                    Back to Tournament
+                </Button>
             </div>
         );
     }
