@@ -33,6 +33,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
         staleTime: 1000 * 60 * 5,
     });
     const teamName = teamQuery.data?.[0]?.name ?? null;
+    const teamId = teamQuery.data?.[0]?.id ?? null;
 
 
     // Local State for Form Fields
@@ -179,12 +180,12 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                                 <div className="space-y-4 border-t border-zinc-800 pt-6">
                                     <Label>Player Card Picture</Label>
                                     <div className="flex items-center gap-4 p-4 bg-zinc-900/30 rounded-lg border border-zinc-800">
-                                        {teamName ? (
+                                        {teamName && teamId ? (
                                             <AvatarUploader
                                                 value={formData.card_image_url}
                                                 onChange={(url) => handleChange('card_image_url', url)}
                                                 size="lg"
-                                                uploadPath={profile?.id ? `Player-cards/${teamName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}/${profile.id}_${Date.now()}_card.png` : undefined}
+                                                teamId={teamId}
                                             />
                                         ) : (
                                             <div className="w-24 h-24 bg-zinc-900/50 rounded-lg flex items-center justify-center border-2 border-dashed border-zinc-700 opacity-50">

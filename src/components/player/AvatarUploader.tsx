@@ -11,9 +11,10 @@ interface AvatarUploaderProps {
     onRemove?: () => void;
     size?: 'sm' | 'md' | 'lg' | 'xl';
     uploadPath?: string;
+    teamId?: string;
 }
 
-const AvatarUploader = ({ value, onChange, onRemove, size = 'xl', uploadPath }: AvatarUploaderProps) => {
+const AvatarUploader = ({ value, onChange, onRemove, size = 'xl', uploadPath, teamId }: AvatarUploaderProps) => {
     const [isUploading, setIsUploading] = useState(false);
     const [localPreview, setLocalPreview] = useState<string | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -54,29 +55,36 @@ const AvatarUploader = ({ value, onChange, onRemove, size = 'xl', uploadPath }: 
 
         setIsUploading(true);
         try {
-            const _fileExt = file.name.split('.').pop();
-
-            // Use uploadPath if provided (e.g. "Player-cards/team_name/userId_card.png")
-            // Otherwise default to avatars folder
-            const folder = uploadPath
-                ? uploadPath.substring(0, uploadPath.lastIndexOf('/'))
-                : 'avatars';
-
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('bucket', 'users.avatars');
-            formData.append('folder', folder);
 
-            const result = await apiClient.upload<{ url: string }>(
-                '/api/storage/upload',
-                formData,
-            );
+            let result: { url: string };
+
+            if (teamId) {
+                formData.append('teamId', teamId);
+                result = await apiClient.upload<{ url: string }>(
+                    '/api/storage/upload-player-card',
+                    formData,
+                );
+            } else {
+                const folder = uploadPath
+                    ? uploadPath.substring(0, uploadPath.lastIndexOf('/'))
+                    : 'avatars';
+
+                formData.append('bucket', 'users.avatars');
+                formData.append('folder', folder);
+
+                result = await apiClient.upload<{ url: string }>(
+                    '/api/storage/upload',
+                    formData,
+                );
+            }
 
             onChange(result.url);
             setLocalPreview(null);
 
             toast({
-                title: uploadPath ? 'Player card updated' : 'Avatar updated',
+                title: teamId ? 'Player card updated' : 'Avatar updated',
                 description: 'Looking good!',
             });
         } catch (error: any) {
