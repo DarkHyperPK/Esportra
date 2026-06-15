@@ -41,11 +41,37 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
   const [receiptViewUrl, setReceiptViewUrl] = useState<string | null>(null);
   const [receiptMimeType, setReceiptMimeType] = useState<string | null>(null);
   const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptParticipant, setReceiptParticipant] = useState<DashboardParticipant | null>(null);
+  const receiptBlobUrlRef = React.useRef<string | null>(null);
+  const receiptFallbackAttemptedRef = React.useRef(false);
 
   const closeReceiptDialog = () => {
+    if (receiptBlobUrlRef.current) {
+      URL.revokeObjectURL(receiptBlobUrlRef.current);
+      receiptBlobUrlRef.current = null;
+    }
     setReceiptViewUrl(null);
     setReceiptMimeType(null);
     setReceiptLoading(false);
+    setReceiptParticipant(null);
+    receiptFallbackAttemptedRef.current = false;
+  };
+
+  const loadReceiptViaApi = async (participant: DashboardParticipant) => {
+    try {
+      const blob = await apiClient.getBlob(`/api/tournaments/${tournamentId}/participants/${participant.id}/receipt`);
+      if (receiptBlobUrlRef.current) {
+        URL.revokeObjectURL(receiptBlobUrlRef.current);
+      }
+      const objectUrl = URL.createObjectURL(blob);
+      receiptBlobUrlRef.current = objectUrl;
+      setReceiptMimeType(blob.type || null);
+      setReceiptViewUrl(objectUrl);
+    } catch {
+      toast({ title: 'Could not load receipt', variant: 'destructive' });
+    } finally {
+      setReceiptLoading(false);
+    }
   };
 
   const paidParticipants = useMemo(
@@ -121,9 +147,25 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
       toast({ title: 'No receipt available', variant: 'destructive' });
       return;
     }
+    if (receiptBlobUrlRef.current) {
+      URL.revokeObjectURL(receiptBlobUrlRef.current);
+      receiptBlobUrlRef.current = null;
+    }
+    receiptFallbackAttemptedRef.current = false;
+    setReceiptParticipant(participant);
     setReceiptMimeType(url.toLowerCase().includes('.pdf') ? 'application/pdf' : null);
     setReceiptLoading(true);
     setReceiptViewUrl(url);
+  };
+
+  const handleReceiptLoadError = () => {
+    if (receiptFallbackAttemptedRef.current || !receiptParticipant) {
+      setReceiptLoading(false);
+      toast({ title: 'Could not load receipt', variant: 'destructive' });
+      return;
+    }
+    receiptFallbackAttemptedRef.current = true;
+    void loadReceiptViaApi(receiptParticipant);
   };
 
   React.useEffect(() => {
@@ -322,6 +364,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                   title="Payment Receipt"
                   className="w-full h-[65vh] rounded-lg border border-white/10"
                   onLoad={() => setReceiptLoading(false)}
+                  onError={handleReceiptLoadError}
                 />
               ) : (
                 <img
@@ -331,10 +374,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                   decoding="async"
                   className="max-w-full max-h-[65vh] object-contain rounded-lg"
                   onLoad={() => setReceiptLoading(false)}
-                  onError={() => {
-                    setReceiptLoading(false);
-                    toast({ title: 'Could not load receipt', variant: 'destructive' });
-                  }}
+                  onError={handleReceiptLoadError}
                 />
               )}
             </div>
