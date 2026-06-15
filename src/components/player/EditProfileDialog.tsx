@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { User, Share2, Loader2, Save, Edit, Globe, MapPin } from "lucide-react";
+import { User, Share2, Loader2, Save, Edit, Globe, MapPin, ShieldCheck } from "lucide-react";
 import AvatarUploader from "./AvatarUploader";
 import { getCountryFlag, detectUserCountry, getCountryName, countries, getCountryFlagUrl } from "@/utils/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

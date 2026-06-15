@@ -480,12 +480,11 @@ export const MatchResultVerification: React.FC<MatchResultVerificationProps> = (
                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Submitting...</>
                 ) : 'File Dispute'}
               </DangerButton>
-              <Button
-                variant="ghost"
+              <GhostButton
                 onClick={() => setDisputeOpen(false)}
               >
                 Cancel
-              </Button>
+              </GhostButton>
             </div>
           </div>
         </DialogContent>

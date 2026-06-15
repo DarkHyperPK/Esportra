@@ -8,6 +8,7 @@ import { RegistrationDetails } from '@/types/tournament';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { isTeamRegistrationMode } from '@/utils/gameFeatures';
+import { CtaButton, CancelButton } from '@/components/ui/app-buttons';
 
 interface TournamentRegistrationProps {
   tournamentId: string;
@@ -255,25 +256,23 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
         </div>
 
         <div className="flex gap-3">
-          <Button
+          <CtaButton
             onClick={handleUploadReceipt}
             disabled={!receiptFile || uploading}
-            className="flex-1 bg-rose-600 hover:bg-rose-500 text-white"
+            className="flex-1"
           >
             {uploading ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading...</>
             ) : (
               <><CheckCircle className="w-4 h-4 mr-2" /> Submit Receipt</>
             )}
-          </Button>
-          <Button
+          </CtaButton>
+          <CancelButton
             onClick={handleCancelReceiptUpload}
-            variant="outline"
             disabled={uploading}
-            className="border-zinc-700 text-zinc-400 hover:text-white"
           >
             Cancel
-          </Button>
+          </CancelButton>
         </div>
         <p className="text-xs text-zinc-500 text-center">
           Cancelling will withdraw your registration.

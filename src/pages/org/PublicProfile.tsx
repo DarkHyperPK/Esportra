@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/hooks/useAuth';
-import { Trophy, Globe, Twitter, Instagram, Youtube, Link2, ArrowRight, ImageIcon, Loader2, Zap, CheckCircle2, Building2, Folder } from 'lucide-react';
+import { Trophy, Globe, Twitter, Instagram, Youtube, Link2, ArrowLeft, ArrowRight, ImageIcon, Loader2, Zap, CheckCircle2, Building2, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from 'framer-motion';
