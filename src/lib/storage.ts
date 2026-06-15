@@ -57,3 +57,16 @@ export const getStorageUrl = (bucket: string, path: string): string => {
 export const getWebsiteAssetUrl = (path: string): string => {
     return getStorageUrl('system.assets.website', path);
 };
+
+/** Build a stable public URL from a payment_receipt_url DB ref or legacy full URL. */
+export function resolvePaymentReceiptUrl(receiptRef?: string | null): string | undefined {
+    if (!receiptRef?.trim()) return undefined;
+
+    const trimmed = receiptRef.trim();
+    if (trimmed.startsWith('http')) return normalizeStorageUrl(trimmed);
+
+    const slash = trimmed.indexOf('/');
+    if (slash <= 0) return undefined;
+
+    return getStorageUrl(trimmed.slice(0, slash), trimmed.slice(slash + 1));
+}

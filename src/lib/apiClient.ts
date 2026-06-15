@@ -248,14 +248,6 @@ export const apiClient = {
     return fetchGetDeduped<T>(path);
   },
 
-  /** GET /api/{path} → Blob (for binary responses such as receipt images) */
-  async getBlob(path: string): Promise<Blob> {
-    const res = await fetchWithAuth(path, {
-      headers: { Accept: 'image/*,application/pdf,*/*' },
-    });
-    return res.blob();
-  },
-
   /** POST /api/{path} with JSON body → parsed JSON */
   async post<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetchWithAuth(path, {

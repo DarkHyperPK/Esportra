@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
+import { resolvePaymentReceiptUrl } from '@/lib/storage';
 import type { DashboardParticipant } from '@/hooks/useTournamentDashboard';
 
 interface PaymentManagementProps {
@@ -39,19 +40,13 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
   const [rejectReason, setRejectReason] = useState('');
   const [receiptViewUrl, setReceiptViewUrl] = useState<string | null>(null);
   const [receiptMimeType, setReceiptMimeType] = useState<string | null>(null);
-  const [loadingReceipt, setLoadingReceipt] = useState(false);
-  const receiptObjectUrlRef = React.useRef<string | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
 
   const closeReceiptDialog = () => {
-    if (receiptObjectUrlRef.current) {
-      URL.revokeObjectURL(receiptObjectUrlRef.current);
-      receiptObjectUrlRef.current = null;
-    }
     setReceiptViewUrl(null);
     setReceiptMimeType(null);
+    setReceiptLoading(false);
   };
-
-  React.useEffect(() => () => closeReceiptDialog(), []);
 
   const paidParticipants = useMemo(
     () => participants.filter(p => p.payment_status && p.payment_status !== 'not_required'),
@@ -120,23 +115,15 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
     }
   };
 
-  const viewReceipt = async (participant: DashboardParticipant) => {
-    setLoadingReceipt(true);
-    try {
-      if (receiptObjectUrlRef.current) {
-        URL.revokeObjectURL(receiptObjectUrlRef.current);
-        receiptObjectUrlRef.current = null;
-      }
-      const blob = await apiClient.getBlob(`/api/tournaments/${tournamentId}/participants/${participant.id}/receipt`);
-      const objectUrl = URL.createObjectURL(blob);
-      receiptObjectUrlRef.current = objectUrl;
-      setReceiptMimeType(blob.type || null);
-      setReceiptViewUrl(objectUrl);
-    } catch {
-      toast({ title: 'Could not load receipt', variant: 'destructive' });
-    } finally {
-      setLoadingReceipt(false);
+  const viewReceipt = (participant: DashboardParticipant) => {
+    const url = resolvePaymentReceiptUrl(participant.payment_receipt_url);
+    if (!url) {
+      toast({ title: 'No receipt available', variant: 'destructive' });
+      return;
     }
+    setReceiptMimeType(url.toLowerCase().includes('.pdf') ? 'application/pdf' : null);
+    setReceiptLoading(true);
+    setReceiptViewUrl(url);
   };
 
   React.useEffect(() => {
@@ -235,7 +222,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                     {/* Receipt + actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {p.payment_receipt_url && (
-                        <OutlineButton type="button" size="sm" onClick={() => viewReceipt(p)} disabled={loadingReceipt} className="gap-1">
+                        <OutlineButton type="button" size="sm" onClick={() => viewReceipt(p)} className="gap-1">
                           <Eye className="w-3.5 h-3.5" /> Receipt
                         </OutlineButton>
                       )}
@@ -323,20 +310,31 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
             <DialogTitle className="text-white">Payment Receipt</DialogTitle>
           </DialogHeader>
           {receiptViewUrl && (
-            <div className="flex items-center justify-center max-h-[70vh] overflow-auto">
+            <div className="relative flex items-center justify-center max-h-[70vh] overflow-auto min-h-[200px]">
+              {receiptLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                  <Clock className="w-8 h-8 text-zinc-400 animate-pulse" />
+                </div>
+              )}
               {receiptMimeType === 'application/pdf' ? (
                 <iframe
                   src={receiptViewUrl}
                   title="Payment Receipt"
                   className="w-full h-[65vh] rounded-lg border border-white/10"
+                  onLoad={() => setReceiptLoading(false)}
                 />
               ) : (
                 <img
                   src={receiptViewUrl}
                   alt="Payment Receipt"
-                  loading="lazy"
+                  loading="eager"
                   decoding="async"
                   className="max-w-full max-h-[65vh] object-contain rounded-lg"
+                  onLoad={() => setReceiptLoading(false)}
+                  onError={() => {
+                    setReceiptLoading(false);
+                    toast({ title: 'Could not load receipt', variant: 'destructive' });
+                  }}
                 />
               )}
             </div>
