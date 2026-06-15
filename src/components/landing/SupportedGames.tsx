@@ -198,8 +198,6 @@ const SupportedGames = () => {
     return () => { cancelled = true; };
   }, [assetsRequested, games, isInView, seedAssetsMap]);
 
-  const navClass = "bg-white/5 border-white/10 hover:bg-white/10 text-white disabled:opacity-30";
-
   return (
     <section ref={sectionRef} className="py-32 bg-[#0a0a0a] relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
@@ -253,8 +251,8 @@ const SupportedGames = () => {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious className={navClass} />
-            <CarouselNext className={navClass} />
+            <CarouselPrevious variant="secondary" className="disabled:opacity-30" />
+            <CarouselNext variant="secondary" className="disabled:opacity-30" />
           </Carousel>
         </motion.div>
 

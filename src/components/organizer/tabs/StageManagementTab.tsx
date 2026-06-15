@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { SuccessButton } from '@/components/ui/app-buttons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Layers, Trophy, Lock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, RefreshCw, Check } from 'lucide-react';
@@ -768,13 +769,12 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                 Delete All
                             </Button>
                         )}
-                        <Button
+                        <SuccessButton
                             onClick={() => setWizardOpen(true)}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2"
                         >
                             <Layers className="w-4 h-4" />
                             {stages.length > 0 ? 'Manage Stages' : 'Create Tournament Stages'}
-                        </Button>
+                        </SuccessButton>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -1066,7 +1066,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setAddStageDialogOpen(false)}>Cancel</Button>
-                        <Button
+                        <SuccessButton
                             onClick={() => {
                                 // Auto-set capacity from previous stage advancement
                                 if (stages.length > 0) {
@@ -1077,11 +1077,10 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                 }
                                 handleAddStage();
                             }}
-                            className="bg-emerald-600 hover:bg-emerald-500"
                             disabled={!newStageName || (stages.length > 0 && !stages[stages.length - 1]?.advancement_count)}
                         >
                             Create Stage
-                        </Button>
+                        </SuccessButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

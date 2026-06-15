@@ -784,6 +784,18 @@ const TeamsPage = () => {
 
   const handleAddMemberToRoster = async (userId: string) => {
     if (!manageRoster || !currentTeam) return;
+
+    const limits = getRosterCapacity(manageRoster);
+    const counts = countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members);
+    if ((counts.starter + counts.substitute) >= limits.maxRoster) {
+      toast({
+        title: 'Player limit reached',
+        description: `Max ${limits.maxRoster} players (starters + substitutes).`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       const res = await apiClient.post<{ success: boolean; rosterRole?: RosterLineupRole }>(
         `/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members`,
@@ -2197,7 +2209,11 @@ const TeamsPage = () => {
                     <div className="grid grid-cols-1 gap-2">
                       {teamMembers
                         .filter(m => !manageMembers.includes(m.user_id) && m.user_id !== currentTeam?.owner_id)
-                        .map(member => (
+                        .map(member => {
+                          const addLimits = getRosterCapacity(manageRoster);
+                          const addCounts = countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members);
+                          const playerBucketFull = (addCounts.starter + addCounts.substitute) >= addLimits.maxRoster;
+                          return (
                           <div key={`add-${member.user_id}`} className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.05] transition-all">
                             <div className="flex items-center gap-3">
                               <Avatar className="w-8 h-8 border border-white/10">
@@ -2210,12 +2226,15 @@ const TeamsPage = () => {
                               size="sm"
                               variant="ghost"
                               className="h-8 px-3 text-[10px] uppercase tracking-widest"
+                              disabled={playerBucketFull}
+                              title={playerBucketFull ? `Player limit reached (max ${addLimits.maxRoster})` : undefined}
                               onClick={() => handleAddMemberToRoster(member.user_id)}
                             >
                               Add to Lineup
                             </OutlineButton>
                           </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   </div>
                 )}

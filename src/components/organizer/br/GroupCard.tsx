@@ -71,7 +71,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
           {isLocked && <Lock className="w-3 h-3 text-zinc-500" />}
         </div>
         {!isLocked && (
-          <button type="button"
+          <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
             disabled={isDeleting}
@@ -113,7 +113,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
                     alt=""
                     loading="lazy"
                     decoding="async"
-                    fetchPriority="low"
+                    fetchpriority="low"
                     className="w-5 h-5 rounded-full object-cover"
                   />
                 ) : (

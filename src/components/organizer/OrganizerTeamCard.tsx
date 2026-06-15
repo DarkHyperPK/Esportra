@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { preferSoloRiotTagDisplay, resolveSoloParticipantDisplayName } from '@/utils/gameFeatures';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Settings } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { GhostButton } from '@/components/ui/app-buttons';
 
 interface TeamCardProps {
     participant: any;
@@ -10,7 +10,10 @@ interface TeamCardProps {
     renderStatusBadge: (participant: any) => React.ReactNode;
 }
 
-export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onManage, renderStatusBadge }) => {
+export const OrganizerTeamCard = React.forwardRef<HTMLDivElement, TeamCardProps>(function OrganizerTeamCard(
+    { participant, onManage, renderStatusBadge },
+    ref
+) {
     const [isHovered, setIsHovered] = useState(false);
 
     // Parse members from multiple formats (JSON array string, comma-separated, or actual array)
@@ -50,7 +53,7 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
 
     return (
         // Layout Placeholder - Keeps the grid cell stable
-        <div className="relative w-full h-[320px] z-0">
+        <div ref={ref} className="relative w-full h-[320px] z-0">
             {/* Animated Floating Card */}
             <motion.div
                 className="absolute top-0 left-0 w-full min-h-[320px] bg-[#09090b] border border-white/5 rounded-xl shadow-2xl flex flex-col overflow-hidden group"
@@ -66,17 +69,16 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
                 onMouseLeave={() => setIsHovered(false)}
             >
                 {/* Manage Button (Always visible) */}
-                <Button
+                <GhostButton
                     size="icon"
-                    variant="ghost"
-                    className="absolute top-2 right-2 h-8 w-8 text-gray-400 hover:text-white hover:bg-white/10 z-30 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 h-8 w-8 z-30 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => {
                         e.stopPropagation();
                         onManage(participant);
                     }}
                 >
                     <Settings className="w-5 h-5" />
-                </Button>
+                </GhostButton>
 
                 <AnimatePresence mode="wait">
                     {!isHovered ? (
@@ -102,7 +104,7 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
                                         alt={displayName}
                                         loading="lazy"
                                         decoding="async"
-                                        fetchPriority="low"
+                                        fetchpriority="low"
                                         className={`w-full h-full object-contain filter drop-shadow-md ${isSolo ? 'rounded-full' : ''}`}
                                     />
                                 ) : (
@@ -166,4 +168,4 @@ export const OrganizerTeamCard: React.FC<TeamCardProps> = ({ participant, onMana
             </motion.div>
         </div>
     );
-};
+});
