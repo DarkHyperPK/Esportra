@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Upload, X, Loader2, RotateCcw, Check, Sun } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { CtaButton, DangerButton } from '@/components/ui/app-buttons';
+import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
