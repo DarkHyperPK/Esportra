@@ -4,6 +4,11 @@ import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import EntityAvatar from '@/components/ui/EntityAvatar';
+import {
+    AVATAR_COMPRESS_PRESET,
+    PLAYER_CARD_COMPRESS_PRESET,
+    compressImageForUpload,
+} from '@/utils/compressImage';
 
 interface AvatarUploaderProps {
     value: string | null;
@@ -55,8 +60,11 @@ const AvatarUploader = ({ value, onChange, onRemove, size = 'xl', uploadPath, te
 
         setIsUploading(true);
         try {
+            const preset = teamId ? PLAYER_CARD_COMPRESS_PRESET : AVATAR_COMPRESS_PRESET;
+            const fileToUpload = await compressImageForUpload(file, preset);
+
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', fileToUpload);
 
             let result: { url: string };
 
