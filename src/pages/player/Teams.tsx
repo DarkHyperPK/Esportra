@@ -799,13 +799,36 @@ const TeamsPage = () => {
     try {
       const res = await apiClient.post<{ success: boolean; rosterRole?: RosterLineupRole }>(
         `/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members`,
-        { userId, rosterRole: 'starter' },
+        { userId },
       );
+      const assignedRole = res.rosterRole ?? 'starter';
+      const teamMember = teamMembers.find((m) => m.user_id === userId);
+      const memberEntry = {
+        user_id: userId,
+        username: teamMember?.username,
+        avatar_url: teamMember?.avatar_url,
+        roster_role: assignedRole,
+        is_starter: assignedRole === 'starter',
+      };
+
       setManageMembers(prev => [...prev, userId]);
-      setManageMemberRoles(prev => ({ ...prev, [userId]: res.rosterRole ?? 'starter' }));
-      toast({ title: 'Member added to roster' });
-      // update roster counts locally
-      setRosters(prev => prev.map(r => r.id === manageRoster.id ? { ...r, member_count: (r.member_count || 0) + 1 } : r));
+      setManageMemberRoles(prev => ({ ...prev, [userId]: assignedRole }));
+      setManageRoster(prev => prev
+        ? { ...prev, members: [...(prev.members || []), memberEntry] }
+        : prev);
+      setRosters(prev => prev.map(r => r.id === manageRoster.id
+        ? {
+          ...r,
+          member_count: (r.member_count || 0) + 1,
+          members: [...(r.members || []), memberEntry],
+        }
+        : r));
+      toast({
+        title: assignedRole === 'substitute' ? 'Added as substitute' : 'Member added to roster',
+        description: assignedRole === 'substitute'
+          ? 'Starter slots are full — player was added as a substitute.'
+          : undefined,
+      });
     } catch (e: any) {
       toast({ title: 'Failed to add member', description: e.message, variant: 'destructive' });
     }
@@ -814,24 +837,29 @@ const TeamsPage = () => {
   const handleRemoveFromRoster = async (userId: string) => {
     if (!manageRoster || !currentTeam) return;
     try {
-      // 1. Remove from the specific roster
       await apiClient.delete(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members/${userId}`);
 
-      // 2. Remove from the entire team (as requested: roster removal = team kick)
-      const success = await removeMemberFromTeam(currentTeam.id, userId);
+      setManageMembers(prev => prev.filter(id => id !== userId));
+      setManageMemberRoles(prev => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+      setManageRoster(prev => prev
+        ? { ...prev, members: (prev.members || []).filter((m) => m.user_id !== userId) }
+        : prev);
+      setRosters(prev => prev.map(r => r.id === manageRoster.id
+        ? {
+          ...r,
+          member_count: Math.max(0, (r.member_count || 0) - 1),
+          members: (r.members || []).filter((m) => m.user_id !== userId),
+        }
+        : r));
 
-      if (success) {
-        setManageMembers(prev => prev.filter(id => id !== userId));
-        // update roster counts locally for the current view
-        setRosters(prev => prev.map(r => r.id === manageRoster.id ? { ...r, member_count: Math.max(0, (r.member_count || 0) - 1) } : r));
-
-        toast({
-          title: 'Member Kicked',
-          description: 'User has been removed from the roster and the team.'
-        });
-      } else {
-        throw new Error('Roster entry removed, but team removal failed. Please refresh.');
-      }
+      toast({
+        title: 'Removed from lineup',
+        description: 'Player removed from this roster. They remain on the team.',
+      });
     } catch (e: any) {
       toast({ title: 'Removal Failed', description: e.message, variant: 'destructive' });
     }
