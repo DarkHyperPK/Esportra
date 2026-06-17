@@ -29,12 +29,34 @@ interface WeaponMetadata {
 function normalizeAssetToken(value?: string | null): string | null {
   if (!value) return null;
   const raw = value.split('/').pop()?.split('.').shift() ?? value;
-  return raw.replace(/^EEquippableCategory::/i, '').replace(/^EAresItemType::/i, '').toLowerCase();
+  return raw
+    .trim()
+    .replace(/^EEquippableCategory::/i, '')
+    .replace(/^EAresItemType::/i, '')
+    .toLowerCase();
+}
+
+function compactAssetToken(value?: string | null): string | null {
+  const normalized = normalizeAssetToken(value);
+  if (!normalized) return null;
+  const compact = normalized.replace(/[^a-z0-9]/g, '');
+  return compact || null;
+}
+
+function assetLookupKeys(value?: string | null): string[] {
+  const normalized = normalizeAssetToken(value);
+  const compact = compactAssetToken(value);
+  return Array.from(new Set([normalized, compact].filter((key): key is string => Boolean(key))));
+}
+
+function isUuidLike(value?: string | null): boolean {
+  const compact = compactAssetToken(value);
+  return Boolean(compact && /^[0-9a-f]{32}$/i.test(compact));
 }
 
 function formatWeaponFallback(value: string): string {
   const normalized = normalizeAssetToken(value) ?? value.toLowerCase();
-  if (/^[0-9a-f-]{32,}$/i.test(normalized)) return 'Unknown weapon';
+  if (isUuidLike(normalized)) return 'Unknown weapon';
   return normalized
     .split(/[-_\s]+/)
     .filter(Boolean)
@@ -51,11 +73,22 @@ function buildWeaponMetadataMap(items: Array<{ uuid?: string; displayName?: stri
     };
 
     [item.uuid, item.displayName].forEach((value) => {
-      const key = normalizeAssetToken(value);
-      if (key) map[key] = metadata;
+      assetLookupKeys(value).forEach((key) => {
+        map[key] = metadata;
+      });
     });
   });
   return map;
+}
+
+function resolveWeaponMetadata(
+  metadata: Record<string, WeaponMetadata>,
+  value: string,
+): WeaponMetadata | undefined {
+  return assetLookupKeys(value).reduce<WeaponMetadata | undefined>(
+    (match, key) => match ?? metadata[key],
+    undefined,
+  );
 }
 
 export const RiotRoundTimeline: React.FC<{ rounds: RoundTimelineEntry[] }> = ({ rounds }) => {
@@ -98,7 +131,21 @@ export const RiotRoundTimeline: React.FC<{ rounds: RoundTimelineEntry[] }> = ({ 
   );
 };
 
-export const RiotEconomyChart: React.FC<{ economy: EconomyTimelineEntry[] }> = ({ economy }) => {
+interface RiotEconomyChartProps {
+  economy: EconomyTimelineEntry[];
+  teamALabel?: string;
+  teamBLabel?: string;
+  teamAColor?: string;
+  teamBColor?: string;
+}
+
+export const RiotEconomyChart: React.FC<RiotEconomyChartProps> = ({
+  economy,
+  teamALabel = 'Blue',
+  teamBLabel = 'Red',
+  teamAColor = '#3b82f6',
+  teamBColor = '#f43f5e',
+}) => {
   if (!economy.length) {
     return (
       <p className="py-6 text-center text-sm text-zinc-500">No economy timeline available.</p>
@@ -122,12 +169,12 @@ export const RiotEconomyChart: React.FC<{ economy: EconomyTimelineEntry[] }> = (
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id="riotBlueEconomy" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                <stop offset="5%" stopColor={teamAColor} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={teamAColor} stopOpacity={0} />
               </linearGradient>
               <linearGradient id="riotRedEconomy" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                <stop offset="5%" stopColor={teamBColor} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={teamBColor} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
@@ -137,12 +184,12 @@ export const RiotEconomyChart: React.FC<{ economy: EconomyTimelineEntry[] }> = (
               contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: '8px' }}
               itemStyle={{ fontSize: '10px', fontWeight: 700 }}
             />
-            <Area type="monotone" dataKey="blueSpent" stroke="#3b82f6" strokeWidth={2} fill="url(#riotBlueEconomy)" name="Blue spent" />
-            <Area type="monotone" dataKey="redSpent" stroke="#f43f5e" strokeWidth={2} fill="url(#riotRedEconomy)" name="Red spent" />
+            <Area type="monotone" dataKey="blueSpent" stroke={teamAColor} strokeWidth={2} fill="url(#riotBlueEconomy)" name={`${teamALabel} spent`} />
+            <Area type="monotone" dataKey="redSpent" stroke={teamBColor} strokeWidth={2} fill="url(#riotRedEconomy)" name={`${teamBLabel} spent`} />
             {hasLoadout ? (
               <>
-                <Area type="monotone" dataKey="blueLoadout" stroke="#60a5fa" strokeWidth={1.5} strokeDasharray="4 4" fill="none" name="Blue loadout" />
-                <Area type="monotone" dataKey="redLoadout" stroke="#fb7185" strokeWidth={1.5} strokeDasharray="4 4" fill="none" name="Red loadout" />
+                <Area type="monotone" dataKey="blueLoadout" stroke={teamAColor} strokeWidth={1.5} strokeDasharray="4 4" fill="none" name={`${teamALabel} loadout`} />
+                <Area type="monotone" dataKey="redLoadout" stroke={teamBColor} strokeWidth={1.5} strokeDasharray="4 4" fill="none" name={`${teamBLabel} loadout`} />
               </>
             ) : null}
           </AreaChart>
@@ -174,8 +221,7 @@ export const RiotWeaponSummaries: React.FC<{ weapons: WeaponSummaryEntry[] }> = 
 
   const resolvedWeapons = useMemo(
     () => weapons.map((entry) => {
-      const key = normalizeAssetToken(entry.weapon);
-      const metadata = key ? weaponMetadata[key] : undefined;
+      const metadata = resolveWeaponMetadata(weaponMetadata, entry.weapon);
       return {
         ...entry,
         displayName: metadata?.displayName ?? formatWeaponFallback(entry.weapon),

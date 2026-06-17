@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, Link2 } from "lucide-react";
+import { Check, Link2, MonitorUp, RefreshCw } from "lucide-react";
 import { MapPool } from "@/components/tournament/map-veto/MapPool";
 import { VetoDialogs } from "@/components/tournament/map-veto/VetoDialogs";
 import { VetoHeader } from "@/components/tournament/map-veto/VetoHeader";
@@ -21,12 +21,63 @@ import {
   adaptPublicVetoToMatchVeto,
   buildPublicHostVetoUrl,
   buildPublicTeamVetoUrl,
+  buildPublicVetoOverlayUrl,
   PublicVetoGameMap,
   PublicVetoHistoryRow,
   PublicVetoState,
   normalizePublicVetoHistoryRow,
   serializePublicVetoSide,
 } from "./publicMapVetoUtils";
+
+const OBS_PREVIEW_WIDTH = 1600;
+const OBS_PREVIEW_HEIGHT = 900;
+
+const OverlayPreviewFrame = ({
+  src,
+  refreshKey,
+  title,
+}: {
+  src: string;
+  refreshKey: number;
+  title: string;
+}) => {
+  const frameRef = React.useRef<HTMLDivElement | null>(null);
+  const [scale, setScale] = useState(0);
+
+  React.useEffect(() => {
+    const element = frameRef.current;
+    if (!element) return;
+
+    const update = () => setScale(element.clientWidth / OBS_PREVIEW_WIDTH);
+    update();
+
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={frameRef} className="relative aspect-video w-full overflow-hidden border border-white/10 bg-black">
+      <div
+        className="absolute left-0 top-0"
+        style={{
+          width: OBS_PREVIEW_WIDTH,
+          height: OBS_PREVIEW_HEIGHT,
+          transform: `scale(${scale || 0.001})`,
+          transformOrigin: "top left",
+        }}
+      >
+        <iframe
+          key={`${src}-${refreshKey}`}
+          src={src}
+          title={title}
+          className="h-full w-full border-0"
+          loading="eager"
+        />
+      </div>
+    </div>
+  );
+};
 
 type PublicMapVetoViewProps = {
   state: PublicVetoState;
@@ -75,6 +126,9 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   const [showSideDialog, setShowSideDialog] = useState(false);
   const [pendingMapId, setPendingMapId] = useState<string | null>(null);
   const [copiedHost, setCopiedHost] = useState(false);
+  const [copiedOverlay, setCopiedOverlay] = useState(false);
+  const [overlayTransition, setOverlayTransition] = useState("up");
+  const [overlayPreviewKey, setOverlayPreviewKey] = useState(0);
 
   const veto = useMemo(() => mapApiVetoToLocal(adaptPublicVetoToMatchVeto(state)), [state]);
   const gameMaps = useMemo(
@@ -103,6 +157,8 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     && veto.status === "in_progress"
     && ((state.role === "team1" && veto.current_team_id === veto.team1_id)
       || (state.role === "team2" && veto.current_team_id === veto.team2_id));
+  const overlayToken = state.overlayToken ?? state.hostToken;
+  const overlayPreviewUrl = overlayToken ? buildPublicVetoOverlayUrl(overlayToken, overlayTransition) : "";
 
   const handleMapAction = useCallback(async (mapId: string) => {
     if (!veto.current_action || acting) return;
@@ -166,6 +222,14 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     window.setTimeout(() => setCopiedHost(false), 2000);
   };
 
+  const copyOverlayLink = async () => {
+    if (!overlayToken) return;
+    await copyText(buildPublicVetoOverlayUrl(overlayToken, overlayTransition));
+    setCopiedOverlay(true);
+    toast({ title: "OBS overlay link copied" });
+    window.setTimeout(() => setCopiedOverlay(false), 2000);
+  };
+
   const leftRail = (
     <>
       <div className="mb-1">
@@ -196,17 +260,73 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
         getTeamVetoUrl={buildPublicTeamVetoUrl}
       />
 
-      {isHost && state.hostToken && (
-        <Button
-          type="button"
-          onClick={() => { void copyHostLink(); }}
-          variant="outline"
-          size="sm"
-          className="gap-1.5 border-white/20 text-white/80 hover:bg-white/10"
-        >
-          {copiedHost ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
-          Host observer link
-        </Button>
+      {isHost && (state.hostToken || state.overlayToken) && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {state.hostToken && (
+              <Button
+                type="button"
+                onClick={() => { void copyHostLink(); }}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-white/20 text-white/80 hover:bg-white/10"
+              >
+                {copiedHost ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
+                Host observer link
+              </Button>
+            )}
+            {(state.overlayToken || state.hostToken) && (
+              <div className="flex overflow-hidden border border-emerald-400/30">
+                <select
+                  value={overlayTransition}
+                  onChange={(event) => setOverlayTransition(event.target.value)}
+                  className="h-8 border-r border-emerald-400/20 bg-black/40 px-2 text-[10px] font-bold uppercase tracking-wide text-emerald-100 outline-none"
+                  aria-label="OBS overlay transition"
+                >
+                  <option value="up">Slide up</option>
+                  <option value="left">Slide left</option>
+                  <option value="right">Slide right</option>
+                  <option value="none">None</option>
+                </select>
+                <Button
+                  type="button"
+                  onClick={() => { void copyOverlayLink(); }}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 border-0 text-emerald-100 hover:bg-emerald-500/10"
+                >
+                  {copiedOverlay ? <Check className="h-3 w-3" /> : <MonitorUp className="h-3 w-3" />}
+                  OBS overlay
+                </Button>
+              </div>
+            )}
+            {overlayPreviewUrl && (
+              <Button
+                type="button"
+                onClick={() => setOverlayPreviewKey((key) => key + 1)}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 border-white/20 text-white/80 hover:bg-white/10"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Refresh preview
+              </Button>
+            )}
+          </div>
+          {overlayPreviewUrl && (
+            <div className="space-y-2 border border-white/10 bg-black/35 p-2">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Live OBS Preview</div>
+                <div className="min-w-0 truncate font-mono text-[9px] text-zinc-600">{overlayPreviewUrl}</div>
+              </div>
+              <OverlayPreviewFrame
+                src={overlayPreviewUrl}
+                refreshKey={overlayPreviewKey}
+                title="Map veto OBS overlay preview"
+              />
+            </div>
+          )}
+        </div>
       )}
 
       {!isComplete && (

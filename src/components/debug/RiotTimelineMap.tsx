@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Crosshair, Target } from 'lucide-react';
+import { RoundEventLog, type DebugRoundEventLogRound } from '@/components/debug/RoundEventLog';
 import { cn } from '@/lib/utils';
 import type { EnrichedRiotMatchData } from '@/types/enrichedRiotMatch';
 import type { RiotMapPoint, RiotPlayerLocation, RiotRoundResult } from '@/types/riotMatchDetails';
@@ -45,8 +46,6 @@ interface RiotTimelineMapProps {
 }
 
 type TimelineActionType = 'kill' | 'plant';
-type ValorantTeamId = 'Blue' | 'Red';
-type TeamSide = 'attack' | 'defense';
 
 interface TimelineParticipant {
   puuid: string;
@@ -74,66 +73,6 @@ interface TimelineAction {
 
 function getRoundNumber(round: RiotRoundResult, index: number): number {
   return typeof round.roundNum === 'number' ? round.roundNum + 1 : index + 1;
-}
-
-function isValorantTeamId(value?: string | null): value is ValorantTeamId {
-  return value === 'Blue' || value === 'Red';
-}
-
-function getRoundSideSegment(round: number): 'first' | 'second' | 'ot-attack-red' | 'ot-attack-blue' {
-  if (round <= 12) return 'first';
-  if (round <= 24) return 'second';
-  return round % 2 === 1 ? 'ot-attack-red' : 'ot-attack-blue';
-}
-
-function getOppositeTeam(team: ValorantTeamId): ValorantTeamId {
-  return team === 'Red' ? 'Blue' : 'Red';
-}
-
-function getFallbackAttackingTeam(round: number): ValorantTeamId {
-  if (round <= 12) return 'Red';
-  if (round <= 24) return 'Blue';
-  return round % 2 === 1 ? 'Red' : 'Blue';
-}
-
-function resolveAttackingTeamBySegment(
-  roundResults: RiotRoundResult[],
-  playersByPuuid: Map<string, EnrichedRiotMatchData['players'][number]>,
-): Record<string, ValorantTeamId> {
-  const segmentAttackers: Record<string, ValorantTeamId> = {};
-
-  roundResults.forEach((round, index) => {
-    if (!round.bombPlanter) return;
-    const planterTeam = playersByPuuid.get(round.bombPlanter)?.teamId;
-    if (!isValorantTeamId(planterTeam)) return;
-    const roundNumber = getRoundNumber(round, index);
-    segmentAttackers[getRoundSideSegment(roundNumber)] = planterTeam;
-  });
-
-  if (segmentAttackers.first && !segmentAttackers.second) {
-    segmentAttackers.second = getOppositeTeam(segmentAttackers.first);
-  }
-  if (segmentAttackers.second && !segmentAttackers.first) {
-    segmentAttackers.first = getOppositeTeam(segmentAttackers.second);
-  }
-
-  return segmentAttackers;
-}
-
-function getRoundSideInfo(
-  round: number,
-  teamId: string | undefined,
-  segmentAttackers: Record<string, ValorantTeamId>,
-): { side: TeamSide | null; attackingTeam: ValorantTeamId; defendingTeam: ValorantTeamId } {
-  const segment = getRoundSideSegment(round);
-  const attackingTeam = segmentAttackers[segment] ?? getFallbackAttackingTeam(round);
-  const defendingTeam = getOppositeTeam(attackingTeam);
-
-  return {
-    side: teamId === attackingTeam ? 'attack' : teamId === defendingTeam ? 'defense' : null,
-    attackingTeam,
-    defendingTeam,
-  };
 }
 
 function formatTime(ms?: number): string {
@@ -189,6 +128,35 @@ function abilitySlotAliases(value?: string | null): string[] {
     .map(([slot]) => slot);
 }
 
+function agentAbilityDamageAliases(agent: AgentMetadata | undefined, ability: AbilityMetadata): string[] {
+  const agentName = compactAssetToken(agent?.displayName);
+  const abilityName = compactAssetToken(ability.displayName);
+  const aliases = [
+    agentName && abilityName ? `${agentName}${abilityName}` : null,
+    abilityName,
+  ].filter((value): value is string => Boolean(value));
+
+  if (agentName === 'chamber' && abilityName === 'headhunter') {
+    aliases.push(
+      // Riot MatchDto can report Chamber's Headhunter as this agent-weapon damageItem.
+      '856d9a7e4b86dc3715dc9d889c37cb90',
+      'chamberpistol',
+      'chambergun',
+    );
+  }
+
+  if (agentName === 'chamber' && abilityName === 'tourdeforce') {
+    aliases.push(
+      'chambersniper',
+      'chamberrifle',
+      'tourdeforcesniper',
+      'sniper',
+    );
+  }
+
+  return aliases;
+}
+
 function buildAbilityMap(agent?: AgentMetadata): Record<string, DamageAssetMetadata> {
   const map: Record<string, DamageAssetMetadata> = {};
   agent?.abilities?.forEach((ability) => {
@@ -202,6 +170,7 @@ function buildAbilityMap(agent?: AgentMetadata): Record<string, DamageAssetMetad
       ability.slot,
       ability.displayName,
       ...(abilitySlotAliases(ability.slot)),
+      ...agentAbilityDamageAliases(agent, ability),
     ].forEach((value) => {
       weaponLookupKeys(value).forEach((key) => {
         map[key] = metadata;
@@ -209,6 +178,12 @@ function buildAbilityMap(agent?: AgentMetadata): Record<string, DamageAssetMetad
     });
   });
   return map;
+}
+
+function buildAgentAbilityMaps(agents: Record<string, AgentMetadata>): Record<string, Record<string, DamageAssetMetadata>> {
+  return Object.fromEntries(
+    Object.entries(agents).map(([agentId, agent]) => [agentId, buildAbilityMap(agent)]),
+  );
 }
 
 function formatWeaponLabel(damageType?: string | null, damageItem?: string | null): string {
@@ -414,11 +389,11 @@ function buildWeaponMap(items: Array<{ uuid?: string; displayName?: string; disp
 
 function resolveDamageAssetMetadata(
   weapons: Record<string, DamageAssetMetadata>,
-  actorAgent?: AgentMetadata,
+  actorAbilityMap: Record<string, DamageAssetMetadata> | undefined,
   weaponKey?: string | null,
   damageTypeKey?: string | null,
 ): DamageAssetMetadata | undefined {
-  const abilityMap = buildAbilityMap(actorAgent);
+  const abilityMap = actorAbilityMap ?? {};
   const itemKeys = weaponLookupKeys(weaponKey);
   const typeKeys = weaponLookupKeys(damageTypeKey);
 
@@ -439,6 +414,12 @@ function resolveDamageAssetMetadata(
   if (weaponFromItem) return weaponFromItem;
 
   return undefined;
+}
+
+function cleanDamageAssetLabel(asset?: DamageAssetMetadata, fallback?: string): string | null {
+  const label = asset?.displayName || fallback;
+  if (!label || isUuidLike(label) || label.toLowerCase() === 'weapon') return null;
+  return label;
 }
 
 function getPlayerName(player?: { gameName?: string; tagLine?: string }): string {
@@ -580,29 +561,36 @@ const AgentMapMarker: React.FC<{
   </div>
 );
 
-const WeaponBadge: React.FC<{ weapon?: DamageAssetMetadata; label?: string }> = ({ weapon, label }) => (
-  <div className="relative flex min-w-0 items-center justify-center">
-    <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/10" />
-    {weapon?.displayIcon ? (
-      <img
-        src={weapon.displayIcon}
-        alt={weapon.displayName || label || ''}
-        className="relative z-10 h-5 max-w-[72px] object-contain brightness-125 contrast-125 drop-shadow-[0_0_8px_rgba(255,255,255,0.18)]"
-        loading="lazy"
-      />
-    ) : (
-      <span className="relative z-10 inline-flex h-5 min-w-5 items-center justify-center text-zinc-300/80">
-        {label && !isUuidLike(label) && label.toLowerCase() !== 'weapon' ? (
-          <span className="bg-[#101820] px-1 font-mono text-[8px] font-black uppercase tracking-wider">
-            {label}
-          </span>
-        ) : (
-          <Crosshair className="h-4 w-4" />
-        )}
-      </span>
-    )}
-  </div>
-);
+const WeaponBadge: React.FC<{ weapon?: DamageAssetMetadata; label?: string }> = ({ weapon, label }) => {
+  const cleanLabel = cleanDamageAssetLabel(weapon, label);
+
+  return (
+    <div className="relative flex min-w-0 items-center justify-center" title={cleanLabel ?? undefined}>
+      <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/10" />
+      {weapon?.displayIcon ? (
+        <img
+          src={weapon.displayIcon}
+          alt={cleanLabel || ''}
+          className={cn(
+            'relative z-10 h-5 max-w-[72px] object-contain brightness-125 contrast-125 drop-shadow-[0_0_8px_rgba(255,255,255,0.18)]',
+            weapon.kind === 'ability' && 'max-w-6 rounded-sm',
+          )}
+          loading="lazy"
+        />
+      ) : (
+        <span className="relative z-10 inline-flex h-5 min-w-5 items-center justify-center text-zinc-300/80">
+          {cleanLabel ? (
+            <span className="bg-[#101820] px-1 font-mono text-[8px] font-black uppercase tracking-wider">
+              {cleanLabel}
+            </span>
+          ) : (
+            <Crosshair className="h-4 w-4" />
+          )}
+        </span>
+      )}
+    </div>
+  );
+};
 
 const SpikeBadge: React.FC<{ icon?: string | null }> = ({ icon }) => {
   return (
@@ -654,16 +642,30 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({ matchData, tar
     () => Array.from(new Set(actions.map((action) => action.round))).sort((a, b) => a - b),
     [actions],
   );
+  const roundLogRounds = useMemo<DebugRoundEventLogRound[]>(
+    () => {
+      const fromResults = (matchData.roundResults ?? []).map((round, index) => ({
+        round: getRoundNumber(round, index),
+        winningTeam: round.winningTeam,
+        resultCode: round.roundResultCode,
+        result: round.roundResult,
+        plantSite: round.plantSite,
+      }));
+
+      return fromResults.length
+        ? fromResults
+        : rounds.map((round) => ({ round }));
+    },
+    [matchData.roundResults, rounds],
+  );
 
   const [activeRound, setActiveRound] = useState<number | null>(null);
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
-  const [hoveredActionId, setHoveredActionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!rounds.length) {
       setActiveRound(null);
       setSelectedActionId(null);
-      setHoveredActionId(null);
       return;
     }
 
@@ -694,12 +696,16 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({ matchData, tar
   }, [matchData.players]);
 
   const targetTeamId = playersByPuuid.get(targetPuuid)?.teamId;
-  const attackingTeamsBySegment = useMemo(
-    () => resolveAttackingTeamBySegment(matchData.roundResults ?? [], playersByPuuid),
-    [matchData.roundResults, playersByPuuid],
-  );
-  const previewAction = roundActions.find((action) => action.id === hoveredActionId)
-    ?? roundActions.find((action) => action.id === selectedActionId)
+  const opponentTeamId = matchData.teams.find((team) => team.teamId !== targetTeamId)?.teamId;
+  const agentAbilityMaps = useMemo(() => buildAgentAbilityMaps(agents), [agents]);
+  const selectRound = (round: number) => {
+    setActiveRound(round);
+    const firstAction = actions
+      .filter((action) => action.round === round)
+      .sort((a, b) => a.timeMillis - b.timeMillis)[0];
+    setSelectedActionId(firstAction?.id ?? null);
+  };
+  const previewAction = roundActions.find((action) => action.id === selectedActionId)
     ?? roundActions[0]
     ?? null;
   const previewPoint = previewAction?.location && isFinitePoint(previewAction.location)
@@ -770,56 +776,22 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({ matchData, tar
           <div>
             <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-100/85">Event Log</p>
             <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Hover an action to stage the minimap
+              Click an action to stage the minimap
             </p>
           </div>
           <p className="text-xs font-black text-white">{mapData?.displayName || 'Valorant map'}</p>
         </div>
 
-        <div className="scroller-hide flex gap-1 overflow-x-auto border-b border-white/5 bg-[linear-gradient(180deg,#0c1824,#070c12)] p-2">
-          {rounds.map((round) => {
-            const sideInfo = getRoundSideInfo(round, targetTeamId, attackingTeamsBySegment);
-            const sideLabel = sideInfo.side === 'attack' ? 'ATK' : sideInfo.side === 'defense' ? 'DEF' : '--';
-            const isAttack = sideInfo.side === 'attack';
-
-            return (
-              <button
-                key={round}
-                type="button"
-                onClick={() => setActiveRound(round)}
-                title={`Round ${round}: ${sideInfo.attackingTeam} attack, ${sideInfo.defendingTeam} defend`}
-                className={cn(
-                  'relative min-w-[76px] overflow-hidden border px-2 py-2 text-left transition-all duration-200',
-                  activeRound === round
-                    ? isAttack
-                      ? 'border-amber-100 bg-amber-300/15 text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.18)]'
-                      : 'border-cyan-100 bg-cyan-300/15 text-cyan-100 shadow-[0_0_18px_rgba(103,232,249,0.16)]'
-                    : 'border-white/10 bg-black/35 text-zinc-500 hover:border-white/25 hover:text-zinc-200',
-                )}
-              >
-                <span className={cn(
-                  'absolute inset-x-0 top-0 h-0.5',
-                  isAttack ? 'bg-amber-200' : 'bg-cyan-200',
-                  activeRound !== round && 'opacity-30',
-                )} />
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-[10px] font-black">R{round}</span>
-                  <span
-                    className={cn(
-                      'font-mono text-[10px] font-black',
-                      isAttack ? 'text-amber-200' : 'text-cyan-200',
-                    )}
-                  >
-                    {sideLabel}
-                  </span>
-                </div>
-                <div className="mt-0.5 truncate text-[8px] font-bold uppercase tracking-wide text-white/45">
-                  {sideInfo.attackingTeam} attack
-                </div>
-              </button>
-            );
-          })}
-        </div>
+        <RoundEventLog
+          rounds={roundLogRounds}
+          teamAId={targetTeamId}
+          teamBId={opponentTeamId}
+          activeRound={activeRound}
+          onSelectRound={selectRound}
+          teamAScore={matchData.teams.find((team) => team.teamId === targetTeamId)?.roundsWon}
+          teamBScore={matchData.teams.find((team) => team.teamId === opponentTeamId)?.roundsWon}
+          className="border-x-0 border-b-0 border-t-0 shadow-none"
+        />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
@@ -831,7 +803,8 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({ matchData, tar
             const target = action.targetPuuid ? playersByPuuid.get(action.targetPuuid) : undefined;
             const actorAgent = actor?.characterId ? agents[String(actor.characterId).toLowerCase()] : undefined;
             const targetAgent = target?.characterId ? agents[String(target.characterId).toLowerCase()] : undefined;
-            const weapon = resolveDamageAssetMetadata(weapons, actorAgent, action.weaponKey, action.damageTypeKey);
+            const actorAbilityMap = actor?.characterId ? agentAbilityMaps[String(actor.characterId).toLowerCase()] : undefined;
+            const weapon = resolveDamageAssetMetadata(weapons, actorAbilityMap, action.weaponKey, action.damageTypeKey);
             const isKill = action.type === 'kill';
             const isSelected = selectedAction?.id === action.id;
             const killerParticipant = action.participants.find((participant) => participant.role === 'killer');
@@ -851,8 +824,6 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({ matchData, tar
                 type="button"
                 onClick={() => setSelectedActionId(action.id)}
                 onFocus={() => setSelectedActionId(action.id)}
-                onMouseEnter={() => setHoveredActionId(action.id)}
-                onMouseLeave={() => setHoveredActionId(null)}
                 className={cn(
                   'group relative grid min-h-[46px] w-full grid-cols-[2.25rem_2.9rem_minmax(4.75rem,1fr)_2.9rem_2.25rem] items-center gap-2 overflow-hidden border-0 border-b border-black/35 px-2 py-1.5 text-left transition-all duration-200 ease-out',
                   perspective === 'ally' && 'bg-[linear-gradient(90deg,rgba(20,184,166,0.62),rgba(17,74,74,0.88))] hover:brightness-110',

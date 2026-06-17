@@ -6,10 +6,11 @@ import {
     RiotWeaponSummaries,
 } from '@/components/tournament/RiotMatchAnalytics';
 import { RiotTimelineMap, type ValorantMapMetadata } from '@/components/debug/RiotTimelineMap';
+import { getTeamAlias, getTeamTone, RoundEventLog } from '@/components/debug/RoundEventLog';
 import type { EnrichedRiotMatchData } from '@/types/enrichedRiotMatch';
 import { resolveEnrichedPlayer } from '@/types/enrichedRiotMatch';
 import { formatAbilityCasts, formatStat } from '@/types/scoreboardPlayer';
-import { resolveRoundResultCode, type RiotRoundResult, type RoundTimelineEntry } from '@/types/riotMatchDetails';
+import { resolveRoundResultCode, type EconomyTimelineEntry, type RiotRoundResult, type RoundTimelineEntry } from '@/types/riotMatchDetails';
 import { cn } from '@/lib/utils';
 
 interface MatchHistoryCardProps {
@@ -160,7 +161,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                     if (p?.teamId === 'Blue') blueBank += spent;
                     else if (p?.teamId === 'Red') redBank += spent;
                 });
-                const roundNumber = round.roundNum && round.roundNum > 0 ? round.roundNum : index + 1;
+                const roundNumber = typeof round.roundNum === 'number' ? round.roundNum + 1 : index + 1;
                 return { round: roundNumber, blueBank, redBank, blueLoadout: 0, redLoadout: 0 };
             });
 
@@ -283,38 +284,58 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
     }, [targetPuuid, matchData.matchInfo.matchId]);
 
     useEffect(() => {
+        let cancelled = false;
+
         if (player?.characterId) {
             fetch(`https://valorant-api.com/v1/agents/${player.characterId}`)
                 .then((res) => res.json())
-                .then((data) => setAgentData(data.data));
+                .then((data) => {
+                    if (!cancelled) setAgentData(data.data ?? null);
+                })
+                .catch(() => {
+                    if (!cancelled) setAgentData(null);
+                });
+        } else {
+            setAgentData(null);
         }
 
         fetch('https://valorant-api.com/v1/agents?isPlayableCharacter=true')
             .then((res) => res.json())
             .then((data) => {
+                if (cancelled || !Array.isArray(data?.data)) return;
                 const map: Record<string, ValorantAgentMetadata> = {};
                 data.data.forEach((agent: ValorantAgentMetadata) => {
+                    if (!agent.uuid) return;
                     map[agent.uuid.toLowerCase()] = agent;
                 });
                 setAllAgents(map);
-            });
+            })
+            .catch(() => undefined);
 
         const mapUri = matchData.matchInfo.mapId;
         fetch('https://valorant-api.com/v1/maps')
             .then((res) => res.json())
             .then((data) => {
+                if (cancelled || !Array.isArray(data?.data)) return;
                 const foundMap = data.data.find((mapEntry: ValorantMapMetadata) => mapEntry.mapUrl === mapUri);
                 setMapData(foundMap);
+            })
+            .catch(() => {
+                if (!cancelled) setMapData(null);
             });
 
         fetch('https://valorant-api.com/v1/competitivetiers')
             .then((res) => res.json())
             .then((data) => {
-                if (Array.isArray(data?.data)) {
+                if (!cancelled && Array.isArray(data?.data)) {
                     setCompetitiveTiers(buildCompetitiveTierMap(data.data));
                 }
             })
             .catch(() => undefined);
+
+        return () => {
+            cancelled = true;
+        };
     }, [player?.characterId, matchData.matchInfo.mapId]);
 
     const roundTimeline = matchData.roundTimeline ?? [];
@@ -522,8 +543,24 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
     const selectedRound = debugRounds.find((round) => round.summary.round === selectedRoundNumber) ?? debugRounds[0] ?? null;
     const targetTeam = matchData.teams.find((team) => team.teamId === teamId);
     const opponentTeam = matchData.teams.find((team) => team.teamId !== teamId);
+    const teamAId = teamId;
+    const teamBId = opponentTeam?.teamId;
     const targetRounds = targetTeam?.roundsWon ?? 0;
     const opponentRounds = opponentTeam?.roundsWon ?? 0;
+    const toPerspectiveEconomy = (entries: EconomyTimelineEntry[]): EconomyTimelineEntry[] => entries.map((entry) => {
+        const teamASpent = teamAId === 'Red' ? entry.redSpent : entry.blueSpent;
+        const teamBSpent = teamAId === 'Red' ? entry.blueSpent : entry.redSpent;
+        const teamALoadout = teamAId === 'Red' ? entry.redLoadout : entry.blueLoadout;
+        const teamBLoadout = teamAId === 'Red' ? entry.blueLoadout : entry.redLoadout;
+
+        return {
+            round: entry.round,
+            blueSpent: teamASpent,
+            redSpent: teamBSpent,
+            blueLoadout: teamALoadout,
+            redLoadout: teamBLoadout,
+        };
+    });
     const resultTone = isWin
         ? {
             rail: 'border-l-[#20f5c6]',
@@ -539,6 +576,42 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
             badge: 'border-[#ff4d6d]/45 bg-[#ff4d6d]/16 text-[#ffd0d8]',
             glow: 'shadow-[0_0_30px_rgba(255,77,109,0.18)]',
         };
+    const matchMvp = matchData.players
+        .map((entry) => {
+            const enriched = resolveEnrichedPlayer(matchData, entry.puuid);
+            const entryAnalytics = analytics?.playerStatsMap[entry.puuid];
+            const hits = entryAnalytics?.hits ?? { head: 0, body: 0, leg: 0 };
+            const totalHits = hits.head + hits.body + hits.leg;
+            const hsPct = enriched?.hsPct ?? (totalHits > 0 ? Math.round((hits.head / totalHits) * 100) : 0);
+            const adr = enriched?.adr ?? Math.round(entry.stats.score / Math.max(1, roundCount));
+            const acs = enriched?.acs ?? Math.round(entry.stats.score / Math.max(1, roundCount));
+            const kast = analytics ? Math.round((entryAnalytics?.kastCount ?? 0) / roundCount * 100) : 0;
+            const kdRatio = enriched?.kdRatio
+                ?? (entry.stats.deaths > 0
+                    ? (entry.stats.kills / entry.stats.deaths).toFixed(2)
+                    : String(entry.stats.kills));
+
+            return {
+                player: entry,
+                enriched,
+                analytics: entryAnalytics,
+                agent: entry.characterId ? allAgents[entry.characterId.toLowerCase()] : undefined,
+                rank: competitiveTiers[entry.competitiveTier ?? 0],
+                acs,
+                adr,
+                hsPct,
+                kast,
+                kdRatio,
+                teamAlias: getTeamAlias(entry.teamId, teamAId),
+                isTeamA: getTeamTone(entry.teamId, teamAId) === 'teamA',
+            };
+        })
+        .sort((a, b) => (
+            b.acs - a.acs
+            || b.player.stats.score - a.player.stats.score
+            || b.player.stats.kills - a.player.stats.kills
+            || a.player.stats.deaths - b.player.stats.deaths
+        ))[0];
 
     const renderPremiumRounds = () => {
         if (!debugRounds.length) {
@@ -562,11 +635,11 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
         const selectedMeta = getRoundResultMeta(selectedResult);
         const sideInfo = getRoundSideInfo(selectedSummary.round);
         const winningTeam = selectedSummary.winningTeam;
-        const isBlueWinner = winningTeam === 'Blue';
-        const winningTone = isBlueWinner ? 'text-blue-100' : 'text-rose-100';
-        const winningSurface = isBlueWinner
-            ? 'from-blue-500/20 via-[#0d1d31] to-[#08131f]'
-            : 'from-rose-500/22 via-[#28121d] to-[#0f1118]';
+        const isTeamAWinner = winningTeam === teamAId;
+        const winningTone = isTeamAWinner ? 'text-[#b8fff0]' : 'text-[#ffd0d8]';
+        const winningSurface = isTeamAWinner
+            ? 'from-[#20f5c6]/20 via-[#0a302d] to-[#08131f]'
+            : 'from-[#ff4d6d]/22 via-[#28121d] to-[#0f1118]';
 
         const allRoundKills = (selectedRaw?.playerStats ?? [])
             .flatMap((stats) => (stats.kills ?? []).map((kill) => ({
@@ -596,17 +669,18 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                 .filter((entry) => entry.teamId === team)
                 .map((entry) => ({ entry, roundStats: getPlayerRoundStats(entry) }))
                 .sort((a, b) => b.roundStats.kills - a.roundStats.kills || b.roundStats.damage - a.roundStats.damage);
-            const isBlue = team === 'Blue';
+            const isTeamA = getTeamTone(team, teamAId) === 'teamA';
+            const teamLabel = getTeamAlias(team, teamAId);
 
             return (
                 <div className="min-w-0 bg-[#0e1a24]">
                     <div className={cn(
                         'flex items-center justify-between border-b border-white/5 px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em]',
-                        isBlue ? 'bg-blue-500/10 text-blue-100' : 'bg-rose-500/10 text-rose-100',
+                        isTeamA ? 'bg-[#20f5c6]/10 text-[#b8fff0]' : 'bg-[#ff4d6d]/10 text-[#ffd0d8]',
                     )}>
                         <span className="flex items-center gap-2">
-                            <span className={cn('h-2 w-2', isBlue ? 'bg-blue-300' : 'bg-rose-300')} />
-                            Team {team}
+                            <span className={cn('h-2 w-2', isTeamA ? 'bg-[#20f5c6]' : 'bg-[#ff4d6d]')} />
+                            {teamLabel}
                         </span>
                         <span className="text-slate-300/70">{sideInfo.attackingTeam === team ? 'Attack' : 'Defense'}</span>
                     </div>
@@ -630,16 +704,16 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                                             key={entry.puuid}
                                             className={cn(
                                                 'border-t border-black/40 bg-[#0b141d] text-slate-300 transition-colors',
-                                                selectedPlayer.puuid === entry.puuid && (isBlue
-                                                    ? 'bg-blue-300/[0.08] text-white'
-                                                    : 'bg-rose-300/[0.08] text-white'),
+                                                selectedPlayer.puuid === entry.puuid && (isTeamA
+                                                    ? 'bg-[#20f5c6]/[0.08] text-white'
+                                                    : 'bg-[#ff4d6d]/[0.08] text-white'),
                                             )}
                                         >
                                             <td className="px-3 py-2">
                                                 <div className="flex min-w-[140px] items-center gap-2">
                                                     <div className={cn(
                                                         'h-7 w-7 overflow-hidden border bg-black/30 shadow-[0_0_10px_rgba(0,0,0,0.35)]',
-                                                        isBlue ? 'border-blue-300/45' : 'border-rose-300/45',
+                                                        isTeamA ? 'border-[#20f5c6]/45' : 'border-[#ff4d6d]/45',
                                                     )}>
                                                         {agent?.displayIcon ? (
                                                             <img src={agent.displayIcon} loading="lazy" className="h-full w-full object-cover" alt="" />
@@ -668,60 +742,21 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
 
         return (
             <div className="space-y-4">
-                <div className="overflow-hidden border border-white/5 bg-[#07111a] shadow-[0_18px_55px_rgba(0,0,0,0.35)]">
-                    <div className="flex items-center justify-between border-b border-white/5 bg-[linear-gradient(90deg,#2a4054,#172636)] px-4 py-2.5">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-100/85">Round Control</p>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            {debugRounds.length} rounds
-                        </p>
-                    </div>
-                    <div className="scroller-hide flex gap-1 overflow-x-auto bg-[linear-gradient(180deg,#0c1824,#070c12)] p-2">
-                        {debugRounds.map(({ summary }) => {
-                            const result = resolveRoundResultCode(summary);
-                            const meta = getRoundResultMeta(result);
-                            const isBlueWin = summary.winningTeam === 'Blue';
-                            const isActive = selectedSummary.round === summary.round;
-                            const roundSide = getRoundSideInfo(summary.round);
-
-                            return (
-                                <button
-                                    key={summary.round}
-                                    type="button"
-                                    onClick={() => setSelectedRoundNumber(summary.round)}
-                                    className={cn(
-                                        'group relative min-w-[82px] overflow-hidden border px-2 py-2 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30',
-                                        isBlueWin
-                                            ? 'border-blue-300/20 bg-blue-950/45 text-blue-100 hover:border-blue-200/45'
-                                            : 'border-rose-300/20 bg-rose-950/45 text-rose-100 hover:border-rose-200/45',
-                                        isActive && (isBlueWin
-                                            ? 'border-blue-100 bg-blue-500/20 shadow-[0_0_22px_rgba(96,165,250,0.28)]'
-                                            : 'border-rose-100 bg-rose-500/20 shadow-[0_0_22px_rgba(251,113,133,0.28)]'),
-                                    )}
-                                >
-                                    <span className={cn(
-                                        'absolute inset-x-0 top-0 h-0.5',
-                                        isBlueWin ? 'bg-blue-300' : 'bg-rose-300',
-                                    )} />
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-mono text-[10px] font-black">R{summary.round}</span>
-                                        <span className={cn('font-mono text-[9px] font-black tracking-wider', meta.tone)}>
-                                            {meta.short}
-                                        </span>
-                                    </div>
-                                    <div className="mt-1 truncate text-[8px] font-black uppercase tracking-wide text-white/45">
-                                        {roundSide.attackingTeam} attack
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
+                <RoundEventLog
+                    rounds={debugRounds.map(({ summary }) => summary)}
+                    teamAId={teamAId}
+                    teamBId={teamBId}
+                    activeRound={selectedSummary.round}
+                    onSelectRound={setSelectedRoundNumber}
+                    teamAScore={targetRounds}
+                    teamBScore={opponentRounds}
+                />
 
                 <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
                     <div className={cn('relative overflow-hidden bg-gradient-to-br p-5 shadow-[0_18px_55px_rgba(0,0,0,0.3)]', winningSurface)}>
                         <div className={cn(
                             'absolute inset-y-0 left-0 w-1',
-                            isBlueWinner ? 'bg-blue-300' : 'bg-rose-300',
+                            isTeamAWinner ? 'bg-[#20f5c6]' : 'bg-[#ff4d6d]',
                         )} />
                         <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
                         <div className="flex items-start justify-between gap-4">
@@ -730,14 +765,16 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                                 <div className="mt-2 flex items-center gap-3">
                                     <div className={cn(
                                         'flex h-12 w-12 items-center justify-center border font-mono text-[11px] font-black tracking-wider',
-                                        isBlueWinner
-                                            ? 'border-blue-200/50 bg-blue-200/10 text-blue-100'
-                                            : 'border-rose-200/50 bg-rose-200/10 text-rose-100',
+                                        isTeamAWinner
+                                            ? 'border-[#20f5c6]/50 bg-[#20f5c6]/10 text-[#b8fff0]'
+                                            : 'border-[#ff4d6d]/50 bg-[#ff4d6d]/10 text-[#ffd0d8]',
                                     )}>
                                         {selectedMeta.short}
                                     </div>
                                     <div>
-                                        <div className={cn('text-lg font-black', winningTone)}>Team {winningTeam || 'Unknown'} won</div>
+                                        <div className={cn('text-lg font-black', winningTone)}>
+                                            {winningTeam ? getTeamAlias(winningTeam, teamAId) : 'Unknown team'} won
+                                        </div>
                                         <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
                                             {selectedMeta.label}
                                             {selectedSummary.plantSite ? ` · Site ${selectedSummary.plantSite}` : ''}
@@ -749,11 +786,11 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                         <div className="mt-5 grid grid-cols-2 gap-2 text-xs">
                             <div className="border border-white/5 bg-black/20 p-3">
                                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Attack</div>
-                                <div className="mt-1 font-black text-slate-100">Team {sideInfo.attackingTeam}</div>
+                                <div className="mt-1 font-black text-slate-100">{getTeamAlias(sideInfo.attackingTeam, teamAId)}</div>
                             </div>
                             <div className="border border-white/5 bg-black/20 p-3">
                                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Defense</div>
-                                <div className="mt-1 font-black text-slate-100">Team {sideInfo.defendingTeam}</div>
+                                <div className="mt-1 font-black text-slate-100">{getTeamAlias(sideInfo.defendingTeam, teamAId)}</div>
                             </div>
                             <div className="border border-white/5 bg-black/20 p-3">
                                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Kills</div>
@@ -767,8 +804,8 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                     </div>
 
                     <div className="grid gap-4 lg:grid-cols-2">
-                        {renderTeamRoundTable('Blue')}
-                        {renderTeamRoundTable('Red')}
+                        {teamAId ? renderTeamRoundTable(teamAId) : null}
+                        {teamBId ? renderTeamRoundTable(teamBId) : null}
                     </div>
                 </div>
             </div>
@@ -917,7 +954,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
 
                     <div className="border-b border-white/5 bg-[#0f1c28] px-5 py-4">
                         <div className="flex flex-wrap items-center justify-center gap-2">
-                            <span className="mr-2 text-xs font-bold text-teal-300">Team {teamId}</span>
+                            <span className="mr-2 text-xs font-bold text-[#20f5c6]">Team A</span>
                             {matchData.players
                                 .slice()
                                 .sort((a, b) => (a.teamId === teamId ? -1 : 1) - (b.teamId === teamId ? -1 : 1))
@@ -959,9 +996,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                                         </React.Fragment>
                                     );
                                 })}
-                            <span className="ml-2 text-xs font-bold text-rose-300">
-                                Team {matchData.teams.find((entry) => entry.teamId !== teamId)?.teamId}
-                            </span>
+                            <span className="ml-2 text-xs font-bold text-[#ff5b73]">Team B</span>
                         </div>
                     </div>
 
@@ -1003,17 +1038,111 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
 
                         {activeTab === 'scoreboard' ? (
                             <div className="animate-in fade-in space-y-8 duration-500">
+                                {matchMvp ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedPuuid(matchMvp.player.puuid)}
+                                        className={cn(
+                                            'group/mvp relative grid w-full overflow-hidden border bg-[#07131d] text-left shadow-[0_18px_55px_rgba(0,0,0,0.32)] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 md:grid-cols-[104px_minmax(0,1fr)_auto]',
+                                            matchMvp.isTeamA
+                                                ? 'border-[#20f5c6]/35'
+                                                : 'border-[#ff5b73]/35',
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            'absolute inset-x-0 top-0 h-0.5',
+                                            matchMvp.isTeamA ? 'bg-[#20f5c6]' : 'bg-[#ff5b73]',
+                                        )} />
+                                        <div className={cn(
+                                            'relative hidden min-h-[108px] items-end justify-center overflow-hidden md:flex',
+                                            matchMvp.isTeamA
+                                                ? 'bg-[radial-gradient(circle_at_50%_30%,rgba(32,245,198,0.22),rgba(7,19,29,0)_68%)]'
+                                                : 'bg-[radial-gradient(circle_at_50%_30%,rgba(255,91,115,0.22),rgba(7,19,29,0)_68%)]',
+                                        )}>
+                                            {matchMvp.agent?.displayIcon ? (
+                                                <img
+                                                    src={matchMvp.agent.displayIcon}
+                                                    loading="lazy"
+                                                    className="max-h-[104px] object-contain opacity-95 drop-shadow-[0_12px_22px_rgba(0,0,0,0.45)] transition-transform duration-300 group-hover/mvp:scale-105"
+                                                    alt=""
+                                                />
+                                            ) : null}
+                                        </div>
+                                        <div className="min-w-0 px-4 py-4">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className={cn(
+                                                    'inline-flex items-center gap-1 border px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em]',
+                                                    matchMvp.isTeamA
+                                                        ? 'border-[#20f5c6]/45 bg-[#20f5c6]/10 text-[#b8fff0]'
+                                                        : 'border-[#ff5b73]/45 bg-[#ff5b73]/10 text-[#ffd0d8]',
+                                                )}>
+                                                    <Trophy className="h-3.5 w-3.5" />
+                                                    Match MVP
+                                                </span>
+                                                <span className={cn(
+                                                    'text-[10px] font-black uppercase tracking-[0.18em]',
+                                                    matchMvp.isTeamA ? 'text-[#20f5c6]' : 'text-[#ff5b73]',
+                                                )}>
+                                                    {matchMvp.teamAlias}
+                                                </span>
+                                            </div>
+                                            <div className="mt-3 flex min-w-0 flex-wrap items-center gap-3">
+                                                <div className="min-w-0">
+                                                    <div className="flex min-w-0 items-center gap-2">
+                                                        <h4 className="truncate text-2xl font-black leading-none text-white">
+                                                            {matchMvp.player.gameName || 'Unknown'}
+                                                        </h4>
+                                                        {matchMvp.player.tagLine ? (
+                                                            <span className="bg-white/10 px-2 py-1 text-xs font-black text-slate-200">
+                                                                #{matchMvp.player.tagLine}
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
+                                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                        <span>{matchMvp.agent?.displayName || 'Agent'}</span>
+                                                        <span className="h-1 w-1 rounded-full bg-slate-600" />
+                                                        <span>{formatRankName(matchMvp.rank, matchMvp.player.competitiveTier)}</span>
+                                                    </div>
+                                                </div>
+                                                {matchMvp.rank?.smallIcon || matchMvp.rank?.largeIcon ? (
+                                                    <img
+                                                        src={matchMvp.rank.smallIcon || matchMvp.rank.largeIcon}
+                                                        loading="lazy"
+                                                        className="h-7 w-7 object-contain drop-shadow"
+                                                        alt=""
+                                                    />
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-x-5 gap-y-3 border-t border-white/5 px-4 py-4 md:border-l md:border-t-0">
+                                            {[
+                                                ['K/D/A', `${matchMvp.player.stats.kills} / ${matchMvp.player.stats.deaths} / ${matchMvp.player.stats.assists}`],
+                                                ['ACS', matchMvp.acs],
+                                                ['ADR', matchMvp.adr],
+                                                ['K/D', matchMvp.kdRatio],
+                                                ['HS%', `${formatStat(matchMvp.hsPct)}%`],
+                                                ['KAST', analytics ? `${matchMvp.kast}%` : '-'],
+                                            ].map(([label, value]) => (
+                                                <div key={label} className="min-w-[72px]">
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">{label}</div>
+                                                    <div className="mt-0.5 font-mono text-base font-black text-slate-100">{value}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </button>
+                                ) : null}
+
                                 <div>
-                                    <div className="mb-3 flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest text-blue-500">
-                                        <div className="h-4 w-1.5 rounded-full bg-blue-500" /> Blue Team
+                                    <div className="mb-3 flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest text-[#20f5c6]">
+                                        <div className="h-4 w-1.5 rounded-full bg-[#20f5c6]" /> Team A
                                     </div>
-                                    {renderScoreboardTable(matchData.players.filter((entry) => entry.teamId === 'Blue'))}
+                                    {renderScoreboardTable(matchData.players.filter((entry) => entry.teamId === teamAId))}
                                 </div>
                                 <div>
-                                    <div className="mb-3 flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest text-rose-500">
-                                        <div className="h-4 w-1.5 rounded-full bg-rose-500" /> Red Team
+                                    <div className="mb-3 flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest text-[#ff5b73]">
+                                        <div className="h-4 w-1.5 rounded-full bg-[#ff5b73]" /> Team B
                                     </div>
-                                    {renderScoreboardTable(matchData.players.filter((entry) => entry.teamId === 'Red'))}
+                                    {renderScoreboardTable(matchData.players.filter((entry) => entry.teamId === teamBId))}
                                 </div>
                             </div>
                         ) : null}
@@ -1032,16 +1161,26 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPu
                         {activeTab === 'economy' ? (
                             <div className="animate-in zoom-in-95 duration-500">
                                 {economyTimeline.length > 0 ? (
-                                    <RiotEconomyChart economy={economyTimeline} />
+                                    <RiotEconomyChart
+                                        economy={toPerspectiveEconomy(economyTimeline)}
+                                        teamALabel="Team A"
+                                        teamBLabel="Team B"
+                                        teamAColor="#20f5c6"
+                                        teamBColor="#ff5b73"
+                                    />
                                 ) : (
                                     <RiotEconomyChart
-                                        economy={(analytics?.economyData ?? []).map((entry) => ({
+                                        economy={toPerspectiveEconomy((analytics?.economyData ?? []).map((entry) => ({
                                             round: entry.round,
                                             blueSpent: entry.blueBank,
                                             redSpent: entry.redBank,
                                             blueLoadout: entry.blueLoadout,
                                             redLoadout: entry.redLoadout,
-                                        }))}
+                                        })))}
+                                        teamALabel="Team A"
+                                        teamBLabel="Team B"
+                                        teamAColor="#20f5c6"
+                                        teamBColor="#ff5b73"
                                     />
                                 )}
                             </div>

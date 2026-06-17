@@ -60,6 +60,7 @@ export type PublicVetoState = {
   hostToken?: string | null;
   team1Token?: string | null;
   team2Token?: string | null;
+  overlayToken?: string | null;
   role: "host" | "team1" | "team2" | "viewer";
   expiresAt?: string;
 };
@@ -108,6 +109,7 @@ export const normalizePublicVetoState = (raw: Record<string, unknown>): PublicVe
     hostToken: (pickVetoField(raw, "hostToken", "host_token", "hosttoken") ?? null) as string | null,
     team1Token: (pickVetoField(raw, "team1Token", "team1_token", "team1token") ?? null) as string | null,
     team2Token: (pickVetoField(raw, "team2Token", "team2_token", "team2token") ?? null) as string | null,
+    overlayToken: (pickVetoField(raw, "overlayToken", "overlay_token", "overlaytoken") ?? null) as string | null,
     role: roleRaw === "host" || roleRaw === "team1" || roleRaw === "team2" ? roleRaw : "viewer",
     expiresAt: pickVetoField(raw, "expiresAt", "expires_at", "expiresat") as string | undefined,
   };
@@ -204,3 +206,6 @@ export const buildPublicTeamVetoUrl = (token: string) =>
 
 export const buildPublicHostVetoUrl = (token: string) =>
   `${window.location.origin}/tools/map-veto/host/${token}`;
+
+export const buildPublicVetoOverlayUrl = (token: string, transition = "up") =>
+  `${window.location.origin}/tools/map-veto/overlay/${token}?transition=${encodeURIComponent(transition)}`;

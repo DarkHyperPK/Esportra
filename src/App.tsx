@@ -172,10 +172,18 @@ const PublicBracketShare = lazyWithRetry(() => import('./pages/tools/PublicBrack
 const PublicBracketEmbed = lazyWithRetry(() => import('./pages/tools/PublicBracketEmbed'));
 const PublicMapVetoCreate = lazyWithRetry(() => import('./pages/tools/PublicMapVetoCreate'));
 const PublicMapVetoRoom = lazyWithRetry(() => import('./pages/tools/PublicMapVetoRoom'));
+const PublicMapVetoOverlay = lazyWithRetry(() => import('./pages/tools/PublicMapVetoOverlay'));
 const RiotTest = lazyWithRetry(() => import("./pages/debug/RiotTest"));
+const RiotPostMatchOverlay = lazyWithRetry(() => import("./pages/debug/RiotPostMatchOverlay"));
 const IgdbTest = lazyWithRetry(() => import("./pages/debug/IgdbTest"));
 const RiotOAuthCallback   = lazyWithRetry(() => import("./pages/auth/RiotOAuthCallback"));
 const SteamCallback       = lazyWithRetry(() => import("./pages/auth/SteamCallback"));
+
+const isChromelessPath = (pathname: string) =>
+  pathname.endsWith('/brackets/fullscreen')
+  || pathname.startsWith('/tools/brackets/embed/')
+  || pathname.startsWith('/tools/map-veto/overlay/')
+  || pathname.startsWith('/debug/riot/overlay');
 
 const SettingsRedirect = () => {
   const location = useLocation();
@@ -205,8 +213,7 @@ const AppContent = React.memo(() => {
   }, [location.pathname, scrollTo]);
 
   const isAdminRoute = location.pathname.startsWith('/admin');
-  const isChromelessRoute = location.pathname.endsWith('/brackets/fullscreen')
-    || location.pathname.startsWith('/tools/brackets/embed/');
+  const isChromelessRoute = isChromelessPath(location.pathname);
 
   return (
     <>
@@ -238,7 +245,7 @@ const AppContent = React.memo(() => {
         </>
       )}
       <div className="relative z-10">
-        <React.Suspense fallback={<PremiumLoadingScreen />}>
+        <React.Suspense fallback={isChromelessRoute ? <div className="h-dvh w-dvw bg-transparent" /> : <PremiumLoadingScreen />}>
           <SuspensionGuard>
             <Routes location={location}>
               <Route element={<TransitionLayout />}>
@@ -756,6 +763,7 @@ const AppContent = React.memo(() => {
                 <Route path="/tools/map-veto" element={<PublicMapVetoCreate />} />
                 <Route path="/tools/map-veto/host/:token" element={<PublicMapVetoRoom />} />
                 <Route path="/tools/map-veto/team/:token" element={<PublicMapVetoRoom />} />
+                <Route path="/tools/map-veto/overlay/:token" element={<PublicMapVetoOverlay />} />
 
                 {/* Company Pages */}
                 <Route path="/about" element={<AboutPage />} />
@@ -812,6 +820,10 @@ const AppContent = React.memo(() => {
               {/* Fullscreen bracket — outside layout to hide navbar/banners */}
               <Route path="/tournaments/:slug/brackets/fullscreen" element={<FullscreenBracketPage />} />
               <Route path="/tools/brackets/embed/share/:token" element={<PublicBracketEmbed />} />
+              <Route path="/debug/riot/overlay" element={<RiotPostMatchOverlay />} />
+              <Route path="/debug/riot/overlay/match" element={<RiotPostMatchOverlay />} />
+              <Route path="/debug/riot/overlay/player" element={<RiotPostMatchOverlay />} />
+              <Route path="/debug/riot/overlay/compare" element={<RiotPostMatchOverlay />} />
             </Routes >
           </SuspensionGuard>
         </React.Suspense >
@@ -824,6 +836,9 @@ AppContent.displayName = 'AppContent';
 
 function CatalogBootstrapGate({ children }: { children: React.ReactNode }) {
   const { isReady, isLoading, isUnavailable } = useGameCatalogContext();
+  const location = useLocation();
+
+  if (isChromelessPath(location.pathname)) return <>{children}</>;
 
   if (isLoading && !isReady) return <PremiumLoadingScreen />;
 
