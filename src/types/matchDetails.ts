@@ -1,4 +1,5 @@
 import type { ScoreboardPlayer } from '@/types/scoreboardPlayer';
+import type { EnrichedRiotMatchData } from '@/types/enrichedRiotMatch';
 import type {
   EconomyTimelineEntry,
   RiotMatchInfo,
@@ -22,4 +23,5 @@ export interface MatchDetailsPayload {
   roundTimeline?: RoundTimelineEntry[];
   economyTimeline?: EconomyTimelineEntry[];
   weaponSummaries?: WeaponSummaryEntry[];
+  enrichedSnapshot?: EnrichedRiotMatchData;
 }

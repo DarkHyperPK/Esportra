@@ -18,6 +18,8 @@ interface RoundEventLogProps {
   rounds: DebugRoundEventLogRound[];
   teamAId?: string | null;
   teamBId?: string | null;
+  teamALabel?: string;
+  teamBLabel?: string;
   activeRound?: number | null;
   onSelectRound: (round: number) => void;
   teamAScore?: number;
@@ -58,6 +60,8 @@ export const RoundEventLog: React.FC<RoundEventLogProps> = ({
   rounds,
   teamAId,
   teamBId,
+  teamALabel = 'Team A',
+  teamBLabel = 'Team B',
   activeRound,
   onSelectRound,
   teamAScore,
@@ -72,14 +76,14 @@ export const RoundEventLog: React.FC<RoundEventLogProps> = ({
   const derivedTeamAScore = teamAScore ?? rounds.filter((round) => round.winningTeam === resolvedTeamA).length;
   const derivedTeamBScore = teamBScore ?? rounds.filter((round) => round.winningTeam === resolvedTeamB).length;
 
-  const renderTeamRow = (alias: TeamAlias, teamId: string, score: number) => {
+  const renderTeamRow = (alias: TeamAlias, label: string, teamId: string, score: number) => {
     const isTeamA = alias === 'Team A';
 
     return (
       <div className="grid min-w-max grid-cols-[120px_repeat(var(--round-count),40px)] items-center gap-1">
         <div className="sticky left-0 z-20 flex h-8 items-center gap-2 bg-[#08131c] pr-3">
-          <span className={cn('w-14 text-right text-xs font-bold', isTeamA ? 'text-[#20f5c6]' : 'text-[#ff5b73]')}>
-            {alias}
+          <span className={cn('max-w-[88px] truncate text-right text-xs font-bold', isTeamA ? 'text-[#20f5c6]' : 'text-[#ff5b73]')}>
+            {label}
           </span>
           <span className={cn('font-mono text-2xl font-black leading-none', isTeamA ? 'text-[#20f5c6]' : 'text-[#ff5b73]')}>
             {score}
@@ -96,7 +100,7 @@ export const RoundEventLog: React.FC<RoundEventLogProps> = ({
               key={`${alias}-${round.round}`}
               type="button"
               onClick={() => onSelectRound(round.round)}
-              title={`Round ${round.round}: ${isWinner ? `${alias} won` : `${alias} lost`} · ${resultTitle(round)}`}
+              title={`Round ${round.round}: ${isWinner ? `${label} won` : `${label} lost`} · ${resultTitle(round)}`}
               className={cn(
                 'group relative flex h-8 w-10 items-center justify-center border-b border-transparent transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/30',
                 isActive && 'bg-white/[0.055]',
@@ -137,8 +141,8 @@ export const RoundEventLog: React.FC<RoundEventLogProps> = ({
         style={{ '--round-count': rounds.length } as React.CSSProperties}
       >
         <div className="space-y-1">
-          {renderTeamRow('Team A', resolvedTeamA, derivedTeamAScore)}
-          {renderTeamRow('Team B', resolvedTeamB, derivedTeamBScore)}
+          {renderTeamRow('Team A', teamALabel, resolvedTeamA, derivedTeamAScore)}
+          {renderTeamRow('Team B', teamBLabel, resolvedTeamB, derivedTeamBScore)}
           <div className="grid min-w-max grid-cols-[120px_repeat(var(--round-count),40px)] items-center gap-1 pt-1">
             <div className="sticky left-0 z-20 bg-[#08131c]" />
             {rounds.map((round) => (

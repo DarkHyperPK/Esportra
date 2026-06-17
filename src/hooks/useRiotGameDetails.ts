@@ -1,47 +1,71 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import type { EnrichedRiotMatchData } from '@/types/enrichedRiotMatch';
 import type { MatchDetailsPayload } from '@/types/matchDetails';
-import { hasRiotDerivedDetails } from '@/types/riotMatchDetails';
 
-const normalizeMatchId = (matchId: string) => matchId.replace(/^(db-|wb-|lb-)/, '');
+export function resolveValShardRegion(region?: string | null): string {
+  const normalized = region?.toLowerCase() ?? '';
+  if (normalized === 'na' || normalized === 'br' || normalized === 'latam' || normalized === 'americas') {
+    return 'na';
+  }
+  if (normalized === 'ap' || normalized === 'kr' || normalized === 'asia') {
+    return 'ap';
+  }
+  return 'eu';
+}
 
-export function useRiotGameDetails(
-  matchId: string,
-  gameNumber: number,
-  storedDetails: MatchDetailsPayload | null,
+export function resolveStoredEnrichedMatch(
+  details?: MatchDetailsPayload | null,
+): EnrichedRiotMatchData | null {
+  if (!details) return null;
+  if (details.enrichedSnapshot) return details.enrichedSnapshot;
+
+  const candidate = details as MatchDetailsPayload & EnrichedRiotMatchData;
+  if (Array.isArray(candidate.teams) && Array.isArray(candidate.players) && candidate.matchInfo) {
+    return candidate;
+  }
+
+  return null;
+}
+
+export function useEnrichedRiotMatch(
   riotMatchId?: string | null,
+  region?: string | null,
+  enabled = true,
 ) {
-  const needsFetch = Boolean(
-    riotMatchId
-    && gameNumber > 0
-    && !hasRiotDerivedDetails(storedDetails),
-  );
+  const shardRegion = resolveValShardRegion(region);
 
   return useQuery({
-    queryKey: ['riot-game-details', normalizeMatchId(matchId), gameNumber],
-    queryFn: async () => {
-      const rawMatchId = normalizeMatchId(matchId);
-      return apiClient.get<MatchDetailsPayload>(
-        `/api/matches/${rawMatchId}/games/${gameNumber}/riot-details`,
-      );
-    },
-    enabled: needsFetch,
-    staleTime: 5 * 60 * 1000,
+    queryKey: ['riot-enriched-match', riotMatchId, shardRegion],
+    queryFn: () => apiClient.post<EnrichedRiotMatchData>('/api/integrations/riot/enriched-match', {
+      matchId: riotMatchId,
+      region: shardRegion,
+    }),
+    enabled: enabled && Boolean(riotMatchId),
+    staleTime: 10 * 60 * 1000,
   });
 }
 
-export function mergeMatchDetails(
-  stored: MatchDetailsPayload | null,
-  fetched?: MatchDetailsPayload | null,
-): MatchDetailsPayload | null {
-  if (!stored && !fetched) return null;
-  return {
-    ...(stored ?? {}),
-    ...(fetched ?? {}),
-    players: fetched?.players?.length ? fetched.players : stored?.players,
-    roundTimeline: fetched?.roundTimeline?.length ? fetched.roundTimeline : stored?.roundTimeline,
-    economyTimeline: fetched?.economyTimeline?.length ? fetched.economyTimeline : stored?.economyTimeline,
-    weaponSummaries: fetched?.weaponSummaries?.length ? fetched.weaponSummaries : stored?.weaponSummaries,
-    matchInfo: fetched?.matchInfo ?? stored?.matchInfo,
-  };
+export function pickEnrichedTargetPuuid(
+  enriched: EnrichedRiotMatchData,
+  preferredTeamSide?: 'Blue' | 'Red' | null,
+): string | null {
+  const players = enriched.players ?? [];
+  if (!players.length) return null;
+
+  const pool = preferredTeamSide
+    ? players.filter((player) => player.teamId === preferredTeamSide)
+    : players;
+
+  const ranked = [...(pool.length ? pool : players)].sort((left, right) => {
+    const leftAcs = enriched.enrichedPlayers?.find((entry) => entry.puuid === left.puuid)?.acs
+      ?? Math.round(left.stats.score / Math.max(1, left.stats.roundsPlayed ?? 1));
+    const rightAcs = enriched.enrichedPlayers?.find((entry) => entry.puuid === right.puuid)?.acs
+      ?? Math.round(right.stats.score / Math.max(1, right.stats.roundsPlayed ?? 1));
+
+    if (rightAcs !== leftAcs) return rightAcs - leftAcs;
+    return right.stats.kills - left.stats.kills;
+  });
+
+  return ranked[0]?.puuid ?? null;
 }

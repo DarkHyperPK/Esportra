@@ -53,6 +53,15 @@ import {
     resolveActiveMatch,
     toRawMatchId,
 } from '@/utils/matchRoomLifecycle';
+import {
+    didTeamWinBracketMatch,
+    findLatestCompletedTeamMatch,
+    formatTeamMatchHistoryLabel,
+    isChampionshipBracketMatch,
+    isDoubleEliminationBracket,
+    isEliminationStageFormat,
+    readTournamentWinnerTeamId,
+} from '@/utils/bracketMatchProgress';
 import { format } from 'date-fns';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 import { useStageRealtime } from '@/hooks/useStageRealtime';
@@ -455,55 +464,40 @@ const CaptainMatchPage = () => {
         return vetoData.status === 'completed' || !!vetoData.completed_at;
     }, [activeMatch, vetoData]);
 
-    // Find the latest completed match for context (e.g. "Waiting for next round")
+    // Latest completed match by bracket round (match_number resets each round).
     const lastCompletedMatch = useMemo(() => {
         if (!userTeamId || !matches.length) return null;
-        const teamMatches = matches.filter(m =>
-            (m.team1?.id === userTeamId || m.team2?.id === userTeamId) &&
-            m.status === 'completed'
-        );
-        return teamMatches.sort((a, b) => (b.matchNumber || 0) - (a.matchNumber || 0))[0];
+        return findLatestCompletedTeamMatch(matches, userTeamId);
     }, [userTeamId, matches]);
 
-    const isDE = useMemo(() =>
-        matches.some(m => m.bracketSide === 'losers') || stageFormat === 'double_elimination'
-        , [matches, stageFormat]);
+    const isDE = useMemo(
+        () => isDoubleEliminationBracket(matches) || stageFormat === 'double_elimination',
+        [matches, stageFormat],
+    );
+
+    const tournamentWinnerTeamId = readTournamentWinnerTeamId(tournament);
 
     // Check if the user is the tournament champion
     const isTournamentWinner = useMemo(() => {
         if (activeMatch) return false;
+        if (!userTeamId) return false;
+        if (tournamentWinnerTeamId && competitorIdsMatch(userTeamId, tournamentWinnerTeamId)) {
+            return true;
+        }
         if (!lastCompletedMatch) return false;
-
-        const userWon = lastCompletedMatch.winner?.id === userTeamId;
-        if (!userWon) return false;
-
-        const side = lastCompletedMatch.bracketSide;
-        const round = lastCompletedMatch.round;
-        const totalUpperRounds = Math.ceil(Math.log2(participants.length || 8));
-
-        return (
-            side === 'final' ||
-            side === 'reset' ||
-            (!isDE && side === 'winners' && round === totalUpperRounds)
-        );
-    }, [activeMatch, lastCompletedMatch, userTeamId, participants.length, isDE]);
+        if (!didTeamWinBracketMatch(lastCompletedMatch, userTeamId)) return false;
+        if (!isEliminationStageFormat(stageFormat)) return false;
+        return isChampionshipBracketMatch(lastCompletedMatch, matches);
+    }, [activeMatch, lastCompletedMatch, userTeamId, matches, stageFormat, tournamentWinnerTeamId]);
 
     // Check if the user is the tournament runner-up
     const isTournamentRunnerUp = useMemo(() => {
         if (activeMatch) return false;
-        if (!lastCompletedMatch || isTournamentWinner) return false;
-
-        const side = lastCompletedMatch.bracketSide;
-        const round = lastCompletedMatch.round;
-        const totalUpperRounds = Math.ceil(Math.log2(participants.length || 8));
-
-        const isFinalMatch =
-            side === 'final' ||
-            side === 'reset' ||
-            (!isDE && side === 'winners' && round === totalUpperRounds);
-
-        return isFinalMatch && lastCompletedMatch.winner?.id !== userTeamId;
-    }, [activeMatch, lastCompletedMatch, userTeamId, participants.length, isTournamentWinner, isDE]);
+        if (!lastCompletedMatch || isTournamentWinner || !userTeamId) return false;
+        if (!isEliminationStageFormat(stageFormat)) return false;
+        if (!isChampionshipBracketMatch(lastCompletedMatch, matches)) return false;
+        return !didTeamWinBracketMatch(lastCompletedMatch, userTeamId);
+    }, [activeMatch, lastCompletedMatch, userTeamId, matches, isTournamentWinner, stageFormat]);
 
     // Check if the team has been eliminated from the tournament
     const isEliminated = useMemo(() => {
@@ -511,7 +505,7 @@ const CaptainMatchPage = () => {
         if (isTournamentWinner || isTournamentRunnerUp) return false;
         if (!lastCompletedMatch) return false;
 
-        const userLost = lastCompletedMatch.winner?.id !== userTeamId;
+        const userLost = !didTeamWinBracketMatch(lastCompletedMatch, userTeamId!);
         if (!userLost) return false; // Won last match — waiting for next round
 
         // In single elimination, any loss = eliminated
@@ -1180,7 +1174,9 @@ const CaptainMatchPage = () => {
                                 : lastCompletedMatch ? 'waiting'
                                 : 'no_match'
                             }
-                            exitRoundName={lastCompletedMatch ? getRoundName(lastCompletedMatch.round, lastCompletedMatch.bracketSide) : undefined}
+                            exitRoundName={lastCompletedMatch
+                                ? formatTeamMatchHistoryLabel(lastCompletedMatch, matches)
+                                : undefined}
                             tournamentStatus={tournament?.status}
                             slug={slug}
                             onNavigate={navigate}

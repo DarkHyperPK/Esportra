@@ -43,6 +43,9 @@ interface RiotTimelineMapProps {
   targetPuuid: string;
   mapData: ValorantMapMetadata | null;
   agents: Record<string, AgentMetadata>;
+  teamALabel?: string;
+  teamBLabel?: string;
+  displayTeamASide?: 'Blue' | 'Red';
 }
 
 type TimelineActionType = 'kill' | 'plant';
@@ -614,7 +617,15 @@ const SpikeBadge: React.FC<{ icon?: string | null }> = ({ icon }) => {
   );
 };
 
-export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({ matchData, targetPuuid, mapData, agents }) => {
+export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({
+  matchData,
+  targetPuuid,
+  mapData,
+  agents,
+  teamALabel,
+  teamBLabel,
+  displayTeamASide,
+}) => {
   const [weapons, setWeapons] = useState<Record<string, DamageAssetMetadata>>({});
 
   useEffect(() => {
@@ -697,6 +708,10 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({ matchData, tar
 
   const targetTeamId = playersByPuuid.get(targetPuuid)?.teamId;
   const opponentTeamId = matchData.teams.find((team) => team.teamId !== targetTeamId)?.teamId;
+  const logTeamAId = displayTeamASide ?? targetTeamId;
+  const logTeamBId = displayTeamASide
+    ? (displayTeamASide === 'Blue' ? 'Red' : 'Blue')
+    : opponentTeamId;
   const agentAbilityMaps = useMemo(() => buildAgentAbilityMaps(agents), [agents]);
   const selectRound = (round: number) => {
     setActiveRound(round);
@@ -784,12 +799,14 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({ matchData, tar
 
         <RoundEventLog
           rounds={roundLogRounds}
-          teamAId={targetTeamId}
-          teamBId={opponentTeamId}
+          teamAId={logTeamAId}
+          teamBId={logTeamBId}
+          teamALabel={teamALabel}
+          teamBLabel={teamBLabel}
           activeRound={activeRound}
           onSelectRound={selectRound}
-          teamAScore={matchData.teams.find((team) => team.teamId === targetTeamId)?.roundsWon}
-          teamBScore={matchData.teams.find((team) => team.teamId === opponentTeamId)?.roundsWon}
+          teamAScore={matchData.teams.find((team) => team.teamId === logTeamAId)?.roundsWon}
+          teamBScore={matchData.teams.find((team) => team.teamId === logTeamBId)?.roundsWon}
           className="border-x-0 border-b-0 border-t-0 shadow-none"
         />
       </div>

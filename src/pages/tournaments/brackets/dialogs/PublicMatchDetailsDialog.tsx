@@ -6,7 +6,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Eye, Bot, ChevronDown, Swords } from 'lucide-react';
-import { FullScoreboard } from '@/components/tournament/FullScoreboard';
+import MatchGameStatisticsPanel from '@/components/tournament/MatchGameStatisticsPanel';
 import { MAP_THEMES, getMapSplash } from '@/components/tournament/fullScoreboardConstants';
 import { PublicVetoPreview } from '@/components/tournament/map-veto/PublicVetoPreview';
 import { formatLocalTime } from '@/lib/timeUtils';
@@ -14,6 +14,7 @@ import EntityAvatar from '@/components/ui/EntityAvatar';
 import { cn } from '@/lib/utils';
 import type { BracketMatch } from '@/types/bracketTypes';
 import type { MatchResult } from './MatchResultsDialog';
+import type { MatchDetailsPayload } from '@/types/matchDetails';
 
 export interface PublicMatchDetailsDialogProps {
     open: boolean;
@@ -39,6 +40,8 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
     const hasScoreData = (game: any) => game.team1_score !== null && game.team1_score !== undefined
         && game.team2_score !== null && game.team2_score !== undefined;
     const hasPlayerData = (game: any) => Array.isArray(game.match_details?.players) && game.match_details.players.length > 0;
+    const hasEnrichedData = (game: any) => Boolean(game.match_details?.enrichedSnapshot);
+    const hasExpandableStats = (game: any) => hasPlayerData(game) || hasEnrichedData(game);
     const hasMeaningfulGameData = (game: any) => {
         const mapName = getMapName(game).trim();
         return hasPlayerData(game)
@@ -59,7 +62,7 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[760px] bg-[#09090b] border border-zinc-800 h-[min(85dvh,760px)] max-h-[85vh] overflow-hidden p-0 flex flex-col gap-0">
+            <DialogContent className="flex h-[min(85dvh,760px)] max-h-[85vh] flex-col gap-0 overflow-hidden border border-zinc-800 bg-[#09090b] p-0 sm:max-w-[920px]">
                 <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-zinc-800">
                     <DialogTitle className="text-white text-lg font-semibold">Match Details</DialogTitle>
                 </DialogHeader>
@@ -132,7 +135,7 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
                             {visibleAutomatedResults.length > 0 && (
                                 <div className="space-y-3">
                                     <h3 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
-                                        {visibleAutomatedResults.some(hasPlayerData) ? (
+                                        {visibleAutomatedResults.some((game) => hasPlayerData(game) || hasEnrichedData(game)) ? (
                                             <><Bot className="w-4 h-4 text-rose-400" />Official Game Data</>
                                         ) : (
                                             <><Swords className="w-4 h-4 text-zinc-400" />Manual Breakdown</>
@@ -167,21 +170,31 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
                                                         </div>
                                                         <ChevronDown className={cn('w-4 h-4 text-zinc-500 transition-transform', isExpanded && 'rotate-180')} />
                                                     </button>
-                                                    {isExpanded && game.match_details?.players && (
+                                                    {isExpanded && hasExpandableStats(game) ? (
                                                         <div className="p-3 border-t border-white/10">
-                                                            <FullScoreboard
-                                                                players={game.match_details.players}
+                                                            <MatchGameStatisticsPanel
+                                                                riotMatchId={game.riot_match_id}
+                                                                details={game.match_details as MatchDetailsPayload}
                                                                 team1Name={match.team1?.name || 'Team 1'}
                                                                 team2Name={match.team2?.name || 'Team 2'}
+                                                                team1Id={match.team1?.id}
+                                                                team2Id={match.team2?.id}
                                                                 team1Score={game.team1_score ?? 0}
                                                                 team2Score={game.team2_score ?? 0}
-                                                                reporterSide={game.match_details.reporterSide}
-                                                                reportedByTeamId={game.match_details.reportedByTeamId}
-                                                                team1Id={match.team1?.id}
-                                                                t1Side={game.match_details.t1Side}
+                                                                mapName={mapName}
+                                                                gameNumber={game.game_number ?? game.gameNumber}
+                                                                reportedByTeamId={game.match_details?.reportedByTeamId}
+                                                                t1Side={game.match_details?.t1Side}
+                                                                compact
+                                                                fetchLive={false}
+                                                                showShareCards={false}
                                                             />
                                                         </div>
-                                                    )}
+                                                    ) : isExpanded ? (
+                                                        <div className="border-t border-white/10 p-3 text-sm text-zinc-500">
+                                                            Map score recorded — no detailed player stats stored for this game.
+                                                        </div>
+                                                    ) : null}
                                                 </div>
                                             );
                                         })}

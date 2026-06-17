@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Loader2, Trophy, Clock, Swords, Check, Search, Info, SearchX, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiClient } from '@/lib/apiClient';
+import type { EnrichedRiotMatchData } from '@/types/enrichedRiotMatch';
+import { resolveValShardRegion } from '@/hooks/useRiotGameDetails';
 import { useMatchResultReport } from '@/hooks/useMatchResultReport';
 import { formatDistanceToNow } from 'date-fns';
 import { MAP_THEMES, getAgentIcon, getMapSplash } from './fullScoreboardConstants';
@@ -144,6 +146,14 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
             // Reporter is NOT team1 → team1 is on the opposite side
             const t1Side = isTeam1 ? reporterSide : (reporterSide === 'Blue' ? 'Red' : 'Blue');
 
+            const enrichedSnapshot = await apiClient.post<EnrichedRiotMatchData>(
+                '/api/integrations/riot/enriched-match',
+                {
+                    matchId: candidate.id,
+                    region: resolveValShardRegion(candidate.matchInfo?.region),
+                },
+            );
+
             await submitReport.mutateAsync({
                 gameNumber,
                 riotMatchId: candidate.id,
@@ -169,6 +179,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                     economyTimeline: candidate.economyTimeline,
                     weaponSummaries: candidate.weaponSummaries,
                     matchInfo: candidate.matchInfo,
+                    enrichedSnapshot,
                 },
             });
 

@@ -7,9 +7,10 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog';
 import { Eye, Bot, ChevronDown, Swords } from 'lucide-react';
-import { FullScoreboard } from '@/components/tournament/FullScoreboard';
+import MatchGameStatisticsPanel from '@/components/tournament/MatchGameStatisticsPanel';
 import { MAP_THEMES, getMapSplash } from '@/components/tournament/fullScoreboardConstants';
 import { cn } from '@/lib/utils';
+import type { MatchDetailsPayload } from '@/types/matchDetails';
 
 export interface MatchResult {
     image_url: string | null;
@@ -45,7 +46,7 @@ export const MatchResultsDialog: React.FC<MatchResultsDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[720px] bg-[#0a0a0c] border border-white/10/40 max-h-[85vh] overflow-y-auto p-0">
+            <DialogContent className="sm:max-w-[720px] bg-[#0a0a0c] border border-white/10/40 max-h-[85vh] overflow-y-auto p-0 sm:max-w-[920px]">
                 <div className="p-6">
                     <DialogHeader>
                         <DialogTitle className="text-white flex items-center gap-2">
@@ -95,7 +96,7 @@ export const MatchResultsDialog: React.FC<MatchResultsDialogProps> = ({
 
                                         const riotMapId = mapTheme?.id || game.map_id;
                                         const isExpanded = expandedGames[game.id];
-                                        const hasScoreboard = game.match_details?.players?.length > 0;
+                                        const hasScoreboard = game.match_details?.players?.length > 0 || game.match_details?.enrichedSnapshot;
 
                                         return (
                                             <div key={i} className="space-y-2">
@@ -169,16 +170,21 @@ export const MatchResultsDialog: React.FC<MatchResultsDialogProps> = ({
                                                 {/* Scoreboard Section */}
                                                 {isExpanded && hasScoreboard && (
                                                     <div className="bg-black/40 backdrop-blur-md rounded-xl border border-white/5 overflow-hidden p-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                        <FullScoreboard
-                                                            players={game.match_details.players}
+                                                        <MatchGameStatisticsPanel
+                                                            riotMatchId={game.riot_match_id}
+                                                            details={game.match_details as MatchDetailsPayload}
                                                             team1Name={team1Name}
                                                             team2Name={team2Name}
+                                                            team1Id={team1Id}
                                                             team1Score={game.team1_score}
                                                             team2Score={game.team2_score}
-                                                            reporterSide={game.match_details.reporterSide}
-                                                            reportedByTeamId={game.match_details.reportedByTeamId}
-                                                            team1Id={team1Id}
-                                                            t1Side={game.match_details.t1Side}
+                                                            mapName={isManual ? undefined : (mapName || 'Unknown Map')}
+                                                            gameNumber={game.game_number}
+                                                            reportedByTeamId={game.match_details?.reportedByTeamId}
+                                                            t1Side={game.match_details?.t1Side}
+                                                            compact
+                                                            fetchLive={false}
+                                                            showShareCards={false}
                                                         />
                                                     </div>
                                                 )}

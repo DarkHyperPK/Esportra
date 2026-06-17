@@ -4,15 +4,16 @@ import { ArrowLeft, ChevronRight, Loader2, Swords } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { BracketMatch } from '@/types/bracketTypes';
 import { apiClient } from '@/lib/apiClient';
-import { FullScoreboard } from './FullScoreboard';
 import { MAP_THEMES, getMapSplash } from './fullScoreboardConstants';
 import { VetoHistoryTimeline } from './map-veto/VetoHistoryTimeline';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
-import { mergeMatchDetails, useRiotGameDetails } from '@/hooks/useRiotGameDetails';
+import MatchGameStatisticsPanel from '@/components/tournament/MatchGameStatisticsPanel';
 import type { MatchDetailsPayload } from '@/types/matchDetails';
-import { RiotEconomyChart, RiotRoundTimeline } from '@/components/tournament/RiotMatchAnalytics';
-import { formatMatchQueueLabel } from '@/utils/riotMatchLabels';
 import { cn } from '@/lib/utils';
+import {
+    compareBracketMatchesDesc,
+    formatTeamMatchHistoryLabel,
+} from '@/utils/bracketMatchProgress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Props {
@@ -37,23 +38,6 @@ interface GameDetail {
     match_details: MatchDetailsPayload | null;
     reported_by_team_id?: string;
 }
-
-const formatGameDuration = (ms?: number) => {
-    if (!ms || ms <= 0) return null;
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${String(seconds).padStart(2, '0')}`;
-};
-
-const formatStartTime = (ms?: number) => {
-    if (!ms) return null;
-    return new Date(ms).toLocaleString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-    });
-};
 
 const sortGames = (games: GameDetail[]) =>
     [...games].sort((left, right) => left.game_number - right.game_number);
@@ -132,7 +116,8 @@ const MatchStatisticsList: React.FC<{
     teamId?: string;
     isOrganizer?: boolean;
     onSelectMatch: (matchId: string) => void;
-}> = ({ pastMatches, gameDetails, teamId, isOrganizer, onSelectMatch }) => (
+    allMatches: BracketMatch[];
+}> = ({ pastMatches, gameDetails, teamId, isOrganizer, onSelectMatch, allMatches }) => (
     <div className="divide-y divide-white/10 border-y border-white/10">
         {pastMatches.map((match) => {
             const side = resolveMatchSide(match, teamId);
@@ -165,7 +150,7 @@ const MatchStatisticsList: React.FC<{
                             <div className={cn('h-12 w-1 shrink-0', accentBarClass)} />
                             <div className="min-w-0">
                                 <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                                    {isLive ? 'Current match' : `Match ${match.matchNumber}`}
+                                    {isLive ? 'Current match' : formatTeamMatchHistoryLabel(match, allMatches)}
                                 </p>
                                 <h3 className="mt-1 truncate font-heading text-xl font-bold uppercase tracking-tight text-white md:text-2xl">
                                     {isOrganizer
@@ -211,31 +196,9 @@ const MatchStatisticsList: React.FC<{
     </div>
 );
 
-const resolveReporterTeamName = (
-    details: MatchDetailsPayload | null,
-    game: GameDetail,
-    team1Name: string,
-    team2Name: string,
-    team1Id?: string,
-    team2Id?: string,
-): string | null => {
-    const reporterTeamId = game.reported_by_team_id || details?.reportedByTeamId;
-    if (reporterTeamId && team1Id && String(reporterTeamId).toLowerCase() === String(team1Id).toLowerCase()) {
-        return team1Name;
-    }
-    if (reporterTeamId && team2Id && String(reporterTeamId).toLowerCase() === String(team2Id).toLowerCase()) {
-        return team2Name;
-    }
-    if (details?.reporterSide && details?.t1Side) {
-        return details.reporterSide === details.t1Side ? team1Name : team2Name;
-    }
-    return null;
-};
-
 const FullMatchDataPanel: React.FC<{
     game: GameDetail;
     details: MatchDetailsPayload | null;
-    riotLoading?: boolean;
     team1Name: string;
     team2Name: string;
     team1Id?: string;
@@ -245,169 +208,32 @@ const FullMatchDataPanel: React.FC<{
 }> = ({
     game,
     details,
-    riotLoading = false,
     team1Name,
     team2Name,
     team1Id,
     team2Id,
     teamId,
     isTeam1,
-}) => {
-    const splash = resolveMapSplash(game.map_name);
-    const duration = formatGameDuration(details?.gameLengthMillis ?? details?.matchInfo?.gameLengthMillis);
-    const startedAt = formatStartTime(details?.startTime ?? details?.matchInfo?.gameStartMillis);
-    const queueLabel = formatMatchQueueLabel(details);
-    const reporterTeamName = resolveReporterTeamName(details, game, team1Name, team2Name, team1Id, team2Id);
-    const hasMetadata = Boolean(duration || startedAt || reporterTeamName || queueLabel);
-    const hasScoreboard = (details?.players?.length ?? 0) > 0;
-    const hasRoundData = (details?.roundTimeline?.length ?? 0) > 0;
-    const hasEconomyData = (details?.economyTimeline?.length ?? 0) > 0;
-
-    return (
-        <div className="space-y-6">
-            <div className="overflow-hidden border border-white/10 bg-black/30">
-                {splash ? (
-                    <div className="relative h-36 overflow-hidden">
-                        <img src={splash} loading="lazy" alt="" className="h-full w-full object-cover opacity-50" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#08080a] via-[#08080a]/70 to-transparent" />
-                        <div className="absolute inset-x-0 bottom-0 p-5">
-                            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-400">
-                                Game {game.game_number}
-                            </p>
-                            <h3 className="font-heading text-2xl font-black uppercase tracking-tight text-white">
-                                {game.map_name}
-                            </h3>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="border-b border-white/10 p-5">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-400">
-                            Game {game.game_number}
-                        </p>
-                        <h3 className="font-heading text-2xl font-black uppercase tracking-tight text-white">
-                            {game.map_name}
-                        </h3>
-                    </div>
-                )}
-
-                {hasMetadata ? (
-                    <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
-                        {queueLabel ? (
-                            <div>
-                                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Queue</p>
-                                <p className="mt-1 text-sm font-semibold text-white">{queueLabel}</p>
-                            </div>
-                        ) : null}
-                        {duration ? (
-                            <div>
-                                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Duration</p>
-                                <p className="mt-1 text-sm font-semibold text-white">{duration}</p>
-                            </div>
-                        ) : null}
-                        {startedAt ? (
-                            <div>
-                                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Played at</p>
-                                <p className="mt-1 text-sm font-semibold text-white">{startedAt}</p>
-                            </div>
-                        ) : null}
-                        {reporterTeamName ? (
-                            <div>
-                                <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">Reported by</p>
-                                <p className="mt-1 text-sm font-semibold text-white">{reporterTeamName}</p>
-                            </div>
-                        ) : null}
-                    </div>
-                ) : (
-                    <div className="border-t border-white/5 px-5 py-8 text-center text-sm text-zinc-500">
-                        No automated Riot payload for this game. Only the submitted map score is available.
-                    </div>
-                )}
-            </div>
-
-            {riotLoading ? (
-                <div className="flex items-center justify-center gap-2 py-12 text-sm text-zinc-500">
-                    <Loader2 className="h-4 w-4 animate-spin text-rose-400" />
-                    Loading match data…
-                </div>
-            ) : (
-                <div className="border border-white/10 bg-black/20">
-                    <div className="border-b border-white/10 px-5 py-4">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">Match data</p>
-                    </div>
-
-                    <Tabs defaultValue="scoreboard" className="p-5">
-                        <TabsList className="mb-6 h-auto w-full justify-start gap-1 rounded-none border border-white/10 bg-black/40 p-1">
-                            <TabsTrigger
-                                value="scoreboard"
-                                className="rounded-none font-mono text-[10px] uppercase tracking-[0.18em]"
-                            >
-                                Scoreboard
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="rounds"
-                                className="rounded-none font-mono text-[10px] uppercase tracking-[0.18em]"
-                            >
-                                Rounds
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="economy"
-                                className="rounded-none font-mono text-[10px] uppercase tracking-[0.18em]"
-                            >
-                                Economy
-                            </TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="scoreboard" className="mt-0">
-                            {hasScoreboard ? (
-                                <div className="overflow-x-auto border border-white/10 bg-black/40 p-3">
-                                    <FullScoreboard
-                                        players={details?.players}
-                                        team1Name={team1Name}
-                                        team2Name={team2Name}
-                                        team1Score={game.team1_score}
-                                        team2Score={game.team2_score}
-                                        reporterSide={details?.reporterSide}
-                                        reportedByTeamId={
-                                            game.reported_by_team_id
-                                            || details?.reportedByTeamId
-                                            || (isTeam1 ? teamId : team2Id)
-                                        }
-                                        team1Id={team1Id}
-                                        t1Side={details?.t1Side}
-                                    />
-                                </div>
-                            ) : (
-                                <p className="py-12 text-center text-sm text-zinc-500">
-                                    No player scoreboard data for this game yet.
-                                </p>
-                            )}
-                        </TabsContent>
-
-                        <TabsContent value="rounds" className="mt-0">
-                            {hasRoundData ? (
-                                <RiotRoundTimeline rounds={details?.roundTimeline ?? []} />
-                            ) : (
-                                <p className="py-12 text-center text-sm text-zinc-500">
-                                    No round timeline available for this game.
-                                </p>
-                            )}
-                        </TabsContent>
-
-                        <TabsContent value="economy" className="mt-0">
-                            {hasEconomyData ? (
-                                <RiotEconomyChart economy={details?.economyTimeline ?? []} />
-                            ) : (
-                                <p className="py-12 text-center text-sm text-zinc-500">
-                                    No economy data available for this game.
-                                </p>
-                            )}
-                        </TabsContent>
-                    </Tabs>
-                </div>
-            )}
-        </div>
-    );
-};
+}) => (
+    <MatchGameStatisticsPanel
+        riotMatchId={game.riot_match_id}
+        details={details}
+        team1Name={team1Name}
+        team2Name={team2Name}
+        team1Id={team1Id}
+        team2Id={team2Id}
+        team1Score={game.team1_score}
+        team2Score={game.team2_score}
+        mapName={game.map_name}
+        gameNumber={game.game_number}
+        reportedByTeamId={game.reported_by_team_id || details?.reportedByTeamId || (isTeam1 ? teamId : team2Id)}
+        t1Side={details?.t1Side}
+        captainRoomMode
+        captainTeamId={teamId}
+        fetchLive
+        showShareCards
+    />
+);
 
 const MatchStatisticsDetail: React.FC<{
     match: BracketMatch;
@@ -415,19 +241,11 @@ const MatchStatisticsDetail: React.FC<{
     teamId?: string;
     isOrganizer?: boolean;
     onBack: () => void;
-}> = ({ match, games, teamId, isOrganizer, onBack }) => {
+    allMatches: BracketMatch[];
+}> = ({ match, games, teamId, isOrganizer, onBack, allMatches }) => {
     const sortedGames = sortGames(games);
     const [selectedGameId, setSelectedGameId] = useState<string>(() => sortedGames[0]?.id ?? '');
     const selectedGame = sortedGames.find((game) => game.id === selectedGameId) ?? sortedGames[0];
-    const { data: fetchedDetails, isLoading: riotLoading } = useRiotGameDetails(
-        match.id,
-        selectedGame?.game_number ?? 0,
-        selectedGame?.match_details ?? null,
-        selectedGame?.riot_match_id,
-    );
-    const mergedDetails = selectedGame
-        ? mergeMatchDetails(selectedGame.match_details, fetchedDetails ?? null)
-        : null;
 
     if (!selectedGame) {
         return (
@@ -466,7 +284,7 @@ const MatchStatisticsDetail: React.FC<{
 
             <div className="border-b border-white/10 pb-6">
                 <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-                    Match {match.matchNumber}
+                    {formatTeamMatchHistoryLabel(match, allMatches)}
                 </p>
                 <h3 className="mt-1 font-heading text-2xl font-bold uppercase tracking-tight text-white md:text-3xl">
                     {isOrganizer
@@ -500,8 +318,7 @@ const MatchStatisticsDetail: React.FC<{
 
             <FullMatchDataPanel
                 game={selectedGame}
-                details={mergedDetails}
-                riotLoading={riotLoading}
+                details={selectedGame.match_details}
                 team1Name={team1Name}
                 team2Name={team2Name}
                 team1Id={match.team1?.id}
@@ -559,7 +376,7 @@ const CaptainMatchHistory: React.FC<Props> = ({
         if (m.status !== 'completed') return false;
         if (isOrganizer) return involvesFocusedTeams(m);
         return !teamId || m.team1?.id === teamId || m.team2?.id === teamId;
-    }).sort((a, b) => Number(b.matchNumber) - Number(a.matchNumber));
+    }).sort(compareBracketMatchesDesc);
 
     const { data: rawGameDetails, isLoading: detailsLoading } = useQuery({
         queryKey: ['match-history-games', teamId, focusTeamIds?.join(','), includeLiveMatchId, pastMatches.map(m => m.id).join(',')],
@@ -638,7 +455,7 @@ const CaptainMatchHistory: React.FC<Props> = ({
                                             {match.team1?.name || 'Team 1'} vs {match.team2?.name || 'Team 2'}
                                         </h3>
                                         <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500">
-                                            Match {match.matchNumber}
+                                            {formatTeamMatchHistoryLabel(match, matches)}
                                         </span>
                                     </div>
                                     <MatchVetoSummary matchId={match.id} expanded />
@@ -655,6 +472,7 @@ const CaptainMatchHistory: React.FC<Props> = ({
                                 games={gameDetails[selectedMatch.id] || []}
                                 teamId={teamId}
                                 isOrganizer={isOrganizer}
+                                allMatches={matches}
                                 onBack={() => setSelectedMatchId(null)}
                             />
                         ) : (
@@ -663,6 +481,7 @@ const CaptainMatchHistory: React.FC<Props> = ({
                                 gameDetails={gameDetails}
                                 teamId={teamId}
                                 isOrganizer={isOrganizer}
+                                allMatches={matches}
                                 onSelectMatch={setSelectedMatchId}
                             />
                         )}
