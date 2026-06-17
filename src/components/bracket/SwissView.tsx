@@ -226,7 +226,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
     const [mapVetoOpen, setMapVetoOpen] = useState(false);
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
 
-    const { isComplete, alreadyAdvanced, progressLabel, refetch: refetchCompletion } = useStageCompletion(stageId);
+    const { isComplete, alreadyAdvanced, progressLabel } = useStageCompletion(stageId);
 
     // Helpers
     const getRawId = (id: string | number) => String(id).replace('db-', '');
@@ -293,11 +293,6 @@ export const SwissView: React.FC<SwissViewProps> = ({
     const threshold = Math.ceil((maxRounds + 1) / 2);
 
     // Finalize stage — completion is derived from match results
-    const handleRefreshCompletion = useCallback(async () => {
-        await refetchCompletion();
-        onMatchUpdate?.();
-    }, [refetchCompletion, onMatchUpdate]);
-
 
     // Handlers
     const handleGenerateNextRound = async () => {
@@ -531,15 +526,6 @@ export const SwissView: React.FC<SwissViewProps> = ({
                             >
                                 <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
                                 Generate Round {currentRound + 1}
-                            </button>
-                        )}
-                        {canFinalizeStage && !isComplete && (
-                            <button type="button"
-                                onClick={handleRefreshCompletion}
-                                className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-semibold"
-                            >
-                                <RefreshCw className="w-4 h-4 mr-2" />
-                                Refresh Progress
                             </button>
                         )}
                         {(isComplete || alreadyAdvanced) && (

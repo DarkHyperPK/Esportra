@@ -824,6 +824,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       <div className="p-6">
         <GroupStageView
           stageId={graphData?.version?.stage_id || ''}
+          versionId={versionId || ''}
           matches={graphData?.nodes || []}
           isOrganizer={isOrganizer}
           onMatchUpdate={handleRefresh}
@@ -875,7 +876,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       {viewMode === 'matches' ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-950/30">
           {renderRoundTabs()}
-          <div className="min-h-0 flex-1 overflow-auto p-4">
+          <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-4" data-lenis-prevent>
           <div className="space-y-3">
             {matchListGroups.map(([group, groupMatches]) => (
               <section key={group} className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
@@ -935,6 +936,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
             tabIndex={0}
             aria-label="Scrollable bracket management canvas"
             className="min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+            data-lenis-prevent
           >
             <div style={{
               width: totalWidth,

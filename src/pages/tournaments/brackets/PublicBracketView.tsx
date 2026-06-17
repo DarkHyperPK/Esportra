@@ -225,7 +225,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
 
         if (format === 'swiss') {
             return (
-                <div className="relative h-full min-h-0 overflow-auto p-2 [touch-action:pan-x_pan-y] overscroll-contain">
+                <div className="relative h-full min-h-0 overflow-auto p-2 [touch-action:pan-x_pan-y] overscroll-contain" data-lenis-prevent>
                     <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
                         {onFullscreen && (
                             <CommandButton
@@ -261,26 +261,12 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
 
         // --- GROUP STAGE VIEW ---
         if (format === 'round_robin') {
-            const uniqueGroups = Array.from(new Set(matches.map(m => m.groupId || (m as any).group_id).filter(Boolean)));
-            const groupCount = uniqueGroups.length || 1;
             const perGroupAdvancement = currentStage?.advancement_count
-                ? Math.floor(currentStage.advancement_count / groupCount)
+                ? Number(currentStage.advancement_count)
                 : undefined;
 
             return (
-                <div className="relative h-full min-h-0 overflow-auto p-2 [touch-action:pan-x_pan-y] overscroll-contain">
-                    <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-                        {onFullscreen && (
-                            <CommandButton
-                                variant="secondary"
-                                size="sm"
-                                onClick={onFullscreen}
-                            >
-                                <Maximize2 className="w-4 h-4 mr-2" />
-                                Fullscreen
-                            </CommandButton>
-                        )}
-                    </div>
+                <div className="relative h-full min-h-0 overflow-auto p-2 [touch-action:pan-x_pan-y] overscroll-contain" data-lenis-prevent>
                     <GroupStageView
                         stageId={selectedStageId || ''}
                         versionId={versionId || ''}
@@ -295,6 +281,16 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                         hasProofsMap={proofs}
                         hoveredTeamId={hoveredTeamId}
                         onTeamHover={setHoveredTeamId}
+                        topRightAction={onFullscreen ? (
+                            <CommandButton
+                                variant="secondary"
+                                size="sm"
+                                onClick={onFullscreen}
+                            >
+                                <Maximize2 className="w-4 h-4 mr-2" />
+                                Fullscreen
+                            </CommandButton>
+                        ) : undefined}
                     />
                 </div>
             );
@@ -374,7 +370,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                 </div>
 
                 {viewMode === 'matches' ? (
-                    <div className="min-h-0 flex-1 overflow-auto p-4">
+                    <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-4" data-lenis-prevent>
                         <div className="mx-auto max-w-5xl space-y-5">
                             {matchListGroups.map(([group, groupMatches]) => (
                                 <section key={group} className="rounded-xl border border-white/10 bg-zinc-900/40 p-4">
@@ -415,6 +411,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                         tabIndex={0}
                         aria-label="Scrollable tournament bracket canvas"
                         className="min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                        data-lenis-prevent
                     >
                         <BracketRenderer
                             matches={matches}

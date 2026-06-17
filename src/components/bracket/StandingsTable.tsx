@@ -64,7 +64,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                         <AnimatePresence mode='popLayout'>
                             {standings.map((team, index) => {
                                 const count = Number(advancementCount);
-                                const isAdvancing = (count > 0 && index < count && count < standings.length) || (qualificationWins !== undefined && team.wins >= qualificationWins);
+                                const isAdvancing = (count > 0 && index < count) || (qualificationWins !== undefined && team.wins >= qualificationWins);
                                 const isEliminated = eliminationCount !== undefined && team.losses >= eliminationCount;
 
                                 return (
