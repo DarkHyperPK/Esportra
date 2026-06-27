@@ -203,6 +203,8 @@ const FullMatchDataPanel: React.FC<{
     team2Name: string;
     team1Id?: string;
     team2Id?: string;
+    team1Logo?: string;
+    team2Logo?: string;
     teamId?: string;
     isTeam1: boolean;
 }> = ({
@@ -212,6 +214,8 @@ const FullMatchDataPanel: React.FC<{
     team2Name,
     team1Id,
     team2Id,
+    team1Logo,
+    team2Logo,
     teamId,
     isTeam1,
 }) => (
@@ -222,6 +226,8 @@ const FullMatchDataPanel: React.FC<{
         team2Name={team2Name}
         team1Id={team1Id}
         team2Id={team2Id}
+        team1Logo={team1Logo}
+        team2Logo={team2Logo}
         team1Score={game.team1_score}
         team2Score={game.team2_score}
         mapName={game.map_name}
@@ -323,6 +329,8 @@ const MatchStatisticsDetail: React.FC<{
                 team2Name={team2Name}
                 team1Id={match.team1?.id}
                 team2Id={match.team2?.id}
+                team1Logo={match.team1?.logo_url || undefined}
+                team2Logo={match.team2?.logo_url || undefined}
                 teamId={teamId}
                 isTeam1={isTeam1}
             />

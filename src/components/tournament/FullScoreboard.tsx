@@ -38,55 +38,44 @@ function sortByAcs(players: ScoreboardPlayer[]): ScoreboardPlayer[] {
   });
 }
 
-function StatCell({
-  value,
-  className,
-}: {
-  value: string;
-  className?: string;
-}) {
-  return (
-    <span className={cn('tabular-nums text-xs font-semibold text-zinc-300', className)}>
-      {value}
-    </span>
-  );
-}
-
-function PlayerStatRow({ player }: { player: ScoreboardPlayer }) {
+function PlayerStatRow({ player, isEven }: { player: ScoreboardPlayer; isEven: boolean }) {
   const acs = resolvePlayerAcs(player);
   const kd = resolvePlayerKdRatio(player);
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_repeat(5,2.25rem)] sm:grid-cols-[auto_minmax(0,1fr)_repeat(8,2.25rem)] lg:grid-cols-[auto_minmax(0,1fr)_repeat(9,2.5rem)] items-center gap-x-2 gap-y-1 px-3 py-2.5 border-b border-white/5 last:border-b-0 hover:bg-white/[0.03] transition-colors">
-      <div className="w-8 h-8 rounded-md overflow-hidden border border-white/10 bg-zinc-900 shrink-0">
-        {player.characterId ? (
-          <img
-            src={getAgentIcon(player.characterId)}
-            loading="lazy"
-            alt=""
-            className="w-full h-full object-cover"
-          />
-        ) : null}
-      </div>
-
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-zinc-100">
-          {player.gameName || 'Unknown'}
-          {player.tagLine ? (
-            <span className="text-zinc-500 font-medium ml-1">#{player.tagLine}</span>
-          ) : null}
-        </p>
-      </div>
-
-      <StatCell value={formatStat(acs)} className="text-white font-bold" />
-      <StatCell value={formatStat(player.kills)} className="text-emerald-400" />
-      <StatCell value={formatStat(player.deaths)} className="text-rose-400" />
-      <StatCell value={formatStat(player.assists)} className="text-zinc-400" />
-      <StatCell value={formatStat(kd, 2)} className="hidden sm:block" />
-      <StatCell value={formatStat(player.adr)} className="hidden sm:block" />
-      <StatCell value={formatPercent(player.hsPct)} className="hidden lg:block" />
-      <StatCell value={formatStat(player.firstBloods)} className="hidden lg:block" />
-    </div>
+    <tr className={cn(
+      'border-b border-white/[0.04] transition-colors hover:bg-white/[0.03]',
+      isEven ? 'bg-[#0d1117]' : 'bg-[#111820]',
+    )}>
+      <td className="px-3 py-2.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-md overflow-hidden border border-white/[0.08] bg-zinc-900 shrink-0">
+            {player.characterId ? (
+              <img
+                src={getAgentIcon(player.characterId)}
+                loading="lazy"
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : null}
+          </div>
+          <p className="truncate text-sm font-semibold text-zinc-100">
+            {player.gameName || 'Unknown'}
+            {player.tagLine ? (
+              <span className="text-zinc-500 font-medium ml-1">#{player.tagLine}</span>
+            ) : null}
+          </p>
+        </div>
+      </td>
+      <td className="border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-bold text-white">{formatStat(acs)}</td>
+      <td className="border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-emerald-400">{formatStat(player.kills)}</td>
+      <td className="border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-rose-400">{formatStat(player.deaths)}</td>
+      <td className="border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-zinc-400">{formatStat(player.assists)}</td>
+      <td className="hidden sm:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-zinc-300">{formatStat(kd, 2)}</td>
+      <td className="hidden sm:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-zinc-300">{formatStat(player.adr)}</td>
+      <td className="hidden lg:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-zinc-300">{formatPercent(player.hsPct)}</td>
+      <td className="hidden lg:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center tabular-nums text-xs font-semibold text-zinc-300">{formatStat(player.firstBloods)}</td>
+    </tr>
   );
 }
 
@@ -108,46 +97,33 @@ function TeamScoreboard({
         <span className="text-lg font-black tabular-nums text-white shrink-0">{teamScore}</span>
       </div>
 
-      <div className="rounded-xl border border-white/5 bg-zinc-950/40 overflow-x-auto">
-        <div className="min-w-[720px]">
-        <div className="grid grid-cols-[auto_minmax(0,1fr)_repeat(5,2.25rem)] sm:grid-cols-[auto_minmax(0,1fr)_repeat(8,2.25rem)] lg:grid-cols-[auto_minmax(0,1fr)_repeat(9,2.5rem)] gap-x-2 px-3 py-2 border-b border-white/10 bg-black/30">
-          <span className="col-span-2 text-[9px] font-bold uppercase tracking-widest text-zinc-500">
-            Player
-          </span>
-          <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
-            ACS
-          </span>
-          <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
-            K
-          </span>
-          <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
-            D
-          </span>
-          <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
-            A
-          </span>
-          <span className="hidden sm:block text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
-            KD
-          </span>
-          <span className="hidden sm:block text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
-            ADR
-          </span>
-          <span className="hidden lg:block text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
-            HS%
-          </span>
-          <span className="hidden lg:block text-[9px] font-bold uppercase tracking-widest text-zinc-500 text-center">
-            FB
-          </span>
-        </div>
-
-        {players.length === 0 ? (
-          <p className="px-3 py-4 text-xs text-zinc-500">No player statistics available.</p>
-        ) : (
-          players.map((player, index) => (
-            <PlayerStatRow key={player.puuid ?? `${player.gameName}-${index}`} player={player} />
-          ))
-        )}
-        </div>
+      <div className="rounded-lg border border-white/[0.06] bg-[#0d1117] overflow-x-auto">
+        <table className="w-full border-collapse text-left min-w-[720px]">
+          <thead>
+            <tr className="border-b border-white/[0.08] bg-[#161b22]">
+              <th className="px-3 py-2.5 text-[9px] font-bold uppercase tracking-widest text-zinc-500">Player</th>
+              <th className="border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">ACS</th>
+              <th className="border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">K</th>
+              <th className="border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">D</th>
+              <th className="border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">A</th>
+              <th className="hidden sm:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">KD</th>
+              <th className="hidden sm:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">ADR</th>
+              <th className="hidden lg:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">HS%</th>
+              <th className="hidden lg:table-cell border-l border-white/[0.06] px-3 py-2.5 text-center text-[9px] font-bold uppercase tracking-widest text-zinc-500">FB</th>
+            </tr>
+          </thead>
+          <tbody>
+            {players.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="px-3 py-4 text-xs text-zinc-500">No player statistics available.</td>
+              </tr>
+            ) : (
+              players.map((player, index) => (
+                <PlayerStatRow key={player.puuid ?? `${player.gameName}-${index}`} player={player} isEven={index % 2 === 0} />
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

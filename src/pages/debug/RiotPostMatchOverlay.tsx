@@ -8,6 +8,7 @@ import { resolveEnrichedPlayer } from "@/types/enrichedRiotMatch";
 
 type OverlayMode = "match" | "player" | "compare";
 type OverlayTransition = "none" | "up" | "left" | "right";
+type OverlayTheme = "tactical" | "premium" | "glitch";
 
 type AgentAsset = {
   uuid: string;
@@ -68,6 +69,7 @@ type OverlayOptions = {
   sponsorX: number;
   sponsorY: number;
   sponsorFit: "contain" | "cover";
+  theme: OverlayTheme;
   transition: OverlayTransition;
   showAbilityCasts: boolean;
   showAcs: boolean;
@@ -142,11 +144,42 @@ const shortName = (name: string, fallback: string) => {
 const displayName = (name: string, fallback: string, mode: OverlayOptions["nameMode"]) =>
   mode === "full" ? (name.trim() || fallback) : shortName(name, fallback);
 
+const themedPanelStyle = (panel: TeamPanel, theme: OverlayTheme, side: "left" | "right"): React.CSSProperties => {
+  if (theme === "premium") {
+    return {
+      backgroundColor: "rgba(244,244,247,0.94)",
+      color: "#180d35",
+      borderColor: panel.color,
+    };
+  }
+
+  if (theme === "glitch") {
+    return {
+      background: side === "left"
+        ? `linear-gradient(100deg, ${panel.color} 0%, #351064 62%, #ff2bd6 130%)`
+        : `linear-gradient(260deg, ${panel.color} 0%, #351064 62%, #ff2bd6 130%)`,
+      color: "#ffffff",
+      borderColor: "#ff2bd6",
+    };
+  }
+
+  return {
+    background: side === "left"
+      ? `linear-gradient(105deg, ${panel.color} 0%, #11152b 112%)`
+      : `linear-gradient(255deg, ${panel.color} 0%, #11152b 112%)`,
+    color: panel.textColor,
+    borderColor: "rgba(125,249,255,.28)",
+  };
+};
+
 const overlayTransition = (value: string | null): OverlayTransition =>
   value === "up" || value === "left" || value === "right" ? value : "none";
 
 const objectFitParam = (value: string | null): "contain" | "cover" =>
   value === "cover" ? "cover" : "contain";
+
+const themeParam = (value: string | null): OverlayTheme =>
+  value === "premium" || value === "glitch" ? value : "tactical";
 
 const transitionAnimationName = (transition: OverlayTransition) => {
   if (transition === "up") return "riotOverlaySlideUp";
@@ -263,6 +296,7 @@ const parseOptions = (params: URLSearchParams): OverlayOptions => {
     sponsorX: clampNumber(params.get("sponsorX"), 0, -125, 125),
     sponsorY: clampNumber(params.get("sponsorY"), 0, -170, 170),
     sponsorFit: objectFitParam(params.get("sponsorFit")),
+    theme: themeParam(params.get("theme")),
     transition: overlayTransition(params.get("transition")),
     showAbilityCasts: boolParam(params.get("showAbilityCasts"), advanced),
     showAcs: boolParam(params.get("showAcs"), true),
@@ -285,13 +319,13 @@ const parseOptions = (params: URLSearchParams): OverlayOptions => {
   };
 };
 
-const TeamHeader = ({ panel, fallback, nameMode, side }: { panel: TeamPanel; fallback: string; nameMode: OverlayOptions["nameMode"]; side: "left" | "right" }) => (
+const TeamHeader = ({ panel, fallback, nameMode, side, theme }: { panel: TeamPanel; fallback: string; nameMode: OverlayOptions["nameMode"]; side: "left" | "right"; theme: OverlayTheme }) => (
   <div
     className={[
-      "absolute top-[58px] h-[126px] w-[620px] overflow-hidden px-[56px] py-[20px]",
-      side === "left" ? "left-[78px] text-left" : "right-[78px] text-right",
+      "riot-team-header absolute top-[58px] h-[126px] w-[620px] overflow-hidden px-[56px] py-[20px]",
+      side === "left" ? "riot-team-header-left left-[78px] text-left" : "riot-team-header-right right-[78px] text-right",
     ].join(" ")}
-    style={{ backgroundColor: panel.color, color: panel.textColor }}
+    style={themedPanelStyle(panel, theme, side)}
   >
     <div className={side === "left" ? "pr-[145px]" : "pl-[145px]"}>
       <div className="truncate text-[50px] font-black uppercase leading-none">
@@ -332,20 +366,20 @@ const RowStats = ({ player, align = "left" }: { player: PlayerCardData | null; a
 
 const playerNameSize = (name?: string) => {
   const length = (name || "").trim().length;
-  if (length > 16) return 18;
-  if (length > 13) return 20;
-  if (length > 10) return 22;
-  return 25;
+  if (length > 18) return 16;
+  if (length > 15) return 18;
+  if (length > 12) return 20;
+  return 23;
 };
 
-const PlayerRow = ({ player, panel, side }: { player: PlayerCardData | null; panel: TeamPanel; side: "left" | "right" }) => {
+const PlayerRow = ({ player, panel, side, theme }: { player: PlayerCardData | null; panel: TeamPanel; side: "left" | "right"; theme: OverlayTheme }) => {
   return (
     <div
       className={[
-        "grid h-[78px] items-center overflow-hidden border-y border-black/60 font-black uppercase",
+        "riot-player-row grid h-[68px] items-center overflow-hidden border-y border-black/60 font-black uppercase",
         side === "left" ? "grid-cols-[72px_minmax(0,1fr)_96px]" : "grid-cols-[96px_minmax(0,1fr)_72px]",
       ].join(" ")}
-      style={{ backgroundColor: panel.color, color: panel.textColor }}
+      style={themedPanelStyle(panel, theme, side)}
     >
       {side === "left" && <AgentIcon agent={player?.agent} />}
       {side === "right" && <RowStats player={player} />}
@@ -381,7 +415,7 @@ const MvpPanel = ({
   const player = getMvp(panel.players);
   const portrait = player?.agent?.fullPortrait || player?.agent?.bustPortrait || player?.agent?.displayIcon;
   return (
-    <div className={["absolute top-[206px] w-[540px]", side === "left" ? "left-[78px] text-left" : "right-[78px] text-right"].join(" ")}>
+    <div className={["riot-mvp-panel absolute top-[206px] w-[540px]", side === "left" ? "riot-mvp-left left-[78px] text-left" : "riot-mvp-right right-[78px] text-right"].join(" ")}>
       {showBadge ? (
         <div className="mb-[16px] inline-grid h-[70px] min-w-[168px] place-items-center px-8 text-[31px] font-black uppercase text-black" style={{ backgroundColor: accentColor }}>
           {label}
@@ -389,7 +423,7 @@ const MvpPanel = ({
       ) : null}
       <div className="relative h-[176px]">
         <div className={["absolute bottom-[8px] max-w-[300px]", side === "left" ? "left-0" : "right-0"].join(" ")}>
-          <div className="text-[20px] font-black uppercase text-white/78">{player?.agent?.displayName || "Agent"}</div>
+        <div className="riot-kicker text-[20px] font-black uppercase text-white/78">{player?.agent?.displayName || "Agent"}</div>
           <div className="max-w-full truncate text-[36px] font-black uppercase leading-none text-white">{player?.gameName || "TBD"}</div>
         </div>
         {showPortrait && portrait ? (
@@ -405,7 +439,7 @@ const MvpPanel = ({
 };
 
 const CenterStats = ({ left, right }: { left: PlayerCardData | null; right: PlayerCardData | null }) => (
-  <div className="absolute left-[640px] top-[238px] w-[320px] text-center">
+  <div className="riot-center-stats absolute left-[640px] top-[238px] w-[320px] text-center">
     <div className="grid grid-cols-[1fr_62px_1fr] items-center gap-x-8 gap-y-3">
       <div className="text-right text-[34px] font-black">{left?.kd || "-"}</div>
       <div className="text-[12px] font-black uppercase tracking-widest text-white/58">K/D</div>
@@ -424,7 +458,7 @@ const CenterStats = ({ left, right }: { left: PlayerCardData | null; right: Play
 );
 
 const MapCard = ({ mapAsset, mapName }: { mapAsset?: MapAsset; mapName: string }) => (
-  <div className="absolute left-[78px] top-[510px] h-[340px] w-[250px] overflow-hidden bg-[#4b1a84]">
+  <div className="riot-map-card absolute left-[78px] top-[510px] h-[340px] w-[250px] overflow-hidden bg-[#4b1a84]">
     {mapAsset?.splash ? <img src={mapAsset.splash} className="h-full w-full object-cover" alt="" /> : null}
     <div className="absolute inset-0 bg-black/8" />
     <div className="absolute bottom-[18px] left-0 right-0 text-center text-[34px] font-black uppercase drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)]">
@@ -434,12 +468,13 @@ const MapCard = ({ mapAsset, mapName }: { mapAsset?: MapAsset; mapName: string }
 );
 
 const LogoPanel = ({ panel, side }: { panel: TeamPanel; side: "left" | "right" }) => (
-  <div className={["absolute top-[510px] grid h-[340px] w-[250px] place-items-center overflow-hidden", side === "left" ? "left-[78px]" : "right-[78px]"].join(" ")} style={{ backgroundColor: panel.color, color: panel.textColor }}>
+  <div className={["riot-logo-panel absolute top-[510px] grid h-[340px] w-[250px] place-items-center overflow-hidden", side === "left" ? "left-[78px]" : "right-[78px]"].join(" ")} style={{ backgroundColor: panel.color, color: panel.textColor }}>
     {panel.logo ? <img src={panel.logo} className="max-h-[215px] max-w-[215px] object-contain" alt="" /> : <div className="max-w-[190px] truncate text-center text-[28px] font-black uppercase opacity-58">{panel.alias}</div>}
   </div>
 );
 
 const SponsorPanel = ({ image, label, panel, options }: { image: string; label: string; panel: TeamPanel; options: OverlayOptions }) => {
+  if (!image) return null;
   const width = clampNumber(String(options.sponsorWidth || 210), 210, 40, 250);
   const height = clampNumber(String(options.sponsorHeight || 170), 170, 40, 340);
   const maxX = (250 - width) / 2;
@@ -451,9 +486,9 @@ const SponsorPanel = ({ image, label, panel, options }: { image: string; label: 
     <div
       className={[
         "absolute right-[78px] top-[510px] h-[340px] w-[250px] overflow-hidden",
-        image ? "bg-transparent" : "",
+        "bg-transparent",
       ].join(" ")}
-      style={image ? undefined : { backgroundColor: panel.color, color: panel.textColor }}
+      style={{ color: panel.textColor }}
     >
       <div
         className="absolute grid place-items-center"
@@ -465,39 +500,33 @@ const SponsorPanel = ({ image, label, panel, options }: { image: string; label: 
           transform: "translate(-50%, -50%)",
         }}
       >
-        {image ? (
-          <img
-            src={image}
-            className="h-full w-full drop-shadow-[0_10px_18px_rgba(0,0,0,0.62)]"
-            style={{ objectFit: options.sponsorFit }}
-            loading="eager"
-            alt=""
-          />
-        ) : (
-          <div className="max-w-full text-center font-black uppercase leading-tight opacity-62" style={{ fontSize: 26 * options.sponsorSize }}>
-            {label}
-          </div>
-        )}
+        <img
+          src={image}
+          className="h-full w-full drop-shadow-[0_10px_18px_rgba(0,0,0,0.62)]"
+          style={{ objectFit: options.sponsorFit }}
+          loading="eager"
+          alt={label}
+        />
       </div>
     </div>
   );
 };
 
-const Rows = ({ panel, side }: { panel: TeamPanel; side: "left" | "right" }) => {
-  const rows = panel.players.slice(1, 5);
+const Rows = ({ panel, side, theme }: { panel: TeamPanel; side: "left" | "right"; theme: OverlayTheme }) => {
+  const rows = panel.players.slice(0, 5);
   return (
-    <div className={["absolute top-[510px] w-[392px]", side === "left" ? "left-[340px]" : "right-[340px]"].join(" ")}>
-      {Array.from({ length: 4 }).map((_, index) => (
-        <PlayerRow key={rows[index]?.puuid || `${panel.id}-${index}`} player={rows[index] ?? null} panel={panel} side={side} />
+  <div className={["riot-roster absolute top-[510px] w-[392px]", side === "left" ? "riot-roster-left left-[340px]" : "riot-roster-right right-[340px]"].join(" ")}>
+      {Array.from({ length: 5 }).map((_, index) => (
+        <PlayerRow key={rows[index]?.puuid || `${panel.id}-${index}`} player={rows[index] ?? null} panel={panel} side={side} theme={theme} />
       ))}
     </div>
   );
 };
 
 const CenterRowLabels = () => (
-  <div className="absolute left-[744px] top-[510px] w-[112px]">
-    {Array.from({ length: 4 }).map((_, index) => (
-      <div key={index} className="grid h-[78px] grid-cols-2 place-items-center border-y border-white/10 bg-black/28 px-2 text-center text-[11px] font-black uppercase tracking-[0.12em] text-white/72">
+  <div className="riot-center-labels absolute left-[744px] top-[510px] w-[112px]">
+    {Array.from({ length: 5 }).map((_, index) => (
+      <div key={index} className="grid h-[68px] grid-cols-2 place-items-center border-y border-white/10 bg-black/28 px-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-white/72">
         <span>K/D</span>
         <span>ACS</span>
         <span>HS</span>
@@ -508,11 +537,278 @@ const CenterRowLabels = () => (
 );
 
 const StatTile = ({ label, value, tone = "dark" }: { label: string; value: string; tone?: "dark" | "light" | "accent" }) => (
-  <div className={["min-h-[94px] border px-5 py-4 backdrop-blur-[1px]", tone === "light" ? "border-white/16 bg-white/8 text-white" : tone === "accent" ? "border-white/32 bg-white/14 text-white" : "border-white/12 bg-black/22 text-white"].join(" ")}>
+  <div className={["riot-stat-tile min-h-[94px] border px-5 py-4 backdrop-blur-sm", tone === "light" ? "border-white/20 bg-white/14 text-white" : tone === "accent" ? "border-white/36 bg-white/22 text-white" : "border-white/14 bg-black/55 text-white"].join(" ")}>
     <div className="text-[13px] font-black uppercase tracking-[0.18em] opacity-65">{label}</div>
     <div className="mt-2 truncate text-[40px] font-black uppercase leading-none" style={{ WebkitTextStroke: "1px rgba(255,255,255,0.34)" }}>{value}</div>
   </div>
 );
+
+const MiniPlayerLine = ({ player, panel, side, light = false }: { player: PlayerCardData | null; panel: TeamPanel; side: "left" | "right"; light?: boolean }) => (
+  <div
+    className={[
+      "grid h-[58px] items-center gap-3 overflow-hidden border-b font-black uppercase",
+      side === "left" ? "grid-cols-[48px_minmax(0,1fr)_116px]" : "grid-cols-[116px_minmax(0,1fr)_48px]",
+      light ? "border-[#21123f]/18 bg-white/88 text-[#170d32]" : "border-white/12 bg-black/32 text-white",
+    ].join(" ")}
+  >
+    {side === "left" ? <AgentIcon agent={player?.agent} /> : <RowStats player={player} />}
+    <div className={side === "left" ? "min-w-0" : "min-w-0 text-right"}>
+      <div className="truncate text-[10px] tracking-[0.08em] opacity-62">
+        {player?.agent?.displayName || "Agent"}{player?.agent?.role?.displayName ? ` - ${player.agent.role.displayName}` : ""}
+      </div>
+      <div className="truncate text-[22px] leading-none" style={{ color: light ? "#170d32" : panel.textColor }}>
+        {player?.gameName || "TBD"}
+      </div>
+    </div>
+    {side === "left" ? <RowStats player={player} align="right" /> : <AgentIcon agent={player?.agent} />}
+  </div>
+);
+
+const FloatingSponsor = ({ image, label, options, className = "" }: { image: string; label: string; options: OverlayOptions; className?: string }) => {
+  if (!image) return null;
+  return (
+    <div className={`absolute grid place-items-center ${className}`} style={{ width: options.sponsorWidth, height: options.sponsorHeight }}>
+      <img src={image} className="h-full w-full drop-shadow-[0_12px_22px_rgba(0,0,0,.62)]" style={{ objectFit: options.sponsorFit }} alt={label} />
+    </div>
+  );
+};
+
+const VctScorePlate = ({ panel, side }: { panel: TeamPanel; side: "left" | "right" }) => (
+  <div className={["absolute top-[50px] h-[118px] w-[650px] overflow-hidden bg-[#f2f0ec] text-[#111116] shadow-[0_18px_38px_rgba(0,0,0,.30)]", side === "left" ? "left-[64px]" : "right-[64px] text-right"].join(" ")}>
+    <div className={["absolute top-0 h-full w-[10px] bg-[#ff4655]", side === "left" ? "left-0" : "right-0"].join(" ")} />
+    <div className={["absolute top-0 h-full w-[150px]", side === "left" ? "right-0 bg-[#15151a]" : "left-0 bg-[#15151a]"].join(" ")}>
+      <div className="grid h-full place-items-center text-[86px] font-black leading-none text-white">{panel.score}</div>
+    </div>
+    <div className={["px-10 py-6", side === "left" ? "pr-[176px]" : "pl-[176px]"].join(" ")}>
+      <div className="truncate text-[54px] font-black uppercase leading-none">{panel.alias}</div>
+      <div className="mt-1 text-[20px] font-black uppercase tracking-[0.12em] text-[#ff4655]">{panel.outcome}</div>
+    </div>
+  </div>
+);
+
+const VctPlayerRow = ({ player, panel, side }: { player: PlayerCardData | null; panel: TeamPanel; side: "left" | "right" }) => (
+  <div className={["grid h-[61px] items-center overflow-hidden border-b border-[#c9c4bc]/70 bg-[#f2f0ec] font-black uppercase text-[#121217]", side === "left" ? "grid-cols-[58px_minmax(0,1fr)_112px]" : "grid-cols-[112px_minmax(0,1fr)_58px]"].join(" ")}>
+    {side === "left" ? <AgentIcon agent={player?.agent} /> : <RowStats player={player} />}
+    <div className={side === "left" ? "min-w-0 px-4" : "min-w-0 px-4 text-right"}>
+      <div className="truncate text-[10px] tracking-[0.08em] text-[#6c6872]">
+        {player?.agent?.displayName || "Agent"}{player?.agent?.role?.displayName ? ` - ${player.agent.role.displayName}` : ""}
+      </div>
+      <div className="truncate text-[23px] leading-none">{player?.gameName || "TBD"}</div>
+    </div>
+    {side === "left" ? <RowStats player={player} align="right" /> : <AgentIcon agent={player?.agent} />}
+  </div>
+);
+
+const VctStatCenter = ({ left, right }: { left: PlayerCardData | null; right: PlayerCardData | null }) => (
+  <div className="absolute left-[607px] top-[226px] w-[386px] border-y border-white/24 bg-black/42 px-7 py-5 text-center font-black uppercase text-white">
+    <div className="mb-4 text-[12px] tracking-[0.24em] text-white/55">MVP Comparison</div>
+    <div className="grid grid-cols-[1fr_72px_1fr] items-center gap-y-2">
+      <div className="text-right text-[35px] leading-none">{left?.kd || "-"}</div><div className="text-[12px] tracking-[0.18em] text-white/52">K/D</div><div className="text-left text-[35px] leading-none">{right?.kd || "-"}</div>
+      <div className="text-right text-[35px] leading-none">{formatNumber(left?.acs)}</div><div className="text-[12px] tracking-[0.18em] text-white/52">ACS</div><div className="text-left text-[35px] leading-none">{formatNumber(right?.acs)}</div>
+      <div className="text-right text-[35px] leading-none">{formatPercent(left?.hsPct)}</div><div className="text-[12px] tracking-[0.18em] text-white/52">HS</div><div className="text-left text-[35px] leading-none">{formatPercent(right?.hsPct)}</div>
+      <div className="text-right text-[35px] leading-none">{formatNumber(left?.firstBloods)}</div><div className="text-[12px] tracking-[0.18em] text-white/52">FK</div><div className="text-left text-[35px] leading-none">{formatNumber(right?.firstBloods)}</div>
+    </div>
+  </div>
+);
+
+const VctMatchOverlay = ({ leftPanel, rightPanel, mapAsset, mapName, options }: { leftPanel: TeamPanel; rightPanel: TeamPanel; mapAsset?: MapAsset; mapName: string; options: OverlayOptions }) => (
+  <>
+    <div className="absolute left-[64px] right-[64px] top-[22px] flex items-center gap-5 text-[13px] font-black uppercase tracking-[0.22em] text-white/68">
+      <span className="h-px flex-1 bg-white/28" />
+      <span>Post Match Analytics</span>
+      <span className="text-[#ff4655]">{mapName}</span>
+      <span className="h-px flex-1 bg-white/28" />
+    </div>
+    <VctScorePlate panel={leftPanel} side="left" />
+    <VctScorePlate panel={rightPanel} side="right" />
+    <VctStatCenter left={getMvp(leftPanel.players)} right={getMvp(rightPanel.players)} />
+    <div className="absolute left-[64px] top-[485px] h-[330px] w-[260px] overflow-hidden bg-[#16161c]">
+      {options.showMap && mapAsset?.splash ? <img src={mapAsset.splash} className="h-full w-full object-cover" alt="" /> : null}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/62 via-transparent to-transparent" />
+      <div className="absolute bottom-5 left-0 right-0 text-center text-[34px] font-black uppercase text-white drop-shadow-[0_4px_12px_rgba(0,0,0,.88)]">{mapName}</div>
+    </div>
+    <div className="absolute left-[344px] top-[485px] w-[442px]">{leftPanel.players.slice(0, 5).map((player) => <VctPlayerRow key={player.puuid} player={player} panel={leftPanel} side="left" />)}</div>
+    <div className="absolute left-[796px] top-[485px] grid h-[305px] w-[82px] grid-rows-5 bg-[#111116]/88 text-center text-[10px] font-black uppercase tracking-[0.12em] text-white/66">
+      {Array.from({ length: 5 }).map((_, index) => <div key={index} className="grid grid-cols-2 place-items-center border-b border-white/12"><span>K/D</span><span>ACS</span><span>HS</span><span>FK</span></div>)}
+    </div>
+    <div className="absolute right-[344px] top-[485px] w-[442px]">{rightPanel.players.slice(0, 5).map((player) => <VctPlayerRow key={player.puuid} player={player} panel={rightPanel} side="right" />)}</div>
+    <FloatingSponsor image={options.sponsorImage} label={options.sponsorLabel} options={options} className="right-[86px] bottom-[74px]" />
+  </>
+);
+
+const VctPlayerOverlay = ({ player, leftPanel, rightPanel, mapAsset, mapName, options }: { player: PlayerCardData | null; leftPanel: TeamPanel; rightPanel: TeamPanel; mapAsset?: MapAsset; mapName: string; options: OverlayOptions }) => {
+  const portrait = player?.agent?.fullPortrait || player?.agent?.bustPortrait || player?.agent?.displayIcon;
+  const playerTeam = player?.teamId === leftPanel.id ? leftPanel : rightPanel;
+  const tiles = playerStatTiles(player, options).slice(0, 6);
+  return (
+    <>
+      <div className="absolute left-[64px] right-[64px] top-[24px] flex items-center gap-5 text-[13px] font-black uppercase tracking-[0.24em] text-white/62">
+        <span className="h-px flex-1 bg-white/28" />
+        <span>Player Performance</span>
+        <span className="text-[#ff4655]">{mapName}</span>
+        <span className="h-px flex-1 bg-white/28" />
+      </div>
+      <div className="absolute left-[64px] top-[70px] font-black uppercase text-white">
+        <div className="text-[78px] leading-none">{options.playerTitle}</div>
+        <div className="mt-2 text-[18px] tracking-[0.18em] text-white/60">{options.playerSubtitle}</div>
+      </div>
+      <div className="absolute right-[74px] top-[78px] h-[102px] w-[360px] bg-[#f2f0ec] px-8 py-4 text-right text-[#111116] shadow-[0_18px_38px_rgba(0,0,0,.28)]">
+        <div className="text-[16px] font-black uppercase tracking-[0.16em] text-[#ff4655]">{options.showTeam ? getTeamAlias(player, leftPanel, rightPanel) : "Match"}</div>
+        <div className="text-[56px] font-black leading-none">{playerTeam.score}</div>
+      </div>
+      <div className="absolute left-[74px] top-[232px] h-[590px] w-[470px] overflow-hidden bg-[#15151a]">
+        {options.showMap && mapAsset?.splash ? <img src={mapAsset.splash} className="absolute inset-0 h-full w-full object-cover opacity-44" alt="" /> : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#ff4655]/36 via-black/10 to-transparent" />
+        {options.showAgent && portrait ? <img src={portrait} className="absolute bottom-[-24px] left-[-42px] h-[650px] w-[550px] object-contain drop-shadow-[0_26px_36px_rgba(0,0,0,.76)]" alt="" /> : null}
+        <div className="absolute bottom-9 left-9 right-9 font-black uppercase text-white">
+          <div className="text-[24px] text-white/68">{player?.agent?.displayName || "Agent"}{player?.agent?.role?.displayName ? ` - ${player.agent.role.displayName}` : ""}</div>
+          <div className="text-[58px] leading-none">{player?.gameName || "Unknown"}</div>
+        </div>
+      </div>
+      <div className="absolute left-[590px] top-[244px] grid w-[620px] grid-cols-2 gap-4">
+        {tiles.map((tile, index) => (
+          <div key={tile.label} className={["min-h-[112px] bg-[#f2f0ec] px-6 py-5 font-black uppercase text-[#111116] shadow-[0_14px_28px_rgba(0,0,0,.18)]", index === 1 ? "border-l-[8px] border-[#ff4655]" : ""].join(" ")}>
+            <div className="text-[13px] tracking-[0.2em] text-[#77737a]">{tile.label}</div>
+            <div className="mt-2 text-[48px] leading-none">{tile.value}</div>
+          </div>
+        ))}
+      </div>
+      <div className="absolute right-[78px] bottom-[76px] max-w-[310px] text-right font-black uppercase text-white">
+        <div className="text-[14px] tracking-[0.22em] text-white/48">Context</div>
+        <div className="mt-2 text-[40px] leading-none">{mapName}</div>
+      </div>
+    </>
+  );
+};
+
+const VctCompareOverlay = ({ leftPlayer, rightPlayer, leftPanel, rightPanel, mapName, options }: { leftPlayer: PlayerCardData | null; rightPlayer: PlayerCardData | null; leftPanel: TeamPanel; rightPanel: TeamPanel; mapName: string; options: OverlayOptions }) => {
+  const leftTeam = leftPlayer?.teamId === leftPanel.id ? leftPanel : rightPanel;
+  const rightTeam = rightPlayer?.teamId === leftPanel.id ? leftPanel : rightPanel;
+  const leftPortrait = leftPlayer?.agent?.fullPortrait || leftPlayer?.agent?.bustPortrait || leftPlayer?.agent?.displayIcon;
+  const rightPortrait = rightPlayer?.agent?.fullPortrait || rightPlayer?.agent?.bustPortrait || rightPlayer?.agent?.displayIcon;
+  const rows = [
+    options.showKda ? ["K/D/A", leftPlayer?.kda || "-", rightPlayer?.kda || "-"] : null,
+    options.showAcs ? ["ACS", formatNumber(leftPlayer?.acs), formatNumber(rightPlayer?.acs)] : null,
+    options.showKdRatio ? ["K/D", formatNumber(leftPlayer?.kdRatio, 2), formatNumber(rightPlayer?.kdRatio, 2)] : null,
+    options.showAdr ? ["ADR", formatNumber(leftPlayer?.adr), formatNumber(rightPlayer?.adr)] : null,
+    options.showHs ? ["HS%", formatPercent(leftPlayer?.hsPct), formatPercent(rightPlayer?.hsPct)] : null,
+    options.showFb ? ["First Bloods", formatNumber(leftPlayer?.firstBloods), formatNumber(rightPlayer?.firstBloods)] : null,
+  ].filter((row): row is string[] => Boolean(row));
+  return (
+    <>
+      <div className="absolute left-[64px] right-[64px] top-[28px] text-center font-black uppercase text-white">
+        <div className="text-[15px] tracking-[0.28em] text-white/58">{mapName}</div>
+        <div className="mt-1 text-[78px] leading-none">Player Comparison</div>
+      </div>
+      <div className="absolute left-[78px] top-[225px] h-[545px] w-[420px] bg-[#f2f0ec] p-8 text-[#111116]">
+        <div className="text-[16px] font-black uppercase tracking-[0.16em] text-[#ff4655]">{leftTeam.alias}</div>
+        <div className="text-[60px] font-black leading-none">{leftTeam.score}</div>
+        {options.showAgents && leftPortrait ? <img src={leftPortrait} className="absolute bottom-[84px] left-[18px] h-[380px] w-[370px] object-contain drop-shadow-[0_22px_30px_rgba(0,0,0,.60)]" alt="" /> : null}
+        <div className="absolute bottom-8 left-8 right-8 font-black uppercase">
+          <div className="text-[19px] text-[#77737a]">{leftPlayer?.agent?.displayName || "Agent"}</div>
+          <div className="text-[44px] leading-none">{leftPlayer?.gameName || "Unknown"}</div>
+        </div>
+      </div>
+      <div className="absolute right-[78px] top-[225px] h-[545px] w-[420px] bg-[#111116] p-8 text-right text-white">
+        <div className="text-[16px] font-black uppercase tracking-[0.16em] text-[#ff4655]">{rightTeam.alias}</div>
+        <div className="text-[60px] font-black leading-none">{rightTeam.score}</div>
+        {options.showAgents && rightPortrait ? <img src={rightPortrait} className="absolute bottom-[84px] right-[18px] h-[380px] w-[370px] object-contain drop-shadow-[0_22px_30px_rgba(0,0,0,.70)]" alt="" /> : null}
+        <div className="absolute bottom-8 left-8 right-8 font-black uppercase">
+          <div className="text-[19px] text-white/58">{rightPlayer?.agent?.displayName || "Agent"}</div>
+          <div className="text-[44px] leading-none">{rightPlayer?.gameName || "Unknown"}</div>
+        </div>
+      </div>
+      <div className="absolute left-[538px] top-[220px] w-[524px]">
+        <div className="mb-5 grid place-items-center">
+          <div className="bg-[#ff4655] px-12 py-3 text-[40px] font-black leading-none text-white">VS</div>
+        </div>
+        <div className="bg-black/44 px-8 py-4">
+          {rows.map(([label, left, right]) => <CompareStatRow key={label} label={label} left={left} right={right} options={options} />)}
+        </div>
+      </div>
+    </>
+  );
+};
+
+const PremiumScoreBlock = ({ panel, side }: { panel: TeamPanel; side: "left" | "right" }) => (
+  <div className={["absolute top-[58px] w-[620px] border border-white/18 bg-white/90 px-9 py-7 text-[#170d32] shadow-[0_22px_46px_rgba(0,0,0,.22)]", side === "left" ? "left-[74px]" : "right-[74px] text-right"].join(" ")}>
+    <div className="text-[18px] font-black uppercase tracking-[0.18em] opacity-62">{panel.outcome}</div>
+    <div className="mt-1 grid grid-cols-[minmax(0,1fr)_130px] items-end gap-5">
+      <div className="truncate text-[58px] font-black uppercase leading-none">{panel.alias}</div>
+      <div className="text-[96px] font-black leading-[.78]">{panel.score}</div>
+    </div>
+  </div>
+);
+
+const PremiumMatchOverlay = ({ leftPanel, rightPanel, mapAsset, mapName, options }: { leftPanel: TeamPanel; rightPanel: TeamPanel; mapAsset?: MapAsset; mapName: string; options: OverlayOptions }) => {
+  const leftMvp = getMvp(leftPanel.players);
+  const rightMvp = getMvp(rightPanel.players);
+  return (
+    <>
+      <div className="absolute left-[74px] right-[74px] top-[20px] flex items-center justify-center gap-5 text-[13px] font-black uppercase tracking-[0.24em] text-white/70">
+        <span className="h-px w-[240px] bg-white/28" />
+        <span>Match Statistics</span>
+        <span className="text-white">{mapName}</span>
+        <span className="h-px w-[240px] bg-white/28" />
+      </div>
+      <PremiumScoreBlock panel={leftPanel} side="left" />
+      <PremiumScoreBlock panel={rightPanel} side="right" />
+      <div className="absolute left-[100px] top-[230px] w-[575px]">
+        <div className="mb-3 text-[14px] font-black uppercase tracking-[0.18em] text-white/60">{leftPanel.alias} Roster</div>
+        {leftPanel.players.slice(0, 5).map((player) => <MiniPlayerLine key={player.puuid} player={player} panel={leftPanel} side="left" light />)}
+      </div>
+      <div className="absolute right-[100px] top-[230px] w-[575px]">
+        <div className="mb-3 text-right text-[14px] font-black uppercase tracking-[0.18em] text-white/60">{rightPanel.alias} Roster</div>
+        {rightPanel.players.slice(0, 5).map((player) => <MiniPlayerLine key={player.puuid} player={player} panel={rightPanel} side="right" light />)}
+      </div>
+      <div className="absolute left-[682px] top-[250px] h-[360px] w-[236px] overflow-hidden border border-white/18 bg-white/8">
+        {options.showMap && mapAsset?.splash ? <img src={mapAsset.splash} className="h-full w-full object-cover" alt="" /> : null}
+        <div className="absolute inset-0 bg-black/18" />
+        <div className="absolute bottom-5 left-0 right-0 text-center text-[32px] font-black uppercase text-white drop-shadow-[0_4px_12px_rgba(0,0,0,.82)]">{mapName}</div>
+      </div>
+      <div className="absolute left-[610px] top-[640px] grid w-[380px] grid-cols-[1fr_88px_1fr] gap-y-2 text-center font-black uppercase text-white">
+        <div className="text-right text-[32px]">{leftMvp?.kd || "-"}</div><div className="text-[12px] tracking-[0.18em] text-white/50">K/D</div><div className="text-left text-[32px]">{rightMvp?.kd || "-"}</div>
+        <div className="text-right text-[32px]">{formatNumber(leftMvp?.acs)}</div><div className="text-[12px] tracking-[0.18em] text-white/50">ACS</div><div className="text-left text-[32px]">{formatNumber(rightMvp?.acs)}</div>
+        <div className="text-right text-[32px]">{formatPercent(leftMvp?.hsPct)}</div><div className="text-[12px] tracking-[0.18em] text-white/50">HS</div><div className="text-left text-[32px]">{formatPercent(rightMvp?.hsPct)}</div>
+      </div>
+      <FloatingSponsor image={options.sponsorImage} label={options.sponsorLabel} options={options} className="right-[88px] bottom-[52px]" />
+    </>
+  );
+};
+
+const GlitchMatchOverlay = ({ leftPanel, rightPanel, mapAsset, mapName, options }: { leftPanel: TeamPanel; rightPanel: TeamPanel; mapAsset?: MapAsset; mapName: string; options: OverlayOptions }) => {
+  const leftMvp = getMvp(leftPanel.players);
+  const rightMvp = getMvp(rightPanel.players);
+  return (
+    <>
+      <div className="absolute left-[60px] top-[42px] text-[28px] font-black uppercase tracking-[0.22em] text-fuchsia-200 drop-shadow-[3px_0_0_rgba(0,255,255,.34)]">Post Match</div>
+      <div className="absolute right-[64px] top-[38px] text-right text-[74px] font-black uppercase leading-none text-white drop-shadow-[4px_0_0_rgba(255,43,214,.5)]">{mapName}</div>
+      <div className="absolute left-[70px] top-[136px] h-[152px] w-[650px] -skew-x-6 border border-fuchsia-300/40 bg-[#16051f]/86 p-7 shadow-[7px_0_rgba(0,255,255,.18)]">
+        <div className="skew-x-6 text-[18px] font-black uppercase tracking-[0.18em] text-fuchsia-100/70">{leftPanel.outcome}</div>
+        <div className="skew-x-6 flex items-end justify-between"><span className="truncate text-[58px] font-black uppercase">{leftPanel.alias}</span><span className="text-[108px] font-black leading-[.78]">{leftPanel.score}</span></div>
+      </div>
+      <div className="absolute right-[70px] top-[156px] h-[152px] w-[650px] -skew-x-6 border border-fuchsia-300/40 bg-[#3d0c50]/86 p-7 text-right shadow-[-7px_0_rgba(255,43,214,.28)]">
+        <div className="skew-x-6 text-[18px] font-black uppercase tracking-[0.18em] text-fuchsia-100/70">{rightPanel.outcome}</div>
+        <div className="skew-x-6 flex flex-row-reverse items-end justify-between"><span className="truncate text-[58px] font-black uppercase">{rightPanel.alias}</span><span className="text-[108px] font-black leading-[.78]">{rightPanel.score}</span></div>
+      </div>
+      <div className="absolute left-[82px] top-[360px] w-[552px] -skew-x-3">
+        {leftPanel.players.slice(0, 5).map((player, index) => <div key={player.puuid} style={{ marginLeft: index % 2 ? 28 : 0 }}><MiniPlayerLine player={player} panel={leftPanel} side="left" /></div>)}
+      </div>
+      <div className="absolute right-[82px] top-[372px] w-[552px] -skew-x-3">
+        {rightPanel.players.slice(0, 5).map((player, index) => <div key={player.puuid} style={{ marginRight: index % 2 ? 28 : 0 }}><MiniPlayerLine player={player} panel={rightPanel} side="right" /></div>)}
+      </div>
+      <div className="absolute left-[656px] top-[338px] h-[310px] w-[288px] rotate-[-2deg] overflow-hidden border border-fuchsia-300/30 bg-black/30 shadow-[5px_0_rgba(0,255,255,.20)]">
+        {options.showMap && mapAsset?.splash ? <img src={mapAsset.splash} className="h-full w-full object-cover opacity-80" alt="" /> : null}
+        <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(255,255,255,.08)_0_1px,transparent_1px_5px)]" />
+      </div>
+      <div className="absolute left-[620px] top-[676px] grid w-[360px] grid-cols-[1fr_78px_1fr] gap-y-1 text-center font-black uppercase">
+        <div className="text-right text-[30px]">{leftMvp?.kd || "-"}</div><div className="text-[11px] tracking-[0.18em] text-fuchsia-100/62">K/D</div><div className="text-left text-[30px]">{rightMvp?.kd || "-"}</div>
+        <div className="text-right text-[30px]">{formatNumber(leftMvp?.acs)}</div><div className="text-[11px] tracking-[0.18em] text-fuchsia-100/62">ACS</div><div className="text-left text-[30px]">{formatNumber(rightMvp?.acs)}</div>
+      </div>
+      <FloatingSponsor image={options.sponsorImage} label={options.sponsorLabel} options={options} className="right-[76px] bottom-[42px]" />
+    </>
+  );
+};
 
 const playerStatTiles = (player: PlayerCardData | null, options: OverlayOptions) => {
   if (!player) return [];
@@ -539,24 +835,28 @@ const MatchOverlay = ({
   mapAsset?: MapAsset;
   mapName: string;
   options: OverlayOptions;
-}) => (
-  <>
-    <TeamHeader panel={leftPanel} fallback="TMA" nameMode="full" side="left" />
-    <TeamHeader panel={rightPanel} fallback="TMB" nameMode="full" side="right" />
-    <MvpPanel accentColor={options.accentColor} panel={leftPanel} side="left" showBadge={options.showMvpBadges} showPortrait={options.showPortraits} label={options.mvpLabel} />
-    <MvpPanel accentColor={options.accentColor} panel={rightPanel} side="right" showBadge={options.showMvpBadges} showPortrait={options.showPortraits} label={options.mvpLabel} />
-    <CenterStats left={getMvp(leftPanel.players)} right={getMvp(rightPanel.players)} />
-    {options.showMap ? <MapCard mapAsset={mapAsset} mapName={mapName} /> : options.showLogos ? <LogoPanel panel={leftPanel} side="left" /> : null}
-    {options.showLogos ? <SponsorPanel image={options.sponsorImage} label={options.sponsorLabel} panel={rightPanel} options={options} /> : null}
-    {options.showRows ? (
-      <>
-        <Rows panel={leftPanel} side="left" />
-        <CenterRowLabels />
-        <Rows panel={rightPanel} side="right" />
-      </>
-    ) : null}
-  </>
-);
+}) => {
+  if (options.theme === "premium") return <PremiumMatchOverlay leftPanel={leftPanel} rightPanel={rightPanel} mapAsset={mapAsset} mapName={mapName} options={options} />;
+  if (options.theme === "glitch") return <GlitchMatchOverlay leftPanel={leftPanel} rightPanel={rightPanel} mapAsset={mapAsset} mapName={mapName} options={options} />;
+  return (
+    <>
+      <TeamHeader panel={leftPanel} fallback="TMA" nameMode="full" side="left" theme={options.theme} />
+      <TeamHeader panel={rightPanel} fallback="TMB" nameMode="full" side="right" theme={options.theme} />
+      <MvpPanel accentColor={options.accentColor} panel={leftPanel} side="left" showBadge={options.showMvpBadges} showPortrait={options.showPortraits} label={options.mvpLabel} />
+      <MvpPanel accentColor={options.accentColor} panel={rightPanel} side="right" showBadge={options.showMvpBadges} showPortrait={options.showPortraits} label={options.mvpLabel} />
+      <CenterStats left={getMvp(leftPanel.players)} right={getMvp(rightPanel.players)} />
+      {options.showMap ? <MapCard mapAsset={mapAsset} mapName={mapName} /> : options.showLogos ? <LogoPanel panel={leftPanel} side="left" /> : null}
+      {options.showLogos ? <SponsorPanel image={options.sponsorImage} label={options.sponsorLabel} panel={rightPanel} options={options} /> : null}
+      {options.showRows ? (
+        <>
+          <Rows panel={leftPanel} side="left" theme={options.theme} />
+          <CenterRowLabels />
+          <Rows panel={rightPanel} side="right" theme={options.theme} />
+        </>
+      ) : null}
+    </>
+  );
+};
 
 const PlayerOverlay = ({
   player,
@@ -576,19 +876,78 @@ const PlayerOverlay = ({
   const portrait = player?.agent?.fullPortrait || player?.agent?.bustPortrait || player?.agent?.displayIcon;
   const playerTeam = player?.teamId === leftPanel.id ? leftPanel : rightPanel;
   const tiles = playerStatTiles(player, options).slice(0, 7);
+
+  if (options.theme === "premium") {
+    return (
+      <>
+        <div className="absolute left-[70px] top-[44px] text-white">
+          <div className="text-[17px] font-black uppercase tracking-[0.28em] text-white/58">{options.playerSubtitle}</div>
+          <div className="mt-1 text-[76px] font-black uppercase leading-none">{options.playerTitle}</div>
+        </div>
+        <div className="absolute right-[78px] top-[58px] text-right text-white">
+          <div className="text-[17px] font-black uppercase tracking-[0.18em] text-white/62">{options.showTeam ? getTeamAlias(player, leftPanel, rightPanel) : mapName}</div>
+          <div className="text-[78px] font-black leading-none">{playerTeam.score}</div>
+        </div>
+        <div className="absolute left-[72px] top-[212px] h-[610px] w-[465px] overflow-hidden border border-white/18 bg-white/8">
+          {options.showMap && mapAsset?.splash ? <img src={mapAsset.splash} className="absolute inset-0 h-full w-full object-cover opacity-34" alt="" /> : null}
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,.06),rgba(199,84,214,.46))]" />
+          {options.showAgent && portrait ? <img src={portrait} className="absolute bottom-[-18px] left-[-42px] h-[650px] w-[540px] object-contain drop-shadow-[0_26px_34px_rgba(0,0,0,.72)]" alt="" /> : null}
+          <div className="absolute bottom-9 left-9 right-9">
+            <div className="text-[23px] font-black uppercase tracking-[0.04em] text-white/72">{player?.agent?.displayName || "Agent"}</div>
+            <div className="text-[54px] font-black uppercase leading-none text-white">{player?.gameName || "Unknown"}</div>
+          </div>
+        </div>
+        <div className="absolute left-[585px] top-[230px] grid w-[610px] grid-cols-2 gap-5">
+          {tiles.map((tile, index) => <StatTile key={tile.label} label={tile.label} value={tile.value} tone={index === 1 ? "light" : "dark"} />)}
+        </div>
+        <div className="absolute right-[78px] bottom-[70px] w-[288px] text-right font-black uppercase text-white">
+          <div className="text-[14px] tracking-[0.22em] text-white/52">Map</div>
+          <div className="mt-1 text-[44px] leading-none">{mapName}</div>
+        </div>
+      </>
+    );
+  }
+
+  if (options.theme === "glitch") {
+    return (
+      <>
+        <div className="absolute left-[58px] top-[40px] -skew-x-6 text-white">
+          <div className="text-[18px] font-black uppercase tracking-[0.28em] text-fuchsia-200/70">{options.playerSubtitle}</div>
+          <div className="text-[82px] font-black uppercase leading-none drop-shadow-[4px_0_0_rgba(255,43,214,.48)]">{options.playerTitle}</div>
+        </div>
+        <div className="absolute right-[68px] top-[68px] -skew-x-6 border border-fuchsia-300/34 bg-[#2c073b]/82 px-10 py-5 text-right font-black uppercase text-white shadow-[-6px_0_rgba(0,255,255,.18)]">
+          <div className="text-[16px] tracking-[0.2em] text-fuchsia-100/66">{options.showTeam ? getTeamAlias(player, leftPanel, rightPanel) : mapName}</div>
+          <div className="text-[76px] leading-none">{playerTeam.score}</div>
+        </div>
+        <div className="absolute left-[105px] top-[220px] h-[600px] w-[400px] rotate-[-2deg] overflow-visible">
+          {options.showMap && mapAsset?.splash ? <img src={mapAsset.splash} className="absolute inset-0 h-full w-full object-cover opacity-28" alt="" /> : null}
+          <div className="absolute inset-0 border border-fuchsia-300/30 bg-black/28 shadow-[5px_0_rgba(0,255,255,.20)]" />
+          {options.showAgent && portrait ? <img src={portrait} className="absolute bottom-[-10px] left-[-86px] h-[640px] w-[560px] object-contain drop-shadow-[0_28px_34px_rgba(0,0,0,.78)]" alt="" /> : null}
+          <div className="absolute bottom-7 left-7 right-7 font-black uppercase">
+            <div className="text-[20px] text-fuchsia-100/72">{player?.agent?.displayName || "Agent"}</div>
+            <div className="text-[48px] leading-none text-white">{player?.gameName || "Unknown"}</div>
+          </div>
+        </div>
+        <div className="absolute left-[565px] top-[226px] grid w-[700px] grid-cols-2 gap-4 -skew-x-3">
+          {tiles.map((tile, index) => <StatTile key={tile.label} label={tile.label} value={tile.value} tone={index % 2 ? "accent" : "dark"} />)}
+        </div>
+        <div className="absolute right-[74px] bottom-[62px] -skew-x-6 text-right font-black uppercase text-white">
+          <div className="text-[15px] tracking-[0.22em] text-fuchsia-100/62">Map</div>
+          <div className="text-[52px] leading-none drop-shadow-[3px_0_0_rgba(255,43,214,.42)]">{mapName}</div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      <div className="absolute left-[78px] right-[78px] top-[54px] flex items-start justify-between">
+      <div className="riot-player-title absolute left-[78px] right-[78px] top-[54px] flex items-start justify-between">
         <div>
           <div className="text-[18px] font-black uppercase tracking-[0.2em] text-white/70">{options.playerSubtitle}</div>
           <div className="mt-1 text-[66px] font-black uppercase leading-none text-white">{options.playerTitle}</div>
         </div>
-        <div className="text-right text-white drop-shadow-[0_6px_18px_rgba(0,0,0,0.65)]">
-          <div className="text-[19px] font-black uppercase tracking-[0.18em] text-white/68">{options.showTeam ? getTeamAlias(player, leftPanel, rightPanel) : "Match"}</div>
-          <div className="mt-1 text-[58px] font-black leading-none" style={{ WebkitTextStroke: "1px rgba(255,255,255,0.28)" }}>{playerTeam.score}</div>
-        </div>
       </div>
-      <div className="absolute left-[92px] top-[230px] h-[560px] w-[430px] overflow-hidden bg-black/35">
+      <div className="riot-player-card absolute left-[92px] top-[230px] h-[560px] w-[430px] overflow-hidden bg-black/35">
         {options.showMap && mapAsset?.splash ? <img src={mapAsset.splash} className="absolute inset-0 h-full w-full object-cover opacity-28" alt="" /> : null}
         <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, transparent, ${playerTeam.color} 105%)` }} />
         {options.showAgent && portrait ? <img src={portrait} className="absolute bottom-[-10px] left-[-35px] h-[590px] w-[510px] object-contain drop-shadow-[0_24px_28px_rgba(0,0,0,0.75)]" alt="" /> : null}
@@ -597,17 +956,52 @@ const PlayerOverlay = ({
           <div className="truncate text-[52px] font-black uppercase leading-none text-white">{player?.gameName || "Unknown"}</div>
         </div>
       </div>
-      <div className="absolute left-[560px] top-[230px] w-[520px]">
+      <div className="riot-player-stats-grid absolute left-[560px] top-[230px] w-[520px]">
         <div className="grid grid-cols-2 gap-4">
           {tiles.map((tile, index) => <StatTile key={tile.label} label={tile.label} value={tile.value} tone={index === 1 ? "accent" : "dark"} />)}
         </div>
       </div>
-      <div className="absolute right-[92px] top-[230px] h-[560px] w-[360px] bg-black/38 p-8">
+      <div className="riot-context-panel absolute right-[92px] top-[230px] h-[560px] w-[360px] bg-black/60 backdrop-blur-sm p-8">
         <div className="text-[14px] font-black uppercase tracking-[0.18em] text-white/55">Match Context</div>
-        <div className="mt-8 space-y-5">
-          <StatTile label="Map" value={mapName} tone="light" />
-          <StatTile label={leftPanel.alias} value={String(leftPanel.score)} tone="dark" />
-          <StatTile label={rightPanel.alias} value={String(rightPanel.score)} tone="dark" />
+        <div className="mt-6 space-y-4">
+          {/* Map tile with actual image */}
+          <div className="riot-stat-tile relative min-h-[140px] overflow-hidden border border-white/20 text-white">
+            {mapAsset?.splash ? (
+              <img src={mapAsset.splash} className="absolute inset-0 h-full w-full object-cover" alt="" />
+            ) : null}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+            <div className="relative px-5 py-4">
+              <div className="text-[13px] font-black uppercase tracking-[0.18em] opacity-65">Map</div>
+              <div className="mt-2 truncate text-[40px] font-black uppercase leading-none drop-shadow-[0_4px_12px_rgba(0,0,0,0.9)]">{mapName}</div>
+            </div>
+          </div>
+          {/* Team tiles with logos */}
+          <div className="riot-stat-tile min-h-[94px] border border-white/20 bg-black/55 backdrop-blur-sm px-5 py-4 text-white">
+            <div className="text-[13px] font-black uppercase tracking-[0.18em] opacity-65">{leftPanel.alias}</div>
+            <div className="mt-2 flex items-center gap-4">
+              {leftPanel.logo ? (
+                <img src={leftPanel.logo} className="h-[42px] w-[42px] object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]" alt="" />
+              ) : (
+                <div className="grid h-[42px] w-[42px] place-items-center rounded bg-white/10 border border-white/20 text-[18px] font-black uppercase text-white/80" style={{ backgroundColor: leftPanel.color }}>
+                  {leftPanel.alias.slice(0, 2)}
+                </div>
+              )}
+              <div className="text-[40px] font-black uppercase leading-none" style={{ WebkitTextStroke: "1px rgba(255,255,255,0.34)" }}>{String(leftPanel.score)}</div>
+            </div>
+          </div>
+          <div className="riot-stat-tile min-h-[94px] border border-white/20 bg-black/55 backdrop-blur-sm px-5 py-4 text-white">
+            <div className="text-[13px] font-black uppercase tracking-[0.18em] opacity-65">{rightPanel.alias}</div>
+            <div className="mt-2 flex items-center gap-4">
+              {rightPanel.logo ? (
+                <img src={rightPanel.logo} className="h-[42px] w-[42px] object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]" alt="" />
+              ) : (
+                <div className="grid h-[42px] w-[42px] place-items-center rounded bg-white/10 border border-white/20 text-[18px] font-black uppercase text-white/80" style={{ backgroundColor: rightPanel.color }}>
+                  {rightPanel.alias.slice(0, 2)}
+                </div>
+              )}
+              <div className="text-[40px] font-black uppercase leading-none" style={{ WebkitTextStroke: "1px rgba(255,255,255,0.34)" }}>{String(rightPanel.score)}</div>
+            </div>
+          </div>
         </div>
       </div>
     </>
@@ -655,7 +1049,7 @@ const ComparePlayerCard = ({
 }) => {
   const portrait = player?.agent?.fullPortrait || player?.agent?.bustPortrait || player?.agent?.displayIcon;
   return (
-    <div className={`absolute top-[205px] h-[560px] w-[410px] overflow-visible text-white ${side === "left" ? "left-[84px]" : "right-[84px]"}`}>
+    <div className={`riot-compare-card absolute top-[205px] h-[560px] w-[410px] overflow-visible text-white ${side === "left" ? "left-[84px]" : "right-[84px]"}`}>
       <div
         className={`absolute top-0 inline-flex min-w-[150px] items-end gap-4 border border-white/15 bg-black/28 px-5 py-3 backdrop-blur-[1px] ${side === "left" ? "left-0" : "right-0 flex-row-reverse"}`}
         style={{ borderColor: panel.color }}
@@ -704,17 +1098,82 @@ const CompareOverlay = ({
     options.showFb ? ["First Bloods", formatNumber(leftPlayer?.firstBloods), formatNumber(rightPlayer?.firstBloods)] : null,
     options.showAbilityCasts ? ["Ability Casts", formatNumber(totalAbilityCasts(leftPlayer?.abilityCasts)), formatNumber(totalAbilityCasts(rightPlayer?.abilityCasts))] : null,
   ].filter((row): row is string[] => Boolean(row));
+  const leftPortrait = leftPlayer?.agent?.fullPortrait || leftPlayer?.agent?.bustPortrait || leftPlayer?.agent?.displayIcon;
+  const rightPortrait = rightPlayer?.agent?.fullPortrait || rightPlayer?.agent?.bustPortrait || rightPlayer?.agent?.displayIcon;
+
+  if (options.theme === "premium") {
+    return (
+      <>
+        <div className="absolute left-[78px] right-[78px] top-[42px] text-center font-black uppercase text-white">
+          <div className="text-[16px] tracking-[0.28em] text-white/58">{mapName}</div>
+          <div className="text-[76px] leading-none">Player Comparison</div>
+        </div>
+        <div className="absolute left-[88px] top-[218px] h-[560px] w-[420px] border border-white/16 bg-white/8 p-8 text-white">
+          <div className="text-[16px] font-black uppercase tracking-[0.18em] text-white/60">{leftTeam.alias}</div>
+          <div className="text-[62px] font-black leading-none">{leftTeam.score}</div>
+          {options.showAgents && leftPortrait ? (
+            <img src={leftPortrait} className="absolute bottom-[82px] left-[22px] h-[390px] w-[360px] object-contain drop-shadow-[0_22px_30px_rgba(0,0,0,.72)]" alt="" />
+          ) : null}
+          <div className="absolute bottom-8 left-8 right-8 font-black uppercase">
+            <div className="text-[20px] text-white/62">{leftPlayer?.agent?.displayName || "Agent"}</div>
+            <div className="text-[44px] leading-none">{leftPlayer?.gameName || "Unknown"}</div>
+          </div>
+        </div>
+        <div className="absolute right-[88px] top-[218px] h-[560px] w-[420px] border border-white/16 bg-white/8 p-8 text-right text-white">
+          <div className="text-[16px] font-black uppercase tracking-[0.18em] text-white/60">{rightTeam.alias}</div>
+          <div className="text-[62px] font-black leading-none">{rightTeam.score}</div>
+          {options.showAgents && rightPortrait ? (
+            <img src={rightPortrait} className="absolute bottom-[82px] right-[22px] h-[390px] w-[360px] object-contain drop-shadow-[0_22px_30px_rgba(0,0,0,.72)]" alt="" />
+          ) : null}
+          <div className="absolute bottom-8 left-8 right-8 font-black uppercase">
+            <div className="text-[20px] text-white/62">{rightPlayer?.agent?.displayName || "Agent"}</div>
+            <div className="text-[44px] leading-none">{rightPlayer?.gameName || "Unknown"}</div>
+          </div>
+        </div>
+        <div className="absolute left-[548px] top-[214px] w-[504px]">
+          <div className="mb-5 grid place-items-center">
+            <div className="border border-white/16 bg-white px-10 py-3 text-[44px] font-black leading-none text-[#170d32]">VS</div>
+          </div>
+          <div className="border-y border-white/18 bg-black/18 px-8 py-4">
+            {rows.map(([label, left, right]) => <CompareStatRow key={label} label={label} left={left} right={right} options={options} />)}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (options.theme === "glitch") {
+    return (
+      <>
+        <div className="absolute left-[60px] top-[42px] -skew-x-6 font-black uppercase text-white">
+          <div className="text-[16px] tracking-[0.28em] text-fuchsia-200/68">{mapName}</div>
+          <div className="text-[78px] leading-none drop-shadow-[4px_0_0_rgba(255,43,214,.46)]">Player Comparison</div>
+        </div>
+        <ComparePlayerCard player={leftPlayer} panel={leftTeam} side="left" showAgents={options.showAgents} />
+        <ComparePlayerCard player={rightPlayer} panel={rightTeam} side="right" showAgents={options.showAgents} />
+        <div className="absolute left-[518px] top-[165px] w-[565px] -skew-x-6 pb-[96px]">
+          <div className="mb-4 grid place-items-center">
+            <div className="grid h-[74px] w-[150px] place-items-center border border-fuchsia-200/34 bg-[#ff2bd6] text-[42px] font-black text-[#09000f] shadow-[5px_0_rgba(0,255,255,.24)]">VS</div>
+          </div>
+          <div className="bg-[#0b0311]/66 px-8 py-3 shadow-[5px_0_rgba(0,255,255,.16)]">
+            {rows.map(([label, left, right]) => <CompareStatRow key={label} label={label} left={left} right={right} options={options} />)}
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
-      <div className="absolute left-[78px] right-[78px] top-[54px] text-center">
+      <div className="riot-compare-title absolute left-[78px] right-[78px] top-[54px] text-center">
         <div className="text-[18px] font-black uppercase tracking-[0.2em] text-white/65">{mapName}</div>
         <div className="text-[66px] font-black uppercase leading-none text-white">Player Comparison</div>
       </div>
       <ComparePlayerCard player={leftPlayer} panel={leftTeam} side="left" showAgents={options.showAgents} />
       <ComparePlayerCard player={rightPlayer} panel={rightTeam} side="right" showAgents={options.showAgents} />
-      <div className="absolute left-[535px] top-[176px] w-[530px] pb-[34px]">
+      <div className="riot-compare-stats absolute left-[535px] top-[176px] w-[530px] pb-[46px]">
         <div className="mb-3 grid place-items-center">
-          <div className="grid h-[68px] w-[126px] place-items-center bg-white text-[38px] font-black text-[#271044]">VS</div>
+          <div className="riot-vs-box grid h-[68px] w-[126px] place-items-center bg-white text-[38px] font-black text-[#271044]">VS</div>
         </div>
         <div className="bg-black/30 px-8 py-2 backdrop-blur-[1px]">
           {rows.map(([label, left, right]) => <CompareStatRow key={label} label={label} left={left} right={right} options={options} />)}
@@ -820,7 +1279,7 @@ const RiotPostMatchOverlay = () => {
   return (
     <main className="grid h-dvh w-dvw place-items-center overflow-hidden bg-black">
       <section
-        className="relative origin-center overflow-hidden bg-black text-white"
+        className={`riot-stage riot-theme-${options.theme} relative origin-center overflow-hidden bg-black text-white`}
         style={{ width: STAGE_W, height: STAGE_H, transform: `scale(${scale})` }}
         aria-label="Riot OBS overlay"
       >
@@ -840,6 +1299,299 @@ const RiotPostMatchOverlay = () => {
             }
             @media (prefers-reduced-motion: reduce) {
               .riot-overlay-enter { animation: none !important; }
+            }
+            .riot-stage::before {
+              content: "";
+              position: absolute;
+              inset: 0;
+              pointer-events: none;
+              z-index: 2;
+            }
+            .riot-stage::after {
+              content: "";
+              position: absolute;
+              inset: 22px;
+              pointer-events: none;
+              z-index: 3;
+            }
+            .riot-overlay-enter {
+              z-index: 4;
+            }
+            .riot-team-header,
+            .riot-map-card,
+            .riot-logo-panel,
+            .riot-player-card,
+            .riot-context-panel {
+              position: absolute;
+            }
+            .riot-team-header {
+              box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), 0 18px 36px rgba(0,0,0,.28);
+            }
+            .riot-theme-tactical .riot-team-header {
+              clip-path: polygon(0 0, 96% 0, 100% 22%, 100% 100%, 4% 100%, 0 78%);
+              background-image: linear-gradient(135deg, rgba(255,255,255,.14), transparent 32%), repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 42px);
+              border: 1px solid rgba(125,249,255,.24);
+            }
+            .riot-theme-premium .riot-team-header {
+              clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+              background-image: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0));
+              border: 1px solid rgba(255,255,255,.16);
+              top: 46px !important;
+              width: 560px !important;
+              height: 112px !important;
+              padding-top: 17px !important;
+              padding-bottom: 17px !important;
+            }
+            .riot-theme-glitch .riot-team-header {
+              clip-path: polygon(0 0, 92% 0, 100% 18%, 100% 100%, 8% 100%, 0 82%);
+              background-image: repeating-linear-gradient(0deg, rgba(255,255,255,.11) 0 1px, transparent 1px 5px), linear-gradient(90deg, rgba(255,43,214,.20), transparent 55%);
+              border: 1px solid rgba(255,43,214,.38);
+              text-shadow: 2px 0 rgba(255,43,214,.55), -2px 0 rgba(0,255,255,.32);
+              top: 72px !important;
+              transform: skewX(-5deg);
+            }
+            .riot-theme-premium .riot-mvp-panel {
+              top: 184px !important;
+              width: 460px !important;
+            }
+            .riot-theme-premium .riot-mvp-left {
+              left: 96px !important;
+            }
+            .riot-theme-premium .riot-mvp-right {
+              right: 96px !important;
+            }
+            .riot-theme-premium .riot-center-stats {
+              left: 600px !important;
+              top: 215px !important;
+              width: 400px !important;
+            }
+            .riot-theme-glitch .riot-mvp-panel {
+              top: 214px !important;
+              transform: skewX(-3deg);
+            }
+            .riot-theme-glitch .riot-mvp-left {
+              left: 52px !important;
+            }
+            .riot-theme-glitch .riot-mvp-right {
+              right: 52px !important;
+            }
+            .riot-theme-glitch .riot-center-stats {
+              left: 614px !important;
+              top: 220px !important;
+              width: 372px !important;
+              transform: skewX(-4deg);
+            }
+            .riot-theme-tactical::before {
+              background: radial-gradient(circle at 50% 45%, rgba(0,255,255,.12), transparent 32%), linear-gradient(90deg, rgba(0,0,0,.66), transparent 43%, transparent 57%, rgba(0,0,0,.66));
+            }
+            .riot-theme-premium::before {
+              background: radial-gradient(circle at 50% 45%, rgba(255,255,255,.09), transparent 34%), linear-gradient(90deg, rgba(0,0,0,.56), transparent 48%, rgba(0,0,0,.56));
+            }
+            .riot-theme-glitch::before {
+              background: radial-gradient(circle at 50% 45%, rgba(255,43,214,.18), transparent 34%), repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 5px), linear-gradient(90deg, rgba(0,0,0,.70), transparent 44%, transparent 56%, rgba(0,0,0,.70));
+            }
+            .riot-theme-tactical::after {
+              border: 1px solid rgba(125,249,255,.24);
+              box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+              clip-path: polygon(0 0, 100% 0, 100% 86%, 96% 100%, 0 100%);
+            }
+            .riot-theme-premium::after {
+              border-top: 1px solid rgba(255,255,255,.36);
+              border-bottom: 1px solid rgba(255,255,255,.18);
+            }
+            .riot-theme-glitch::after {
+              border: 1px solid rgba(255,43,214,.34);
+              box-shadow: 3px 0 rgba(0,255,255,.18), -3px 0 rgba(255,43,214,.2);
+            }
+            .riot-theme-tactical .riot-player-row,
+            .riot-theme-tactical .riot-map-card,
+            .riot-theme-tactical .riot-logo-panel,
+            .riot-theme-tactical .riot-player-card,
+            .riot-theme-tactical .riot-context-panel,
+            .riot-theme-tactical .riot-stat-tile {
+              clip-path: polygon(0 0, 97% 0, 100% 16%, 100% 100%, 3% 100%, 0 84%);
+              box-shadow: inset 0 0 0 1px rgba(125,249,255,.14), 0 14px 28px rgba(0,0,0,.26);
+            }
+            .riot-theme-premium .riot-player-row,
+            .riot-theme-premium .riot-map-card,
+            .riot-theme-premium .riot-logo-panel,
+            .riot-theme-premium .riot-player-card,
+            .riot-theme-premium .riot-context-panel,
+            .riot-theme-premium .riot-stat-tile {
+              border-color: rgba(255,255,255,.20);
+              box-shadow: inset 0 0 0 1px rgba(255,255,255,.07);
+            }
+            .riot-theme-premium .riot-player-row {
+              height: 64px !important;
+              border-color: rgba(24,13,53,.18);
+            }
+            .riot-theme-premium .riot-roster {
+              top: 500px !important;
+              width: 420px !important;
+            }
+            .riot-theme-premium .riot-roster-left {
+              left: 336px !important;
+            }
+            .riot-theme-premium .riot-roster-right {
+              right: 336px !important;
+            }
+            .riot-theme-premium .riot-map-card {
+              left: 92px !important;
+              top: 500px !important;
+              width: 224px !important;
+              height: 320px !important;
+            }
+            .riot-theme-premium .riot-center-labels > div {
+              height: 64px !important;
+            }
+            .riot-theme-premium .riot-center-labels {
+              top: 500px !important;
+            }
+            .riot-theme-premium .riot-player-title {
+              top: 42px !important;
+            }
+            .riot-theme-premium .riot-player-card {
+              left: 72px !important;
+              top: 198px !important;
+              width: 500px !important;
+              height: 612px !important;
+              background: rgba(255,255,255,.09) !important;
+            }
+            .riot-theme-premium .riot-player-stats-grid {
+              left: 610px !important;
+              top: 226px !important;
+              width: 565px !important;
+            }
+            .riot-theme-premium .riot-context-panel {
+              right: 78px !important;
+              top: 250px !important;
+              width: 300px !important;
+              height: auto !important;
+              background: transparent !important;
+              padding: 0 !important;
+            }
+            .riot-theme-premium .riot-compare-title {
+              top: 36px !important;
+            }
+            .riot-theme-premium .riot-compare-card {
+              top: 220px !important;
+              width: 440px !important;
+              height: 535px !important;
+            }
+            .riot-theme-premium .riot-compare-stats {
+              left: 524px !important;
+              top: 185px !important;
+              width: 552px !important;
+              padding-bottom: 76px !important;
+            }
+            .riot-theme-glitch .riot-player-row,
+            .riot-theme-glitch .riot-map-card,
+            .riot-theme-glitch .riot-logo-panel,
+            .riot-theme-glitch .riot-player-card,
+            .riot-theme-glitch .riot-context-panel,
+            .riot-theme-glitch .riot-stat-tile {
+              clip-path: polygon(0 0, 94% 0, 100% 14%, 100% 100%, 6% 100%, 0 86%);
+              box-shadow: inset 0 0 0 1px rgba(255,43,214,.25), 3px 0 rgba(0,255,255,.18);
+            }
+            .riot-theme-glitch .riot-player-row:nth-child(odd) {
+              transform: translateX(8px) skewX(-3deg);
+            }
+            .riot-theme-glitch .riot-player-row:nth-child(even) {
+              transform: translateX(-6px) skewX(-3deg);
+            }
+            .riot-theme-glitch .riot-roster {
+              top: 505px !important;
+              width: 405px !important;
+            }
+            .riot-theme-glitch .riot-roster-left {
+              left: 342px !important;
+            }
+            .riot-theme-glitch .riot-roster-right {
+              right: 342px !important;
+            }
+            .riot-theme-glitch .riot-map-card {
+              transform: rotate(-1.5deg);
+              top: 505px !important;
+              height: 340px !important;
+            }
+            .riot-theme-glitch .riot-center-labels {
+              top: 505px !important;
+            }
+            .riot-theme-glitch .riot-player-title {
+              top: 44px !important;
+              transform: skewX(-4deg);
+            }
+            .riot-theme-glitch .riot-player-card {
+              left: 70px !important;
+              top: 218px !important;
+              width: 455px !important;
+              height: 585px !important;
+              transform: rotate(-1.5deg) skewX(-2deg);
+            }
+            .riot-theme-glitch .riot-player-stats-grid {
+              left: 572px !important;
+              top: 212px !important;
+              width: 570px !important;
+              transform: skewX(-3deg);
+            }
+            .riot-theme-glitch .riot-context-panel {
+              right: 70px !important;
+              top: 236px !important;
+              width: 332px !important;
+              height: auto !important;
+              transform: skewX(-3deg);
+            }
+            .riot-theme-glitch .riot-compare-title {
+              top: 44px !important;
+              transform: skewX(-4deg);
+            }
+            .riot-theme-glitch .riot-compare-card {
+              top: 210px !important;
+              transform: skewX(-3deg);
+            }
+            .riot-theme-glitch .riot-compare-stats {
+              left: 520px !important;
+              top: 168px !important;
+              width: 560px !important;
+              padding-bottom: 88px !important;
+              transform: skewX(-3deg);
+            }
+            .riot-theme-glitch .riot-center-labels > div:nth-child(odd) {
+              transform: translateX(-4px) skewX(-3deg);
+            }
+            .riot-theme-glitch .riot-center-labels > div:nth-child(even) {
+              transform: translateX(4px) skewX(-3deg);
+            }
+            .riot-theme-tactical .riot-stat-tile {
+              background: linear-gradient(135deg, rgba(0,255,255,.10), rgba(0,0,0,.55));
+            }
+            .riot-theme-premium .riot-stat-tile {
+              background: rgba(255,255,255,.08);
+            }
+            .riot-theme-glitch .riot-stat-tile {
+              background: repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 1px, transparent 1px 5px), rgba(255,43,214,.12);
+            }
+            .riot-theme-tactical .riot-center-labels > div {
+              background: rgba(3, 13, 23, .72);
+              border-color: rgba(125,249,255,.22);
+            }
+            .riot-theme-premium .riot-center-labels > div {
+              background: rgba(255,255,255,.10);
+            }
+            .riot-theme-glitch .riot-center-labels > div {
+              background: rgba(28, 3, 39, .82);
+              border-color: rgba(255,43,214,.22);
+              color: rgba(255,255,255,.82);
+            }
+            .riot-theme-tactical .riot-vs-box {
+              clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+              box-shadow: 0 0 26px rgba(125,249,255,.18);
+            }
+            .riot-theme-glitch .riot-vs-box {
+              background: #ff2bd6;
+              color: #09000f;
+              text-shadow: 2px 0 rgba(0,255,255,.42);
+              clip-path: polygon(0 0, 88% 0, 100% 24%, 100% 100%, 12% 100%, 0 76%);
             }
           `}
         </style>

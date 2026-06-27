@@ -23,6 +23,8 @@ export interface MatchGameStatisticsPanelProps {
   team2Name: string;
   team1Id?: string;
   team2Id?: string;
+  team1Logo?: string;
+  team2Logo?: string;
   team1Score: number;
   team2Score: number;
   mapName?: string;
@@ -44,6 +46,8 @@ function buildObsOverlayUrl(
     region?: string | null;
     team1Name: string;
     team2Name: string;
+    team1Logo?: string;
+    team2Logo?: string;
     mapName?: string;
     playerPuuid?: string;
   },
@@ -89,6 +93,8 @@ function buildObsOverlayUrl(
     showTeamContext: '1',
   });
 
+  if (options.team1Logo) params.set('teamALogo', options.team1Logo);
+  if (options.team2Logo) params.set('teamBLogo', options.team2Logo);
   if (options.mapName) params.set('mapName', options.mapName);
   if (mode === 'player' && options.playerPuuid) {
     params.set('playerPuuid', options.playerPuuid);
@@ -149,6 +155,8 @@ export const MatchGameStatisticsPanel: React.FC<MatchGameStatisticsPanelProps> =
   team2Name,
   team1Id,
   team2Id,
+  team1Logo,
+  team2Logo,
   team1Score,
   team2Score,
   mapName,
@@ -198,9 +206,11 @@ export const MatchGameStatisticsPanel: React.FC<MatchGameStatisticsPanelProps> =
       region,
       team1Name,
       team2Name,
+      team1Logo,
+      team2Logo,
       mapName,
     };
-  }, [enriched, mapName, region, team1Name, team2Name]);
+  }, [enriched, mapName, region, team1Logo, team1Name, team2Logo, team2Name]);
 
   const downloadOverlay = async (key: string, url: string, filename: string) => {
     if (!url || exportingKey) return;

@@ -437,31 +437,31 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
     }
 
     const renderScoreboardTable = (players: EnrichedRiotMatchData['players']) => (
-        <div className="overflow-x-auto">
-            <table className="w-full border-separate border-spacing-y-1 text-left text-[11px]">
+        <div className="overflow-x-auto rounded-lg border border-white/[0.06] bg-[#0d1117]">
+            <table className="w-full border-collapse text-left text-[11px]">
                 <thead>
-                    <tr className="font-black uppercase tracking-tighter text-zinc-500">
-                        <th className="pb-2 pl-4">Player</th>
-                        <th className="pb-2 text-left">Rank</th>
-                        <th className="pb-2 text-center">ACS</th>
-                        <th className="pb-2 text-center">K</th>
-                        <th className="pb-2 text-center">D</th>
-                        <th className="pb-2 text-center">A</th>
-                        <th className="pb-2 text-center">+/-</th>
-                        <th className="pb-2 text-center">K/D</th>
-                        <th className="pb-2 text-center">HS%</th>
-                        <th className="pb-2 text-center">ADR</th>
-                        <th className="pb-2 text-center">Util</th>
-                        <th className="pb-2 text-center">KAST</th>
-                        <th className="pb-2 text-center">FK</th>
-                        <th className="pb-2 text-center">FD</th>
+                    <tr className="border-b border-white/[0.08] bg-[#161b22]">
+                        <th className="px-4 py-2.5 font-black uppercase tracking-tighter text-zinc-500">Player</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-left font-black uppercase tracking-tighter text-zinc-500">Rank</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">ACS</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">K</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">D</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">A</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">+/-</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">K/D</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">HS%</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">ADR</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">Util</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">KAST</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">FK</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">FD</th>
                     </tr>
                 </thead>
                 <tbody>
                     {players
                         .slice()
                         .sort((a, b) => b.stats.score - a.stats.score)
-                        .map((p) => {
+                        .map((p, idx) => {
                             const agent = allAgents[p.characterId?.toLowerCase() ?? ''];
                             const rank = competitiveTiers[p.competitiveTier ?? 0];
                             const pAnalytics = analytics?.playerStatsMap[p.puuid];
@@ -481,18 +481,23 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                             const diffColor = killDiff > 0 ? 'text-emerald-400' : (killDiff < 0 ? 'text-rose-400' : 'text-zinc-500');
                             const kdColor = Number(kdRatio) >= 1 ? 'text-emerald-400' : 'text-rose-400';
 
+                            const isHighlighted = p.puuid === targetPuuid;
+                            const isEven = idx % 2 === 0;
+
                             return (
                                 <tr
                                     key={p.puuid}
-                                    className={`group/row transition-all duration-300 ${
-                                        p.puuid === targetPuuid
-                                            ? 'bg-zinc-800/80 shadow-lg ring-1 ring-white/10'
-                                            : 'hover:bg-zinc-900/40'
+                                    className={`group/row border-b border-white/[0.04] transition-colors duration-200 ${
+                                        isHighlighted
+                                            ? 'bg-white/[0.07] shadow-[inset_2px_0_0_0_theme(colors.white/0.4)]'
+                                            : isEven
+                                                ? 'bg-[#0d1117] hover:bg-white/[0.03]'
+                                                : 'bg-[#111820] hover:bg-white/[0.03]'
                                     }`}
                                 >
-                                    <td className="rounded-l-lg py-2 pl-4">
+                                    <td className="px-4 py-2.5">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 overflow-hidden rounded border border-white/5 bg-black/40">
+                                            <div className="h-8 w-8 overflow-hidden rounded border border-white/[0.08] bg-black/40">
                                                 {agent?.displayIcon ? (
                                                     <img src={agent.displayIcon} loading="lazy" className="h-full w-full" alt="" />
                                                 ) : null}
@@ -505,7 +510,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="py-2">
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5">
                                         <div className="flex min-w-[96px] items-center gap-2">
                                             {rank?.smallIcon || rank?.largeIcon ? (
                                                 <img
@@ -522,28 +527,28 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="text-center font-bold text-zinc-300">{acs}</td>
-                                    <td className="text-center font-bold text-white">{p.stats.kills}</td>
-                                    <td className="text-center text-zinc-400">{p.stats.deaths}</td>
-                                    <td className="text-center text-zinc-400">{p.stats.assists}</td>
-                                    <td className={`text-center font-bold ${diffColor}`}>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-bold text-zinc-300">{acs}</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-bold text-white">{p.stats.kills}</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center text-zinc-400">{p.stats.deaths}</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center text-zinc-400">{p.stats.assists}</td>
+                                    <td className={`border-l border-white/[0.06] px-3 py-2.5 text-center font-bold ${diffColor}`}>
                                         {killDiff > 0 ? `+${killDiff}` : killDiff}
                                     </td>
-                                    <td className={`text-center font-bold ${kdColor}`}>{kdRatio}</td>
-                                    <td className="text-center font-mono text-white/90">{formatStat(hsPerc)}%</td>
-                                    <td className="text-center text-zinc-300">{adr}</td>
-                                    <td className="text-center text-zinc-400">
+                                    <td className={`border-l border-white/[0.06] px-3 py-2.5 text-center font-bold ${kdColor}`}>{kdRatio}</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-mono text-white/90">{formatStat(hsPerc)}%</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center text-zinc-300">{adr}</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center text-zinc-400">
                                         {formatAbilityCasts(enriched?.abilityCasts ?? p.stats.abilityCasts)}
                                     </td>
-                                    <td className="text-center font-mono italic text-zinc-400">
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-mono italic text-zinc-400">
                                         {analytics
                                             ? `${Math.round((pAnalytics?.kastCount ?? 0) / roundCount * 100)}%`
                                             : '-'}
                                     </td>
-                                    <td className="text-center font-bold text-emerald-500">
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-bold text-emerald-500">
                                         {enriched?.firstBloods ?? pAnalytics?.fb ?? 0}
                                     </td>
-                                    <td className="text-center font-bold text-rose-500">{pAnalytics?.fd ?? 0}</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-bold text-rose-500">{pAnalytics?.fd ?? 0}</td>
                                 </tr>
                             );
                         })}
