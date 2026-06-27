@@ -3,6 +3,9 @@
  * 
  * Converts graph engine data (BracketNode[]) to legacy BracketMatch[] format
  * for use with the existing BracketVisualization component.
+ * 
+ * Includes structural comparison to prevent unnecessary re-renders when
+ * the underlying data hasn't actually changed.
  */
 
 import { BracketNode, BracketEdge } from '@/types/bracket-graph';
@@ -13,6 +16,36 @@ interface Team {
     name: string;
     logo_url?: string | null;
     seed?: number | null;
+}
+
+// Cache for structural comparison
+let lastNodesHash: string | null = null;
+let lastEdgesHash: string | null = null;
+let lastTeamsMapHash: string | null = null;
+let cachedResult: BracketMatch[] | null = null;
+
+/**
+ * Creates a hash for structural comparison of nodes
+ */
+function hashNodes(nodes: BracketNode[]): string {
+    return nodes.map(n => 
+        `${n.id}:${n.status}:${n.team1_id}:${n.team2_id}:${n.winner_id}:${n.team1_score}:${n.team2_score}:${n.party_code}`
+    ).join('|');
+}
+
+/**
+ * Creates a hash for structural comparison of edges
+ */
+function hashEdges(edges: BracketEdge[]): string {
+    return edges.map(e => `${e.source_match_id}:${e.target_match_id}:${e.type}`).join('|');
+}
+
+/**
+ * Creates a hash for structural comparison of teams map
+ */
+function hashTeamsMap(teamsMap: Map<string, Team>): string {
+    const entries = Array.from(teamsMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return entries.map(([id, t]) => `${id}:${t.name}:${t.logo_url}`).join('|');
 }
 
 /**
@@ -62,6 +95,9 @@ function resolveSeed(node: BracketNode, slot: 1 | 2): number {
 /**
  * Adapts graph engine BracketNode data to legacy BracketMatch format.
  * 
+ * Uses structural comparison to return cached result if data hasn't changed,
+ * preventing unnecessary re-renders in React components.
+ * 
  * @param nodes - Array of BracketNode from graph engine
  * @param edges - Array of BracketEdge for advancement relationships
  * @param teamsMap - Map of team_id to Team object for looking up team details
@@ -72,7 +108,27 @@ export function adaptGraphToBracketMatches(
     edges: BracketEdge[],
     teamsMap: Map<string, Team>
 ): BracketMatch[] {
-    return nodes.map(node => {
+    // Check if we can return cached result
+    const nodesHash = hashNodes(nodes);
+    const edgesHash = hashEdges(edges);
+    const teamsHash = hashTeamsMap(teamsMap);
+    
+    if (
+        cachedResult !== null &&
+        nodesHash === lastNodesHash &&
+        edgesHash === lastEdgesHash &&
+        teamsHash === lastTeamsMapHash
+    ) {
+        return cachedResult;
+    }
+    
+    // Update cache hashes
+    lastNodesHash = nodesHash;
+    lastEdgesHash = edgesHash;
+    lastTeamsMapHash = teamsHash;
+    
+    // Compute new result
+    const result = nodes.map(node => {
         // Look up team details (Map takes precedence as it might be fresher, but fallback to eager loaded data)
         const mapTeam1 = node.team1_id ? teamsMap.get(node.team1_id) : undefined;
         const mapTeam2 = node.team2_id ? teamsMap.get(node.team2_id) : undefined;
@@ -128,6 +184,10 @@ export function adaptGraphToBracketMatches(
 
         return bracketMatch;
     });
+    
+    // Cache and return result
+    cachedResult = result;
+    return result;
 }
 
 /**

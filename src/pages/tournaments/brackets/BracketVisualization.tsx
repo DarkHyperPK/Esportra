@@ -8,7 +8,7 @@
  * CARD HEIGHT: Fixed at 200px to prevent overlapping
  */
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useDeferredValue, startTransition, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check,
   Trophy, Swords, Gamepad2, Network, List
@@ -33,20 +33,8 @@ import { isMatchTooEarlyForLive } from '@/lib/timeUtils';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 import { useBracketWheelScroll } from '@/hooks/useBracketWheelScroll';
 import { gameHasMapVeto } from '@/utils/gameFeatures';
-
-// =============================================================================
-// LAYOUT CONSTANTS - THESE MUST MATCH ACTUAL RENDERED CARD SIZE
-// =============================================================================
-const CARD_WIDTH = 320;
-const CARD_HEIGHT = 180;  // Increased for better layout
-const ROUND_GAP = 92;     // Horizontal gap between rounds
-const MATCH_GAP = 8;      // Vertical gap between first-round matches
-const LEFT_PADDING = 50;  // Padding for headings
-
-// Spacing Constants
-const HEADING_HEIGHT = 40;
-const HEADING_MARGIN = 32; // Space between heading and cards
-const BRACKET_SPACING = 64; // Space between Winners bottom and Losers heading
+import { useBracketLayout, CARD_WIDTH, CARD_HEIGHT, ROUND_GAP, MATCH_GAP, LEFT_PADDING, HEADING_HEIGHT, HEADING_MARGIN, BRACKET_SPACING } from '@/hooks/useBracketLayout';
+import { useViewportCulling } from '@/hooks/useViewportCulling';
 
 export interface BracketVisualizationProps {
   matches?: BracketMatch[];
@@ -68,6 +56,7 @@ export interface BracketVisualizationProps {
 import { MatchCard } from './MatchCard';
 import { BracketSidebarFilter, type FilterState } from '@/components/bracket/BracketSidebarFilter';
 import { BracketExporter } from '@/components/bracket/BracketExporter';
+import { VirtualizedMatchesList } from '@/components/bracket/VirtualizedMatchesList';
 import { Download } from 'lucide-react';
 import { GroupStageView } from '@/components/bracket/GroupStageView';
 import { SwissView } from '@/components/bracket/SwissView';
@@ -267,15 +256,28 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   const [partyCodeMatch, setPartyCodeMatch] = useState<BracketMatch | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterState>({ type: 'all' });
-  const [viewMode, setViewMode] = useState<'bracket' | 'matches'>('bracket');
+  const [viewMode, setViewModeState] = useState<'bracket' | 'matches'>('bracket');
+  const setViewMode = useCallback((mode: 'bracket' | 'matches') => {
+    startTransition(() => {
+      setViewModeState(mode);
+    });
+  }, []);
+  
   const [isProcessing, setIsProcessing] = useState(false);
   const [mapVetoOpen, setMapVetoOpen] = useState(false);
   const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
+  
+  // Bracket container ref for viewport culling
+  const bracketContainerRef = useRef<HTMLDivElement>(null);
 
   const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
   const [resultsDialogMatch, setResultsDialogMatch] = useState<BracketMatch | null>(null);
   const bracketScroll = useBracketWheelScroll<HTMLDivElement>();
 
+  const handleViewResults = useCallback((m: BracketMatch) => {
+    setResultsDialogMatch(m);
+    setResultsDialogOpen(true);
+  }, []);
 
 
   // Categorize matches
@@ -305,141 +307,27 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     };
   }, [matches]);
 
-
-
-  // =============================================================================
-  // GRAPH LAYOUT (Using coordinates from Graph Engine)
-  // =============================================================================
-
-  // =============================================================================
-  // AUTO-LAYOUT ALGORITHM (Client-Side for Perfect Symmetry)
-  // =============================================================================
-  // =============================================================================
-  // AUTO-LAYOUT ALGORITHM (Client-Side for Perfect Symmetry)
-  // =============================================================================
-  const matchPositions = useMemo(() => {
-    const map = new Map<string, { x: number; y: number }>();
-
-    if (matches.length === 0) return map;
-
-    // 1. Group by Round and Bracket Side
-    const rounds: Record<string, Record<number, BracketMatch[]>> = {
-      winners: {},
-      losers: {},
-      final: {}
-    };
-
-    matches.forEach(m => {
-      const side = m.bracketSide || 'winners';
-      if (!rounds[side][m.round]) rounds[side][m.round] = [];
-      rounds[side][m.round].push(m);
-    });
-
-    // Sort matches in each round by matchNumber
-    Object.keys(rounds).forEach(side => {
-      Object.keys(rounds[side]).forEach(r => {
-        rounds[side][Number(r)].sort((a, b) => a.matchNumber - b.matchNumber);
-      });
-    });
-
-    // 2. Calculate Positions for Winners Bracket (Slot-Based)
-    const wRounds = Object.keys(rounds.winners).map(Number).sort((a, b) => a - b);
-
-    // We need to track the "virtual slot" of each match to calculate parents
-    const matchSlots = new Map<string, number>();
-
-    wRounds.forEach((round, rIdx) => {
-      const roundMatches = rounds.winners[round];
-
-      roundMatches.forEach((m, idx) => {
-        const id = String(m.id);
-        const rawId = getRawId(id);
-
-        let slot = 0;
-
-        if (rIdx === 0) {
-          // Round 1: Assign sequential slots
-          slot = idx;
-        } else {
-          // Subsequent Rounds: Center between children
-
-          // Find matches in previous round where target_match_id == this match id
-          const children = graphData?.edges?.filter(e =>
-            String(e.target_match_id) === rawId || String(e.target_match_id) === id
-          ).map(e => String(e.source_match_id)) || [];
-
-          const childSlots = children.map(cId => matchSlots.get(cId)).filter(s => s !== undefined);
-
-          if (childSlots.length > 0) {
-            const min = Math.min(...childSlots as number[]);
-            const max = Math.max(...childSlots as number[]);
-            slot = (min + max) / 2;
-          } else {
-            // Fallback
-            slot = idx * Math.pow(2, rIdx);
-          }
+  // Auto-select first round when switching to matches view with 'All' filter
+  // This prevents rendering 500+ matches at once
+  useEffect(() => {
+    if (viewMode === 'matches' && activeFilter.type === 'all') {
+      const winnersRoundNumbers = Object.keys(winnersRounds).map(Number);
+      if (winnersRoundNumbers.length > 0) {
+        const firstWinnersRound = Math.min(...winnersRoundNumbers);
+        if (Number.isFinite(firstWinnersRound)) {
+          startTransition(() => {
+            setActiveFilter({ type: 'winners', round: firstWinnersRound });
+          });
         }
-
-        matchSlots.set(id, slot);
-        matchSlots.set(rawId, slot);
-
-        // Use rIdx (0-based index) for X positioning to align with heading
-        const x = LEFT_PADDING + (rIdx * (CARD_WIDTH + ROUND_GAP));
-        // Matches start below heading
-        const y = HEADING_HEIGHT + HEADING_MARGIN + (slot * (CARD_HEIGHT + MATCH_GAP));
-
-        map.set(id, { x, y });
-        map.set(rawId, { x, y });
-      });
-    });
-
-    // Process Losers Bracket (Stack below)
-    // Find max Y of winners bracket
-    const maxWinnersY = Math.max(...Array.from(map.values()).map(p => p.y + CARD_HEIGHT), 0);
-
-    // Losers Heading Position (calculated for render)
-    const losersHeadingY = maxWinnersY + BRACKET_SPACING;
-
-    // Losers Cards Start Y
-    const losersStartY = losersHeadingY + HEADING_HEIGHT + HEADING_MARGIN;
-
-    const lRounds = Object.keys(rounds.losers).map(Number).sort((a, b) => a - b);
-
-    lRounds.forEach((round, rIdx) => {
-      rounds.losers[round].forEach((m, idx) => {
-        const id = String(m.id);
-        const rawId = getRawId(id);
-        // Use rIdx for X positioning to align with winners bracket
-        const x = LEFT_PADDING + (rIdx * (CARD_WIDTH + ROUND_GAP));
-        const y = losersStartY + (idx * (CARD_HEIGHT + MATCH_GAP));
-        map.set(id, { x, y });
-        map.set(rawId, { x, y });
-      });
-    });
-
-    // Finals - position after last winners round
-    const finalX = LEFT_PADDING + (wRounds.length * (CARD_WIDTH + ROUND_GAP));
-    const lastWinnerMatch = rounds.winners[wRounds[wRounds.length - 1]]?.[0];
-    let finalY = 100;
-    if (lastWinnerMatch) {
-      const p = map.get(String(lastWinnerMatch.id));
-      if (p) finalY = p.y;
+      }
     }
+  }, [viewMode, winnersRounds]);
 
-    const fRounds = Object.keys(rounds.final).map(Number).sort((a, b) => a - b);
-    fRounds.forEach((r, rIdx) => {
-      rounds.final[r].forEach((m, i) => {
-        const id = String(m.id);
-        const rawId = getRawId(id);
-        // Use rIdx for X positioning to separate rounds (e.g. GF vs Reset)
-        const x = finalX + (rIdx * (CARD_WIDTH + ROUND_GAP)) + (i * (CARD_WIDTH + 50));
-        map.set(id, { x, y: finalY });
-        map.set(rawId, { x, y: finalY });
-      });
-    });
-
-    return map;
-  }, [matches, graphData?.edges]);
+  // Use the extracted layout hook for position calculations
+  const { positions: matchPositions, totalWidth, totalHeight, winnersBottomY } = useBracketLayout({
+    matches,
+    edges: graphData?.edges,
+  });
 
   // Calculate X offset for filtering
   const filterXOffset = useMemo(() => {
@@ -509,28 +397,40 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     return { positions, height: listHeight };
   }, [activeFilter, matches]);
 
-  // Calculate canvas size based on max X/Y
-  const { totalWidth, totalHeight, winnersBottomY } = useMemo(() => {
-    let maxX = 0;
-    let maxY = 0;
-    let maxWinnerY = 0;
+  // Memoize SVG connector paths to prevent re-computation on expandedMatch changes
+  const connectorPaths = useMemo(() => {
+    return matches.map(match => {
+      if (!match.nextMatchId) return null;
+      const sourcePos = matchPositions.get(String(match.id)) || matchPositions.get(getRawId(match.id));
+      const targetPos = matchPositions.get(String(match.nextMatchId)) || matchPositions.get(getRawId(match.nextMatchId));
+      if (!sourcePos || !targetPos) return null;
 
-    matches.forEach(m => {
-      const pos = matchPositions.get(String(m.id));
-      if (pos) {
-        maxX = Math.max(maxX, pos.x + CARD_WIDTH);
-        maxY = Math.max(maxY, pos.y + CARD_HEIGHT);
-        if (m.bracketSide === 'winners') {
-          maxWinnerY = Math.max(maxWinnerY, pos.y + CARD_HEIGHT);
-        }
-      }
-    });
-    return {
-      totalWidth: Math.max(maxX + 400, 1600), // Increased container size
-      totalHeight: Math.max(maxY + 400, 1000),
-      winnersBottomY: maxWinnerY
-    };
+      const connectorGap = Math.min(18, Math.max(12, ROUND_GAP * 0.16));
+      const connectorInset = Math.min(36, Math.max(18, (ROUND_GAP - connectorGap * 2) * 0.45));
+      const startX = sourcePos.x + CARD_WIDTH + connectorGap;
+      const startY = sourcePos.y + CARD_HEIGHT / 2;
+      const endX = targetPos.x - connectorGap;
+      const endY = targetPos.y + CARD_HEIGHT / 2;
+      const midX = Math.max(startX + 8, Math.min(startX + connectorInset, endX - 8));
+
+      return {
+        key: `edge-${match.id}`,
+        d: `M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`
+      };
+    }).filter(Boolean) as { key: string; d: string }[];
   }, [matches, matchPositions]);
+
+  // Use viewport culling hook for large brackets
+  const { visibleItems: visibleMatches, handleScroll: handleBracketScroll } = useViewportCulling(
+    matches,
+    bracketContainerRef,
+    {
+      positions: matchPositions,
+      itemWidth: CARD_WIDTH,
+      itemHeight: CARD_HEIGHT,
+      buffer: 400,
+    }
+  );
 
   // Handlers
   const toggleExpand = useCallback((id: string) => setExpandedMatch(p => p === id ? null : id), []);
@@ -691,6 +591,8 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
     }
   }, [toast, queryClient, versionId]);
 
+  const disableGlass = matches.length > 64;
+
   const renderMatchCard = useCallback((match: BracketMatch, x: number | undefined, y: number | undefined, label: string) => (
     <MatchCard
       key={match.id}
@@ -714,12 +616,10 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       proofs={proofs?.[getRawId(match.id)]}
       onByeAdvance={onByeAdvance}
       automatedStatus={(match as any).automated_report_status}
-      onViewResults={(m) => {
-        setResultsDialogMatch(m);
-        setResultsDialogOpen(true);
-      }}
+      disableGlass={disableGlass}
+      onViewResults={handleViewResults}
     />
-  ), [expandedMatch, isOrganizer, isProcessing, versionId, tournamentId, handleScoreChange, toggleExpand, openGoLive, canUseMapVeto, openMapVeto, openPartyCode, saveScore, proofs, onByeAdvance, tournamentSlug, openMatchRoom]);
+  ), [expandedMatch, isOrganizer, isProcessing, versionId, tournamentId, handleScoreChange, toggleExpand, openGoLive, canUseMapVeto, openMapVeto, openPartyCode, saveScore, proofs, onByeAdvance, tournamentSlug, openMatchRoom, disableGlass, handleViewResults]);
 
   const filteredMatchesForList = useMemo(() => {
     if (activeFilter.type === 'all') return matches;
@@ -874,35 +774,13 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
         {renderViewToggle()}
       </div>
       {viewMode === 'matches' ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-950/30">
+        <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950/30">
           {renderRoundTabs()}
-          <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-4" data-lenis-prevent>
-          <div className="space-y-3">
-            {matchListGroups.map(([group, groupMatches]) => (
-              <section key={group} className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
-                <div className="mb-2.5 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-white">{group}</h3>
-                  <span className="text-xs text-zinc-500">{groupMatches.length} match{groupMatches.length === 1 ? '' : 'es'}</span>
-                </div>
-                <div
-                  className="grid justify-start gap-2.5"
-                  style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 320px))' }}
-                >
-                  {groupMatches.map((match) => (
-                    <div key={match.id} className="min-w-0">
-                      {renderMatchCard(match, undefined, undefined, getMatchLabel(match))}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ))}
-            {matchListGroups.length === 0 && (
-              <div className="rounded-xl border border-dashed border-white/10 p-12 text-center text-sm text-zinc-500">
-                No matches match this filter.
-              </div>
-            )}
-          </div>
-          </div>
+          <VirtualizedMatchesList
+            matchGroups={matchListGroups}
+            renderMatchCard={renderMatchCard}
+            getMatchLabel={getMatchLabel}
+          />
         </div>
       ) : (
       <div className="flex h-[calc(100vh-140px)]">
@@ -931,8 +809,12 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
         <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-zinc-950/30">
           {renderRoundTabs()}
           <div
-            ref={bracketScroll.scrollRef}
+            ref={(el) => {
+              bracketScroll.scrollRef.current = el;
+              bracketContainerRef.current = el;
+            }}
             onWheel={bracketScroll.onWheel}
+            onScroll={handleBracketScroll}
             tabIndex={0}
             aria-label="Scrollable bracket management canvas"
             className="min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus:ring-2 focus:ring-rose-500/50"
@@ -948,33 +830,18 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
                 className="absolute left-0 top-0 pointer-events-none overflow-visible"
                 style={{ width: totalWidth, height: totalHeight }}
               >
-                {matches.map(match => {
-                  if (!match.nextMatchId) return null;
-                  const sourcePos = matchPositions.get(String(match.id)) || matchPositions.get(getRawId(match.id));
-                  const targetPos = matchPositions.get(String(match.nextMatchId)) || matchPositions.get(getRawId(match.nextMatchId));
-                  if (!sourcePos || !targetPos) return null;
-
-                  const connectorGap = Math.min(18, Math.max(12, ROUND_GAP * 0.16));
-                  const connectorInset = Math.min(36, Math.max(18, (ROUND_GAP - connectorGap * 2) * 0.45));
-                  const startX = sourcePos.x + CARD_WIDTH + connectorGap;
-                  const startY = sourcePos.y + CARD_HEIGHT / 2;
-                  const endX = targetPos.x - connectorGap;
-                  const endY = targetPos.y + CARD_HEIGHT / 2;
-                  const midX = Math.max(startX + 8, Math.min(startX + connectorInset, endX - 8));
-
-                  return (
-                    <path
-                      key={`edge-${match.id}`}
-                      d={`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`}
-                      fill="none"
-                      stroke="#cbd5e1"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="1.5"
-                      className="opacity-55"
-                    />
-                  );
-                })}
+                {connectorPaths.map(path => (
+                  <path
+                    key={path.key}
+                    d={path.d}
+                    fill="none"
+                    stroke="#cbd5e1"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.5"
+                    className="opacity-55"
+                  />
+                ))}
               </svg>
             )}
 
@@ -1010,12 +877,46 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
               </div>
             )}
 
-            {/* Matches */}
-            <AnimatePresence mode='popLayout'>
-              {matches.map(m => {
-                // Filter logic
+            {/* Matches - disable animations for large brackets (>64 matches) for performance */}
+            {matches.length <= 64 ? (
+              <AnimatePresence mode='popLayout'>
+                {matches.map(m => {
+                  // Filter logic
+                  if (activeFilter.type === 'winners') {
+                    if ((m.bracketSide && m.bracketSide !== 'winners') || m.round !== activeFilter.round) return null;
+                  }
+                  if (activeFilter.type === 'losers') {
+                    if (m.bracketSide !== 'losers' || m.round !== activeFilter.round) return null;
+                  }
+                  if (activeFilter.type === 'final') {
+                    if (m.bracketSide !== 'final') return null;
+                  }
+
+                  const pos = filteredListPositions
+                    ? filteredListPositions.positions.get(String(m.id))
+                    : matchPositions.get(String(m.id));
+                  if (!pos) return null;
+                  const left = filteredListPositions ? pos.x : pos.x - filterXOffset;
+                  const top = filteredListPositions ? pos.y : pos.y - filterYOffset;
+
+                  return (
+                    <motion.div
+                      key={m.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.2 }}
+                      style={{ position: 'absolute', left, top }}
+                    >
+                      {renderMatchCard(m, 0, 0, getMatchLabel(m))}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            ) : (
+              // Large bracket: viewport-based rendering for performance
+              visibleMatches.map(m => {
                 if (activeFilter.type === 'winners') {
-                  // Allow explicit 'winners' or undefined (fallback)
                   if ((m.bracketSide && m.bracketSide !== 'winners') || m.round !== activeFilter.round) return null;
                 }
                 if (activeFilter.type === 'losers') {
@@ -1025,7 +926,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
                   if (m.bracketSide !== 'final') return null;
                 }
 
-                // Use calculated positions from matchPositions
                 const pos = filteredListPositions
                   ? filteredListPositions.positions.get(String(m.id))
                   : matchPositions.get(String(m.id));
@@ -1034,19 +934,12 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
                 const top = filteredListPositions ? pos.y : pos.y - filterYOffset;
 
                 return (
-                  <motion.div
-                    key={m.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.2 }}
-                    style={{ position: 'absolute', left, top }}
-                  >
+                  <div key={m.id} style={{ position: 'absolute', left, top }}>
                     {renderMatchCard(m, 0, 0, getMatchLabel(m))}
-                  </motion.div>
+                  </div>
                 );
-              })}
-            </AnimatePresence>
+              })
+            )}
             </div>
           </div>
         </div>

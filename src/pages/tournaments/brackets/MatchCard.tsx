@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, PlayCircle, Swords, Eye, ChevronDown, X, Bot, MessageCircle, ExternalLink } from 'lucide-react';
-import { Button, SuccessButton } from '@/components/ui/button';
+import { Trophy, PlayCircle, Swords, Eye, ChevronDown, X, Bot, MessageCircle, ExternalLink, MoreVertical } from 'lucide-react';
+import { SuccessButton } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { cn } from '@/lib/utils';
 import ManualAdjustmentMenu from '@/components/tournament/ManualAdjustmentMenu';
@@ -38,6 +37,7 @@ interface MatchCardProps {
     automatedStatus?: 'idle' | 'processing' | 'verified' | 'failed' | 'partial' | null;
     onViewResults?: (match: any) => void;
     onMatchRoom?: (match: any) => void;
+    disableGlass?: boolean;
 }
 
 const SeedBadge = ({ seed }: { seed?: number | null }) => {
@@ -51,6 +51,9 @@ const SeedBadge = ({ seed }: { seed?: number | null }) => {
 };
 
 const areMatchPropsEqual = (prev: MatchCardProps, next: MatchCardProps) => {
+    const prevIsExpanded = prev.expandedMatchId === String(prev.match.id);
+    const nextIsExpanded = next.expandedMatchId === String(next.match.id);
+    
     return (
         prev.match.id === next.match.id &&
         prev.match.round === next.match.round &&
@@ -66,11 +69,12 @@ const areMatchPropsEqual = (prev: MatchCardProps, next: MatchCardProps) => {
         prev.match.partyCode === next.match.partyCode &&
         prev.x === next.x &&
         prev.y === next.y &&
-        prev.expandedMatchId === next.expandedMatchId &&
+        prevIsExpanded === nextIsExpanded &&
         prev.isProcessing === next.isProcessing &&
         prev.isOrganizer === next.isOrganizer &&
         prev.onMapVeto === next.onMapVeto &&
         prev.onMatchRoom === next.onMatchRoom &&
+        prev.disableGlass === next.disableGlass &&
         prev.proofs?.length === next.proofs?.length
     );
 };
@@ -83,7 +87,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     scoreDraftRef, proofs, onByeAdvance, onMatchClick, onAdjustmentMade,
     tournamentId, versionId,
     automatedStatus,
-    onViewResults, onMatchRoom
+    onViewResults, onMatchRoom, disableGlass
 }) => {
     const id = String(match.id);
     const isExp = expandedMatchId === id;
@@ -110,6 +114,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     const [partyCode, setPartyCode] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
 
     // Scoring Hints based on BestOf
     const bestOf = match.bestOf || (match as any).best_of || 1;
@@ -164,9 +169,11 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     const showInputs = canAct && (isLive || isEditing);
     const canOpenMatchRoom = canAct && hasBoth && !!onMatchRoom;
     const style: React.CSSProperties = x !== undefined && y !== undefined ? {
-        position: 'absolute', left: x, top: y, width: CARD_WIDTH, minHeight: CARD_HEIGHT, zIndex: isExp ? 50 : 10
+        position: 'absolute', left: x, top: y, width: CARD_WIDTH, minHeight: CARD_HEIGHT, zIndex: isExp ? 50 : 10,
+        contain: 'layout style paint',
     } : {
-        position: 'relative', width: '100%', maxWidth: CARD_WIDTH, minHeight: CARD_HEIGHT, zIndex: isExp ? 50 : 10
+        position: 'relative', width: '100%', maxWidth: CARD_WIDTH, minHeight: CARD_HEIGHT, zIndex: isExp ? 50 : 10,
+        contain: 'layout style paint',
     };
 
 
@@ -174,11 +181,14 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
     return (
         <div style={style}>
             <div
-                className={`rounded-xl overflow-hidden border transition-all duration-300 flex flex-col relative group
-          ${isLive ? 'border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' :
+                className={cn(
+                    'rounded-xl overflow-hidden border flex flex-col relative',
+                    isLive ? 'border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' :
                         isExp ? 'border-zinc-600 bg-zinc-900' :
-                            'border-white/10 hover:border-white/20 bg-zinc-900/60 hover:bg-zinc-900/80'}`}
-                style={{
+                            'border-white/10 bg-zinc-900/60',
+                    !disableGlass && 'hover:border-white/20 hover:bg-zinc-900/80 transition-colors'
+                )}
+                style={disableGlass ? undefined : {
                     backdropFilter: 'blur(12px)',
                     WebkitBackdropFilter: 'blur(12px)',
                 }}
@@ -187,7 +197,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                 <div className="p-5 relative cursor-pointer" onClick={() => onToggleExpand ? onToggleExpand(id) : onMatchClick?.()}>
 
                     {/* VS Divider - Minimalist */}
-                    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none opacity-30 group-hover:opacity-50 transition-opacity">
+                    <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none opacity-30">
                         <div className="w-full h-px bg-gradient-to-r from-transparent via-white/20 to-transparent absolute"></div>
                     </div>
 
@@ -214,37 +224,20 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                 <Trophy className="w-4 h-4 text-zinc-800" />
                             )}
                             {showInputs ? (
-                                <AnimatePresence mode="wait" initial={false}>
-                                    <motion.input
-                                        key="input-t1"
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.8 }}
-                                        transition={{ duration: 0.2 }}
-                                        type="number"
-                                        min="0"
-                                        // max={maxScore} // Removed to allow freer input (rounds vs maps)
-                                        className="w-10 h-8 bg-white/10 border border-white/20 text-center rounded-md font-bold text-sm focus:border-green-400 focus:outline-none"
-                                        defaultValue={draft.t1 || match.team1_score?.toString() || ''}
-                                        placeholder={inputPlaceholder}
-                                        title={scoreTitle}
-                                        onChange={(e) => handleScoreInput('t1', e.target.value)}
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                </AnimatePresence>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    className="w-10 h-8 bg-white/10 border border-white/20 text-center rounded-md font-bold text-sm focus:border-green-400 focus:outline-none transition-all duration-200"
+                                    defaultValue={draft.t1 || match.team1_score?.toString() || ''}
+                                    placeholder={inputPlaceholder}
+                                    title={scoreTitle}
+                                    onChange={(e) => handleScoreInput('t1', e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                />
                             ) : (
-                                <AnimatePresence mode="wait" initial={false}>
-                                    <motion.span
-                                        key="score-t1"
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.8 }}
-                                        transition={{ duration: 0.2 }}
-                                        className={`text-lg font-bold w-6 text-right ${w1 ? 'text-white' : 'text-zinc-600'}`}
-                                    >
-                                        {match.team1_score ?? '-'}
-                                    </motion.span>
-                                </AnimatePresence>
+                                <span className={`text-lg font-bold w-6 text-right transition-all duration-200 ${w1 ? 'text-white' : 'text-zinc-600'}`}>
+                                    {match.team1_score ?? '-'}
+                                </span>
                             )}
                         </div>
                     </div>
@@ -272,37 +265,20 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                                 <Trophy className="w-4 h-4 text-zinc-800" />
                             )}
                             {showInputs ? (
-                                <AnimatePresence mode="wait" initial={false}>
-                                    <motion.input
-                                        key="input-t2"
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.8 }}
-                                        transition={{ duration: 0.2 }}
-                                        type="number"
-                                        min="0"
-                                        // max={maxScore}
-                                        className="w-10 h-8 bg-white/10 border border-white/20 text-center rounded-md font-bold text-sm focus:border-green-400 focus:outline-none"
-                                        defaultValue={draft.t2 || match.team2_score?.toString() || ''}
-                                        placeholder={inputPlaceholder}
-                                        title={scoreTitle}
-                                        onChange={(e) => handleScoreInput('t2', e.target.value)}
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                </AnimatePresence>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    className="w-10 h-8 bg-white/10 border border-white/20 text-center rounded-md font-bold text-sm focus:border-green-400 focus:outline-none transition-all duration-200"
+                                    defaultValue={draft.t2 || match.team2_score?.toString() || ''}
+                                    placeholder={inputPlaceholder}
+                                    title={scoreTitle}
+                                    onChange={(e) => handleScoreInput('t2', e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                />
                             ) : (
-                                <AnimatePresence mode="wait" initial={false}>
-                                    <motion.span
-                                        key="score-t2"
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.8 }}
-                                        transition={{ duration: 0.2 }}
-                                        className={`text-lg font-bold w-6 text-right ${w2 ? 'text-white' : 'text-zinc-600'}`}
-                                    >
-                                        {match.team2_score ?? '-'}
-                                    </motion.span>
-                                </AnimatePresence>
+                                <span className={`text-lg font-bold w-6 text-right transition-all duration-200 ${w2 ? 'text-white' : 'text-zinc-600'}`}>
+                                    {match.team2_score ?? '-'}
+                                </span>
                             )}
                         </div>
                     </div>
@@ -370,179 +346,166 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                             </SuccessButton>
                             )
                         )}
-                        {/* Manual Adjustment Menu for organizers */}
+                        {/* Manual Adjustment Menu for organizers - only mount when clicked */}
                         {canAct && (
-                            <ManualAdjustmentMenu
-                                matchId={getRawId(id)}
-                                tournamentId={tournamentId}
-                                versionId={versionId}
-                                team1Id={match.team1?.id}
-                                team2Id={match.team2?.id}
-                                team1Name={match.team1?.name || 'Team 1'}
-                                team2Name={match.team2?.name || 'Team 2'}
-                                matchStatus={match.status}
-                                onAdjustmentMade={onAdjustmentMade}
-                                bestOf={bestOf}
-                            />
+                            showMenu ? (
+                                <ManualAdjustmentMenu
+                                    matchId={getRawId(id)}
+                                    tournamentId={tournamentId}
+                                    versionId={versionId}
+                                    team1Id={match.team1?.id}
+                                    team2Id={match.team2?.id}
+                                    team1Name={match.team1?.name || 'Team 1'}
+                                    team2Name={match.team2?.name || 'Team 2'}
+                                    matchStatus={match.status}
+                                    onAdjustmentMade={onAdjustmentMade}
+                                    bestOf={bestOf}
+                                    defaultOpen={true}
+                                />
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="h-8 w-8 p-0 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-800/50 rounded transition-colors"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowMenu(true);
+                                    }}
+                                >
+                                    <MoreVertical className="h-4 w-4" />
+                                </button>
+                            )
                         )}
                         <ChevronDown className={`w-3 h-3 text-zinc-600 transition-transform cursor-pointer ${isExp ? 'rotate-180' : ''}`} onClick={() => onToggleExpand?.(id)} />
                     </div>
                 </div>
 
-                {/* Expanded Actions */}
-                <AnimatePresence>
-                    {isExp && (
-                        <motion.div
-                            initial={{ opacity: 0, gridTemplateRows: '0fr' }}
-                            animate={{ opacity: 1, gridTemplateRows: '1fr' }}
-                            exit={{ opacity: 0, gridTemplateRows: '0fr' }}
-                            transition={{ duration: 0.2, ease: 'easeOut' }}
-                            style={{ display: 'grid', overflow: 'hidden' }}
-                            className="bg-black/20"
-                        >
-                        <div style={{ minHeight: 0, overflow: 'hidden' }}>
-                            <div className="p-3 space-y-3 border-t border-white/5">
+                {/* Expanded Actions - CSS-based for performance */}
+                {isExp && (
+                    <div className="bg-black/20 overflow-hidden">
+                        <div className="p-3 space-y-3 border-t border-white/5">
 
-                                {/* Action Toolbar - Only show if both teams present */}
-                                {hasBoth && (
-                                    <AnimatePresence mode="wait">
-                                        {actionMode === 'default' ? (
-                                            <motion.div
-                                                key="default-actions"
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: -10 }}
-                                                transition={{ duration: 0.2 }}
-                                                className="flex gap-2 flex-wrap"
-                                                layout
-                                            >
-                                                <button type="button"
-                                                    className={cn(
-                                                        buttonVariants({ variant: 'outline', size: 'sm' }),
-                                                        'flex-1 min-w-[80px] h-8 bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800',
-                                                        automatedStatus === 'verified' && 'border-blue-500/30 text-blue-400 bg-blue-500/5 hover:bg-blue-500/10',
-                                                    )}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (onViewResults) {
-                                                            onViewResults(match);
-                                                        } else {
-                                                            setShowProofs(!showProofs);
-                                                        }
-                                                    }}
-                                                >
-                                                    {automatedStatus === 'verified' ? (
-                                                        <Bot className="w-3.5 h-3.5 mr-1.5" />
-                                                    ) : (
-                                                        <Eye className="w-3.5 h-3.5 mr-1.5" />
-                                                    )}
-                                                    Results
-                                                </button>
+                            {/* Action Toolbar - Only show if both teams present */}
+                            {hasBoth && (
+                                actionMode === 'default' ? (
+                                    <div className="flex gap-2 flex-wrap">
+                                        <button type="button"
+                                            className={cn(
+                                                buttonVariants({ variant: 'outline', size: 'sm' }),
+                                                'flex-1 min-w-[80px] h-8 bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800',
+                                                automatedStatus === 'verified' && 'border-blue-500/30 text-blue-400 bg-blue-500/5 hover:bg-blue-500/10',
+                                            )}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (onViewResults) {
+                                                    onViewResults(match);
+                                                } else {
+                                                    setShowProofs(!showProofs);
+                                                }
+                                            }}
+                                        >
+                                            {automatedStatus === 'verified' ? (
+                                                <Bot className="w-3.5 h-3.5 mr-1.5" />
+                                            ) : (
+                                                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                                            )}
+                                            Results
+                                        </button>
 
-                                                {isOrganizer && (
-                                                    <>
-                                                        {!isLive && !isComplete && (
-                                                            <button type="button"
-                                                                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 min-w-[80px] h-8 bg-green-900/20 border-green-900/30 text-green-400 hover:bg-green-900/40 hover:text-green-300')}
-                                                                onClick={(e) => { e.stopPropagation(); onGoLive?.(match); }}
-                                                                disabled={isProcessing}
-                                                            >
-                                                                <PlayCircle className="w-3.5 h-3.5 mr-1.5" /> Go Live
-                                                            </button>
-                                                        )}
-
-                                                        {onMapVeto && (
-                                                            <button type="button"
-                                                                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 min-w-[80px] h-8 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300')}
-                                                                onClick={(e) => { e.stopPropagation(); onMapVeto(match); }}
-                                                            >
-                                                                <Swords className="w-3.5 h-3.5 mr-1.5" /> Veto
-                                                            </button>
-                                                        )}
-
-                                                        {canOpenMatchRoom && (
-                                                            <button type="button"
-                                                                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-8 px-2 bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300')}
-                                                                onClick={(e) => { e.stopPropagation(); onMatchRoom(match); }}
-                                                                title="Open match room"
-                                                                aria-label="Open match room"
-                                                            >
-                                                                <MessageCircle className="w-3.5 h-3.5" />
-                                                                <ExternalLink className="w-3 h-3 ml-1" />
-                                                            </button>
-                                                        )}
-                                                    </>
+                                        {isOrganizer && (
+                                            <>
+                                                {!isLive && !isComplete && (
+                                                    <button type="button"
+                                                        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 min-w-[80px] h-8 bg-green-900/20 border-green-900/30 text-green-400 hover:bg-green-900/40 hover:text-green-300')}
+                                                        onClick={(e) => { e.stopPropagation(); onGoLive?.(match); }}
+                                                        disabled={isProcessing}
+                                                    >
+                                                        <PlayCircle className="w-3.5 h-3.5 mr-1.5" /> Go Live
+                                                    </button>
                                                 )}
-                                            </motion.div>
-                                        ) : (
-                                            <motion.div
-                                                key="party-code-input"
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: -10 }}
-                                                transition={{ duration: 0.2 }}
-                                                className="flex gap-2 items-center"
-                                                onClick={(e) => e.stopPropagation()}
-                                                layout
-                                            >
-                                                <input
-                                                    type="text"
-                                                    className="flex-1 h-8 bg-black/40 border border-green-500/30 rounded px-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-green-500/50 uppercase tracking-widest font-mono"
-                                                    placeholder="CODE"
-                                                    value={partyCode}
-                                                    onChange={(e) => setPartyCode(e.target.value.toUpperCase())}
-                                                    autoFocus
-                                                    disabled={isSubmitting}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' && partyCode.trim()) {
-                                                            handleStart();
-                                                        }
-                                                        if (e.key === 'Escape') {
-                                                            setActionMode('default');
-                                                            setPartyCode('');
-                                                        }
-                                                    }}
-                                                />
-                                                <SuccessButton
-                                                    size="sm"
-                                                    className="h-8 px-3"
-                                                    disabled={!partyCode.trim() || isProcessing || isSubmitting}
-                                                    onClick={handleStart}
-                                                >
-                                                    {isSubmitting ? '...' : 'Start'}
-                                                </SuccessButton>
-                                                <button type="button"
-                                                    className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 px-2 text-zinc-400 hover:text-white')}
-                                                    onClick={() => {
-                                                        setActionMode('default');
-                                                        setPartyCode('');
-                                                    }}
-                                                    disabled={isSubmitting}
-                                                >
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            </motion.div>
+
+                                                {onMapVeto && (
+                                                    <button type="button"
+                                                        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 min-w-[80px] h-8 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300')}
+                                                        onClick={(e) => { e.stopPropagation(); onMapVeto(match); }}
+                                                    >
+                                                        <Swords className="w-3.5 h-3.5 mr-1.5" /> Veto
+                                                    </button>
+                                                )}
+
+                                                {canOpenMatchRoom && (
+                                                    <button type="button"
+                                                        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'h-8 px-2 bg-cyan-500/10 border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300')}
+                                                        onClick={(e) => { e.stopPropagation(); onMatchRoom(match); }}
+                                                        title="Open match room"
+                                                        aria-label="Open match room"
+                                                    >
+                                                        <MessageCircle className="w-3.5 h-3.5" />
+                                                        <ExternalLink className="w-3 h-3 ml-1" />
+                                                    </button>
+                                                )}
+                                            </>
                                         )}
-                                    </AnimatePresence>
-                                )}
+                                    </div>
+                                ) : (
+                                    <div
+                                        className="flex gap-2 items-center"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <input
+                                            type="text"
+                                            className="flex-1 h-8 bg-black/40 border border-green-500/30 rounded px-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-green-500/50 uppercase tracking-widest font-mono"
+                                            placeholder="CODE"
+                                            value={partyCode}
+                                            onChange={(e) => setPartyCode(e.target.value.toUpperCase())}
+                                            autoFocus
+                                            disabled={isSubmitting}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && partyCode.trim()) {
+                                                    handleStart();
+                                                }
+                                                if (e.key === 'Escape') {
+                                                    setActionMode('default');
+                                                    setPartyCode('');
+                                                }
+                                            }}
+                                        />
+                                        <SuccessButton
+                                            size="sm"
+                                            className="h-8 px-3"
+                                            disabled={!partyCode.trim() || isProcessing || isSubmitting}
+                                            onClick={handleStart}
+                                        >
+                                            {isSubmitting ? '...' : 'Start'}
+                                        </SuccessButton>
+                                        <button type="button"
+                                            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 px-2 text-zinc-400 hover:text-white')}
+                                            onClick={() => {
+                                                setActionMode('default');
+                                                setPartyCode('');
+                                            }}
+                                            disabled={isSubmitting}
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )
+                            )}
 
-                                {/* Proofs View */}
-                                {showProofs && proofs && proofs.length > 0 && (
-                                    <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="flex gap-2 overflow-x-auto pb-2 pt-1">
-                                        {proofs.map((url, i) => (
-                                            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block w-16 h-12 rounded-lg overflow-hidden border border-white/10 hover:border-purple-500/50 transition-colors shrink-0" onClick={(e) => e.stopPropagation()}>
-                                                <img src={url} loading="lazy" alt="Proof" className="w-full h-full object-cover" />
-                                            </a>
-                                        ))}
-                                    </motion.div>
-                                )}
+                            {/* Proofs View */}
+                            {showProofs && proofs && proofs.length > 0 && (
+                                <div className="flex gap-2 overflow-x-auto pb-2 pt-1">
+                                    {proofs.map((url, i) => (
+                                        <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block w-16 h-12 rounded-lg overflow-hidden border border-white/10 hover:border-purple-500/50 transition-colors shrink-0" onClick={(e) => e.stopPropagation()}>
+                                            <img src={url} loading="lazy" alt="Proof" className="w-full h-full object-cover" />
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
 
 
-                            </div>
                         </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                    </div>
+                )}
             </div>
         </div >
     );
