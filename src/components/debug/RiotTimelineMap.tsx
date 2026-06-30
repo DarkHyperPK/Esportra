@@ -425,12 +425,12 @@ function cleanDamageAssetLabel(asset?: DamageAssetMetadata, fallback?: string): 
   return label;
 }
 
-function getPlayerName(player?: { gameName?: string; tagLine?: string }): string {
+function _getPlayerName(player?: { gameName?: string; tagLine?: string }): string {
   if (!player?.gameName) return 'Unknown';
   return player.tagLine ? `${player.gameName}#${player.tagLine}` : player.gameName;
 }
 
-const AgentPortrait: React.FC<{
+const _AgentPortrait: React.FC<{
   icon?: string;
   name: string;
   side?: string;
@@ -727,7 +727,7 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({
     ? projectPoint(previewAction.location, mapData)
     : null;
   const previewKillerParticipant = previewAction?.participants.find((participant) => participant.role === 'killer');
-  const previewVictimParticipant = previewAction?.participants.find((participant) => participant.role === 'victim');
+  const _previewVictimParticipant = previewAction?.participants.find((participant) => participant.role === 'victim');
   const activeSpikeAction = previewAction
     ? roundActions
       .filter((action) => action.type === 'plant' && action.timeMillis <= previewAction.timeMillis)

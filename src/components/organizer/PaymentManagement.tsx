@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, Clock, Eye, DollarSign, AlertTriangle } from 'lucide-react';
-import { CancelButton, CtaButton, DangerButton, OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
+import { CancelButton, DangerButton, OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

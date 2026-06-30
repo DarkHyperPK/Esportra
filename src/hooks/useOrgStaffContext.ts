@@ -30,8 +30,8 @@ export function useOrgStaffContext() {
     refetchOnWindowFocus: false,
   });
 
-  const invites = invitesQuery.data ?? [];
-  const assignments = assignmentsQuery.data ?? [];
+  const invites = useMemo(() => invitesQuery.data ?? [], [invitesQuery.data]);
+  const assignments = useMemo(() => assignmentsQuery.data ?? [], [assignmentsQuery.data]);
 
   const pendingInviteCount = invites.length;
   const hasActiveStaff = assignments.some((a) => a.status === 'active');

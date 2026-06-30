@@ -4,7 +4,6 @@ import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { BR_CONFIG } from '@/config/brConfig';
 import type { BRRound, BRRoundResult, BRResultInput } from '@/types/brLobbies';
-import type { BREvidence } from '@/types/battleRoyale';
 import type { BRGroup } from '@/types/brGroups';
 import { normalizeBREvidenceList } from '@/utils/brEvidenceNormalize';
 
@@ -422,7 +421,7 @@ export function useStageLobbiesDeduped(
     },
     enabled: Boolean(stageId && groups.length > 0),
     staleTime: 1000 * 60,
-    refetchInterval: Boolean(stageId && groups.length > 0)
+    refetchInterval: stageId && groups.length > 0
       ? (realtimeJoined ? 60_000 : 30_000)
       : false,
     refetchIntervalInBackground: Boolean(stageId && groups.length > 0),

@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Copy, Radio } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import { cn } from '@/lib/utils';
 import type { BracketMatch } from '@/types/bracketTypes';

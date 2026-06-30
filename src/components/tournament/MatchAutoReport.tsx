@@ -69,12 +69,12 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     userTeamId,
     team1Id,
     team2Id,
-    team1Name = 'Team 1',
-    team2Name = 'Team 2',
-    team1Logo,
-    team2Logo,
+    team1Name: _team1Name = 'Team 1',
+    team2Name: _team2Name = 'Team 2',
+    team1Logo: _team1Logo,
+    team2Logo: _team2Logo,
     isCaptain = true,
-    onSuccess,
+    onSuccess: _onSuccess,
     className
 }) => {
     const {

@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { CancelButton, CtaButton, OutlineButton } from '@/components/ui/app-buttons';
-import { buttonVariants } from '@/components/ui/button-variants';
-import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar, Clock, Save, ChevronRight } from 'lucide-react';

@@ -586,7 +586,7 @@ const VctScorePlate = ({ panel, side }: { panel: TeamPanel; side: "left" | "righ
   </div>
 );
 
-const VctPlayerRow = ({ player, panel, side }: { player: PlayerCardData | null; panel: TeamPanel; side: "left" | "right" }) => (
+const VctPlayerRow = ({ player, panel: _panel, side }: { player: PlayerCardData | null; panel: TeamPanel; side: "left" | "right" }) => (
   <div className={["grid h-[61px] items-center overflow-hidden border-b border-[#c9c4bc]/70 bg-[#f2f0ec] font-black uppercase text-[#121217]", side === "left" ? "grid-cols-[58px_minmax(0,1fr)_112px]" : "grid-cols-[112px_minmax(0,1fr)_58px]"].join(" ")}>
     {side === "left" ? <AgentIcon agent={player?.agent} /> : <RowStats player={player} />}
     <div className={side === "left" ? "min-w-0 px-4" : "min-w-0 px-4 text-right"}>
@@ -611,7 +611,7 @@ const VctStatCenter = ({ left, right }: { left: PlayerCardData | null; right: Pl
   </div>
 );
 
-const VctMatchOverlay = ({ leftPanel, rightPanel, mapAsset, mapName, options }: { leftPanel: TeamPanel; rightPanel: TeamPanel; mapAsset?: MapAsset; mapName: string; options: OverlayOptions }) => (
+const _VctMatchOverlay = ({ leftPanel, rightPanel, mapAsset, mapName, options }: { leftPanel: TeamPanel; rightPanel: TeamPanel; mapAsset?: MapAsset; mapName: string; options: OverlayOptions }) => (
   <>
     <div className="absolute left-[64px] right-[64px] top-[22px] flex items-center gap-5 text-[13px] font-black uppercase tracking-[0.22em] text-white/68">
       <span className="h-px flex-1 bg-white/28" />
@@ -636,7 +636,7 @@ const VctMatchOverlay = ({ leftPanel, rightPanel, mapAsset, mapName, options }: 
   </>
 );
 
-const VctPlayerOverlay = ({ player, leftPanel, rightPanel, mapAsset, mapName, options }: { player: PlayerCardData | null; leftPanel: TeamPanel; rightPanel: TeamPanel; mapAsset?: MapAsset; mapName: string; options: OverlayOptions }) => {
+const _VctPlayerOverlay = ({ player, leftPanel, rightPanel, mapAsset, mapName, options }: { player: PlayerCardData | null; leftPanel: TeamPanel; rightPanel: TeamPanel; mapAsset?: MapAsset; mapName: string; options: OverlayOptions }) => {
   const portrait = player?.agent?.fullPortrait || player?.agent?.bustPortrait || player?.agent?.displayIcon;
   const playerTeam = player?.teamId === leftPanel.id ? leftPanel : rightPanel;
   const tiles = playerStatTiles(player, options).slice(0, 6);
@@ -681,7 +681,7 @@ const VctPlayerOverlay = ({ player, leftPanel, rightPanel, mapAsset, mapName, op
   );
 };
 
-const VctCompareOverlay = ({ leftPlayer, rightPlayer, leftPanel, rightPanel, mapName, options }: { leftPlayer: PlayerCardData | null; rightPlayer: PlayerCardData | null; leftPanel: TeamPanel; rightPanel: TeamPanel; mapName: string; options: OverlayOptions }) => {
+const _VctCompareOverlay = ({ leftPlayer, rightPlayer, leftPanel, rightPanel, mapName, options }: { leftPlayer: PlayerCardData | null; rightPlayer: PlayerCardData | null; leftPanel: TeamPanel; rightPanel: TeamPanel; mapName: string; options: OverlayOptions }) => {
   const leftTeam = leftPlayer?.teamId === leftPanel.id ? leftPanel : rightPanel;
   const rightTeam = rightPlayer?.teamId === leftPanel.id ? leftPanel : rightPanel;
   const leftPortrait = leftPlayer?.agent?.fullPortrait || leftPlayer?.agent?.bustPortrait || leftPlayer?.agent?.displayIcon;
@@ -1228,7 +1228,7 @@ const RiotPostMatchOverlay = () => {
   });
 
   const match = matchQuery.data;
-  const agents = agentsQuery.data ?? {};
+  const agents = useMemo(() => agentsQuery.data ?? {}, [agentsQuery.data]);
   const teamIds = match ? getTeamIds(match, options.leftMode) : { left: "", right: "" };
   const leftPlayers = useMemo(() => (match && teamIds.left ? buildTeamPlayers(match, teamIds.left, agents) : []), [agents, match, teamIds.left]);
   const rightPlayers = useMemo(() => (match && teamIds.right ? buildTeamPlayers(match, teamIds.right, agents) : []), [agents, match, teamIds.right]);

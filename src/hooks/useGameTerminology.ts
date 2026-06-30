@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getGameByName, getDefaultTeamSize, getParticipantMode, isBattleRoyale } from '@/utils/gameFeatures';
+import { getGameByName, getParticipantMode, isBattleRoyale } from '@/utils/gameFeatures';
 
 export interface GameTerminology {
   competitorLabel: string;

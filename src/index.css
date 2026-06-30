@@ -166,6 +166,12 @@ html.lenis body {
   overscroll-behavior: contain;
 }
 
+.lenis.lenis-smooth [data-lenis-prevent],
+.lenis.lenis-smooth [data-lenis-prevent] * {
+  touch-action: pan-x pan-y;
+  pointer-events: auto;
+}
+
 .lenis.lenis-stopped {
   overflow: hidden;
 }

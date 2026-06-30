@@ -127,7 +127,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   const rosterGameNames = useMemo(() => teamRosters.map((r) => r.game), [teamRosters]);
   const rosterGameLogos = useGameLogos(rosterGameNames);
 
-  const normalize = (value: string | null | undefined) => (value || '').trim().toLowerCase();
+  const _normalize = (value: string | null | undefined) => (value || '').trim().toLowerCase();
   const tournamentGameMode = (tournament.gameMode || tournament.game_mode || '').trim();
 
   const getCoreTeamSize = (gameName: string, modeKey?: string | null): number => {

@@ -77,7 +77,7 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
   incomingTeams,
   fromStageName,
   maxLobbySize,
-  defaultLobbySize,
+  defaultLobbySize: _defaultLobbySize,
   unitLabel,
   unitsLabel,
   onComplete,
@@ -155,7 +155,6 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
     isFinal,
     structure,
     mode,
-    step,
     effectiveIncoming,
     effectiveGroups,
     advancementPerGroup,
@@ -171,7 +170,7 @@ export const BRStageSetupWizard: React.FC<BRStageSetupWizardProps> = ({
     layout: LobbyLayout,
     formation: SplitFormation,
     incoming: number,
-    groups: number,
+    _groups: number,
   ): BRStageFormat => {
     if (mode === 'initial' && structure === 'qualifier_finals') {
       return 'static_groups';

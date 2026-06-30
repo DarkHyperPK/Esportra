@@ -11,7 +11,6 @@ import {
 import { motion } from 'framer-motion';
 import { Trophy, Users, Plus, Trash2, Layers, FileText } from 'lucide-react';
 import { OutlineButton } from '@/components/ui/app-buttons';
-import { buttonVariants } from '@/components/ui/button-variants';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import TournamentMapPoolSelector, { MapPoolSectionLabel } from './TournamentMapPoolSelector';
 
@@ -207,6 +206,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
 
         fetchMaps();
         // Intentionally omit data.mapPoolIds — selection changes must not re-fetch the catalog.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.game, activeGameModeValue, hasMapPool, mapPoolSizeLimit, updateData]);
 
 

@@ -261,6 +261,7 @@ const TeamsPage = () => {
       }
     };
     fetchMissing();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rosters]);
 
   // State for member invitation

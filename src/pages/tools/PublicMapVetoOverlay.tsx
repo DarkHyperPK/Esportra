@@ -54,6 +54,7 @@ const teamCode = (name: string) => {
 
 type OverlaySlotKind = "ban" | "pick" | "decider" | "pending";
 type OverlayTransition = "none" | "up" | "left" | "right";
+type OverlayTheme = "tactical" | "premium" | "glitch";
 
 type OverlaySlot = {
   key: string;
@@ -71,6 +72,55 @@ type OverlayMap = ReturnType<typeof adaptPublicMapsToGameMaps>[number];
 const overlayTransition = (value: string | null): OverlayTransition =>
   value === "none" || value === "left" || value === "right" ? value : "up";
 
+const overlayTheme = (value: string | null): OverlayTheme =>
+  value === "premium" || value === "glitch" ? value : "tactical";
+
+const MAP_THEME: Record<OverlayTheme, {
+  shell: string;
+  slot: string;
+  topBar: string;
+  bottomBar: string;
+  mapShade: string;
+  banShade: string;
+  name: string;
+  banName: string;
+  stamp: string;
+}> = {
+  tactical: {
+    shell: "bg-[#05050a]",
+    slot: "border-r border-cyan-300/20 bg-[#070711] shadow-[inset_0_0_0_1px_rgba(125,249,255,0.08)]",
+    topBar: "bg-[#0c0d16]/94 text-cyan-100 border-b border-cyan-300/24",
+    bottomBar: "bg-[#6d1bd1]/96 text-white border-t border-cyan-200/20",
+    mapShade: "bg-[linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.62)),radial-gradient(circle_at_50%_40%,rgba(0,255,255,.16),transparent_46%)]",
+    banShade: "bg-[linear-gradient(180deg,rgba(0,0,0,.56),rgba(0,0,0,.84)),radial-gradient(circle_at_50%_50%,rgba(109,27,209,.28),transparent_46%)]",
+    name: "text-white drop-shadow-[0_4px_12px_rgba(0,0,0,1)]",
+    banName: "text-white/92 drop-shadow-[0_4px_14px_rgba(0,0,0,1)]",
+    stamp: "border-[#6d1bd1]/95 shadow-[0_0_22px_rgba(109,27,209,.65)]",
+  },
+  premium: {
+    shell: "bg-[#08080b]",
+    slot: "border-r border-white/16 bg-[#101014] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]",
+    topBar: "bg-[#f1f1f4]/96 text-[#140c35] border-b border-white/20",
+    bottomBar: "bg-[#24144f]/96 text-white border-t border-white/18",
+    mapShade: "bg-[linear-gradient(180deg,rgba(0,0,0,.02),rgba(0,0,0,.48))]",
+    banShade: "bg-[linear-gradient(180deg,rgba(245,245,248,.16),rgba(0,0,0,.78))]",
+    name: "text-white drop-shadow-[0_3px_10px_rgba(0,0,0,.88)]",
+    banName: "text-white/88 drop-shadow-[0_3px_10px_rgba(0,0,0,.95)]",
+    stamp: "border-white/78 shadow-[0_0_18px_rgba(255,255,255,.22)]",
+  },
+  glitch: {
+    shell: "bg-[#040006]",
+    slot: "border-r border-fuchsia-300/24 bg-[#0a0310] shadow-[inset_0_0_0_1px_rgba(255,43,214,.12)]",
+    topBar: "bg-[#17051e]/96 text-fuchsia-100 border-b border-fuchsia-300/30",
+    bottomBar: "bg-[#ff2bd6]/90 text-black border-t border-white/18",
+    mapShade: "bg-[linear-gradient(180deg,rgba(255,43,214,.08),rgba(0,0,0,.58)),repeating-linear-gradient(0deg,rgba(255,255,255,.07)_0_1px,transparent_1px_5px)]",
+    banShade: "bg-[linear-gradient(180deg,rgba(255,43,214,.26),rgba(0,0,0,.86)),repeating-linear-gradient(0deg,rgba(255,255,255,.08)_0_1px,transparent_1px_4px)]",
+    name: "text-white drop-shadow-[3px_0_0_rgba(255,43,214,.65),-3px_0_0_rgba(0,255,255,.45),0_4px_10px_rgba(0,0,0,1)]",
+    banName: "text-white/94 drop-shadow-[3px_0_0_rgba(255,43,214,.7),-3px_0_0_rgba(0,255,255,.45),0_4px_12px_rgba(0,0,0,1)]",
+    stamp: "border-[#ff2bd6]/95 shadow-[0_0_24px_rgba(255,43,214,.62)]",
+  },
+};
+
 const transitionClassName = (transition: OverlayTransition) => {
   if (transition === "left") return "map-veto-overlay-enter-left";
   if (transition === "right") return "map-veto-overlay-enter-right";
@@ -87,10 +137,10 @@ const actionAnimationKey = (slot: OverlaySlot) =>
     slot.side || "",
   ].join(":");
 
-const VetoMark = () => (
+const VetoMark = ({ theme }: { theme: OverlayTheme }) => (
   <div className="map-veto-stamp pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-    <div className="relative h-[54%] aspect-square rounded-full border-[10px] border-[#4b1a96]/90 opacity-95 shadow-[0_0_18px_rgba(39,12,89,0.55)]">
-      <div className="absolute left-1/2 top-1/2 h-[10px] w-[132%] -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full bg-[#4b1a96]/95" />
+    <div className={cn("relative h-[54%] aspect-square rounded-full border-[10px] opacity-95", MAP_THEME[theme].stamp)}>
+      <div className={cn("absolute left-1/2 top-1/2 h-[10px] w-[132%] -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full", theme === "premium" ? "bg-white/82" : theme === "glitch" ? "bg-[#ff2bd6]" : "bg-[#6d1bd1]")} />
     </div>
   </div>
 );
@@ -207,6 +257,107 @@ const OVERLAY_ANIMATION_CSS = `
   position: absolute;
 }
 
+.map-veto-theme-tactical {
+  background-image:
+    radial-gradient(circle at 50% 30%, rgba(0,255,255,.12), transparent 38%),
+    linear-gradient(90deg, rgba(255,255,255,.04), transparent 24%, transparent 76%, rgba(255,255,255,.04));
+}
+
+.map-veto-theme-premium {
+  width: 92% !important;
+  padding: 10px 18px;
+  border-top: 1px solid rgba(255,255,255,.34);
+  border-bottom: 1px solid rgba(255,255,255,.18);
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.02)),
+    linear-gradient(90deg, rgba(255,255,255,.08), transparent 42%, rgba(255,255,255,.06));
+}
+
+.map-veto-theme-premium .map-veto-slot {
+  margin: 0 5px;
+  border: 1px solid rgba(255,255,255,.20);
+  box-shadow: 0 16px 28px rgba(0,0,0,.24), inset 0 0 0 1px rgba(255,255,255,.08);
+  grid-template-rows: 1fr !important;
+}
+
+.map-veto-theme-premium .map-veto-slot > .relative {
+  grid-row: 1 / -1 !important;
+  min-height: 100%;
+}
+
+.map-veto-theme-premium .map-veto-top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 42;
+  height: 36px;
+  background: rgba(244,244,247,.94);
+}
+
+.map-veto-theme-premium .map-veto-bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 42;
+  height: 42px;
+}
+
+.map-veto-theme-premium .map-veto-top-bar,
+.map-veto-theme-premium .map-veto-bottom-bar {
+  letter-spacing: .12em;
+}
+
+.map-veto-theme-glitch {
+  width: 96% !important;
+  padding: 12px 10px;
+  overflow: visible !important;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255,255,255,.06) 0 1px, transparent 1px 5px),
+    radial-gradient(circle at 50% 30%, rgba(255,43,214,.20), transparent 42%);
+}
+
+.map-veto-theme-glitch .map-veto-slot {
+  margin: 0 3px;
+  border: 1px solid rgba(255,43,214,.30);
+  box-shadow: 4px 0 rgba(0,255,255,.18), -4px 0 rgba(255,43,214,.18), inset 0 0 0 1px rgba(255,255,255,.06);
+  grid-template-rows: 1fr !important;
+}
+
+.map-veto-theme-glitch .map-veto-slot > .relative {
+  grid-row: 1 / -1 !important;
+  min-height: 100%;
+}
+
+.map-veto-theme-glitch .map-veto-top-bar {
+  position: absolute;
+  left: -1px;
+  right: 20%;
+  top: 0;
+  z-index: 42;
+  height: 46px;
+  clip-path: polygon(0 0, 92% 0, 100% 100%, 0 100%);
+}
+
+.map-veto-theme-glitch .map-veto-bottom-bar {
+  position: absolute;
+  left: 18%;
+  right: -1px;
+  bottom: 0;
+  z-index: 42;
+  height: 48px;
+  clip-path: polygon(8% 0, 100% 0, 100% 100%, 0 100%);
+}
+
+.map-veto-theme-glitch .map-veto-slot:nth-child(odd) {
+  transform: translateY(-5px) skewX(-2deg);
+}
+
+.map-veto-theme-glitch .map-veto-slot:nth-child(even) {
+  transform: translateY(5px) skewX(-2deg);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .map-veto-overlay-enter-up,
   .map-veto-overlay-enter-left,
@@ -224,7 +375,7 @@ const OVERLAY_ANIMATION_CSS = `
 }
 `;
 
-const StripSlot = ({ slot }: { slot: OverlaySlot }) => {
+const StripSlot = ({ slot, theme }: { slot: OverlaySlot; theme: OverlayTheme }) => {
   const isBan = slot.kind === "ban";
   const isPick = slot.kind === "pick" || slot.kind === "decider";
   const hasSideChoice = isPick && Boolean(slot.bottomTeam && slot.side);
@@ -236,9 +387,18 @@ const StripSlot = ({ slot }: { slot: OverlaySlot }) => {
     : "";
 
   return (
-    <div className={cn("grid min-w-0 grid-rows-[42px_minmax(96px,1fr)_46px] overflow-hidden border-r border-white/25 last:border-r-0", !isPending && "map-veto-slot-action")}>
+    <div
+      className={cn(
+        "map-veto-slot relative grid min-w-0 overflow-hidden last:border-r-0",
+        theme === "premium" ? "grid-rows-[34px_minmax(96px,1fr)_38px]" : theme === "glitch" ? "grid-rows-[52px_minmax(96px,1fr)_54px]" : "grid-rows-[44px_minmax(96px,1fr)_48px]",
+        theme === "glitch" && "skew-x-[-2deg]",
+        MAP_THEME[theme].slot,
+        !isPending && "map-veto-slot-action",
+      )}
+    >
+      <div className="pointer-events-none absolute inset-0 z-30 opacity-70 [background:linear-gradient(135deg,rgba(255,255,255,.18)_0_1px,transparent_1px_42px)]" />
       {!isPending && (
-        <div className="map-veto-top-bar flex min-w-0 flex-col items-center justify-center bg-[#ececf1]/95 px-1 text-center text-[clamp(10px,0.78vw,16px)] font-black uppercase leading-[1.05] tracking-wide text-[#24155f]">
+        <div className={cn("map-veto-top-bar flex min-w-0 flex-col items-center justify-center px-1 text-center text-[clamp(10px,0.78vw,16px)] font-black uppercase leading-[1.05] tracking-[0.08em]", MAP_THEME[theme].topBar)}>
           {slot.kind === "decider" ? (
             <>
               <span className="max-w-full truncate">DECIDER</span>
@@ -267,9 +427,11 @@ const StripSlot = ({ slot }: { slot: OverlaySlot }) => {
           )}
           style={{ backgroundImage: slot.mapImageUrl ? `url(${slot.mapImageUrl})` : undefined }}
         />
-        <div className={cn("absolute inset-0", isBan ? "bg-black/66" : "bg-black/18")} />
+        <div className={cn("absolute inset-0", isBan ? MAP_THEME[theme].banShade : MAP_THEME[theme].mapShade)} />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[2px] bg-white/30" />
+        <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-[2px] bg-white/16" />
         {isBan && <div className="map-veto-dim-sweep pointer-events-none absolute inset-0 z-10 overflow-hidden" />}
-        {isBan && <VetoMark />}
+        {isBan && <VetoMark theme={theme} />}
         <div
           className={cn(
             "absolute inset-x-1 text-center",
@@ -279,9 +441,7 @@ const StripSlot = ({ slot }: { slot: OverlaySlot }) => {
           <div
             className={cn(
               "map-veto-map-name truncate text-[clamp(18px,1.45vw,34px)] font-black uppercase leading-none text-white",
-              isBan
-                ? "opacity-90 drop-shadow-[0_3px_10px_rgba(0,0,0,1)]"
-                : "drop-shadow-[0_3px_8px_rgba(0,0,0,0.95)]",
+              isBan ? MAP_THEME[theme].banName : MAP_THEME[theme].name,
             )}
           >
             {slot.mapName}
@@ -292,7 +452,8 @@ const StripSlot = ({ slot }: { slot: OverlaySlot }) => {
         <div
           className={cn(
             "flex items-center justify-center px-1 text-center text-[clamp(10px,0.78vw,16px)] font-black uppercase leading-[1.08] tracking-wide whitespace-pre-line",
-            "map-veto-bottom-bar bg-[#4b1a96] text-white",
+            "map-veto-bottom-bar",
+            MAP_THEME[theme].bottomBar,
           )}
         >
           {bottomLabel}
@@ -378,11 +539,12 @@ const PublicMapVetoOverlay = () => {
   const [searchParams] = useSearchParams();
   const transparent = searchParams.get("transparent") === "1";
   const transition = overlayTransition(searchParams.get("transition"));
+  const theme = overlayTheme(searchParams.get("theme"));
   const queryClient = useQueryClient();
   const actingRef = useRef(false);
   const realtimeConnectedRef = useRef(false);
-  const stateQueryKey = ["public-map-veto-overlay", token] as const;
-  const historyQueryKey = ["public-map-veto-overlay-history", token] as const;
+  const stateQueryKey = useMemo(() => ["public-map-veto-overlay", token] as const, [token]);
+  const historyQueryKey = useMemo(() => ["public-map-veto-overlay-history", token] as const, [token]);
   const statePath = `/api/tools/map-veto/overlay/${token}`;
   const fallbackStatePath = `/api/tools/map-veto/host/${token}`;
   const historyPath = `/api/tools/map-veto/overlay/${token}/history`;
@@ -391,7 +553,7 @@ const PublicMapVetoOverlay = () => {
   const fetchOverlayState = useCallback(async () => {
     try {
       return await apiClient.get<Record<string, unknown>>(statePath);
-    } catch (_error) {
+    } catch {
       return apiClient.get<Record<string, unknown>>(fallbackStatePath);
     }
   }, [fallbackStatePath, statePath]);
@@ -399,7 +561,7 @@ const PublicMapVetoOverlay = () => {
   const fetchOverlayHistory = useCallback(async () => {
     try {
       return await apiClient.get<Array<Record<string, unknown>>>(historyPath);
-    } catch (_error) {
+    } catch {
       return apiClient.get<Array<Record<string, unknown>>>(fallbackHistoryPath);
     }
   }, [fallbackHistoryPath, historyPath]);
@@ -519,7 +681,7 @@ const PublicMapVetoOverlay = () => {
       <style>{OVERLAY_ANIMATION_CSS}</style>
       <div className="flex h-full w-full items-center justify-center overflow-hidden">
         <section
-          className={cn("w-full overflow-hidden bg-[#111114] shadow-[0_18px_70px_rgba(0,0,0,0.45)]", transitionClassName(transition))}
+          className={cn(`map-veto-theme-${theme}`, "w-full overflow-hidden shadow-[0_18px_70px_rgba(0,0,0,0.45)]", MAP_THEME[theme].shell, transitionClassName(transition))}
           style={{ maxHeight: "min(24vh, 250px)" }}
           aria-label="Map veto OBS overlay"
         >
@@ -531,7 +693,7 @@ const PublicMapVetoOverlay = () => {
             }}
           >
             {slots.map((slot) => (
-              <StripSlot key={actionAnimationKey(slot)} slot={slot} />
+              <StripSlot key={actionAnimationKey(slot)} slot={slot} theme={theme} />
             ))}
           </div>
         </section>

@@ -61,7 +61,7 @@ const getInitials = (value: string) => {
  * - If `src` is provided and loads successfully → shows the uploaded image.
  * - Otherwise → renders a deterministic DiceBear avatar seeded by name/id.
  */
-const EntityAvatar: React.FC<EntityAvatarProps> = ({
+const EntityAvatar: React.FC<EntityAvatarProps> = React.memo(({
     src,
     name,
     entityId,
@@ -141,6 +141,6 @@ const EntityAvatar: React.FC<EntityAvatarProps> = ({
             )}
         </div>
     );
-};
+});
 
 export default EntityAvatar;

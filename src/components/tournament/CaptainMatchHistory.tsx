@@ -207,6 +207,7 @@ const FullMatchDataPanel: React.FC<{
     team2Logo?: string;
     teamId?: string;
     isTeam1: boolean;
+    isOrganizer?: boolean;
 }> = ({
     game,
     details,
@@ -218,6 +219,7 @@ const FullMatchDataPanel: React.FC<{
     team2Logo,
     teamId,
     isTeam1,
+    isOrganizer = false,
 }) => (
     <MatchGameStatisticsPanel
         riotMatchId={game.riot_match_id}
@@ -236,6 +238,7 @@ const FullMatchDataPanel: React.FC<{
         t1Side={details?.t1Side}
         captainRoomMode
         captainTeamId={teamId}
+        isOrganizer={isOrganizer}
         fetchLive
         showShareCards
     />
@@ -333,6 +336,7 @@ const MatchStatisticsDetail: React.FC<{
                 team2Logo={match.team2?.logo_url || undefined}
                 teamId={teamId}
                 isTeam1={isTeam1}
+                isOrganizer={isOrganizer}
             />
         </div>
     );

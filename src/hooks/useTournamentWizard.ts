@@ -434,7 +434,7 @@ export const useTournamentWizard = (
         } finally {
             setIsSubmitting(false);
         }
-    }, [user, data, toast, navigate, clearDraft, tournamentId, initialData, queryClient, options?.activeInvitationCount]);
+    }, [user, data, toast, navigate, clearDraft, tournamentId, initialData, queryClient, options?.activeInvitationCount, setCurrentStep]);
 
     return {
         currentStep,

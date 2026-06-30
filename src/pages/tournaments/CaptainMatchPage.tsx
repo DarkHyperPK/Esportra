@@ -426,7 +426,7 @@ const CaptainMatchPage = () => {
         versionId: lifecycleScope.versionId,
     });
 
-    const { acceptedProposal, acceptedProposalTime } = useTimeProposal(activeMatchRawId, { subscribeRealtime: false });
+    const { acceptedProposal: _acceptedProposal, acceptedProposalTime } = useTimeProposal(activeMatchRawId, { subscribeRealtime: false });
 
     const [pendingAcceptedTime, setPendingAcceptedTime] = useState<string | null>(null);
 
@@ -1155,6 +1155,7 @@ const CaptainMatchPage = () => {
                                     canOpenVeto={isMatchLive && activeMatch.status !== 'completed'}
                                     manualReportDisabled={(isVetoEnabled && !mapVetoCompleted) || disputedGameNumbers.has(nextGameNumber)}
                                     manualReportLabel={manualReportLabel}
+                                    hideManualReport={isOrganizerMatchView}
                                     assistedAction={assistedMatchReportAction}
                                     onOpenVeto={() => handleOpenVeto(activeMatch)}
                                     onManualReport={() => handleUploadResult(activeMatch.id)}

@@ -19,6 +19,7 @@ export interface LiveScoreState {
 }
 
 /** Stateful handlers for MatchZy live events — wire via useMatchRoomRealtime on match pages. */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useLiveScoreState(): LiveScoreState {
   const [currentMap, setCurrentMap] = useState(0);
   const [mapScores, setMapScores] = useState<Record<number, { t1: number; t2: number; status: string; winner?: string }>>({});

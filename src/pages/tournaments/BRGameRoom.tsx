@@ -90,7 +90,7 @@ const BRGameRoom: React.FC = () => {
   );
   const effectiveActiveRoundId = activeRound?.id ?? context.activeRound?.id ?? context.activeRound?.lobbyId ?? null;
   const hasActiveRound = Boolean(activeRound ?? context.activeRound);
-  const activeGameNumber = context.activeGame?.gameNumber ?? null;
+  const _activeGameNumber = context.activeGame?.gameNumber ?? null;
   const { data: lobbyGames = [] } = useBRGames(effectiveActiveRoundId, {
     enabled: Boolean(effectiveActiveRoundId),
   });

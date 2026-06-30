@@ -16,14 +16,16 @@ export const BracketExporter: React.FC<BracketExporterProps> = ({
     downloadFileName,
 }) => {
     const [isExporting, setIsExporting] = useState(false);
+    const [showRenderer, setShowRenderer] = useState(false);
     const exportRef = useRef<HTMLDivElement>(null);
 
     const handleExport = async () => {
         if (isExporting) return;
         setIsExporting(true);
+        setShowRenderer(true);
         try {
-            // Wait for state to update and renderer to re-render (just in case)
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Wait for renderer to mount and paint
+            await new Promise(resolve => setTimeout(resolve, 150));
 
             if (exportRef.current) {
                 const dataUrl = await toPng(exportRef.current, {
@@ -43,6 +45,7 @@ export const BracketExporter: React.FC<BracketExporterProps> = ({
             console.error('Export failed:', err);
         } finally {
             setIsExporting(false);
+            setShowRenderer(false);
         }
     };
 
@@ -62,16 +65,18 @@ export const BracketExporter: React.FC<BracketExporterProps> = ({
                 )}
             </div>
 
-            {/* Hidden Export Container */}
-            <div style={{ position: 'absolute', top: -9999, left: -9999, width: 'fit-content', height: 'fit-content' }}>
-                <div ref={exportRef} className="bg-[#09090b] p-8">
-                    <BracketRenderer
-                        matches={matches}
-                        activeFilter={{ type: 'all' }}
-                        disableAnimations={true}
-                    />
+            {/* Hidden Export Container - only mounted during export */}
+            {showRenderer && (
+                <div style={{ position: 'absolute', top: -9999, left: -9999, width: 'fit-content', height: 'fit-content' }}>
+                    <div ref={exportRef} className="bg-[#09090b] p-8">
+                        <BracketRenderer
+                            matches={matches}
+                            activeFilter={{ type: 'all' }}
+                            disableAnimations={true}
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
         </>
     );
 };

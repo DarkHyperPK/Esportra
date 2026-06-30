@@ -35,10 +35,12 @@ function oppositeTeam(team: ValorantTeamId): ValorantTeamId {
   return team === 'Blue' ? 'Red' : 'Blue';
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getTeamAlias(teamId?: string | null, teamAId?: string | null): TeamAlias {
   return teamId && teamAId && teamId === teamAId ? 'Team A' : 'Team B';
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getTeamTone(teamId?: string | null, teamAId?: string | null): 'teamA' | 'teamB' {
   return getTeamAlias(teamId, teamAId) === 'Team A' ? 'teamA' : 'teamB';
 }

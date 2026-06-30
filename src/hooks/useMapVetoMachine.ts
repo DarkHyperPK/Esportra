@@ -122,7 +122,7 @@ function applyOptimisticVetoAction(
     const actingTeamId = veto.current_team_id;
     const isTeam1Acting = actingTeamId != null && actingTeamId === veto.team1_id;
 
-    let next: MatchMapVeto = {
+    const next: MatchMapVeto = {
         ...veto,
         status: veto.status === 'pending' ? 'in_progress' : veto.status,
         team1_banned_maps: [...veto.team1_banned_maps],
@@ -1008,7 +1008,7 @@ export const useMapVetoMachine = ({
             resetInProgressRef.current = false;
             setResetting(false);
         }
-    }, [bestOf, clearVetoHistoryCache, dbBestOf, game, isCaptain, isOrganizer, matchId, team1Id, team2Id, toast, tournamentId, userTeamId, veto, vetoToken]);
+    }, [bestOf, clearVetoHistoryCache, dbBestOf, game, isCaptain, isOrganizer, matchId, team1Id, team2Id, toast, tournamentId, userTeamId, veto]);
 
     const performMapAction = useCallback(async (mapId: string, actionType: 'ban' | 'pick' | 'pick_side', side: 'attack' | 'defend' | null) => {
         if (!veto) return;

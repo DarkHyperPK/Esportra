@@ -31,6 +31,11 @@ import {
 
 const OBS_PREVIEW_WIDTH = 1600;
 const OBS_PREVIEW_HEIGHT = 900;
+const OVERLAY_THEMES = [
+  { value: "tactical", label: "Tactical Neon" },
+  { value: "premium", label: "Premium Minimal" },
+  { value: "glitch", label: "Glitch Arena" },
+] as const;
 
 const OverlayPreviewFrame = ({
   src,
@@ -128,6 +133,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
   const [copiedHost, setCopiedHost] = useState(false);
   const [copiedOverlay, setCopiedOverlay] = useState(false);
   const [overlayTransition, setOverlayTransition] = useState("up");
+  const [overlayTheme, setOverlayTheme] = useState("tactical");
   const [overlayPreviewKey, setOverlayPreviewKey] = useState(0);
 
   const veto = useMemo(() => mapApiVetoToLocal(adaptPublicVetoToMatchVeto(state)), [state]);
@@ -158,7 +164,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
     && ((state.role === "team1" && veto.current_team_id === veto.team1_id)
       || (state.role === "team2" && veto.current_team_id === veto.team2_id));
   const overlayToken = state.overlayToken ?? state.hostToken;
-  const overlayPreviewUrl = overlayToken ? buildPublicVetoOverlayUrl(overlayToken, overlayTransition) : "";
+  const overlayPreviewUrl = overlayToken ? buildPublicVetoOverlayUrl(overlayToken, overlayTransition, overlayTheme) : "";
 
   const handleMapAction = useCallback(async (mapId: string) => {
     if (!veto.current_action || acting) return;
@@ -224,7 +230,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
 
   const copyOverlayLink = async () => {
     if (!overlayToken) return;
-    await copyText(buildPublicVetoOverlayUrl(overlayToken, overlayTransition));
+    await copyText(buildPublicVetoOverlayUrl(overlayToken, overlayTransition, overlayTheme));
     setCopiedOverlay(true);
     toast({ title: "OBS overlay link copied" });
     window.setTimeout(() => setCopiedOverlay(false), 2000);
@@ -288,6 +294,16 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
                   <option value="right">Slide right</option>
                   <option value="none">None</option>
                 </select>
+                <select
+                  value={overlayTheme}
+                  onChange={(event) => setOverlayTheme(event.target.value)}
+                  className="h-8 border-r border-emerald-400/20 bg-black/40 px-2 text-[10px] font-bold uppercase tracking-wide text-emerald-100 outline-none"
+                  aria-label="OBS overlay theme"
+                >
+                  {OVERLAY_THEMES.map((theme) => (
+                    <option key={theme.value} value={theme.value}>{theme.label}</option>
+                  ))}
+                </select>
                 <Button
                   type="button"
                   onClick={() => { void copyOverlayLink(); }}
@@ -324,6 +340,23 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
                 refreshKey={overlayPreviewKey}
                 title="Map veto OBS overlay preview"
               />
+              <div className="grid gap-2 md:grid-cols-3">
+                {OVERLAY_THEMES.map((theme) => (
+                  <button
+                    key={theme.value}
+                    type="button"
+                    onClick={() => setOverlayTheme(theme.value)}
+                    className={`space-y-1 border p-1 text-left transition ${overlayTheme === theme.value ? "border-emerald-400/70 bg-emerald-400/10" : "border-white/10 bg-black/30 hover:border-white/25"}`}
+                  >
+                    <div className="px-1 text-[9px] font-black uppercase tracking-[0.18em] text-zinc-400">{theme.label}</div>
+                    <OverlayPreviewFrame
+                      src={buildPublicVetoOverlayUrl(overlayToken, overlayTransition, theme.value)}
+                      refreshKey={overlayPreviewKey}
+                      title={`Map veto ${theme.label} preview`}
+                    />
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

@@ -288,7 +288,7 @@ const TournamentDashboard = () => {
     () => (tournamentAccess?.permissions ?? []) as StaffPermission[],
     [tournamentAccess?.permissions],
   );
-  const staffRole = tournamentAccess?.role ?? 'none';
+  const _staffRole = tournamentAccess?.role ?? 'none';
   const hasTournamentStaffAccess = Boolean(
     tournamentAccess && !tournamentAccess.isOrganizer && tournamentAccess.role !== 'none',
   );
@@ -674,7 +674,7 @@ const TournamentDashboard = () => {
       console.error(e);
       setTeamLoading(false);
     }
-  }, [tournament?.id, tournament?.game, selectedTeam]);
+  }, [tournament?.id, selectedTeam, tournamentModeFeatures.assistedReporting]);
 
   // Data managed by useTournamentDashboard
 
@@ -1044,7 +1044,7 @@ const TournamentDashboard = () => {
 
   const canManageStaff = canActAsOwner;
   const canAssistDisputes = canActAsOwner || isStaffAdmin || tournamentAccess?.isPlatformAdmin || staffPermissions.includes('disputes:assist');
-  const { badgeCount: disputeBadgeCount, refresh: refreshDisputeUnread } = useOrganizerDisputeUnread(
+  const { badgeCount: disputeBadgeCount, refresh: _refreshDisputeUnread } = useOrganizerDisputeUnread(
     tournament?.id,
     canAssistDisputes,
   );

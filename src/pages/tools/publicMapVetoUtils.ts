@@ -207,5 +207,5 @@ export const buildPublicTeamVetoUrl = (token: string) =>
 export const buildPublicHostVetoUrl = (token: string) =>
   `${window.location.origin}/tools/map-veto/host/${token}`;
 
-export const buildPublicVetoOverlayUrl = (token: string, transition = "up") =>
-  `${window.location.origin}/tools/map-veto/overlay/${token}?transition=${encodeURIComponent(transition)}`;
+export const buildPublicVetoOverlayUrl = (token: string, transition = "up", theme = "tactical") =>
+  `${window.location.origin}/tools/map-veto/overlay/${token}?transition=${encodeURIComponent(transition)}&theme=${encodeURIComponent(theme)}`;

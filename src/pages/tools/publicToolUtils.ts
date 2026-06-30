@@ -155,8 +155,8 @@ export const adaptPublicBracketPayload = (payload: PublicBracketPayload): Bracke
 
   return rawNodes.map((node): BracketMatch => {
     const id = String(pick(node, "id", "Id") ?? "");
-    const team1Id = pick<string>(node, "team1Id", "team1_id", "Team1Id");
-    const team2Id = pick<string>(node, "team2Id", "team2_id", "Team2Id");
+    const _team1Id = pick<string>(node, "team1Id", "team1_id", "Team1Id");
+    const _team2Id = pick<string>(node, "team2Id", "team2_id", "Team2Id");
     const winnerId = pick<string>(node, "winnerId", "winner_id", "WinnerId");
     const bracketType = String(pick(node, "bracketType", "bracket_type", "BracketType") ?? "winners");
     const bracketSide = bracketType === "losers" ? "losers" : bracketType === "final" ? "final" : "winners";

@@ -98,7 +98,7 @@ const GroupPanel = React.memo(({
     hasResultsMap = {},
     hasProofsMap = {},
     canUseMapVeto = false,
-    suppressVetoRoleSwitchPrompt = false,
+    suppressVetoRoleSwitchPrompt: _suppressVetoRoleSwitchPrompt = false,
     hoveredTeamId,
     onTeamHover,
     activeRound,

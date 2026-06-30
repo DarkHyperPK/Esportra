@@ -16,7 +16,7 @@ import { GhostButton } from '@/components/ui/app-buttons';
 import { TournamentWizardData } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS, SEEDING_TYPE_LABELS } from '@/schemas/tournamentSchema';
 import { LAUNCH_STATE_LABELS } from '@/utils/tournamentVisibilityUtils';
-import { getEffectiveGameFeatures, getGameMode, getParticipantMode, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { getEffectiveGameFeatures, getParticipantMode, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 
 interface StepReviewProps {
     data: TournamentWizardData;

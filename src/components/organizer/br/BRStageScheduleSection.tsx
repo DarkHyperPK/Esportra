@@ -17,7 +17,6 @@ import { usesGameOnlySchedule } from '@/utils/brLobbyPatch';
 import { generateBrSchedule } from '@/utils/brScheduleGenerator';
 import {
   formatMatchPairing,
-  formatMatchPairingFromLabel,
   formatRotationMatchdayLabel,
   groupLobbiesByWave,
   resolveMatchupLabelFromLobby,

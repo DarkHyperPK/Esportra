@@ -36,6 +36,7 @@ export interface MatchGameStatisticsPanelProps {
   showShareCards?: boolean;
   captainRoomMode?: boolean;
   captainTeamId?: string;
+  isOrganizer?: boolean;
   fetchLive?: boolean;
 }
 
@@ -154,7 +155,7 @@ export const MatchGameStatisticsPanel: React.FC<MatchGameStatisticsPanelProps> =
   team1Name,
   team2Name,
   team1Id,
-  team2Id,
+  team2Id: _team2Id,
   team1Logo,
   team2Logo,
   team1Score,
@@ -166,6 +167,7 @@ export const MatchGameStatisticsPanel: React.FC<MatchGameStatisticsPanelProps> =
   showShareCards = false,
   captainRoomMode = false,
   captainTeamId,
+  isOrganizer = false,
   fetchLive = true,
 }) => {
   const { toast } = useToast();
@@ -191,9 +193,10 @@ export const MatchGameStatisticsPanel: React.FC<MatchGameStatisticsPanelProps> =
 
   const rosterPlayers = useMemo(() => {
     if (!enriched) return [];
+    if (isOrganizer) return enriched.players;
     if (!captainRoomMode || !captainRiotSide) return enriched.players;
     return enriched.players.filter((player) => player.teamId === captainRiotSide);
-  }, [captainRoomMode, captainRiotSide, enriched]);
+  }, [captainRoomMode, captainRiotSide, enriched, isOrganizer]);
 
   const targetPuuid = useMemo(
     () => (enriched ? pickEnrichedTargetPuuid(enriched, captainRiotSide ?? resolvedT1Side ?? null) : null),
@@ -269,7 +272,9 @@ export const MatchGameStatisticsPanel: React.FC<MatchGameStatisticsPanelProps> =
             </div>
             {rosterPlayers.length > 0 ? (
               <div className="space-y-2">
-                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-500">Your roster</p>
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-zinc-500">
+                  {isOrganizer ? 'All players' : 'Your roster'}
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {rosterPlayers.map((player) => {
                     const playerUrl = buildObsOverlayUrl(enriched, 'player', {

@@ -314,12 +314,12 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
     };
   }, [tournamentId, fetchDisputes, toast, conn, onUnreadChange, selectedDispute?.id, fetchComments]);
 
-  const logDisputeAudit = async (disputeId: string, action: string, meta?: Record<string, unknown>) => {
+  const logDisputeAudit = useCallback(async (disputeId: string, action: string, meta?: Record<string, unknown>) => {
     await auditLog.log(action as any, 'dispute', disputeId, String(meta?.title || 'Dispute'), {
       tournament_id: tournamentId,
       ...meta
     });
-  };
+  }, [tournamentId]);
 
   const handleAssignDispute = useCallback(async (disputeId: string, assigneeId: string) => {
     try {
@@ -350,7 +350,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
     } finally {
       setAssignmentLoading(false);
     }
-  }, [selectedDispute?.title, toast, fetchDisputes]);
+  }, [logDisputeAudit, selectedDispute?.title, toast, fetchDisputes]);
 
   // Debounced auto-save when user explicitly changes assignee (lead organizer only)
   useEffect(() => {

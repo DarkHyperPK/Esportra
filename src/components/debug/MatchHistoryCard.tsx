@@ -160,7 +160,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
         ? Boolean(matchData.teams.find((team) => team.teamId === t1Side)?.won)
         : matchData.teams.find((team) => team.teamId === teamId)?.won;
     const parsedInfo = matchData.matchInfoParsed;
-    const roundResults = matchData.roundResults ?? [];
+    const roundResults = useMemo(() => matchData.roundResults ?? [], [matchData.roundResults]);
 
     const analytics = useMemo(() => {
         if (!roundResults.length || !player) return null;
@@ -370,7 +370,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
         };
     }, [player?.characterId, matchData.matchInfo.mapId]);
 
-    const roundTimeline = matchData.roundTimeline ?? [];
+    const roundTimeline = useMemo(() => matchData.roundTimeline ?? [], [matchData.roundTimeline]);
     const economyTimeline = matchData.economyTimeline ?? [];
     const weaponSummaries = matchData.weaponSummaries ?? [];
 

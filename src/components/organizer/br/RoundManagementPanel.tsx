@@ -436,7 +436,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
     ? expandedTotalAssigned
     : (round.total_assigned ?? 0);
   const showReadiness = round.status === 'active' && (totalAssigned > 0 || readyCount > 0);
-  const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
+  const { results, isLoading: _resultsLoading, submitResults } = useBRLobbyResults(
     isExpanded && !perGameLobbyUi ? round.id : null,
     stageId,
     groupId
@@ -542,7 +542,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
     return () => window.clearTimeout(timer);
   }, [lobbyCode, round.status, round.lobby_code, onRoundSettingsSave, toast, usesPerGameQueue]);
 
-  const handleResultSave = async (resultInputs: BRResultInput[]) => {
+  const _handleResultSave = async (resultInputs: BRResultInput[]) => {
     await submitResults.mutateAsync({ lobbyId: round.id, results: resultInputs });
   };
 

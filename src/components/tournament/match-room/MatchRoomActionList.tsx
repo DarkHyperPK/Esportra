@@ -1,12 +1,12 @@
 import React from 'react';
 import { Search, Swords, Trophy } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 interface MatchRoomActionListProps {
   vetoEnabled: boolean;
   canOpenVeto: boolean;
   manualReportDisabled: boolean;
   manualReportLabel: string;
+  hideManualReport?: boolean;
   assistedAction?: React.ReactNode;
   onOpenVeto: () => void;
   onManualReport: () => void;
@@ -17,6 +17,7 @@ export const MatchRoomActionList: React.FC<MatchRoomActionListProps> = ({
   canOpenVeto,
   manualReportDisabled,
   manualReportLabel,
+  hideManualReport = false,
   assistedAction,
   onOpenVeto,
   onManualReport,
@@ -38,15 +39,17 @@ export const MatchRoomActionList: React.FC<MatchRoomActionListProps> = ({
         />
       ) : null}
 
-      <ActionRow
-        eyebrow="Result upload"
-        title={manualReportLabel}
-        description="Use manual report when automated matching is not available."
-        icon={<Trophy className="h-4 w-4" />}
-        disabled={manualReportDisabled}
-        onClick={onManualReport}
-        accent
-      />
+      {!hideManualReport ? (
+        <ActionRow
+          eyebrow="Result upload"
+          title={manualReportLabel}
+          description="Use manual report when automated matching is not available."
+          icon={<Trophy className="h-4 w-4" />}
+          disabled={manualReportDisabled}
+          onClick={onManualReport}
+          accent
+        />
+      ) : null}
 
       {assistedAction ? (
         <div className="rounded-none border border-white/10 bg-white/[0.02] p-4">

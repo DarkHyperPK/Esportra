@@ -175,15 +175,15 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
         return stages?.find(s => s.id === selectedStageId);
     }, [stages, selectedStageId]);
 
-    const isMatchVisible = (match: BracketMatch) => {
-        if (activeFilter.type === 'all') return true;
-        if (activeFilter.type === 'winners') return (!match.bracketSide || match.bracketSide === 'winners') && match.round === activeFilter.round;
-        if (activeFilter.type === 'losers') return match.bracketSide === 'losers' && match.round === activeFilter.round;
-        if (activeFilter.type === 'final') return match.bracketSide === 'final';
-        return true;
-    };
-
     const matchListGroups = useMemo(() => {
+        const isMatchVisible = (match: BracketMatch) => {
+            if (activeFilter.type === 'all') return true;
+            if (activeFilter.type === 'winners') return (!match.bracketSide || match.bracketSide === 'winners') && match.round === activeFilter.round;
+            if (activeFilter.type === 'losers') return match.bracketSide === 'losers' && match.round === activeFilter.round;
+            if (activeFilter.type === 'final') return match.bracketSide === 'final';
+            return true;
+        };
+
         const grouped = new Map<string, BracketMatch[]>();
         const sorted = [...matches]
             .filter(isMatchVisible)

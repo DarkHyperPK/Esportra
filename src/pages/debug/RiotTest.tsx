@@ -15,6 +15,12 @@ const OBS_PREVIEW_WIDTH = 1600;
 const OBS_PREVIEW_HEIGHT = 900;
 const SPONSOR_CANVAS_WIDTH = 250;
 const SPONSOR_CANVAS_HEIGHT = 340;
+const OVERLAY_THEMES = [
+    { value: 'tactical', label: 'Tactical Neon' },
+    { value: 'premium', label: 'Premium Minimal' },
+    { value: 'glitch', label: 'Glitch Arena' },
+] as const;
+type OverlayTheme = typeof OVERLAY_THEMES[number]['value'];
 
 const OverlayPreviewFrame = ({
     src,
@@ -285,6 +291,7 @@ const RiotTest = () => {
     const [sponsorOffsetY, setSponsorOffsetY] = useState('0');
     const [sponsorFit, setSponsorFit] = useState('contain');
     const [overlayType, setOverlayType] = useState<'match' | 'player' | 'compare'>('match');
+    const [overlayTheme, setOverlayTheme] = useState<OverlayTheme>('tactical');
     const [selectedPlayerPuuid, setSelectedPlayerPuuid] = useState('');
     const [selectedLeftPlayerPuuid, setSelectedLeftPlayerPuuid] = useState('');
     const [selectedRightPlayerPuuid, setSelectedRightPlayerPuuid] = useState('');
@@ -344,7 +351,7 @@ const RiotTest = () => {
                 matchId,
             });
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Request failed';
+            const _message = err instanceof Error ? err.message : 'Request failed';
             console.error('[riot-enriched-match] CATCH ERROR:', err);
             return null;
         }
@@ -473,7 +480,7 @@ const RiotTest = () => {
                 label: `${player.gameName || 'Unknown'}${player.tagLine ? `#${player.tagLine}` : ''} · ${player.teamId}`,
             }));
 
-    const buildOverlayUrl = (match: EnrichedRiotMatchData) => {
+    const buildOverlayUrl = (match: EnrichedRiotMatchData, themeOverride: OverlayTheme = overlayTheme) => {
         const matchId = match.matchInfo.matchId;
         if (!matchId) return '';
         const playerOptions = getPlayerOptions(match);
@@ -490,6 +497,7 @@ const RiotTest = () => {
             bgDim,
             leftSide,
             nameMode,
+            theme: themeOverride,
             transition: overlayTransition,
             sponsorSize: '1',
             sponsorWidth,
@@ -564,6 +572,9 @@ const RiotTest = () => {
     ];
     const previewMatch = matches.find((match) => match.matchInfo.matchId === previewMatchId) || matches[0] || null;
     const previewUrl = previewMatch ? buildOverlayUrl(previewMatch) : '';
+    const previewVariantUrls = previewMatch
+        ? OVERLAY_THEMES.map((theme) => ({ ...theme, url: buildOverlayUrl(previewMatch, theme.value) }))
+        : [];
 
     return (
         <div className="mx-auto w-full max-w-[1280px] space-y-8 px-4 py-8 pb-40 sm:px-6 lg:px-8">
@@ -663,7 +674,7 @@ const RiotTest = () => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                    <div className="grid gap-3 md:grid-cols-3">
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                         <div className="space-y-2">
                             <Label className="text-xs text-zinc-400">Overlay type</Label>
                             <select
@@ -674,6 +685,18 @@ const RiotTest = () => {
                                 <option value="match">Match stats</option>
                                 <option value="player">Individual player</option>
                                 <option value="compare">Player comparison</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs text-zinc-400">Graphics variant</Label>
+                            <select
+                                value={overlayTheme}
+                                onChange={(e) => setOverlayTheme(e.target.value as OverlayTheme)}
+                                className="h-10 w-full rounded-md border border-zinc-800 bg-zinc-950 px-3 text-sm text-white outline-none focus:ring-1 focus:ring-rose-500"
+                            >
+                                {OVERLAY_THEMES.map((theme) => (
+                                    <option key={theme.value} value={theme.value}>{theme.label}</option>
+                                ))}
                             </select>
                         </div>
                         <div className="space-y-2">
@@ -941,6 +964,26 @@ const RiotTest = () => {
                             title="Riot OBS overlay preview"
                             emptyLabel="No overlay selected"
                         />
+                        {previewVariantUrls.length > 0 && (
+                            <div className="grid gap-2 lg:grid-cols-3">
+                                {previewVariantUrls.map((theme) => (
+                                    <button
+                                        key={theme.value}
+                                        type="button"
+                                        onClick={() => setOverlayTheme(theme.value)}
+                                        className={`space-y-1 border p-1 text-left transition ${overlayTheme === theme.value ? 'border-violet-400/70 bg-violet-400/10' : 'border-zinc-800 bg-black/35 hover:border-zinc-600'}`}
+                                    >
+                                        <div className="px-1 text-[9px] font-black uppercase tracking-[0.18em] text-zinc-400">{theme.label}</div>
+                                        <OverlayPreviewFrame
+                                            src={theme.url}
+                                            refreshKey={previewRefreshKey}
+                                            title={`${theme.label} Riot OBS preview`}
+                                            emptyLabel="No overlay selected"
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>

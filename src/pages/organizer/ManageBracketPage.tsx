@@ -23,7 +23,7 @@ const ManageBracketPage = () => {
     const { slug, stageId } = useParams<{ slug: string; stageId: string }>();
     const navigate = useNavigate();
     const { toast } = useToast();
-    const { user, profile, loading: authLoading } = useAuth();
+    const { user: _user, profile, loading: authLoading } = useAuth();
     const { currentRole } = useRole();
     const admin = useAdmin();
     const queryClient = useQueryClient();

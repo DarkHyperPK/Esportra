@@ -170,7 +170,7 @@ export default function TournamentHistory() {
 function HistoryBRView({
     tournamentId,
     gameName,
-    tournamentSlug,
+    tournamentSlug: _tournamentSlug,
 }: {
     tournamentId: string;
     gameName: string;

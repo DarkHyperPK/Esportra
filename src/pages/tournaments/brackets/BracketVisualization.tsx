@@ -8,7 +8,7 @@
  * CARD HEIGHT: Fixed at 200px to prevent overlapping
  */
 
-import React, { useState, useMemo, useCallback, useRef, useDeferredValue, startTransition, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useRef, startTransition, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Copy, Check,
   Trophy, Swords, Gamepad2, Network, List
@@ -33,7 +33,7 @@ import { isMatchTooEarlyForLive } from '@/lib/timeUtils';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
 import { useBracketWheelScroll } from '@/hooks/useBracketWheelScroll';
 import { gameHasMapVeto } from '@/utils/gameFeatures';
-import { useBracketLayout, CARD_WIDTH, CARD_HEIGHT, ROUND_GAP, MATCH_GAP, LEFT_PADDING, HEADING_HEIGHT, HEADING_MARGIN, BRACKET_SPACING } from '@/hooks/useBracketLayout';
+import { useBracketLayout, CARD_WIDTH, CARD_HEIGHT, ROUND_GAP, LEFT_PADDING, BRACKET_SPACING } from '@/hooks/useBracketLayout';
 import { useViewportCulling } from '@/hooks/useViewportCulling';
 
 export interface BracketVisualizationProps {
@@ -321,7 +321,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
         }
       }
     }
-  }, [viewMode, winnersRounds]);
+  }, [viewMode, winnersRounds, activeFilter.type]);
 
   // Use the extracted layout hook for position calculations
   const { positions: matchPositions, totalWidth, totalHeight, winnersBottomY } = useBracketLayout({

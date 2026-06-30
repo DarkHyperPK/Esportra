@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient, getApiErrorMessage } from "@/lib/apiClient";
@@ -24,8 +24,8 @@ const PublicMapVetoRoom = () => {
   const realtimeConnectedRef = useRef(false);
   const [acting, setActing] = useState(false);
   const statePath = isHost ? `/api/tools/map-veto/host/${token}` : `/api/tools/map-veto/team/${token}`;
-  const stateQueryKey = ["public-map-veto", isHost ? "host" : "team", token] as const;
-  const historyQueryKey = ["public-map-veto-history", token] as const;
+  const stateQueryKey = useMemo(() => ["public-map-veto", isHost ? "host" : "team", token] as const, [isHost, token]);
+  const historyQueryKey = useMemo(() => ["public-map-veto-history", token] as const, [token]);
 
   const refreshHistory = useCallback(async (maps: PublicVetoState["maps"], game: string) => {
     if (!token) return;

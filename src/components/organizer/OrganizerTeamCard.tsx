@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { preferSoloRiotTagDisplay, resolveSoloParticipantDisplayName } from '@/utils/gameFeatures';
+import { resolveSoloParticipantDisplayName } from '@/utils/gameFeatures';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Settings } from 'lucide-react';
 import { GhostButton } from '@/components/ui/app-buttons';

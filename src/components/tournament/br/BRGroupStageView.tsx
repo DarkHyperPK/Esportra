@@ -36,7 +36,7 @@ interface BRGroupStageViewProps {
 
 const BRGroupStageView: React.FC<BRGroupStageViewProps> = ({
   stageId,
-  gameName,
+  gameName: _gameName,
   stageFormat,
   qualificationCount,
   mode = 'leaderboard',

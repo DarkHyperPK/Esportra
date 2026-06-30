@@ -250,7 +250,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const isSuperAdmin = profile?.is_admin && (profile?.admin_roles as string[])?.includes('super_admin');
 
   const canCreateTeams = currentRole === 'casual' || isSuperAdmin;
-  const canCreateTournaments = currentRole === 'organizer' || isSuperAdmin;
+  const canCreateTournaments = isSuperAdmin || (rolesDataRef.current?.canCreateTournament ?? false);
   const canManageTournaments = currentRole === 'organizer' || isSuperAdmin;
   const canJoinTeams = currentRole === 'casual' || isSuperAdmin;
   const canReportScores = currentRole === 'casual' || isSuperAdmin;

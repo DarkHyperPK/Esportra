@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -36,11 +36,12 @@ interface ManualAdjustmentMenuProps {
     onAdjustmentMade?: () => void;
     bestOf?: number;
     versionId?: string | null;
+    defaultOpen?: boolean;
 }
 
 type AdjustmentAction = 'walkover_team1' | 'walkover_team2' | 'swap' | 'reset';
 
-const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
+const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = React.memo(({
     matchId,
     tournamentId: _tournamentId,
     team1Id,
@@ -51,12 +52,23 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
     onAdjustmentMade,
     bestOf,
     versionId,
+    defaultOpen = false,
 }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [pendingAction, setPendingAction] = useState<AdjustmentAction | null>(null);
     const [processing, setProcessing] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+    
+    // Open on next frame if defaultOpen is true - allows component to mount first
+    useEffect(() => {
+        if (defaultOpen) {
+            requestAnimationFrame(() => {
+                setIsOpen(true);
+            });
+        }
+    }, [defaultOpen]);
 
     const actionLabels: Record<AdjustmentAction, { title: string; description: string }> = {
         walkover_team1: {
@@ -224,7 +236,7 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
 
     return (
         <>
-            <DropdownMenu>
+            <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
                 <DropdownMenuTrigger asChild>
                     <GhostButton
                         size="sm"
@@ -316,6 +328,6 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
             </AlertDialog>
         </>
     );
-};
+});
 
 export default ManualAdjustmentMenu;

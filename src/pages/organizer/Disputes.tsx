@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShieldAlert, Clock, CheckCircle, XCircle,
   RefreshCw, AlertCircle, Send, Image as ImageIcon, X,
-  Trophy, Calendar, Search, MessageSquare, ZoomIn,
+  Trophy, Calendar, Search, MessageSquare,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import DisputeEvidencePanel, {
