@@ -25,9 +25,9 @@ runs:
             `**Commit:** [\`${context.sha.slice(0, 7)}\`](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/commit/${context.sha})`,
             `**Run:** ${runUrl}`,
             '',
-            'Check the failed job logs in GitHub Actions. Playwright artifacts (if any) are attached to the failed E2E job.',
+            'Check the failed job logs in GitHub Actions.',
             '',
-            '_Auto-created by CI notify action. Close when resolved; a new failure will reopen or comment._',
+            '_Auto-created by CI notify action. Close when resolved; a new failure will comment on this issue._',
           ].join('\n');
 
           const label = 'ci-failure';
@@ -84,13 +84,7 @@ runs:
         WEBHOOK_URL: ${{ inputs.webhook_url }}
       run: |
         set -euo pipefail
-        payload="$(python3 - <<'PY'
-        import json, os
-        print(json.dumps({
-          "text": f"CI failed: {os.environ['GITHUB_WORKFLOW']} on {os.environ['GITHUB_REF_NAME']} — {os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}"
-        }))
-        PY
-        )"
+        payload="{\"text\":\"CI failed: ${GITHUB_WORKFLOW} on ${GITHUB_REF_NAME} — ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"}"
         curl --fail --silent --show-error -X POST "$WEBHOOK_URL" \
           -H "Content-Type: application/json" \
           -d "$payload"
