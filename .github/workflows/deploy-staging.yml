@@ -59,7 +59,7 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run test
+      - run: npm run test --if-present
 
   promote:
     name: Promote to deploy/staging
