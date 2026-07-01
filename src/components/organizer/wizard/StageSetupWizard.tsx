@@ -836,27 +836,28 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
                 <div className="border-t border-white/10 pt-6 mt-6">
                     <h4 className="text-sm font-medium mb-4 flex items-center gap-2 text-emerald-400">
-                        <Shield className="h-4 w-4" /> Veto Settings
+                        <Shield className="h-4 w-4" /> Series Format
                     </h4>
                     <div className="grid grid-cols-1 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">
-                                {stage.bo_mode === 'per_round' ? 'Default Series Format' : 'Series Format'}
-                            </Label>
-                            <Select
-                                value={String(stage.best_of)}
-                                onValueChange={(val) => updateStageConfig(currentStageIndex, 'best_of', Number(val))}
-                            >
-                                <SelectTrigger className="bg-black/20 border-white/10">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {getSeriesOptions(gameData).map(opt => (
-                                        <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {/* Only show default selector when NOT in per-round mode */}
+                        {stage.bo_mode !== 'per_round' && (
+                            <div className="space-y-2">
+                                <Label className="text-gray-300">Series Format (All Rounds)</Label>
+                                <Select
+                                    value={String(stage.best_of)}
+                                    onValueChange={(val) => updateStageConfig(currentStageIndex, 'best_of', Number(val))}
+                                >
+                                    <SelectTrigger className="bg-black/20 border-white/10">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {getSeriesOptions(gameData).map(opt => (
+                                            <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
 
                         <RoundBoConfigSection
                             format={stage.format}

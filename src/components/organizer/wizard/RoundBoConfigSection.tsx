@@ -88,11 +88,26 @@ export function RoundBoConfigSection({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div
+        className={cn(
+          "flex items-center justify-between p-3 rounded-lg transition-colors",
+          boMode === 'per_round'
+            ? "bg-emerald-500/10 border border-emerald-500/30"
+            : "bg-black/20 border border-white/5"
+        )}
+      >
         <div className="space-y-0.5">
-          <Label className="text-gray-300">Per-Round Series Format</Label>
+          <Label className={cn(
+            "font-medium",
+            boMode === 'per_round' ? "text-emerald-400" : "text-gray-300"
+          )}>
+            {boMode === 'per_round' ? 'Per-Round Series Format (Active)' : 'Enable Per-Round Series Format'}
+          </Label>
           <p className="text-xs text-gray-500">
-            Configure different BO formats for each round
+            {boMode === 'per_round'
+              ? 'Configure BO format individually for each round below'
+              : 'Set different BO formats for different rounds (e.g., BO1 early, BO5 finals)'
+            }
           </p>
         </div>
         <Switch
