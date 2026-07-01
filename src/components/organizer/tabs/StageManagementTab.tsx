@@ -493,7 +493,16 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             // Extract BO configuration from stage (supports per-round BO)
             const bestOf = (stage as any).best_of ?? stageConfig.best_of ?? 1;
             const boMode = (stage as any).bo_mode ?? stageConfig.bo_mode ?? 'per_stage';
-            const roundBoOverrides = (stage as any).round_bo_overrides ?? stageConfig.round_bo_overrides ?? null;
+
+            // Parse round_bo_overrides - may be a JSON string from the database
+            let roundBoOverrides = (stage as any).round_bo_overrides ?? stageConfig.round_bo_overrides ?? null;
+            if (typeof roundBoOverrides === 'string') {
+                try {
+                    roundBoOverrides = JSON.parse(roundBoOverrides);
+                } catch {
+                    roundBoOverrides = null;
+                }
+            }
             const advancementCount = stage.advancement_count || undefined;
 
             // Calculate bracket size based on format
