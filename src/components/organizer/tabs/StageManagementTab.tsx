@@ -10,12 +10,6 @@ import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
 import { StageSetupWizard } from '@/components/organizer/wizard/StageSetupWizard';
-import { SingleEliminationGenerator } from '@/services/bracket/SingleEliminationGenerator';
-import { DoubleEliminationGenerator } from '@/services/bracket/DoubleEliminationGenerator';
-import { SwissGenerator } from '@/services/bracket/SwissGenerator';
-import { RoundRobinGenerator } from '@/services/bracket/RoundRobinGenerator';
-import { MatchRepository } from '@/services/bracket/MatchRepository';
-import { GraphValidator } from '@/services/bracket/BracketGenerator';
 import { StageCompletionService } from '@/services/bracket/StageCompletionService';
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import { getStageProgressFromStage } from '@/components/tournament/getStageProgressFromStage';
@@ -492,102 +486,80 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             // Get next version_number across the whole tournament
             const allTournamentVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
 
-            const allTournamentVersionsSorted = (allTournamentVersions || []).sort((a: any, b: any) => (b.version_number || 0) - (a.version_number || 0));
-
-            const maxV = allTournamentVersionsSorted.length > 0 ? allTournamentVersionsSorted[0].version_number : 0;
-            const nextVersionNumber = maxV + 1;
-            console.log(`[StageManagement] Max version in tournament: ${maxV}, Assigning: ${nextVersionNumber}`);
-
-            // Generate based on stage format
-            const format = stage.format || 'single_elimination';
-            let generator;
-            let bracketSize: number | undefined = undefined;
-
-            // Bracket Size remains undefined to allow auto-sizing based on participant count
-
             // Parse config once — API may return it as JSON string
             const stageConfig: any = typeof stage.config === 'string'
                 ? (() => { try { return JSON.parse(stage.config as string); } catch { return {}; } })()
                 : (stage.config || {});
 
-            if (format === 'single_elimination') {
-                generator = new SingleEliminationGenerator();
-            } else if (format === 'double_elimination') {
-                generator = new DoubleEliminationGenerator();
-            } else if (format === 'swiss') {
-                generator = new SwissGenerator();
-                console.log('[StageManagement] Swiss config from stage:', stageConfig);
-                if (stageConfig.swiss_rounds) {
-                    bracketSize = Number(stageConfig.swiss_rounds);
-                }
+            const format = stage.format || 'single_elimination';
+
+            // Extract BO configuration from stage (supports per-round BO)
+            const bestOf = (stage as any).best_of ?? stageConfig.best_of ?? 1;
+            const boMode = (stage as any).bo_mode ?? stageConfig.bo_mode ?? 'per_stage';
+            const roundBoOverrides = (stage as any).round_bo_overrides ?? stageConfig.round_bo_overrides ?? null;
+            const advancementCount = stage.advancement_count || undefined;
+
+            // Calculate bracket size based on format
+            let bracketSize: number | undefined = undefined;
+            const tbdSize = (teams as any).__tbdSize as number | undefined;
+
+            if (tbdSize !== undefined) {
+                bracketSize = tbdSize;
+            } else if (format === 'swiss' && stageConfig.swiss_rounds) {
+                bracketSize = Number(stageConfig.swiss_rounds);
             } else if (format === 'round_robin') {
-                generator = new RoundRobinGenerator();
                 if (stageConfig.group_count) {
                     bracketSize = Number(stageConfig.group_count);
                 } else if (stage.capacity) {
-                    const groupSize = 4;
-                    bracketSize = Math.ceil(Number(stage.capacity) / groupSize);
-                    console.log('[StageManagement] Auto-calculated RR group_count:', bracketSize, 'from capacity:', stage.capacity);
+                    bracketSize = Math.ceil(Number(stage.capacity) / 4);
                 } else {
                     bracketSize = Math.ceil(teams.length / 4);
-                    console.log('[StageManagement] Fallback RR group_count:', bracketSize, 'from teams:', teams.length);
                 }
-            } else {
-                toast({ title: 'Error', description: `Unsupported format: ${format}`, variant: 'destructive' });
-                return;
             }
 
-            const bestOf = (stage as any).best_of || stageConfig.best_of || 1;
-            const advancementCount = stage.advancement_count || undefined;
+            // Fetch tournament start date for scheduling
+            let dailyStartTime: string | undefined;
+            let tournamentStartDate: string | undefined;
 
-            // For TBD (no-participant) brackets, override bracketSize from the captured capacity
-            // so the structure is sized correctly regardless of format-specific logic above.
-            const tbdSize = (teams as any).__tbdSize as number | undefined;
-            if (tbdSize !== undefined) {
-                bracketSize = tbdSize;
-            }
-
-            // Fetch tournament start date and scheduling config for auto-scheduling (Swiss/RR)
-            const enrichedConfig = { ...stageConfig };
             if (format === 'swiss' || format === 'round_robin') {
                 try {
                     const response = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
                     const tournamentData = response?.tournament || response;
-
                     const stageScheduling = await apiClient.get<any>(`/api/stages/${stageId}`).catch(() => null);
 
-                    if (tournamentData?.start_date) {
-                        enrichedConfig.tournament_start_date = tournamentData.start_date;
-                    }
-                    if (stageScheduling?.scheduling_config?.daily_start_time) {
-                        enrichedConfig.daily_start_time = stageScheduling.scheduling_config.daily_start_time;
-                    }
+                    tournamentStartDate = tournamentData?.start_date;
+                    dailyStartTime = stageScheduling?.scheduling_config?.daily_start_time;
                 } catch (err) {
                     console.warn('[StageManagement] Could not fetch scheduling config:', err);
                 }
             }
 
-            console.log('[StageManagement] Calling generator with:', {
+            console.log('[StageManagement] Calling backend API with:', {
                 format,
                 teams: teams.length,
                 bestOf,
+                boMode,
+                roundBoOverrides,
                 bracketSize,
                 advancementCount,
-                config: enrichedConfig
             });
-            const graph = generator.generate(teams, tournamentId, stageId, bestOf, bracketSize, advancementCount, enrichedConfig);
-            graph.version.version_number = nextVersionNumber;
 
-            // Validate
-            const errors = GraphValidator.validate(graph);
-            if (errors.length > 0) {
-                console.error('Validation errors:', errors);
-                throw new Error('Graph validation failed: ' + errors.join(', '));
-            }
-
-            // Save to DB
-            const repo = new MatchRepository();
-            await repo.createVersion(graph);
+            // Call backend API - handles generation, validation, and persistence
+            await apiClient.post('/api/brackets/generate', {
+                tournamentId,
+                stageId,
+                format,
+                teams: teams.map(t => ({ id: t.id, name: t.name })),
+                bestOf,
+                boMode,
+                roundBoOverrides,
+                bracketSize,
+                advancementCount,
+                dailyStartTime,
+                tournamentStartDate,
+                swissGroups: stageConfig.group_count,
+                swissRounds: stageConfig.swiss_rounds,
+            });
 
             // Update state and navigate
             setHasBrackets(prev => ({ ...prev, [stageId]: true }));
