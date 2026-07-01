@@ -483,9 +483,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             console.log(`[StageManagement] Deleted ${stageVersions.length} existing versions for stage ${stageId}`);
 
-            // Get next version_number across the whole tournament
-            const allTournamentVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
-
             // Parse config once — API may return it as JSON string
             const stageConfig: any = typeof stage.config === 'string'
                 ? (() => { try { return JSON.parse(stage.config as string); } catch { return {}; } })()

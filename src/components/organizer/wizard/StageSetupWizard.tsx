@@ -15,10 +15,11 @@ import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 
 import { RECOMMENDED_TEMPLATES } from '@/data/recommended_templates';
 import { StageGuidelineModal } from './StageGuidelineModal';
+import { RoundBoConfigSection } from './RoundBoConfigSection';
 import { cn } from '@/lib/utils';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import { getGameByName } from '@/utils/gameFeatures';
-import { buildStageConfigPayload, normalizeStageBestOf } from '@/utils/stageSync';
+import { buildStageConfigPayload, normalizeBestOf } from '@/utils/stageMapper';
 
 // Maps series format strings from catalog game features to display labels and numeric best_of values
 const SERIES_FORMAT_MAP: Record<string, { label: string; value: number }> = {
@@ -73,6 +74,8 @@ interface StageConfig {
     capacity: number | '';
     advancement_count: number | '';
     best_of: number;
+    bo_mode: 'per_stage' | 'per_round';
+    round_bo_overrides: Record<string, number>;
     settings?: {
         swiss_rounds?: number;
         group_count?: number;
@@ -90,6 +93,8 @@ const DEFAULT_STAGE_CONFIG: StageConfig = {
     capacity: '',
     advancement_count: '',
     best_of: 1,
+    bo_mode: 'per_stage',
+    round_bo_overrides: {},
 };
 
 // Validation helper functions
@@ -279,6 +284,8 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             setStagesConfig(existingStages.map(s => {
                 const stageAny = s as any;
                 const bestOf = stageAny.best_of || 1;
+                const boMode = stageAny.bo_mode || 'per_stage';
+                const roundBoOverrides = stageAny.round_bo_overrides || {};
                 const stageConfig = typeof stageAny.config === 'string'
                     ? (() => { try { return JSON.parse(stageAny.config); } catch { return {}; } })()
                     : (stageAny.config || {});
@@ -289,6 +296,8 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     capacity: s.capacity || '',
                     advancement_count: s.advancement_count || '',
                     best_of: bestOf,
+                    bo_mode: boMode,
+                    round_bo_overrides: roundBoOverrides,
                     settings: {
                         ...(stageConfig.swiss_groups != null && { swiss_groups: stageConfig.swiss_groups }),
                         ...(stageConfig.swiss_rounds != null && { swiss_rounds: stageConfig.swiss_rounds }),
@@ -442,6 +451,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
             const stageDtos = stagesConfig.map((stage, i) => {
                 const config = buildStageConfigPayload(stage.settings);
+                const hasOverrides = stage.bo_mode === 'per_round' && Object.keys(stage.round_bo_overrides).length > 0;
                 return {
                     id: stage.id || null,
                     name: stage.name,
@@ -449,7 +459,9 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     stageOrder: i + 1,
                     capacity: stage.capacity === '' ? null : Number(stage.capacity),
                     advancementCount: stage.advancement_count === '' ? null : Number(stage.advancement_count),
-                    bestOf: normalizeStageBestOf(stage.best_of),
+                    bestOf: normalizeBestOf(stage.best_of),
+                    boMode: stage.bo_mode,
+                    ...(hasOverrides && { roundBoOverrides: stage.round_bo_overrides }),
                     ...(config && { config }),
                 };
             });
@@ -828,7 +840,9 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     </h4>
                     <div className="grid grid-cols-1 gap-6">
                         <div className="space-y-2">
-                            <Label className="text-gray-300">Series Format</Label>
+                            <Label className="text-gray-300">
+                                {stage.bo_mode === 'per_round' ? 'Default Series Format' : 'Series Format'}
+                            </Label>
                             <Select
                                 value={String(stage.best_of)}
                                 onValueChange={(val) => updateStageConfig(currentStageIndex, 'best_of', Number(val))}
@@ -843,6 +857,17 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        <RoundBoConfigSection
+                            format={stage.format}
+                            bracketSize={typeof stage.capacity === 'number' ? stage.capacity : 0}
+                            boMode={stage.bo_mode}
+                            defaultBestOf={stage.best_of}
+                            roundBoOverrides={stage.round_bo_overrides}
+                            seriesOptions={getSeriesOptions(gameData)}
+                            onBoModeChange={(mode) => updateStageConfig(currentStageIndex, 'bo_mode', mode)}
+                            onOverridesChange={(overrides) => updateStageConfig(currentStageIndex, 'round_bo_overrides', overrides)}
+                        />
                     </div>
                 </div>
             </motion.div>
