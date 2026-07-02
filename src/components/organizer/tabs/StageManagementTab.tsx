@@ -544,6 +544,16 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 && typeof roundBoOverrides === 'object'
                 && Object.keys(roundBoOverrides).length > 0;
 
+            // Detailed logging for BO configuration debugging
+            console.log('[StageManagement] BO Configuration:', {
+                boMode,
+                bestOf,
+                hasValidOverrides,
+                roundBoOverrides,
+                format,
+                stageId,
+            });
+
             console.log('[StageManagement] Calling backend API with:', {
                 format,
                 teams: teams.length,
@@ -553,6 +563,14 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 bracketSize,
                 advancementCount,
             });
+
+            // Show BO mode in toast for transparency
+            if (boMode === 'per_round' && hasValidOverrides) {
+                toast({
+                    title: 'Generating bracket with per-round BO',
+                    description: `${Object.keys(roundBoOverrides).length} round(s) configured with custom BO values`,
+                });
+            }
 
             // Call backend API - handles generation, validation, and persistence
             await apiClient.post('/api/brackets/generate', {
