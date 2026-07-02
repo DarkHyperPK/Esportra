@@ -407,7 +407,6 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                 ) : (
                     <div
                         ref={bracketScroll.scrollRef}
-                        onWheel={bracketScroll.onWheel}
                         tabIndex={0}
                         aria-label="Scrollable tournament bracket canvas"
                         className="min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus:ring-2 focus:ring-rose-500/50"

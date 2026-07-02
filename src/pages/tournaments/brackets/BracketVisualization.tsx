@@ -813,7 +813,6 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
               bracketScroll.scrollRef.current = el;
               bracketContainerRef.current = el;
             }}
-            onWheel={bracketScroll.onWheel}
             onScroll={handleBracketScroll}
             tabIndex={0}
             aria-label="Scrollable bracket management canvas"
