@@ -282,7 +282,11 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                 const stageAny = s as any;
                 const bestOf = stageAny.best_of || 1;
                 const boMode = stageAny.bo_mode || 'per_stage';
-                const roundBoOverrides = stageAny.round_bo_overrides || {};
+                // Parse round_bo_overrides - may be JSON string from database
+                let roundBoOverrides = stageAny.round_bo_overrides || {};
+                if (typeof roundBoOverrides === 'string') {
+                    try { roundBoOverrides = JSON.parse(roundBoOverrides); } catch { roundBoOverrides = {}; }
+                }
                 const stageConfig = typeof stageAny.config === 'string'
                     ? (() => { try { return JSON.parse(stageAny.config); } catch { return {}; } })()
                     : (stageAny.config || {});

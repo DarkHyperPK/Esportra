@@ -123,13 +123,15 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
             });
         });
 
-        // 4. Finals
+        // 4. Finals - center vertically between all matches in last winners round
         const finalX = leftPadding + (wRounds.length * (cardWidth + roundGap));
-        const lastWinnerMatch = rounds.winners[wRounds[wRounds.length - 1]]?.[0];
+        const lastRoundMatches = rounds.winners[wRounds[wRounds.length - 1]] || [];
         let finalY = 100;
-        if (lastWinnerMatch) {
-            const p = map.get(String(lastWinnerMatch.id));
-            if (p) finalY = p.y;
+        if (lastRoundMatches.length > 0) {
+            const positions = lastRoundMatches.map(m => map.get(String(m.id))?.y ?? 0);
+            const minY = Math.min(...positions);
+            const maxY = Math.max(...positions);
+            finalY = (minY + maxY + cardHeight) / 2 - cardHeight / 2;
         }
 
         const fRounds = Object.keys(rounds.final).map(Number).sort((a, b) => a - b);

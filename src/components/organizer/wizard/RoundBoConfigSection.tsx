@@ -185,7 +185,7 @@ export function RoundBoConfigSection({
 interface RoundGroupProps {
   title: string;
   rounds: RoundInfo[];
-  overrides: RoundBoOverrides;
+  overrides: Record<string, number>;
   defaultBestOf: number;
   seriesOptions: { label: string; value: number }[];
   onRoundBoChange: (roundKey: string, value: number) => void;
