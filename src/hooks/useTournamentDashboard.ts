@@ -92,6 +92,9 @@ export interface DashboardStage {
     config: any;
     capacity: number;
     advancement_count: number;
+    best_of: number;
+    bo_mode: 'per_stage' | 'per_round';
+    round_bo_overrides: Record<string, number> | null;
     is_locked: boolean;
     created_at: string;
     updated_at: string;
@@ -173,13 +176,23 @@ export function useTournamentDashboard(slug: string | undefined) {
                 teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
             }));
 
-            const mappedStages: DashboardStage[] = result.stages.map((s: any) => ({
-                ...s,
-                config: typeof s.config === 'string' ? (() => { try { return JSON.parse(s.config); } catch { return s.config; } })() : (s.config || null),
-                capacity:          s.capacity ?? 0,
-                advancement_count: s.advancement_count ?? 0,
-                is_locked:         !!s.is_locked,
-            }));
+            const mappedStages: DashboardStage[] = result.stages.map((s: any) => {
+                // Parse round_bo_overrides - may be JSON string from database
+                let roundBoOverrides = s.round_bo_overrides;
+                if (typeof roundBoOverrides === 'string') {
+                    try { roundBoOverrides = JSON.parse(roundBoOverrides); } catch { roundBoOverrides = null; }
+                }
+                return {
+                    ...s,
+                    config: typeof s.config === 'string' ? (() => { try { return JSON.parse(s.config); } catch { return s.config; } })() : (s.config || null),
+                    capacity:            s.capacity ?? 0,
+                    advancement_count:   s.advancement_count ?? 0,
+                    best_of:             s.best_of ?? 1,
+                    bo_mode:             s.bo_mode ?? 'per_stage',
+                    round_bo_overrides:  roundBoOverrides ?? null,
+                    is_locked:           !!s.is_locked,
+                };
+            });
 
             return {
                 tournament:       mappedTournament,
