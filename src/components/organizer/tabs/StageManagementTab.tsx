@@ -540,12 +540,18 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 }
             }
 
+            // Only include roundBoOverrides when per_round mode is active AND overrides exist
+            const hasValidOverrides = boMode === 'per_round'
+                && roundBoOverrides
+                && typeof roundBoOverrides === 'object'
+                && Object.keys(roundBoOverrides).length > 0;
+
             console.log('[StageManagement] Calling backend API with:', {
                 format,
                 teams: teams.length,
                 bestOf,
                 boMode,
-                roundBoOverrides,
+                roundBoOverrides: hasValidOverrides ? roundBoOverrides : null,
                 bracketSize,
                 advancementCount,
             });
@@ -558,7 +564,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 teams: teams.map(t => ({ id: t.id, name: t.name })),
                 bestOf,
                 boMode,
-                roundBoOverrides,
+                ...(hasValidOverrides && { roundBoOverrides }),
                 bracketSize,
                 advancementCount,
                 dailyStartTime,
