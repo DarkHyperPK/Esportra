@@ -8,13 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Check, ChevronRight, ArrowLeft, Trophy, Users, Shield, Plus, Trash2, Pencil, Book } from 'lucide-react';
+import { Check, ChevronRight, ArrowLeft, Trophy, Users, Shield, Plus, Trash2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 
 import { RECOMMENDED_TEMPLATES } from '@/data/recommended_templates';
-import { StageGuidelineModal } from './StageGuidelineModal';
 import { RoundBoConfigSection } from './RoundBoConfigSection';
 import { cn } from '@/lib/utils';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
@@ -226,7 +224,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     const [deletedStageIds, setDeletedStageIds] = useState<string[]>([]);
     const [currentStageIndex, setCurrentStageIndex] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [showGuideline, setShowGuideline] = useState(false);
     const [participantsCount, setParticipantsCount] = useState<number>(0);
     const [checkInEnabled, setCheckInEnabled] = useState(false);
     const [tournamentMaxParticipants, setTournamentMaxParticipants] = useState<number | null>(null);
@@ -1405,34 +1402,12 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col bg-[#0a0a0c] border-white/10/30">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-bold text-white flex items-center justify-between">
-                            <span className="flex items-center gap-2">
-                                {step === 'mode-select' && 'Create Tournament Stages'}
-                                {step === 'template-select' && 'Select a Template'}
-                                {step === 'template-config' && 'Configure Stages'}
-                                {step === 'manual-config' && 'Manual Stage Setup'}
-                                {step === 'review' && 'Review & Create'}
-                            </span>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => setShowGuideline(true)}
-                                            className="text-gray-400 hover:text-emerald-400 hover:bg-emerald-400/10"
-                                        >
-                                            <div className="relative">
-                                                <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                                                <Book className="h-5 w-5" />
-                                            </div>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Tournament Stages Guideline</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+                        <DialogTitle className="text-xl font-bold text-white">
+                            {step === 'mode-select' && 'Create Tournament Stages'}
+                            {step === 'template-select' && 'Select a Template'}
+                            {step === 'template-config' && 'Configure Stages'}
+                            {step === 'manual-config' && 'Manual Stage Setup'}
+                            {step === 'review' && 'Review & Create'}
                         </DialogTitle>
                         <DialogDescription className="text-gray-400">
                             {step === 'mode-select' && 'Choose how you want to set up your tournament structure.'}
@@ -1525,8 +1500,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     </DialogFooter>
                 </DialogContent>
 
-            </Dialog >
-            <StageGuidelineModal open={showGuideline} onOpenChange={setShowGuideline} />
+            </Dialog>
         </>
     );
 };

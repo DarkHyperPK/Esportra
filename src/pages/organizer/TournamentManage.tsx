@@ -36,7 +36,6 @@ import {
   EyeOff,
   GamepadIcon,
   Globe,
-  Layers,
   Copy,
   Loader2,
   Mail,
@@ -112,7 +111,6 @@ import {
   hasCheckInNotOpenedYet,
   resolveCheckInWindow,
 } from '@/utils/tournamentLifecycle';
-import { StageGuidelineModal } from '@/components/organizer/wizard/StageGuidelineModal';
 import { CommandButton, CommandTabButton } from '@/components/management/CommandSurface';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
@@ -378,7 +376,6 @@ const TournamentDashboard = () => {
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [pendingPublishMode, setPendingPublishMode] = useState<'private' | 'public' | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
-  const [showGuidelines, setShowGuidelines] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [draftInviteEmails, setDraftInviteEmails] = useState<string[]>([]);
   const [csvImportText, setCsvImportText] = useState('');
@@ -1544,17 +1541,6 @@ const TournamentDashboard = () => {
 
                 {canActAsOwner && (
                   <CommandButton
-                    onClick={() => setShowGuidelines(true)}
-                    variant="secondary"
-                    size="sm"
-                  >
-                    <Layers className="w-4 h-4 mr-2" />
-                    Guidelines
-                  </CommandButton>
-                )}
-
-                {canActAsOwner && (
-                  <CommandButton
                     onClick={handleEditTournament}
                     variant="warning"
                     size="sm"
@@ -2651,7 +2637,6 @@ const TournamentDashboard = () => {
       </main >
       <Footer />
 
-      <StageGuidelineModal open={showGuidelines} onOpenChange={setShowGuidelines} />
       {
         banDialogOpen && (
           <AlertDialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
