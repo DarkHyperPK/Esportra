@@ -81,6 +81,8 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
         const wRounds = Object.keys(rounds.winners).map(Number).sort((a, b) => a - b);
         const matchSlots = new Map<string, number>();
 
+        console.log('[BracketRenderer] Winners rounds:', wRounds, 'matches per round:', Object.fromEntries(Object.entries(rounds.winners).map(([r, m]) => [r, (m as any[]).length])));
+
         wRounds.forEach((round, rIdx) => {
             const roundMatches = rounds.winners[round];
             roundMatches.forEach((m, idx) => {
@@ -90,6 +92,8 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
                 // slot = idx * 2^r + (2^r - 1) / 2
                 const power = Math.pow(2, rIdx);
                 const slot = idx * power + (power - 1) / 2;
+
+                console.log(`[BracketRenderer] Round=${round} rIdx=${rIdx} idx=${idx} power=${power} slot=${slot} matchNumber=${m.matchNumber}`);
 
                 matchSlots.set(id, slot);
                 matchSlots.set(rawId, slot);
