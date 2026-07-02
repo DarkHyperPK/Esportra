@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Layers, Trophy, Lock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, RefreshCw, Check } from 'lucide-react';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { Database } from '@/integrations/supabase/types';
 import { StageSetupWizard } from '@/components/organizer/wizard/StageSetupWizard';
 import { StageCompletionService } from '@/services/bracket/StageCompletionService';
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
@@ -18,13 +17,12 @@ import { normalizeStageProgressLabel } from '@/types/stageCompletion';
 import { buildStageSyncPayload } from '@/utils/stageSync';
 import { runInChunks } from '@/utils/runInChunks';
 import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
+import type { DashboardStage } from '@/hooks/useTournamentDashboard';
 // import { useStageRealtime } from '@/hooks/useStageRealtime';
-
-type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
 interface StageManagementTabProps {
     tournamentId: string;
-    stages: TournamentStage[];
+    stages: DashboardStage[];
     onUpdate: () => void;
     game: string;
     isPublic?: boolean;
