@@ -862,7 +862,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
                         <RoundBoConfigSection
                             format={stage.format}
-                            bracketSize={typeof stage.capacity === 'number' ? stage.capacity : 0}
+                            bracketSize={typeof stage.capacity === 'number' && stage.capacity > 0 ? stage.capacity : 8}
                             boMode={stage.bo_mode}
                             defaultBestOf={stage.best_of}
                             roundBoOverrides={stage.round_bo_overrides}

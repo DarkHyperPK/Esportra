@@ -357,18 +357,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             return;
         }
 
-        // DEBUG: Log raw stage data to trace BO configuration
-        const _debugStage = {
-            id: stage.id,
-            format: stage.format,
-            best_of: (stage as any).best_of,
-            bo_mode: (stage as any).bo_mode,
-            round_bo_overrides: (stage as any).round_bo_overrides,
-            config: stage.config,
-        };
-        console.log('[StageManagement] RAW STAGE DATA:', _debugStage);
-        alert(`[DEBUG] Stage BO config:\nbo_mode = ${_debugStage.bo_mode}\nbest_of = ${_debugStage.best_of}\nround_bo_overrides = ${JSON.stringify(_debugStage.round_bo_overrides)}`);
-
         try {
             // Get teams/participants for this stage
             let teams: Array<{ id: string; name: string; logo_url?: string | null }> = [];
