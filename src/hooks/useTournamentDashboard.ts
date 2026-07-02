@@ -177,6 +177,15 @@ export function useTournamentDashboard(slug: string | undefined) {
             }));
 
             const mappedStages: DashboardStage[] = result.stages.map((s: any) => {
+                // DEBUG: Log raw stage data from API
+                console.log('[useTournamentDashboard] Raw stage from API:', {
+                    id: s.id,
+                    name: s.name,
+                    best_of: s.best_of,
+                    bo_mode: s.bo_mode,
+                    round_bo_overrides: s.round_bo_overrides,
+                });
+
                 // Parse round_bo_overrides - may be JSON string from database
                 let roundBoOverrides = s.round_bo_overrides;
                 if (typeof roundBoOverrides === 'string') {
