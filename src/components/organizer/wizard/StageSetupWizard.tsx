@@ -1229,6 +1229,18 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                             </div>
                         </div>
 
+                        {/* Per-Round BO Configuration for elimination formats */}
+                        <RoundBoConfigSection
+                            format={manualFormState.format}
+                            bracketSize={typeof manualFormState.capacity === 'number' && manualFormState.capacity > 0 ? manualFormState.capacity : 8}
+                            boMode={manualFormState.bo_mode}
+                            defaultBestOf={manualFormState.best_of}
+                            roundBoOverrides={manualFormState.round_bo_overrides}
+                            seriesOptions={getSeriesOptions(gameData)}
+                            onBoModeChange={(mode) => setManualFormState({ ...manualFormState, bo_mode: mode })}
+                            onOverridesChange={(overrides) => setManualFormState({ ...manualFormState, round_bo_overrides: overrides })}
+                        />
+
                         <div className="flex justify-end gap-2 pt-2">
                             {editingStageIndex !== null && (
                                 <Button
