@@ -266,10 +266,16 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
     const handleResetAllStages = async () => {
         setIsResetting(true);
         try {
-      await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, {
-        deleteIds: stages.map((s) => s.id),
-      });
-      toast({ title: 'All stages cleared', description: 'Use the setup wizard to configure again.' });
+            const stageIds = stages.map((s) => s.id);
+            if (stageIds.length === 0) {
+                toast({ title: 'No stages to reset', description: 'There are no stages configured.' });
+                setResetConfirmOpen(false);
+                return;
+            }
+            await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, {
+                deleteIds: stageIds,
+            });
+            toast({ title: 'All stages cleared', description: 'Use the setup wizard to configure again.' });
             setResetConfirmOpen(false);
             setExpandedStageId(null);
             onUpdate();

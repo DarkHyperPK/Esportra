@@ -265,6 +265,12 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             setIsDeleting(true);
             const stageIds = stages.map(s => s.id);
 
+            if (stageIds.length === 0) {
+                toast({ title: 'No stages to delete', description: 'There are no stages configured for this tournament.' });
+                setDeleteAllDialogOpen(false);
+                return;
+            }
+
             // Get all versions for these stages
             const allVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
             const versions = (allVersions || []).filter((v: any) => stageIds.includes(v.stage_id));
