@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
@@ -118,65 +119,71 @@ export function RoundBoConfigSection({
       </div>
 
       {boMode === 'per_round' && (
-        <div className="mt-4 space-y-3 pl-4 border-l-2 border-emerald-500/30">
-          {loading ? (
-            <div className="flex items-center gap-2 text-gray-400 py-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Loading rounds...</span>
-            </div>
-          ) : error ? (
-            <p className="text-sm text-red-400">{error}</p>
-          ) : rounds.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              Set bracket size to configure rounds
-            </p>
-          ) : (
-            <>
-              {format === 'double_elimination' && (
-                <>
+        <ScrollArea className="mt-4 max-h-[320px]">
+          <div className="space-y-4 pr-3">
+            {loading ? (
+              <div className="flex items-center gap-2 text-gray-400 py-2 pl-4">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Loading rounds...</span>
+              </div>
+            ) : error ? (
+              <p className="text-sm text-red-400 pl-4">{error}</p>
+            ) : rounds.length === 0 ? (
+              <p className="text-sm text-gray-500 pl-4">
+                Set bracket size to configure rounds
+              </p>
+            ) : (
+              <>
+                {format === 'double_elimination' && (
+                  <>
+                    <RoundGroup
+                      title="Winners Bracket"
+                      bracketType="winners"
+                      rounds={rounds.filter(r => r.bracketType === 'winners')}
+                      overrides={roundBoOverrides}
+                      defaultBestOf={defaultBestOf}
+                      seriesOptions={seriesOptions}
+                      onRoundBoChange={handleRoundBoChange}
+                      disabled={disabled}
+                    />
+                    <RoundGroup
+                      title="Losers Bracket"
+                      bracketType="losers"
+                      rounds={rounds.filter(r => r.bracketType === 'losers')}
+                      overrides={roundBoOverrides}
+                      defaultBestOf={defaultBestOf}
+                      seriesOptions={seriesOptions}
+                      onRoundBoChange={handleRoundBoChange}
+                      disabled={disabled}
+                    />
+                    <RoundGroup
+                      title="Grand Final"
+                      bracketType="final"
+                      rounds={rounds.filter(r => r.bracketType === 'final')}
+                      overrides={roundBoOverrides}
+                      defaultBestOf={defaultBestOf}
+                      seriesOptions={seriesOptions}
+                      onRoundBoChange={handleRoundBoChange}
+                      disabled={disabled}
+                    />
+                  </>
+                )}
+                {format === 'single_elimination' && (
                   <RoundGroup
-                    title="Winners Bracket"
-                    rounds={rounds.filter(r => r.bracketType === 'winners')}
+                    title="Rounds"
+                    bracketType="winners"
+                    rounds={rounds}
                     overrides={roundBoOverrides}
                     defaultBestOf={defaultBestOf}
                     seriesOptions={seriesOptions}
                     onRoundBoChange={handleRoundBoChange}
                     disabled={disabled}
                   />
-                  <RoundGroup
-                    title="Losers Bracket"
-                    rounds={rounds.filter(r => r.bracketType === 'losers')}
-                    overrides={roundBoOverrides}
-                    defaultBestOf={defaultBestOf}
-                    seriesOptions={seriesOptions}
-                    onRoundBoChange={handleRoundBoChange}
-                    disabled={disabled}
-                  />
-                  <RoundGroup
-                    title="Grand Final"
-                    rounds={rounds.filter(r => r.bracketType === 'final')}
-                    overrides={roundBoOverrides}
-                    defaultBestOf={defaultBestOf}
-                    seriesOptions={seriesOptions}
-                    onRoundBoChange={handleRoundBoChange}
-                    disabled={disabled}
-                  />
-                </>
-              )}
-              {format === 'single_elimination' && (
-                <RoundGroup
-                  title="Rounds"
-                  rounds={rounds}
-                  overrides={roundBoOverrides}
-                  defaultBestOf={defaultBestOf}
-                  seriesOptions={seriesOptions}
-                  onRoundBoChange={handleRoundBoChange}
-                  disabled={disabled}
-                />
-              )}
-            </>
-          )}
-        </div>
+                )}
+              </>
+            )}
+          </div>
+        </ScrollArea>
       )}
     </div>
   );
@@ -184,6 +191,7 @@ export function RoundBoConfigSection({
 
 interface RoundGroupProps {
   title: string;
+  bracketType: 'winners' | 'losers' | 'final';
   rounds: RoundInfo[];
   overrides: Record<string, number>;
   defaultBestOf: number;
@@ -194,6 +202,7 @@ interface RoundGroupProps {
 
 function RoundGroup({
   title,
+  bracketType,
   rounds,
   overrides,
   defaultBestOf,
@@ -203,9 +212,19 @@ function RoundGroup({
 }: RoundGroupProps) {
   if (rounds.length === 0) return null;
 
+  const borderColor = bracketType === 'winners' ? 'border-l-blue-500/50'
+    : bracketType === 'losers' ? 'border-l-orange-500/50'
+    : bracketType === 'final' ? 'border-l-yellow-500/50'
+    : 'border-l-emerald-500/30';
+
+  const labelColor = bracketType === 'winners' ? 'text-blue-400'
+    : bracketType === 'losers' ? 'text-orange-400'
+    : bracketType === 'final' ? 'text-yellow-400'
+    : 'text-gray-400';
+
   return (
-    <div className="space-y-2">
-      <h5 className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+    <div className={cn("space-y-2 pl-3 border-l-2", borderColor)}>
+      <h5 className={cn("text-xs font-medium uppercase tracking-wider", labelColor)}>
         {title}
       </h5>
       <div className="grid gap-2">
