@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
@@ -119,8 +118,8 @@ export function RoundBoConfigSection({
       </div>
 
       {boMode === 'per_round' && (
-        <ScrollArea className="mt-4 max-h-[320px]">
-          <div className="space-y-4 pr-3">
+        <div className="mt-4 max-h-[300px] overflow-y-auto pr-1">
+          <div className="space-y-4">
             {loading ? (
               <div className="flex items-center gap-2 text-gray-400 py-2 pl-4">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -138,7 +137,6 @@ export function RoundBoConfigSection({
                   <>
                     <RoundGroup
                       title="Winners Bracket"
-                      bracketType="winners"
                       rounds={rounds.filter(r => r.bracketType === 'winners')}
                       overrides={roundBoOverrides}
                       defaultBestOf={defaultBestOf}
@@ -148,7 +146,6 @@ export function RoundBoConfigSection({
                     />
                     <RoundGroup
                       title="Losers Bracket"
-                      bracketType="losers"
                       rounds={rounds.filter(r => r.bracketType === 'losers')}
                       overrides={roundBoOverrides}
                       defaultBestOf={defaultBestOf}
@@ -158,7 +155,6 @@ export function RoundBoConfigSection({
                     />
                     <RoundGroup
                       title="Grand Final"
-                      bracketType="final"
                       rounds={rounds.filter(r => r.bracketType === 'final')}
                       overrides={roundBoOverrides}
                       defaultBestOf={defaultBestOf}
@@ -171,7 +167,6 @@ export function RoundBoConfigSection({
                 {format === 'single_elimination' && (
                   <RoundGroup
                     title="Rounds"
-                    bracketType="winners"
                     rounds={rounds}
                     overrides={roundBoOverrides}
                     defaultBestOf={defaultBestOf}
@@ -183,7 +178,7 @@ export function RoundBoConfigSection({
               </>
             )}
           </div>
-        </ScrollArea>
+        </div>
       )}
     </div>
   );
@@ -191,7 +186,6 @@ export function RoundBoConfigSection({
 
 interface RoundGroupProps {
   title: string;
-  bracketType: 'winners' | 'losers' | 'final';
   rounds: RoundInfo[];
   overrides: Record<string, number>;
   defaultBestOf: number;
@@ -202,7 +196,6 @@ interface RoundGroupProps {
 
 function RoundGroup({
   title,
-  bracketType,
   rounds,
   overrides,
   defaultBestOf,
@@ -212,19 +205,9 @@ function RoundGroup({
 }: RoundGroupProps) {
   if (rounds.length === 0) return null;
 
-  const borderColor = bracketType === 'winners' ? 'border-l-blue-500/50'
-    : bracketType === 'losers' ? 'border-l-orange-500/50'
-    : bracketType === 'final' ? 'border-l-yellow-500/50'
-    : 'border-l-emerald-500/30';
-
-  const labelColor = bracketType === 'winners' ? 'text-blue-400'
-    : bracketType === 'losers' ? 'text-orange-400'
-    : bracketType === 'final' ? 'text-yellow-400'
-    : 'text-gray-400';
-
   return (
-    <div className={cn("space-y-2 pl-3 border-l-2", borderColor)}>
-      <h5 className={cn("text-xs font-medium uppercase tracking-wider", labelColor)}>
+    <div className="space-y-2 pl-3 border-l-2 border-l-white/10">
+      <h5 className="text-xs font-medium uppercase tracking-wider text-gray-400">
         {title}
       </h5>
       <div className="grid gap-2">
