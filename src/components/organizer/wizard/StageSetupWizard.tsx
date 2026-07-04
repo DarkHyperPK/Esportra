@@ -1436,17 +1436,15 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         </DialogDescription>
                     </DialogHeader>
 
-                    <ScrollArea className="h-[500px]">
-                        <div className="px-1 pr-4">
-                            <AnimatePresence mode="wait">
-                                {step === 'mode-select' && renderModeSelection()}
-                                {step === 'template-select' && renderTemplateSelection()}
-                                {step === 'template-config' && renderTemplateConfig()}
-                                {step === 'manual-config' && renderManualSetup()}
-                                {step === 'review' && renderReview()}
-                            </AnimatePresence>
-                        </div>
-                    </ScrollArea>
+                    <div className="h-[500px] overflow-y-auto overflow-x-hidden px-1 pr-2">
+                        <AnimatePresence mode="wait">
+                            {step === 'mode-select' && renderModeSelection()}
+                            {step === 'template-select' && renderTemplateSelection()}
+                            {step === 'template-config' && renderTemplateConfig()}
+                            {step === 'manual-config' && renderManualSetup()}
+                            {step === 'review' && renderReview()}
+                        </AnimatePresence>
+                    </div>
 
                     <DialogFooter className="mt-4 border-t border-white/10 pt-4">
                         {step !== 'mode-select' && (
