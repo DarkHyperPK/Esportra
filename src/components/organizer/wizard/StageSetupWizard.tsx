@@ -360,9 +360,11 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                 return {
                     name: s.name,
                     format: s.format,
-                    capacity: (i === 0 && tournamentMaxParticipants) ? tournamentMaxParticipants : '', // Auto-detect max teams for first stage
+                    capacity: (i === 0 && tournamentMaxParticipants) ? tournamentMaxParticipants : '',
                     advancement_count: adv || '',
                     best_of: s.best_of,
+                    bo_mode: s.bo_mode || 'per_stage',
+                    round_bo_overrides: s.round_bo_overrides || {},
                     settings: {
                         ...s.settings,
                         swiss_groups: swissGroups,
@@ -1434,15 +1436,17 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto min-h-[400px] px-1 overflow-x-hidden">
-                        <AnimatePresence mode="wait">
-                            {step === 'mode-select' && renderModeSelection()}
-                            {step === 'template-select' && renderTemplateSelection()}
-                            {step === 'template-config' && renderTemplateConfig()}
-                            {step === 'manual-config' && renderManualSetup()}
-                            {step === 'review' && renderReview()}
-                        </AnimatePresence>
-                    </div>
+                    <ScrollArea className="flex-1 max-h-[calc(90vh-200px)] min-h-[400px]">
+                        <div className="px-1">
+                            <AnimatePresence mode="wait">
+                                {step === 'mode-select' && renderModeSelection()}
+                                {step === 'template-select' && renderTemplateSelection()}
+                                {step === 'template-config' && renderTemplateConfig()}
+                                {step === 'manual-config' && renderManualSetup()}
+                                {step === 'review' && renderReview()}
+                            </AnimatePresence>
+                        </div>
+                    </ScrollArea>
 
                     <DialogFooter className="mt-4 border-t border-white/10 pt-4">
                         {step !== 'mode-select' && (
