@@ -1436,7 +1436,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-1 pr-2 overscroll-contain">
+                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-1 pr-2 overscroll-contain" data-lenis-prevent>
                         <AnimatePresence mode="wait">
                             {step === 'mode-select' && renderModeSelection()}
                             {step === 'template-select' && renderTemplateSelection()}
