@@ -1436,8 +1436,8 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         </DialogDescription>
                     </DialogHeader>
 
-                    <ScrollArea className="flex-1 max-h-[calc(90vh-200px)] min-h-[400px]">
-                        <div className="px-1">
+                    <ScrollArea className="h-[500px]">
+                        <div className="px-1 pr-4">
                             <AnimatePresence mode="wait">
                                 {step === 'mode-select' && renderModeSelection()}
                                 {step === 'template-select' && renderTemplateSelection()}
