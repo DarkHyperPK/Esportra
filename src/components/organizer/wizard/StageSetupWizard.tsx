@@ -1418,7 +1418,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col bg-[#0a0a0c] border-white/10/30 overflow-hidden">
+                <DialogContent className="max-w-3xl max-h-[90vh] !flex !flex-col bg-[#0a0a0c] border-white/10/30">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold text-white">
                             {step === 'mode-select' && 'Create Tournament Stages'}
