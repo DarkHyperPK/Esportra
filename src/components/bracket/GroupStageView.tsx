@@ -45,14 +45,15 @@ interface GroupStageViewProps {
 // Helpers
 const getRawId = (id: string | number) => String(id).replace(/^(db-|wb-|lb-|source-)/, '');
 const isDbMatch = (id: string | number) => String(id).startsWith('db-');
-const resolveNodeSeed = (node: BracketNode, slot: 1 | 2) => {
+const resolveNodeSeed = (node: BracketNode, slot: 1 | 2): number | undefined => {
     const snakeSeed = slot === 1 ? (node as any).team1_seed : (node as any).team2_seed;
     if (typeof snakeSeed === 'number' && Number.isFinite(snakeSeed) && snakeSeed > 0) return snakeSeed;
 
     const camelSeed = slot === 1 ? (node as any).team1Seed : (node as any).team2Seed;
     if (typeof camelSeed === 'number' && Number.isFinite(camelSeed) && camelSeed > 0) return camelSeed;
 
-    return (node.match_number || 0) * 2 - (slot === 1 ? 1 : 0);
+    // No fallback - return undefined if seed is missing
+    return undefined;
 };
 
 // Convert BracketNode to BracketMatch for MatchCard compatibility

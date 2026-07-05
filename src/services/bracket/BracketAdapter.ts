@@ -28,8 +28,8 @@ let cachedResult: BracketMatch[] | null = null;
  * Creates a hash for structural comparison of nodes
  */
 function hashNodes(nodes: BracketNode[]): string {
-    return nodes.map(n => 
-        `${n.id}:${n.status}:${n.team1_id}:${n.team2_id}:${n.winner_id}:${n.team1_score}:${n.team2_score}:${n.party_code}`
+    return nodes.map(n =>
+        `${n.id}:${n.status}:${n.team1_id}:${n.team2_id}:${n.winner_id}:${n.team1_score}:${n.team2_score}:${n.party_code}:${n.team1_seed}:${n.team2_seed}`
     ).join('|');
 }
 
@@ -67,18 +67,18 @@ function mapBracketType(bracketType: string): BracketSide | undefined {
 /**
  * Creates a BracketTeam from Team data
  */
-function createBracketTeam(team: Team | undefined, seed: number): BracketTeam | null {
+function createBracketTeam(team: Team | undefined, seed: number | null): BracketTeam | null {
     if (!team) return null;
     return {
         id: team.id,
         name: team.name,
-        seed: team.seed ?? seed,
+        seed: team.seed ?? seed ?? undefined,
         logo_url: team.logo_url,
         eliminated: false
     };
 }
 
-function resolveSeed(node: BracketNode, slot: 1 | 2): number {
+function resolveSeed(node: BracketNode, slot: 1 | 2): number | null {
     const explicitSeed = slot === 1 ? node.team1_seed : node.team2_seed;
     if (typeof explicitSeed === 'number' && Number.isFinite(explicitSeed) && explicitSeed > 0) {
         return explicitSeed;
@@ -89,7 +89,8 @@ function resolveSeed(node: BracketNode, slot: 1 | 2): number {
         return legacySeed;
     }
 
-    return node.match_number * 2 - (slot === 1 ? 1 : 0);
+    // No fallback - return null if seed is missing
+    return null;
 }
 
 /**
