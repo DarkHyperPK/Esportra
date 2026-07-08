@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Esportra — Mobile App Development Plan</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --rose:#e11d48;--rose-lt:#fb7185;--rose-bg:#fff1f2;
+    --dark:#0f0f0f;--gray3:#6b7280;--gray4:#9ca3af;--gray5:#e5e7eb;--gray6:#f9fafb;
+    --green:#16a34a;--green-bg:#f0fdf4;--amber:#d97706;--amber-bg:#fffbeb;
+    --blue:#2563eb;--blue-bg:#eff6ff;--purple:#7c3aed;--purple-bg:#f5f3ff;
+    --radius:8px;--shadow:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 6px rgba(0,0,0,.07);
+  }
+  html{font-size:14px;}
+  body{font-family:'Segoe UI',system-ui,sans-serif;color:#1f2937;background:#fff;line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .page-wrap{max-width:900px;margin:0 auto;padding:0 32px;}
+  @media print{html{font-size:12px;}.no-print{display:none!important;}.page-break{page-break-before:always;}.avoid-break{page-break-inside:avoid;}.page-wrap{max-width:100%;padding:0 20px;}a{color:inherit!important;text-decoration:none;}}
+  .cover{background:linear-gradient(135deg,#0f0f0f 0%,#1a0a10 50%,#0f0f0f 100%);color:#fff;padding:72px 64px 80px;position:relative;overflow:hidden;}
+  .cover::before{content:'';position:absolute;top:-80px;right:-80px;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(225,29,72,.18) 0%,transparent 70%);pointer-events:none;}
+  .cover-badge{display:inline-block;background:rgba(225,29,72,.2);border:1px solid rgba(225,29,72,.35);color:#fb7185;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 12px;border-radius:100px;margin-bottom:20px;}
+  .cover h1{font-size:3rem;font-weight:800;line-height:1.1;letter-spacing:-.02em;margin-bottom:8px;}
+  .cover h1 span{color:#fb7185;}
+  .cover-sub{font-size:1.1rem;color:rgba(255,255,255,.6);margin-bottom:40px;max-width:500px;}
+  .cover-meta{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:48px;max-width:680px;}
+  .cover-meta-item{border-left:2px solid #e11d48;padding-left:12px;}
+  .cover-meta-item .label{font-size:.68rem;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;}
+  .cover-meta-item .value{font-size:.92rem;color:#fff;font-weight:600;margin-top:2px;}
+  .section{padding:48px 0 32px;border-bottom:1px solid var(--gray5);}
+  .section:last-child{border-bottom:none;}
+  .section-header{display:flex;align-items:center;gap:12px;margin-bottom:24px;}
+  .section-num{width:32px;height:32px;background:var(--rose);color:#fff;font-size:.72rem;font-weight:800;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .section h2{font-size:1.35rem;font-weight:700;color:var(--dark);letter-spacing:-.01em;}
+  .section p{color:#374151;margin-bottom:12px;line-height:1.7;}
+  .toc{background:var(--gray6);border:1px solid var(--gray5);border-radius:var(--radius);padding:24px 28px;margin:32px 0;}
+  .toc h3{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gray3);margin-bottom:14px;}
+  .toc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;}
+  .toc-item{display:flex;align-items:center;gap:8px;font-size:.85rem;color:#374151;}
+  .toc-num{font-weight:700;color:var(--rose);min-width:20px;}
+  .callout{border-radius:var(--radius);padding:16px 20px;margin:16px 0;border-left:4px solid;}
+  .callout.info{background:var(--blue-bg);border-color:var(--blue);}
+  .callout.success{background:var(--green-bg);border-color:var(--green);}
+  .callout.warn{background:var(--amber-bg);border-color:var(--amber);}
+  .callout.rose{background:var(--rose-bg);border-color:var(--rose);}
+  .callout-title{font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+  .callout.info .callout-title{color:var(--blue);}
+  .callout.success .callout-title{color:var(--green);}
+  .callout.warn .callout-title{color:var(--amber);}
+  .callout.rose .callout-title{color:var(--rose);}
+  .callout p{font-size:.88rem;margin-bottom:0;}
+  .card-grid{display:grid;gap:14px;margin:16px 0;}
+  .card-grid.cols-2{grid-template-columns:1fr 1fr;}
+  .card-grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+  .card{background:#fff;border:1px solid var(--gray5);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);}
+  .card-title{font-weight:700;font-size:.9rem;color:var(--dark);margin-bottom:6px;}
+  .card p{font-size:.82rem;color:var(--gray3);margin-bottom:0;line-height:1.5;}
+  .card.rose-accent{border-top:3px solid var(--rose);}
+  .card.green-accent{border-top:3px solid var(--green);}
+  .card.blue-accent{border-top:3px solid var(--blue);}
+  .card.amber-accent{border-top:3px solid var(--amber);}
+  .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;}
+  .stat-box{background:var(--gray6);border:1px solid var(--gray5);border-radius:var(--radius);padding:16px 18px;text-align:center;}
+  .stat-num{font-size:1.8rem;font-weight:800;color:var(--rose);line-height:1;}
+  .stat-label{font-size:.75rem;color:var(--gray3);margin-top:4px;}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.85rem;}
+  thead tr{background:var(--dark);}
+  thead th{color:#fff;font-weight:700;font-size:.75rem;letter-spacing:.04em;text-transform:uppercase;padding:10px 14px;text-align:left;}
+  tbody tr:nth-child(even){background:var(--gray6);}
+  tbody td{padding:9px 14px;border-bottom:1px solid var(--gray5);vertical-align:top;}
+  .tag{display:inline-block;padding:2px 8px;border-radius:100px;font-size:.72rem;font-weight:600;}
+  .tag-green{background:var(--green-bg);color:var(--green);}
+  .tag-rose{background:var(--rose-bg);color:var(--rose);}
+  .tag-amber{background:var(--amber-bg);color:var(--amber);}
+  .tag-blue{background:var(--blue-bg);color:var(--blue);}
+  .tag-gray{background:var(--gray5);color:var(--gray3);}
+  .phase-card{border:1px solid var(--gray5);border-radius:12px;overflow:hidden;margin:20px 0;box-shadow:var(--shadow-md);}
+  .phase-header{padding:20px 24px;display:flex;align-items:center;gap:16px;}
+  .phase-1 .phase-header{background:linear-gradient(90deg,#0f172a,#1e293b);}
+  .phase-2 .phase-header{background:linear-gradient(90deg,#1a0a10,#2d1020);}
+  .phase-3 .phase-header{background:linear-gradient(90deg,#0f1a0f,#1a2d1a);}
+  .phase-4 .phase-header{background:linear-gradient(90deg,#0f0f1a,#1a1a2d);}
+  .phase-badge{font-size:.68rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-radius:100px;white-space:nowrap;}
+  .phase-1 .phase-badge,.phase-4 .phase-badge{background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);}
+  .phase-2 .phase-badge{background:rgba(225,29,72,.25);color:#fb7185;}
+  .phase-3 .phase-badge{background:rgba(22,163,74,.25);color:#4ade80;}
+  .phase-title{font-size:1.1rem;font-weight:700;color:#fff;}
+  .phase-subtitle{font-size:.8rem;color:rgba(255,255,255,.5);margin-top:2px;}
+  .phase-meta{margin-left:auto;text-align:right;}
+  .phase-duration{font-size:1rem;font-weight:700;color:#fff;}
+  .phase-duration-label{font-size:.7rem;color:rgba(255,255,255,.4);}
+  .phase-body{padding:24px;background:#fff;}
+  .phase-body h4{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray3);margin-bottom:10px;margin-top:18px;}
+  .phase-body h4:first-child{margin-top:0;}
+  .feature-list{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .feature-list li{display:flex;align-items:flex-start;gap:8px;font-size:.85rem;color:#374151;}
+  .feature-list li::before{content:'→';color:var(--rose);font-weight:700;flex-shrink:0;margin-top:1px;}
+  .feature-list.single{grid-template-columns:1fr;}
+  .deliverable-list{list-style:none;display:flex;flex-direction:column;gap:6px;}
+  .deliverable-list li{display:flex;align-items:center;gap:8px;font-size:.85rem;color:#374151;}
+  .deliverable-list li::before{content:'✓';color:var(--green);font-weight:700;}
+  .timeline{display:flex;margin:20px 0 8px;border-radius:8px;overflow:hidden;height:48px;}
+  .timeline-seg{display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;text-align:center;flex-direction:column;line-height:1.2;}
+  .tl-1{background:#374151;flex:2;}.tl-2{background:#be123c;flex:3;}.tl-3{background:#15803d;flex:2;}.tl-4{background:#6d28d9;flex:1.5;}
+  .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0;}
+  .kpi-box{background:var(--gray6);border:1px solid var(--gray5);border-radius:8px;padding:16px;}
+  .kpi-label{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--gray3);}
+  .kpi-target{font-size:1.3rem;font-weight:800;color:var(--dark);margin-top:4px;}
+  .kpi-desc{font-size:.75rem;color:var(--gray4);margin-top:2px;}
+  .risk-item{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-radius:8px;margin-bottom:10px;border:1px solid;}
+  .risk-high{background:#fff1f2;border-color:#fecdd3;}.risk-medium{background:#fffbeb;border-color:#fde68a;}.risk-low{background:#f0fdf4;border-color:#bbf7d0;}
+  .risk-badge{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:100px;white-space:nowrap;}
+  .risk-high .risk-badge{background:#fecdd3;color:#be123c;}.risk-medium .risk-badge{background:#fde68a;color:#92400e;}.risk-low .risk-badge{background:#bbf7d0;color:#15803d;}
+  .risk-title{font-weight:700;font-size:.85rem;color:var(--dark);}
+  .risk-mitigation{font-size:.8rem;color:var(--gray3);margin-top:2px;}
+  .checklist{list-style:none;display:flex;flex-direction:column;gap:8px;}
+  .checklist li{display:flex;align-items:flex-start;gap:10px;font-size:.86rem;color:#374151;line-height:1.5;}
+  .check-box{width:16px;height:16px;border:2px solid var(--gray5);border-radius:4px;flex-shrink:0;margin-top:2px;background:#fff;}
+  code{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:4px;padding:1px 6px;font-size:.82em;font-family:'Consolas',monospace;color:#be123c;}
+  h3{font-size:1rem;font-weight:700;color:var(--dark);margin-bottom:10px;}
+  .muted{color:var(--gray3);font-size:.82rem;}
+  .footer{background:var(--dark);color:rgba(255,255,255,.4);text-align:center;padding:28px 32px;font-size:.78rem;}
+  .footer strong{color:rgba(255,255,255,.8);}
+  .print-btn{position:fixed;bottom:28px;right:28px;background:var(--rose);color:#fff;border:none;cursor:pointer;padding:12px 24px;border-radius:8px;font-size:.88rem;font-weight:700;box-shadow:0 4px 12px rgba(225,29,72,.35);z-index:100;}
+  .print-btn:hover{background:#be123c;}
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="page-wrap">
+    <div class="cover-badge">Confidential · Mobile App Development Plan</div>
+    <h1>Esportra <span>Mobile App</span></h1>
+    <p class="cover-sub">
+      A phased plan to ship the Esportra platform as a native iOS and Android app
+      using React + Capacitor — the fastest path from existing web app to app stores.
+    </p>
+    <div class="cover-meta">
+      <div class="cover-meta-item"><div class="label">Prepared For</div><div class="value">Project Owner</div></div>
+      <div class="cover-meta-item"><div class="label">Date</div><div class="value">July 2026</div></div>
+      <div class="cover-meta-item"><div class="label">Framework</div><div class="value">React + Capacitor</div></div>
+      <div class="cover-meta-item"><div class="label">Total Timeline</div><div class="value">~16 Weeks</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="page-wrap">
+  <div class="toc">
+    <h3>Table of Contents</h3>
+    <div class="toc-grid">
+      <div class="toc-item"><span class="toc-num">01</span>Executive Summary</div>
+      <div class="toc-item"><span class="toc-num">05</span>Phase 2 — Core Mobile Features</div>
+      <div class="toc-item"><span class="toc-num">02</span>What is Capacitor?</div>
+      <div class="toc-item"><span class="toc-num">06</span>Phase 3 — Advanced Features</div>
+      <div class="toc-item"><span class="toc-num">03</span>Current State</div>
+      <div class="toc-item"><span class="toc-num">07</span>Phase 4 — Polish &amp; Launch</div>
+      <div class="toc-item"><span class="toc-num">04</span>Phase 1 — Foundation</div>
+      <div class="toc-item"><span class="toc-num">08</span>Risks, Metrics &amp; Checklist</div>
+    </div>
+  </div>
+
+  <!-- 01 -->
+  <div class="section">
+    <div class="section-header"><div class="section-num">01</div><h2>Executive Summary</h2></div>
+    <p>Esportra is a fully-built web platform. The entire backend (Supabase + custom .NET API + SignalR hubs), all business logic, and all screens are already running in production. The app is built in React + TypeScript + Vite.</p>
+    <p>This plan uses <strong>Capacitor</strong> to wrap that existing React web app into a native iOS and Android shell — meaning roughly <strong>70% of the work is already done</strong>. The effort is focused on mobile UI polish, native plugins (push notifications, camera, deep links), and App Store preparation — not rebuilding from scratch.</p>
+    <div class="stat-grid" style="margin-top:20px;">
+      <div class="stat-box"><div class="stat-num">~70%</div><div class="stat-label">Code already written</div></div>
+      <div class="stat-box"><div class="stat-num">16w</div><div class="stat-label">Total timeline</div></div>
+      <div class="stat-box"><div class="stat-num">4</div><div class="stat-label">Dev phases</div></div>
+      <div class="stat-box"><div class="stat-num">2</div><div class="stat-label">Platforms (iOS + Android)</div></div>
+    </div>
+    <div class="callout rose" style="margin-top:20px;">
+      <div class="callout-title">Key Advantage</div>
+      <p>Capacitor already exists in the project — <code>capacitor.config.json</code>, <code>@capacitor/core</code>, <code>@capacitor/ios</code>, and <code>@capacitor/android</code> are all installed. The app can be built for a device today. This plan makes it <em>production-quality</em>.</p>
+    </div>
+  </div>
+
+  <!-- 02 WHAT IS CAPACITOR -->
+  <div class="section">
+    <div class="section-header"><div class="section-num">02</div><h2>What is Capacitor? (For the Owner)</h2></div>
+    <p>This is the most important concept in the whole plan. Here is a simple explanation:</p>
+    <div class="card-grid cols-3" style="margin:20px 0;">
+      <div class="card rose-accent">
+        <div class="card-title">The Web App (Already Built)</div>
+        <p>The Esportra website — all the screens, logic, and data — runs in a browser. It's built in React and TypeScript. Every feature already works here today.</p>
+      </div>
+      <div class="card rose-accent">
+        <div class="card-title">Capacitor (The Bridge)</div>
+        <p>Capacitor is a tool that takes the existing web app and wraps it inside a native iOS or Android shell — like putting a website inside a purpose-built mobile container.</p>
+      </div>
+      <div class="card rose-accent">
+        <div class="card-title">The Native App (What We Ship)</div>
+        <p>The result is a real app on the App Store and Google Play. It installs like any other app. Users never see a browser — it looks and feels native.</p>
+      </div>
+    </div>
+
+    <h3>Capacitor vs. Building from Scratch</h3>
+    <table>
+      <thead><tr><th>Approach</th><th>Code Reuse</th><th>Time to Ship</th><th>Performance</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Capacitor (our choice)</strong></td><td><span class="tag tag-green">~70% reused</span></td><td><span class="tag tag-green">16 weeks</span></td><td><span class="tag tag-green">Very good</span></td><td><span class="tag tag-green">Low</span></td></tr>
+        <tr><td>React Native (rewrite)</td><td><span class="tag tag-rose">0% reused</span></td><td><span class="tag tag-rose">30–40 weeks</span></td><td><span class="tag tag-green">Excellent</span></td><td><span class="tag tag-rose">Very high</span></td></tr>
+        <tr><td>Flutter (full rewrite)</td><td><span class="tag tag-rose">0% reused</span></td><td><span class="tag tag-rose">35–45 weeks</span></td><td><span class="tag tag-green">Excellent</span></td><td><span class="tag tag-rose">Very high</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:20px;">How Capacitor Accesses Native Phone Features</h3>
+    <p>The web app alone cannot access the phone's camera, push notifications, or GPS. Capacitor solves this with official plugins that bridge JavaScript to native iOS/Android APIs:</p>
+    <table>
+      <thead><tr><th>Native Feature</th><th>Capacitor Plugin</th><th>Used For</th></tr></thead>
+      <tbody>
+        <tr><td>Push Notifications</td><td><code>@capacitor/push-notifications</code></td><td>Match alerts, check-in reminders, team invites</td></tr>
+        <tr><td>Camera &amp; Photo Library</td><td><code>@capacitor/camera</code></td><td>Avatar photo, match evidence screenshot upload</td></tr>
+        <tr><td>Network Detection</td><td><code>@capacitor/network</code></td><td>Show offline banner, pause real-time connections</td></tr>
+        <tr><td>Deep Links / URL Handling</td><td><code>@capacitor/app</code></td><td>Open tournament/venue/veto links directly in app</td></tr>
+        <tr><td>Native Share Sheet</td><td><code>@capacitor/share</code></td><td>Share tournament or venue link with friends</td></tr>
+        <tr><td>Haptic Feedback</td><td><code>@capacitor/haptics</code></td><td>Vibrate on match result, booking confirmation</td></tr>
+        <tr><td>Splash Screen</td><td><code>@capacitor/splash-screen</code></td><td>Black branded splash on app open (already configured)</td></tr>
+        <tr><td>Status Bar</td><td><code>@capacitor/status-bar</code></td><td>Dark status bar to match app theme (already configured)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout success">
+      <div class="callout-title">Bottom Line for the Owner</div>
+      <p>Capacitor means the development team writes code <strong>once</strong> (in React, the same language as the website) and it runs on both iPhone and Android. The app gets all native phone features through plugins. It's the smartest, fastest, and most cost-effective path for this project.</p>
+    </div>
+  </div>
+
+  <!-- 03 CURRENT STATE -->
+  <div class="section">
+    <div class="section-header"><div class="section-num">03</div><h2>Current State</h2></div>
+    <table>
+      <thead><tr><th>Area</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Supabase Backend + .NET API + SignalR</td><td><span class="tag tag-green">Production</span></td><td>All APIs, real-time hubs, and DB live and running</td></tr>
+        <tr><td>All app screens (tournaments, venues, bracket, etc.)</td><td><span class="tag tag-green">Complete</span></td><td>Every page exists and works on web</td></tr>
+        <tr><td>Capacitor config (<code>capacitor.config.json</code>)</td><td><span class="tag tag-green">Done</span></td><td>App ID, splash, status bar already configured</td></tr>
+        <tr><td>Capacitor core packages installed</td><td><span class="tag tag-green">Done</span></td><td><code>@capacitor/core</code>, <code>@capacitor/ios</code>, <code>@capacitor/android</code> in package.json</td></tr>
+        <tr><td>iOS &amp; Android platform folders</td><td><span class="tag tag-amber">Needs Setup</span></td><td>Run <code>npx cap add ios</code> + <code>npx cap add android</code></td></tr>
+        <tr><td>Bottom Tab Navigation (mobile)</td><td><span class="tag tag-rose">Not Built</span></td><td>Currently uses desktop sidebar — needs mobile nav</td></tr>
+        <tr><td>Touch target audit (44px minimum)</td><td><span class="tag tag-rose">Not Done</span></td><td>Some buttons too small for fingers</td></tr>
+        <tr><td>Push Notifications</td><td><span class="tag tag-rose">Not Started</span></td><td>Plugin not installed, no device token table</td></tr>
+        <tr><td>Camera / gallery upload</td><td><span class="tag tag-rose">Not Started</span></td><td>Web file picker works, native camera doesn't</td></tr>
+        <tr><td>Deep Links</td><td><span class="tag tag-rose">Not Started</span></td><td>Share links must open in app, not browser</td></tr>
+        <tr><td>App Store submission</td><td><span class="tag tag-rose">Not Started</span></td><td>Needs Apple Developer + Google Play accounts</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- PHASES -->
+  <div class="section page-break">
+    <div class="section-header"><div class="section-num">04</div><h2>Development Phases</h2></div>
+    <p>Four sequential phases over 16 weeks. Each ends with an installable, testable build.</p>
+    <div class="timeline">
+      <div class="timeline-seg tl-1">Phase 1<br/>Wks 1–3</div>
+      <div class="timeline-seg tl-2">Phase 2<br/>Wks 4–9</div>
+      <div class="timeline-seg tl-3">Phase 3<br/>Wks 10–13</div>
+      <div class="timeline-seg tl-4">Phase 4<br/>Wks 14–16</div>
+    </div>
+    <div class="muted" style="margin-top:6px;text-align:center;">16 weeks from kickoff to App Store submission</div>
+
+    <div class="phase-card phase-1 avoid-break" style="margin-top:32px;">
+      <div class="phase-header">
+        <div><div class="phase-badge">Phase 1</div><div class="phase-title">Foundation &amp; Native Shell</div><div class="phase-subtitle">First build running on a real phone</div></div>
+        <div class="phase-meta"><div class="phase-duration">3 Weeks</div><div class="phase-duration-label">Weeks 1 – 3</div></div>
+      </div>
+      <div class="phase-body">
+        <h4>Tasks</h4>
+        <ul class="feature-list">
+          <li>Run <code>npx cap add ios</code> and <code>npx cap add android</code></li>
+          <li>Configure app icon and splash screen assets</li>
+          <li>Set iOS Bundle ID and Android package name</li>
+          <li>Build bottom tab navigation component for mobile</li>
+          <li>Detect Capacitor environment (<code>Capacitor.isNativePlatform()</code>)</li>
+          <li>Show bottom nav only when running in app (not on web)</li>
+          <li>Audit and fix all touch targets (&gt;44px)</li>
+          <li>Fix horizontal scroll on small screens (&lt;390px)</li>
+          <li>Test OAuth redirects on iOS + Android</li>
+          <li>Configure Supabase OAuth callbacks for mobile scheme</li>
+          <li>Set up environment variables for mobile builds</li>
+          <li>Integrate Sentry for mobile crash reporting</li>
+        </ul>
+        <h4>Deliverables</h4>
+        <ul class="deliverable-list">
+          <li>TestFlight (iOS) + APK (Android) build that installs and boots</li>
+          <li>Login / sign-up working end-to-end on device</li>
+          <li>Bottom tab navigation visible and functional on mobile</li>
+        </ul>
+        <div class="callout info" style="margin-top:16px;">
+          <div class="callout-title">Exit Criteria</div>
+          <p>A tester can install the app, log in with Google, and browse tournaments — all on a real device with no console errors.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase-card phase-2 avoid-break" style="margin-top:20px;">
+      <div class="phase-header">
+        <div><div class="phase-badge">Phase 2</div><div class="phase-title">Core Mobile Features</div><div class="phase-subtitle">Native capabilities that the web app cannot do</div></div>
+        <div class="phase-meta"><div class="phase-duration">6 Weeks</div><div class="phase-duration-label">Weeks 4 – 9</div></div>
+      </div>
+      <div class="phase-body">
+        <h4>Push Notifications</h4>
+        <ul class="feature-list">
+          <li>Install <code>@capacitor/push-notifications</code></li>
+          <li>Add <code>device_tokens</code> table to Supabase</li>
+          <li>Register device token on login</li>
+          <li>Edge Function to dispatch pushes via FCM + APNs</li>
+          <li>Notification types: match ready, check-in, team invite, booking, dispute update</li>
+          <li>Tap notification → navigate to correct screen</li>
+          <li>Notification preferences in Settings</li>
+        </ul>
+        <h4>Camera &amp; Photo Upload</h4>
+        <ul class="feature-list">
+          <li>Install <code>@capacitor/camera</code></li>
+          <li>Avatar photo: camera or gallery pick</li>
+          <li>Match evidence: camera capture + upload to Supabase Storage</li>
+          <li>Photo crop + compression before upload</li>
+          <li>Fallback to web file picker on non-native</li>
+        </ul>
+        <h4>Mobile UI Improvements</h4>
+        <ul class="feature-list">
+          <li>Pull-to-refresh on tournament list, venue list, notifications</li>
+          <li>Bottom sheet modals (replace full-page dialogs for filters)</li>
+          <li>Swipe gestures on bracket view</li>
+          <li>Safe area insets (iPhone notch, Android cutout)</li>
+          <li>Keyboard behaviour (push content up on focus)</li>
+          <li>Organizer: create tournament flow mobile-optimised</li>
+        </ul>
+        <h4>Deliverables</h4>
+        <ul class="deliverable-list">
+          <li>Push notifications firing on real iOS and Android devices</li>
+          <li>Camera upload working for avatar and match evidence</li>
+          <li>Beta build on TestFlight + Google Play Internal Testing</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="phase-card phase-3 avoid-break" style="margin-top:20px;">
+      <div class="phase-header">
+        <div><div class="phase-badge">Phase 3</div><div class="phase-title">Advanced Native Integrations</div><div class="phase-subtitle">Deep links, offline, haptics, share</div></div>
+        <div class="phase-meta"><div class="phase-duration">4 Weeks</div><div class="phase-duration-label">Weeks 10 – 13</div></div>
+      </div>
+      <div class="phase-body">
+        <h4>Deep Linking</h4>
+        <ul class="feature-list">
+          <li>Install <code>@capacitor/app</code> plugin</li>
+          <li>Universal Links (iOS) + App Links (Android) config</li>
+          <li><code>esportra://tournament/:slug</code> → tournament screen</li>
+          <li><code>esportra://venue/:slug</code> → venue screen</li>
+          <li><code>esportra://map-veto/:token</code> → map veto screen</li>
+          <li>Share button via <code>@capacitor/share</code> native sheet</li>
+        </ul>
+        <h4>Offline &amp; Network</h4>
+        <ul class="feature-list">
+          <li>Install <code>@capacitor/network</code></li>
+          <li>Offline banner shown on all screens when no internet</li>
+          <li>TanStack Query persistent cache (survives app restart)</li>
+          <li>Show cached tournament/venue data when offline</li>
+          <li>Graceful SignalR reconnect on network restore</li>
+          <li>Bundle size audit — target &lt;3MB initial JS</li>
+        </ul>
+        <h4>Native Feel</h4>
+        <ul class="feature-list">
+          <li>Haptic feedback on match result submit</li>
+          <li>Haptic feedback on booking confirmation</li>
+          <li>Pinch-to-zoom on bracket view</li>
+          <li>QR code display for venue booking confirmation</li>
+          <li>Venue owner: QR scanner for check-in</li>
+        </ul>
+        <h4>Deliverables</h4>
+        <ul class="deliverable-list">
+          <li>Deep links working: shared URL opens app on correct screen</li>
+          <li>App handles offline gracefully with cached data shown</li>
+          <li>Feature-complete build for stakeholder review and sign-off</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="phase-card phase-4 avoid-break" style="margin-top:20px;">
+      <div class="phase-header">
+        <div><div class="phase-badge">Phase 4</div><div class="phase-title">Polish, Testing &amp; Store Launch</div><div class="phase-subtitle">Zero shortcuts — production quality bar</div></div>
+        <div class="phase-meta"><div class="phase-duration">3 Weeks</div><div class="phase-duration-label">Weeks 14 – 16</div></div>
+      </div>
+      <div class="phase-body">
+        <h4>QA Testing</h4>
+        <ul class="feature-list">
+          <li>Full regression on iPhone 14, 15 Pro (iOS 17)</li>
+          <li>Full regression on Samsung Galaxy S24, Pixel 8 (Android 14)</li>
+          <li>Small screen: iPhone SE (375px width)</li>
+          <li>Network throttle: 3G and offline</li>
+          <li>Auth edge cases: expired session, re-login</li>
+          <li>Tournament create → bracket → match → complete</li>
+          <li>Dispute flow end-to-end (2 accounts)</li>
+          <li>Venue booking → QR → owner scan</li>
+        </ul>
+        <h4>App Store Preparation</h4>
+        <ul class="feature-list">
+          <li>App Store Connect account + app record</li>
+          <li>Google Play Console account + app record</li>
+          <li>Screenshots (6.7" + 6.1" + iPad for iOS; phone + tablet for Android)</li>
+          <li>App description (English, up to 4,000 chars)</li>
+          <li>Privacy Policy URL (required by both stores)</li>
+          <li>Apple App Privacy label completed</li>
+          <li>Google Play Data Safety form completed</li>
+          <li>Age rating questionnaire</li>
+          <li>Production signing certificates + provisioning profiles</li>
+          <li>Android keystore generated and stored securely</li>
+        </ul>
+        <h4>CI/CD</h4>
+        <ul class="feature-list">
+          <li>GitHub Actions: build iOS IPA on push to <code>main</code></li>
+          <li>GitHub Actions: build Android AAB on push to <code>main</code></li>
+          <li>Auto-upload to TestFlight + Play Internal Testing</li>
+          <li>Sentry source maps for symbolicated crash reports</li>
+        </ul>
+        <h4>Deliverables</h4>
+        <ul class="deliverable-list">
+          <li>iOS build submitted to App Store</li>
+          <li>Android build submitted to Google Play</li>
+          <li>QA sign-off: zero open P0/P1 issues</li>
+          <li>CI/CD shipping signed builds automatically from main</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- RISKS -->
+  <div class="section">
+    <div class="section-header"><div class="section-num">05</div><h2>Risks &amp; Mitigations</h2></div>
+    <div class="risk-item risk-high avoid-break"><div><span class="risk-badge">High</span></div><div><div class="risk-title">App Store Review Rejection</div><div class="risk-mitigation">Mitigation: Review Apple &amp; Google guidelines in Phase 1. Ensure Privacy Policy, OAuth flows, and data declarations comply before submission. Budget 1 week for re-submission.</div></div></div>
+    <div class="risk-item risk-high avoid-break"><div><span class="risk-badge">High</span></div><div><div class="risk-title">iOS APNs Push Notification Setup</div><div class="risk-mitigation">Mitigation: Configure APNs certificates in Phase 2 Week 1. Test on real iPhone immediately — never rely on simulator for push. Use Firebase Cloud Messaging as a unified layer.</div></div></div>
+    <div class="risk-item risk-medium avoid-break"><div><span class="risk-badge">Medium</span></div><div><div class="risk-title">OAuth Redirect on Mobile</div><div class="risk-mitigation">Mitigation: Configure Supabase redirect URLs for <code>com.esportra.app://</code> custom scheme. Test Google + Discord OAuth on real devices in Phase 1 before building further.</div></div></div>
+    <div class="risk-item risk-medium avoid-break"><div><span class="risk-badge">Medium</span></div><div><div class="risk-title">SignalR Performance on Mobile Networks</div><div class="risk-mitigation">Mitigation: Implement reconnect on app foreground. Add polling fallback if WebSocket drops. Test on throttled 3G network in Phase 3.</div></div></div>
+    <div class="risk-item risk-low avoid-break"><div><span class="risk-badge">Low</span></div><div><div class="risk-title">Capacitor Plugin Version Conflicts</div><div class="risk-mitigation">Mitigation: Pin all Capacitor plugins to the same major version (v7). Test each plugin immediately after installation on both platforms.</div></div></div>
+  </div>
+
+  <!-- METRICS -->
+  <div class="section">
+    <div class="section-header"><div class="section-num">06</div><h2>Success Metrics</h2></div>
+    <div class="kpi-grid">
+      <div class="kpi-box"><div class="kpi-label">Crash-Free Rate</div><div class="kpi-target">&gt; 99.5%</div><div class="kpi-desc">Via Sentry (30-day average)</div></div>
+      <div class="kpi-box"><div class="kpi-label">App Start Time</div><div class="kpi-target">&lt; 2.5s</div><div class="kpi-desc">Cold start on mid-range device</div></div>
+      <div class="kpi-box"><div class="kpi-label">App Store Rating</div><div class="kpi-target">&ge; 4.0 ★</div><div class="kpi-desc">Target within first 60 days</div></div>
+      <div class="kpi-box"><div class="kpi-label">Push Opt-in (iOS)</div><div class="kpi-target">&gt; 65%</div><div class="kpi-desc">Users allowing notifications</div></div>
+      <div class="kpi-box"><div class="kpi-label">Bundle Size</div><div class="kpi-target">&lt; 30 MB</div><div class="kpi-desc">Store install size</div></div>
+      <div class="kpi-box"><div class="kpi-label">Booking Flow</div><div class="kpi-target">&lt; 3 min</div><div class="kpi-desc">Search venue to confirmed booking</div></div>
+    </div>
+    <h3 style="margin-top:20px;">Launch Checklist</h3>
+    <ul class="checklist">
+      <li><div class="check-box"></div>All Phase 1–3 deliverables signed off by QA</li>
+      <li><div class="check-box"></div>Zero P0 (crash) or P1 (data loss) bugs open</li>
+      <li><div class="check-box"></div>Full player journey tested: register → bracket → match → result</li>
+      <li><div class="check-box"></div>Venue booking end-to-end working on device</li>
+      <li><div class="check-box"></div>Push notifications firing on real iOS + Android</li>
+      <li><div class="check-box"></div>Deep links tested: shared URL opens correct screen in app</li>
+      <li><div class="check-box"></div>App handles offline gracefully — no crash, cached data shown</li>
+      <li><div class="check-box"></div>App Store screenshots and metadata approved internally</li>
+      <li><div class="check-box"></div>Privacy Policy published at a public URL</li>
+      <li><div class="check-box"></div>Apple Developer + Google Play accounts active</li>
+      <li><div class="check-box"></div>Production signing certificates valid</li>
+      <li><div class="check-box"></div>CI/CD producing signed builds from main</li>
+      <li><div class="check-box"></div>Sentry live in production with source maps</li>
+      <li><div class="check-box"></div>App submitted to both stores</li>
+    </ul>
+  </div>
+</div>
+
+<div class="footer">
+  <strong>Esportra</strong> &nbsp;·&nbsp; Mobile App Development Plan (React + Capacitor) &nbsp;·&nbsp; Confidential &nbsp;·&nbsp; July 2026
+</div>
+
+<button class="print-btn no-print" onclick="window.print()">Save as PDF</button>
+</body>
+</html>

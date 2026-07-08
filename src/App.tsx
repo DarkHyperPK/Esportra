@@ -22,6 +22,7 @@ import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import BetaNoticeBanner from "@/components/BetaNoticeBanner";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
 import { lazyWithRetry } from "@/utils/lazyWithRetry";
+import { MobileProvider } from "@/components/mobile/MobileProvider";
 
 const AdminLayout = lazyWithRetry(() => import("@/components/admin/AdminLayout"));
 
@@ -745,7 +746,9 @@ const App = () => {
             <TooltipProvider>
               <NotificationProvider>
                 <AdminProvider>
-                  <AppContent />
+                  <MobileProvider>
+                    <AppContent />
+                  </MobileProvider>
                 </AdminProvider>
               </NotificationProvider>
             </TooltipProvider>
