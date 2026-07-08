@@ -130,12 +130,13 @@ const SwissGroupPanel = React.memo(({
                             <CardTitle className="text-base font-medium text-white">Round {round}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+                            <div className="space-y-4 max-h-[700px] overflow-y-auto overscroll-contain pr-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent" data-lenis-prevent>
                                 {matchesByRound[round]?.sort((a, b) => (a.matchNumber - b.matchNumber) || a.id.localeCompare(b.id)).map(match => (
                                     <div key={match.id} className="relative">
                                         {isOrganizer ? (
                                             <MatchCard
                                                 match={match}
+                                                label={match.groupId ? `${match.groupId}.R${round}.M${match.matchNumber}` : `R${round}.M${match.matchNumber}`}
                                                 isOrganizer={isOrganizer}
                                                 isProcessing={isProcessing}
                                                 expandedMatchId={expandedMatch}
@@ -152,6 +153,7 @@ const SwissGroupPanel = React.memo(({
                                         ) : (
                                             <ReadOnlyMatchCard
                                                 match={match}
+                                                label={match.groupId ? `${match.groupId}.R${round}.M${match.matchNumber}` : `R${round}.M${match.matchNumber}`}
                                                 className="w-[260px]"
                                                 onClick={() => onMatchClick?.(match)}
                                                 hasAutomatedResults={hasResultsMap[getRawId(match.id)]?.length > 0}

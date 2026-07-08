@@ -14,6 +14,7 @@ interface ReadOnlyMatchCardProps {
     hoveredTeamId?: string | null;
     onTeamHover?: (teamId: string | null) => void;
     isDoubleElimination?: boolean;
+    label?: string;
 }
 
 const SeedRail = ({ seed }: { seed?: number | null }) => {
@@ -37,6 +38,7 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
     hoveredTeamId,
     onTeamHover,
     isDoubleElimination = false,
+    label,
 }) => {
     const team1Won = match.winner?.id && match.winner.id === match.team1?.id;
     const team2Won = match.winner?.id && match.winner.id === match.team2?.id;
@@ -47,7 +49,7 @@ export const ReadOnlyMatchCard: React.FC<ReadOnlyMatchCardProps> = ({
     const teamInMatch = Boolean(
         hoveredTeamId && (match.team1?.id === hoveredTeamId || match.team2?.id === hoveredTeamId),
     );
-    const matchCode = formatBracketMatchLabel(match, { isDoubleElimination });
+    const matchCode = label ?? formatBracketMatchLabel(match, { isDoubleElimination });
 
     const clearTeamHoverUnlessEnteringTeamRow = (e: React.MouseEvent) => {
         if (!onTeamHover || !hoveredTeamId) return;
