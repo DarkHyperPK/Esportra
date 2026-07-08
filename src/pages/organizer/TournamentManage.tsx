@@ -258,10 +258,11 @@ const TournamentDashboard = () => {
     [dashboardData?.stages],
   );
   const isOrganizer = tournamentAccess?.isOrganizer || dashboardData?.isOrganizer || false;
+  const isPlatformAdmin = tournamentAccess?.isPlatformAdmin || false;
   const isSuperAdmin = isSuperAdminUser(admin, profile);
   const inOrganizerSession = currentRole === 'organizer' || isSuperAdmin;
-  /** Owner powers only when session role is Organizer (not Player mode). */
-  const canActAsOwner = isOrganizer && inOrganizerSession;
+  /** Owner powers when session role is Organizer OR user is a platform admin. */
+  const canActAsOwner = (isOrganizer || isPlatformAdmin) && inOrganizerSession;
 
   const needsStageCompletionCheck = useMemo(() => {
     if (!canActAsOwner || !tournament?.end_date || stages.length === 0) return false;
