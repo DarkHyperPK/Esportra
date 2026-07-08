@@ -601,7 +601,7 @@ const TournamentManagementTool = () => {
                             View Details
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild className="text-blue-400 focus:text-blue-300 focus:bg-blue-500/10">
-                            <Link to={`/organizer/tournament/${tournament.slug}/manage`}>
+                            <Link to={`/organizer/tournament/${tournament.slug}`}>
                               <Settings className="w-4 h-4 mr-2" />
                               Manage Tournament
                             </Link>
