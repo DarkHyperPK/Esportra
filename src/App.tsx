@@ -66,7 +66,6 @@ const TeamsPage = lazyWithRetry(() => import("./pages/player/Teams"));
 const RedeemInvitePage = lazyWithRetry(() => import("./pages/invitations/RedeemInvite"));
 
 // Admin
-const AdminManagement = lazyWithRetry(() => import("./pages/admin/AdminManagement"));
 const AdminAccess = lazyWithRetry(() => import("./pages/admin/AdminAccess"));
 const AdminRoleManagement = lazyWithRetry(() => import("./pages/admin/tools/AdminManagement"));
 const DisputeCenter = lazyWithRetry(() => import("./pages/admin/DisputeCenter"));
@@ -90,6 +89,12 @@ const ScheduledReports = lazyWithRetry(() => import("./pages/admin/tools/Schedul
 const GdprCompliance = lazyWithRetry(() => import("./pages/admin/tools/GdprCompliance"));
 const AnomalyDetection = lazyWithRetry(() => import("./pages/admin/tools/AnomalyDetection"));
 const GameCatalogManagement = lazyWithRetry(() => import("./pages/admin/tools/GameCatalogManagement"));
+
+// New admin pages
+const FeatureFlags = lazyWithRetry(() => import("./pages/admin/system/FeatureFlags"));
+const Broadcasts = lazyWithRetry(() => import("./pages/admin/operations/Broadcasts"));
+const GhostMode = lazyWithRetry(() => import("./pages/admin/security/GhostMode"));
+const CommandCentre = lazyWithRetry(() => import("./pages/admin/CommandCentre"));
 
 // Venue Owner
 const VenueOwnerDashboard = lazyWithRetry(() => import("./pages/venue-owner/Dashboard"));
@@ -334,9 +339,9 @@ const AppContent = React.memo(() => {
 
                 {/* Admin Dashboard Routes */}
                 <Route path="/admin/dashboard" element={
-                  <AdminProtectedRoute>
+                  <AdminProtectedRoute requiredPermission="dashboard:view">
                     <AdminLayout>
-                      <AdminManagement />
+                      <CommandCentre />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />
@@ -570,6 +575,64 @@ const AppContent = React.memo(() => {
                   </AdminProtectedRoute>
                 } />
 
+                {/* ── NEW ADMIN PAGES ────────────────────────────────────────────────────── */}
+                <Route path="/admin/system/feature-flags" element={
+                  <AdminProtectedRoute requiredPermission="feature_flags:view">
+                    <AdminLayout>
+                      <FeatureFlags />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/operations/broadcasts" element={
+                  <AdminProtectedRoute requiredPermission="broadcasts:view">
+                    <AdminLayout>
+                      <Broadcasts />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+                <Route path="/admin/security/ghost" element={
+                  <AdminProtectedRoute requiredPermission="users:impersonate" requiredRoles={ADMIN_ROLE_SETS.superAdmin}>
+                    <AdminLayout>
+                      <GhostMode />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+
+                {/* ── NEW URL STRUCTURE REDIRECTS ────────────────────────────────────────── */}
+                {/* Users & Access */}
+                <Route path="/admin/users/verifications" element={<Navigate to="/admin/tools/verification-system" replace />} />
+                <Route path="/admin/users/licenses" element={<Navigate to="/admin/tools/license-management" replace />} />
+                <Route path="/admin/users/sessions" element={<Navigate to="/admin/tools/sessions" replace />} />
+
+                {/* Content */}
+                <Route path="/admin/content/tournaments" element={<Navigate to="/admin/tools/tournament-management" replace />} />
+                <Route path="/admin/content/teams" element={<Navigate to="/admin/tools/team-management" replace />} />
+                <Route path="/admin/content/venues" element={<Navigate to="/admin/tools/venue-management" replace />} />
+                <Route path="/admin/content/games" element={<Navigate to="/admin/tools/game-catalog" replace />} />
+                <Route path="/admin/content/moderation" element={<Navigate to="/admin/tools/moderation" replace />} />
+
+                {/* Partners */}
+                <Route path="/admin/partners/sponsors" element={<Navigate to="/admin/tools/sponsor-management" replace />} />
+
+                {/* Operations */}
+                <Route path="/admin/operations/disputes" element={<Navigate to="/admin/disputes" replace />} />
+                <Route path="/admin/operations/alerts" element={<Navigate to="/admin/tools/alerts" replace />} />
+                <Route path="/admin/operations/reports" element={<Navigate to="/admin/tools/scheduled-reports" replace />} />
+
+                {/* System */}
+                <Route path="/admin/system/settings" element={<Navigate to="/admin/tools/system-settings" replace />} />
+                <Route path="/admin/system/kill-switches" element={<Navigate to="/admin/tools/kill-switches" replace />} />
+                <Route path="/admin/system/anomalies" element={<Navigate to="/admin/tools/anomaly-detection" replace />} />
+
+                {/* Security */}
+                <Route path="/admin/security/roles" element={<Navigate to="/admin/tools/role-builder" replace />} />
+                <Route path="/admin/security/admins" element={<Navigate to="/admin/access" replace />} />
+                <Route path="/admin/security/ip-allowlist" element={<Navigate to="/admin/tools/ip-allowlist" replace />} />
+                <Route path="/admin/security/audit-logs" element={<Navigate to="/admin/tools/audit-logs" replace />} />
+                <Route path="/admin/security/gdpr" element={<Navigate to="/admin/tools/gdpr" replace />} />
+
+                {/* Analytics */}
+                <Route path="/admin/analytics" element={<Navigate to="/admin/tools/analytics" replace />} />
 
                 {/* Legacy Admin Routes (for backward compatibility) */}
                 <Route path="/admin/access" element={

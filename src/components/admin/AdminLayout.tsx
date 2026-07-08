@@ -17,14 +17,18 @@ import {
   Lock,
   LucideIcon,
   MapPin,
+  Megaphone,
   Monitor,
   Scale,
+  Settings,
   Shield,
   ShieldAlert,
   ShieldCheck,
   ShieldPlus,
   SlidersHorizontal,
+  ToggleRight,
   Trophy,
+  UserSearch,
   Users,
   UsersRound,
 } from 'lucide-react';
@@ -48,44 +52,69 @@ type AdminNavGroup = {
 
 const adminNavGroups: AdminNavGroup[] = [
   {
-    label: 'Command',
+    label: 'Dashboard',
     items: [
-      { label: 'Overview', href: '/admin/dashboard', icon: LayoutDashboard },
-      { label: 'Alerts', href: '/admin/tools/alerts', icon: Bell, permission: 'alerts:view' },
-      { label: 'Audit Logs', href: '/admin/audit', icon: FileText, permission: 'audit:view' },
-      { label: 'Analytics', href: '/admin/tools/analytics', icon: BarChart3, permission: 'analytics:view' },
+      { label: 'Command Centre', href: '/admin/dashboard', icon: LayoutDashboard, permission: 'dashboard:view' },
+    ],
+  },
+  {
+    label: 'Users & Access',
+    items: [
+      { label: 'All Users', href: '/admin/users', icon: Users, permission: 'users:view' },
+      { label: 'Verifications', href: '/admin/users/verifications', icon: ShieldCheck, permission: 'verification:view' },
+      { label: 'Licenses', href: '/admin/users/licenses', icon: Scale, permission: 'licenses:view' },
+      { label: 'Sessions', href: '/admin/users/sessions', icon: Monitor, permission: 'security:view_sessions' },
+    ],
+  },
+  {
+    label: 'Content',
+    items: [
+      { label: 'Tournaments', href: '/admin/content/tournaments', icon: Trophy, permission: 'tournaments:view' },
+      { label: 'Teams', href: '/admin/content/teams', icon: UsersRound, permission: 'teams:view' },
+      { label: 'Venues', href: '/admin/content/venues', icon: MapPin, permission: 'venues:view' },
+      { label: 'Games', href: '/admin/content/games', icon: Gamepad2, permission: 'games:manage' },
+      { label: 'Moderation', href: '/admin/content/moderation', icon: Shield, permission: 'moderation:view' },
+    ],
+  },
+  {
+    label: 'Partners',
+    items: [
+      { label: 'Sponsors', href: '/admin/partners/sponsors', icon: Flag, permission: 'sponsors:view' },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { label: 'Users', href: '/admin/tools/user-management', icon: Users, permission: 'users:view' },
-      { label: 'Tournaments', href: '/admin/tools/tournament-management', icon: Trophy, permission: 'tournaments:view' },
-      { label: 'Teams', href: '/admin/tools/team-management', icon: UsersRound, permission: 'teams:view' },
-      { label: 'Venues', href: '/admin/tools/venue-management', icon: MapPin, permission: 'venues:view' },
-      { label: 'Disputes', href: '/admin/disputes', icon: AlertTriangle, permission: 'disputes:view' },
-      { label: 'Verification', href: '/admin/tools/verification-system', icon: ShieldCheck, permission: 'verification:view' },
+      { label: 'Disputes', href: '/admin/operations/disputes', icon: AlertTriangle, permission: 'disputes:view' },
+      { label: 'Alerts', href: '/admin/operations/alerts', icon: Bell, permission: 'alerts:view' },
+      { label: 'Reports', href: '/admin/operations/reports', icon: CalendarClock, permission: 'reports:view' },
+      { label: 'Broadcasts', href: '/admin/operations/broadcasts', icon: Megaphone, permission: 'broadcasts:view' },
     ],
   },
   {
-    label: 'Growth',
+    label: 'System',
     items: [
-      { label: 'Sponsors', href: '/admin/tools/sponsor-management', icon: Flag, permission: 'sponsors:view' },
-      { label: 'Licenses', href: '/admin/tools/license-management', icon: Scale, permission: 'licenses:view' },
-      { label: 'Moderation', href: '/admin/tools/moderation', icon: Shield, permission: 'moderation:view' },
-      { label: 'Game Catalog', href: '/admin/tools/game-catalog', icon: Gamepad2, permission: 'games:manage' },
+      { label: 'Feature Flags', href: '/admin/system/feature-flags', icon: ToggleRight, permission: 'feature_flags:view' },
+      { label: 'Settings', href: '/admin/system/settings', icon: Settings, permission: 'system:config_view' },
+      { label: 'Kill Switches', href: '/admin/system/kill-switches', icon: ShieldAlert, permission: 'system:config_view' },
+      { label: 'Anomalies', href: '/admin/system/anomalies', icon: AlertTriangle, permission: 'system:config_view' },
     ],
   },
   {
-    label: 'Control Plane',
+    label: 'Security',
     items: [
-      { label: 'Admin Access', href: '/admin/access', icon: ShieldPlus, permission: 'admin_users:view' },
-      { label: 'Role Builder', href: '/admin/tools/role-builder', icon: Lock, permission: 'rbac:view' },
-      { label: 'Sessions', href: '/admin/tools/sessions', icon: Monitor, permission: 'security:view_sessions' },
-      { label: 'Kill Switches', href: '/admin/tools/kill-switches', icon: ShieldAlert, permission: 'system:config_view' },
-      { label: 'IP Allowlist', href: '/admin/tools/ip-allowlist', icon: SlidersHorizontal, permission: 'security:manage_ip_allowlist' },
-      { label: 'Reports', href: '/admin/tools/scheduled-reports', icon: CalendarClock, permission: 'reports:view' },
-      { label: 'GDPR', href: '/admin/tools/gdpr', icon: Database, permission: 'gdpr:view' },
+      { label: 'Role Builder', href: '/admin/security/roles', icon: Lock, permission: 'rbac:view' },
+      { label: 'Admin Access', href: '/admin/security/admins', icon: ShieldPlus, permission: 'admin_users:view' },
+      { label: 'IP Allowlist', href: '/admin/security/ip-allowlist', icon: SlidersHorizontal, permission: 'security:manage_ip_allowlist' },
+      { label: 'Audit Logs', href: '/admin/security/audit-logs', icon: FileText, permission: 'audit:view' },
+      { label: 'GDPR', href: '/admin/security/gdpr', icon: Database, permission: 'gdpr:view' },
+      { label: 'Ghost Mode', href: '/admin/security/ghost', icon: UserSearch, permission: 'users:impersonate', superOnly: true },
+    ],
+  },
+  {
+    label: 'Analytics',
+    items: [
+      { label: 'Overview', href: '/admin/analytics', icon: BarChart3, permission: 'analytics:view' },
     ],
   },
 ];

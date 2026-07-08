@@ -28,22 +28,30 @@ export function GhostModeProvider({ children }: { children: React.ReactNode }) {
 
   const start = useCallback(async (input: StartGhostModeInput) => {
     const result = await apiClient.post<{
-      token: string;
-      sessionId: string;
-      adminId: string;
-      targetUserId: string;
-      targetLabel: string;
-      scopes: string[];
-      expiresAt: string;
-    }>('/api/admin/operations/impersonation/start', input);
-    writeGhostModeSession(result);
-    setSession(result);
+      session_id: string;
+      ghost_token: string;
+      expires_at: string;
+      target_user: { id: string; username: string };
+    }>(`/api/admin/ghost/${input.targetUserId}`, { reason: input.reason });
+
+    const sessionData: GhostModeSession = {
+      token: result.ghost_token,
+      sessionId: result.session_id,
+      adminId: '',
+      targetUserId: result.target_user.id,
+      targetLabel: result.target_user.username,
+      scopes: input.scopes ?? ['view'],
+      expiresAt: result.expires_at,
+    };
+    writeGhostModeSession(sessionData);
+    setSession(sessionData);
   }, []);
 
   const exit = useCallback(async () => {
     try {
-      if (readGhostModeSession()) {
-        await apiClient.post('/api/operations/impersonation/end', {});
+      const currentSession = readGhostModeSession();
+      if (currentSession) {
+        await apiClient.post('/api/admin/ghost/end', { token: currentSession.token });
       }
     } finally {
       clearGhostModeSession();
