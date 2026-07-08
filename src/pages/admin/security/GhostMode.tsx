@@ -263,12 +263,12 @@ export default function GhostMode() {
           <DialogTrigger asChild>
             <Button className="gap-2">
               <UserSearch className="w-4 h-4" />
-              Request Access
+              {isSuperAdmin ? 'Enter Ghost Mode' : 'Request Access'}
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-zinc-900 border-zinc-800">
             <DialogHeader>
-              <DialogTitle>Request Ghost Mode Access</DialogTitle>
+              <DialogTitle>{isSuperAdmin ? 'Enter Ghost Mode' : 'Request Ghost Mode Access'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div>
@@ -319,20 +319,31 @@ export default function GhostMode() {
               <div className="flex items-start gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
                 <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
                 <div className="text-sm text-yellow-200/80">
-                  Ghost mode access is logged and auditable. All viewed pages and
-                  unmasked fields are recorded.
+                  {isSuperAdmin
+                    ? 'Ghost mode access is logged and auditable. All viewed pages and unmasked fields are recorded.'
+                    : 'Your request will be reviewed by a super admin. Ghost mode access is logged and auditable.'}
                 </div>
               </div>
 
               <Button
-                onClick={() => requestApproval.mutate()}
-                disabled={!targetUserId || !reason || requestApproval.isPending}
+                onClick={() => {
+                  if (isSuperAdmin) {
+                    enterGhostMode.mutate({ targetUserId, reason });
+                    setRequestDialogOpen(false);
+                    setTargetUserId('');
+                    setReason('');
+                    setUserSearch('');
+                  } else {
+                    requestApproval.mutate();
+                  }
+                }}
+                disabled={!targetUserId || !reason || requestApproval.isPending || enterGhostMode.isPending}
                 className="w-full"
               >
-                {requestApproval.isPending ? (
+                {(requestApproval.isPending || enterGhostMode.isPending) ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 ) : null}
-                Submit Request
+                {isSuperAdmin ? 'Enter Ghost Mode' : 'Submit Request'}
               </Button>
             </div>
           </DialogContent>

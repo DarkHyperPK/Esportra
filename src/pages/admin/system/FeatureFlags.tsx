@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -108,53 +108,30 @@ export default function FeatureFlags() {
 
   const { data: flags, isLoading } = useQuery({
     queryKey: ['admin', 'feature-flags'],
-    queryFn: async () => {
-      const { data } = await supabase.functions.invoke<FeatureFlag[]>('admin-api', {
-        body: { path: '/api/admin/feature-flags', method: 'GET' },
-      });
-      return data ?? [];
-    },
+    queryFn: () => apiClient.get<FeatureFlag[]>('/api/admin/feature-flags'),
   });
 
   const { data: rules, refetch: refetchRules } = useQuery({
     queryKey: ['admin', 'feature-flag-rules', selectedFlag?.id],
-    queryFn: async () => {
-      if (!selectedFlag) return [];
-      const { data } = await supabase.functions.invoke<FlagRule[]>('admin-api', {
-        body: { path: `/api/admin/feature-flags/${selectedFlag.id}/rules`, method: 'GET' },
-      });
-      return data ?? [];
-    },
+    queryFn: () => apiClient.get<FlagRule[]>(`/api/admin/feature-flags/${selectedFlag!.id}/rules`),
     enabled: !!selectedFlag && rulesDialogOpen,
   });
 
   const { data: overrides } = useQuery({
     queryKey: ['admin', 'feature-flag-overrides', selectedFlag?.id],
-    queryFn: async () => {
-      if (!selectedFlag) return [];
-      const { data } = await supabase.functions.invoke<FlagOverride[]>('admin-api', {
-        body: { path: `/api/admin/feature-flags/${selectedFlag.id}/overrides`, method: 'GET' },
-      });
-      return data ?? [];
-    },
+    queryFn: () => apiClient.get<FlagOverride[]>(`/api/admin/feature-flags/${selectedFlag!.id}/overrides`),
     enabled: !!selectedFlag && overridesDialogOpen,
   });
 
   const createFlag = useMutation({
     mutationFn: async () => {
       const defaultValue = parseDefaultValue(formType, formDefaultValue);
-      await supabase.functions.invoke('admin-api', {
-        body: {
-          path: '/api/admin/feature-flags',
-          method: 'POST',
-          data: {
-            key: formKey,
-            name: formName,
-            description: formDescription || null,
-            flag_type: formType,
-            default_value: defaultValue,
-          },
-        },
+      await apiClient.post('/api/admin/feature-flags', {
+        key: formKey,
+        name: formName,
+        description: formDescription || null,
+        flag_type: formType,
+        default_value: defaultValue,
       });
     },
     onSuccess: () => {
@@ -170,13 +147,7 @@ export default function FeatureFlags() {
 
   const updateFlag = useMutation({
     mutationFn: async (updates: Partial<FeatureFlag>) => {
-      await supabase.functions.invoke('admin-api', {
-        body: {
-          path: `/api/admin/feature-flags/${editingFlag?.id}`,
-          method: 'PUT',
-          data: updates,
-        },
-      });
+      await apiClient.put(`/api/admin/feature-flags/${editingFlag?.id}`, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'feature-flags'] });
@@ -190,13 +161,7 @@ export default function FeatureFlags() {
 
   const toggleFlag = useMutation({
     mutationFn: async ({ id, isEnabled }: { id: string; isEnabled: boolean }) => {
-      await supabase.functions.invoke('admin-api', {
-        body: {
-          path: `/api/admin/feature-flags/${id}`,
-          method: 'PUT',
-          data: { is_enabled: isEnabled },
-        },
-      });
+      await apiClient.put(`/api/admin/feature-flags/${id}`, { is_enabled: isEnabled });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'feature-flags'] });
@@ -209,9 +174,7 @@ export default function FeatureFlags() {
 
   const deleteFlag = useMutation({
     mutationFn: async (id: string) => {
-      await supabase.functions.invoke('admin-api', {
-        body: { path: `/api/admin/feature-flags/${id}`, method: 'DELETE' },
-      });
+      await apiClient.delete(`/api/admin/feature-flags/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'feature-flags'] });
@@ -226,17 +189,11 @@ export default function FeatureFlags() {
     mutationFn: async () => {
       const conditions = buildConditions();
       const value = parseRuleValue();
-      await supabase.functions.invoke('admin-api', {
-        body: {
-          path: `/api/admin/feature-flags/${selectedFlag?.id}/rules`,
-          method: 'POST',
-          data: {
-            priority: parseInt(rulePriority, 10) || 0,
-            conditions,
-            value,
-            percentage: rulePercentage ? parseInt(rulePercentage, 10) : null,
-          },
-        },
+      await apiClient.post(`/api/admin/feature-flags/${selectedFlag?.id}/rules`, {
+        priority: parseInt(rulePriority, 10) || 0,
+        conditions,
+        value,
+        percentage: rulePercentage ? parseInt(rulePercentage, 10) : null,
       });
     },
     onSuccess: () => {
@@ -255,17 +212,11 @@ export default function FeatureFlags() {
     mutationFn: async () => {
       const conditions = buildConditions();
       const value = parseRuleValue();
-      await supabase.functions.invoke('admin-api', {
-        body: {
-          path: `/api/admin/feature-flags/${selectedFlag?.id}/rules/${editingRule?.id}`,
-          method: 'PUT',
-          data: {
-            priority: parseInt(rulePriority, 10) || 0,
-            conditions,
-            value,
-            percentage: rulePercentage ? parseInt(rulePercentage, 10) : null,
-          },
-        },
+      await apiClient.put(`/api/admin/feature-flags/${selectedFlag?.id}/rules/${editingRule?.id}`, {
+        priority: parseInt(rulePriority, 10) || 0,
+        conditions,
+        value,
+        percentage: rulePercentage ? parseInt(rulePercentage, 10) : null,
       });
     },
     onSuccess: () => {
@@ -283,12 +234,7 @@ export default function FeatureFlags() {
 
   const deleteRule = useMutation({
     mutationFn: async (ruleId: string) => {
-      await supabase.functions.invoke('admin-api', {
-        body: {
-          path: `/api/admin/feature-flags/${selectedFlag?.id}/rules/${ruleId}`,
-          method: 'DELETE',
-        },
-      });
+      await apiClient.delete(`/api/admin/feature-flags/${selectedFlag?.id}/rules/${ruleId}`);
     },
     onSuccess: () => {
       refetchRules();
@@ -301,14 +247,8 @@ export default function FeatureFlags() {
   });
 
   const deleteOverride = useMutation({
-    mutationFn: async (overrideId: string) => {
-      await supabase.functions.invoke('admin-api', {
-        body: {
-          path: `/api/admin/feature-flags/${selectedFlag?.id}/overrides/${overrideId}`,
-          method: 'DELETE',
-        },
-      });
-    },
+    mutationFn: (overrideId: string) =>
+      apiClient.delete(`/api/admin/feature-flags/${selectedFlag?.id}/overrides/${overrideId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'feature-flag-overrides'] });
       toast.success('Override removed');
