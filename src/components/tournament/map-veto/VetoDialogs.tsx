@@ -108,7 +108,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                             Choose the format for this match. This will determine the map veto sequence.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-8">
+                    <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-8 py-6 sm:py-8" data-lenis-prevent>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-2xl mx-auto">
                             {[1, 3, 5].map((bo) => {
                                 const isSelected = selectedBO === bo;

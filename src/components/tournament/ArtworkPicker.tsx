@@ -238,7 +238,7 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
 
       {/* Image grid — click opens editor */}
       {tab === 'images' && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto overscroll-contain pr-1" data-lenis-prevent>
           {allImages.map((url, i) => (
             <button
               type="button"
@@ -264,7 +264,7 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
 
       {/* Video grid — playable YouTube embeds */}
       {tab === 'videos' && assets?.videos && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto overscroll-contain pr-1" data-lenis-prevent>
           {assets.videos.map((video) => {
             const embedUrl = `https://www.youtube.com/embed/${video.videoId}?autoplay=0&mute=1&controls=1&modestbranding=1`;
             const isSelected = selectedUrl?.includes(video.videoId);

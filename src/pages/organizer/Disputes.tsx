@@ -356,7 +356,7 @@ const OrganizerDisputesPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5 scrollbar-thin">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-1.5 scrollbar-thin" data-lenis-prevent>
               {loading ? (
                 <div className="text-zinc-400 text-center py-12">
                   <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-rose-500" />
@@ -473,7 +473,7 @@ const OrganizerDisputesPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+                  <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
                     {/* Match context panel */}
                     {hasMatch && (
                       <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
@@ -623,7 +623,7 @@ const OrganizerDisputesPage: React.FC = () => {
               return (
                 <>
                   {/* Messages */}
-                  <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 scrollbar-thin">
+                  <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-3 scrollbar-thin" data-lenis-prevent>
                     {loadingComments ? (
                       <div className="text-center text-zinc-500 text-sm py-12">
                         <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-2 text-rose-500" />

@@ -725,7 +725,7 @@ const TournamentManagementTool = () => {
 
       {/* Tournament Detail Modal */}
       <Dialog open={!!selectedTournament} onOpenChange={() => { setSelectedTournament(null); setModalTab('details'); }}>
-        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-3xl max-h-[80vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <Trophy className="w-5 h-5 text-amber-500" />

@@ -46,7 +46,7 @@ export const MatchResultsDialog: React.FC<MatchResultsDialogProps> = ({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[720px] bg-[#0a0a0c] border border-white/10/40 max-h-[85vh] overflow-y-auto p-0 sm:max-w-[920px]">
+            <DialogContent className="sm:max-w-[720px] bg-[#0a0a0c] border border-white/10/40 max-h-[85vh] overflow-y-auto overscroll-contain p-0 sm:max-w-[920px]" data-lenis-prevent>
                 <div className="p-6">
                     <DialogHeader>
                         <DialogTitle className="text-white flex items-center gap-2">

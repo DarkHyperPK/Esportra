@@ -32,7 +32,7 @@ export const VirtualizedMatchesList: React.FC<VirtualizedMatchesListProps> = Rea
 
   return (
     <div
-      className="flex-1 overflow-y-auto p-4"
+      className="flex-1 overflow-y-auto overscroll-contain p-4" data-lenis-prevent
       onWheel={(e) => e.stopPropagation()}
     >
       <div className="space-y-3">

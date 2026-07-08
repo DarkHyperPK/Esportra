@@ -599,7 +599,7 @@ const MyDisputes = () => {
 
                     <div className="grid grid-rows-[minmax(0,1fr)_minmax(180px,38vh)] min-h-0 overflow-hidden">
                     {/* Scrollable evidence / match details */}
-                    <div className="min-h-0 overflow-y-auto overscroll-contain px-6 py-5 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+                    <div className="min-h-0 overflow-y-auto overscroll-contain px-6 py-5 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
                       {matchView.hasMatch && (
                         <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
                           <div className="px-5 py-4 flex items-center justify-between gap-4">
@@ -683,7 +683,7 @@ const MyDisputes = () => {
                         )}
                       </div>
 
-                      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-4 space-y-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+                      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-4 space-y-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
                         {loadingComments ? (
                           <div className="flex items-center justify-center py-6 text-white/40 text-sm">
                             <RefreshCw className="w-4 h-4 animate-spin mr-2" />

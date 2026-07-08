@@ -217,7 +217,7 @@ export const RoleSwitcherDialog: React.FC<{
       </Dialog>
 
       <Dialog open={showVerificationForm} onOpenChange={setShowVerificationForm}>
-        <DialogContent className="z-[1060] max-h-[90vh] max-w-4xl overflow-y-auto rounded-none border border-rose-500/40 bg-[#0a0a0c] p-6">
+        <DialogContent className="z-[1060] max-h-[90vh] max-w-4xl overflow-y-auto overscroll-contain rounded-none border border-rose-500/40 bg-[#0a0a0c] p-6" data-lenis-prevent>
           <DialogHeader>
             <div className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.4em] text-rose-400">
               License gate

@@ -465,7 +465,7 @@ const TeamManagementTool = () => {
 
       {/* ── Team Detail Dialog ── */}
       <Dialog open={!!selectedTeamId} onOpenChange={open => { if (!open) setSelectedTeamId(null); }}>
-        <DialogContent className="max-w-2xl bg-[#0a0a0c] border-white/10 text-white max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl bg-[#0a0a0c] border-white/10 text-white max-h-[85vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UsersRound className="w-5 h-5 text-cyan-500" />

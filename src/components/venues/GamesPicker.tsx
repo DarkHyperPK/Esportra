@@ -112,7 +112,7 @@ const GamesPicker: React.FC<GamesPickerProps> = ({ value, onChange, className })
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full max-h-64 overflow-y-auto rounded-xl bg-[#0a0a0c] border border-white/10 shadow-xl">
+        <div className="absolute z-50 mt-1 w-full max-h-64 overflow-y-auto overscroll-contain rounded-xl bg-[#0a0a0c] border border-white/10 shadow-xl" data-lenis-prevent>
           {filtered.length === 0 ? (
             <div className="px-3 py-4 text-center text-sm text-zinc-500">
               <Gamepad2 className="w-5 h-5 mx-auto mb-1 opacity-50" />

@@ -183,7 +183,7 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
       </div>
 
       {/* Rows */}
-      <div className="space-y-1 max-h-[420px] overflow-y-auto overscroll-contain [contain:layout_style_paint]">
+      <div className="space-y-1 max-h-[420px] overflow-y-auto overscroll-contain [contain:layout_style_paint]" data-lenis-prevent>
         {rows.map((row) => {
           const hasDupe = duplicatePlacements.has(row.placement) && row.placement >= 1;
           return (

@@ -184,7 +184,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-6 overflow-y-auto px-4 py-5" data-lenis-prevent>
+        <nav className="flex-1 space-y-6 overflow-y-auto overscroll-contain px-4 py-5" data-lenis-prevent>
           {visibleGroups.map((group) => (
             <div key={group.label}>
               <p className="mb-2 px-3 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-600">{group.label}</p>

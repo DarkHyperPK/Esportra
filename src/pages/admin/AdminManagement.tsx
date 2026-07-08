@@ -110,7 +110,7 @@ function AlertDropdownPanel({ onClose }: { onClose: () => void }) {
         </Button>
       </div>
 
-      <div className="max-h-[400px] overflow-y-auto">
+      <div className="max-h-[400px] overflow-y-auto overscroll-contain" data-lenis-prevent>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <RefreshCw className="w-5 h-5 text-zinc-500 animate-spin" />
@@ -497,7 +497,7 @@ const AdminManagement = () => {
             <span className="text-xs text-zinc-500">Live</span>
           </div>
 
-          <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2">
+          <div className="space-y-1 max-h-[400px] overflow-y-auto overscroll-contain pr-2" data-lenis-prevent>
             {recentActivities.length === 0 ? (
               <p className="text-zinc-500 text-sm text-center py-8">No recent activity</p>
             ) : (
@@ -559,7 +559,7 @@ const AdminManagement = () => {
             </div>
           </div>
 
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="max-h-[400px] overflow-y-auto overscroll-contain" data-lenis-prevent>
             {auditLoading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />

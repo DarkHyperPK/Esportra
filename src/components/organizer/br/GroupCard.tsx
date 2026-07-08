@@ -93,7 +93,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
 
       {/* Team List */}
       {showTeams ? (
-        <div className="p-4 space-y-1.5 max-h-[240px] overflow-y-auto">
+        <div className="p-4 space-y-1.5 max-h-[240px] overflow-y-auto overscroll-contain" data-lenis-prevent>
           {teamsLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (

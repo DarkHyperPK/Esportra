@@ -43,7 +43,7 @@ export const BracketSidebarFilter: React.FC<BracketSidebarFilterProps> = ({
     className
 }) => {
     return (
-        <div className={cn("w-64 flex-shrink-0 bg-zinc-950/50 border-r border-white/5 flex flex-col h-full overflow-y-auto", className)}>
+        <div className={cn("w-64 flex-shrink-0 bg-zinc-950/50 border-r border-white/5 flex flex-col h-full overflow-y-auto overscroll-contain", className)} data-lenis-prevent>
 
             {/* Stage Selection Section */}
             {stages && stages.length > 0 && onStageSelect && (

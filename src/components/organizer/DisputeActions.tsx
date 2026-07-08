@@ -85,7 +85,7 @@ const DisputeActions: React.FC<DisputeActionsProps> = ({
           )}
         </div>
 
-        <div className="grid gap-2 max-h-[200px] overflow-y-auto overscroll-contain pr-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+        <div className="grid gap-2 max-h-[200px] overflow-y-auto overscroll-contain pr-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
           {staffMembers.map((member) => {
             const selected = assigneeId === member.value;
             const canSelect = !isClosed && (canAssignOthers || member.value === assigneeId);

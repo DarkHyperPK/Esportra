@@ -535,7 +535,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
               />
             </div>
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5 scrollbar-thin">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-2 space-y-1.5 scrollbar-thin" data-lenis-prevent>
             {loading ? (
               <div className="flex items-center justify-center py-12 text-zinc-500 text-sm">
                 <RefreshCw className="w-4 h-4 animate-spin mr-2" /> Loading…
@@ -664,7 +664,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
                   onAssigneeChange={handleAssigneeChange}
                 />
 
-                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
                   {hasMatch && selectedDispute.match!.match_number != null && (
                     <div className="flex items-center gap-3 text-xs text-zinc-500">
                       <span>Match #{selectedDispute.match!.match_number}</span>

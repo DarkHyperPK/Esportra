@@ -78,7 +78,7 @@ const MobileNav = ({
           transition={{ duration: 0.2 }}
           className="fixed inset-x-3 top-[5.25rem] z-[998] border border-white/10 bg-[#0a0a0c]/95 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl lg:hidden"
         >
-          <div className="max-h-[calc(100vh-4rem)] overflow-y-auto px-4 py-3">
+          <div className="max-h-[calc(100vh-4rem)] overflow-y-auto overscroll-contain px-4 py-3" data-lenis-prevent>
             {/* Main nav */}
             <div className="space-y-0.5">
               {/* Venues */}

@@ -70,7 +70,7 @@ export function CountryCombobox({
             placeholder="Type to search countries..."
             className="h-11 text-white placeholder:text-zinc-500"
           />
-          <CommandList className="max-h-[240px] overflow-y-auto overscroll-contain">
+          <CommandList className="max-h-[240px] overflow-y-auto overscroll-contain" data-lenis-prevent>
             <CommandEmpty className="py-4 text-zinc-400">No country found.</CommandEmpty>
             <CommandGroup>
               {countries.map((country) => (

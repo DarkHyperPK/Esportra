@@ -1320,7 +1320,7 @@ const TeamsPage = () => {
         {/* Team Creation Wizard Modal */}
         {showTeamCreationWizard && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex-center p-4">
-            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-[#0F1115] border border-white/10 rounded-none shadow-2xl">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto overscroll-contain bg-[#0F1115] border border-white/10 rounded-none shadow-2xl" data-lenis-prevent>
               <TeamCreationWizard onClose={() => {
                 setShowTeamCreationWizard(false);
                 fetchUserTeams();
@@ -1760,7 +1760,7 @@ const TeamsPage = () => {
 
       {/* Invite Members Modal */}
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
-        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar relative overflow-hidden">
+        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar relative overflow-hidden" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -1784,7 +1784,7 @@ const TeamsPage = () => {
             </div>
 
             {searchResults.length > 0 && (
-              <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+              <div className="max-h-48 overflow-y-auto overscroll-contain space-y-2 pr-2 custom-scrollbar" data-lenis-prevent>
                 {searchResults.map((user) => (
                   <div
                     key={user.id}
@@ -1869,7 +1869,7 @@ const TeamsPage = () => {
 
       {/* Team Invite Modal */}
       <Dialog open={showTeamInviteModal} onOpenChange={setShowTeamInviteModal}>
-        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar relative overflow-hidden">
+        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar relative overflow-hidden" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -1916,7 +1916,7 @@ const TeamsPage = () => {
               {teamInvites.length === 0 ? (
                 <div className="text-white/30 text-sm italic py-2">No pending invitations</div>
               ) : (
-                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                <div className="space-y-2 max-h-40 overflow-y-auto overscroll-contain custom-scrollbar" data-lenis-prevent>
                   {teamInvites.map(inv => (
                     <div key={inv.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10">
                       <div className="text-white text-sm">
@@ -1939,7 +1939,7 @@ const TeamsPage = () => {
       </Dialog>
       {/* Create Roster Modal */}
       <Dialog open={rosterModalOpen} onOpenChange={setRosterModalOpen}>
-        <DialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-xl shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-none z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar p-0">
+        <DialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-xl shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-none z-[1050] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar p-0" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.05] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2288,7 +2288,7 @@ const TeamsPage = () => {
 
                 {/* Typeahead suggestions */}
                 {inviteInput && suggestedUsers.length > 0 && (
-                  <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-[#0f1115] shadow-2xl backdrop-blur-xl z-50 relative">
+                  <div className="mt-2 max-h-48 overflow-y-auto overscroll-contain rounded-xl border border-white/10 bg-[#0f1115] shadow-2xl backdrop-blur-xl z-50 relative" data-lenis-prevent>
                     {suggestedUsers.map(u => (
                       <button
                         key={u.id}
@@ -2388,7 +2388,7 @@ const TeamsPage = () => {
 
       {/* Remove Member Confirmation */}
       <AlertDialog open={showRemoveMember} onOpenChange={setShowRemoveMember}>
-        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar overflow-x-hidden" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2412,7 +2412,7 @@ const TeamsPage = () => {
 
       {/* Transfer Captaincy Confirmation */}
       <AlertDialog open={showTransferCaptaincy} onOpenChange={setShowTransferCaptaincy}>
-        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar overflow-x-hidden" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2436,7 +2436,7 @@ const TeamsPage = () => {
 
       {/* Disband Team Confirmation */}
       <AlertDialog open={showDisbandTeam} onOpenChange={setShowDisbandTeam}>
-        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar overflow-x-hidden" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />

@@ -515,7 +515,7 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
 
       {/* Team Creation Wizard (basic info only; games are managed via rosters) */}
       <Dialog open={showWizard} onOpenChange={(open) => { if (!open) { setShowWizard(false); onClose(); } }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-esports-dark border border-gray-600/30">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto overscroll-contain bg-esports-dark border border-gray-600/30" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle className="text-3xl font-bold text-esports-primary">
               Create Your Team

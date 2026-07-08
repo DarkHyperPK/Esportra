@@ -551,7 +551,7 @@ const VerificationSystemTool = () => {
 
       {/* Detail Modal */}
       <Dialog open={!!selectedRequest && !actionDialogOpen} onOpenChange={() => setSelectedRequest(null)}>
-        <DialogContent className="bg-[#111] border-zinc-800 max-w-4xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+        <DialogContent className="bg-[#111] border-zinc-800 max-w-4xl max-h-[90vh] overflow-y-auto overscroll-contain p-0 gap-0" data-lenis-prevent>
           {selectedRequest && (
             <>
               {/* Header Image/Banner */}

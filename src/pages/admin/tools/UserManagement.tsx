@@ -1192,7 +1192,7 @@ const UserManagementTool = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar" data-lenis-prevent>
+                    <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4 custom-scrollbar" data-lenis-prevent>
                     {detailLoading && (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="w-6 h-6 text-rose-500 animate-spin" />
@@ -1387,7 +1387,7 @@ const UserManagementTool = () => {
                                 {userDetail.tournaments.length > 0 && (
                                     <div className="p-3 rounded-xl bg-zinc-900/50">
                                         <p className="text-xs text-zinc-500 uppercase mb-2">Tournaments ({userDetail.tournaments.length})</p>
-                                        <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+                                        <div className="space-y-1 max-h-32 overflow-y-auto overscroll-contain custom-scrollbar" data-lenis-prevent>
                                             {userDetail.tournaments.map((t) => (
                                                 <div key={t.id} className="flex items-center justify-between text-sm">
                                                     <span className="text-zinc-300 truncate mr-2">{t.name}</span>

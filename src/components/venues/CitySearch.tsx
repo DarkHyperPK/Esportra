@@ -119,7 +119,7 @@ const CitySearch: React.FC<CitySearchProps> = ({ city, state, country, onSelect,
       )}
 
       {isOpen && results.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto rounded-xl bg-[#0a0a0c] border border-white/10 shadow-xl">
+        <div className="absolute z-50 mt-1 w-full max-h-52 overflow-y-auto overscroll-contain rounded-xl bg-[#0a0a0c] border border-white/10 shadow-xl" data-lenis-prevent>
           {results.map((r, i) => (
             <button
               key={i}

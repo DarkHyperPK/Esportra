@@ -341,7 +341,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                     </div>
                                 </motion.div>
                             ) : (
-                                <div className="grid gap-4 max-h-[500px] overflow-y-auto px-2 -mx-2 py-2 pb-10 custom-scrollbar scroll-smooth">
+                                <div className="grid gap-4 max-h-[500px] overflow-y-auto overscroll-contain px-2 -mx-2 py-2 pb-10 custom-scrollbar scroll-smooth" data-lenis-prevent>
                                     <AnimatePresence mode="popLayout">
                                         {candidates.map((match, idx) => {
                                             const theme = MAP_THEMES[match.map.toLowerCase()] || { color: 'text-zinc-400', bg: 'bg-zinc-800', id: '2bee0dc9-4ffe-519b-1cbd-7fbe763a6047' };

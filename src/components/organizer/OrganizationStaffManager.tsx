@@ -738,7 +738,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                         <p className="text-xs font-mono text-zinc-500 tracking-widest uppercase mb-2">
                                             Assign Tournaments
                                         </p>
-                                        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                                        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto overscroll-contain" data-lenis-prevent>
                                             {orgTournaments.map((t) => {
                                                 const selected = inviteTournamentIds.includes(t.id);
                                                 return (

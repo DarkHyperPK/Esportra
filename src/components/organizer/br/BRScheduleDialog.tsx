@@ -274,7 +274,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
 
         {/* Step 2: Round Schedule */}
         {step === 'rounds' && (
-          <div className="px-6 py-5 space-y-4 max-h-[55vh] overflow-y-auto">
+          <div className="px-6 py-5 space-y-4 max-h-[55vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
             {/* Stage window summary */}
             {startsAt && endsAt && (
               <div className="flex items-center gap-2 text-xs text-gray-400 bg-white/[0.02] border border-white/5 px-3 py-2 rounded-lg">

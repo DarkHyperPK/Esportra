@@ -902,7 +902,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                                         {requiredStarters} starters · {maxSubstitutes} subs · {maxCoaches} coaches max
                                       </span>
                                     </div>
-                                    <div className="space-y-3 max-h-[240px] overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="space-y-3 max-h-[240px] overflow-y-auto overscroll-contain pr-2 custom-scrollbar" data-lenis-prevent>
                                       {([
                                         { key: 'starter', label: 'Starters', badgeClass: 'text-emerald-400 border-emerald-500/20' },
                                         { key: 'substitute', label: 'Substitutes', badgeClass: 'text-yellow-400 border-yellow-500/20' },

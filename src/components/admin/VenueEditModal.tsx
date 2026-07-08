@@ -103,7 +103,7 @@ export function VenueEditModal({ venue, isOpen, onClose, onVenueUpdated }: Venue
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl bg-[#0a0a0c] border border-white/10 text-white overflow-y-auto max-h-[90vh]">
+      <DialogContent className="sm:max-w-4xl bg-[#0a0a0c] border border-white/10 text-white overflow-y-auto overscroll-contain max-h-[90vh]" data-lenis-prevent>
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Edit Venue: {venue.name}</DialogTitle>
         </DialogHeader>

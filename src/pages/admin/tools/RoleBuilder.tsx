@@ -560,7 +560,7 @@ function RoleFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#121214] border-zinc-800 text-white max-w-3xl max-h-[90vh] overflow-y-auto sm:rounded-2xl">
+      <DialogContent className="bg-[#121214] border-zinc-800 text-white max-w-3xl max-h-[90vh] overflow-y-auto overscroll-contain sm:rounded-2xl" data-lenis-prevent>
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
             <Shield className="w-5 h-5 text-rose-500" />

@@ -131,7 +131,7 @@ const Leaderboards: React.FC = () => {
                                     initial={{ opacity: 0, y: -8, scale: 0.95 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                                    className="absolute right-0 mt-2 w-56 bg-[#0a0a0c]/95 border border-white/10 overflow-hidden shadow-2xl z-50 max-h-72 overflow-y-auto"
+                                    className="absolute right-0 mt-2 w-56 bg-[#0a0a0c]/95 border border-white/10 overflow-hidden shadow-2xl z-50 max-h-72 overflow-y-auto overscroll-contain" data-lenis-prevent
                                 >
                                     <button
                                         onClick={() => { setCountry(''); setCountryMenuOpen(false); }}

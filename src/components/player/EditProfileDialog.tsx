@@ -151,7 +151,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto overscroll-contain" data-lenis-prevent>
                     <Tabs defaultValue="general" className="flex flex-col h-full">
                         <div className="px-6 pt-4">
                             <TabsList className="w-full bg-zinc-900/50 border border-zinc-800 p-1">

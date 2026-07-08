@@ -147,7 +147,7 @@ const MatchChat: React.FC<MatchChatProps> = ({
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0 bg-[radial-gradient(circle_at_top,rgba(6,182,212,0.08),transparent_35%)]"
+                className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4 min-h-0 bg-[radial-gradient(circle_at_top,rgba(6,182,212,0.08),transparent_35%)]" data-lenis-prevent
             >
                 {isLoading ? (
                     <div className="flex items-center justify-center h-full">

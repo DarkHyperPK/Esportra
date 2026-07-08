@@ -572,7 +572,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                   {scheduleErrors.length > 0 && (
                     <p className="text-xs text-amber-300/90">{scheduleErrors[0]}</p>
                   )}
-                  <div className="space-y-4 max-h-[28rem] overflow-y-auto">
+                  <div className="space-y-4 max-h-[28rem] overflow-y-auto overscroll-contain" data-lenis-prevent>
                     {[...lobbiesByWave.entries()].map(([waveNumber, waveLobbies]) => (
                       <div key={waveNumber} className="space-y-2">
                         <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">

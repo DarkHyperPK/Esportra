@@ -887,7 +887,7 @@ const BRProStageWizard: React.FC<BRProStageWizardProps> = ({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-10 sm:px-12 py-10 min-h-[20rem]">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-10 sm:px-12 py-10 min-h-[20rem]" data-lenis-prevent>
           {renderStep()}
         </div>
 

@@ -204,7 +204,7 @@ const MatchResultUpload: React.FC<Props> = ({
         </div>
 
         {files.length > 0 && (
-          <div className="space-y-1 max-h-24 overflow-y-auto">
+          <div className="space-y-1 max-h-24 overflow-y-auto overscroll-contain" data-lenis-prevent>
             {files.map((file, index) => (
               <div key={index} className="flex items-center justify-between bg-gray-800/50 rounded px-2 py-1">
                 <span className="text-xs text-gray-300 truncate flex-1">{file.name}</span>

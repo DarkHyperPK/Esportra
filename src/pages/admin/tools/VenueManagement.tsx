@@ -356,7 +356,7 @@ const VenueManagementTool = () => {
 
       {/* Venue Detail Modal */}
       <Dialog open={!!selectedVenue} onOpenChange={() => setSelectedVenue(null)}>
-        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-3xl max-h-[85vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <MapPin className="w-5 h-5 text-emerald-500" />

@@ -739,7 +739,7 @@ const SponsorManagement = () => {
 
             {/* Sponsor Edit Modal - Simplified reuse of layout */}
             <Dialog open={sponsorModal.open} onOpenChange={(open) => setSponsorModal({ ...sponsorModal, open })}>
-                <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
                     <DialogHeader>
                         <DialogTitle>{sponsorModal.isNew ? 'New Partner' : 'Edit Partner'}</DialogTitle>
                     </DialogHeader>

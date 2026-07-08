@@ -470,7 +470,7 @@ const DisputeCenter: React.FC = () => {
               </Tabs>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1.5" data-lenis-prevent>
               {loading ? (
                 <div className="text-zinc-400 text-center py-12">
                   <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-rose-500" />
@@ -564,7 +564,7 @@ const DisputeCenter: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4" data-lenis-prevent>
                   {/* Description */}
                   <div>
                     <label className="text-zinc-500 text-xs uppercase tracking-wider mb-1.5 block font-medium">Description</label>
@@ -694,7 +694,7 @@ const DisputeCenter: React.FC = () => {
             {selectedDispute ? (
               <>
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                <div className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-3" data-lenis-prevent>
                   {loadingComments ? (
                     <div className="text-center text-zinc-500 text-sm py-12">
                       <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-2 text-rose-500" />

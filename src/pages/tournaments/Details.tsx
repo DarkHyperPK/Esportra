@@ -914,7 +914,7 @@ const TournamentDetails = () => {
       {/* Invite Redemption Dialog */}
       <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
         <DialogContent
-          className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0a0a0c] border border-white/10"
+          className="max-w-3xl max-h-[90vh] overflow-y-auto overscroll-contain bg-[#0a0a0c] border border-white/10" data-lenis-prevent
           onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
