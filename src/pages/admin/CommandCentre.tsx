@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/apiClient';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -175,16 +175,7 @@ export default function CommandCentre() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin', 'command-centre'],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke<CommandCentreData>(
-        'admin-api',
-        {
-          body: { path: '/api/admin/command-centre', method: 'GET' },
-        }
-      );
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => apiClient.get<CommandCentreData>('/api/admin/command-centre'),
     refetchInterval: 60000,
   });
 
