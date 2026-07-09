@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -96,76 +96,39 @@ export default function GhostMode() {
 
   const { data: pendingApprovals } = useQuery({
     queryKey: ['admin', 'ghost-approvals', 'pending'],
-    queryFn: async () => {
-      const { data } = await supabase.functions.invoke<GhostApproval[]>('admin-api', {
-        body: { path: '/api/admin/ghost/approvals/pending', method: 'GET' },
-      });
-      return data ?? [];
-    },
+    queryFn: () => apiClient.get<GhostApproval[]>('/api/admin/ghost/approvals/pending'),
     enabled: isSuperAdmin,
   });
 
   const { data: sessions, isLoading: loadingSessions } = useQuery({
     queryKey: ['admin', 'ghost-sessions'],
-    queryFn: async () => {
-      const { data } = await supabase.functions.invoke<GhostSession[]>('admin-api', {
-        body: { path: '/api/admin/ghost/sessions', method: 'GET' },
-      });
-      return data ?? [];
-    },
+    queryFn: () => apiClient.get<GhostSession[]>('/api/admin/ghost/sessions'),
   });
 
   const { data: auditLogs, isLoading: loadingAudit } = useQuery({
     queryKey: ['admin', 'ghost-audit'],
-    queryFn: async () => {
-      const { data } = await supabase.functions.invoke<AuditLog[]>('admin-api', {
-        body: { path: '/api/admin/ghost/audit', method: 'GET' },
-      });
-      return data ?? [];
-    },
+    queryFn: () => apiClient.get<AuditLog[]>('/api/admin/ghost/audit'),
     enabled: isSuperAdmin,
   });
 
   const { data: myApprovedRequests } = useQuery({
     queryKey: ['admin', 'ghost-approvals', 'mine'],
-    queryFn: async () => {
-      const { data } = await supabase.functions.invoke<ApprovedRequest[]>('admin-api', {
-        body: { path: '/api/admin/ghost/approvals/mine', method: 'GET' },
-      });
-      return data ?? [];
-    },
+    queryFn: () => apiClient.get<ApprovedRequest[]>('/api/admin/ghost/approvals/mine'),
     enabled: !isSuperAdmin,
   });
 
   const { data: searchResults } = useQuery({
     queryKey: ['admin', 'users-search', userSearch],
-    queryFn: async () => {
-      if (!userSearch || userSearch.length < 2) return [];
-      const { data } = await supabase.functions.invoke<{ id: string; username: string; email: string }[]>(
-        'admin-api',
-        {
-          body: {
-            path: '/api/admin/users',
-            method: 'GET',
-            params: { search: userSearch, limit: 5 },
-          },
-        }
-      );
-      return data ?? [];
-    },
+    queryFn: () =>
+      apiClient.get<{ id: string; username: string; email: string }[]>(
+        `/api/admin/users?search=${encodeURIComponent(userSearch)}&limit=5`
+      ),
     enabled: userSearch.length >= 2,
   });
 
   const requestApproval = useMutation({
-    mutationFn: async () => {
-      await supabase.functions.invoke('admin-api', {
-        body: {
-          path: '/api/admin/ghost/request',
-          method: 'POST',
-          data: { target_user_id: targetUserId, reason },
-        },
-      });
-    },
+    mutationFn: () =>
+      apiClient.post('/api/admin/ghost/request', { target_user_id: targetUserId, reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'ghost-approvals'] });
       toast.success('Approval request submitted');
@@ -179,11 +142,7 @@ export default function GhostMode() {
   });
 
   const approveRequest = useMutation({
-    mutationFn: async (id: string) => {
-      await supabase.functions.invoke('admin-api', {
-        body: { path: `/api/admin/ghost/approvals/${id}/approve`, method: 'POST' },
-      });
-    },
+    mutationFn: (id: string) => apiClient.post(`/api/admin/ghost/approvals/${id}/approve`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'ghost-approvals'] });
       toast.success('Request approved');
@@ -191,15 +150,8 @@ export default function GhostMode() {
   });
 
   const denyRequest = useMutation({
-    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
-      await supabase.functions.invoke('admin-api', {
-        body: {
-          path: `/api/admin/ghost/approvals/${id}/deny`,
-          method: 'POST',
-          data: { reason },
-        },
-      });
-    },
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      apiClient.post(`/api/admin/ghost/approvals/${id}/deny`, { reason }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'ghost-approvals'] });
       toast.success('Request denied');
@@ -207,22 +159,13 @@ export default function GhostMode() {
   });
 
   const enterGhostMode = useMutation({
-    mutationFn: async ({ targetUserId, reason }: { targetUserId: string; reason: string }) => {
-      const { data, error } = await supabase.functions.invoke<{
+    mutationFn: ({ targetUserId, reason }: { targetUserId: string; reason: string }) =>
+      apiClient.post<{
         session_id: string;
         ghost_token: string;
         expires_at: string;
         target_user: { id: string; username: string };
-      }>('admin-api', {
-        body: {
-          path: `/api/admin/ghost/${targetUserId}`,
-          method: 'POST',
-          data: { reason },
-        },
-      });
-      if (error) throw error;
-      return data;
-    },
+      }>(`/api/admin/ghost/${targetUserId}`, { reason }),
     onSuccess: (data) => {
       if (data) {
         const sessionData: GhostModeSession = {
