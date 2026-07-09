@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -136,72 +136,42 @@ export default function Broadcasts() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'broadcasts', activeTab === 'all' ? undefined : activeTab],
-    queryFn: async () => {
-      const status = activeTab === 'all' ? undefined : activeTab;
-      const { data } = await supabase.functions.invoke<{ items: Broadcast[]; total: number }>(
-        'admin-api',
-        {
-          body: {
-            path: '/api/admin/broadcasts',
-            method: 'GET',
-            params: { status },
-          },
-        }
+    queryFn: () => {
+      const status = activeTab === 'all' ? '' : `?status=${activeTab}`;
+      return apiClient.get<{ items: Broadcast[]; total: number }>(
+        `/api/admin/broadcasts${status}`
       );
-      return data;
     },
   });
 
   const { data: stats, isLoading: loadingStats } = useQuery({
     queryKey: ['admin', 'broadcast-stats', selectedBroadcast?.id],
-    queryFn: async () => {
-      if (!selectedBroadcast) return null;
-      const { data } = await supabase.functions.invoke<BroadcastStats>('admin-api', {
-        body: { path: `/api/admin/broadcasts/${selectedBroadcast.id}/stats`, method: 'GET' },
-      });
-      return data;
-    },
+    queryFn: () => apiClient.get<BroadcastStats>(`/api/admin/broadcasts/${selectedBroadcast!.id}/stats`),
     enabled: !!selectedBroadcast && statsDialogOpen,
   });
 
-  const { data: userSearchResults } = useQuery({
+  const { data: userSearchResponse } = useQuery({
     queryKey: ['admin', 'users-search', userSearch],
-    queryFn: async () => {
-      if (!userSearch || userSearch.length < 2) return [];
-      const { data } = await supabase.functions.invoke<UserSearchResult[]>(
-        'admin-api',
-        {
-          body: {
-            path: '/api/admin/users',
-            method: 'GET',
-            params: { search: userSearch, limit: 5 },
-          },
-        }
-      );
-      return data ?? [];
-    },
+    queryFn: () =>
+      apiClient.get<{ users: UserSearchResult[] }>(
+        `/api/admin/users?search=${encodeURIComponent(userSearch)}&limit=5`
+      ),
     enabled: userSearch.length >= 2 && formTargetType === 'specific',
   });
+  const userSearchResults = userSearchResponse?.users ?? [];
 
   const createBroadcast = useMutation({
-    mutationFn: async () => {
-      await supabase.functions.invoke('admin-api', {
-        body: {
-          path: '/api/admin/broadcasts',
-          method: 'POST',
-          data: {
-            title: formTitle,
-            content: formContent,
-            broadcast_type: formType,
-            priority: formPriority,
-            target_type: formTargetType,
-            target_segment: formTargetType === 'segment' ? formSegment : undefined,
-            target_user_ids: formTargetType === 'specific' ? formTargetUserIds : undefined,
-            scheduled_at: formScheduledAt || undefined,
-          },
-        },
-      });
-    },
+    mutationFn: () =>
+      apiClient.post('/api/admin/broadcasts', {
+        title: formTitle,
+        content: formContent,
+        broadcast_type: formType,
+        priority: formPriority,
+        target_type: formTargetType,
+        target_segment: formTargetType === 'segment' ? formSegment : undefined,
+        target_user_ids: formTargetType === 'specific' ? formTargetUserIds : undefined,
+        scheduled_at: formScheduledAt || undefined,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'broadcasts'] });
       toast.success('Broadcast created');
@@ -214,23 +184,17 @@ export default function Broadcasts() {
   });
 
   const updateBroadcast = useMutation({
-    mutationFn: async () => {
-      if (!editingBroadcast) return;
-      await supabase.functions.invoke('admin-api', {
-        body: {
-          path: `/api/admin/broadcasts/${editingBroadcast.id}`,
-          method: 'PUT',
-          data: {
-            title: formTitle,
-            content: formContent,
-            broadcast_type: formType,
-            priority: formPriority,
-            target_type: formTargetType,
-            target_segment: formTargetType === 'segment' ? formSegment : undefined,
-            target_user_ids: formTargetType === 'specific' ? formTargetUserIds : undefined,
-            scheduled_at: formScheduledAt || undefined,
-          },
-        },
+    mutationFn: () => {
+      if (!editingBroadcast) return Promise.resolve();
+      return apiClient.put(`/api/admin/broadcasts/${editingBroadcast.id}`, {
+        title: formTitle,
+        content: formContent,
+        broadcast_type: formType,
+        priority: formPriority,
+        target_type: formTargetType,
+        target_segment: formTargetType === 'segment' ? formSegment : undefined,
+        target_user_ids: formTargetType === 'specific' ? formTargetUserIds : undefined,
+        scheduled_at: formScheduledAt || undefined,
       });
     },
     onSuccess: () => {
@@ -245,11 +209,7 @@ export default function Broadcasts() {
   });
 
   const sendBroadcast = useMutation({
-    mutationFn: async (id: string) => {
-      await supabase.functions.invoke('admin-api', {
-        body: { path: `/api/admin/broadcasts/${id}/send`, method: 'POST' },
-      });
-    },
+    mutationFn: (id: string) => apiClient.post(`/api/admin/broadcasts/${id}/send`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'broadcasts'] });
       toast.success('Broadcast queued for delivery');
@@ -260,11 +220,7 @@ export default function Broadcasts() {
   });
 
   const cancelBroadcast = useMutation({
-    mutationFn: async (id: string) => {
-      await supabase.functions.invoke('admin-api', {
-        body: { path: `/api/admin/broadcasts/${id}/cancel`, method: 'POST' },
-      });
-    },
+    mutationFn: (id: string) => apiClient.post(`/api/admin/broadcasts/${id}/cancel`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'broadcasts'] });
       toast.success('Broadcast cancelled');
@@ -272,11 +228,7 @@ export default function Broadcasts() {
   });
 
   const deleteBroadcast = useMutation({
-    mutationFn: async (id: string) => {
-      await supabase.functions.invoke('admin-api', {
-        body: { path: `/api/admin/broadcasts/${id}`, method: 'DELETE' },
-      });
-    },
+    mutationFn: (id: string) => apiClient.delete(`/api/admin/broadcasts/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'broadcasts'] });
       toast.success('Broadcast deleted');

@@ -117,14 +117,15 @@ export default function GhostMode() {
     enabled: !isSuperAdmin,
   });
 
-  const { data: searchResults } = useQuery({
+  const { data: searchResponse } = useQuery({
     queryKey: ['admin', 'users-search', userSearch],
     queryFn: () =>
-      apiClient.get<{ id: string; username: string; email: string }[]>(
+      apiClient.get<{ users: { id: string; username: string; email: string }[] }>(
         `/api/admin/users?search=${encodeURIComponent(userSearch)}&limit=5`
       ),
     enabled: userSearch.length >= 2,
   });
+  const searchResults = searchResponse?.users;
 
   const requestApproval = useMutation({
     mutationFn: () =>
