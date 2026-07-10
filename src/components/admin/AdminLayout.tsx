@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { ProfileLoading } from '@/components/profile/ProfileLoading';
 import { motion } from 'framer-motion';
+import { getWebsiteAssetUrl } from '@/lib/storage';
+import { Loader2 } from 'lucide-react';
 import {
   AlertTriangle,
   BarChart3,
@@ -178,9 +180,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <div className="border-b border-white/10 p-5">
           <Link to="/admin/dashboard" className="flex items-center gap-3">
             <img
-              src="/logo.svg"
+              src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
               alt="Esportra"
-              className="h-11 w-11 object-contain"
+              className="h-10 w-auto object-contain"
             />
             <div>
               <p className="font-heading text-lg font-black uppercase tracking-tight text-white">Esportra Admin</p>
@@ -257,9 +259,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           <div className="flex items-center justify-between gap-3">
             <Link to="/admin/dashboard" className="flex items-center gap-3">
               <img
-                src="/logo.svg"
+                src={getWebsiteAssetUrl('eSportra-Logo/eSPORTRA-white-transparent.png')}
                 alt="Esportra"
-                className="h-9 w-9 object-contain"
+                className="h-8 w-auto object-contain"
               />
               <div>
                 <p className="text-sm font-black uppercase tracking-wide text-white">Admin</p>
@@ -294,7 +296,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </div>
 
         <div className="mx-auto w-full max-w-[1800px]">
-          {children}
+          <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[60vh]">
+              <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+            </div>
+          }>
+            {children}
+          </Suspense>
         </div>
       </main>
     </div>
