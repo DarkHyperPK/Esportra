@@ -1,10 +1,15 @@
 import React, { useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { HubConnectionState } from '@microsoft/signalr';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 import { NotificationContext, type Notification } from '@/contexts/notification-context';
+import { resetClientSessionForAuthChange } from '@/lib/resetClientSession';
+import { useToast } from '@/hooks/use-toast';
 
 export type { Notification };
 
@@ -14,6 +19,9 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const listenersAttached = useRef(false);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const userId = user?.id;
 
@@ -88,18 +96,37 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       setUnreadCount(0);
     };
 
+    const onForceLogout = async (payload: { reason?: string }) => {
+      console.warn('[ForceLogout] Session revoked by admin:', payload.reason);
+      toast({
+        title: 'Session Revoked',
+        description: payload.reason || 'Your session has been revoked by an administrator.',
+        variant: 'destructive',
+        duration: 10000,
+      });
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch {
+        // Ignore sign-out errors
+      }
+      resetClientSessionForAuthChange(queryClient);
+      navigate('/auth/login', { replace: true });
+    };
+
     hub.on('NewNotification', onNewNotification);
     hub.on('NotificationRead', onNewNotificationRead);
     hub.on('AllRead', onAllRead);
+    hub.on('ForceLogout', onForceLogout);
     listenersAttached.current = true;
 
     return () => {
       hub.off('NewNotification', onNewNotification);
       hub.off('NotificationRead', onNewNotificationRead);
       hub.off('AllRead', onAllRead);
+      hub.off('ForceLogout', onForceLogout);
       listenersAttached.current = false;
     };
-  }, [userId, hub, authLoading, fetchNotifications]);
+  }, [userId, hub, authLoading, fetchNotifications, navigate, queryClient, toast]);
 
   useEffect(() => {
     if (authLoading) return;

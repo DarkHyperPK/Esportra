@@ -89,6 +89,7 @@ const ScheduledReports = lazyWithRetry(() => import("./pages/admin/tools/Schedul
 const GdprCompliance = lazyWithRetry(() => import("./pages/admin/tools/GdprCompliance"));
 const AnomalyDetection = lazyWithRetry(() => import("./pages/admin/tools/AnomalyDetection"));
 const GameCatalogManagement = lazyWithRetry(() => import("./pages/admin/tools/GameCatalogManagement"));
+const MapManagement = lazyWithRetry(() => import("./pages/admin/tools/MapManagement"));
 
 // New admin pages
 const FeatureFlags = lazyWithRetry(() => import("./pages/admin/system/FeatureFlags"));
@@ -445,6 +446,17 @@ const AppContent = React.memo(() => {
                   >
                     <AdminLayout>
                       <GameCatalogManagement />
+                    </AdminLayout>
+                  </AdminProtectedRoute>
+                } />
+
+                <Route path="/admin/tools/map-management" element={
+                  <AdminProtectedRoute
+                    requiredPermission="games:manage"
+                    requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}
+                  >
+                    <AdminLayout>
+                      <MapManagement />
                     </AdminLayout>
                   </AdminProtectedRoute>
                 } />
