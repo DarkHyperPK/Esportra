@@ -1,7 +1,6 @@
 import React, { Suspense } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
-import { ProfileLoading } from '@/components/profile/ProfileLoading';
 import { motion } from 'framer-motion';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 import { Loader2 } from 'lucide-react';
@@ -133,8 +132,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-transparent flex items-center justify-center">
-        <ProfileLoading />
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
       </div>
     );
   }

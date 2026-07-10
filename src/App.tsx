@@ -37,7 +37,7 @@ import VerifyEmail from "./pages/auth/VerifyEmail";
 import ResetPassword from "./pages/auth/ResetPassword";
 import SetPassword from "./pages/auth/SetPassword";
 
-const AdminLayout = lazyWithRetry(() => import("@/components/admin/AdminLayout"));
+import AdminLayout from "@/components/admin/AdminLayout";
 
 /** Legacy `/tournaments/edit/:slug` redirects to the protected organizer edit route. */
 function OrganizerEditLegacyRedirect() {
