@@ -574,16 +574,16 @@ export default function Broadcasts() {
                 <div>
                   <label className="text-sm text-zinc-400 mb-2 block">Role</label>
                   <Select
-                    value={formSegment.role ?? ''}
+                    value={formSegment.role ?? '_any'}
                     onValueChange={(v) =>
-                      setFormSegment({ ...formSegment, role: v || undefined })
+                      setFormSegment({ ...formSegment, role: v === '_any' ? undefined : v })
                     }
                   >
                     <SelectTrigger className="bg-zinc-800 border-zinc-700">
                       <SelectValue placeholder="Any role" />
                     </SelectTrigger>
                     <SelectContent className="bg-zinc-800 border-zinc-700">
-                      <SelectItem value="">Any role</SelectItem>
+                      <SelectItem value="_any">Any role</SelectItem>
                       {roles.map((r) => (
                         <SelectItem key={r.value} value={r.value}>
                           {r.label}
@@ -608,7 +608,7 @@ export default function Broadcasts() {
               </div>
             )}
 
-            {formTargetType === 'specific' && (
+            {formTargetType === 'users' && (
               <div className="p-4 bg-zinc-800/50 rounded-lg space-y-3">
                 <p className="text-sm text-zinc-400">Select Users</p>
 
