@@ -91,13 +91,12 @@ const priorities = [
 const targetTypes = [
   { value: 'all', label: 'All Users' },
   { value: 'segment', label: 'User Segment' },
-  { value: 'specific', label: 'Specific Users' },
+  { value: 'users', label: 'Specific Users' },
 ];
 
 const roles = [
-  { value: 'organizer', label: 'Organizer' },
+  { value: 'organizer', label: 'Tournament Organizer' },
   { value: 'venue_owner', label: 'Venue Owner' },
-  { value: 'player', label: 'Player' },
 ];
 
 interface TargetSegment {

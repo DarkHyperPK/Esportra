@@ -5,7 +5,7 @@ import { useRole } from "@/hooks/useRole";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useOrgStaffContext } from "@/hooks/useOrgStaffContext";
 import { isSuperAdminUser } from "@/lib/adminAccess";
-import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
+import { NotificationSidebar } from "@/components/notifications/NotificationSidebar";
 import UserMenu from "./UserMenu";
 import { cn } from "@/lib/utils";
 import { getWebsiteAssetUrl } from "@/lib/storage";
@@ -184,7 +184,7 @@ const DesktopNav = ({
       <div className="flex items-center gap-3">
         {user ? (
           <>
-            <NotificationDropdown />
+            <NotificationSidebar />
             <UserMenu handleSignOut={handleSignOut} />
           </>
         ) : (
