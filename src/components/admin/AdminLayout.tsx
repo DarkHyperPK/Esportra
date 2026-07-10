@@ -177,9 +177,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-white/10 bg-black/70 backdrop-blur-2xl lg:flex lg:flex-col">
         <div className="border-b border-white/10 p-5">
           <Link to="/admin/dashboard" className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-500/30 bg-rose-500/10">
-              <Shield className="h-5 w-5 text-rose-400" />
-            </div>
+            <img
+              src="/logo.svg"
+              alt="Esportra"
+              className="h-11 w-11 object-contain"
+            />
             <div>
               <p className="font-heading text-lg font-black uppercase tracking-tight text-white">Esportra Admin</p>
               <p className="text-xs uppercase tracking-[0.24em] text-zinc-500">Command Center</p>
@@ -254,9 +256,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         <div className="sticky top-0 z-20 border-b border-white/10 bg-black/80 px-4 py-3 backdrop-blur-2xl lg:hidden">
           <div className="flex items-center justify-between gap-3">
             <Link to="/admin/dashboard" className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10">
-                <Shield className="h-4 w-4 text-rose-400" />
-              </div>
+              <img
+                src="/logo.svg"
+                alt="Esportra"
+                className="h-9 w-9 object-contain"
+              />
               <div>
                 <p className="text-sm font-black uppercase tracking-wide text-white">Admin</p>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">{primaryRole.replace('_', ' ')}</p>

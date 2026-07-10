@@ -112,7 +112,11 @@ function MapCard({
   );
 }
 
-export default function MapManagement() {
+interface MapManagementProps {
+  embedded?: boolean;
+}
+
+export default function MapManagement({ embedded = false }: MapManagementProps) {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterGame, setFilterGame] = useState<string>('all');
@@ -274,22 +278,32 @@ export default function MapManagement() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className={cn("space-y-6", !embedded && "p-6")}>
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Map className="w-7 h-7 text-rose-500" />
-            Map Management
-          </h1>
-          <p className="text-zinc-400 mt-1">
-            Add and manage game maps for CS2, Valorant, and R6 Siege
-          </p>
+      {!embedded && (
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+              <Map className="w-7 h-7 text-rose-500" />
+              Map Management
+            </h1>
+            <p className="text-zinc-400 mt-1">
+              Add and manage game maps for CS2, Valorant, and R6 Siege
+            </p>
+          </div>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" /> Add Map
+          </Button>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" /> Add Map
-        </Button>
-      </div>
+      )}
+      {embedded && (
+        <div className="flex justify-between items-center">
+          <p className="text-zinc-400">Add and manage game maps for CS2, Valorant, and R6 Siege</p>
+          <Button onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" /> Add Map
+          </Button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4">

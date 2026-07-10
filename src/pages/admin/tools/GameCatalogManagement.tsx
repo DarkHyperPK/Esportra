@@ -1,10 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { Gamepad2, Upload, Trash2, RefreshCw, Rocket, XCircle, Loader2 } from 'lucide-react';
+import { Gamepad2, Upload, Trash2, RefreshCw, Rocket, XCircle, Loader2, Map } from 'lucide-react';
 import { GameLogoImage } from '@/components/games/GameLogoImage';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   useAdminGameCatalogDraft,
   useAdminGameCatalogVersions,
@@ -14,6 +15,7 @@ import {
   useUploadDraftGameLogo,
 } from '@/hooks/useGameCatalogAdmin';
 import type { CatalogGameApi } from '@/types/gameCatalog';
+import MapManagement from './MapManagement';
 
 function GameRow({
   game,
@@ -69,7 +71,7 @@ function GameRow({
   );
 }
 
-export default function GameCatalogManagement() {
+function CatalogTab() {
   const { data: draft, isLoading, error, refetch } = useAdminGameCatalogDraft();
   const { data: versions } = useAdminGameCatalogVersions();
   const resetDraft = useResetGameCatalogDraft();
@@ -153,14 +155,10 @@ export default function GameCatalogManagement() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Gamepad2 className="w-7 h-7 text-rose-500" />
-            Game Catalog
-          </h1>
-          <p className="text-zinc-400 mt-1">
+          <p className="text-zinc-400">
             Draft: {draft?.catalogVersion} · {draft?.games.length ?? 0} games
           </p>
         </div>
@@ -218,6 +216,40 @@ export default function GameCatalogManagement() {
         <Trash2 className="w-3 h-3" />
         Full game editing UI can extend this page; publish validates modes, structures, and BR config server-side.
       </p>
+    </div>
+  );
+}
+
+export default function GameCatalogManagement() {
+  const [activeTab, setActiveTab] = useState('catalog');
+
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex items-center gap-3">
+        <Gamepad2 className="w-7 h-7 text-rose-500" />
+        <h1 className="text-2xl font-bold text-white">Games</h1>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="bg-zinc-900/50 border border-zinc-800">
+          <TabsTrigger value="catalog" className="data-[state=active]:bg-rose-500/20 data-[state=active]:text-rose-300">
+            <Gamepad2 className="w-4 h-4 mr-2" />
+            Game Catalog
+          </TabsTrigger>
+          <TabsTrigger value="maps" className="data-[state=active]:bg-rose-500/20 data-[state=active]:text-rose-300">
+            <Map className="w-4 h-4 mr-2" />
+            Maps
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="catalog" className="mt-6">
+          <CatalogTab />
+        </TabsContent>
+
+        <TabsContent value="maps" className="mt-6">
+          <MapManagement embedded />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
