@@ -61,6 +61,12 @@ interface VerificationRequest {
   cnic_front_url: string | null;
   cnic_back_url: string | null;
 
+  // New top-level fields from backend update
+  experience_description: string | null;
+  website_url: string | null;
+  phone: string | null;
+  date_of_birth: string | null;
+
   // JSONB Data
   organizer_data: any;
   venue_data: any;
@@ -579,6 +585,7 @@ const VerificationSystemTool = () => {
                 <Tabs defaultValue="details" className="w-full">
                   <TabsList className="bg-zinc-900 border border-zinc-800 mb-6">
                     <TabsTrigger value="details">Details</TabsTrigger>
+                    <TabsTrigger value="experience">Experience</TabsTrigger>
                     <TabsTrigger value="documents">Documents & Photos</TabsTrigger>
                   </TabsList>
 
@@ -670,6 +677,142 @@ const VerificationSystemTool = () => {
                         </div>
                       </div>
                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="experience" className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Personal Info */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                          <User className="w-4 h-4 text-blue-500" />
+                          Personal Information
+                        </h3>
+                        <div className="space-y-3 bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50">
+                          {selectedRequest.date_of_birth && (
+                            <div>
+                              <label className="text-xs text-zinc-500 uppercase">Date of Birth</label>
+                              <p className="text-white text-sm">{new Date(selectedRequest.date_of_birth).toLocaleDateString()}</p>
+                            </div>
+                          )}
+                          {selectedRequest.phone && (
+                            <div>
+                              <label className="text-xs text-zinc-500 uppercase">Phone</label>
+                              <p className="text-white text-sm">{selectedRequest.phone}</p>
+                            </div>
+                          )}
+                          {selectedRequest.website_url && (
+                            <div>
+                              <label className="text-xs text-zinc-500 uppercase">Website</label>
+                              <a href={selectedRequest.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 block text-sm hover:underline">{selectedRequest.website_url}</a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Experience Details */}
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-emerald-500" />
+                          Experience
+                        </h3>
+                        <div className="space-y-3 bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50">
+                          {selectedRequest.organizer_data?.years_experience != null && (
+                            <div>
+                              <label className="text-xs text-zinc-500 uppercase">Years of Experience</label>
+                              <p className="text-white text-sm">{selectedRequest.organizer_data.years_experience} years</p>
+                            </div>
+                          )}
+                          {selectedRequest.organizer_data?.staff_count != null && (
+                            <div>
+                              <label className="text-xs text-zinc-500 uppercase">Staff Count</label>
+                              <p className="text-white text-sm">{selectedRequest.organizer_data.staff_count} people</p>
+                            </div>
+                          )}
+                          {selectedRequest.organizer_data?.equipment_list && (
+                            <div>
+                              <label className="text-xs text-zinc-500 uppercase">Equipment</label>
+                              <p className="text-zinc-300 text-sm mt-1 whitespace-pre-wrap">{selectedRequest.organizer_data.equipment_list}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Experience Description - Full Width */}
+                    {selectedRequest.experience_description && (
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-rose-500" />
+                          Experience Description
+                        </h3>
+                        <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50">
+                          <p className="text-zinc-300 text-sm whitespace-pre-wrap">{selectedRequest.experience_description}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Organizer Socials */}
+                    {selectedRequest.requested_role === 'organizer' && selectedRequest.organizer_data?.social_media_links && (
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-purple-500" />
+                          Social Media
+                        </h3>
+                        <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50">
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(selectedRequest.organizer_data.social_media_links).map(([platform, url]) => (
+                              url && (
+                                <a
+                                  key={platform}
+                                  href={url as string}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-zinc-800 rounded-lg text-xs text-zinc-300 hover:text-white hover:bg-zinc-700 transition capitalize"
+                                >
+                                  {platform}
+                                </a>
+                              )
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Venue Specific */}
+                    {selectedRequest.requested_role === 'venue_owner' && selectedRequest.venue_data && (
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-amber-500" />
+                          Venue Specifications
+                        </h3>
+                        <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50 grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {selectedRequest.venue_data.total_pcs != null && (
+                            <div>
+                              <label className="text-xs text-zinc-500 uppercase">Total PCs</label>
+                              <p className="text-white text-lg font-bold">{selectedRequest.venue_data.total_pcs}</p>
+                            </div>
+                          )}
+                          {selectedRequest.venue_data.hourly_rate != null && (
+                            <div>
+                              <label className="text-xs text-zinc-500 uppercase">Hourly Rate</label>
+                              <p className="text-white text-lg font-bold">PKR {selectedRequest.venue_data.hourly_rate}</p>
+                            </div>
+                          )}
+                          {selectedRequest.venue_data.operating_hours && (
+                            <div className="col-span-2">
+                              <label className="text-xs text-zinc-500 uppercase">Operating Hours</label>
+                              <p className="text-white text-sm">{selectedRequest.venue_data.operating_hours}</p>
+                            </div>
+                          )}
+                        </div>
+                        {selectedRequest.venue_data.pc_specs && (
+                          <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50 mt-3">
+                            <label className="text-xs text-zinc-500 uppercase mb-2 block">PC Specifications</label>
+                            <p className="text-zinc-300 text-sm whitespace-pre-wrap font-mono">{selectedRequest.venue_data.pc_specs}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </TabsContent>
 
                   <TabsContent value="documents">

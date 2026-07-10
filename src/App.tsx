@@ -27,6 +27,7 @@ import Navbar from "@/components/Navbar";
 import EmailVerificationBanner from "@/components/EmailVerificationBanner";
 import BetaNoticeBanner from "@/components/BetaNoticeBanner";
 import AdminProtectedRoute from "@/components/AdminProtectedRoute";
+import { AdminRouteGuard } from "@/components/admin/AdminRouteGuard";
 import { lazyWithRetry } from "@/utils/lazyWithRetry";
 import SignIn from "./pages/auth/SignIn";
 import SignUp from "./pages/auth/SignUp";
@@ -335,378 +336,80 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
 
-                {/* Admin Tool Routes removed - all tools disabled */}
-                {/* System Status removed for now */}
+                {/* ═══════════════════════════════════════════════════════════════════════
+                    ADMIN ROUTES - Nested under single AdminLayout for smooth navigation
+                    AdminLayout stays mounted; only content swaps via <Outlet />
+                    ═══════════════════════════════════════════════════════════════════════ */}
+                <Route path="/admin" element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}>
+                  <Route index element={<Navigate to="dashboard" replace />} />
 
-                {/* Admin Dashboard Routes */}
-                <Route path="/admin/dashboard" element={
-                  <AdminProtectedRoute requiredPermission="dashboard:view">
-                    <AdminLayout>
-                      <CommandCentre />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
+                  {/* Dashboard */}
+                  <Route path="dashboard" element={<AdminRouteGuard requiredPermission="dashboard:view"><CommandCentre /></AdminRouteGuard>} />
 
-                {/* Admin Tool Routes */}
-                <Route path="/admin/tools/user-management" element={
-                  <AdminProtectedRoute
-                    requiredPermission="users:view"
-                    requiredRoles={ADMIN_ROLE_SETS.userManagement}
-                  >
-                    <AdminLayout>
-                      <UserManagementTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/tools/tournament-management" element={
-                  <AdminProtectedRoute
-                    requiredPermission="tournaments:view"
-                    requiredRoles={ADMIN_ROLE_SETS.tournamentManagement}
-                  >
-                    <AdminLayout>
-                      <TournamentManagementTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/tools/team-management" element={
-                  <AdminProtectedRoute
-                    requiredPermission="teams:view"
-                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
-                  >
-                    <AdminLayout>
-                      <TeamManagementTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/tools/alerts" element={
-                  <AdminProtectedRoute
-                    requiredPermission="alerts:view"
-                    requiredRoles={ADMIN_ROLE_SETS.auditAccess}
-                  >
-                    <AdminLayout>
-                      <AlertsManagementTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/tools/venue-management" element={
-                  <AdminProtectedRoute
-                    requiredPermission="venues:view"
-                    requiredRoles={ADMIN_ROLE_SETS.venueManagement}
-                  >
-                    <AdminLayout>
-                      <VenueManagementTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/tools/verification-system" element={
-                  <AdminProtectedRoute
-                    requiredPermission="verification:view"
-                    requiredRoles={ADMIN_ROLE_SETS.verification}
-                  >
-                    <AdminLayout>
-                      <VerificationSystemTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/tools/audit-logs" element={
-                  <AdminProtectedRoute
-                    requiredPermission="audit:view"
-                    requiredRoles={ADMIN_ROLE_SETS.auditAccess}
-                  >
-                    <AdminLayout>
-                      <AuditLogsTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/tools/analytics" element={
-                  <AdminProtectedRoute
-                    requiredPermission="analytics:view"
-                    requiredRoles={ADMIN_ROLE_SETS.analytics}
-                  >
-                    <AdminLayout>
-                      <AnalyticsTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/tools/sponsor-management" element={
-                  <AdminProtectedRoute
-                    requiredPermission="sponsors:view"
-                    requiredRoles={ADMIN_ROLE_SETS.systemSettings}
-                  >
-                    <AdminLayout>
-                      <SponsorManagementTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
+                  {/* Tools */}
+                  <Route path="tools/user-management" element={<AdminRouteGuard requiredPermission="users:view" requiredRoles={ADMIN_ROLE_SETS.userManagement}><UserManagementTool /></AdminRouteGuard>} />
+                  <Route path="tools/tournament-management" element={<AdminRouteGuard requiredPermission="tournaments:view" requiredRoles={ADMIN_ROLE_SETS.tournamentManagement}><TournamentManagementTool /></AdminRouteGuard>} />
+                  <Route path="tools/team-management" element={<AdminRouteGuard requiredPermission="teams:view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><TeamManagementTool /></AdminRouteGuard>} />
+                  <Route path="tools/alerts" element={<AdminRouteGuard requiredPermission="alerts:view" requiredRoles={ADMIN_ROLE_SETS.auditAccess}><AlertsManagementTool /></AdminRouteGuard>} />
+                  <Route path="tools/venue-management" element={<AdminRouteGuard requiredPermission="venues:view" requiredRoles={ADMIN_ROLE_SETS.venueManagement}><VenueManagementTool /></AdminRouteGuard>} />
+                  <Route path="tools/verification-system" element={<AdminRouteGuard requiredPermission="verification:view" requiredRoles={ADMIN_ROLE_SETS.verification}><VerificationSystemTool /></AdminRouteGuard>} />
+                  <Route path="tools/audit-logs" element={<AdminRouteGuard requiredPermission="audit:view" requiredRoles={ADMIN_ROLE_SETS.auditAccess}><AuditLogsTool /></AdminRouteGuard>} />
+                  <Route path="tools/analytics" element={<AdminRouteGuard requiredPermission="analytics:view" requiredRoles={ADMIN_ROLE_SETS.analytics}><AnalyticsTool /></AdminRouteGuard>} />
+                  <Route path="tools/sponsor-management" element={<AdminRouteGuard requiredPermission="sponsors:view" requiredRoles={ADMIN_ROLE_SETS.systemSettings}><SponsorManagementTool /></AdminRouteGuard>} />
+                  <Route path="tools/game-catalog" element={<AdminRouteGuard requiredPermission="games:manage" requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}><GameCatalogManagement /></AdminRouteGuard>} />
+                  <Route path="tools/map-management" element={<AdminRouteGuard requiredPermission="games:manage" requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}><MapManagement /></AdminRouteGuard>} />
+                  <Route path="tools/license-management" element={<AdminRouteGuard requiredPermission="licenses:view" requiredRoles={ADMIN_ROLE_SETS.anyAdmin}><LicenseManagementTool /></AdminRouteGuard>} />
+                  <Route path="tools/system-settings" element={<AdminRouteGuard requiredPermission="system:settings" requiredRoles={ADMIN_ROLE_SETS.systemSettings}><SystemSettings /></AdminRouteGuard>} />
+                  <Route path="tools/admin-management" element={<AdminRouteGuard requiredPermission="system:settings" requiredRoles={['super_admin']}><AdminRoleManagement /></AdminRouteGuard>} />
+                  <Route path="tools/role-builder" element={<AdminRouteGuard requiredPermission="rbac:view" requiredRoles={['super_admin']}><RoleBuilderTool /></AdminRouteGuard>} />
+                  <Route path="tools/moderation" element={<AdminRouteGuard requiredPermission="moderation:view" requiredRoles={ADMIN_ROLE_SETS.anyAdmin}><ContentModerationTool /></AdminRouteGuard>} />
+                  <Route path="tools/sessions" element={<AdminRouteGuard requiredPermission="security:view_sessions"><SessionManagementTool /></AdminRouteGuard>} />
+                  <Route path="tools/kill-switches" element={<AdminRouteGuard requiredPermission="system:config_view" requiredRoles={ADMIN_ROLE_SETS.systemSettings}><KillSwitchConfig /></AdminRouteGuard>} />
+                  <Route path="tools/ip-allowlist" element={<AdminRouteGuard requiredPermission="security:manage_ip_allowlist" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><IpAllowlistTool /></AdminRouteGuard>} />
+                  <Route path="tools/scheduled-reports" element={<AdminRouteGuard requiredPermission="reports:view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><ScheduledReports /></AdminRouteGuard>} />
+                  <Route path="tools/gdpr" element={<AdminRouteGuard requiredPermission="gdpr:view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><GdprCompliance /></AdminRouteGuard>} />
+                  <Route path="tools/anomaly-detection" element={<AdminRouteGuard requiredPermission="system:audit" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><AnomalyDetection /></AdminRouteGuard>} />
 
-                <Route path="/admin/tools/game-catalog" element={
-                  <AdminProtectedRoute
-                    requiredPermission="games:manage"
-                    requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}
-                  >
-                    <AdminLayout>
-                      <GameCatalogManagement />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
+                  {/* System */}
+                  <Route path="system/feature-flags" element={<AdminRouteGuard requiredPermission="feature_flags:view"><FeatureFlags /></AdminRouteGuard>} />
 
-                <Route path="/admin/tools/map-management" element={
-                  <AdminProtectedRoute
-                    requiredPermission="games:manage"
-                    requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}
-                  >
-                    <AdminLayout>
-                      <MapManagement />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
+                  {/* Operations */}
+                  <Route path="operations/broadcasts" element={<AdminRouteGuard requiredPermission="broadcasts:view"><Broadcasts /></AdminRouteGuard>} />
 
-                <Route path="/admin/tools/license-management" element={
-                  <AdminProtectedRoute
-                    requiredPermission="licenses:view"
-                    requiredRoles={ADMIN_ROLE_SETS.anyAdmin}
-                  >
-                    <AdminLayout>
-                      <LicenseManagementTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
+                  {/* Security */}
+                  <Route path="security/ghost" element={<AdminRouteGuard requiredPermission="users:impersonate" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><GhostMode /></AdminRouteGuard>} />
 
-                <Route path="/admin/tools/system-settings" element={
-                  <AdminProtectedRoute
-                    requiredPermission="system:settings"
-                    requiredRoles={ADMIN_ROLE_SETS.systemSettings}
-                  >
-                    <AdminLayout>
-                      <SystemSettings />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
+                  {/* Legacy routes (kept for backward compatibility) */}
+                  <Route path="access" element={<AdminRouteGuard requiredPermission="admin_users:view" requiredRoles={['super_admin']}><AdminAccess /></AdminRouteGuard>} />
+                  <Route path="disputes" element={<AdminRouteGuard requiredPermission="disputes:view" requiredRoles={ADMIN_ROLE_SETS.disputes}><DisputeCenter /></AdminRouteGuard>} />
+                  <Route path="settings" element={<AdminRouteGuard requiredPermission="system:settings" requiredRoles={ADMIN_ROLE_SETS.systemSettings}><SystemSettings /></AdminRouteGuard>} />
+                  <Route path="verification" element={<AdminRouteGuard requiredPermission="verification:view" requiredRoles={ADMIN_ROLE_SETS.verification}><VerificationSystemTool /></AdminRouteGuard>} />
+                  <Route path="audit" element={<AdminRouteGuard requiredPermission="audit:view" requiredRoles={ADMIN_ROLE_SETS.auditAccess}><AuditLogsTool /></AdminRouteGuard>} />
+                  <Route path="users" element={<AdminRouteGuard requiredPermission="users:view" requiredRoles={ADMIN_ROLE_SETS.userManagement}><UserManagementTool /></AdminRouteGuard>} />
 
-                {/* Admin Management - Super Admin Only */}
-                <Route path="/admin/tools/admin-management" element={
-                  <AdminProtectedRoute
-                    requiredPermission="system:settings"
-                    requiredRoles={['super_admin']}
-                  >
-                    <AdminLayout>
-                      <AdminRoleManagement />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-
-                {/* Role Builder - Super Admin Only */}
-                <Route path="/admin/tools/role-builder" element={
-                  <AdminProtectedRoute
-                    requiredPermission="rbac:view"
-                    requiredRoles={['super_admin']}
-                  >
-                    <AdminLayout>
-                      <RoleBuilderTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-
-                {/* Content Moderation - Moderators + Admins */}
-                <Route path="/admin/tools/moderation" element={
-                  <AdminProtectedRoute
-                    requiredPermission="moderation:view"
-                    requiredRoles={ADMIN_ROLE_SETS.anyAdmin}
-                  >
-                    <AdminLayout>
-                      <ContentModerationTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-
-                {/* Session Management - Super Admin + Ops */}
-                <Route path="/admin/tools/sessions" element={
-                  <AdminProtectedRoute
-                    requiredPermission="security:view_sessions"
-                  >
-                    <AdminLayout>
-                      <SessionManagementTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-
-                <Route path="/admin/tools/kill-switches" element={
-                  <AdminProtectedRoute
-                    requiredPermission="system:config_view"
-                    requiredRoles={ADMIN_ROLE_SETS.systemSettings}
-                  >
-                    <AdminLayout>
-                      <KillSwitchConfig />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-
-                {/* IP Allowlist - Super Admin */}
-                <Route path="/admin/tools/ip-allowlist" element={
-                  <AdminProtectedRoute
-                    requiredPermission="security:manage_ip_allowlist"
-                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
-                  >
-                    <AdminLayout>
-                      <IpAllowlistTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-
-                <Route path="/admin/tools/scheduled-reports" element={
-                  <AdminProtectedRoute
-                    requiredPermission="reports:view"
-                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
-                  >
-                    <AdminLayout>
-                      <ScheduledReports />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-
-                <Route path="/admin/tools/gdpr" element={
-                  <AdminProtectedRoute
-                    requiredPermission="gdpr:view"
-                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
-                  >
-                    <AdminLayout>
-                      <GdprCompliance />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-
-                {/* Anomaly Detection - Super Admin + Ops */}
-                <Route path="/admin/tools/anomaly-detection" element={
-                  <AdminProtectedRoute
-                    requiredPermission="system:audit"
-                    requiredRoles={ADMIN_ROLE_SETS.superAdmin}
-                  >
-                    <AdminLayout>
-                      <AnomalyDetection />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-
-                {/* ── NEW ADMIN PAGES ────────────────────────────────────────────────────── */}
-                <Route path="/admin/system/feature-flags" element={
-                  <AdminProtectedRoute requiredPermission="feature_flags:view">
-                    <AdminLayout>
-                      <FeatureFlags />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/operations/broadcasts" element={
-                  <AdminProtectedRoute requiredPermission="broadcasts:view">
-                    <AdminLayout>
-                      <Broadcasts />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/security/ghost" element={
-                  <AdminProtectedRoute requiredPermission="users:impersonate" requiredRoles={ADMIN_ROLE_SETS.superAdmin}>
-                    <AdminLayout>
-                      <GhostMode />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-
-                {/* ── NEW URL STRUCTURE REDIRECTS ────────────────────────────────────────── */}
-                {/* Users & Access */}
-                <Route path="/admin/users/verifications" element={<Navigate to="/admin/tools/verification-system" replace />} />
-                <Route path="/admin/users/licenses" element={<Navigate to="/admin/tools/license-management" replace />} />
-                <Route path="/admin/users/sessions" element={<Navigate to="/admin/tools/sessions" replace />} />
-
-                {/* Content */}
-                <Route path="/admin/content/tournaments" element={<Navigate to="/admin/tools/tournament-management" replace />} />
-                <Route path="/admin/content/teams" element={<Navigate to="/admin/tools/team-management" replace />} />
-                <Route path="/admin/content/venues" element={<Navigate to="/admin/tools/venue-management" replace />} />
-                <Route path="/admin/content/games" element={<Navigate to="/admin/tools/game-catalog" replace />} />
-                <Route path="/admin/content/moderation" element={<Navigate to="/admin/tools/moderation" replace />} />
-
-                {/* Partners */}
-                <Route path="/admin/partners/sponsors" element={<Navigate to="/admin/tools/sponsor-management" replace />} />
-
-                {/* Operations */}
-                <Route path="/admin/operations/disputes" element={<Navigate to="/admin/disputes" replace />} />
-                <Route path="/admin/operations/alerts" element={<Navigate to="/admin/tools/alerts" replace />} />
-                <Route path="/admin/operations/reports" element={<Navigate to="/admin/tools/scheduled-reports" replace />} />
-
-                {/* System */}
-                <Route path="/admin/system/settings" element={<Navigate to="/admin/tools/system-settings" replace />} />
-                <Route path="/admin/system/kill-switches" element={<Navigate to="/admin/tools/kill-switches" replace />} />
-                <Route path="/admin/system/anomalies" element={<Navigate to="/admin/tools/anomaly-detection" replace />} />
-
-                {/* Security */}
-                <Route path="/admin/security/roles" element={<Navigate to="/admin/tools/role-builder" replace />} />
-                <Route path="/admin/security/admins" element={<Navigate to="/admin/access" replace />} />
-                <Route path="/admin/security/ip-allowlist" element={<Navigate to="/admin/tools/ip-allowlist" replace />} />
-                <Route path="/admin/security/audit-logs" element={<Navigate to="/admin/tools/audit-logs" replace />} />
-                <Route path="/admin/security/gdpr" element={<Navigate to="/admin/tools/gdpr" replace />} />
-
-                {/* Analytics */}
-                <Route path="/admin/analytics" element={<Navigate to="/admin/tools/analytics" replace />} />
-
-                {/* Legacy Admin Routes (for backward compatibility) */}
-                <Route path="/admin/access" element={
-                  <AdminProtectedRoute
-                    requiredPermission="admin_users:view"
-                    requiredRoles={['super_admin']}
-                  >
-                    <AdminLayout>
-                      <AdminAccess />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/disputes" element={
-                  <AdminProtectedRoute
-                    requiredPermission="disputes:view"
-                    requiredRoles={ADMIN_ROLE_SETS.disputes}
-                  >
-                    <AdminLayout>
-                      <DisputeCenter />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/settings" element={
-                  <AdminProtectedRoute
-                    requiredPermission="system:settings"
-                    requiredRoles={ADMIN_ROLE_SETS.systemSettings}
-                  >
-                    <AdminLayout>
-                      <SystemSettings />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/verification" element={
-                  <AdminProtectedRoute
-                    requiredPermission="verification:view"
-                    requiredRoles={ADMIN_ROLE_SETS.verification}
-                  >
-                    <AdminLayout>
-                      <VerificationSystemTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/audit" element={
-                  <AdminProtectedRoute
-                    requiredPermission="audit:view"
-                    requiredRoles={ADMIN_ROLE_SETS.auditAccess}
-                  >
-                    <AdminLayout>
-                      <AuditLogsTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
-                <Route path="/admin/users" element={
-                  <AdminProtectedRoute
-                    requiredPermission="users:view"
-                    requiredRoles={ADMIN_ROLE_SETS.userManagement}
-                  >
-                    <AdminLayout>
-                      <UserManagementTool />
-                    </AdminLayout>
-                  </AdminProtectedRoute>
-                } />
+                  {/* URL redirects for new structure */}
+                  <Route path="users/verifications" element={<Navigate to="/admin/tools/verification-system" replace />} />
+                  <Route path="users/licenses" element={<Navigate to="/admin/tools/license-management" replace />} />
+                  <Route path="users/sessions" element={<Navigate to="/admin/tools/sessions" replace />} />
+                  <Route path="content/tournaments" element={<Navigate to="/admin/tools/tournament-management" replace />} />
+                  <Route path="content/teams" element={<Navigate to="/admin/tools/team-management" replace />} />
+                  <Route path="content/venues" element={<Navigate to="/admin/tools/venue-management" replace />} />
+                  <Route path="content/games" element={<Navigate to="/admin/tools/game-catalog" replace />} />
+                  <Route path="content/moderation" element={<Navigate to="/admin/tools/moderation" replace />} />
+                  <Route path="partners/sponsors" element={<Navigate to="/admin/tools/sponsor-management" replace />} />
+                  <Route path="operations/disputes" element={<Navigate to="/admin/disputes" replace />} />
+                  <Route path="operations/alerts" element={<Navigate to="/admin/tools/alerts" replace />} />
+                  <Route path="operations/reports" element={<Navigate to="/admin/tools/scheduled-reports" replace />} />
+                  <Route path="system/settings" element={<Navigate to="/admin/tools/system-settings" replace />} />
+                  <Route path="system/kill-switches" element={<Navigate to="/admin/tools/kill-switches" replace />} />
+                  <Route path="system/anomalies" element={<Navigate to="/admin/tools/anomaly-detection" replace />} />
+                  <Route path="security/roles" element={<Navigate to="/admin/tools/role-builder" replace />} />
+                  <Route path="security/admins" element={<Navigate to="/admin/access" replace />} />
+                  <Route path="security/ip-allowlist" element={<Navigate to="/admin/tools/ip-allowlist" replace />} />
+                  <Route path="security/audit-logs" element={<Navigate to="/admin/tools/audit-logs" replace />} />
+                  <Route path="security/gdpr" element={<Navigate to="/admin/tools/gdpr" replace />} />
+                  <Route path="analytics" element={<Navigate to="/admin/tools/analytics" replace />} />
+                </Route>
 
                 {/* Venue Owner Routes */}
                 <Route path="/venue-owner/dashboard" element={

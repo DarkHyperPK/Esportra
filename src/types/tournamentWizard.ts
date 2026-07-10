@@ -10,12 +10,21 @@ import type { LaunchState } from '@/utils/tournamentVisibilityUtils';
 /** @deprecated Use LaunchState — kept for localStorage draft migration only */
 export type Visibility = 'public' | 'unlisted';
 
+/**
+ * @deprecated Use StageRow or StageDto from @/types/stage.ts instead.
+ * Kept for wizard compatibility during migration.
+ */
 export interface TournamentStage {
     id?: string;
     name: string;
     format: BracketType;
     stage_order: number;
-    config?: any;
+    capacity?: number | null;
+    advancement_count?: number | null;
+    best_of?: number;
+    bo_mode?: 'per_stage' | 'per_round';
+    round_bo_overrides?: Record<string, number>;
+    config?: Record<string, unknown>;
 }
 
 export interface TournamentWizardData {

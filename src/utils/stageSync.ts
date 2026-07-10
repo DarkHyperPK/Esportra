@@ -1,5 +1,44 @@
-const VALID_BEST_OF = [1, 2, 3, 5, 7, 9] as const;
+/**
+ * Stage synchronization utilities.
+ *
+ * NOTE: This file is being deprecated in favor of:
+ * - Types: @/types/stage.ts
+ * - Mappers: @/utils/stageMapper.ts
+ * - Validation: @/schemas/stageSchema.ts
+ *
+ * This file re-exports from the new canonical locations for backward compatibility.
+ * New code should import directly from the canonical locations.
+ */
 
+// Re-export canonical types
+export type {
+  StageRow,
+  StageDto,
+  StageFormat,
+  BoMode,
+  StageSettings,
+  RoundInfo,
+} from '@/types/stage';
+
+// Re-export canonical functions
+export {
+  normalizeBestOf,
+  normalizeStage,
+  normalizeStages,
+  rowToDto,
+  dtoToPayload,
+  buildStageConfigPayload,
+  parseStageConfig,
+  createDefaultStageDto,
+} from '@/utils/stageMapper';
+
+// ============================================================================
+// DEPRECATED TYPES - Use canonical types from @/types/stage.ts instead
+// ============================================================================
+
+/**
+ * @deprecated Use StageRow from @/types/stage.ts instead
+ */
 export type TournamentStageRow = {
   id: string;
   name: string;
@@ -8,19 +47,14 @@ export type TournamentStageRow = {
   capacity?: number | null;
   advancement_count?: number | null;
   best_of?: number | null;
+  bo_mode?: 'per_stage' | 'per_round' | null;
+  round_bo_overrides?: Record<string, number> | null;
   config?: unknown;
 };
 
-export type StageSettings = {
-  swiss_groups?: number;
-  swiss_rounds?: number;
-  group_count?: number;
-  points_per_win?: number;
-  points_per_draw?: number;
-  points_per_loss?: number;
-  use_check_in_only?: boolean;
-};
-
+/**
+ * @deprecated Use StageDto from @/types/stage.ts instead
+ */
 export type StageSyncDto = {
   id: string | null;
   name: string;
@@ -29,25 +63,39 @@ export type StageSyncDto = {
   capacity: number | null;
   advancementCount: number | null;
   bestOf: number;
+  boMode?: 'per_stage' | 'per_round';
+  roundBoOverrides?: Record<string, number>;
   config?: Record<string, unknown>;
 };
 
-export function parseStageConfig(config: unknown): Record<string, unknown> {
-  if (!config) return {};
-  if (typeof config === 'string') {
-    try {
-      const parsed = JSON.parse(config) as unknown;
-      return parsed && typeof parsed === 'object' ? parsed as Record<string, unknown> : {};
-    } catch {
-      return {};
-    }
-  }
-  if (typeof config === 'object') {
-    return { ...(config as Record<string, unknown>) };
-  }
-  return {};
-}
+/**
+ * @deprecated Use Record<string, number> directly
+ */
+export type RoundBoOverrides = Record<string, number>;
 
+/**
+ * @deprecated Use StageDto from @/types/stage.ts instead
+ */
+export type NewStageInput = {
+  name: string;
+  format: string;
+  capacity?: number | null;
+  advancementCount?: number | null;
+  bestOf?: number;
+  boMode?: 'per_stage' | 'per_round';
+  roundBoOverrides?: Record<string, number>;
+  config?: Record<string, unknown>;
+};
+
+// ============================================================================
+// DEPRECATED FUNCTIONS - Use functions from @/utils/stageMapper.ts instead
+// ============================================================================
+
+const VALID_BEST_OF = [1, 2, 3, 5, 7, 9] as const;
+
+/**
+ * @deprecated Use normalizeBestOf from @/utils/stageMapper.ts instead
+ */
 export function normalizeStageBestOf(value?: number | null): number {
   if (value != null && VALID_BEST_OF.includes(value as (typeof VALID_BEST_OF)[number])) {
     return value;
@@ -55,26 +103,14 @@ export function normalizeStageBestOf(value?: number | null): number {
   return 1;
 }
 
-export function buildStageConfigPayload(settings?: StageSettings): Record<string, unknown> | undefined {
-  if (!settings) return undefined;
-
-  const config: Record<string, unknown> = {};
-  if (settings.swiss_groups != null) config.swiss_groups = settings.swiss_groups;
-  if (settings.swiss_rounds != null) config.swiss_rounds = settings.swiss_rounds;
-  if (settings.group_count != null) config.group_count = settings.group_count;
-  if (settings.points_per_win != null) config.points_per_win = settings.points_per_win;
-  if (settings.points_per_draw != null) config.points_per_draw = settings.points_per_draw;
-  if (settings.points_per_loss != null) config.points_per_loss = settings.points_per_loss;
-  if (settings.use_check_in_only != null) config.use_check_in_only = settings.use_check_in_only;
-
-  return Object.keys(config).length > 0 ? config : undefined;
-}
-
+/**
+ * @deprecated Use rowToDto from @/utils/stageMapper.ts instead
+ */
 export function mapTournamentStageToSyncDto(
   stage: TournamentStageRow,
-  stageOrder?: number,
+  stageOrder?: number
 ): StageSyncDto {
-  const config = parseStageConfig(stage.config);
+  const config = parseStageConfigLegacy(stage.config);
   const hasConfig = Object.keys(config).length > 0;
 
   return {
@@ -85,22 +121,18 @@ export function mapTournamentStageToSyncDto(
     capacity: stage.capacity ?? null,
     advancementCount: stage.advancement_count ?? null,
     bestOf: normalizeStageBestOf(stage.best_of),
+    boMode: stage.bo_mode ?? 'per_stage',
+    ...(stage.round_bo_overrides && { roundBoOverrides: stage.round_bo_overrides }),
     ...(hasConfig && { config }),
   };
 }
 
-export type NewStageInput = {
-  name: string;
-  format: string;
-  capacity?: number | null;
-  advancementCount?: number | null;
-  bestOf?: number;
-  config?: Record<string, unknown>;
-};
-
+/**
+ * @deprecated Use buildStageSyncPayload pattern with dtoToPayload from @/utils/stageMapper.ts
+ */
 export function buildStageSyncPayload(
   existingStages: TournamentStageRow[],
-  newStage?: NewStageInput,
+  newStage?: NewStageInput
 ): StageSyncDto[] {
   const ordered = [...existingStages].sort((a, b) => a.stage_order - b.stage_order);
   const dtos = ordered.map((stage, index) => mapTournamentStageToSyncDto(stage, index + 1));
@@ -108,6 +140,8 @@ export function buildStageSyncPayload(
   if (newStage) {
     const config = newStage.config;
     const hasConfig = config && Object.keys(config).length > 0;
+    const hasOverrides =
+      newStage.roundBoOverrides && Object.keys(newStage.roundBoOverrides).length > 0;
     dtos.push({
       id: null,
       name: newStage.name,
@@ -116,9 +150,28 @@ export function buildStageSyncPayload(
       capacity: newStage.capacity ?? null,
       advancementCount: newStage.advancementCount ?? null,
       bestOf: normalizeStageBestOf(newStage.bestOf),
+      boMode: newStage.boMode ?? 'per_stage',
+      ...(hasOverrides && { roundBoOverrides: newStage.roundBoOverrides }),
       ...(hasConfig && { config }),
     });
   }
 
   return dtos;
+}
+
+// Internal legacy helper (kept for backward compat)
+function parseStageConfigLegacy(config: unknown): Record<string, unknown> {
+  if (!config) return {};
+  if (typeof config === 'string') {
+    try {
+      const parsed = JSON.parse(config) as unknown;
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+  if (typeof config === 'object') {
+    return { ...(config as Record<string, unknown>) };
+  }
+  return {};
 }

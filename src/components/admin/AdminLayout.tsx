@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { motion } from 'framer-motion';
 import { getWebsiteAssetUrl } from '@/lib/storage';
@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 
 interface AdminLayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 type AdminNavItem = {
@@ -300,7 +300,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
             </div>
           }>
-            {children}
+            {children ?? <Outlet />}
           </Suspense>
         </div>
       </main>

@@ -138,6 +138,38 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     fetchNotifications();
   }, [userId, fetchNotifications, authLoading, profile?.is_suspended]);
 
+  // Session heartbeat - polls to detect revoked sessions (fallback when SignalR misses ForceLogout)
+  useEffect(() => {
+    if (!userId || authLoading || profile?.is_suspended) return;
+
+    const checkSession = async () => {
+      try {
+        await apiClient.get('/api/auth/me');
+      } catch (err: unknown) {
+        const status = (err as { status?: number })?.status;
+        if (status === 401 || status === 403) {
+          console.warn('[SessionHeartbeat] Session invalid, logging out');
+          toast({
+            title: 'Session Expired',
+            description: 'Your session has ended. Please sign in again.',
+            variant: 'destructive',
+          });
+          try {
+            await supabase.auth.signOut({ scope: 'local' });
+          } catch {
+            // Ignore
+          }
+          resetClientSessionForAuthChange(queryClient);
+          navigate('/auth/signin', { replace: true });
+        }
+      }
+    };
+
+    // Check every 60 seconds
+    const interval = setInterval(checkSession, 60000);
+    return () => clearInterval(interval);
+  }, [userId, authLoading, profile?.is_suspended, navigate, queryClient, toast]);
+
   const markAsRead = async (id: string) => {
     setNotifications(prev => {
       const updated = prev.map(n => n.id === id ? { ...n, is_read: true } : n);

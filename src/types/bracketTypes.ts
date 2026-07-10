@@ -128,14 +128,25 @@ export interface BracketMatch {
 // Stage Types
 // ============================================================================
 
-/** Tournament stage for multi-stage events */
+/**
+ * @deprecated Use StageRow from @/types/stage.ts instead.
+ * This interface lacks best_of, bo_mode, and round_bo_overrides fields.
+ */
 export interface TournamentStage {
     id: string;
     tournament_id: string;
     name: string;
     format: string;
     stage_order: number;
+    capacity?: number | null;
+    advancement_count?: number | null;
+    best_of?: number;
+    bo_mode?: 'per_stage' | 'per_round';
+    round_bo_overrides?: Record<string, number> | null;
     config?: Record<string, unknown> | null;
+    status?: string | null;
+    starts_at?: string | null;
+    ends_at?: string | null;
     created_at?: string;
     updated_at?: string;
 }

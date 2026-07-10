@@ -118,7 +118,7 @@ export function RoundBoConfigSection({
       </div>
 
       {boMode === 'per_round' && (
-        <div className="mt-4 max-h-[300px] overflow-y-auto pr-1">
+        <div className="mt-4">
           <div className="space-y-4">
             {loading ? (
               <div className="flex items-center gap-2 text-gray-400 py-2 pl-4">
