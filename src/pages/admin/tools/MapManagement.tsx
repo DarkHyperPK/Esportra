@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Map, Plus, Upload, Trash2, Loader2, Search, Check, X, Edit2 } from 'lucide-react';
+import { Map, Plus, Upload, Trash2, Loader2, Search, Check, Edit2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
@@ -175,7 +175,7 @@ export default function MapManagement() {
   // Delete map mutation
   const deleteMap = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/api/admin/game-maps/${id}`),
-    onSuccess: (_, id) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'game-maps'] });
       toast({ title: 'Map deleted' });
     },
