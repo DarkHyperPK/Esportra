@@ -336,10 +336,7 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
 
-                {/* ═══════════════════════════════════════════════════════════════════════
-                    ADMIN ROUTES - Nested under single AdminLayout for smooth navigation
-                    AdminLayout stays mounted; only content swaps via <Outlet />
-                    ═══════════════════════════════════════════════════════════════════════ */}
+                {/* Admin Routes - Nested under single AdminLayout for smooth navigation */}
                 <Route path="/admin" element={<AdminProtectedRoute><AdminLayout /></AdminProtectedRoute>}>
                   <Route index element={<Navigate to="dashboard" replace />} />
 
