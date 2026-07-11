@@ -379,7 +379,7 @@ export const NotificationSidebar = () => {
             </SheetTrigger>
             <SheetContent
                 side="right"
-                className="w-[480px] sm:w-[520px] p-0 border-l border-white/10 bg-[#08080a] z-[60]"
+                className="w-[480px] sm:w-[520px] p-0 border-l border-white/10 bg-[#08080a]"
             >
                 <SheetHeader className="px-6 py-5 border-b border-white/10 bg-gradient-to-b from-white/[0.03] to-transparent">
                     <div className="flex items-center justify-between">

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import {
   clearGhostModeSession,
@@ -10,6 +11,7 @@ import { GhostModeContext, type GhostModeContextValue, type StartGhostModeInput 
 
 export function GhostModeProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<GhostModeSession | null>(() => readGhostModeSession());
+  const queryClient = useQueryClient();
 
   const refresh = useCallback(() => {
     setSession(readGhostModeSession());
@@ -45,7 +47,10 @@ export function GhostModeProvider({ children }: { children: React.ReactNode }) {
     };
     writeGhostModeSession(sessionData);
     setSession(sessionData);
-  }, []);
+
+    // Invalidate profile queries so they refetch with the ghost token
+    await queryClient.invalidateQueries({ queryKey: ['profile'] });
+  }, [queryClient]);
 
   const exit = useCallback(async () => {
     try {
@@ -56,8 +61,10 @@ export function GhostModeProvider({ children }: { children: React.ReactNode }) {
     } finally {
       clearGhostModeSession();
       setSession(null);
+      // Invalidate profile queries so they refetch with the admin's token
+      await queryClient.invalidateQueries({ queryKey: ['profile'] });
     }
-  }, []);
+  }, [queryClient]);
 
   const value = useMemo<GhostModeContextValue>(() => ({
     session,
