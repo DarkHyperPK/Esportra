@@ -1,5 +1,6 @@
 export type GhostModeSession = {
   token: string;
+  adminToken: string;
   sessionId: string;
   adminId: string;
   targetUserId: string;

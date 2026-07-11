@@ -153,10 +153,16 @@ const inflightGets = new Map<string, Promise<unknown>>();
 
 // ── Internal fetch with auth header + 429 retry ─────────────────────────────
 
+type FetchOptions = {
+  overrideToken?: string;
+  skipGhostMode?: boolean;
+};
+
 async function fetchWithAuth(
   path: string,
   init: RequestInit = {},
   attempt = 0,
+  options: FetchOptions = {},
 ): Promise<Response> {
   const { data: { session } } = await supabase.auth.getSession();
 
@@ -165,12 +171,14 @@ async function fetchWithAuth(
     ...(init.headers as Record<string, string> ?? {}),
   };
 
-  if (session?.access_token) {
+  if (options.overrideToken) {
+    headers['Authorization'] = `Bearer ${options.overrideToken}`;
+  } else if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`;
   }
 
   const ghost = readGhostModeSession();
-  if (ghost) {
+  if (ghost && !options.skipGhostMode && !options.overrideToken) {
     headers['Authorization'] = `Bearer ${ghost.token}`;
     headers['X-Impersonated-By'] = ghost.adminId;
   }
@@ -214,6 +222,14 @@ async function fetchWithAuth(
       scheduleSuspendedRedirect();
     }
 
+    // Handle session revocation - immediate logout
+    if (response.status === 401 && parsed.code === 'SESSION_REVOKED') {
+      void supabase.auth.signOut({ scope: 'local' });
+      if (typeof window !== 'undefined') {
+        window.location.assign('/auth/signin?revoked=true');
+      }
+    }
+
     throw new ApiError(
       response.status,
       body,
@@ -246,6 +262,15 @@ export const apiClient = {
   /** GET /api/{path} → parsed JSON (deduplicated) */
   async get<T>(path: string): Promise<T> {
     return fetchGetDeduped<T>(path);
+  },
+
+  /** POST with explicit token (bypasses ghost mode, used for ghost exit) */
+  async postWithToken<T>(path: string, token: string, body?: unknown): Promise<T> {
+    const res = await fetchWithAuth(path, {
+      method: 'POST',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }, 0, { overrideToken: token });
+    return res.json() as Promise<T>;
   },
 
   /** GET /api/{path} → Blob (receipt proxy fallback when public storage URL fails) */

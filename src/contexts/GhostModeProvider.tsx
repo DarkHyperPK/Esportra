@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import { supabase } from '@/lib/supabase';
 import {
   clearGhostModeSession,
   readGhostModeSession,
@@ -29,6 +30,10 @@ export function GhostModeProvider({ children }: { children: React.ReactNode }) {
   }, [refresh]);
 
   const start = useCallback(async (input: StartGhostModeInput) => {
+    // Capture admin token BEFORE making ghost request (needed for exit)
+    const { data: { session: supabaseSession } } = await supabase.auth.getSession();
+    const adminToken = supabaseSession?.access_token ?? '';
+
     const result = await apiClient.post<{
       session_id: string;
       ghost_token: string;
@@ -38,8 +43,9 @@ export function GhostModeProvider({ children }: { children: React.ReactNode }) {
 
     const sessionData: GhostModeSession = {
       token: result.ghost_token,
+      adminToken,
       sessionId: result.session_id,
-      adminId: '',
+      adminId: supabaseSession?.user?.id ?? '',
       targetUserId: result.target_user.id,
       targetLabel: result.target_user.username,
       scopes: input.scopes ?? ['view'],
@@ -55,8 +61,11 @@ export function GhostModeProvider({ children }: { children: React.ReactNode }) {
   const exit = useCallback(async () => {
     try {
       const currentSession = readGhostModeSession();
-      if (currentSession) {
-        await apiClient.post('/api/admin/ghost/end', { token: currentSession.token });
+      if (currentSession?.adminToken) {
+        // Use admin token for exit (ghost token is target user, not admin)
+        await apiClient.postWithToken('/api/admin/ghost/end', currentSession.adminToken, {
+          token: currentSession.token,
+        });
       }
     } finally {
       clearGhostModeSession();
