@@ -155,7 +155,7 @@ export default function Broadcasts() {
       apiClient.get<{ users: UserSearchResult[] }>(
         `/api/admin/users?search=${encodeURIComponent(userSearch)}&limit=5`
       ),
-    enabled: userSearch.length >= 2 && formTargetType === 'specific',
+    enabled: userSearch.length >= 2 && formTargetType === 'users',
   });
   const userSearchResults = userSearchResponse?.users ?? [];
 
@@ -168,7 +168,7 @@ export default function Broadcasts() {
         priority: formPriority,
         target_type: formTargetType,
         target_segment: formTargetType === 'segment' ? formSegment : undefined,
-        target_user_ids: formTargetType === 'specific' ? formTargetUserIds : undefined,
+        target_user_ids: formTargetType === 'users' ? formTargetUserIds : undefined,
         scheduled_at: formScheduledAt || undefined,
       }),
     onSuccess: () => {
@@ -192,7 +192,7 @@ export default function Broadcasts() {
         priority: formPriority,
         target_type: formTargetType,
         target_segment: formTargetType === 'segment' ? formSegment : undefined,
-        target_user_ids: formTargetType === 'specific' ? formTargetUserIds : undefined,
+        target_user_ids: formTargetType === 'users' ? formTargetUserIds : undefined,
         scheduled_at: formScheduledAt || undefined,
       });
     },
@@ -256,7 +256,8 @@ export default function Broadcasts() {
     setFormContent(broadcast.content);
     setFormType(broadcast.broadcast_type);
     setFormPriority(broadcast.priority);
-    setFormTargetType(broadcast.target_type);
+    // Map old 'specific' value to new 'users' value for backwards compatibility
+    setFormTargetType(broadcast.target_type === 'specific' ? 'users' : broadcast.target_type);
     setFormScheduledAt(broadcast.scheduled_at ?? '');
     setFormSegment((broadcast.target_segment as TargetSegment) ?? {});
     setFormTargetUserIds(broadcast.target_user_ids ?? []);
