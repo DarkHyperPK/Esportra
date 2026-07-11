@@ -177,9 +177,11 @@ async function fetchWithAuth(
     headers['Authorization'] = `Bearer ${session.access_token}`;
   }
 
+  // Ghost mode: keep admin's JWT for auth, send ghost token in separate header
+  // The backend middleware validates X-Ghost-Token and overrides UserContext
   const ghost = readGhostModeSession();
   if (ghost && !options.skipGhostMode && !options.overrideToken) {
-    headers['Authorization'] = `Bearer ${ghost.token}`;
+    headers['X-Ghost-Token'] = ghost.token;
     headers['X-Impersonated-By'] = ghost.adminId;
   }
 
@@ -322,9 +324,10 @@ export const apiClient = {
       headers['Authorization'] = `Bearer ${session.access_token}`;
     }
 
+    // Ghost mode: keep admin's JWT for auth, send ghost token in separate header
     const ghost = readGhostModeSession();
     if (ghost) {
-      headers['Authorization'] = `Bearer ${ghost.token}`;
+      headers['X-Ghost-Token'] = ghost.token;
       headers['X-Impersonated-By'] = ghost.adminId;
     }
 
