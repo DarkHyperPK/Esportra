@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { GhostButton, SuccessButton, DangerButton, SettingsButton } from '@/components/ui/app-buttons';
 import { ScrollArea } from '@/components/ui/scroll-area';

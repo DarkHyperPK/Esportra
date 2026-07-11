@@ -112,7 +112,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
                     alt=""
                     loading="lazy"
                     decoding="async"
-                    fetchpriority="low"
+                    fetchPriority="low"
                     className="w-5 h-5 rounded-full object-cover"
                   />
                 ) : (

@@ -1,4 +1,3 @@
-import React from 'react';
 import { parseAuditLogDetails } from '@/utils/auditLogDetails';
 
 interface AuditLogDetailsPanelProps {

@@ -38,9 +38,11 @@ export default function EntityHistoryTimeline({ targetType, targetId }: Props) {
   const [page, setPage] = useState(1);
   const { data, isLoading, error, refetch } = useEntityHistory(targetType, targetId, page);
 
-  const entries = data?.data ?? [];
-  const total = data?.total ?? 0;
-  const pageSize = data?.limit ?? 15;
+  // Normalize response - API can return either array or paginated object
+  const isArrayResponse = Array.isArray(data);
+  const entries = isArrayResponse ? data : (data?.data ?? []);
+  const total = isArrayResponse ? data.length : (data?.total ?? 0);
+  const pageSize = isArrayResponse ? 15 : (data?.limit ?? 15);
   const totalPages = Math.ceil(total / pageSize);
 
   const formatDate = (d: string) => {

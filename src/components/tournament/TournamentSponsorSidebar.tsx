@@ -74,7 +74,7 @@ const SidebarCard: React.FC<{
               alt={s.name}
               loading="lazy"
               decoding="async"
-              fetchpriority="low"
+              fetchPriority="low"
               className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-transparent" />
@@ -90,7 +90,7 @@ const SidebarCard: React.FC<{
                   alt={s.name}
                   loading="lazy"
                   decoding="async"
-                  fetchpriority="low"
+                  fetchPriority="low"
                   className="h-5 w-auto object-contain"
                 />
             )}

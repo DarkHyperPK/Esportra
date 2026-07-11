@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { EsportsGame } from '@/utils/gameFeatures';
 import { resolveGameLogoUrl, resolveNextGameLogoFallback } from '@/utils/gameLogoResolver';
 

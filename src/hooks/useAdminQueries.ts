@@ -547,7 +547,7 @@ export const useBulkAcknowledgeAlerts = () => {
 
 // ── Entity Change History ───────────────────────────────────────────────────
 
-interface EntityHistoryEntry {
+export interface EntityHistoryEntry {
   id: string;
   admin_id: string;
   admin_name: string;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,37 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiClient } from '@/lib/apiClient';
 import { fetchGameData } from '@/hooks/useRawgGame';
 import { formatDate } from '@/utils/dateFormat';
-
-interface _TournamentRegistration {
-  id: string;
-  tournament_id: string;
-  user_id: string;
-  registration_type: string;
-  team_name: string | null;
-  team_captain: string | null;
-  team_email: string | null;
-  team_phone: string | null;
-  team_members: string | null;
-  team_logo: string | null;
-  created_at: string;
-  status: string;
-  tournaments: {
-    id: string;
-    name: string;
-    game: string;
-    date: string;
-    time: string;
-    venue: string;
-    max_participants: number;
-    slug: string;
-    image_url: string | null;
-    prize_pool: string | null;
-    entry_fee: string | null;
-    is_online: boolean | null;
-    team_size: number | null;
-    user_id: string;
-  };
-}
 
 interface Tournament {
   id: string;

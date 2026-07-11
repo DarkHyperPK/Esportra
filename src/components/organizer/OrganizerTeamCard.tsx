@@ -104,7 +104,7 @@ export const OrganizerTeamCard = React.forwardRef<HTMLDivElement, TeamCardProps>
                                         alt={displayName}
                                         loading="lazy"
                                         decoding="async"
-                                        fetchpriority="low"
+                                        fetchPriority="low"
                                         className={`w-full h-full object-contain filter drop-shadow-md ${isSolo ? 'rounded-full' : ''}`}
                                     />
                                 ) : (

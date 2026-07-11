@@ -1,4 +1,3 @@
-import React from 'react';
 import { CtaButton, DangerButton } from "@/components/ui/app-buttons";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";

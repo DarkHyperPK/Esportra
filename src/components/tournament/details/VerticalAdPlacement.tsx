@@ -57,7 +57,7 @@ export const VerticalAdPlacement = ({ sponsorId: sponsorIdProp }: Props) => {
                         alt="Partner"
                         loading="lazy"
                         decoding="async"
-                        fetchpriority="low"
+                        fetchPriority="low"
                         className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all [transition-duration:1500ms]"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
@@ -82,7 +82,7 @@ export const VerticalAdPlacement = ({ sponsorId: sponsorIdProp }: Props) => {
                             alt="Partner"
                             loading="lazy"
                             decoding="async"
-                            fetchpriority="low"
+                            fetchPriority="low"
                             className="h-6 w-auto object-contain"
                         />
                         <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-[8px] text-amber-500 font-bold uppercase tracking-widest rounded">Radiant Partner</span>

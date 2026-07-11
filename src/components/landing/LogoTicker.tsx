@@ -45,7 +45,7 @@ const LogoTicker = () => {
                             className="group relative transition-transform duration-300 hover:scale-105"
                         >
                             <img
-                                src={sponsor.logo_url}
+                                src={sponsor.logo_url ?? undefined}
                                 alt={sponsor.name}
                                 className="h-8 md:h-10 w-auto object-contain grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
                             />

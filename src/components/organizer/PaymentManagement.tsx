@@ -240,7 +240,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                             alt=""
                             loading="lazy"
                             decoding="async"
-                            fetchpriority="low"
+                            fetchPriority="low"
                             className="w-10 h-10 rounded-lg object-cover border border-white/10"
                           />
                         ) : (
