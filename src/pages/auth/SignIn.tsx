@@ -38,9 +38,9 @@ const SignIn = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirect');
-  const revoked = searchParams.get('revoked') === 'true';
   const { toast } = useToast();
   const [isAlreadySignedIn, setIsAlreadySignedIn] = useState(false);
+  const [wasRevoked, setWasRevoked] = useState(false);
   const revokedHandledRef = useRef(false);
 
   // Initialize form
@@ -52,10 +52,13 @@ const SignIn = () => {
     },
   });
 
-  // Handle revoked session - clear any stale auth and show message
+  // Handle revoked session - check sessionStorage flag and show message
   useEffect(() => {
+    const revoked = sessionStorage.getItem('session_revoked') === 'true';
     if (revoked && !revokedHandledRef.current) {
       revokedHandledRef.current = true;
+      setWasRevoked(true);
+      sessionStorage.removeItem('session_revoked');
       void supabase.auth.signOut({ scope: 'local' });
       toast({
         title: "Session revoked",
@@ -63,11 +66,11 @@ const SignIn = () => {
         variant: "destructive",
       });
     }
-  }, [revoked, toast]);
+  }, [toast]);
 
   // Check if user is already signed in (skip if session was just revoked)
   useEffect(() => {
-    if (revoked) return;
+    if (wasRevoked) return;
     if (user && profile) {
       setIsAlreadySignedIn(true);
       toast({
@@ -78,7 +81,7 @@ const SignIn = () => {
         navigate(redirectTo || "/");
       }, 2000);
     }
-  }, [user, profile, navigate, toast, redirectTo, revoked]);
+  }, [user, profile, navigate, toast, redirectTo, wasRevoked]);
 
   const handleSubmit = async (values: SignInFormValues) => {
     if (isAlreadySignedIn) {

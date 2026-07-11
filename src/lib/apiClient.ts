@@ -231,7 +231,8 @@ async function fetchWithAuth(
       clearUserBrowserStorage();
       void supabase.auth.signOut({ scope: 'local' });
       if (typeof window !== 'undefined') {
-        window.location.assign('/auth/signin?revoked=true');
+        sessionStorage.setItem('session_revoked', 'true');
+        window.location.assign('/auth/signin');
       }
     }
 

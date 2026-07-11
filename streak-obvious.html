@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Esportra Streak Background Variants</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; }
+
+    .variant {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+    }
+
+    .variant.active {
+      display: block;
+    }
+
+    /* Base dark background */
+    .base-bg {
+      position: absolute;
+      inset: 0;
+      background: #0a0a0c;
+    }
+
+    /* Streaks */
+    .streaks {
+      position: absolute;
+      inset: 0;
+      opacity: 0.6;
+    }
+
+    .streak-1 {
+      position: absolute;
+      left: -10%;
+      top: -15%;
+      height: 145%;
+      width: 20%;
+      transform: rotate(-17deg);
+      background: rgba(255, 255, 255, 0.075);
+      clip-path: polygon(44% 0, 69% 0, 53% 24%, 76% 42%, 49% 64%, 67% 100%, 23% 100%, 35% 78%, 12% 53%, 38% 29%);
+    }
+
+    .streak-2 {
+      position: absolute;
+      left: 18%;
+      top: -9%;
+      height: 132%;
+      width: 13%;
+      transform: rotate(-4deg);
+      background: rgba(255, 255, 255, 0.065);
+      clip-path: polygon(30% 0, 84% 0, 52% 19%, 74% 46%, 45% 69%, 62% 100%, 15% 100%, 35% 76%, 10% 51%, 44% 26%);
+    }
+
+    .streak-3 {
+      position: absolute;
+      left: 38%;
+      top: -18%;
+      height: 150%;
+      width: 18%;
+      transform: rotate(5deg);
+      background: rgba(255, 255, 255, 0.08);
+      clip-path: polygon(36% 0, 75% 0, 62% 18%, 85% 35%, 57% 58%, 72% 100%, 30% 100%, 34% 80%, 8% 56%, 39% 31%);
+    }
+
+    .streak-4 {
+      position: absolute;
+      left: 68%;
+      top: -12%;
+      height: 138%;
+      width: 17%;
+      transform: rotate(19deg);
+      background: rgba(255, 255, 255, 0.07);
+      clip-path: polygon(39% 0, 88% 0, 64% 21%, 80% 46%, 54% 67%, 72% 100%, 27% 100%, 37% 78%, 10% 54%, 41% 28%);
+    }
+
+    /* Noise - using canvas to generate actual noise */
+    #noiseCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.15;
+      mix-blend-mode: overlay;
+    }
+
+    /* Grid - thick visible lines */
+    .grid-thick {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,0.12) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.12) 1px, transparent 1px);
+      background-size: 80px 80px;
+    }
+
+    /* Rose glow - very visible */
+    .rose-strong {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 50% 50% at 85% 15%, rgba(244, 63, 94, 0.35) 0%, transparent 50%),
+        radial-gradient(ellipse 40% 50% at 15% 85%, rgba(244, 63, 94, 0.25) 0%, transparent 50%);
+    }
+  </style>
+</head>
+<body>
+  <!-- Variant 1: Plain streaks only -->
+  <div id="variant1" class="variant">
+    <div class="base-bg"></div>
+    <div class="streaks">
+      <div class="streak-1"></div>
+      <div class="streak-2"></div>
+      <div class="streak-3"></div>
+      <div class="streak-4"></div>
+    </div>
+  </div>
+
+  <!-- Variant 2: Streaks + Noise -->
+  <div id="variant2" class="variant">
+    <div class="base-bg"></div>
+    <div class="streaks">
+      <div class="streak-1"></div>
+      <div class="streak-2"></div>
+      <div class="streak-3"></div>
+      <div class="streak-4"></div>
+    </div>
+    <canvas id="noiseCanvas2"></canvas>
+  </div>
+
+  <!-- Variant 3: Full -->
+  <div id="variant3" class="variant">
+    <div class="base-bg"></div>
+    <div class="rose-strong"></div>
+    <div class="grid-thick"></div>
+    <div class="streaks">
+      <div class="streak-1"></div>
+      <div class="streak-2"></div>
+      <div class="streak-3"></div>
+      <div class="streak-4"></div>
+    </div>
+    <canvas id="noiseCanvas3"></canvas>
+  </div>
+
+  <script>
+    function generateNoise(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const ctx = canvas.getContext('2d');
+      const imageData = ctx.createImageData(canvas.width, canvas.height);
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const value = Math.random() * 255;
+        data[i] = value;     // R
+        data[i + 1] = value; // G
+        data[i + 2] = value; // B
+        data[i + 3] = 40;    // A (semi-transparent)
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+
+      canvas.style.position = 'absolute';
+      canvas.style.inset = '0';
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      canvas.style.opacity = '0.12';
+      canvas.style.mixBlendMode = 'overlay';
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const v = params.get('v') || '1';
+    document.getElementById('variant' + v).classList.add('active');
+
+    if (v === '2') generateNoise('noiseCanvas2');
+    if (v === '3') generateNoise('noiseCanvas3');
+  </script>
+</body>
+</html>
