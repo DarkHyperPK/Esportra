@@ -16,6 +16,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { readGhostModeSession } from '@/lib/ghostModeSession';
+import { clearUserBrowserStorage } from '@/lib/resetClientSession';
 import { type ApiErrorContext, getApiErrorFallback } from '@/utils/apiErrorFallbacks';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -225,7 +226,9 @@ async function fetchWithAuth(
     }
 
     // Handle session revocation - immediate logout
+    // Clear browser storage synchronously BEFORE redirect to prevent stale auth state
     if (response.status === 401 && parsed.code === 'SESSION_REVOKED') {
+      clearUserBrowserStorage();
       void supabase.auth.signOut({ scope: 'local' });
       if (typeof window !== 'undefined') {
         window.location.assign('/auth/signin?revoked=true');
