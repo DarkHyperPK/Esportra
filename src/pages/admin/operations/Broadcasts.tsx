@@ -133,6 +133,9 @@ export default function Broadcasts() {
   const [userSearch, setUserSearch] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<UserSearchResult[]>([]);
 
+  // Delivery channels
+  const [formSendEmail, setFormSendEmail] = useState(false);
+
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'broadcasts', activeTab === 'all' ? undefined : activeTab],
     queryFn: () => {
@@ -169,6 +172,7 @@ export default function Broadcasts() {
         target_type: formTargetType,
         target_segment: formTargetType === 'segment' ? formSegment : undefined,
         target_user_ids: formTargetType === 'users' ? formTargetUserIds : undefined,
+        channels: ['in_app', ...(formSendEmail ? ['email'] : [])],
         scheduled_at: formScheduledAt || undefined,
       }),
     onSuccess: () => {
@@ -193,6 +197,7 @@ export default function Broadcasts() {
         target_type: formTargetType,
         target_segment: formTargetType === 'segment' ? formSegment : undefined,
         target_user_ids: formTargetType === 'users' ? formTargetUserIds : undefined,
+        channels: ['in_app', ...(formSendEmail ? ['email'] : [])],
         scheduled_at: formScheduledAt || undefined,
       });
     },
@@ -248,6 +253,7 @@ export default function Broadcasts() {
     setFormTargetUserIds([]);
     setSelectedUsers([]);
     setUserSearch('');
+    setFormSendEmail(false);
   };
 
   const openEdit = (broadcast: Broadcast) => {
@@ -677,6 +683,31 @@ export default function Broadcasts() {
                 )}
               </div>
             )}
+
+            {/* Delivery Channels */}
+            <div>
+              <label className="text-sm text-zinc-400 mb-2 block">Delivery Channels</label>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="channel-inapp" checked disabled />
+                  <label htmlFor="channel-inapp" className="text-sm text-zinc-300 cursor-default">
+                    In-App Notification
+                  </label>
+                  <span className="text-xs text-zinc-600">(always enabled)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="channel-email"
+                    checked={formSendEmail}
+                    onCheckedChange={(checked) => setFormSendEmail(checked === true)}
+                  />
+                  <label htmlFor="channel-email" className="text-sm text-white cursor-pointer">
+                    Email
+                  </label>
+                  <span className="text-xs text-zinc-500">(via Resend)</span>
+                </div>
+              </div>
+            </div>
 
             <div>
               <label className="text-sm text-zinc-400 mb-2 block">
