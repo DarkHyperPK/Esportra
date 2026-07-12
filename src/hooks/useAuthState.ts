@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
+import { hasRecoverySession } from '@/lib/authRecovery';
 
 export const useAuthState = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -17,7 +18,7 @@ export const useAuthState = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (mounted) {
         // Block recovery sessions from being treated as normal auth
-        if (sessionStorage.getItem('password_recovery_pending') === 'true') {
+        if (hasRecoverySession()) {
           setUser(null);
           setSession(null);
           return;
@@ -48,7 +49,7 @@ export const useAuthState = () => {
 
         if (mounted) {
           // Block recovery sessions from being treated as normal auth
-          if (sessionStorage.getItem('password_recovery_pending') === 'true') {
+          if (hasRecoverySession()) {
             setSession(null);
             setUser(null);
           } else {

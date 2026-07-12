@@ -7,11 +7,13 @@ const { resetPasswordForEmail, toast } = vi.hoisted(() => ({
   resetPasswordForEmail: vi.fn(),
   toast: vi.fn(),
 }));
+const signOut = vi.hoisted(() => vi.fn());
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     auth: {
       resetPasswordForEmail,
+      signOut,
     },
   },
 }));
@@ -28,6 +30,8 @@ describe('ForgotPassword', () => {
   beforeEach(() => {
     resetPasswordForEmail.mockReset();
     resetPasswordForEmail.mockResolvedValue({ error: null });
+    signOut.mockReset();
+    signOut.mockResolvedValue({ error: null });
     toast.mockReset();
     window.history.replaceState({}, '', '/auth/forgot-password');
   });
@@ -49,6 +53,8 @@ describe('ForgotPassword', () => {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       });
     });
+
+    expect(signOut).toHaveBeenCalledWith({ scope: 'local' });
 
     expect(resetPasswordForEmail).not.toHaveBeenCalledWith(
       expect.any(String),

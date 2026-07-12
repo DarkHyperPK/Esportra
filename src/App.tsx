@@ -638,27 +638,45 @@ function CatalogBootstrapGate({ children }: { children: React.ReactNode }) {
 const App = () => {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <SignalRProvider>
-          <RoleProvider>
-            <GameCatalogProvider>
-              <CatalogBootstrapGate>
-                <TooltipProvider>
-                  <NotificationProvider>
-                    <AdminProvider>
-                      <GhostModeProvider>
-                        <AppContent />
-                      </GhostModeProvider>
-                    </AdminProvider>
-                  </NotificationProvider>
-                </TooltipProvider>
-              </CatalogBootstrapGate>
-            </GameCatalogProvider>
-          </RoleProvider>
-        </SignalRProvider>
-      </AuthProvider>
+      <RecoveryRouteGate />
     </BrowserRouter>
   );
 };
+
+function RecoveryRouteGate() {
+  const location = useLocation();
+
+  if (location.pathname === '/auth/reset-password') {
+    return (
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <ResetPassword />
+      </TooltipProvider>
+    );
+  }
+
+  return (
+    <AuthProvider>
+      <SignalRProvider>
+        <RoleProvider>
+          <GameCatalogProvider>
+            <CatalogBootstrapGate>
+              <TooltipProvider>
+                <NotificationProvider>
+                  <AdminProvider>
+                    <GhostModeProvider>
+                      <AppContent />
+                    </GhostModeProvider>
+                  </AdminProvider>
+                </NotificationProvider>
+              </TooltipProvider>
+            </CatalogBootstrapGate>
+          </GameCatalogProvider>
+        </RoleProvider>
+      </SignalRProvider>
+    </AuthProvider>
+  );
+}
 
 export default App;

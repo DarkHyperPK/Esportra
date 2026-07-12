@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +20,8 @@ import { AlertCircle, Eye, EyeOff, Loader2, CheckCircle, Lock } from 'lucide-rea
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthLayout from '@/components/auth/AuthLayout';
+import { MfaTotpChallenge } from '@/components/auth/MfaTotpChallenge';
+import { usePasswordRecovery } from '@/hooks/usePasswordRecovery';
 
 const resetPasswordSchema = z.object({
     password: z.string()
@@ -40,9 +41,9 @@ const ResetPassword = () => {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [success, setSuccess] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
     const { toast } = useToast();
+    const recovery = usePasswordRecovery();
 
     const form = useForm<ResetPasswordFormValues>({
         resolver: zodResolver(resetPasswordSchema),
@@ -52,40 +53,11 @@ const ResetPassword = () => {
         },
     });
 
-    useEffect(() => {
-        const verifySession = async () => {
-            // Session establishment can lag briefly after the callback redirect.
-            for (let attempt = 0; attempt < 8; attempt++) {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                    setError(null);
-                    return;
-                }
-                await new Promise((resolve) => setTimeout(resolve, 250));
-            }
-
-            setError("Your reset session has expired or is invalid. Please request a new link.");
-        };
-        verifySession();
-    }, []);
-
     const handleSubmit = async (values: ResetPasswordFormValues) => {
         setLoading(true);
-        setError(null);
-
-        try {
-            const { error: updateError } = await supabase.auth.updateUser({
-                password: values.password,
-            });
-
-            if (updateError) throw updateError;
-
+        const wasUpdated = await recovery.updatePassword(values.password);
+        if (wasUpdated) {
             setSuccess(true);
-            sessionStorage.removeItem('password_recovery_pending');
-
-            // Sign out the recovery session so user must log in with new password
-            await supabase.auth.signOut();
-
             toast({
                 title: "Password updated!",
                 description: "Your password has been reset. Please sign in with your new password.",
@@ -94,18 +66,24 @@ const ResetPassword = () => {
             setTimeout(() => {
                 navigate('/auth/signin');
             }, 3000);
-        } catch (err: any) {
-            console.error("Reset password error:", err);
-            setError(err.message);
+        } else {
             toast({
                 title: "Error",
-                description: err.message,
+                description: recovery.message || 'Could not update your password.',
                 variant: "destructive",
             });
-        } finally {
-            setLoading(false);
         }
+        setLoading(false);
     };
+
+    const handleCancel = async () => {
+        await recovery.cancelRecovery();
+        navigate('/auth/signin', { replace: true });
+    };
+
+    const isChecking = recovery.status === 'checking-session' || recovery.status === 'checking-assurance';
+    const isMfaStep = recovery.status === 'awaiting-mfa' || recovery.status === 'verifying-mfa';
+    const canResetPassword = recovery.status === 'ready' || recovery.status === 'updating-password';
 
     return (
         <AuthLayout
@@ -114,17 +92,31 @@ const ResetPassword = () => {
             variant="signup"
         >
             <AnimatePresence mode="wait">
-                {!success ? (
+                {!success && isChecking ? (
+                    <div className="flex items-center justify-center gap-3 py-12 text-zinc-400">
+                        <Loader2 className="h-5 w-5 animate-spin text-rose-500" />
+                        Verifying recovery link...
+                    </div>
+                ) : !success && isMfaStep ? (
+                    <MfaTotpChallenge
+                        factors={recovery.factors}
+                        selectedFactorId={recovery.selectedFactorId}
+                        isVerifying={recovery.status === 'verifying-mfa'}
+                        error={recovery.message}
+                        onSelectFactor={recovery.selectFactor}
+                        onVerify={recovery.verifyMfa}
+                    />
+                ) : !success && canResetPassword ? (
                     <motion.div
                         key="form"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                     >
-                        {error && (
+                        {recovery.message && (
                             <Alert variant="destructive" className="mb-6 bg-red-500/10 border-red-500/30">
                                 <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>{error}</AlertDescription>
+                                <AlertDescription>{recovery.message}</AlertDescription>
                             </Alert>
                         )}
 
@@ -183,7 +175,7 @@ const ResetPassword = () => {
 
                                 <Button
                                     type="submit"
-                                    disabled={loading || !!error}
+                                    disabled={loading || recovery.status !== 'ready'}
                                     className="w-full h-12 bg-rose-500 hover:bg-rose-600 transition-all text-white font-bold font-mono tracking-wider"
                                 >
                                     {loading ? (
@@ -198,7 +190,7 @@ const ResetPassword = () => {
                             </form>
                         </Form>
                     </motion.div>
-                ) : (
+                ) : success ? (
                     <motion.div
                         key="success"
                         initial={{ opacity: 0, scale: 0.9 }}
@@ -216,6 +208,18 @@ const ResetPassword = () => {
                             <Loader2 className="w-6 h-6 text-rose-500 animate-spin" />
                         </div>
                     </motion.div>
+                ) : (
+                    <div className="space-y-5 py-4">
+                        <Alert variant="destructive" className="bg-red-500/10 border-red-500/30">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                                {recovery.message || 'This recovery link cannot be used.'}
+                            </AlertDescription>
+                        </Alert>
+                        <Button type="button" variant="outline" onClick={handleCancel} className="h-12 w-full">
+                            Return to sign in
+                        </Button>
+                    </div>
                 )}
             </AnimatePresence>
         </AuthLayout>

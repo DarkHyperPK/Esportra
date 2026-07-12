@@ -46,6 +46,7 @@ const ForgotPassword = () => {
         setError(null);
 
         try {
+            await supabase.auth.signOut({ scope: 'local' });
             const { error: authError } = await supabase.auth.resetPasswordForEmail(
                 values.email,
                 { redirectTo: `${window.location.origin}/auth/reset-password` }
