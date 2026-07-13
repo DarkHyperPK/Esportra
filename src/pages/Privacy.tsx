@@ -248,7 +248,7 @@ const PrivacyPage: React.FC = () => {
             <ul className="list-disc list-inside space-y-2 ml-4 text-gray-400">
               <li><strong className="text-gray-200">Encryption:</strong> All data is encrypted in transit using TLS 1.2+ and at rest using AES-256 encryption.</li>
               <li><strong className="text-gray-200">Access Controls:</strong> Role-based access controls (RBAC) and Row-Level Security (RLS) policies ensure that users can only access data they are authorized to view.</li>
-              <li><strong className="text-gray-200">Authentication:</strong> Secure password hashing using bcrypt, session management with JWTs, and optional multi-factor authentication.</li>
+              <li><strong className="text-gray-200">Authentication:</strong> Secure password hashing using bcrypt and session management with JWTs.</li>
               <li><strong className="text-gray-200">Infrastructure:</strong> Our Platform is hosted on enterprise-grade cloud infrastructure with SOC 2 Type II certified providers, regular security audits, and automated vulnerability scanning.</li>
               <li><strong className="text-gray-200">Monitoring:</strong> Continuous monitoring for unauthorized access, anomalous activity, and security threats with automated alerting.</li>
               <li><strong className="text-gray-200">Incident Response:</strong> We maintain a comprehensive incident response plan and will notify affected users and relevant authorities of any data breach in accordance with applicable laws.</li>
