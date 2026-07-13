@@ -426,8 +426,8 @@ function RoleCard({
           </div>
         </div>
 
-        {/* Actions — only for custom roles and super_admin */}
-        {!isProtected && isSuperAdmin && (
+        {/* Actions — super_admin can edit and delete all roles */}
+        {isSuperAdmin && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
               variant="ghost"
@@ -952,8 +952,8 @@ const RoleBuilder = () => {
                       role={role}
                       isProtected
                       isSuperAdmin={canManageRoles}
-                      onEdit={() => {}}
-                      onDelete={() => {}}
+                      onEdit={() => handleEdit(role.id)}
+                      onDelete={() => handleDeletePrompt(role)}
                     />
                   ))}
                 </AnimatePresence>
