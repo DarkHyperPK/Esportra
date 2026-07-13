@@ -3,8 +3,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ForgotPassword from './ForgotPassword';
 
-const { resetPasswordForEmail, toast } = vi.hoisted(() => ({
-  resetPasswordForEmail: vi.fn(),
+const { post, toast } = vi.hoisted(() => ({
+  post: vi.fn(),
   toast: vi.fn(),
 }));
 const signOut = vi.hoisted(() => vi.fn());
@@ -12,10 +12,13 @@ const signOut = vi.hoisted(() => vi.fn());
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     auth: {
-      resetPasswordForEmail,
       signOut,
     },
   },
+}));
+
+vi.mock('@/lib/apiClient', () => ({
+  apiClient: { post },
 }));
 
 vi.mock('@/hooks/use-toast', () => ({
@@ -28,15 +31,15 @@ vi.mock('@/components/auth/AuthLayout', () => ({
 
 describe('ForgotPassword', () => {
   beforeEach(() => {
-    resetPasswordForEmail.mockReset();
-    resetPasswordForEmail.mockResolvedValue({ error: null });
+    post.mockReset();
+    post.mockResolvedValue({});
     signOut.mockReset();
     signOut.mockResolvedValue({ error: null });
     toast.mockReset();
     window.history.replaceState({}, '', '/auth/forgot-password');
   });
 
-  it('sends recovery links directly to the reset password route', async () => {
+  it('requests recovery through the generic backend endpoint', async () => {
     render(
       <MemoryRouter>
         <ForgotPassword />
@@ -49,18 +52,14 @@ describe('ForgotPassword', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send Reset Link' }));
 
     await waitFor(() => {
-      expect(resetPasswordForEmail).toHaveBeenCalledWith('player@example.com', {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+      expect(post).toHaveBeenCalledWith('/api/auth/recovery', {
+        email: 'player@example.com',
+        portal: 'main',
       });
     });
 
     expect(signOut).toHaveBeenCalledWith({ scope: 'local' });
 
-    expect(resetPasswordForEmail).not.toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        redirectTo: expect.stringContaining('/auth/callback'),
-      }),
-    );
+    expect(await screen.findByText(/If an account exists/i)).toBeInTheDocument();
   });
 });

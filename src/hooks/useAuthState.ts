@@ -12,17 +12,28 @@ export const useAuthState = () => {
 
   useEffect(() => {
     let mounted = true;
+    let authEventVersion = 0;
     setLoading(true);
 
     // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (mounted) {
+        authEventVersion += 1;
         // Block recovery sessions from being treated as normal auth
         if (hasRecoverySession()) {
           setUser(null);
           setSession(null);
+          setLoading(false);
           return;
         }
+
+        if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setSession(null);
+          setLoading(false);
+          return;
+        }
+
         const nextUser = newSession?.user || null;
         // Token refresh emits a new session/user object with the same id.
         // Keep the previous user reference to avoid refetch cascades across the app.
@@ -32,15 +43,12 @@ export const useAuthState = () => {
         });
         setSession(newSession);
 
-        // Only set loading to false if we have a definitive session 
-        // OR if the getSession call below has already finished.
-        if (newSession?.user) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     });
 
     // Initial session check should be the definitive source for ending 'loading'
+    const initialAuthEventVersion = authEventVersion;
     supabase.auth.getSession()
       .then(({ data: { session: currentSession }, error: sessionError }) => {
         if (sessionError && mounted) {
@@ -48,6 +56,7 @@ export const useAuthState = () => {
         }
 
         if (mounted) {
+          if (authEventVersion !== initialAuthEventVersion) return;
           // Block recovery sessions from being treated as normal auth
           if (hasRecoverySession()) {
             setSession(null);

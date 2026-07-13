@@ -16,28 +16,39 @@ const VerifyEmail = () => {
     const [resending, setResending] = useState(false);
     const [verified, setVerified] = useState(false);
 
-    // Listen for auth state changes — auto-redirect when user verifies
     useEffect(() => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' && session) {
+        let redirectTimer: ReturnType<typeof setTimeout> | undefined;
+
+        const confirmVerification = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user?.email_confirmed_at && !verified) {
                 setVerified(true);
                 toast({
                     title: 'Email verified!',
                     description: 'Welcome to Esportra. Redirecting...',
                     duration: 3000,
                 });
-                setTimeout(() => navigate('/'), 1500);
+                redirectTimer = setTimeout(() => navigate('/'), 1500);
+            }
+        };
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+                void confirmVerification();
             }
         });
-        return () => subscription.unsubscribe();
-    }, [navigate, toast]);
+        return () => {
+            subscription.unsubscribe();
+            if (redirectTimer) clearTimeout(redirectTimer);
+        };
+    }, [navigate, toast, verified]);
 
     // Also poll for verification in case the auth event was missed
     useEffect(() => {
         if (!email || verified) return;
         const interval = setInterval(async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user?.email_confirmed_at) {
                 setVerified(true);
                 toast({
                     title: 'Email verified!',

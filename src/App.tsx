@@ -265,6 +265,7 @@ const AppContent = React.memo(() => {
                 <Route path="/auth/forgot-password" element={<ForgotPassword />} />
                 <Route path="/auth/verify-email" element={<VerifyEmail />} />
                 <Route path="/auth/reset-password" element={<ResetPassword />} />
+                <Route path="/auth/recovery" element={<ResetPassword />} />
                 <Route path="/set-password" element={<SetPassword />} />
                 <Route path="/suspended" element={<Suspended />} />
 
@@ -613,7 +614,9 @@ function CatalogBootstrapGate({ children }: { children: React.ReactNode }) {
   const { isReady, isLoading, isUnavailable } = useGameCatalogContext();
   const location = useLocation();
 
-  if (isChromelessPath(location.pathname)) return <>{children}</>;
+  if (isChromelessPath(location.pathname) || location.pathname.startsWith('/auth/')) {
+    return <>{children}</>;
+  }
 
   if (isLoading && !isReady) return <PremiumLoadingScreen />;
 
@@ -646,12 +649,16 @@ const App = () => {
 function RecoveryRouteGate() {
   const location = useLocation();
 
-  if (location.pathname === '/auth/reset-password') {
+  if (
+    location.pathname === '/auth/reset-password'
+    || location.pathname === '/auth/recovery'
+    || location.pathname === '/set-password'
+  ) {
     return (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <ResetPassword />
+        {location.pathname === '/set-password' ? <SetPassword /> : <ResetPassword />}
       </TooltipProvider>
     );
   }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -17,8 +18,7 @@ import {
     FormLabel,
     FormMessage,
 } from '@/components/ui/form';
-import { AlertCircle, Loader2, CheckCircle, Mail, ArrowLeft } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, CheckCircle, Mail, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthLayout from '@/components/auth/AuthLayout';
 
@@ -31,7 +31,6 @@ type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 const ForgotPassword = () => {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
 
     const form = useForm<ForgotPasswordFormValues>({
@@ -43,31 +42,18 @@ const ForgotPassword = () => {
 
     const handleSubmit = async (values: ForgotPasswordFormValues) => {
         setLoading(true);
-        setError(null);
 
         try {
             await supabase.auth.signOut({ scope: 'local' });
-            const { error: authError } = await supabase.auth.resetPasswordForEmail(
-                values.email,
-                { redirectTo: `${window.location.origin}/auth/reset-password` }
-            );
-
-            if (authError) throw authError;
-
+            await apiClient.post('/api/auth/recovery', { email: values.email, portal: 'main' });
+        } catch {
+            // Recovery requests deliberately use an identical response to prevent account enumeration.
+        } finally {
             setSuccess(true);
             toast({
-                title: "Reset link sent!",
-                description: "Please check your email for the password reset link.",
+                title: 'Check your email',
+                description: 'If an account exists for this address, a reset link will arrive shortly.',
             });
-        } catch (err: any) {
-            console.error("Forgot password error:", err);
-            setError(err.message);
-            toast({
-                title: "Error",
-                description: err.message,
-                variant: "destructive",
-            });
-        } finally {
             setLoading(false);
         }
     };
@@ -86,13 +72,6 @@ const ForgotPassword = () => {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
                     >
-                        {error && (
-                            <Alert variant="destructive" className="mb-6 bg-red-500/10 border-red-500/30">
-                                <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>{error}</AlertDescription>
-                            </Alert>
-                        )}
-
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
                                 <FormField
@@ -156,8 +135,7 @@ const ForgotPassword = () => {
                         </div>
                         <h2 className="text-2xl font-bold text-white mb-2">Check your email</h2>
                         <p className="text-white/60 mb-8 max-w-xs mx-auto text-balance">
-                            We've sent a password reset link to <span className="text-white font-medium">{form.getValues('email')}</span>.
-                            The link will expire in 1 hour.
+                            If an account exists for this address, a password reset link will arrive shortly.
                         </p>
                         <Button
                             asChild

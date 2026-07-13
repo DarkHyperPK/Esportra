@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -20,22 +20,10 @@ import { AlertCircle, Eye, EyeOff, Loader2, CheckCircle, Lock } from 'lucide-rea
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { motion, AnimatePresence } from 'framer-motion';
 import AuthLayout from '@/components/auth/AuthLayout';
-import { MfaTotpChallenge } from '@/components/auth/MfaTotpChallenge';
 import { usePasswordRecovery } from '@/hooks/usePasswordRecovery';
+import { passwordConfirmationSchema } from '@/schemas/password';
 
-const resetPasswordSchema = z.object({
-    password: z.string()
-        .min(8, "Password must be at least 8 characters")
-        .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-        .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-        .regex(/[0-9]/, "Password must contain at least one number"),
-    confirmPassword: z.string()
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-});
-
-type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+type ResetPasswordFormValues = z.infer<typeof passwordConfirmationSchema>;
 
 const ResetPassword = () => {
     const [loading, setLoading] = useState(false);
@@ -46,7 +34,7 @@ const ResetPassword = () => {
     const recovery = usePasswordRecovery();
 
     const form = useForm<ResetPasswordFormValues>({
-        resolver: zodResolver(resetPasswordSchema),
+        resolver: zodResolver(passwordConfirmationSchema),
         defaultValues: {
             password: '',
             confirmPassword: '',
@@ -81,8 +69,7 @@ const ResetPassword = () => {
         navigate('/auth/signin', { replace: true });
     };
 
-    const isChecking = recovery.status === 'checking-session' || recovery.status === 'checking-assurance';
-    const isMfaStep = recovery.status === 'awaiting-mfa' || recovery.status === 'verifying-mfa';
+    const isChecking = recovery.status === 'checking-session';
     const canResetPassword = recovery.status === 'ready' || recovery.status === 'updating-password';
 
     return (
@@ -97,15 +84,6 @@ const ResetPassword = () => {
                         <Loader2 className="h-5 w-5 animate-spin text-rose-500" />
                         Verifying recovery link...
                     </div>
-                ) : !success && isMfaStep ? (
-                    <MfaTotpChallenge
-                        factors={recovery.factors}
-                        selectedFactorId={recovery.selectedFactorId}
-                        isVerifying={recovery.status === 'verifying-mfa'}
-                        error={recovery.message}
-                        onSelectFactor={recovery.selectFactor}
-                        onVerify={recovery.verifyMfa}
-                    />
                 ) : !success && canResetPassword ? (
                     <motion.div
                         key="form"

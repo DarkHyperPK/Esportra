@@ -110,7 +110,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         // Ignore sign-out errors
       }
       resetClientSessionForAuthChange(queryClient);
-      navigate('/auth/login', { replace: true });
+      navigate('/auth/signin', { replace: true });
     };
 
     hub.on('NewNotification', onNewNotification);

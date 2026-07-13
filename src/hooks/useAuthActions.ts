@@ -230,7 +230,7 @@ export const useAuthActions = () => {
         title: 'Signed out',
         description: 'You have been successfully signed out.',
       });
-      navigate('/');
+      navigate('/auth/signin', { replace: true });
     }
   };
 
