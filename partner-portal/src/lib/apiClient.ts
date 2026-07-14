@@ -64,6 +64,25 @@ export const apiClient = {
     return res.json() as Promise<T>;
   },
 
+  async postWithToken<T>(path: string, token: string, body?: unknown): Promise<T> {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      let errorBody: unknown;
+      try { errorBody = await response.json(); } catch { errorBody = await response.text(); }
+      throw new ApiError(response.status, errorBody, `API ${response.status}: ${path}`);
+    }
+
+    return response.json() as Promise<T>;
+  },
+
   async put<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetchWithAuth(path, {
       method: 'PUT',

@@ -24,7 +24,7 @@ const StepIdentity = ({ data, sponsorId, onSave, saving }: StepIdentityProps) =>
                 })
                 .catch(() => {});
         }
-    }, [sponsorId]);
+    }, [companyName, sponsorId]);
 
     return (
         <div className="space-y-8">

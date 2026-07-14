@@ -1,28 +1,25 @@
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { useEffect, useState, createContext, useContext } from 'react';
+import { useEffect, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { LoginVerifyContext } from '@/contexts/LoginVerifyContext';
 
-// Flag to prevent AuthLayout from redirecting during login verification
-export const LoginVerifyContext = createContext<{
-    isVerifying: boolean;
-    setIsVerifying: (v: boolean) => void;
-}>({ isVerifying: false, setIsVerifying: () => {} });
-
-export const useLoginVerify = () => useContext(LoginVerifyContext);
+const RECOVERY_KEY = 'partner_password_recovery';
 
 const AuthLayout = () => {
-    const [session, setSession] = useState<any>(null);
+    const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const [isVerifying, setIsVerifying] = useState(false);
     const location = useLocation();
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user }, error }) => {
+        supabase.auth.getUser().then(async ({ data: { user }, error }) => {
             if (error || !user) {
                 if (user || error) supabase.auth.signOut();
                 setSession(null);
             } else {
-                setSession(user);
+                const { data: { session } } = await supabase.auth.getSession();
+                setSession(session);
             }
             setLoading(false);
         });
@@ -43,7 +40,12 @@ const AuthLayout = () => {
     }
 
     // Don't redirect while Login is verifying sponsor account
-    if (session && location.pathname !== '/set-password' && !isVerifying) {
+    if (
+        session
+        && location.pathname !== '/set-password'
+        && sessionStorage.getItem(RECOVERY_KEY) !== 'true'
+        && !isVerifying
+    ) {
         return <Navigate to="/dashboard" replace />;
     }
 

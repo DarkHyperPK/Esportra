@@ -15,7 +15,7 @@ interface SponsorUpdate {
     detail_deck_url?: string;
 }
 
-export const usePartnerMutations = (_sponsorId: string) => {
+export const usePartnerMutations = () => {
     const queryClient = useQueryClient();
     const { toast } = useToast();
 

@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { Loader2, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { getWebsiteAssetUrl } from '@/lib/storage';
-import { useLoginVerify } from '@/layouts/AuthLayout';
+import { useLoginVerify } from '@/contexts/LoginVerifyContext';
+import { clearInvitationToken, readInvitationToken } from '@/lib/partnerInvitation';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -20,7 +21,10 @@ const Login = () => {
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
-        if (params.get('success') === 'password_updated') {
+        if (params.get('accepted') === '1') {
+            setSuccessMessage('Invitation accepted. Sign in to access the partner portal.');
+            window.history.replaceState({}, '', '/login');
+        } else if (params.get('success') === 'password_updated') {
             setSuccessMessage('Password successfully updated. Please sign in with your new password.');
             // Clean URL
             window.history.replaceState({}, '', '/login');
@@ -47,11 +51,35 @@ const Login = () => {
 
             if (error) throw error;
 
+            const invitationToken = readInvitationToken();
+            if (user && invitationToken) {
+                try {
+                    await apiClient.post('/api/sponsor-invitations/accept', { token: invitationToken });
+                    clearInvitationToken();
+                    try {
+                        await supabase.auth.signOut({ scope: 'local' });
+                    } catch {
+                        // Membership was committed; local cleanup is best effort.
+                    }
+                    window.history.replaceState({}, '', '/login');
+                    setSuccessMessage('Invitation accepted. Sign in to access the partner portal.');
+                    setIsVerifying(false);
+                    setLoading(false);
+                    return;
+                } catch {
+                    await supabase.auth.signOut({ scope: 'local' });
+                    setError('Sign in with the email address that received the invitation.');
+                    setIsVerifying(false);
+                    setLoading(false);
+                    return;
+                }
+            }
+
             if (user) {
                 // Verify sponsor account via .NET API
                 try {
                     await apiClient.get('/api/sponsors/me');
-                } catch (apiErr: unknown) {
+                } catch {
                     // Sign out without triggering navigation — just clear the session
                     await supabase.auth.signOut({ scope: 'local' });
                     for (const key of Object.keys(localStorage)) {
@@ -59,8 +87,7 @@ const Login = () => {
                             localStorage.removeItem(key);
                         }
                     }
-                    const detail = apiErr instanceof Error ? apiErr.message : String(apiErr);
-                    setError(`Sponsor verification failed: ${detail}`);
+                    setError('This account cannot access the partner portal.');
                     setLoading(false);
                     setIsVerifying(false);
                     return;
@@ -70,9 +97,9 @@ const Login = () => {
             setIsVerifying(false);
             // Redirect to dashboard explicitly
             navigate('/dashboard');
-        } catch (err: unknown) {
+        } catch {
             setIsVerifying(false);
-            setError(err instanceof Error ? err.message : 'Login failed');
+            setError('Unable to sign in. Check your email and password, then try again.');
             setLoading(false);
         }
     };
@@ -83,13 +110,13 @@ const Login = () => {
         setError('');
 
         try {
-            const partnerUrl = import.meta.env.VITE_PARTNER_URL || window.location.origin;
-            await apiClient.post('/api/auth/recovery', { email, redirect_url: `${partnerUrl}/set-password` });
+            await apiClient.post('/api/auth/recovery', { email, portal: 'partner' });
 
             setResetSent(true);
-        } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : 'Failed to send reset email');
+        } catch {
+            // Recovery responses intentionally remain indistinguishable.
         } finally {
+            setResetSent(true);
             setLoading(false);
         }
     };

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -17,6 +17,7 @@ const OnboardingWizard = () => {
         saveStep,
         completeOnboarding,
     } = useOnboarding();
+    const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
 
     useEffect(() => {
         if (!isLoading && isCompleted) {
@@ -33,21 +34,10 @@ const OnboardingWizard = () => {
     }
 
     const handleSaveBranding = async (stepData: Record<string, string | boolean | null>) => {
+        if (!hasAcceptedTerms) return;
         await saveStep.mutateAsync({ stepName: 'branding', stepData, nextStep: 1 });
 
-        let ip = 'unknown';
-        try {
-            const res = await fetch('https://api.ipify.org?format=json');
-            const data = await res.json();
-            ip = data.ip;
-        } catch {
-            // IP lookup is optional
-        }
-
-        await completeOnboarding.mutateAsync({
-            agreed_at: new Date().toISOString(),
-            ip,
-        });
+        await completeOnboarding.mutateAsync();
 
         navigate('/dashboard', { replace: true });
     };
@@ -92,11 +82,21 @@ const OnboardingWizard = () => {
                             exit={{ opacity: 0, x: -20 }}
                             transition={{ duration: 0.3 }}
                         >
+                            <label className="mt-6 flex items-start gap-3 text-sm text-zinc-400">
+                                <input
+                                    type="checkbox"
+                                    checked={hasAcceptedTerms}
+                                    onChange={(event) => setHasAcceptedTerms(event.target.checked)}
+                                    className="mt-1"
+                                />
+                                I agree to the Esportra Partner Portal terms (version 2026-07).
+                            </label>
                             <StepBranding
                                 data={meta?.steps?.branding ?? {}}
                                 sponsorId={sponsorId || ''}
                                 onSave={handleSaveBranding}
                                 saving={saveStep.isPending || completeOnboarding.isPending}
+                                canContinue={hasAcceptedTerms}
                             />
                         </motion.div>
                     </AnimatePresence>

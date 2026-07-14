@@ -46,10 +46,10 @@ export const useOnboarding = () => {
     });
 
     const completeOnboarding = useMutation({
-        mutationFn: async (legalData: { agreed_at: string; ip: string }) => {
+        mutationFn: async () => {
             await apiClient.post('/api/sponsors/me/onboarding/complete', {
-                agreedAt: legalData.agreed_at,
-                ip: legalData.ip,
+                acceptLegalTerms: true,
+                termsVersion: '2026-07',
             });
         },
         onSuccess: () => {
