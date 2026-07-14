@@ -8,16 +8,19 @@ export interface StepBrandingProps {
     onSave: (d: Record<string, string | null>) => void;
     onBack?: () => void;
     saving: boolean;
+    canContinue?: boolean;
 }
 
-const StepBranding = ({ data, sponsorId, onSave, onBack, saving }: StepBrandingProps) => {
+const StepBranding = ({ data, sponsorId, onSave, onBack, saving, canContinue = true }: StepBrandingProps) => {
     const [logoUrl, setLogoUrl] = useState<string | null>(data?.logo_url || null);
     const [uploading, setUploading] = useState(false);
     const [dragOver, setDragOver] = useState(false);
+    const [uploadError, setUploadError] = useState('');
 
     const handleFileUpload = async (file: File) => {
         if (!file.type.startsWith('image/')) return;
         setUploading(true);
+        setUploadError('');
 
         try {
             const formData = new FormData();
@@ -28,9 +31,10 @@ const StepBranding = ({ data, sponsorId, onSave, onBack, saving }: StepBrandingP
             const result = await apiClient.upload<{ url: string }>('/api/storage/upload', formData);
             setLogoUrl(result.url);
 
-            await apiClient.put('/api/sponsors/me', { logoUrl: result.url });
+            await apiClient.put('/api/sponsors/me', { logo_url: result.url });
         } catch {
-            // Upload error handled silently — user sees no logo appear
+            setLogoUrl(null);
+            setUploadError('Logo upload failed. Please try again.');
         } finally {
             setUploading(false);
         }
@@ -53,6 +57,8 @@ const StepBranding = ({ data, sponsorId, onSave, onBack, saving }: StepBrandingP
                     Your logo will appear across the Esportra platform. For best results, use a transparent PNG or SVG.
                 </p>
             </div>
+
+            {uploadError && <p role="alert" className="text-sm text-rose-400">{uploadError}</p>}
 
             <div
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -115,7 +121,7 @@ const StepBranding = ({ data, sponsorId, onSave, onBack, saving }: StepBrandingP
                 )}
                 <button
                     onClick={() => onSave({ logo_url: logoUrl })}
-                    disabled={saving}
+                    disabled={saving || !canContinue}
                     className={`${onBack ? 'flex-[2]' : 'flex-1'} py-4 bg-rose-500 hover:bg-rose-600 disabled:opacity-40 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-wider`}
                 >
                     {saving ? (

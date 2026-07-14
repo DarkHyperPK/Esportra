@@ -19,7 +19,7 @@ interface EditProfileModalProps {
 }
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, sponsor }) => {
-    const { updateProfile } = usePartnerMutations(sponsor.id);
+    const { updateProfile } = usePartnerMutations();
     const [formData, setFormData] = useState({
         website_url: sponsor.website_url,
         tagline: sponsor.tagline || '',

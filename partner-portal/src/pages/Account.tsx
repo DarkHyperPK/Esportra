@@ -9,7 +9,7 @@ import { normalizeTier, TIER_FEATURES } from '@/utils/permissions';
 const Account = () => {
     const { data } = usePartnerData();
     const sponsor = data?.sponsor;
-    const { updateProfile } = usePartnerMutations(sponsor?.id || '');
+    const { updateProfile } = usePartnerMutations();
 
     const [formData, setFormData] = useState({ name: '', website_url: '' });
     const [userEmail, setUserEmail] = useState('');

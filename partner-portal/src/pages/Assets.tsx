@@ -17,7 +17,7 @@ const Assets = () => {
     const { data, refetch } = usePartnerData();
     const sponsor = data?.sponsor;
     const features = getTierFeatures(sponsor?.tier);
-    const { updateProfile } = usePartnerMutations(sponsor?.id || '');
+    const { updateProfile } = usePartnerMutations();
 
     const [uploading, setUploading] = useState<'logo' | 'banner' | 'gallery' | 'deck' | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);

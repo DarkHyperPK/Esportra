@@ -2,11 +2,15 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { lazy, Suspense } from 'react';
 import Login from './pages/Login';
 import SetPassword from './pages/SetPassword';
+import InviteAcceptance from './pages/InviteAcceptance';
+import Recovery from './pages/Recovery';
+import InvitePasswordSetup from './pages/InvitePasswordSetup';
 import Dashboard from './pages/Dashboard';
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Toaster from './components/Toaster';
+import InvitationCallbackHandoff from './components/InvitationCallbackHandoff';
 
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Assets = lazy(() => import('./pages/Assets'));
@@ -22,8 +26,12 @@ const PageLoader = () => (
 function App() {
   return (
     <Router>
+      <InvitationCallbackHandoff />
       <Suspense fallback={<PageLoader />}>
         <Routes>
+          <Route path="/invite/accept" element={<InviteAcceptance />} />
+          <Route path="/invite/setup-password" element={<InvitePasswordSetup />} />
+          <Route path="/auth/recovery" element={<Recovery />} />
           {/* Auth Routes */}
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<Login />} />
