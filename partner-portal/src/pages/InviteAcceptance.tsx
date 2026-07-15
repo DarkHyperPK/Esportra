@@ -26,6 +26,7 @@ export default function InviteAcceptance() {
 
     storeInvitationToken(token);
     const authTokenHash = searchParams.get('auth_token_hash');
+    const authType = (searchParams.get('auth_type') ?? 'invite') as 'invite' | 'magiclink';
     let isActive = true;
 
     const continueWithSession = async (preview: InvitationPreview) => {
@@ -65,7 +66,7 @@ export default function InviteAcceptance() {
           setMessage('Setting up your account…');
           const { error } = await supabase.auth.verifyOtp({
             token_hash: authTokenHash,
-            type: 'invite',
+            type: authType,
           });
           if (error) {
             setMessage('This invitation link has expired. Ask your Esportra contact for a new invitation.');
