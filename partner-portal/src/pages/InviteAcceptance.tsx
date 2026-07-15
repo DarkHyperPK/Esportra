@@ -25,6 +25,7 @@ export default function InviteAcceptance() {
     }
 
     storeInvitationToken(token);
+    const authTokenHash = searchParams.get('auth_token_hash');
     let isActive = true;
 
     const continueWithSession = async (preview: InvitationPreview) => {
@@ -54,8 +55,23 @@ export default function InviteAcceptance() {
     const initialize = async () => {
       try {
         const preview = await apiClient.post<InvitationPreview>('/api/sponsor-invitations/preview', { token });
+
         if (!preview.requiresPasswordSetup) {
           navigate('/login?invite=1', { replace: true });
+          return null;
+        }
+
+        if (authTokenHash) {
+          setMessage('Setting up your account…');
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: authTokenHash,
+            type: 'invite',
+          });
+          if (error) {
+            setMessage('This invitation link has expired. Ask your Esportra contact for a new invitation.');
+            return null;
+          }
+          await continueWithSession(preview);
           return null;
         }
 
