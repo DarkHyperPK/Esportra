@@ -4,7 +4,9 @@ import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import {
   clearInvitationPasswordSetup,
+  clearInvitationToken,
   hasInvitationPasswordSetup,
+  readInvitationToken,
 } from '@/lib/partnerInvitation';
 
 export default function InvitePasswordSetup() {
@@ -42,12 +44,16 @@ export default function InvitePasswordSetup() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       await apiClient.postWithToken('/api/auth/password-reset-completed', session.access_token);
+
+      const invitationToken = readInvitationToken();
+      if (invitationToken) {
+        await apiClient.post('/api/sponsor-invitations/accept', { token: invitationToken });
+        clearInvitationToken();
+      }
+
       await supabase.auth.signOut({ scope: 'local' });
       clearInvitationPasswordSetup();
-      setMessage('Password set. Please wait a moment before signing in.');
-      window.setTimeout(() => {
-        navigate('/login?success=password_updated', { replace: true });
-      }, 2_500);
+      navigate('/login?accepted=1', { replace: true });
     } catch {
       setMessage('Unable to set your password. Please try again.');
     } finally {
