@@ -1,5 +1,5 @@
 import { Trophy, Swords, Medal, LayoutGrid, Layers } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { GhostButton, SettingsButton } from '@/components/ui/app-buttons';
 import { cn } from '@/lib/utils';
 
 export type FilterState =
@@ -24,6 +24,12 @@ interface BracketSidebarFilterProps {
     className?: string;
 }
 
+const nativeFilterBase =
+    'inline-flex w-full items-center font-mono text-xs font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25';
+
+const nativeFilterInactive =
+    'text-zinc-400 hover:text-zinc-200 hover:bg-white/5';
+
 export const BracketSidebarFilter: React.FC<BracketSidebarFilterProps> = ({
     winnersRounds,
     losersRounds,
@@ -37,7 +43,7 @@ export const BracketSidebarFilter: React.FC<BracketSidebarFilterProps> = ({
     className
 }) => {
     return (
-        <div className={cn("w-64 flex-shrink-0 bg-zinc-950/50 border-r border-white/5 flex flex-col h-full overflow-y-auto", className)}>
+        <div className={cn("w-64 flex-shrink-0 bg-zinc-950/50 border-r border-white/5 flex flex-col h-full overflow-y-auto overscroll-contain", className)} data-lenis-prevent>
 
             {/* Stage Selection Section */}
             {stages && stages.length > 0 && onStageSelect && (
@@ -51,12 +57,13 @@ export const BracketSidebarFilter: React.FC<BracketSidebarFilterProps> = ({
                             const isActive = stage.id === selectedStageId;
                             const hasBracket = !!versionsMap[stage.id];
                             return (
-                                <Button
+                                <button
                                     key={stage.id}
-                                    variant={isActive ? "secondary" : "ghost"}
+                                    type="button"
                                     onClick={() => onStageSelect(stage.id)}
                                     className={cn(
                                         "w-full justify-between font-heading text-sm h-auto py-3 px-3.5 mb-2 transition-all duration-300 rounded-lg group",
+                                        nativeFilterBase,
                                         isActive
                                             ? "bg-gradient-to-r from-rose-600/20 to-rose-900/10 text-white shadow-[0_0_20px_rgba(225,29,72,0.15)] border border-rose-500/20"
                                             : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/5"
@@ -69,7 +76,7 @@ export const BracketSidebarFilter: React.FC<BracketSidebarFilterProps> = ({
                                                 ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)] scale-110"
                                                 : "bg-zinc-700 group-hover:bg-zinc-500"
                                         )} />
-                                        <span className="truncate font-medium">{stage.name}</span>
+                                        <span className="truncate font-medium normal-case">{stage.name}</span>
                                     </div>
 
                                     {!hasBracket && (
@@ -77,7 +84,7 @@ export const BracketSidebarFilter: React.FC<BracketSidebarFilterProps> = ({
                                             Empty
                                         </span>
                                     )}
-                                </Button>
+                                </button>
                             );
                         })}
                     </div>
@@ -87,19 +94,23 @@ export const BracketSidebarFilter: React.FC<BracketSidebarFilterProps> = ({
             <div className="p-4 border-b border-white/5">
                 <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Filters</h3>
 
-                <Button
-                    variant="ghost"
-                    className={cn(
-                        "w-full justify-start gap-3 mb-2",
-                        activeFilter.type === 'all'
-                            ? "bg-white/10 text-white"
-                            : "text-zinc-400 hover:text-white hover:bg-white/5"
-                    )}
-                    onClick={() => onFilterChange({ type: 'all' })}
-                >
-                    <LayoutGrid className="w-4 h-4" />
-                    All Matches
-                </Button>
+                {activeFilter.type === 'all' ? (
+                    <SettingsButton
+                        className="w-full justify-start gap-3 mb-2 normal-case"
+                        onClick={() => onFilterChange({ type: 'all' })}
+                    >
+                        <LayoutGrid className="w-4 h-4" />
+                        All Matches
+                    </SettingsButton>
+                ) : (
+                    <GhostButton
+                        className="w-full justify-start gap-3 mb-2 normal-case"
+                        onClick={() => onFilterChange({ type: 'all' })}
+                    >
+                        <LayoutGrid className="w-4 h-4" />
+                        All Matches
+                    </GhostButton>
+                )}
             </div>
 
             <div className="p-4 space-y-6">
@@ -111,22 +122,25 @@ export const BracketSidebarFilter: React.FC<BracketSidebarFilterProps> = ({
                             Winners Bracket
                         </div>
                         <div className="space-y-1">
-                            {winnersRounds.map((round) => (
-                                <Button
-                                    key={`w-${round}`}
-                                    variant="ghost"
-                                    size="sm"
-                                    className={cn(
-                                        "w-full justify-start pl-8 text-xs h-8",
-                                        activeFilter.type === 'winners' && activeFilter.round === round
-                                            ? "bg-yellow-500/10 text-yellow-500 border-r-2 border-yellow-500 rounded-r-none"
-                                            : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
-                                    )}
-                                    onClick={() => onFilterChange({ type: 'winners', round })}
-                                >
-                                    Round {round}
-                                </Button>
-                            ))}
+                            {winnersRounds.map((round) => {
+                                const isActive = activeFilter.type === 'winners' && activeFilter.round === round;
+                                return (
+                                    <button
+                                        key={`w-${round}`}
+                                        type="button"
+                                        className={cn(
+                                            nativeFilterBase,
+                                            "justify-start pl-8 h-8 normal-case",
+                                            isActive
+                                                ? "bg-yellow-500/10 text-yellow-500 border-r-2 border-yellow-500 rounded-r-none"
+                                                : nativeFilterInactive
+                                        )}
+                                        onClick={() => onFilterChange({ type: 'winners', round })}
+                                    >
+                                        Round {round}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
@@ -139,22 +153,25 @@ export const BracketSidebarFilter: React.FC<BracketSidebarFilterProps> = ({
                             Losers Bracket
                         </div>
                         <div className="space-y-1">
-                            {losersRounds.map((round) => (
-                                <Button
-                                    key={`l-${round}`}
-                                    variant="ghost"
-                                    size="sm"
-                                    className={cn(
-                                        "w-full justify-start pl-8 text-xs h-8",
-                                        activeFilter.type === 'losers' && activeFilter.round === round
-                                            ? "bg-red-500/10 text-red-500 border-r-2 border-red-500 rounded-r-none"
-                                            : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
-                                    )}
-                                    onClick={() => onFilterChange({ type: 'losers', round })}
-                                >
-                                    Round {round}
-                                </Button>
-                            ))}
+                            {losersRounds.map((round) => {
+                                const isActive = activeFilter.type === 'losers' && activeFilter.round === round;
+                                return (
+                                    <button
+                                        key={`l-${round}`}
+                                        type="button"
+                                        className={cn(
+                                            nativeFilterBase,
+                                            "justify-start pl-8 h-8 normal-case",
+                                            isActive
+                                                ? "bg-red-500/10 text-red-500 border-r-2 border-red-500 rounded-r-none"
+                                                : nativeFilterInactive
+                                        )}
+                                        onClick={() => onFilterChange({ type: 'losers', round })}
+                                    >
+                                        Round {round}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
@@ -166,19 +183,19 @@ export const BracketSidebarFilter: React.FC<BracketSidebarFilterProps> = ({
                             <Medal className="w-3 h-3" />
                             Championship
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="sm"
+                        <button
+                            type="button"
                             className={cn(
-                                "w-full justify-start pl-8 text-xs h-8",
+                                nativeFilterBase,
+                                "justify-start pl-8 h-8 normal-case",
                                 activeFilter.type === 'final'
                                     ? "bg-purple-500/10 text-purple-500 border-r-2 border-purple-500 rounded-r-none"
-                                    : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
+                                    : nativeFilterInactive
                             )}
                             onClick={() => onFilterChange({ type: 'final' })}
                         >
                             Grand Finals
-                        </Button>
+                        </button>
                     </div>
                 )}
             </div>

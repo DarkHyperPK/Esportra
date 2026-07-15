@@ -455,7 +455,7 @@ export default function LicenseManagement() {
 
       {/* ── User Detail Dialog ─────────────────────────────────────────────── */}
       <Dialog open={!!detailUser || detailLoading} onOpenChange={(open) => { if (!open) setDetailUser(null); }}>
-        <DialogContent className="bg-[#121214] border-zinc-800 text-white max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="bg-[#121214] border-zinc-800 text-white max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
           <DialogHeader className="sr-only">
             <DialogTitle>User details</DialogTitle>
           </DialogHeader>

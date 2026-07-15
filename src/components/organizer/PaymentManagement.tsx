@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, Clock, Eye, DollarSign, AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { CancelButton, DangerButton, OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -16,6 +18,7 @@ import {
 } from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
+import { resolvePaymentReceiptUrl } from '@/lib/storage';
 import type { DashboardParticipant } from '@/hooks/useTournamentDashboard';
 
 interface PaymentManagementProps {
@@ -36,7 +39,40 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
   const [rejectTarget, setRejectTarget] = useState<DashboardParticipant | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [receiptViewUrl, setReceiptViewUrl] = useState<string | null>(null);
-  const [loadingReceipt, setLoadingReceipt] = useState(false);
+  const [receiptMimeType, setReceiptMimeType] = useState<string | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptParticipant, setReceiptParticipant] = useState<DashboardParticipant | null>(null);
+  const receiptBlobUrlRef = React.useRef<string | null>(null);
+  const receiptFallbackAttemptedRef = React.useRef(false);
+
+  const closeReceiptDialog = () => {
+    if (receiptBlobUrlRef.current) {
+      URL.revokeObjectURL(receiptBlobUrlRef.current);
+      receiptBlobUrlRef.current = null;
+    }
+    setReceiptViewUrl(null);
+    setReceiptMimeType(null);
+    setReceiptLoading(false);
+    setReceiptParticipant(null);
+    receiptFallbackAttemptedRef.current = false;
+  };
+
+  const loadReceiptViaApi = async (participant: DashboardParticipant) => {
+    try {
+      const blob = await apiClient.getBlob(`/api/tournaments/${tournamentId}/participants/${participant.id}/receipt`);
+      if (receiptBlobUrlRef.current) {
+        URL.revokeObjectURL(receiptBlobUrlRef.current);
+      }
+      const objectUrl = URL.createObjectURL(blob);
+      receiptBlobUrlRef.current = objectUrl;
+      setReceiptMimeType(blob.type || null);
+      setReceiptViewUrl(objectUrl);
+    } catch {
+      toast({ title: 'Could not load receipt', variant: 'destructive' });
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
 
   const paidParticipants = useMemo(
     () => participants.filter(p => p.payment_status && p.payment_status !== 'not_required'),
@@ -105,16 +141,31 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
     }
   };
 
-  const viewReceipt = async (participant: DashboardParticipant) => {
-    setLoadingReceipt(true);
-    try {
-      const res = await apiClient.get<{ url: string }>(`/api/tournaments/${tournamentId}/participants/${participant.id}/receipt`);
-      setReceiptViewUrl(res.url);
-    } catch {
-      toast({ title: 'Could not load receipt', variant: 'destructive' });
-    } finally {
-      setLoadingReceipt(false);
+  const viewReceipt = (participant: DashboardParticipant) => {
+    const url = resolvePaymentReceiptUrl(participant.payment_receipt_url);
+    if (!url) {
+      toast({ title: 'No receipt available', variant: 'destructive' });
+      return;
     }
+    if (receiptBlobUrlRef.current) {
+      URL.revokeObjectURL(receiptBlobUrlRef.current);
+      receiptBlobUrlRef.current = null;
+    }
+    receiptFallbackAttemptedRef.current = false;
+    setReceiptParticipant(participant);
+    setReceiptMimeType(url.toLowerCase().includes('.pdf') ? 'application/pdf' : null);
+    setReceiptLoading(true);
+    setReceiptViewUrl(url);
+  };
+
+  const handleReceiptLoadError = () => {
+    if (receiptFallbackAttemptedRef.current || !receiptParticipant) {
+      setReceiptLoading(false);
+      toast({ title: 'Could not load receipt', variant: 'destructive' });
+      return;
+    }
+    receiptFallbackAttemptedRef.current = true;
+    void loadReceiptViaApi(receiptParticipant);
   };
 
   React.useEffect(() => {
@@ -150,16 +201,18 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
             </CardTitle>
             <div className="flex gap-2 flex-wrap">
               {(['pending', 'approved', 'rejected', 'all'] as PaymentFilter[]).map(f => (
-                <Button
+                <button
+                  type="button"
                   key={f}
-                  size="sm"
-                  variant={filter === f ? 'default' : 'outline'}
                   onClick={() => setFilter(f)}
-                  className={filter === f ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'border-zinc-700 text-zinc-400 hover:text-white'}
+                  className={cn(
+                    buttonVariants({ variant: filter === f ? 'default' : 'outline', size: 'sm' }),
+                    filter === f ? 'bg-rose-600 hover:bg-rose-700 text-white' : 'border-zinc-700 text-zinc-400 hover:text-white',
+                  )}
                 >
                   {f.charAt(0).toUpperCase() + f.slice(1)}
                   {f !== 'all' && <span className="ml-1 text-xs opacity-70">({counts[f]})</span>}
-                </Button>
+                </button>
               ))}
             </div>
           </div>
@@ -187,7 +240,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                             alt=""
                             loading="lazy"
                             decoding="async"
-                            fetchPriority="low"
+                            fetchpriority="low"
                             className="w-10 h-10 rounded-lg object-cover border border-white/10"
                           />
                         ) : (
@@ -211,21 +264,26 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                     {/* Receipt + actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {p.payment_receipt_url && (
-                        <Button size="sm" variant="outline" onClick={() => viewReceipt(p)} disabled={loadingReceipt} className="border-zinc-700 text-zinc-400 hover:text-white gap-1">
+                        <OutlineButton type="button" size="sm" onClick={() => viewReceipt(p)} className="gap-1">
                           <Eye className="w-3.5 h-3.5" /> Receipt
-                        </Button>
+                        </OutlineButton>
                       )}
                       {!p.payment_receipt_url && p.payment_status === 'pending' && (
                         <span className="text-xs text-amber-500 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> No receipt</span>
                       )}
                       {p.payment_status === 'pending' && (
                         <>
-                          <Button size="sm" onClick={() => handleApprove(p)} disabled={processingId === p.id} className="bg-green-600 hover:bg-green-700 text-white gap-1">
+                          <SuccessButton size="sm" onClick={() => handleApprove(p)} disabled={processingId === p.id} className="gap-1">
                             <CheckCircle className="w-3.5 h-3.5" /> Approve
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => openRejectDialog(p)} disabled={processingId === p.id} className="border-red-500/50 text-red-400 hover:bg-red-500/10 gap-1">
+                          </SuccessButton>
+                          <button
+                            type="button"
+                            onClick={() => openRejectDialog(p)}
+                            disabled={processingId === p.id}
+                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'border-red-500/50 text-red-400 hover:bg-red-500/10 gap-1')}
+                          >
                             <XCircle className="w-3.5 h-3.5" /> Reject
-                          </Button>
+                          </button>
                         </>
                       )}
                       {p.payment_status === 'rejected' && p.payment_rejection_reason && (
@@ -288,20 +346,37 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
       </Card>
 
       {/* Receipt Viewer Dialog */}
-      <Dialog open={!!receiptViewUrl} onOpenChange={() => setReceiptViewUrl(null)}>
+      <Dialog open={!!receiptViewUrl} onOpenChange={(open) => { if (!open) closeReceiptDialog(); }}>
         <DialogContent className="max-w-2xl bg-[#0a0a0c] border border-white/10">
           <DialogHeader>
             <DialogTitle className="text-white">Payment Receipt</DialogTitle>
           </DialogHeader>
           {receiptViewUrl && (
-            <div className="flex items-center justify-center max-h-[70vh] overflow-auto">
-              <img
-                src={receiptViewUrl}
-                alt="Payment Receipt"
-                loading="lazy"
-                decoding="async"
-                className="max-w-full max-h-[65vh] object-contain rounded-lg"
-              />
+            <div className="relative flex items-center justify-center max-h-[70vh] overflow-auto min-h-[200px]">
+              {receiptLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                  <Clock className="w-8 h-8 text-zinc-400 animate-pulse" />
+                </div>
+              )}
+              {receiptMimeType === 'application/pdf' ? (
+                <iframe
+                  src={receiptViewUrl}
+                  title="Payment Receipt"
+                  className="w-full h-[65vh] rounded-lg border border-white/10"
+                  onLoad={() => setReceiptLoading(false)}
+                  onError={handleReceiptLoadError}
+                />
+              ) : (
+                <img
+                  src={receiptViewUrl}
+                  alt="Payment Receipt"
+                  loading="eager"
+                  decoding="async"
+                  className="max-w-full max-h-[65vh] object-contain rounded-lg"
+                  onLoad={() => setReceiptLoading(false)}
+                  onError={handleReceiptLoadError}
+                />
+              )}
             </div>
           )}
         </DialogContent>
@@ -325,10 +400,10 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
             rows={3}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectDialogOpen(false)} className="border-zinc-700 text-zinc-400">Cancel</Button>
-            <Button onClick={handleReject} disabled={processingId === rejectTarget?.id} className="bg-red-600 hover:bg-red-700 text-white">
+            <CancelButton type="button" onClick={() => setRejectDialogOpen(false)}>Cancel</CancelButton>
+            <DangerButton onClick={handleReject} disabled={processingId === rejectTarget?.id}>
               Reject Payment
-            </Button>
+            </DangerButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

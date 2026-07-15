@@ -15,6 +15,9 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { readGhostModeSession } from '@/lib/ghostModeSession';
+import { clearUserBrowserStorage } from '@/lib/resetClientSession';
+import { type ApiErrorContext, getApiErrorFallback } from '@/utils/apiErrorFallbacks';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 if (!API_BASE_URL) {
@@ -24,6 +27,22 @@ if (!API_BASE_URL) {
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1_000;
 const MAX_JITTER_MS = 500;
+
+function isAuthOrSuspendedRoute(pathname: string): boolean {
+  return pathname === '/suspended' || pathname.startsWith('/auth/');
+}
+
+function scheduleSuspendedRedirect(): void {
+  if (typeof window === 'undefined') return;
+
+  // Defer so in-flight lazy chunks (e.g. SignIn.tsx) are not aborted mid-fetch.
+  window.setTimeout(() => {
+    const pathname = window.location.pathname;
+    if (!isAuthOrSuspendedRoute(pathname)) {
+      window.location.assign('/suspended');
+    }
+  }, 0);
+}
 
 // ── Response wrapper ──────────────────────────────────────────────────────────
 
@@ -43,9 +62,23 @@ type ApiErrorBody = {
   message?: string;
   detail?: string;
   title?: string;
+  code?: string;
   traceId?: string;
   trace_id?: string;
+  errors?: string[] | Record<string, string[]>;
 };
+
+function formatErrorsField(errors: ApiErrorBody['errors']): string | null {
+  if (!errors) return null;
+  if (Array.isArray(errors)) {
+    const messages = errors.filter(Boolean);
+    return messages.length > 0 ? messages.join('; ') : null;
+  }
+  const messages = Object.values(errors)
+    .flat()
+    .filter(Boolean);
+  return messages.length > 0 ? messages.join('; ') : null;
+}
 
 function readApiErrorBody(body: unknown): ApiErrorBody {
   if (body && typeof body === 'object') return body as ApiErrorBody;
@@ -59,7 +92,13 @@ function buildApiErrorMessage(
   fallback: string,
 ): string {
   const parsed = readApiErrorBody(body);
-  const message = parsed.message || parsed.error || parsed.detail || parsed.title || fallback;
+  const errorsField = formatErrorsField(parsed.errors);
+  const message = errorsField
+    || parsed.message
+    || parsed.error
+    || parsed.detail
+    || parsed.title
+    || fallback;
   const traceId = parsed.traceId || parsed.trace_id;
 
   if (traceId) {
@@ -69,13 +108,32 @@ function buildApiErrorMessage(
   return message || `Request failed (${status}).`;
 }
 
+export type GetApiErrorMessageOptions = {
+  context?: ApiErrorContext;
+  fallback?: string;
+};
+
+function resolveApiErrorFallback(options?: string | GetApiErrorMessageOptions): string {
+  if (typeof options === 'string') return options;
+  if (options?.fallback) return options.fallback;
+  return getApiErrorFallback(options?.context ?? 'generic');
+}
+
 export function getApiErrorMessage(
   error: unknown,
-  fallback = 'Something went wrong. Please try again.',
+  options?: string | GetApiErrorMessageOptions,
 ): string {
+  const fallback = resolveApiErrorFallback(options);
+
   if (error instanceof ApiError) {
     const body = readApiErrorBody(error.body);
-    const message = body.message || body.error || body.detail || body.title || fallback;
+    const errorsField = formatErrorsField(body.errors);
+    const message = errorsField
+      || body.message
+      || body.error
+      || body.detail
+      || body.title
+      || fallback;
     const traceId = body.traceId || body.trace_id;
     return traceId
       ? `${message} If this keeps happening, report it with reference ${traceId}.`
@@ -96,10 +154,16 @@ const inflightGets = new Map<string, Promise<unknown>>();
 
 // ── Internal fetch with auth header + 429 retry ─────────────────────────────
 
+type FetchOptions = {
+  overrideToken?: string;
+  skipGhostMode?: boolean;
+};
+
 async function fetchWithAuth(
   path: string,
   init: RequestInit = {},
   attempt = 0,
+  options: FetchOptions = {},
 ): Promise<Response> {
   const { data: { session } } = await supabase.auth.getSession();
 
@@ -108,8 +172,18 @@ async function fetchWithAuth(
     ...(init.headers as Record<string, string> ?? {}),
   };
 
-  if (session?.access_token) {
+  if (options.overrideToken) {
+    headers['Authorization'] = `Bearer ${options.overrideToken}`;
+  } else if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+
+  // Ghost mode: keep admin's JWT for auth, send ghost token in separate header
+  // The backend middleware validates X-Ghost-Token and overrides UserContext
+  const ghost = readGhostModeSession();
+  if (ghost && !options.skipGhostMode && !options.overrideToken) {
+    headers['X-Ghost-Token'] = ghost.token;
+    headers['X-Impersonated-By'] = ghost.adminId;
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -140,6 +214,27 @@ async function fetchWithAuth(
       const text = await response.text();
       try { body = JSON.parse(text); } catch { body = text; }
     } catch { body = null; }
+
+    const parsed = readApiErrorBody(body);
+    if (
+      response.status === 403
+      && parsed.code === 'account_suspended'
+      && !path.startsWith('/api/profiles/me')
+    ) {
+      void supabase.auth.signOut();
+      scheduleSuspendedRedirect();
+    }
+
+    // Handle session revocation - immediate logout
+    // Clear browser storage synchronously BEFORE redirect to prevent stale auth state
+    if (response.status === 401 && parsed.code === 'SESSION_REVOKED') {
+      clearUserBrowserStorage();
+      void supabase.auth.signOut({ scope: 'local' });
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('session_revoked', 'true');
+        window.location.assign('/auth/signin');
+      }
+    }
 
     throw new ApiError(
       response.status,
@@ -173,6 +268,23 @@ export const apiClient = {
   /** GET /api/{path} → parsed JSON (deduplicated) */
   async get<T>(path: string): Promise<T> {
     return fetchGetDeduped<T>(path);
+  },
+
+  /** POST with explicit token (bypasses ghost mode, used for ghost exit) */
+  async postWithToken<T>(path: string, token: string, body?: unknown): Promise<T> {
+    const res = await fetchWithAuth(path, {
+      method: 'POST',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }, 0, { overrideToken: token });
+    return res.json() as Promise<T>;
+  },
+
+  /** GET /api/{path} → Blob (receipt proxy fallback when public storage URL fails) */
+  async getBlob(path: string): Promise<Blob> {
+    const res = await fetchWithAuth(path, {
+      headers: { Accept: 'image/*,application/pdf,*/*' },
+    });
+    return res.blob();
   },
 
   /** POST /api/{path} with JSON body → parsed JSON */
@@ -214,6 +326,13 @@ export const apiClient = {
     const headers: Record<string, string> = {};
     if (session?.access_token) {
       headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    // Ghost mode: keep admin's JWT for auth, send ghost token in separate header
+    const ghost = readGhostModeSession();
+    if (ghost) {
+      headers['X-Ghost-Token'] = ghost.token;
+      headers['X-Impersonated-By'] = ghost.adminId;
     }
 
     const response = await fetch(`${API_BASE_URL}${path}`, {

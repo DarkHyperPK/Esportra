@@ -62,11 +62,11 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
     const imageIndex = Math.abs(page % gallery.length);
 
     // Performance HUD State (for SystemOptiX)
-    const statsConfig = [
+    const statsConfig = React.useMemo(() => [
         { ping: '1.2ms', fps: '590 FPS' },
         { ping: '0.8ms', fps: '840 FPS' },
         { ping: '1.0ms', fps: '673 FPS' },
-    ];
+    ], []);
     const [currentStats, setCurrentStats] = React.useState(statsConfig[0]);
 
     React.useEffect(() => {
@@ -78,7 +78,7 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
             });
         }, 2000);
         return () => clearInterval(interval);
-    }, [sponsor.name]);
+    }, [sponsor.name, statsConfig]);
 
     React.useEffect(() => {
         if (gallery.length <= 1) return;

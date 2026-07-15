@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,15 +70,14 @@ export const GroupCard: React.FC<GroupCardProps> = ({
           {isLocked && <Lock className="w-3 h-3 text-zinc-500" />}
         </div>
         {!isLocked && (
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
             disabled={isDeleting}
             className="h-7 w-7 text-zinc-500 hover:text-red-400 hover:bg-red-400/10"
           >
             <Trash2 className="w-3.5 h-3.5" />
-          </Button>
+          </button>
         )}
       </div>
 
@@ -95,7 +93,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
 
       {/* Team List */}
       {showTeams ? (
-        <div className="p-4 space-y-1.5 max-h-[240px] overflow-y-auto">
+        <div className="p-4 space-y-1.5 max-h-[240px] overflow-y-auto overscroll-contain" data-lenis-prevent>
           {teamsLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, i) => (
@@ -114,7 +112,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
                     alt=""
                     loading="lazy"
                     decoding="async"
-                    fetchPriority="low"
+                    fetchpriority="low"
                     className="w-5 h-5 rounded-full object-cover"
                   />
                 ) : (

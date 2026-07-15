@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Check, Clock, Zap, Copy } from 'lucide-react';
+import { GhostButton } from '@/components/ui/app-buttons';
+import { JackButton } from "@/components/ui/JackButton";
+import { Check, Clock, Copy } from 'lucide-react';
 import { useMatchCheckin } from '@/hooks/useMatchCheckin';
 import { useToast } from '@/hooks/use-toast';
-import { apiClient } from '@/lib/apiClient';
 import { format } from 'date-fns';
 import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { Countdown } from '@/components/ui/Countdown';
+import { competitorIdsMatch } from '@/utils/competitorId';
+import PartyCodeGoLiveCard from '@/components/tournament/PartyCodeGoLiveCard';
+import {
+  checkinWindowStartMs,
+  normalizeScheduledTime,
+  parseScheduledTimeMs,
+} from '@/utils/scheduledTime';
+import {
+  getCheckinForfeitDisplay,
+  type ForfeitReason,
+  type MatchOutcome,
+} from '@/utils/matchForfeitDisplay';
 
 interface MatchCheckinCardProps {
     matchId: string;
@@ -21,7 +32,15 @@ interface MatchCheckinCardProps {
     isCaptain: boolean;
     selfPlayEnabled: boolean;
     checkInWindowMinutes?: number;
+    checkinWindowOpen?: boolean;
+    checkinWindowClosed?: boolean;
+    matchOutcome?: MatchOutcome;
+    forfeitReason?: ForfeitReason;
+    hidePartyCodeInput?: boolean;
+    initialPartyCode?: string | null;
     onPartyCodeGenerated?: (code: string) => void;
+    /** When false, parent page handles MatchHub realtime (avoids duplicate JoinMatch). */
+    subscribeRealtime?: boolean;
 }
 
 const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
@@ -34,44 +53,87 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
     scheduledTime,
     isCaptain,
     selfPlayEnabled,
-    checkInWindowMinutes = 15, // Default to 15 if not provided
+    checkInWindowMinutes = 15,
+    checkinWindowOpen,
+    checkinWindowClosed,
+    matchOutcome = null,
+    forfeitReason = null,
+    hidePartyCodeInput = false,
+    initialPartyCode = null,
     onPartyCodeGenerated,
+    subscribeRealtime = true,
 }) => {
     const {
         checkinStatus,
         checkIn,
         isCheckinWindowOpen,
         isCheckinWindowClosed,
-    } = useMatchCheckin(matchId, team1Id, team2Id);
+    } = useMatchCheckin(matchId, team1Id, team2Id, {
+        subscribeRealtime,
+        scheduledTime,
+        checkInWindowMinutes,
+        userTeamId,
+        matchOutcome,
+        forfeitReason,
+    });
     const { toast } = useToast();
-    const [manualCode, setManualCode] = useState('');
-    const [isSubmittingCode, setIsSubmittingCode] = useState(false);
-    const [partyCode, setPartyCode] = useState<string | null>(null);
+    const [partyCode, setPartyCode] = useState<string | null>(initialPartyCode);
+    const [clockTick, setClockTick] = useState(0);
 
-    const windowOpen = scheduledTime ? isCheckinWindowOpen(scheduledTime, checkInWindowMinutes) : false;
-    const windowClosed = scheduledTime ? isCheckinWindowClosed(scheduledTime, checkInWindowMinutes) : false;
+    const scheduledTimeIso = useMemo(
+        () => normalizeScheduledTime(scheduledTime),
+        [scheduledTime],
+    );
 
-    const isTeam1 = userTeamId === team1Id;
+    const checkinOpensAtMs = useMemo(
+        () => (scheduledTimeIso ? checkinWindowStartMs(scheduledTimeIso, checkInWindowMinutes) : null),
+        [scheduledTimeIso, checkInWindowMinutes],
+    );
+
+    const matchStartsAtMs = useMemo(
+        () => (scheduledTimeIso ? parseScheduledTimeMs(scheduledTimeIso) : null),
+        [scheduledTimeIso],
+    );
+
+    const handleWindowTransition = useCallback(() => {
+        setClockTick((t) => t + 1);
+    }, []);
+
+    useEffect(() => {
+        if (initialPartyCode) {
+            setPartyCode(initialPartyCode);
+        }
+    }, [initialPartyCode]);
+
+    // Re-evaluate local window boundaries as time advances.
+    useEffect(() => {
+        if (!scheduledTimeIso || checkinStatus.bothCheckedIn) return;
+        const id = window.setInterval(() => setClockTick((t) => t + 1), 1000);
+        return () => window.clearInterval(id);
+    }, [scheduledTimeIso, checkinStatus.bothCheckedIn]);
+
+    const windowOpen = useMemo(() => {
+        if (scheduledTimeIso) return isCheckinWindowOpen(scheduledTimeIso, checkInWindowMinutes);
+        return Boolean(checkinWindowOpen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional tick dependency
+    }, [scheduledTimeIso, checkInWindowMinutes, checkinWindowOpen, clockTick, isCheckinWindowOpen]);
+
+    const windowClosed = useMemo(() => {
+        if (scheduledTimeIso) return isCheckinWindowClosed(scheduledTimeIso, checkInWindowMinutes);
+        return Boolean(checkinWindowClosed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional tick dependency
+    }, [scheduledTimeIso, checkInWindowMinutes, checkinWindowClosed, clockTick, isCheckinWindowClosed]);
+
+    const isTeam1 = competitorIdsMatch(userTeamId, team1Id);
     const myTeamCheckedIn = isTeam1 ? checkinStatus.team1CheckedIn : checkinStatus.team2CheckedIn;
 
-    // Submit manual party code (Team 1 only in self-play)
-    const submitPartyCode = async () => {
-        if (!manualCode.trim()) return;
-        setIsSubmittingCode(true);
-        try {
-            const code = manualCode.trim().toUpperCase();
-
-            await apiClient.post(`/api/matches/${matchId}/go-live`, { partyCode: code });
-
-            setPartyCode(code);
-            onPartyCodeGenerated?.(code);
-            toast({ title: 'Match Started', description: `Party Code: ${code}` });
-        } catch (error: any) {
-            toast({ title: 'Error', description: error.message, variant: 'destructive' });
-        } finally {
-            setIsSubmittingCode(false);
-        }
-    };
+    const forfeitDisplay = getCheckinForfeitDisplay({
+        matchOutcome,
+        forfeitReason,
+        userTeamId,
+        team1Id,
+        team2Id,
+    });
 
     const copyCode = () => {
         if (partyCode) {
@@ -88,24 +150,18 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
     return (
         <Card className="bg-zinc-900/50 border-zinc-800 overflow-hidden">
             <CardContent className="p-0">
-                {/* Header */}
-                <div className="bg-rose-500/5 p-4 border-b border-white/10">
+                <div className="p-4 border-b border-white/10">
                     <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-white flex items-center gap-2">
-                            <Zap className="w-4 h-4 text-emerald-400" />
-                            Match Check-in
-                        </h3>
-                        {scheduledTime && (
+                        <h3 className="font-semibold text-white">Match Check-in</h3>
+                        {scheduledTimeIso && (
                             <span className="text-sm text-zinc-400">
-                                {format(new Date(scheduledTime), 'MMM d, h:mm a')} {getTimezoneAbbr()}
+                                {format(new Date(scheduledTimeIso), 'MMM d, h:mm a')} {getTimezoneAbbr()}
                             </span>
                         )}
                     </div>
                 </div>
 
-                {/* Check-in Status */}
                 <div className="p-4 space-y-4">
-                    {/* Team 1 Status */}
                     <div className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg">
                         <div className="flex items-center gap-3">
                             <div className={`w-3 h-3 rounded-full ${checkinStatus.team1CheckedIn ? 'bg-emerald-500' : 'bg-zinc-600'}`} />
@@ -120,7 +176,6 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                         )}
                     </div>
 
-                    {/* Team 2 Status */}
                     <div className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg">
                         <div className="flex items-center gap-3">
                             <div className={`w-3 h-3 rounded-full ${checkinStatus.team2CheckedIn ? 'bg-emerald-500' : 'bg-zinc-600'}`} />
@@ -135,90 +190,94 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                         )}
                     </div>
 
-                    {/* Action Buttons */}
-                    {/* Timer & Status Indicators (Visible to everyone) */}
                     <div className="pt-2">
-                        {/* 1. Check-in window not open yet */}
-                        {!windowOpen && !windowClosed && scheduledTime && (
+                        {!windowOpen && !windowClosed && checkinOpensAtMs != null && (
                             <div className="text-center p-4 bg-zinc-800/30 rounded-lg border border-zinc-800/30">
                                 <Clock className="w-6 h-6 text-zinc-500 mx-auto mb-2" />
                                 <p className="text-zinc-400 text-sm mb-1">Check-in opens in</p>
                                 <div className="text-xl font-mono text-cyan-400">
                                     <Countdown
-                                        targetDate={new Date(new Date(scheduledTime).getTime() - (checkInWindowMinutes * 60 * 1000))}
+                                        targetDate={checkinOpensAtMs}
+                                        onComplete={handleWindowTransition}
                                     />
                                 </div>
                             </div>
                         )}
 
-                        {/* 2. Check-in window open - show countdown to match start */}
-                        {windowOpen && !checkinStatus.bothCheckedIn && (
-                            <div className="text-center p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-lg mb-4">
-                                <div className="flex items-center justify-center gap-2 mb-2">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    <p className="text-emerald-400 text-sm font-medium">Check-in is LIVE</p>
-                                </div>
-                                <p className="text-zinc-400 text-xs mb-1 uppercase tracking-wider">Match starts in:</p>
+                        {windowOpen && !windowClosed && !checkinStatus.bothCheckedIn && matchStartsAtMs != null && (
+                            <div className="text-center p-4 bg-zinc-800/40 rounded-lg border border-zinc-800/50 mb-4">
+                                <p className="text-zinc-400 text-xs mb-1 uppercase tracking-wider">Check-in closes in</p>
                                 <div className="text-2xl font-mono font-bold text-white">
                                     <Countdown
-                                        targetDate={new Date(scheduledTime)}
+                                        targetDate={matchStartsAtMs}
                                         className="text-emerald-400"
+                                        onComplete={handleWindowTransition}
                                     />
                                 </div>
                             </div>
                         )}
 
-                        {/* 3. Check-in window closed - Late State */}
-                        {windowClosed && !checkinStatus.bothCheckedIn && (
+                        {forfeitDisplay && (
+                            <div
+                                className={`text-center p-4 rounded-lg mb-4 border ${
+                                    forfeitDisplay.tone === 'walkover_win'
+                                        ? 'bg-emerald-500/10 border-emerald-500/20'
+                                        : 'bg-red-500/10 border-red-500/20'
+                                }`}
+                            >
+                                <p
+                                    className={`font-bold ${
+                                        forfeitDisplay.tone === 'walkover_win'
+                                            ? 'text-emerald-400'
+                                            : 'text-red-400'
+                                    }`}
+                                >
+                                    {forfeitDisplay.title}
+                                </p>
+                                <p className="text-zinc-400 text-xs mt-1">{forfeitDisplay.description}</p>
+                            </div>
+                        )}
+
+                        {windowClosed && !checkinStatus.bothCheckedIn && !forfeitDisplay && (
                             <div className="text-center p-4 bg-red-500/10 border border-red-500/20 rounded-lg mb-4">
-                                <Clock className="w-6 h-6 text-red-500 mx-auto mb-2" />
                                 <p className="text-red-400 font-bold">Check-in Closed</p>
-                                <p className="text-zinc-400 text-xs mt-1">Check-in window has closed. A walkover will be awarded automatically.</p>
-                            </div>
-                        )}
-
-                        {/* 4. Ready Status (Already checked in, waiting for opponent) */}
-                        {myTeamCheckedIn && !checkinStatus.bothCheckedIn && (
-                            <div className="text-center p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg mb-4">
-                                <Check className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
-                                <p className="text-emerald-400 font-medium">You're checked in!</p>
-                                <p className="text-zinc-400 text-sm mt-1">Waiting for opponent...</p>
-                            </div>
-                        )}
-
-                        {/* 5. Show party code (Visible to everyone if match started) */}
-                        {partyCode && (
-                            <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-lg mb-4">
-                                <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Party Code</p>
-                                <div className="flex items-center justify-between">
-                                    <code className="text-2xl font-mono font-bold text-rose-400 tracking-wider">{partyCode}</code>
-                                    <Button size="sm" variant="ghost" onClick={copyCode} className="hover:bg-rose-500/10">
-                                        <Copy className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 6. Both Checked In (Waiting for code) */}
-                        {checkinStatus.bothCheckedIn && selfPlayEnabled && !partyCode && (
-                            <div className="text-center p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg mb-4">
-                                <Zap className="w-6 h-6 text-purple-400 mx-auto mb-2 animate-pulse" />
-                                <p className="text-purple-300 font-medium">Both teams ready!</p>
-                                <p className="text-zinc-400 text-sm mt-1">
-                                    {isTeam1 ? 'Please create the lobby and enter the code below.' : 'Waiting for the opponent to provide the party code...'}
+                                <p className="text-zinc-400 text-xs mt-1">
+                                    Check-in window has closed. A walkover will be awarded automatically.
                                 </p>
                             </div>
                         )}
 
-                        {/* Captain-only Actions */}
+                        {myTeamCheckedIn && !checkinStatus.bothCheckedIn && (
+                            <p className="text-sm text-zinc-400 text-center mb-4">You&apos;re checked in. Waiting for opponent.</p>
+                        )}
+
+                        {partyCode && (
+                            <div className="p-4 bg-zinc-800/50 border border-zinc-700/50 rounded-lg mb-4">
+                                <p className="text-xs text-zinc-400 uppercase tracking-wider mb-1">Party Code</p>
+                                <div className="flex items-center justify-between">
+                                    <code className="text-2xl font-mono font-bold text-rose-400 tracking-wider">{partyCode}</code>
+                                    <GhostButton type="button" size="sm" onClick={copyCode}>
+                                        <Copy className="w-4 h-4" />
+                                    </GhostButton>
+                                </div>
+                            </div>
+                        )}
+
+                        {checkinStatus.bothCheckedIn && selfPlayEnabled && !partyCode && (
+                            <p className="text-sm text-zinc-400 text-center mb-4">
+                                {isTeam1
+                                    ? 'Both teams are ready. Create the lobby and enter the party code below.'
+                                    : 'Both teams are ready. Waiting for the opponent to provide the party code.'}
+                            </p>
+                        )}
+
                         {isCaptain && (
                             <div className="space-y-4">
-                                {/* Check-in button */}
-                                {windowOpen && !myTeamCheckedIn && (
-                                    <Button
+                                {windowOpen && !windowClosed && !myTeamCheckedIn && !forfeitDisplay && (
+                                    <JackButton
                                         onClick={handleCheckIn}
                                         disabled={checkIn.isPending}
-                                        className="w-full h-12 bg-white text-black hover:bg-white/90 text-lg font-mono font-bold uppercase tracking-wider"
+                                        className="w-full h-12 text-lg"
                                     >
                                         {checkIn.isPending ? (
                                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -228,36 +287,17 @@ const MatchCheckinCard: React.FC<MatchCheckinCardProps> = ({
                                                 Check In Now
                                             </>
                                         )}
-                                    </Button>
+                                    </JackButton>
                                 )}
 
-                                {/* Both checked in - show manual party code input (Team 1 only in self-play) */}
-                                {checkinStatus.bothCheckedIn && selfPlayEnabled && isTeam1 && !partyCode && (
-                                    <div className="space-y-3 p-4 bg-zinc-800/30 rounded-lg border border-zinc-700/30">
-                                        <div className="flex items-center gap-2 text-sm text-zinc-400">
-                                            <Zap className="w-4 h-4 text-purple-500" />
-                                            <span>Create the lobby in-game and enter code:</span>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                value={manualCode}
-                                                onChange={(e) => setManualCode(e.target.value)}
-                                                placeholder="Lobby Code"
-                                                className="bg-zinc-900 border-zinc-700 text-white font-mono uppercase"
-                                            />
-                                            <Button
-                                                onClick={submitPartyCode}
-                                                disabled={isSubmittingCode || !manualCode.trim()}
-                                                className="bg-rose-500 hover:bg-rose-600 transition-all text-white font-semibold px-6"
-                                            >
-                                                {isSubmittingCode ? (
-                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                ) : (
-                                                    'Start'
-                                                )}
-                                            </Button>
-                                        </div>
-                                    </div>
+                                {!hidePartyCodeInput && checkinStatus.bothCheckedIn && selfPlayEnabled && isTeam1 && isCaptain && !partyCode && (
+                                    <PartyCodeGoLiveCard
+                                        matchId={matchId}
+                                        onSuccess={(code) => {
+                                            setPartyCode(code);
+                                            onPartyCodeGenerated?.(code);
+                                        }}
+                                    />
                                 )}
                             </div>
                         )}

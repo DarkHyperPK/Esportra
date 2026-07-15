@@ -18,17 +18,42 @@ import { apiClient } from '@/lib/apiClient';
 import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA, WIZARD_STEPS } from '@/types/tournamentWizard';
 import { validateStep } from '@/schemas/tournamentSchema';
+import { firstWizardErrorStep, summarizeWizardErrors } from '@/utils/wizardValidation';
 import { getGameByName, getDefaultGameMode, getDefaultTeamSize, isBattleRoyale, getBRConfig, getEffectiveGameFeatures } from '@/utils/gameFeatures';
+import { catalogGameHasBRMaps } from '@/utils/gameCatalogBr';
+import { deriveDefaultLobbyUnits } from '@/utils/brGameContext';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
 import slugify from 'slugify';
+import {
+    launchStateToCreatePayload,
+    launchStateToUpdatePayload,
+    type LaunchState,
+} from '@/utils/tournamentVisibilityUtils';
+
+function migrateWizardDraft(parsed: Record<string, unknown>): TournamentWizardData {
+    const merged = { ...DEFAULT_WIZARD_DATA, ...parsed } as TournamentWizardData & { visibility?: string };
+    if (!merged.launchState && merged.visibility) {
+        merged.launchState = merged.visibility === 'public' ? 'public' : 'draft';
+    }
+    if (!merged.launchState) {
+        merged.launchState = 'draft';
+    }
+    return merged;
+}
 
 const STORAGE_KEY = 'tournament_wizard_draft';
 const STEP_KEY = 'tournament_wizard_step';
 
-export const useTournamentWizard = (initialData?: TournamentWizardData, tournamentId?: string) => {
+export const useTournamentWizard = (
+    initialData?: TournamentWizardData,
+    tournamentId?: string,
+    options?: { activeInvitationCount?: number },
+) => {
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
     const queryClient = useQueryClient();
+    useGameCatalog();
 
     const [currentStep, setCurrentStepRaw] = useState(() => {
         if (typeof window !== 'undefined' && !tournamentId) {
@@ -48,7 +73,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
-                try { return { ...DEFAULT_WIZARD_DATA, ...JSON.parse(saved) }; } catch { /* ignore corrupt draft */ }
+                try { return migrateWizardDraft(JSON.parse(saved)); } catch { /* ignore corrupt draft */ }
             }
         }
         return DEFAULT_WIZARD_DATA;
@@ -82,6 +107,12 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                         if (brConfig) {
                             newData.brGameCount = brConfig.defaultGameCount;
                             newData.brScoringPreset = brConfig.defaultPreset;
+                            newData.brDefaultLobbySize = deriveDefaultLobbyUnits(
+                              newData.teamSize,
+                              brConfig.playersPerLobby,
+                            );
+                            newData.brDefaultMapMode = brConfig.defaultMapMode
+                              ?? (catalogGameHasBRMaps(brConfig) ? 'per_round' : 'none');
                             const preset = brConfig.scoringPresets[brConfig.defaultPreset];
                             if (preset) {
                                 newData.brKillCap = preset.killCap;
@@ -90,6 +121,13 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     } else {
                         newData.tournamentType = 'bracket';
                     }
+                }
+            }
+            if (updates.gameMode !== undefined && updates.gameMode !== prev.gameMode) {
+                const modeFeatures = getEffectiveGameFeatures(newData.game, updates.gameMode);
+                newData.mapVetoEnabled = modeFeatures.mapVeto ? newData.mapVetoEnabled : false;
+                if (!modeFeatures.mapPool) {
+                    newData.mapPoolIds = [];
                 }
             }
             return newData;
@@ -104,13 +142,17 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
     const validateCurrentStep = useCallback(() => {
         const result = validateStep(currentStep, data);
 
-        // BR multi-stage: enforce advancement × groups ≤ lobby size
-        if (currentStep === 2 && data.tournamentType === 'battle_royale' && data.brMultiStage && data.maxTeams > 0) {
-            const groupCount = Math.ceil(data.maxTeams / data.brLobbySize);
-            const totalQualified = data.brAdvancementCount * groupCount;
-            if (totalQualified > data.brLobbySize) {
-                result.valid = false;
-                result.errors['brAdvancementCount'] = `${totalQualified} qualified teams exceeds finals lobby size of ${data.brLobbySize}. Reduce advancement count or increase lobby size.`;
+        // Map veto games require an exact map pool size (e.g. Valorant/CS2 = 7, R6 = 9)
+        if (currentStep === 2 && data.game) {
+            const modeFeatures = getEffectiveGameFeatures(data.game, data.gameMode);
+            const mapVetoEnabled = modeFeatures.mapVeto && (data.mapVetoEnabled ?? true);
+            if (modeFeatures.mapPool && mapVetoEnabled) {
+                const requiredCount = modeFeatures.mapPoolSize ?? 7;
+                const selectedCount = data.mapPoolIds?.length ?? 0;
+                if (selectedCount !== requiredCount) {
+                    result.valid = false;
+                    result.errors.mapPoolIds = `Select exactly ${requiredCount} maps for the veto pool (${selectedCount} selected).`;
+                }
             }
         }
 
@@ -120,20 +162,43 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
     }, [currentStep, data]);
 
     const nextStep = useCallback(() => {
-        if (validateCurrentStep()) {
-            setCurrentStep(prev => Math.min(prev + 1, WIZARD_STEPS.length));
-        } else {
-            toast({ title: 'Validation Error', description: 'Please fix the errors before proceeding.', variant: 'destructive' });
+        const result = validateStep(currentStep, data);
+        if (currentStep === 2 && data.game) {
+            const modeFeatures = getEffectiveGameFeatures(data.game, data.gameMode);
+            const mapVetoEnabled = modeFeatures.mapVeto && (data.mapVetoEnabled ?? true);
+            if (modeFeatures.mapPool && mapVetoEnabled) {
+                const requiredCount = modeFeatures.mapPoolSize ?? 7;
+                const selectedCount = data.mapPoolIds?.length ?? 0;
+                if (selectedCount !== requiredCount) {
+                    result.valid = false;
+                    result.errors.mapPoolIds = `Select exactly ${requiredCount} maps for the veto pool (${selectedCount} selected).`;
+                }
+            }
         }
-    }, [validateCurrentStep, toast]);
+
+        if (result.valid) {
+            setErrors({});
+            setStepValidation(prev => ({ ...prev, [currentStep]: true }));
+            setCurrentStep(prev => Math.min(prev + 1, WIZARD_STEPS.length));
+            return;
+        }
+
+        setErrors(result.errors);
+        setStepValidation(prev => ({ ...prev, [currentStep]: false }));
+        toast({
+            title: 'Fix these items to continue',
+            description: summarizeWizardErrors(result.errors),
+            variant: 'destructive',
+        });
+    }, [currentStep, data, toast, setCurrentStep]);
 
     const prevStep = useCallback(() => {
         setCurrentStep(prev => Math.max(prev - 1, 1));
-    }, []);
+    }, [setCurrentStep]);
 
     const goToStep = useCallback((step: number) => {
         if (step <= currentStep || stepValidation[step - 1]) setCurrentStep(step);
-    }, [currentStep, stepValidation]);
+    }, [currentStep, stepValidation, setCurrentStep]);
 
     const clearDraft = useCallback(() => {
         localStorage.removeItem(STORAGE_KEY);
@@ -149,10 +214,25 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
             return;
         }
 
-        const allValid = validateStep(5, data);
+        const allValid = validateStep(6, data);
         if (!allValid.valid) {
             setErrors(allValid.errors);
-            toast({ title: 'Validation Error', description: 'Please fix the errors before submitting.', variant: 'destructive' });
+            const errorStep = firstWizardErrorStep(allValid.errors);
+            if (errorStep < 6) setCurrentStep(errorStep);
+            toast({
+                title: 'Fix these items before creating',
+                description: summarizeWizardErrors(allValid.errors),
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        const activeInvitationCount = options?.activeInvitationCount ?? 0;
+        const reservedSlots = data.invitedTeamsEnabled ? data.reservedInviteSlots : 0;
+        if (tournamentId && activeInvitationCount > 0 && reservedSlots < activeInvitationCount) {
+            const message = `Reserved slots cannot be less than ${activeInvitationCount} active invitation${activeInvitationCount === 1 ? '' : 's'}. Revoke invitations first.`;
+            setErrors({ reservedInviteSlots: message });
+            toast({ title: 'Validation Error', description: message, variant: 'destructive' });
             return;
         }
 
@@ -174,6 +254,9 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
             const registrationCloses = data.registrationCloses
                 ? new Date(data.registrationCloses)
                 : new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000);
+            const registrationOpens = data.registrationOpens
+                ? new Date(data.registrationOpens)
+                : null;
             const resolvedGameMode = data.gameMode || getDefaultGameMode(data.game)?.value || undefined;
             const modeFeatures = getEffectiveGameFeatures(data.game, resolvedGameMode);
 
@@ -181,10 +264,13 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                 // ── UPDATE path ─────────────────────────────────────────────────
 
                 // Tournament-level fields → .NET API
-                await apiClient.put(`/api/tournaments/${tournamentId}`, {
+                const launchPayload = launchStateToUpdatePayload(
+                    data.launchState,
+                    data.status || initialData?.status,
+                );
+                const updatePayload: Record<string, unknown> = {
                     name:                 data.name,
                     description:          data.description,
-                    status:               data.status || undefined,
                     maxTeams:             data.maxTeams,
                     teamSize:             data.teamSize,
                     gameMode:             resolvedGameMode,
@@ -195,72 +281,46 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     registrationDeadline: registrationCloses.toISOString(),
                     bannerUrl:            data.bannerUrl,
                     logoUrl:              data.logoUrl,
-                    isPublic:             data.visibility === 'public',
+                    isPublic:             launchPayload.isPublic,
                     checkInRequired:      data.checkInRequired,
-                    checkInDeadline:      new Date(startDateTime.getTime() - (data.checkInWindowMinutes || 30) * 60000).toISOString(),
+                    checkInDeadline:      data.checkInRequired ? startDateTime.toISOString() : undefined,
                     rewards:              data.rewards,
                     streamUrl:            data.streamUrl || null,
                     rules:                data.rules || null,
                     paymentInstructions:  data.paymentInstructions || null,
                     region:               data.region || null,
                     currency:             data.currency || 'USD',
+                    reservedInviteSlots:  data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
+                    inviteExpiryDays:     data.inviteExpiryDays || 7,
                     settings:             {
                         assistedMatchReporting: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
                         checkInWindowMinutes: data.checkInWindowMinutes || 30,
                         mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
+                        reservedInviteSlots: data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
+                        inviteExpiryDays: data.inviteExpiryDays || 7,
+                        ...(registrationOpens ? { registrationOpensAt: registrationOpens.toISOString() } : {}),
                         ...(data.tournamentType === 'battle_royale' ? {
-                            brGameCount: data.brGameCount,
                             brScoringPreset: data.brScoringPreset,
                             brCustomScoring: data.brCustomScoring,
                             brKillCap: data.brKillCap,
                             brTiebreaker: data.brTiebreaker,
-                            brMultiStage: data.brMultiStage,
-                            ...(data.brMultiStage ? {
-                                brLobbySize: data.brLobbySize,
-                                brAdvancementCount: data.brAdvancementCount,
-                                brFinalsGameCount: data.brFinalsGameCount,
-                            } : {}),
+                            brDefaultLobbySize: data.brDefaultLobbySize,
+                            brDefaultMapMode: data.brDefaultMapMode,
                         } : {}),
                     },
-                });
+                };
+
+                if (launchPayload.status && launchPayload.status !== initialData?.status) {
+                    updatePayload.status = launchPayload.status;
+                }
+
+                await apiClient.put(`/api/tournaments/${tournamentId}`, updatePayload);
 
                 // Stage sync — single PUT replaces 3 sequential Supabase calls (delete/upsert/insert)
                 const stagesToSync = (() => {
-                    const defaultBrLobbySize = data.brLobbySize || data.maxTeams;
-                    if (data.tournamentType === 'battle_royale' && data.brMultiStage) {
-                        return [
-                            {
-                                id: null,
-                                name: 'Group Stage',
-                                format: 'battle_royale',
-                                stageOrder: 1,
-                                bestOf: 1,
-                                capacity: data.brLobbySize,
-                                advancementCount: data.brAdvancementCount,
-                            },
-                            {
-                                id: null,
-                                name: 'Finals',
-                                format: 'battle_royale',
-                                stageOrder: 2,
-                                bestOf: 1,
-                                capacity: defaultBrLobbySize,
-                                advancementCount: null,
-                            },
-                        ];
-                    }
+                    // BR stages are configured post-create via the stage setup wizard
                     if (data.tournamentType === 'battle_royale') {
-                        return [
-                            {
-                                id: null,
-                                name: 'Main Event',
-                                format: 'battle_royale',
-                                stageOrder: 1,
-                                bestOf: 1,
-                                capacity: defaultBrLobbySize,
-                                advancementCount: null,
-                            },
-                        ];
+                        return [];
                     }
                     return data.stages.map(s => ({
                         id:               s.id || null,
@@ -273,7 +333,8 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     }));
                 })();
 
-                if (stagesToSync.length > 0 || initialData?.stages) {
+                // BR stages are managed in the organizer Stages tab — never sync from wizard on update
+                if (data.tournamentType !== 'battle_royale' && (stagesToSync.length > 0 || initialData?.stages)) {
                     await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
                         stages: stagesToSync,
                     });
@@ -296,13 +357,15 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                 const slug = slugify(data.name, { lower: true, strict: true });
                 const organizationId = await fetchCurrentOrganizationId();
 
+                const createLaunch = launchStateToCreatePayload(data.launchState as LaunchState);
+
                 const tournament = await apiClient.post<{ slug: string; name?: string }>('/api/tournaments', {
                     name:                 data.name,
                     description:          data.description,
                     slug,
                     game:                 data.game,
                     gameMode:             resolvedGameMode,
-                    status:               data.status || 'open',
+                    status:               createLaunch.status,
                     maxTeams:             data.maxTeams,
                     teamSize:             data.teamSize,
                     entryFee:             toMoney(data.entryFee),
@@ -312,10 +375,10 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     registrationDeadline: registrationCloses.toISOString(),
                     bannerUrl:            data.bannerUrl,
                     logoUrl:              data.logoUrl,
-                    isPublic:             data.visibility === 'public',
+                    isPublic:             createLaunch.isPublic,
                     organizationId:       organizationId ?? undefined,
                     checkInRequired:      data.checkInRequired,
-                    checkInDeadline:      new Date(startDateTime.getTime() - (data.checkInWindowMinutes || 30) * 60000).toISOString(),
+                    checkInDeadline:      data.checkInRequired ? startDateTime.toISOString() : undefined,
                     autoRemoveUnchecked:  data.autoRemoveUnchecked,
                     rewards:              data.rewards,
                     streamUrl:            data.streamUrl || null,
@@ -325,59 +388,30 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
                     currency:             data.currency || 'USD',
                     tournamentType:       data.tournamentType || 'bracket',
                     serverRegion:         data.serverRegion || null,
+                    reservedInviteSlots:  data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
+                    inviteExpiryDays:     data.inviteExpiryDays || 7,
                     settings: {
                         assistedMatchReporting: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
                         checkInWindowMinutes: data.checkInWindowMinutes || 30,
                         mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
+                        reservedInviteSlots: data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
+                        inviteExpiryDays: data.inviteExpiryDays || 7,
+                        ...(registrationOpens ? { registrationOpensAt: registrationOpens.toISOString() } : {}),
                         // BR-specific settings
                         ...(data.tournamentType === 'battle_royale' ? {
-                            brGameCount: data.brGameCount,
                             brScoringPreset: data.brScoringPreset,
                             brCustomScoring: data.brCustomScoring,
                             brKillCap: data.brKillCap,
                             brTiebreaker: data.brTiebreaker,
-                            brMultiStage: data.brMultiStage,
-                            ...(data.brMultiStage ? {
-                                brLobbySize: data.brLobbySize,
-                                brAdvancementCount: data.brAdvancementCount,
-                                brFinalsGameCount: data.brFinalsGameCount,
-                            } : {}),
+                            brDefaultLobbySize: data.brDefaultLobbySize,
+                            brDefaultMapMode: data.brDefaultMapMode,
                         } : {}),
                     },
                     // Backend handles stages + map pool in one transaction
                     stages: (() => {
-                        const defaultBrLobbySize = data.brLobbySize || data.maxTeams;
-                        if (data.tournamentType === 'battle_royale' && data.brMultiStage) {
-                            return [
-                                {
-                                    name: 'Group Stage',
-                                    format: 'battle_royale',
-                                    stageOrder: 1,
-                                    bestOf: 1,
-                                    capacity: data.brLobbySize,
-                                    advancementCount: data.brAdvancementCount,
-                                },
-                                {
-                                    name: 'Finals',
-                                    format: 'battle_royale',
-                                    stageOrder: 2,
-                                    bestOf: 1,
-                                    capacity: defaultBrLobbySize,
-                                    advancementCount: null,
-                                },
-                            ];
-                        }
+                        // BR stages are configured post-create via the stage setup wizard
                         if (data.tournamentType === 'battle_royale') {
-                            return [
-                                {
-                                    name: 'Main Event',
-                                    format: 'battle_royale',
-                                    stageOrder: 1,
-                                    bestOf: 1,
-                                    capacity: defaultBrLobbySize,
-                                    advancementCount: null,
-                                },
-                            ];
+                            return [];
                         }
                         return data.stages.map((s, i) => ({
                             name:             s.name,
@@ -400,7 +434,7 @@ export const useTournamentWizard = (initialData?: TournamentWizardData, tourname
         } finally {
             setIsSubmitting(false);
         }
-    }, [user, data, toast, navigate, clearDraft, tournamentId, initialData]);
+    }, [user, data, toast, navigate, clearDraft, tournamentId, initialData, queryClient, options?.activeInvitationCount, setCurrentStep]);
 
     return {
         currentStep,

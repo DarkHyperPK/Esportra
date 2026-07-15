@@ -29,10 +29,11 @@ export class GraphMatchService {
      * Set a match to "in_progress" with a party code.
      * This is the Go Live functionality.
      */
-    static async goLive(matchId: string, partyCode: string): Promise<GoLiveResult> {
+    static async goLive(matchId: string, partyCode: string, force = false): Promise<GoLiveResult> {
         try {
             await apiClient.post(`/api/matches/${matchId}/go-live`, {
-                partyCode: partyCode.trim().toUpperCase()
+                partyCode: partyCode.trim().toUpperCase(),
+                force
             });
             return { success: true };
         } catch (e: any) {

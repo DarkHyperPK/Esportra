@@ -4,6 +4,8 @@ import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { WizardContainer } from '@/components/tournament/wizard';
 import { TournamentWizardData, DEFAULT_WIZARD_DATA } from '@/types/tournamentWizard';
+import { apiToLaunchState } from '@/utils/tournamentVisibilityUtils';
+import { getEffectiveGameFeatures } from '@/utils/gameFeatures';
 import { Loader2 } from 'lucide-react';
 
 const EditTournament = () => {
@@ -14,6 +16,7 @@ const EditTournament = () => {
   const [wizardData, setWizardData] = useState<TournamentWizardData | null>(null);
   const [tournamentId, setTournamentId] = useState<string | null>(null);
   const [participantCount, setParticipantCount] = useState<number>(0);
+  const [activeInvitationCount, setActiveInvitationCount] = useState<number>(0);
 
   const fetchTournamentData = useCallback(async () => {
     try {
@@ -49,6 +52,20 @@ const EditTournament = () => {
 
       setParticipantCount(participantCountVal);
 
+      let activeInvites = 0;
+      try {
+        const inviteResponse = await apiClient.get<any>(`/api/tournaments/${tournamentData.id}/invitations`);
+        activeInvites = inviteResponse?.summary?.activeSlots
+          ?? inviteResponse?.summary?.active_slots
+          ?? 0;
+      } catch {
+        activeInvites = 0;
+      }
+      setActiveInvitationCount(activeInvites);
+
+      const persistedFormat = (tournamentData.format || tournamentData.tournament_type || '').toString().toLowerCase();
+      const effectiveFeatures = getEffectiveGameFeatures(tournamentData.game, tournamentData.game_mode);
+
       // 3. Map to Wizard Data
       // Use local time helpers to avoid UTC↔local timezone drift on each save cycle.
       // datetime-local inputs interpret values as local time, so we must load as local too.
@@ -57,8 +74,11 @@ const EditTournament = () => {
       const regDeadline = new Date(tournamentData.registration_deadline);
       const checkInDeadline = tournamentData.check_in_deadline ? new Date(tournamentData.check_in_deadline) : null;
 
-      // Calculate registration opens (default to 7 days before deadline if not set)
-      const regOpensDate = new Date(regDeadline.getTime() - (7 * 24 * 60 * 60 * 1000));
+      // Calculate registration opens (prefer persisted settings, else 7 days before deadline)
+      const regOpensFromSettings = (tournamentData.settings as { registrationOpensAt?: string } | null)?.registrationOpensAt;
+      const regOpensDate = regOpensFromSettings
+        ? new Date(regOpensFromSettings)
+        : new Date(regDeadline.getTime() - (7 * 24 * 60 * 60 * 1000));
 
       // Helper: format Date to local YYYY-MM-DD
       const toLocalDate = (d: Date) => {
@@ -82,7 +102,7 @@ const EditTournament = () => {
         name: tournamentData.name,
         game: tournamentData.game,
         isOnline: tournamentData.is_online ?? true, // Default to true if null
-        visibility: tournamentData.is_public ? 'public' : 'unlisted',
+        launchState: apiToLaunchState(tournamentData.status, tournamentData.is_public),
         startDate: toLocalDate(startDate),
         startTime: toLocalTime(startDate),
         endDate: toLocalDate(endDate),
@@ -92,7 +112,18 @@ const EditTournament = () => {
         status: tournamentData.status || 'draft',
 
         // Step 2: Format & Rules
-        bracketType: (stages.length > 0 ? stages[0].format : 'single_elimination') as any, // Derive from first stage
+        tournamentType: persistedFormat === 'battle_royale' ? 'battle_royale' : 'bracket',
+        gameMode: tournamentData.game_mode || '',
+        bracketType: (() => {
+          if (persistedFormat === 'battle_royale') {
+            return DEFAULT_WIZARD_DATA.bracketType;
+          }
+          const stageFormat = stages[0]?.format;
+          const bracketFormats = ['single_elimination', 'double_elimination', 'swiss', 'round_robin'] as const;
+          return bracketFormats.includes(stageFormat)
+            ? stageFormat
+            : DEFAULT_WIZARD_DATA.bracketType;
+        })(),
         stages: stages.map(s => ({
           id: s.id,
           name: s.name,
@@ -136,10 +167,40 @@ const EditTournament = () => {
         autoRemoveUnchecked: tournamentData.auto_remove_unchecked ?? false,
         waitlistEnabled: false, // Default
         waitlistMax: 10, // Default
+        invitedTeamsEnabled: (() => {
+          const reserved = tournamentData.reserved_invite_slots
+            ?? tournamentData.reservedInviteSlots
+            ?? (tournamentData.settings as any)?.reservedInviteSlots
+            ?? 0;
+          return Number(reserved) > 0;
+        })(),
+        reservedInviteSlots: tournamentData.reserved_invite_slots
+          ?? tournamentData.reservedInviteSlots
+          ?? (tournamentData.settings as any)?.reservedInviteSlots
+          ?? 0,
+        inviteExpiryDays: tournamentData.invite_expiry_days
+          ?? tournamentData.inviteExpiryDays
+          ?? (tournamentData.settings as any)?.inviteExpiryDays
+          ?? 7,
 
         // Game-specific settings
         assistedMatchReporting: !!(tournamentData.settings as any)?.assistedMatchReporting,
-        mapVetoEnabled: (tournamentData.settings as any)?.mapVetoEnabled ?? true,
+        mapVetoEnabled: effectiveFeatures.mapVeto
+          ? ((tournamentData.settings as any)?.mapVetoEnabled ?? true)
+          : false,
+
+        // Battle Royale settings (from tournament.settings JSON)
+        ...(persistedFormat === 'battle_royale' ? {
+          brGameCount: (tournamentData.settings as any)?.brGameCount
+            ?? (tournamentData.settings as any)?.brDefaultGameCount
+            ?? DEFAULT_WIZARD_DATA.brGameCount,
+          brScoringPreset: (tournamentData.settings as any)?.brScoringPreset ?? DEFAULT_WIZARD_DATA.brScoringPreset,
+          brCustomScoring: (tournamentData.settings as any)?.brCustomScoring ?? null,
+          brKillCap: (tournamentData.settings as any)?.brKillCap ?? null,
+          brTiebreaker: (tournamentData.settings as any)?.brTiebreaker ?? DEFAULT_WIZARD_DATA.brTiebreaker,
+          brDefaultLobbySize: (tournamentData.settings as any)?.brDefaultLobbySize ?? DEFAULT_WIZARD_DATA.brDefaultLobbySize,
+          brDefaultMapMode: (tournamentData.settings as any)?.brDefaultMapMode ?? DEFAULT_WIZARD_DATA.brDefaultMapMode,
+        } : {}),
       };
 
       console.log('[EditTournament] Mapped assistedMatchReporting:', mappedData.assistedMatchReporting);
@@ -181,6 +242,7 @@ const EditTournament = () => {
       initialData={wizardData}
       tournamentId={tournamentId}
       participantsCount={participantCount}
+      activeInvitationCount={activeInvitationCount}
     />
   );
 };

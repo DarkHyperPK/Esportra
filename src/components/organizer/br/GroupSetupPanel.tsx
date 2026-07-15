@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -101,13 +100,13 @@ export const GroupSetupPanel: React.FC<GroupSetupPanelProps> = ({
           </div>
         </div>
 
-        <Button
+        <button type="button"
           onClick={() => hasRounds ? setConfirmRecreate(true) : handleCreate()}
           disabled={isCreating}
-          className="w-full bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider"
+          className="w-full bg-emerald-600 text-white hover:bg-emerald-500 hover:text-white border-emerald-500/40 font-mono text-xs font-bold uppercase tracking-wider"
         >
           {isCreating ? 'Creating...' : hasExistingGroups ? 'Recreate Groups' : 'Create Groups'}
-        </Button>
+        </button>
       </div>
 
       {/* Team Distribution */}
@@ -134,13 +133,13 @@ export const GroupSetupPanel: React.FC<GroupSetupPanelProps> = ({
           {totalAssigned}/{registeredTeamCount} teams assigned across {groups.length} groups
         </div>
 
-        <Button
+        <button type="button"
           onClick={() => totalAssigned > 0 ? setConfirmDistribute(true) : handleDistribute()}
           disabled={isAssigning || groups.length === 0 || registeredTeamCount === 0}
           className="w-full bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500"
         >
           {isAssigning ? 'Distributing...' : totalAssigned > 0 ? 'Redistribute Teams' : 'Distribute Teams'}
-        </Button>
+        </button>
       </div>
 
       {/* Recreate Confirmation */}

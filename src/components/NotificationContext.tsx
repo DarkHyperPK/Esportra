@@ -1,22 +1,32 @@
 import React, { useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { HubConnectionState } from '@microsoft/signalr';
+import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 import { NotificationContext, type Notification } from '@/contexts/notification-context';
+import { resetClientSessionForAuthChange } from '@/lib/resetClientSession';
+import { useToast } from '@/hooks/use-toast';
 
 export type { Notification };
 
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
-  const { user, loading: authLoading } = useAuth();
-  const hub = useHub(HubPaths.Notification, { autoStart: !!user && !authLoading });
+  const { user, loading: authLoading, profile } = useAuth();
+  const hub = useHub(HubPaths.Notification, { autoStart: !!user && !authLoading && !profile?.is_suspended });
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const listenersAttached = useRef(false);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const userId = user?.id;
 
   const fetchNotifications = useCallback(async () => {
-    if (!user) return;
+    if (!userId) return;
 
     try {
       const data = await apiClient.get<{
@@ -27,7 +37,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       const base: Notification[] = data.notifications || [];
       const synthetic: Notification[] = (data.invites || []).map((inv) => ({
         id: `invite-${inv.id}`,
-        user_id: user.id,
+        user_id: userId,
         type: 'team_invite',
         title: 'Team Invitation',
         message: inv.message || 'You have been invited to join a team',
@@ -43,26 +53,34 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       setNotifications(merged);
       setUnreadCount(merged.filter(n => !n.is_read).length);
     } catch (error) {
-      console.error('[Notifications] Fetch failed:', error);
+      if (import.meta.env.DEV) {
+        console.warn('[Notifications] Fetch failed:', error);
+      }
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
-    if (!user || !hub || authLoading || listenersAttached.current) return;
+    if (!userId || !hub || authLoading || listenersAttached.current) return;
 
-    const onNewNotification = (payload: Record<string, string>) => {
+    const onNewNotification = (payload: Record<string, unknown>) => {
+      const data = payload.data as Record<string, unknown> | undefined;
       const stub: Notification = {
-        id: payload.id ?? crypto.randomUUID(),
-        user_id: user.id,
-        type: payload.type ?? 'general',
-        title: payload.title ?? 'New Notification',
-        message: payload.message ?? '',
-        link: payload.link,
+        id: typeof payload.id === 'string' ? payload.id : crypto.randomUUID(),
+        user_id: userId,
+        type: typeof payload.type === 'string' ? payload.type : 'general',
+        title: typeof payload.title === 'string' ? payload.title : 'New Notification',
+        message: typeof payload.message === 'string' ? payload.message : '',
+        link: typeof payload.link === 'string' ? payload.link : undefined,
+        data,
         is_read: false,
         created_at: new Date().toISOString(),
       };
       setNotifications(prev => [stub, ...prev]);
       setUnreadCount(prev => prev + 1);
+
+      if (stub.type === 'tournament_invite') {
+        void fetchNotifications();
+      }
     };
 
     const onNewNotificationRead = (notificationId: string) => {
@@ -78,28 +96,79 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       setUnreadCount(0);
     };
 
+    const onForceLogout = async (payload: { reason?: string }) => {
+      console.warn('[ForceLogout] Session revoked by admin:', payload.reason);
+      toast({
+        title: 'Session Revoked',
+        description: payload.reason || 'Your session has been revoked by an administrator.',
+        variant: 'destructive',
+        duration: 10000,
+      });
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch {
+        // Ignore sign-out errors
+      }
+      resetClientSessionForAuthChange(queryClient);
+      navigate('/auth/signin', { replace: true });
+    };
+
     hub.on('NewNotification', onNewNotification);
     hub.on('NotificationRead', onNewNotificationRead);
     hub.on('AllRead', onAllRead);
+    hub.on('ForceLogout', onForceLogout);
     listenersAttached.current = true;
 
     return () => {
       hub.off('NewNotification', onNewNotification);
       hub.off('NotificationRead', onNewNotificationRead);
       hub.off('AllRead', onAllRead);
+      hub.off('ForceLogout', onForceLogout);
       listenersAttached.current = false;
     };
-  }, [user, hub, authLoading]);
+  }, [userId, hub, authLoading, fetchNotifications, navigate, queryClient, toast]);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    if (!userId || profile?.is_suspended) {
       setNotifications([]);
       setUnreadCount(0);
       return;
     }
     fetchNotifications();
-  }, [user, fetchNotifications, authLoading]);
+  }, [userId, fetchNotifications, authLoading, profile?.is_suspended]);
+
+  // Session heartbeat - polls to detect revoked sessions (fallback when SignalR misses ForceLogout)
+  useEffect(() => {
+    if (!userId || authLoading || profile?.is_suspended) return;
+
+    const checkSession = async () => {
+      try {
+        await apiClient.get('/api/auth/me');
+      } catch (err: unknown) {
+        const status = (err as { status?: number })?.status;
+        if (status === 401 || status === 403) {
+          console.warn('[SessionHeartbeat] Session invalid, logging out');
+          toast({
+            title: 'Session Expired',
+            description: 'Your session has ended. Please sign in again.',
+            variant: 'destructive',
+          });
+          try {
+            await supabase.auth.signOut({ scope: 'local' });
+          } catch {
+            // Ignore
+          }
+          resetClientSessionForAuthChange(queryClient);
+          navigate('/auth/signin', { replace: true });
+        }
+      }
+    };
+
+    // Check every 60 seconds
+    const interval = setInterval(checkSession, 60000);
+    return () => clearInterval(interval);
+  }, [userId, authLoading, profile?.is_suspended, navigate, queryClient, toast]);
 
   const markAsRead = async (id: string) => {
     setNotifications(prev => {

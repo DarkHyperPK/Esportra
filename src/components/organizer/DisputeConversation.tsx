@@ -24,6 +24,10 @@ interface DisputeConversationProps {
   uploading: boolean;
   onSubmit: (text: string, attachment: File | null) => void;
   onImageClick?: (url: string) => void;
+  /** Parent scrolls — do not nest a second scrollbar on the message list */
+  pageScroll?: boolean;
+  hideTitle?: boolean;
+  className?: string;
 }
 
 /** Image with React-managed error fallback */
@@ -57,6 +61,9 @@ const AttachmentImage: React.FC<{ url: string; onImageClick?: (url: string) => v
 const DisputeConversation: React.FC<DisputeConversationProps> = ({
   comments, loading, organizerId, staffUserIds, canComment,
   submitting, uploading, onSubmit, onImageClick,
+  pageScroll = false,
+  hideTitle = false,
+  className = '',
 }) => {
   const { toast } = useToast();
   const [text, setText] = useState('');
@@ -93,11 +100,20 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <h3 className="text-xs uppercase tracking-wider text-zinc-500 font-bold mb-2 shrink-0">Conversation</h3>
+    <div className={`flex flex-col ${pageScroll ? '' : 'h-full min-h-0'} ${className}`}>
+      {!hideTitle && (
+        <h3 className="text-xs uppercase tracking-wider text-zinc-500 font-bold mb-2 shrink-0">Conversation</h3>
+      )}
 
-      {/* Messages — own scroller */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto space-y-3 mb-3 pr-1 scrollbar-thin min-h-0">
+      <div
+        ref={scrollContainerRef}
+        className={`space-y-3 mb-3 pr-1 ${
+          pageScroll
+            ? 'min-h-[480px]'
+            : 'flex-1 overflow-y-auto overscroll-contain scrollbar-thin min-h-0'
+        }`}
+        data-lenis-prevent={pageScroll ? undefined : true}
+      >
         {loading ? (
           <div className="flex items-center justify-center py-8 text-zinc-500 text-sm">
             <RefreshCw className="w-4 h-4 animate-spin mr-2" /> Loading…
@@ -168,7 +184,8 @@ const DisputeConversation: React.FC<DisputeConversationProps> = ({
               </label>
               {attachment && (
                 <span className="text-[11px] text-zinc-400 flex items-center gap-1">
-                  📎 {attachment.name}
+                  <Paperclip className="w-3 h-3 shrink-0" />
+                  {attachment.name}
                   <button onClick={() => setAttachment(null)} className="text-red-400 hover:text-red-300 ml-1">×</button>
                 </span>
               )}

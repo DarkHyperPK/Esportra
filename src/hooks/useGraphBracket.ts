@@ -20,7 +20,6 @@ export const useGraphBracket = (versionId: string, tournamentId?: string) => {
             return repo.getGraphStructure(versionId);
         },
         enabled: !!versionId,
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        placeholderData: (prev) => prev, // Keep previous data while fetching
+        staleTime: 30_000,
     });
 };

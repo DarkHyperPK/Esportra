@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Esportra Streak Background Variants</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; }
+
+    .variant {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+    }
+
+    .variant.active {
+      display: block;
+    }
+
+    /* Base dark background */
+    .base-bg {
+      position: absolute;
+      inset: 0;
+      background: #0a0a0c;
+    }
+
+    /* Streaks container */
+    .streaks {
+      position: absolute;
+      inset: 0;
+      opacity: 0.6;
+    }
+
+    .streak-1 {
+      position: absolute;
+      left: -10%;
+      top: -15%;
+      height: 145%;
+      width: 20%;
+      transform: rotate(-17deg);
+      background: rgba(255, 255, 255, 0.075);
+      clip-path: polygon(44% 0, 69% 0, 53% 24%, 76% 42%, 49% 64%, 67% 100%, 23% 100%, 35% 78%, 12% 53%, 38% 29%);
+    }
+
+    .streak-2 {
+      position: absolute;
+      left: 18%;
+      top: -9%;
+      height: 132%;
+      width: 13%;
+      transform: rotate(-4deg);
+      background: rgba(255, 255, 255, 0.065);
+      clip-path: polygon(30% 0, 84% 0, 52% 19%, 74% 46%, 45% 69%, 62% 100%, 15% 100%, 35% 76%, 10% 51%, 44% 26%);
+    }
+
+    .streak-3 {
+      position: absolute;
+      left: 38%;
+      top: -18%;
+      height: 150%;
+      width: 18%;
+      transform: rotate(5deg);
+      background: rgba(255, 255, 255, 0.08);
+      clip-path: polygon(36% 0, 75% 0, 62% 18%, 85% 35%, 57% 58%, 72% 100%, 30% 100%, 34% 80%, 8% 56%, 39% 31%);
+    }
+
+    .streak-4 {
+      position: absolute;
+      left: 68%;
+      top: -12%;
+      height: 138%;
+      width: 17%;
+      transform: rotate(19deg);
+      background: rgba(255, 255, 255, 0.07);
+      clip-path: polygon(39% 0, 88% 0, 64% 21%, 80% 46%, 54% 67%, 72% 100%, 27% 100%, 37% 78%, 10% 54%, 41% 28%);
+    }
+
+    /* VISIBLE noise using repeating gradient pattern */
+    .noise-visible {
+      position: absolute;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(
+          0deg,
+          transparent,
+          transparent 2px,
+          rgba(255,255,255,0.03) 2px,
+          rgba(255,255,255,0.03) 4px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent 2px,
+          rgba(255,255,255,0.02) 2px,
+          rgba(255,255,255,0.02) 4px
+        );
+    }
+
+    /* Grid pattern - VERY visible */
+    .grid-visible {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    /* Rose glow - VERY visible */
+    .rose-glow-visible {
+      position: absolute;
+      top: -20%;
+      right: -20%;
+      width: 80%;
+      height: 80%;
+      background: radial-gradient(circle, rgba(244, 63, 94, 0.3) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .rose-glow-visible-2 {
+      position: absolute;
+      bottom: -20%;
+      left: -20%;
+      width: 60%;
+      height: 60%;
+      background: radial-gradient(circle, rgba(244, 63, 94, 0.2) 0%, transparent 60%);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Variant 1: Plain streaks only -->
+  <div id="variant1" class="variant">
+    <div class="base-bg"></div>
+    <div class="streaks">
+      <div class="streak-1"></div>
+      <div class="streak-2"></div>
+      <div class="streak-3"></div>
+      <div class="streak-4"></div>
+    </div>
+  </div>
+
+  <!-- Variant 2: Streaks + Noise texture -->
+  <div id="variant2" class="variant">
+    <div class="base-bg"></div>
+    <div class="streaks">
+      <div class="streak-1"></div>
+      <div class="streak-2"></div>
+      <div class="streak-3"></div>
+      <div class="streak-4"></div>
+    </div>
+    <div class="noise-visible"></div>
+  </div>
+
+  <!-- Variant 3: Full - Streaks + Grid + Noise + Rose glow -->
+  <div id="variant3" class="variant">
+    <div class="base-bg"></div>
+    <div class="rose-glow-visible"></div>
+    <div class="rose-glow-visible-2"></div>
+    <div class="grid-visible"></div>
+    <div class="streaks">
+      <div class="streak-1"></div>
+      <div class="streak-2"></div>
+      <div class="streak-3"></div>
+      <div class="streak-4"></div>
+    </div>
+    <div class="noise-visible"></div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const v = params.get('v') || '1';
+    document.getElementById('variant' + v).classList.add('active');
+  </script>
+</body>
+</html>

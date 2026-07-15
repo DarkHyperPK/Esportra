@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useBRGroups } from '@/hooks/useBRGroups';
-import { useBRRounds } from '@/hooks/useBRRounds';
+import { useBRLobbies } from '@/hooks/useBRLobbies';
 import { apiClient } from '@/lib/apiClient';
 import { GroupSetupPanel } from '@/components/organizer/br/GroupSetupPanel';
 import { GroupCard } from '@/components/organizer/br/GroupCard';
-import { RoundManagementPanel } from '@/components/organizer/br/RoundManagementPanel';
+import { LobbyManagementPanel } from '@/components/organizer/br/LobbyManagementPanel';
 import AdvanceTeamsPanel from '@/components/organizer/br/AdvanceTeamsPanel';
 import { useStageCompletion } from '@/hooks/useStageCompletion';
 import {
@@ -82,7 +82,7 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   // Check if the selected group has rounds for hasRounds lock detection
-  const { rounds: selectedGroupRounds } = useBRRounds(
+  const { lobbies: selectedGroupRounds } = useBRLobbies(
     selectedStageId || null,
     selectedGroupId
   );
@@ -219,9 +219,9 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
         </div>
       )}
 
-      {/* Round Management Panel */}
+      {/* Lobby Management Panel */}
       {!isLoading && !error && selectedGroupId && groups.some(g => g.id === selectedGroupId) && (
-        <RoundManagementPanel
+        <LobbyManagementPanel
           stageId={selectedStageId}
           groupId={selectedGroupId}
           groupName={groups.find(g => g.id === selectedGroupId)?.name ?? ''}

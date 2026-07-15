@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import slugify from 'slugify';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, ApiError, getApiErrorMessage } from '@/lib/apiClient';
 import Footer from '@/components/Footer';
 import {
   TournamentHeader
@@ -14,21 +14,19 @@ import { StagesTab } from '@/components/tournament/details/StagesTab';
 import { RulesTab } from '@/components/tournament/details/RulesTab';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import { usePublicBracketData } from '@/hooks/usePublicBracketData';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Swords, Loader2 } from 'lucide-react';
+import { CancelButton, CtaButton, OutlineButton } from '@/components/ui/app-buttons';
+import { Trophy, Swords, EyeOff, LogIn, Clock } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
 import { formatDate, formatTime } from '@/utils/dateFormat';
-import { useRequireVerification } from '@/hooks/useRequireVerification';
 import { Tournament, BaseTournament, TournamentRegistration } from '@/types/tournament';
 import TournamentRegistrationForm from '@/components/TournamentRegistration';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -44,9 +42,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import esportsGamesData from '@/data/esportsGames.json';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
-import { isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { isBattleRoyaleTournament, getBRConfig, getGameByName, getGameMode, getPersistedTournamentFormat } from '@/utils/gameFeatures';
 import { cn } from '@/lib/utils';
 import { useGameTerminology } from '@/hooks/useGameTerminology';
 import { useBRGameResults } from '@/hooks/useBRGameResults';
@@ -54,24 +51,18 @@ import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
 import BRScoringConfig from '@/components/tournament/br/BRScoringConfig';
 import BRGroupStageView from '@/components/tournament/br/BRGroupStageView';
 import { useBRGroupStage } from '@/hooks/useBRGroupLeaderboard';
+import { getStageBRConfig } from '@/utils/brConfigResolve';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
 import { SEO } from '@/components/SEO';
-
-interface EsportsGame {
-  name: string;
-  formats: {
-    name: string;
-    value: string;
-    teamSize: number;
-  }[];
-  defaultFormat: string;
-}
-
-interface EsportsGamesData {
-  games: EsportsGame[];
-}
-
-const esportsGames = esportsGamesData as EsportsGamesData;
+import InviteCodeRedemption from '@/components/tournament/InviteCodeRedemption';
+import { normalizeInviteCode } from '@/utils/inviteCodeUtils';
+import {
+  canShowInviteRedemption,
+  canShowOpenRegistration,
+  getOpenRegistrationCapacity,
+  getReservedInviteSlotsFromTournament,
+} from '@/utils/tournamentInviteUtils';
+import { getRegistrationOpensFromSettings, resolveCheckInWindow } from '@/utils/tournamentLifecycle';
 
 const TournamentDetails = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -81,27 +72,37 @@ const TournamentDetails = () => {
   const { user } = useAuth();
   const { currentRole } = useRole();
   const admin = useAdmin();
-  const requireVerification = useRequireVerification();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
   const [, setCheckInCount] = useState(0);
   const [isRegistered, setIsRegistered] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [registrationDetails, setRegistrationDetails] = useState<TournamentRegistration | null>(null);
   const [isCaptain, setIsCaptain] = useState(false);
   const [checkInSubmitting, setCheckInSubmitting] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
+  const [participantMode, setParticipantMode] = useState<'solo' | 'team'>('team');
   const [error, setError] = useState<string | null>(null);
+  const [accessState, setAccessState] = useState<'none' | 'unavailable' | 'sign_in_required'>('none');
   const [registrationLoading, setRegistrationLoading] = useState(true);
   const [showBannerDialog, setShowBannerDialog] = useState(false);
   const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
-  const terminology = useGameTerminology(tournament?.game);
-  const isBR = isBattleRoyale(tournament?.game || '');
+  const terminology = useGameTerminology(tournament?.game, tournament?.game_mode, participantMode);
+  const isBR = isBattleRoyaleTournament(
+    tournament?.game || '',
+    getPersistedTournamentFormat(tournament),
+  );
   const detailsSearchParams = typeof window !== 'undefined' ? new URLSearchParams(location.search) : null;
   const requestedDetailsTab = detailsSearchParams?.get('tab') ?? null;
   const requestedBRStageId = detailsSearchParams?.get('brStage') ?? null;
   const competitorTabValue = terminology.competitorLabelPlural.toLowerCase();
   const [activeTab, setActiveTab] = useState(requestedDetailsTab || 'overview');
+  const initialInviteCode = normalizeInviteCode(detailsSearchParams?.get('code') || '');
+  const isBRStageTab = isBR && (activeTab === 'leaderboard' || activeTab === 'game schedule');
+  const needsBracketVersions = activeTab === 'brackets' || isBRStageTab;
+  const needsStageMetadata = activeTab === 'overview' || activeTab === 'stages' || needsBracketVersions;
+
   useEffect(() => {
     setActiveTab(requestedDetailsTab || 'overview');
   }, [requestedDetailsTab]);
@@ -118,10 +119,16 @@ const TournamentDetails = () => {
 
   const isOrganizer = (currentRole === 'organizer' && !!(user?.id && tournament?.organization?.owner_id && user.id === tournament.organization.owner_id)) || admin.hasPermission('tournaments:edit');
   const requiresCheckIn = Boolean(tournament?.check_in_required);
-  const checkInDeadlineDate = useMemo(
-    () => (tournament?.check_in_deadline ? new Date(tournament.check_in_deadline) : null),
-    [tournament?.check_in_deadline]
+  const checkInWindow = useMemo(
+    () => resolveCheckInWindow({
+      startDate: tournament?.start_date,
+      checkInDeadline: tournament?.check_in_deadline,
+      settings: tournament?.settings,
+    }),
+    [tournament?.start_date, tournament?.check_in_deadline, tournament?.settings],
   );
+  const checkInDeadlineDate = checkInWindow.closesAt;
+  const checkInStartTime = checkInWindow.opensAt;
   const registrationStatus = (registrationDetails?.status || '').toLowerCase();
   const hasCheckedIn = Boolean(registrationDetails?.checked_in_at) || registrationStatus === 'checked_in';
   const awaitingApproval = registrationStatus === 'pending';
@@ -134,8 +141,45 @@ const TournamentDetails = () => {
     now instanceof Date &&
     now > checkInDeadlineDate &&
     !hasCheckedIn;
-  const checkInWindowMinutes = (tournament?.settings as any)?.checkInWindowMinutes || 60; // Default to 60 if not set
-  const checkInStartTime = checkInDeadlineDate ? new Date(checkInDeadlineDate.getTime() - (checkInWindowMinutes * 60 * 1000)) : null;
+  const tournamentRegistrationType = tournament?.registration_type ?? (tournament?.settings as any)?.registrationType ?? 'open';
+  const tournamentReservedInviteSlots = getReservedInviteSlotsFromTournament(tournament);
+  const tournamentMaxTeams = tournament?.max_participants ?? (tournament as { max_teams?: number })?.max_teams ?? 0;
+  const openRegistrationCapacity = getOpenRegistrationCapacity(tournamentMaxTeams, tournamentReservedInviteSlots);
+  const tournamentIsPublic = tournament?.is_public !== false;
+
+  const registrationVisibilityInput = useMemo(() => ({
+    isOrganizer,
+    isRegistered,
+    registrationType: tournamentRegistrationType,
+    reservedSlots: tournamentReservedInviteSlots,
+    maxTeams: tournamentMaxTeams,
+    isPublic: tournamentIsPublic,
+    status: tournament?.status,
+    registrationOpens: getRegistrationOpensFromSettings(tournament?.settings),
+    registrationDeadline: tournament?.registration_deadline,
+    startDate: tournament?.start_date ?? undefined,
+  }), [
+    isOrganizer,
+    isRegistered,
+    tournamentRegistrationType,
+    tournamentReservedInviteSlots,
+    tournamentMaxTeams,
+    tournamentIsPublic,
+    tournament?.status,
+    tournament?.settings,
+    tournament?.registration_deadline,
+    tournament?.start_date,
+  ]);
+
+  const showInviteRedemption = canShowInviteRedemption(registrationVisibilityInput);
+  const showOpenRegistration = canShowOpenRegistration(registrationVisibilityInput);
+
+  useEffect(() => {
+    if (initialInviteCode && showInviteRedemption) {
+      setShowInviteDialog(true);
+    }
+  }, [initialInviteCode, showInviteRedemption]);
+
   const canSelfCheckIn =
     requiresCheckIn &&
     !!registrationDetails &&
@@ -155,11 +199,14 @@ const TournamentDetails = () => {
   }, []);
 
   // Public Bracket View State - Refactored to Hook
-  const { stages, activeVersionsMap } = usePublicBracketData(tournament?.id);
+  const { stages, activeVersionsMap } = usePublicBracketData(tournament?.id, {
+    enabled: !!tournament?.id && needsStageMetadata,
+    includeVersions: needsBracketVersions,
+  });
   const [selectedStageId, setSelectedStageId] = useState<string | null>(requestedBRStageId);
 
   // Multi-group stage detection — check first stage for groups
-  const firstBRStageId = isBR && activeTab === 'leaderboard' && stages.length > 0 ? stages[0].id : null;
+  const firstBRStageId = isBRStageTab && stages.length > 0 ? stages[0].id : null;
   const { hasGroups: brHasGroups, isLoading: brGroupsLoading } = useBRGroupStage(firstBRStageId);
 
   // Auto-select first stage when stages load
@@ -181,17 +228,16 @@ const TournamentDetails = () => {
       const participants = await apiClient.get<any[]>(`/api/tournaments/${tournament!.id}/participants`);
       if (!participants) return [];
 
-      const gameKey = tournament?.game?.toLowerCase();
-      const isValorant = gameKey === 'valorant';
-
       return participants.map(p => {
-        const display_name = (isValorant && p.solo_riot_tag)
-          ? p.solo_riot_tag
-          : p.solo_username || p.solo_full_name || 'Anonymous';
+        const entryKind = p.entry_kind as string | undefined;
+        const isSoloEntry = entryKind === 'solo_player' || p.participant_type === 'solo';
+        const display_name = p.display_name
+          || (isSoloEntry ? (p.solo_username || p.solo_full_name) : p.team_name)
+          || 'Anonymous';
 
         return {
           ...p,
-          team_logo: p.team_logo_url,
+          team_logo: p.display_logo_url || p.team_logo_url,
           display_name,
           user: {
             id: p.user_id,
@@ -228,17 +274,20 @@ const TournamentDetails = () => {
     enabled: shouldLoadLegacyBRLeaderboard,
   });
 
-  const fetchTournamentData = useCallback(async () => {
+  const fetchTournamentData = useCallback(async (options?: { silent?: boolean }) => {
     if (!slug || slug === 'undefined') {
       console.error('Invalid slug provided:', slug);
       setError('Invalid tournament identifier');
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!options?.silent) {
+      setLoading(true);
+    }
+    setAccessState('none');
     try {
       const data = await apiClient.get<any>(`/api/tournaments/${encodeURIComponent(slug)}`);
-      if (!data?.tournament) throw new Error('Tournament not found');
+      if (!data?.tournament) throw new ApiError(404, null, 'Tournament not found');
 
       const t = data.tournament;
       const parsedSettings = typeof t.settings === 'string' ? (() => { try { return JSON.parse(t.settings); } catch { return t.settings; } })() : (t.settings || {});
@@ -246,14 +295,18 @@ const TournamentDetails = () => {
 
       const baseTournament: BaseTournament = {
         id: t.id,
+        slug: t.slug,
         name: t.name,
         game: t.game,
         date: t.start_date ? formatDate(t.start_date) : '',
         time: t.start_date ? formatTime(t.start_date) : '',
+        start_date: t.start_date ?? undefined,
+        registration_deadline: t.registration_deadline ?? null,
         venue: t.venue_name || '',
         is_online: !t.venue_id,
+        is_public: t.is_public ?? t.isPublic ?? true,
         max_participants: t.max_teams,
-        reserved_invite_slots: t.reserved_invite_slots ?? t.reservedInviteSlots ?? parsedSettings?.reservedInviteSlots ?? 0,
+        reserved_invite_slots: getReservedInviteSlotsFromTournament({ ...t, settings: parsedSettings }),
         invite_expiry_days: t.invite_expiry_days ?? t.inviteExpiryDays ?? parsedSettings?.inviteExpiryDays ?? 7,
         registration_type: t.registration_type ?? t.registrationType ?? parsedSettings?.registrationType ?? null,
         team_size: t.team_size ?? t.teamSize ?? parsedSettings?.teamSize ?? 1,
@@ -288,23 +341,37 @@ const TournamentDetails = () => {
       const newTournament: Tournament = {
         ...baseTournament,
         current_participants: t.current_participants || 0,
-        status: t.status === 'draft' ? 'upcoming' : t.status as any,
+        status: t.status as Tournament['status'],
         winner_team_name: t.winner_team_name || null,
       };
       setTournament(newTournament);
+      setParticipantMode(data.participantMode === 'solo' ? 'solo' : 'team');
       setError(null);
+      setAccessState('none');
     } catch (error) {
+      setTournament(null);
+
+      if (error instanceof ApiError && error.status === 401) {
+        setAccessState('sign_in_required');
+        setError('Sign in to view this tournament.');
+        return;
+      }
+
+      if (error instanceof ApiError && error.status === 404) {
+        setAccessState('unavailable');
+        setError('This tournament could not be found. Check that the slug or tournament ID in the link is correct.');
+        return;
+      }
+
       const errorMessage = error instanceof Error ? error.message : 'Failed to load tournament details';
+      setAccessState('unavailable');
       setError(errorMessage);
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
-  }, [slug, toast]);
+  }, [slug]);
 
   const hasCheckedRegistration = React.useRef(false);
 
@@ -355,7 +422,7 @@ const TournamentDetails = () => {
           team_name: r.team_name || r.teamName || null,
           team_logo: r.team_logo || r.teamLogo || null,
           team_members: r.team_members || r.teamMembers || null,
-          status: r.status || 'approved',
+          status: r.status || 'pending',
           checked_in_at: r.checked_in_at || r.checkedInAt || null,
           registered_at: r.registration_date || r.registrationDate || r.registered_at || r.registeredAt || r.created_at || r.createdAt,
           created_at: r.created_at || r.createdAt,
@@ -380,11 +447,10 @@ const TournamentDetails = () => {
         setIsCaptain(false);
       }
       setError(null);
-    } catch (error) {
+    } catch {
       setIsRegistered(false);
       setRegistrationDetails(null);
       setIsCaptain(false);
-      setError(error instanceof Error ? error.message : 'Error checking registration');
     } finally {
       setRegistrationLoading(false);
       hasCheckedRegistration.current = true;
@@ -394,31 +460,27 @@ const TournamentDetails = () => {
   // Captain status is set within checkRegistration via my-status response
 
   useEffect(() => {
-    let isMounted = true;
-
-    const initializeData = async () => {
-      if (!slug || !isMounted) return;
-      setLoading(true);
-      setRegistrationLoading(true); // Ensure loading state is set before fetching
-      // Fetch tournament data first, then registration status (which depends on tournament.id)
-      await fetchTournamentData();
-      // Only check registration if we have tournament data
-      if (isMounted) {
-        await checkRegistration();
-      }
-    };
-
-    initializeData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [slug, checkRegistration, fetchTournamentData]);
+    hasCheckedRegistration.current = false;
+    void fetchTournamentData();
+  }, [fetchTournamentData]);
 
   // Check registration when tournament or user becomes available
   useEffect(() => {
-    if (tournament?.id && user?.id && !hasCheckedRegistration.current) {
-      checkRegistration();
+    if (!tournament?.id) {
+      setRegistrationLoading(false);
+      return;
+    }
+
+    if (!user?.id) {
+      setRegistrationLoading(false);
+      setIsRegistered(false);
+      setRegistrationDetails(null);
+      setIsCaptain(false);
+      return;
+    }
+
+    if (!hasCheckedRegistration.current) {
+      void checkRegistration();
     }
   }, [tournament?.id, user?.id, checkRegistration]);
 
@@ -442,10 +504,14 @@ const TournamentDetails = () => {
     };
   }, [checkRegistration]);
 
-  const handleRegistrationSuccess = useCallback(async () => {
+  const handleRegistrationSuccess = useCallback(() => {
     setShowEditDialog(false);
-    await checkRegistration(true);
-    await fetchTournamentData();
+    void Promise.race([
+      Promise.all([checkRegistration(true), fetchTournamentData()]),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Post-registration refresh timed out')), 15000)),
+    ]).catch((error) => {
+      console.warn('Post-registration refresh failed or timed out:', error);
+    });
   }, [checkRegistration, fetchTournamentData]);
 
   const handleWithdraw = async () => {
@@ -468,7 +534,7 @@ const TournamentDetails = () => {
       console.error('Error withdrawing from tournament:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to withdraw from tournament. Please try again.',
+        description: getApiErrorMessage(error, { context: 'tournamentWithdraw' }),
         variant: 'destructive',
       });
     }
@@ -481,8 +547,8 @@ const TournamentDetails = () => {
       await apiClient.post(`/api/tournaments/${tournament.id}/check-in`);
 
       toast({
-        title: 'Checked in',
-        description: 'Your team is confirmed for this tournament.'
+        title: 'Tournament check-in complete',
+        description: 'Open Match Room to schedule your match, check in, and start the lobby.',
       });
 
       await checkRegistration(true);
@@ -520,36 +586,51 @@ const TournamentDetails = () => {
     }
   };
 
-  useEffect(() => {
-    if (!showEditDialog && slug && user?.id) {
-      checkRegistration();
-    }
-  }, [showEditDialog, slug, user?.id, checkRegistration]);
-
-  const normalize = (str) => str?.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
-
-  const selectedGame = tournament ? esportsGames.games.find(
-    (g) => normalize(g.name) === normalize(tournament.game)
-  ) : null;
+  const selectedGame = tournament ? getGameByName(tournament.game) : null;
+  const selectedGameMode = tournament ? getGameMode(tournament.game, tournament.game_mode) : undefined;
 
   if (loading) {
     return <PremiumLoadingScreen text="LOADING TOURNAMENT DATA" />;
   }
 
   if (error || !tournament) {
+    const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-[#050505] text-white">
         <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col items-center justify-center h-[60vh]">
-            <h1 className="text-2xl font-bold text-red-500 mb-4">Error</h1>
-            <p className="text-muted-foreground">{error || 'Tournament not found'}</p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => navigate('/tournaments')}
-            >
-              Back to Tournaments
-            </Button>
+          <div className="flex flex-col items-center justify-center h-[60vh] max-w-lg mx-auto text-center">
+            {accessState === 'sign_in_required' ? (
+              <LogIn className="w-12 h-12 text-rose-400 mb-4" />
+            ) : (
+              <EyeOff className="w-12 h-12 text-amber-400 mb-4" />
+            )}
+            <h1 className="text-2xl font-bold mb-3">
+              {accessState === 'sign_in_required' ? 'Sign in required' : 'Tournament unavailable'}
+            </h1>
+            <p className="text-gray-400 leading-relaxed">
+              {error || 'This tournament could not be loaded.'}
+            </p>
+            {accessState === 'unavailable' && (
+              <p className="text-sm text-gray-500 mt-3 leading-relaxed">
+                Direct links use <span className="text-gray-300">/tournaments/your-slug</span> or{' '}
+                <span className="text-gray-300">/tournaments/tournament-id</span>.
+                Draft and private tournaments work via link but do not appear in browse.
+              </p>
+            )}
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              {accessState === 'sign_in_required' && (
+                <CtaButton
+                  onClick={() => navigate(`/auth/signin?returnTo=${returnTo}`)}
+                >
+                  Sign in
+                </CtaButton>
+              )}
+              <OutlineButton
+                onClick={() => navigate('/tournaments')}
+              >
+                Browse tournaments
+              </OutlineButton>
+            </div>
           </div>
         </div>
         <Footer />
@@ -594,21 +675,23 @@ const TournamentDetails = () => {
         onRegister={() => setShowEditDialog(true)}
         onWithdraw={() => setShowWithdrawDialog(true)}
         onCheckIn={handleSelfCheckIn}
+        showOpenRegistration={showOpenRegistration}
+        showInviteRedemption={showInviteRedemption}
+        onRedeemInvite={() => setShowInviteDialog(true)}
         isLoading={registrationLoading}
         checkInStartTime={checkInStartTime}
         awaitingApproval={awaitingApproval}
       />
 
       {/* --- TABS NAVIGATION (Sticky) --- */}
-      {/* --- TABS NAVIGATION (Sticky) --- */}
       <div className="relative z-30 -mt-20">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="container mx-auto px-4">
-            <div className="sticky top-4 z-40 bg-[#0a0a0c]/90 border border-white/10 p-2 mb-12 mx-auto max-w-3xl">
-              <TabsList className="bg-transparent h-auto p-0 w-full flex justify-between">
+            <div className="sticky top-4 z-40 bg-[#0a0a0c] border border-white/10 p-2 mb-12 mx-auto max-w-3xl backdrop-blur-md">
+              <TabsList className="border-0 bg-transparent h-auto p-0 w-full flex justify-between">
                 {(() => {
                   const tabs = isBR
-                    ? ['Overview', terminology.competitorLabelPlural, 'Leaderboard', 'Rules']
+                    ? ['Overview', terminology.competitorLabelPlural, 'Stages', 'Leaderboard', 'Game Schedule', 'Rules']
                     : ['Overview', terminology.competitorLabelPlural, 'Brackets', 'Stages', 'Rules'];
                   return tabs;
                 })().map((tab) => (
@@ -632,12 +715,29 @@ const TournamentDetails = () => {
 
           <TabsContent value={competitorTabValue}>
             <div className="container mx-auto px-4">
-              <TeamsTab participants={enrichedParticipants} isSolo={terminology.isSolo} />
+              <TeamsTab
+                participants={enrichedParticipants}
+                isSolo={terminology.isSolo}
+                game={tournament.game}
+                gameMode={tournament.game_mode}
+              />
             </div>
           </TabsContent>
 
           {isBR ? (
             <>
+            <TabsContent value="stages">
+              <div className="container mx-auto px-4">
+                <StagesTab
+                  tournamentId={tournament.id}
+                  stages={stages}
+                  teamSize={tournament.team_size}
+                  participantMode={participantMode}
+                  tournamentSettings={tournament.settings as Record<string, unknown> | null}
+                />
+              </div>
+            </TabsContent>
+
             <TabsContent value="leaderboard">
               <div className="container mx-auto px-4 space-y-6">
                 {brHasGroups ? (
@@ -668,8 +768,12 @@ const TournamentDetails = () => {
                     {selectedStageId && (
                       <BRGroupStageView
                         stageId={selectedStageId}
+                        gameName={tournament?.game || ''}
+                        stageFormat={getStageBRConfig(
+                          stages.find((s: { id: string }) => s.id === selectedStageId) ?? {},
+                        )?.format}
                         qualificationCount={(stages.find((s: any) => s.id === selectedStageId) as any)?.advancement_count}
-                        tournamentSlug={slug}
+                        mode="leaderboard"
                       />
                     )}
                   </>
@@ -724,6 +828,50 @@ const TournamentDetails = () => {
                 )}
               </div>
             </TabsContent>
+
+            <TabsContent value="game schedule">
+              <div className="container mx-auto px-4 space-y-6">
+                {brHasGroups ? (
+                  <>
+                    {stages.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {stages.map((stage: any) => (
+                          <button
+                            key={stage.id}
+                            type="button"
+                            onClick={() => setSelectedStageId(stage.id)}
+                            className={cn(
+                              'px-4 py-2 text-sm font-medium transition-all whitespace-nowrap border',
+                              selectedStageId === stage.id
+                                ? 'bg-white/10 border-white/20 text-white'
+                                : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white hover:bg-white/[0.06]'
+                            )}
+                          >
+                            {stage.name || `Stage ${stage.stage_order + 1}`}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {selectedStageId && (
+                      <BRGroupStageView
+                        stageId={selectedStageId}
+                        gameName={tournament?.game || ''}
+                        stageFormat={getStageBRConfig(
+                          stages.find((s: { id: string }) => s.id === selectedStageId) ?? {},
+                        )?.format}
+                        mode="schedule"
+                      />
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-white/10 bg-white/[0.01]">
+                    <Clock className="w-4 h-4 text-zinc-600 flex-shrink-0" />
+                    <p className="text-sm text-zinc-500">Game schedule will appear here once lobbies are set up.</p>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
             </>
           ) : (
             <>
@@ -741,7 +889,13 @@ const TournamentDetails = () => {
 
               <TabsContent value="stages">
                 <div className="container mx-auto px-4">
-                  <StagesTab tournamentId={tournament.id} />
+                  <StagesTab
+                  tournamentId={tournament.id}
+                  stages={stages}
+                  teamSize={tournament.team_size}
+                  participantMode={participantMode}
+                  tournamentSettings={tournament.settings as Record<string, unknown> | null}
+                />
                 </div>
               </TabsContent>
             </>
@@ -757,7 +911,55 @@ const TournamentDetails = () => {
 
       <Footer />
 
-      {/* Registration Dialog */}
+      {/* Invite Redemption Dialog */}
+      <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+        <DialogContent
+          className="max-w-3xl max-h-[90vh] overflow-y-auto overscroll-contain bg-[#0a0a0c] border border-white/10" data-lenis-prevent
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-white font-heading text-2xl tracking-wide">
+              REDEEM INVITATION
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Enter the code from your invite email. Codes are locked to your account email and can only be redeemed by a team captain.
+              {openRegistrationCapacity !== null && tournamentReservedInviteSlots > 0 && (
+                <>
+                  {' '}This tournament reserves {tournamentReservedInviteSlots} slot{tournamentReservedInviteSlots === 1 ? '' : 's'} for invited teams
+                  {openRegistrationCapacity > 0
+                    ? ` and has ${openRegistrationCapacity} open registration slot${openRegistrationCapacity === 1 ? '' : 's'} for everyone else.`
+                    : '. Open registration is full — only invited teams can join.'}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {tournament && (
+            <InviteCodeRedemption
+              compact
+              showTitle={false}
+              initialCode={initialInviteCode}
+              returnPath={`/tournaments/${slug}${initialInviteCode ? `?code=${encodeURIComponent(initialInviteCode)}` : ''}`}
+              tournament={{
+                id: tournament.id,
+                slug: tournament.slug ?? slug,
+                name: tournament.name,
+                game: tournament.game,
+                game_mode: tournament.game_mode,
+                team_size: tournament.team_size,
+                status: tournament.status,
+              }}
+              onSuccess={async () => {
+                setShowInviteDialog(false);
+                await checkRegistration(true);
+                await fetchTournamentData();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Registration Dialog — mount form only while open to avoid eager team lookups */}
+      {showEditDialog && (
       <Dialog open={showEditDialog} onOpenChange={(open) => {
         if (!open) {
           // Dialog is closing — just close it. The TournamentRegistration 
@@ -765,7 +967,7 @@ const TournamentDetails = () => {
           setShowEditDialog(false);
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0a0a0c] border border-white/10" onInteractOutside={(e) => e.preventDefault()}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar bg-[#0a0a0c] border border-white/10" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle className="text-white font-heading text-2xl tracking-wide">
               {isRegistered ? 'MODIFY_REGISTRATION' : 'INITIATE_REGISTRATION'}
@@ -778,6 +980,10 @@ const TournamentDetails = () => {
             game={tournament.game}
             gameMode={tournament.game_mode}
             settings={tournament.settings}
+            status={tournament.status}
+            startDate={tournament.start_date ?? null}
+            registrationDeadline={tournament.registration_deadline ?? null}
+            maxTeams={tournamentMaxTeams || undefined}
             entryFee={tournament.entry_fee}
             currency={tournament.currency}
             paymentInstructions={tournament.payment_instructions}
@@ -785,11 +991,13 @@ const TournamentDetails = () => {
             onCancel={() => setShowEditDialog(false)}
             initialData={registrationDetails}
             isEdit={!!registrationDetails}
-            structure={selectedGame?.defaultFormat || ''}
-            teamSize={tournament.team_size || selectedGame?.formats.find(f => f.value === selectedGame.defaultFormat)?.teamSize || 1}
+            structure={selectedGameMode?.value || selectedGame?.defaultFormat || ''}
+            teamSize={tournament.team_size || selectedGameMode?.teamSize || 1}
+            participantMode={participantMode}
           />
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Withdraw Dialog */}
       <AlertDialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
@@ -806,7 +1014,7 @@ const TournamentDetails = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-gray-600 text-gray-300 hover:bg-white/5">CANCEL</AlertDialogCancel>
+            <AlertDialogCancel>CANCEL</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleWithdraw}
               className="bg-red-600 hover:bg-red-700 text-white font-mono tracking-widest"
@@ -879,9 +1087,9 @@ const TournamentDetails = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowBannerDialog(false)} className="border-white/10 text-white hover:bg-white/5">
+            <CancelButton onClick={() => setShowBannerDialog(false)}>
               CANCEL
-            </Button>
+            </CancelButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

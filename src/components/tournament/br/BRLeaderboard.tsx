@@ -31,7 +31,12 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({
   pageSize,
 }) => {
   const [page, setPage] = React.useState(1);
-  const sorted = React.useMemo(() => [...entries].sort((a, b) => b.totalPoints - a.totalPoints), [entries]);
+  const sorted = React.useMemo(
+    () => [...entries]
+      .filter((entry) => Boolean(entry?.teamId))
+      .sort((a, b) => (b.totalPoints ?? 0) - (a.totalPoints ?? 0)),
+    [entries],
+  );
   const hasQualificationCutoff =
     typeof qualificationCutoff === 'number' && qualificationCutoff > 0;
   const totalPages = pageSize ? Math.max(1, Math.ceil(sorted.length / pageSize)) : 1;
@@ -84,15 +89,18 @@ const BRLeaderboard: React.FC<BRLeaderboardProps> = ({
 
             {visibleEntries.map((entry, index) => {
               const absoluteIndex = pageStartIndex + index;
+              const isQualifiedRank = hasQualificationCutoff && qualificationCutoff != null && absoluteIndex < qualificationCutoff;
+              const isBubbleRank = hasQualificationCutoff && qualificationCutoff != null && absoluteIndex >= qualificationCutoff && absoluteIndex <= qualificationCutoff + 1;
               return (
-              <React.Fragment key={entry.teamId}>
+              <React.Fragment key={entry.teamId ?? `row-${absoluteIndex}`}>
                 <div
                   className={cn(
                     "grid grid-cols-[40px_1fr_70px_70px_70px_50px_70px] gap-2 items-center px-3 py-2.5 rounded-lg transition-colors",
                     absoluteIndex === 0 ? "bg-amber-500/10 border border-amber-500/20" :
                     absoluteIndex === 1 ? "bg-gray-400/5 border border-gray-400/10" :
                     absoluteIndex === 2 ? "bg-amber-700/5 border border-amber-700/10" :
-                    qualificationCutoff != null && hasQualificationCutoff && absoluteIndex < qualificationCutoff ? "bg-emerald-500/[0.03]" :
+                    isQualifiedRank ? "bg-emerald-500/[0.03]" :
+                    isBubbleRank ? "bg-amber-500/[0.05] border border-amber-500/20" :
                     "hover:bg-white/[0.02]"
                   )}
                 >

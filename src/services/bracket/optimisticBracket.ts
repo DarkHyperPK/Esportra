@@ -64,11 +64,14 @@ export const optimisticBracket = {
                     const field = winnerEdge.target_slot === 1 ? 'team1_id' : 'team2_id';
 
                     const sourceMatch = nodes.find(n => String(n.id) === String(sourceMatchId));
-                    const teamName = sourceMatch?.team1_id === winnerId ? sourceMatch.team1_name : sourceMatch?.team2_id === winnerId ? sourceMatch.team2_name : null;
-                    const teamLogo = sourceMatch?.team1_id === winnerId ? sourceMatch.team1_logo : sourceMatch?.team2_id === winnerId ? sourceMatch.team2_logo : null;
+                    const isTeam1 = sourceMatch?.team1_id === winnerId;
+                    const teamName = isTeam1 ? sourceMatch?.team1_name : sourceMatch?.team2_id === winnerId ? sourceMatch?.team2_name : null;
+                    const teamLogo = isTeam1 ? sourceMatch?.team1_logo : sourceMatch?.team2_id === winnerId ? sourceMatch?.team2_logo : null;
+                    const teamSeed = isTeam1 ? sourceMatch?.team1_seed : sourceMatch?.team2_id === winnerId ? sourceMatch?.team2_seed : null;
 
                     const nameField = winnerEdge.target_slot === 1 ? 'team1_name' : 'team2_name';
                     const logoField = winnerEdge.target_slot === 1 ? 'team1_logo' : 'team2_logo';
+                    const seedField = winnerEdge.target_slot === 1 ? 'team1_seed' : 'team2_seed';
 
                     const newStatus = (node.status === 'in_progress' || node.status === 'completed' || node.status === 'disputed')
                         ? node.status
@@ -79,6 +82,7 @@ export const optimisticBracket = {
                         [field]: winnerId,
                         ...(teamName ? { [nameField]: teamName } : {}),
                         ...(teamLogo ? { [logoField]: teamLogo } : {}),
+                        ...(teamSeed != null ? { [seedField]: teamSeed } : {}),
                         status: newStatus
                     };
                 }
@@ -93,11 +97,14 @@ export const optimisticBracket = {
                     const field = loserEdge.target_slot === 1 ? 'team1_id' : 'team2_id';
 
                     const sourceMatch = nodes.find(n => String(n.id) === String(sourceMatchId));
-                    const teamName = sourceMatch?.team1_id === loserId ? sourceMatch.team1_name : sourceMatch?.team2_id === loserId ? sourceMatch.team2_name : null;
-                    const teamLogo = sourceMatch?.team1_id === loserId ? sourceMatch.team1_logo : sourceMatch?.team2_id === loserId ? sourceMatch.team2_logo : null;
+                    const isTeam1 = sourceMatch?.team1_id === loserId;
+                    const teamName = isTeam1 ? sourceMatch?.team1_name : sourceMatch?.team2_id === loserId ? sourceMatch?.team2_name : null;
+                    const teamLogo = isTeam1 ? sourceMatch?.team1_logo : sourceMatch?.team2_id === loserId ? sourceMatch?.team2_logo : null;
+                    const teamSeed = isTeam1 ? sourceMatch?.team1_seed : sourceMatch?.team2_id === loserId ? sourceMatch?.team2_seed : null;
 
                     const nameField = loserEdge.target_slot === 1 ? 'team1_name' : 'team2_name';
                     const logoField = loserEdge.target_slot === 1 ? 'team1_logo' : 'team2_logo';
+                    const seedField = loserEdge.target_slot === 1 ? 'team1_seed' : 'team2_seed';
 
                     const newStatus = (node.status === 'in_progress' || node.status === 'completed' || node.status === 'disputed')
                         ? node.status
@@ -108,6 +115,7 @@ export const optimisticBracket = {
                         [field]: loserId,
                         ...(teamName ? { [nameField]: teamName } : {}),
                         ...(teamLogo ? { [logoField]: teamLogo } : {}),
+                        ...(teamSeed != null ? { [seedField]: teamSeed } : {}),
                         status: newStatus
                     };
                 }
@@ -133,7 +141,9 @@ export const optimisticBracket = {
                     team1_name: node.team2_name,
                     team2_name: node.team1_name,
                     team1_logo: node.team2_logo,
-                    team2_logo: node.team1_logo
+                    team2_logo: node.team1_logo,
+                    team1_seed: node.team2_seed,
+                    team2_seed: node.team1_seed
                 };
             }
             return node;
@@ -155,6 +165,8 @@ export const optimisticBracket = {
                     team2_score: 0,
                     winner_id: null,
                     loser_id: null,
+                    scheduled_time: null,
+                    scheduledTime: null,
                 };
             }
             return node;

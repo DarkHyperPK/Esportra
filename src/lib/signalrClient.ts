@@ -47,7 +47,7 @@ export function buildHubConnection(hubPath: string): HubConnection {
     })
     .withAutomaticReconnect([0, 2_000, 5_000, 10_000, 30_000])
     .configureLogging(
-      import.meta.env.DEV ? LogLevel.Information : LogLevel.Warning,
+      import.meta.env.DEV ? LogLevel.Information : LogLevel.Critical,
     )
     .build();
 }
@@ -62,7 +62,7 @@ export function buildVenueHubConnection(hubPath: string): HubConnection {
     .withUrl(`${base}${hubPath}`)
     .withAutomaticReconnect([0, 2_000, 5_000, 10_000, 30_000])
     .configureLogging(
-      import.meta.env.DEV ? LogLevel.Information : LogLevel.Warning,
+      import.meta.env.DEV ? LogLevel.Information : LogLevel.Critical,
     )
     .build();
 }

@@ -11,6 +11,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
+import { getInviteExpiryDaysFromTournament, getReservedInviteSlotsFromTournament } from '@/utils/tournamentInviteUtils';
 
 export interface DashboardTournament {
     id: string;
@@ -56,7 +57,7 @@ export interface DashboardParticipant {
     id: string;
     user_id: string;
     tournament_id: string;
-    status: 'registered' | 'checked_in' | 'withdrawn' | 'pending';
+    status: 'registered' | 'checked_in' | 'withdrawn' | 'pending' | 'approved' | 'rejected' | 'cancelled';
     participant_type: 'solo' | 'team';
     team_name: string | null;
     team_logo: string | null;
@@ -67,6 +68,10 @@ export interface DashboardParticipant {
     checked_in_at: string | null;
     source?: string | null;
     is_mock: boolean;
+    payment_status?: 'pending' | 'approved' | 'rejected' | 'not_required' | null;
+    payment_receipt_url?: string | null;
+    payment_rejection_reason?: string | null;
+    entry_fee_paid?: boolean | null;
     user?: {
         username: string;
         avatar_url: string | null;
@@ -87,6 +92,9 @@ export interface DashboardStage {
     config: any;
     capacity: number;
     advancement_count: number;
+    best_of: number;
+    bo_mode: 'per_stage' | 'per_round';
+    round_bo_overrides: Record<string, number> | null;
     is_locked: boolean;
     created_at: string;
     updated_at: string;
@@ -98,6 +106,7 @@ export interface TournamentDashboardData {
     stages: DashboardStage[];
     isOrganizer: boolean;
     staffPermissions: string[];
+    staffRole: string | null;
     mockCount: number;
 }
 
@@ -119,6 +128,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 stages: any[];
                 isOrganizer: boolean;
                 staffPermissions: string[] | null;
+                staffRole?: string | null;
                 mockCount?: number;
             }>(`/api/tournaments/${encodeURIComponent(identifier)}`);
 
@@ -136,8 +146,8 @@ export function useTournamentDashboard(slug: string | undefined) {
                 venue:                 t.venue_id ? `Venue ${t.venue_id}` : 'Online',
                 is_online:             !t.venue_id,
                 max_participants:      t.max_teams ?? 0,
-                reserved_invite_slots: t.reserved_invite_slots ?? t.reservedInviteSlots ?? parsedSettings?.reservedInviteSlots ?? 0,
-                invite_expiry_days:    t.invite_expiry_days ?? t.inviteExpiryDays ?? parsedSettings?.inviteExpiryDays ?? 7,
+                reserved_invite_slots: getReservedInviteSlotsFromTournament({ ...t, settings: parsedSettings }),
+                invite_expiry_days:    getInviteExpiryDaysFromTournament({ ...t, settings: parsedSettings }),
                 registration_type:     t.registration_type ?? t.registrationType ?? parsedSettings?.registrationType ?? null,
                 registration_open:     t.status === 'open',
                 current_participants:  t.current_participants ?? result.participants.length,
@@ -157,18 +167,32 @@ export function useTournamentDashboard(slug: string | undefined) {
                 created_at:       p.created_at,
                 checked_in_at:    p.checked_in_at ?? null,
                 source:           p.source ?? p.registration_source ?? null,
-                is_mock:          p.is_mock === true || p.is_mock === 'true',
+                is_mock:                  p.is_mock === true || p.is_mock === 'true',
+                payment_status:           p.payment_status ?? null,
+                payment_receipt_url:      p.payment_receipt_url ?? null,
+                payment_rejection_reason: p.payment_rejection_reason ?? null,
+                entry_fee_paid:           p.entry_fee_paid ?? null,
                 user:             p.username ? { username: p.username, avatar_url: null, full_name: null } : undefined,
                 teams:            p.team_logo ? { logo_url: p.team_logo } : undefined,
             }));
 
-            const mappedStages: DashboardStage[] = result.stages.map((s: any) => ({
-                ...s,
-                config: typeof s.config === 'string' ? (() => { try { return JSON.parse(s.config); } catch { return s.config; } })() : (s.config || null),
-                capacity:          s.capacity ?? 0,
-                advancement_count: s.advancement_count ?? 0,
-                is_locked:         !!s.is_locked,
-            }));
+            const mappedStages: DashboardStage[] = result.stages.map((s: any) => {
+                // Parse round_bo_overrides - may be JSON string from database
+                let roundBoOverrides = s.round_bo_overrides;
+                if (typeof roundBoOverrides === 'string') {
+                    try { roundBoOverrides = JSON.parse(roundBoOverrides); } catch { roundBoOverrides = null; }
+                }
+                return {
+                    ...s,
+                    config: typeof s.config === 'string' ? (() => { try { return JSON.parse(s.config); } catch { return s.config; } })() : (s.config || null),
+                    capacity:            s.capacity ?? 0,
+                    advancement_count:   s.advancement_count ?? 0,
+                    best_of:             s.best_of ?? 1,
+                    bo_mode:             s.bo_mode ?? 'per_stage',
+                    round_bo_overrides:  roundBoOverrides ?? null,
+                    is_locked:           !!s.is_locked,
+                };
+            });
 
             return {
                 tournament:       mappedTournament,
@@ -176,6 +200,7 @@ export function useTournamentDashboard(slug: string | undefined) {
                 stages:           mappedStages,
                 isOrganizer:      result.isOrganizer,
                 staffPermissions: result.staffPermissions ?? [],
+                staffRole:        result.staffRole ?? null,
                 mockCount:        result.mockCount ?? 0,
             };
         },

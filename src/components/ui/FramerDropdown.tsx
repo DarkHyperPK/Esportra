@@ -1,31 +1,8 @@
-import React, { useState, useRef, useEffect, startTransition, createContext, useContext } from "react";
+import React, { useState, useRef, useEffect, startTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-
-// --- Context ---
-interface FramerDropdownContextType {
-    isOpen: boolean;
-    setIsOpen: (v: boolean) => void;
-    close: () => void;
-    config: {
-        backgroundColor: string;
-        borderColor: string;
-        accentColor: string;
-        borderRadius: number;
-        padding: number;
-        font: any;
-        textColor: string;
-    };
-}
-
-const FramerDropdownContext = createContext<FramerDropdownContextType | undefined>(undefined);
-
-export const useFramerDropdown = () => {
-    const context = useContext(FramerDropdownContext);
-    if (!context) throw new Error("FramerDropdown components must be used within FramerDropdownRoot");
-    return context;
-};
+import { FramerDropdownContext, useFramerDropdown } from "@/components/ui/framerDropdownContext";
 
 // --- Props ---
 interface FramerDropdownRootProps {

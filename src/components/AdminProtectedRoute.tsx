@@ -2,7 +2,15 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
-import { ProfileLoading } from './profile/ProfileLoading';
+import { Loader2 } from 'lucide-react';
+
+function AdminLoadingFallback() {
+  return (
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <Loader2 className="w-8 h-8 animate-spin text-rose-500" />
+    </div>
+  );
+}
 
 interface AdminProtectedRouteProps {
   children: React.ReactNode;
@@ -21,7 +29,7 @@ const AdminProtectedRoute: React.FC<AdminProtectedRouteProps> = ({
   const admin = useAdmin();
   const location = useLocation();
 
-  if (loading || admin.loading) return <ProfileLoading />;
+  if (loading || admin.loading) return <AdminLoadingFallback />;
   if (!user) return <Navigate to="/auth/signin" state={{ from: location }} replace />;
   if (!admin.isAdmin) return <Navigate to="/unauthorized" replace />;
 

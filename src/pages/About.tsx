@@ -31,7 +31,7 @@ const AboutPage: React.FC = () => {
   const heroOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
 
   return (
-    <div ref={containerRef} className={`min-h-screen bg-transparent text-white ${theme.selection} overflow-x-hidden font-sans transition-colors duration-500`}>
+    <div ref={containerRef} className={`relative min-h-screen bg-transparent text-white ${theme.selection} overflow-x-hidden font-sans transition-colors duration-500`}>
       {/* Dynamic Background Noise & Grid */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100px_100px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_70%)]" />

@@ -1,19 +1,28 @@
-import React, { useState, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, ChevronDown, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Loader2, Swords } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { BracketMatch } from '@/types/bracketTypes';
 import { apiClient } from '@/lib/apiClient';
-import { FullScoreboard } from './FullScoreboard';
 import { MAP_THEMES, getMapSplash } from './fullScoreboardConstants';
+import { VetoHistoryTimeline } from './map-veto/VetoHistoryTimeline';
+import { useVetoHistory } from '@/hooks/useVetoHistory';
+import MatchGameStatisticsPanel from '@/components/tournament/MatchGameStatisticsPanel';
+import type { MatchDetailsPayload } from '@/types/matchDetails';
+import { cn } from '@/lib/utils';
+import {
+    compareBracketMatchesDesc,
+    formatTeamMatchHistoryLabel,
+} from '@/utils/bracketMatchProgress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Props {
     tournamentId: string;
     teamId?: string;
     matches: BracketMatch[];
     isOrganizer?: boolean;
+    focusTeamIds?: string[];
+    includeLiveMatchId?: string;
 }
 
 interface GameDetail {
@@ -26,9 +35,25 @@ interface GameDetail {
     map_id: string;
     map_name: string;
     map_image_url: string | null;
-    match_details: any; // Riot API scoreboard data — shape varies per match
+    match_details: MatchDetailsPayload | null;
     reported_by_team_id?: string;
 }
+
+const sortGames = (games: GameDetail[]) =>
+    [...games].sort((left, right) => left.game_number - right.game_number);
+
+const normalizeMatchDetails = (raw: unknown): MatchDetailsPayload | null => {
+    if (!raw) return null;
+    if (typeof raw === 'string') {
+        try {
+            return JSON.parse(raw) as MatchDetailsPayload;
+        } catch {
+            return null;
+        }
+    }
+    if (typeof raw === 'object') return raw as MatchDetailsPayload;
+    return null;
+};
 
 const resolveMapSplash = (mapName: string) => {
     const key = mapName.toLowerCase();
@@ -36,100 +61,359 @@ const resolveMapSplash = (mapName: string) => {
     return theme ? getMapSplash(theme.id) : null;
 };
 
-/** Individual game row with map splash + expandable scoreboard */
-const GameCard: React.FC<{
+const resolveMatchSide = (match: BracketMatch, teamId?: string): 'team1' | 'team2' | null => {
+    if (!teamId) return null;
+    if (match.team1?.id === teamId) return 'team1';
+    if (match.team2?.id === teamId) return 'team2';
+    return null;
+};
+
+const resolveOpponentName = (match: BracketMatch, teamId?: string): string => {
+    const side = resolveMatchSide(match, teamId);
+    const opponent = side === 'team1' ? match.team2 : side === 'team2' ? match.team1 : null;
+    const opponentName = opponent?.name?.trim();
+    if (opponentName && opponentName !== 'TBD') return opponentName;
+
+    const fallback =
+        side === 'team1' ? match.team2?.name
+        : side === 'team2' ? match.team1?.name
+        : undefined;
+    if (fallback && fallback !== 'TBD') return fallback;
+
+    return opponentName || 'TBD';
+};
+
+const MatchGamePreviewRow: React.FC<{
     game: GameDetail;
-    isTeam1: boolean;
-    isExpanded: boolean;
-    onToggle: () => void;
-    team1Name: string;
-    team2Name: string;
-    teamId?: string;
-    opposingTeamId?: string;
-    matchTeam1Id?: string;
-}> = ({ game, isTeam1, isExpanded, onToggle, team1Name, team2Name, teamId, opposingTeamId, matchTeam1Id }) => {
+}> = ({ game }) => {
     const splash = resolveMapSplash(game.map_name);
-    const myScore = isTeam1 ? game.team1_score : game.team2_score;
-    const oppScore = isTeam1 ? game.team2_score : game.team1_score;
-    const [splashLoaded, setSplashLoaded] = useState(false);
-    const handleSplashLoad = useCallback(() => setSplashLoaded(true), []);
 
     return (
-        <div className="space-y-2">
-            <div
-                className="relative group/game flex items-center justify-between border border-white/5 rounded-xl overflow-hidden cursor-pointer hover:border-white/20 transition-all min-h-[80px]"
-                onClick={onToggle}
-            >
-                {splash && (
-                    <div className="absolute inset-0 z-0">
-                        <img src={splash} loading="lazy" alt="" onLoad={handleSplashLoad} className={`w-full h-full object-cover transition-opacity duration-500 ${splashLoaded ? 'opacity-40 group-hover/game:opacity-60' : 'opacity-0'}`} />
-                        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/40 to-transparent" />
+        <div className="flex items-center justify-between gap-3 border border-white/5 bg-black/30 px-3 py-2">
+            <div className="flex min-w-0 items-center gap-3">
+                {splash ? (
+                    <div className="relative h-10 w-14 shrink-0 overflow-hidden border border-white/10">
+                        <img src={splash} loading="lazy" alt="" className="h-full w-full object-cover opacity-70" />
                     </div>
-                )}
-                <div className="relative z-10 flex flex-col p-5">
-                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1 drop-shadow-md">Game {game.game_number}</span>
-                    <span className="text-lg font-black text-white uppercase tracking-tight drop-shadow-lg">{game.map_name}</span>
-                </div>
-                <div className="relative z-10 flex items-center gap-4 p-5">
-                    <div className="flex items-center gap-3 bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 shadow-2xl">
-                        <span className={`text-base font-black ${myScore > oppScore ? 'text-white' : 'text-zinc-500'}`}>{myScore}</span>
-                        <span className="text-xs text-zinc-700 font-bold">VS</span>
-                        <span className={`text-base font-black ${oppScore > myScore ? 'text-white' : 'text-zinc-500'}`}>{oppScore}</span>
-                    </div>
-                    {game.match_details?.players && (
-                        <div className={`p-2 rounded-full bg-white/10 border border-white/10 backdrop-blur-sm transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                            <ChevronDown className="w-4 h-4 text-white" />
-                        </div>
-                    )}
+                ) : null}
+                <div className="min-w-0">
+                    <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-zinc-500">
+                        Game {game.game_number}
+                    </p>
+                    <p className="truncate text-sm font-semibold text-zinc-200">{game.map_name}</p>
                 </div>
             </div>
-            {isExpanded && game.match_details?.players && (
-                <div className="bg-zinc-950/40 backdrop-blur-md rounded-xl border border-white/5 overflow-hidden p-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <FullScoreboard
-                        players={game.match_details.players}
-                        team1Name={team1Name}
-                        team2Name={team2Name}
-                        team1Score={game.team1_score}
-                        team2Score={game.team2_score}
-                        reporterSide={game.match_details.reporterSide}
-                        reportedByTeamId={game.reported_by_team_id || (isTeam1 ? teamId : opposingTeamId)}
-                        team1Id={matchTeam1Id}
-                        t1Side={game.match_details.t1Side}
-                    />
-                </div>
-            )}
+            <p className="shrink-0 font-mono text-sm font-bold tabular-nums text-white">
+                {game.team1_score} – {game.team2_score}
+            </p>
         </div>
     );
 };
 
-const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches, isOrganizer }) => {
-    const [expandedMatches, setExpandedMatches] = useState<Record<string, boolean>>({});
-    const [expandedGames, setExpandedGames] = useState<Record<string, boolean>>({});
+const MatchStatisticsList: React.FC<{
+    pastMatches: BracketMatch[];
+    gameDetails: Record<string, GameDetail[]>;
+    teamId?: string;
+    isOrganizer?: boolean;
+    onSelectMatch: (matchId: string) => void;
+    allMatches: BracketMatch[];
+}> = ({ pastMatches, gameDetails, teamId, isOrganizer, onSelectMatch, allMatches }) => (
+    <div className="divide-y divide-white/10 border-y border-white/10">
+        {pastMatches.map((match) => {
+            const side = resolveMatchSide(match, teamId);
+            const isTeam1 = side === 'team1' || (isOrganizer && !teamId);
+            const myScore = isTeam1 ? match.team1_score : match.team2_score;
+            const opponentScore = isTeam1 ? match.team2_score : match.team1_score;
+            const opponentName = resolveOpponentName(match, teamId);
+            const isLive = match.status === 'in_progress';
+            const isWin = !isLive && (myScore || 0) > (opponentScore || 0);
+            const games = sortGames(gameDetails[match.id] || []);
+            const multiGame = games.length > 1;
 
-    // Organizer mode: show all completed matches. Team mode: show only team's matches.
-    const pastMatches = matches.filter(m =>
-        m.status === 'completed' && (isOrganizer || !teamId || m.team1?.id === teamId || m.team2?.id === teamId)
-    ).sort((a, b) => Number(b.matchNumber) - Number(a.matchNumber));
+            const accentBarClass = isLive
+                ? 'bg-amber-500/60'
+                : isOrganizer
+                    ? 'bg-zinc-600'
+                    : isWin
+                        ? 'bg-emerald-500/60'
+                        : 'bg-rose-500/60';
+
+            return (
+                <button
+                    key={match.id}
+                    type="button"
+                    className="group flex w-full flex-col gap-4 py-6 text-left transition-colors hover:bg-white/[0.02]"
+                    onClick={() => onSelectMatch(match.id)}
+                >
+                    <div className="flex w-full items-center justify-between gap-6">
+                        <div className="flex min-w-0 items-center gap-5">
+                            <div className={cn('h-12 w-1 shrink-0', accentBarClass)} />
+                            <div className="min-w-0">
+                                <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                                    {isLive ? 'Current match' : formatTeamMatchHistoryLabel(match, allMatches)}
+                                </p>
+                                <h3 className="mt-1 truncate font-heading text-xl font-bold uppercase tracking-tight text-white md:text-2xl">
+                                    {isOrganizer
+                                        ? `${match.team1?.name || 'Team 1'} vs ${match.team2?.name || 'Team 2'}`
+                                        : `vs ${opponentName || 'TBD'}`}
+                                </h3>
+                                {!multiGame && games.length === 1 ? (
+                                    <p className="mt-1 truncate text-xs text-zinc-600">{games[0].map_name}</p>
+                                ) : null}
+                            </div>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-4">
+                            <Badge
+                                variant="outline"
+                                className={cn(
+                                    'border-0 px-3 py-1 font-mono text-sm font-black tabular-nums',
+                                    isLive
+                                        ? 'bg-amber-500/10 text-amber-300'
+                                        : isOrganizer
+                                            ? 'bg-zinc-800 text-zinc-300'
+                                            : isWin
+                                                ? 'bg-emerald-500/10 text-emerald-400'
+                                                : 'bg-rose-500/10 text-rose-400',
+                                )}
+                            >
+                                {myScore ?? 0} – {opponentScore ?? 0}
+                            </Badge>
+                            <ChevronRight className="h-5 w-5 text-zinc-500 transition-transform group-hover:translate-x-0.5" />
+                        </div>
+                    </div>
+
+                    {multiGame ? (
+                        <div className="space-y-2 pl-6 md:pl-7">
+                            {games.map((game) => (
+                                <MatchGamePreviewRow key={game.id} game={game} />
+                            ))}
+                        </div>
+                    ) : null}
+                </button>
+            );
+        })}
+    </div>
+);
+
+const FullMatchDataPanel: React.FC<{
+    game: GameDetail;
+    details: MatchDetailsPayload | null;
+    team1Name: string;
+    team2Name: string;
+    team1Id?: string;
+    team2Id?: string;
+    team1Logo?: string;
+    team2Logo?: string;
+    teamId?: string;
+    isTeam1: boolean;
+    isOrganizer?: boolean;
+}> = ({
+    game,
+    details,
+    team1Name,
+    team2Name,
+    team1Id,
+    team2Id,
+    team1Logo,
+    team2Logo,
+    teamId,
+    isTeam1,
+    isOrganizer = false,
+}) => (
+    <MatchGameStatisticsPanel
+        riotMatchId={game.riot_match_id}
+        details={details}
+        team1Name={team1Name}
+        team2Name={team2Name}
+        team1Id={team1Id}
+        team2Id={team2Id}
+        team1Logo={team1Logo}
+        team2Logo={team2Logo}
+        team1Score={game.team1_score}
+        team2Score={game.team2_score}
+        mapName={game.map_name}
+        gameNumber={game.game_number}
+        reportedByTeamId={game.reported_by_team_id || details?.reportedByTeamId || (isTeam1 ? teamId : team2Id)}
+        t1Side={details?.t1Side}
+        captainRoomMode
+        captainTeamId={teamId}
+        isOrganizer={isOrganizer}
+        fetchLive
+        showShareCards
+    />
+);
+
+const MatchStatisticsDetail: React.FC<{
+    match: BracketMatch;
+    games: GameDetail[];
+    teamId?: string;
+    isOrganizer?: boolean;
+    onBack: () => void;
+    allMatches: BracketMatch[];
+}> = ({ match, games, teamId, isOrganizer, onBack, allMatches }) => {
+    const sortedGames = sortGames(games);
+    const [selectedGameId, setSelectedGameId] = useState<string>(() => sortedGames[0]?.id ?? '');
+    const selectedGame = sortedGames.find((game) => game.id === selectedGameId) ?? sortedGames[0];
+
+    if (!selectedGame) {
+        return (
+            <div className="space-y-4">
+                <button
+                    type="button"
+                    onClick={onBack}
+                    className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400 transition-colors hover:text-white"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to matches
+                </button>
+                <div className="border border-dashed border-white/10 py-16 text-center text-sm text-zinc-500">
+                    No detailed game data available for this match.
+                </div>
+            </div>
+        );
+    }
+
+    const side = resolveMatchSide(match, teamId);
+    const isTeam1 = side === 'team1' || (isOrganizer && !teamId);
+    const opponentName = resolveOpponentName(match, teamId);
+    const team1Name = match.team1?.name || 'Team 1';
+    const team2Name = match.team2?.name || 'Team 2';
+
+    return (
+        <div className="space-y-6">
+            <button
+                type="button"
+                onClick={onBack}
+                className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-400 transition-colors hover:text-white"
+            >
+                <ArrowLeft className="h-4 w-4" />
+                Back to matches
+            </button>
+
+            <div className="border-b border-white/10 pb-6">
+                <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                    {formatTeamMatchHistoryLabel(match, allMatches)}
+                </p>
+                <h3 className="mt-1 font-heading text-2xl font-bold uppercase tracking-tight text-white md:text-3xl">
+                    {isOrganizer
+                        ? `${team1Name} vs ${team2Name}`
+                        : `vs ${opponentName || 'TBD'}`}
+                </h3>
+                <p className="mt-2 font-mono text-sm font-black tabular-nums text-zinc-300">
+                    {match.team1_score ?? 0} – {match.team2_score ?? 0}
+                </p>
+            </div>
+
+            {sortedGames.length > 1 ? (
+                <div className="flex flex-wrap gap-2">
+                    {sortedGames.map((game) => (
+                        <button
+                            key={game.id}
+                            type="button"
+                            onClick={() => setSelectedGameId(game.id)}
+                            className={cn(
+                                'border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors',
+                                selectedGame.id === game.id
+                                    ? 'border-rose-500/40 bg-rose-500/10 text-rose-200'
+                                    : 'border-white/10 bg-black/20 text-zinc-400 hover:border-white/20 hover:text-white',
+                            )}
+                        >
+                            Game {game.game_number} · {game.map_name}
+                        </button>
+                    ))}
+                </div>
+            ) : null}
+
+            <FullMatchDataPanel
+                game={selectedGame}
+                details={selectedGame.match_details}
+                team1Name={team1Name}
+                team2Name={team2Name}
+                team1Id={match.team1?.id}
+                team2Id={match.team2?.id}
+                team1Logo={match.team1?.logo_url || undefined}
+                team2Logo={match.team2?.logo_url || undefined}
+                teamId={teamId}
+                isTeam1={isTeam1}
+                isOrganizer={isOrganizer}
+            />
+        </div>
+    );
+};
+const MatchVetoSummary: React.FC<{ matchId: string; expanded: boolean }> = ({ matchId, expanded }) => {
+    const cleanedId = matchId.replace(/^(db-|wb-|lb-)/, '');
+    const { data: entries = [], isLoading } = useVetoHistory(cleanedId, expanded);
+    if (!expanded) return null;
+    if (!isLoading && entries.length === 0) return null;
+
+    return (
+        <div className="border border-indigo-500/20 bg-indigo-500/5 p-4">
+            <p className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-indigo-300">
+                <Swords className="h-3.5 w-3.5" />
+                Map veto timeline
+            </p>
+            <VetoHistoryTimeline entries={entries} loading={isLoading} compact />
+        </div>
+    );
+};
+
+const CaptainMatchHistory: React.FC<Props> = ({
+    tournamentId,
+    teamId,
+    matches,
+    isOrganizer,
+    focusTeamIds,
+    includeLiveMatchId,
+}) => {
+    const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+
+    const normalizeMatchId = (id: string) => id.replace(/^(db-|wb-|lb-)/, '');
+
+    const involvesFocusedTeams = (match: BracketMatch) => {
+        if (!focusTeamIds?.length) return true;
+        return focusTeamIds.some(
+            (id) => match.team1?.id === id || match.team2?.id === id,
+        );
+    };
+
+    const isIncludedLiveMatch = (match: BracketMatch) =>
+        !!includeLiveMatchId
+        && normalizeMatchId(match.id) === normalizeMatchId(includeLiveMatchId);
+
+    const pastMatches = matches.filter((m) => {
+        if (isIncludedLiveMatch(m)) {
+            return m.status === 'in_progress' || m.status === 'completed';
+        }
+        if (m.status !== 'completed') return false;
+        if (isOrganizer) return involvesFocusedTeams(m);
+        return !teamId || m.team1?.id === teamId || m.team2?.id === teamId;
+    }).sort(compareBracketMatchesDesc);
 
     const { data: rawGameDetails, isLoading: detailsLoading } = useQuery({
-        queryKey: ['match-history-games', teamId, pastMatches.map(m => m.id).join(',')],
+        queryKey: ['match-history-games', teamId, focusTeamIds?.join(','), includeLiveMatchId, pastMatches.map(m => m.id).join(',')],
         queryFn: async () => {
             if (pastMatches.length === 0) return {};
             const matchIdMap: Record<string, string> = {};
             pastMatches.forEach(m => {
                 matchIdMap[m.id.replace(/^(db-|wb-|lb-)/, '')] = m.id;
             });
-             
-            const data = await apiClient.get<any[]>( // API returns dynamic jsonb columns
+
+            const data = await apiClient.get<any[]>(
                 `/api/tournaments/${tournamentId}/match-games?matchIds=${Object.keys(matchIdMap).join(',')}`
             );
             const grouped: Record<string, GameDetail[]> = {};
-             
-            data?.forEach((game: any) => { // API returns dynamic jsonb columns
+
+            data?.forEach((game: any) => {
                 const prefixedId = matchIdMap[game.match_id];
                 if (!prefixedId) return;
                 if (!grouped[prefixedId]) grouped[prefixedId] = [];
-                grouped[prefixedId].push({ ...game, map_name: game.map_name || 'Unknown Map', map_image_url: game.map_image_url || null });
+                grouped[prefixedId].push({
+                    ...game,
+                    map_name: game.map_name || 'Unknown Map',
+                    map_image_url: game.map_image_url || null,
+                    match_details: normalizeMatchDetails(game.match_details),
+                });
             });
             return grouped;
         },
@@ -137,99 +421,85 @@ const CaptainMatchHistory: React.FC<Props> = ({ tournamentId, teamId, matches, i
     });
 
     const gameDetails = rawGameDetails || {};
-    const toggleMatch = (id: string) => setExpandedMatches(prev => ({ ...prev, [id]: !prev[id] }));
-    const toggleGame = (id: string) => setExpandedGames(prev => ({ ...prev, [id]: !prev[id] }));
+    const selectedMatch = selectedMatchId
+        ? pastMatches.find((match) => match.id === selectedMatchId) ?? null
+        : null;
 
     return (
-        <div className="mt-8 max-w-2xl mx-auto">
-            <Card className="bg-[#18181b] border-zinc-800 shadow-2xl rounded-3xl overflow-hidden">
-                <CardHeader className="border-b border-white/5 pb-4 bg-white/5">
-                    <CardTitle className="text-lg font-heading text-white flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-emerald-500" />
-                        Match History
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
-                    <ScrollArea className="h-[450px] pr-4">
-                        {detailsLoading && pastMatches.length > 0 && Object.keys(gameDetails).length === 0 ? (
-                            <div className="flex justify-center py-20">
-                                <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-                            </div>
-                        ) : pastMatches.length === 0 ? (
-                            <div className="text-center text-zinc-500 py-12">No completed matches yet.</div>
-                        ) : (
-                            <div className="space-y-4">
-                                {pastMatches.map(match => {
-                                    const isTeam1 = match.team1?.id === teamId;
-                                    const myScore = isTeam1 ? match.team1_score : match.team2_score;
-                                    const opponentScore = isTeam1 ? match.team2_score : match.team1_score;
-                                    const opponentName = isTeam1 ? match.team2?.name : match.team1?.name;
-                                    const isWin = (myScore || 0) > (opponentScore || 0);
-                                    const games = gameDetails[match.id] || [];
-                                    const isExpanded = expandedMatches[match.id];
+        <div>
+            <div className="mb-10 flex flex-col gap-4 border-b border-white/10 pb-8 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-emerald-400">Archive</p>
+                    <h2 className="mt-2 font-heading text-3xl font-black uppercase tracking-tight text-white md:text-4xl">
+                        Match history
+                    </h2>
+                </div>
+                <p className="max-w-md text-sm text-zinc-500">
+                    Series results, map breakdowns, and Riot-powered player statistics from completed and live matches.
+                </p>
+            </div>
 
-                                    return (
-                                        <div key={match.id} className="rounded-2xl bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 transition-all overflow-hidden">
-                                            <div className="relative flex items-center justify-between p-4 cursor-pointer group overflow-hidden" onClick={() => toggleMatch(match.id)}>
-                                                {games.length > 0 && (
-                                                    <div className="absolute inset-0 z-0">
-                                                        <img src={resolveMapSplash(games[0].map_name) || ''} loading="lazy" alt="" className="w-full h-full object-cover opacity-0 group-hover:opacity-30 transition-opacity duration-500" onLoad={(e) => { (e.target as HTMLImageElement).classList.replace('opacity-0', 'opacity-20'); }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                                        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/70 to-zinc-950/50" />
-                                                    </div>
-                                                )}
-                                                <div className="relative z-10 flex items-center gap-4">
-                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${isWin ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'}`}>
-                                                        {isWin ? 'W' : 'L'}
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-zinc-100 group-hover:text-white transition-colors">
-                                                            {isOrganizer ? `${match.team1?.name || 'Team 1'} vs ${match.team2?.name || 'Team 2'}` : `vs ${opponentName || 'TBD'}`}
-                                                        </span>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Match #{match.matchNumber}</span>
-                                                            {games.length > 0 && <span className="text-[10px] text-zinc-600">· {games.map(g => g.map_name).join(', ')}</span>}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="relative z-10 flex items-center gap-3">
-                                                    <Badge variant="outline" className={`border-0 font-mono font-black text-sm px-3 py-1 ${isWin ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                                                        {myScore} – {opponentScore}
-                                                    </Badge>
-                                                    <div className={`p-1.5 rounded-lg bg-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
-                                                        <ChevronDown className="w-4 h-4 text-zinc-500" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {isExpanded && (
-                                                <div className="px-4 pb-4 border-t border-white/5 bg-black/20">
-                                                    <div className="pt-4 space-y-3">
-                                                        {games.length === 0 ? (
-                                                            <p className="text-center text-xs text-zinc-600 italic py-2">No detailed game data available.</p>
-                                                        ) : games.map(game => (
-                                                            <GameCard
-                                                                key={game.id}
-                                                                game={game}
-                                                                isTeam1={isTeam1}
-                                                                isExpanded={!!expandedGames[game.id]}
-                                                                onToggle={() => toggleGame(game.id)}
-                                                                team1Name={match.team1?.name || 'Team 1'}
-                                                                team2Name={match.team2?.name || 'Team 2'}
-                                                                teamId={teamId}
-                                                                opposingTeamId={match.team2?.id}
-                                                                matchTeam1Id={match.team1?.id}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
+            {detailsLoading && pastMatches.length > 0 && Object.keys(gameDetails).length === 0 ? (
+                <div className="flex justify-center py-24">
+                    <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                </div>
+            ) : pastMatches.length === 0 ? (
+                <div className="border border-dashed border-white/10 py-16 text-center text-zinc-500">
+                    {isOrganizer ? 'No match history for these teams yet.' : 'No completed matches yet.'}
+                </div>
+            ) : (
+                <Tabs defaultValue="veto" className="space-y-6">
+                    <TabsList className="rounded-none border border-white/10 bg-black/40 p-1">
+                        <TabsTrigger value="veto" className="rounded-none font-mono text-[10px] uppercase tracking-[0.22em]">
+                            Map veto history
+                        </TabsTrigger>
+                        <TabsTrigger value="stats" className="rounded-none font-mono text-[10px] uppercase tracking-[0.22em]">
+                            Match statistics
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="veto" className="mt-0">
+                        <div className="space-y-4">
+                            {pastMatches.map((match) => (
+                                <article key={match.id} className="border border-white/10 bg-black/20 p-4">
+                                    <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                        <h3 className="font-heading text-lg font-bold uppercase tracking-tight text-white">
+                                            {match.team1?.name || 'Team 1'} vs {match.team2?.name || 'Team 2'}
+                                        </h3>
+                                        <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-zinc-500">
+                                            {formatTeamMatchHistoryLabel(match, matches)}
+                                        </span>
+                                    </div>
+                                    <MatchVetoSummary matchId={match.id} expanded />
+                                </article>
+                            ))}
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="stats" className="mt-0">
+                        {selectedMatch ? (
+                            <MatchStatisticsDetail
+                                key={selectedMatch.id}
+                                match={selectedMatch}
+                                games={gameDetails[selectedMatch.id] || []}
+                                teamId={teamId}
+                                isOrganizer={isOrganizer}
+                                allMatches={matches}
+                                onBack={() => setSelectedMatchId(null)}
+                            />
+                        ) : (
+                            <MatchStatisticsList
+                                pastMatches={pastMatches}
+                                gameDetails={gameDetails}
+                                teamId={teamId}
+                                isOrganizer={isOrganizer}
+                                allMatches={matches}
+                                onSelectMatch={setSelectedMatchId}
+                            />
                         )}
-                    </ScrollArea>
-                </CardContent>
-            </Card>
+                    </TabsContent>
+                </Tabs>
+            )}
         </div>
     );
 };

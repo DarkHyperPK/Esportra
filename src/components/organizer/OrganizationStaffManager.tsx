@@ -1,8 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -13,18 +16,30 @@ import {
     fetchOrganizationStaff,
     inviteOrganizationStaff,
     updateOrganizationStaff,
+    updateAssignmentPermissions,
     removeOrganizationStaff,
     assignStaffToTournaments,
     removeStaffFromTournament,
     fetchAuditLogs,
     fetchOrgTournaments,
+    ALL_STAFF_PERMISSIONS,
 } from "@/lib/organizationStaff";
+import { StaffPermissionPicker, StaffPermissionChips } from "@/components/organizer/StaffPermissionPicker";
+import { invalidateStaffAccessCaches } from "@/lib/tournamentAccess";
+import {
+    auditActionLabel,
+    formatOrganizationAuditDetails,
+    isTournamentOpsAudit,
+    resolveOrganizationAuditLogLink,
+    shouldShowOrganizationAuditDetailLine,
+} from "@/utils/auditLogFormat";
 import { formatDistanceToNow } from "date-fns";
 import {
     ChevronDown,
     ChevronRight,
     ClipboardList,
     Crown,
+    Filter,
     History,
     Loader2,
     Plus,
@@ -40,20 +55,35 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Permission Definitions
+// Audit log filter options
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-const STAFF_PERMISSIONS: {
-    id: StaffPermission;
-    label: string;
-    shortLabel: string;
-}[] = [
-        { id: "scores:update", label: "Update Scores", shortLabel: "Scores" },
-        { id: "teams:manage", label: "Manage Teams", shortLabel: "Teams" },
-        { id: "bracket:edit", label: "Edit Brackets", shortLabel: "Brackets" },
-        { id: "announcements:send", label: "Send Announcements", shortLabel: "Announce" },
-        { id: "disputes:assist", label: "Assist Disputes", shortLabel: "Disputes" },
-    ];
+const AUDIT_ACTION_OPTIONS: { value: string; label: string }[] = [
+    { value: "staff.invite", label: "Staff invited" },
+    { value: "staff.accept", label: "Invite accepted" },
+    { value: "staff.decline", label: "Invite declined" },
+    { value: "staff.update_permissions", label: "Permissions updated" },
+    { value: "staff.update_assignment_permissions", label: "Tournament permissions updated" },
+    { value: "staff.assign_tournament", label: "Assigned to tournament" },
+    { value: "staff.unassign_tournament", label: "Unassigned from tournament" },
+    { value: "staff.remove", label: "Staff removed" },
+    { value: "venue.add", label: "Venue added" },
+    { value: "venue.remove", label: "Venue removed" },
+    { value: "match.go_live", label: "Match went live" },
+    { value: "match.score_update", label: "Score updated" },
+    { value: "match.finalize", label: "Match finalized" },
+    { value: "match.walkover", label: "Walkover awarded" },
+    { value: "match.reset", label: "Match reset" },
+    { value: "match.swap_teams", label: "Teams swapped" },
+    { value: "match.schedule_update", label: "Match schedule updated" },
+    { value: "tournament.schedule_bulk", label: "Bulk schedule applied" },
+    { value: "dispute.resolve", label: "Dispute resolved" },
+    { value: "dispute.reject", label: "Dispute rejected" },
+];
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Role presets (permissions are editable independently)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const ROLE_PRESETS = {
     admin: {
@@ -62,7 +92,7 @@ const ROLE_PRESETS = {
         icon: Crown,
         color: "text-amber-400",
         bgColor: "bg-amber-500/10 border-amber-500/30",
-        permissions: ["scores:update", "teams:manage", "bracket:edit", "announcements:send", "disputes:assist"] as StaffPermission[],
+        permissions: ALL_STAFF_PERMISSIONS,
     },
     mod: {
         name: "Moderator",
@@ -106,7 +136,9 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
     ownerName,
 }) => {
     const { toast } = useToast();
+    const queryClient = useQueryClient();
     const { user: currentUser } = useAuth();
+    const navigate = useNavigate();
 
     // The actor performing the action should be the current user
     const actorId = currentUser?.id || ownerId;
@@ -130,6 +162,12 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
 
     // Expanded staff row
     const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
+    const [permissionDraft, setPermissionDraft] = useState<StaffPermission[]>([]);
+    const [savingPermissions, setSavingPermissions] = useState(false);
+    const [assignmentEditId, setAssignmentEditId] = useState<string | null>(null);
+    const [assignmentUseDefaults, setAssignmentUseDefaults] = useState(true);
+    const [assignmentDraft, setAssignmentDraft] = useState<StaffPermission[]>([]);
+    const [savingAssignmentPermissions, setSavingAssignmentPermissions] = useState(false);
 
     // Active section: "roster" | "audit"
     const [activeSection, setActiveSection] = useState<"roster" | "audit">("roster");
@@ -138,6 +176,9 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
     const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
     const [auditLoading, setAuditLoading] = useState(false);
     const [auditTotal, setAuditTotal] = useState(0);
+    const [auditActorId, setAuditActorId] = useState<string>("all");
+    const [auditAction, setAuditAction] = useState<string>("all");
+    const [auditTournamentId, setAuditTournamentId] = useState<string>("all");
 
     // Search
     const [searchQuery, setSearchQuery] = useState("");
@@ -168,7 +209,13 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
     const loadAuditLogs = useCallback(async () => {
         try {
             setAuditLoading(true);
-            const { logs, total } = await fetchAuditLogs({ organizationId, limit: 50 });
+            const { logs, total } = await fetchAuditLogs({
+                organizationId,
+                limit: 50,
+                actionFilter: auditAction !== "all" ? auditAction : undefined,
+                actorId: auditActorId !== "all" ? auditActorId : undefined,
+                tournamentId: auditTournamentId !== "all" ? auditTournamentId : undefined,
+            });
             setAuditLogs(logs);
             setAuditTotal(total);
         } catch (e: any) {
@@ -176,7 +223,39 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
         } finally {
             setAuditLoading(false);
         }
-    }, [organizationId]);
+    }, [organizationId, auditAction, auditActorId, auditTournamentId]);
+
+    const refreshAfterStaffChange = useCallback((silent = true) => {
+        void loadStaff(silent);
+        if (activeSection === 'audit') {
+            void loadAuditLogs();
+        }
+    }, [loadStaff, loadAuditLogs, activeSection]);
+
+    const auditActorOptions = useMemo(() => {
+        const options: { id: string; label: string }[] = [
+            { id: ownerId, label: ownerName ? `${ownerName} (Owner)` : "Organization owner" },
+        ];
+        for (const member of staff) {
+            if (member.user_id === ownerId) continue;
+            const name =
+                member.profiles?.full_name ||
+                member.profiles?.username ||
+                member.profiles?.email ||
+                "Staff member";
+            options.push({ id: member.user_id, label: name });
+        }
+        return options;
+    }, [staff, ownerId, ownerName]);
+
+    const hasAuditFilters =
+        auditActorId !== "all" || auditAction !== "all" || auditTournamentId !== "all";
+
+    const clearAuditFilters = () => {
+        setAuditActorId("all");
+        setAuditAction("all");
+        setAuditTournamentId("all");
+    };
 
     useEffect(() => {
         loadStaff();
@@ -188,6 +267,36 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
             loadAuditLogs();
         }
     }, [activeSection, loadAuditLogs]);
+
+    useEffect(() => {
+        if (!expandedStaffId) {
+            setPermissionDraft([]);
+            setAssignmentEditId(null);
+            return;
+        }
+        const member = staff.find((s) => s.id === expandedStaffId);
+        if (member) {
+            setPermissionDraft([...(member.permissions ?? [])]);
+        }
+        setAssignmentEditId(null);
+        // Init draft when opening a row only (not on every staff refresh while editing).
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [expandedStaffId]);
+
+    const permissionsEqual = (a: StaffPermission[], b: StaffPermission[]) => {
+        if (a.length !== b.length) return false;
+        const sortedA = [...a].sort();
+        const sortedB = [...b].sort();
+        return sortedA.every((p, i) => p === sortedB[i]);
+    };
+
+    const invalidateAccessForStaff = (member: OrganizationStaffRecord) => {
+        invalidateStaffAccessCaches(queryClient);
+        const tournamentIds = (member.tournament_assignments ?? []).map((a) => a.tournament_id);
+        tournamentIds.forEach((tid) => {
+            void queryClient.invalidateQueries({ queryKey: ['tournament-access', tid] });
+        });
+    };
 
     // ── Computed Stats ──
     const stats = useMemo(() => {
@@ -216,12 +325,6 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
         if (preset) {
             setSelectedPermissions([...preset.permissions]);
         }
-    };
-
-    const togglePermission = (perm: StaffPermission) => {
-        setSelectedPermissions((prev) =>
-            prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
-        );
     };
 
     const handleInvite = async () => {
@@ -267,12 +370,13 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
             });
 
             toast({ title: "Invitation sent!", description: `Invited ${inviteEmail} as ${selectedRole}` });
+            invalidateStaffAccessCaches(queryClient);
             setInviteEmail("");
             setInviteTournamentIds([]);
             setShowInvitePanel(false);
 
             // Reload to get actual DB record
-            loadStaff(true);
+            refreshAfterStaffChange();
         } catch (err: any) {
             // Revert optimistic update
             setStaff(prev => prev.filter(s => s.id !== optimisticId));
@@ -292,7 +396,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                 staffEmail: s.profiles?.email || undefined,
             });
             toast({ title: "Staff removed" });
-            loadStaff(true);
+            refreshAfterStaffChange();
         } catch (err: any) {
             toast({ title: "Remove failed", description: err.message, variant: "destructive" });
         }
@@ -302,16 +406,24 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
         const preset = ROLE_PRESETS[newRole as keyof typeof ROLE_PRESETS];
         if (!preset) return;
 
-        // Keep track of original state for revert
+        const currentPerms = s.permissions ?? [];
+        const presetDiffers = !permissionsEqual(currentPerms, preset.permissions);
+        if (presetDiffers) {
+            const ok = confirm(
+                `Apply the ${preset.name} preset? This will replace current permissions with: ${preset.permissions.join(', ')}`,
+            );
+            if (!ok) return;
+        }
+
         const originalStaff = [...staff];
 
         try {
-            // Optimistically update local state
             setStaff(prev => prev.map(item =>
                 item.id === s.id
                     ? { ...item, role: newRole, permissions: preset.permissions }
                     : item
             ));
+            setPermissionDraft([...preset.permissions]);
 
             await updateOrganizationStaff({
                 staffId: s.id,
@@ -320,14 +432,88 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                 organizationId,
                 actorId,
             });
-            toast({ title: "Role updated" });
-
-            // Still load staff to ensure everything is in sync with backend
-            loadStaff(true);
+            toast({ title: "Role preset applied" });
+            invalidateAccessForStaff(s);
+            refreshAfterStaffChange();
         } catch (err: any) {
-            // Revert on error
             setStaff(originalStaff);
             toast({ title: "Update failed", description: err.message, variant: "destructive" });
+        }
+    };
+
+    const handleSavePermissions = async (s: OrganizationStaffRecord) => {
+        if (s.role === "admin") return;
+
+        const originalStaff = [...staff];
+        try {
+            setSavingPermissions(true);
+            setStaff(prev => prev.map(item =>
+                item.id === s.id ? { ...item, permissions: permissionDraft } : item
+            ));
+
+            await updateOrganizationStaff({
+                staffId: s.id,
+                role: s.role,
+                permissions: permissionDraft,
+                organizationId,
+                actorId,
+            });
+            toast({ title: "Permissions saved" });
+            invalidateAccessForStaff(s);
+            refreshAfterStaffChange();
+        } catch (err: any) {
+            setStaff(originalStaff);
+            toast({ title: "Save failed", description: err.message, variant: "destructive" });
+        } finally {
+            setSavingPermissions(false);
+        }
+    };
+
+    const openAssignmentEditor = (assignment: TournamentAssignment, orgPermissions: StaffPermission[]) => {
+        const hasOverride = assignment.permissions != null;
+        setAssignmentEditId(assignment.id);
+        setAssignmentUseDefaults(!hasOverride);
+        setAssignmentDraft(
+            hasOverride
+                ? [...(assignment.permissions ?? [])]
+                : [...orgPermissions],
+        );
+    };
+
+    const handleSaveAssignmentPermissions = async (
+        s: OrganizationStaffRecord,
+        assignment: TournamentAssignment,
+    ) => {
+        const originalStaff = [...staff];
+        const nextPermissions: StaffPermission[] | null = assignmentUseDefaults ? null : assignmentDraft;
+
+        try {
+            setSavingAssignmentPermissions(true);
+            setStaff(prev => prev.map(item => {
+                if (item.id !== s.id) return item;
+                return {
+                    ...item,
+                    tournament_assignments: (item.tournament_assignments ?? []).map((a) =>
+                        a.id === assignment.id ? { ...a, permissions: nextPermissions } : a
+                    ),
+                };
+            }));
+
+            await updateAssignmentPermissions({
+                organizationId,
+                assignmentId: assignment.id,
+                permissions: nextPermissions,
+            });
+            toast({ title: assignmentUseDefaults ? "Using org defaults" : "Tournament permissions saved" });
+            invalidateAccessForStaff(s);
+            void queryClient.invalidateQueries({ queryKey: ['tournament-access', assignment.tournament_id] });
+            setAssignmentEditId(null);
+            refreshAfterStaffChange();
+        } catch (err: any) {
+            setStaff(originalStaff);
+            toast({ title: "Save failed", description: err.message, variant: "destructive" });
+        } finally {
+            setSavingAssignmentPermissions(false);
         }
     };
 
@@ -367,7 +553,11 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                 organizationId,
             });
             toast({ title: "Tournament assigned" });
-            loadStaff(true);
+            const member = staff.find((item) => item.id === staffId);
+            if (member) invalidateAccessForStaff(member);
+            else invalidateStaffAccessCaches(queryClient);
+            void queryClient.invalidateQueries({ queryKey: ['tournament-access', tournamentId] });
+            refreshAfterStaffChange();
         } catch (err: any) {
             setStaff(originalStaff);
             toast({ title: "Assignment failed", description: err.message, variant: "destructive" });
@@ -376,8 +566,10 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
 
     const handleUnassignTournament = async (assignmentId: string) => {
         const originalStaff = [...staff];
+        const removed = staff
+            .flatMap((item) => (item.tournament_assignments ?? []).map((a) => ({ member: item, assignment: a })))
+            .find((row) => row.assignment.id === assignmentId);
         try {
-            // Optimistically update local state
             setStaff(prev => prev.map(item => ({
                 ...item,
                 tournament_assignments: (item.tournament_assignments || []).filter(a => a.id !== assignmentId)
@@ -389,7 +581,16 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                 actorId,
             });
             toast({ title: "Tournament unassigned" });
-            loadStaff(true);
+            if (removed) {
+                invalidateAccessForStaff(removed.member);
+                void queryClient.invalidateQueries({
+                    queryKey: ['tournament-access', removed.assignment.tournament_id],
+                });
+            } else {
+                invalidateStaffAccessCaches(queryClient);
+            }
+            if (assignmentEditId === assignmentId) setAssignmentEditId(null);
+            refreshAfterStaffChange();
         } catch (err: any) {
             setStaff(originalStaff);
             toast({ title: "Unassign failed", description: err.message, variant: "destructive" });
@@ -525,23 +726,10 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                 {/* Permissions */}
                                 <div>
                                     <p className="text-xs font-mono text-zinc-500 tracking-widest uppercase mb-2">Permissions</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {STAFF_PERMISSIONS.map((perm) => {
-                                            const active = selectedPermissions.includes(perm.id);
-                                            return (
-                                                <button
-                                                    key={perm.id}
-                                                    onClick={() => togglePermission(perm.id)}
-                                                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${active
-                                                        ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
-                                                        : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700"
-                                                        }`}
-                                                >
-                                                    {perm.label}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                    <StaffPermissionPicker
+                                        value={selectedPermissions}
+                                        onChange={setSelectedPermissions}
+                                    />
                                 </div>
 
                                 {/* Tournament Assignment (only for non-admin) */}
@@ -550,7 +738,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                         <p className="text-xs font-mono text-zinc-500 tracking-widest uppercase mb-2">
                                             Assign Tournaments
                                         </p>
-                                        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                                        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto overscroll-contain" data-lenis-prevent>
                                             {orgTournaments.map((t) => {
                                                 const selected = inviteTournamentIds.includes(t.id);
                                                 return (
@@ -664,6 +852,12 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                                     </Badge>
                                                 </div>
                                                 <p className="text-xs text-zinc-500 truncate">{s.profiles?.email}</p>
+                                                {s.role !== "admin" && (
+                                                    <StaffPermissionChips
+                                                        permissions={s.permissions ?? []}
+                                                        className="mt-1.5"
+                                                    />
+                                                )}
                                             </div>
 
                                             {/* Tournament count badge */}
@@ -709,17 +903,17 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                                             </div>
                                                         </div>
 
-                                                        {/* Role Switcher */}
+                                                        {/* Role presets */}
                                                         <div>
-                                                            <p className="text-[10px] font-mono text-zinc-500 tracking-widest uppercase mb-2">Change Role</p>
-                                                            <div className="flex gap-2">
+                                                            <p className="text-[10px] font-mono text-zinc-500 tracking-widest uppercase mb-2">Apply Role Preset</p>
+                                                            <div className="flex gap-2 flex-wrap">
                                                                 {Object.entries(ROLE_PRESETS).map(([key, preset]) => {
                                                                     const Icon = preset.icon;
                                                                     const active = s.role === key;
                                                                     return (
                                                                         <button
                                                                             key={key}
-                                                                            onClick={() => !active && handleUpdateRole(s, key)}
+                                                                            onClick={() => handleUpdateRole(s, key)}
                                                                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${active
                                                                                 ? `${preset.bgColor} ${preset.color}`
                                                                                 : "border-zinc-800 text-zinc-500 hover:border-zinc-700 bg-zinc-900"
@@ -733,6 +927,43 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                                             </div>
                                                         </div>
 
+                                                        {/* Org-level permissions */}
+                                                        {s.role !== "admin" ? (
+                                                            <div>
+                                                                <p className="text-[10px] font-mono text-zinc-500 tracking-widest uppercase mb-2">
+                                                                    Default Permissions
+                                                                </p>
+                                                                <p className="text-xs text-zinc-600 mb-2">
+                                                                    Applied to all assigned tournaments unless a tournament override is set.
+                                                                </p>
+                                                                <StaffPermissionPicker
+                                                                    value={permissionDraft}
+                                                                    onChange={setPermissionDraft}
+                                                                />
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="mt-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl"
+                                                                    disabled={
+                                                                        savingPermissions
+                                                                        || permissionsEqual(permissionDraft, s.permissions ?? [])
+                                                                    }
+                                                                    onClick={() => handleSavePermissions(s)}
+                                                                >
+                                                                    {savingPermissions ? (
+                                                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                                    ) : null}
+                                                                    Save Permissions
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
+                                                                <Crown className="w-4 h-4 text-amber-400" />
+                                                                <p className="text-xs text-amber-400/80">
+                                                                    Administrators have full access to <strong>all</strong> tournaments in this organization.
+                                                                </p>
+                                                            </div>
+                                                        )}
+
                                                         {/* Tournament Assignments (only for non-admin) */}
                                                         {s.role !== "admin" && (
                                                             <div>
@@ -745,21 +976,85 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                                                     {assignedTournaments.length === 0 && (
                                                                         <span className="text-xs text-zinc-600 italic">No tournaments assigned</span>
                                                                     )}
-                                                                    {assignedTournaments.map((a) => (
-                                                                        <span
-                                                                            key={a.id}
-                                                                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs"
-                                                                        >
-                                                                            <Trophy className="w-3 h-3" />
-                                                                            {(a.tournament as any)?.name || "Tournament"}
-                                                                            <button
-                                                                                onClick={() => handleUnassignTournament(a.id)}
-                                                                                className="ml-1 text-emerald-500/50 hover:text-red-400 transition-colors"
-                                                                            >
-                                                                                <X className="w-3 h-3" />
-                                                                            </button>
-                                                                        </span>
-                                                                    ))}
+                                                                    {assignedTournaments.map((a: TournamentAssignment) => {
+                                                                        const hasCustom = a.permissions != null;
+                                                                        const isEditing = assignmentEditId === a.id;
+                                                                        return (
+                                                                            <div key={a.id} className="w-full space-y-2">
+                                                                                <span
+                                                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs"
+                                                                                >
+                                                                                    <Trophy className="w-3 h-3" />
+                                                                                    {(a.tournament as any)?.name || "Tournament"}
+                                                                                    {hasCustom && (
+                                                                                        <Badge className="text-[9px] bg-violet-500/15 text-violet-300 border-violet-500/30">
+                                                                                            custom
+                                                                                        </Badge>
+                                                                                    )}
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => openAssignmentEditor(a, s.permissions ?? [])}
+                                                                                        className="ml-1 text-emerald-400/70 hover:text-white transition-colors underline-offset-2 hover:underline"
+                                                                                    >
+                                                                                        perms
+                                                                                    </button>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleUnassignTournament(a.id)}
+                                                                                        className="ml-1 text-emerald-500/50 hover:text-red-400 transition-colors"
+                                                                                    >
+                                                                                        <X className="w-3 h-3" />
+                                                                                    </button>
+                                                                                </span>
+                                                                                {isEditing && (
+                                                                                    <div className="ml-1 p-3 rounded-xl border border-zinc-800 bg-zinc-900/50 space-y-3">
+                                                                                        <label className="flex items-center gap-2 text-xs text-zinc-400 cursor-pointer">
+                                                                                            <input
+                                                                                                type="checkbox"
+                                                                                                checked={assignmentUseDefaults}
+                                                                                                onChange={(e) => {
+                                                                                                    const useDefaults = e.target.checked;
+                                                                                                    setAssignmentUseDefaults(useDefaults);
+                                                                                                    if (useDefaults) {
+                                                                                                        setAssignmentDraft([...(s.permissions ?? [])]);
+                                                                                                    }
+                                                                                                }}
+                                                                                                className="rounded border-zinc-600"
+                                                                                            />
+                                                                                            Use org default permissions
+                                                                                        </label>
+                                                                                        {!assignmentUseDefaults && (
+                                                                                            <StaffPermissionPicker
+                                                                                                value={assignmentDraft}
+                                                                                                onChange={setAssignmentDraft}
+                                                                                            />
+                                                                                        )}
+                                                                                        <div className="flex gap-2">
+                                                                                            <Button
+                                                                                                size="sm"
+                                                                                                className="bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs"
+                                                                                                disabled={savingAssignmentPermissions}
+                                                                                                onClick={() => handleSaveAssignmentPermissions(s, a)}
+                                                                                            >
+                                                                                                {savingAssignmentPermissions ? (
+                                                                                                    <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                                                                                                ) : null}
+                                                                                                Save
+                                                                                            </Button>
+                                                                                            <Button
+                                                                                                size="sm"
+                                                                                                variant="ghost"
+                                                                                                className="text-zinc-500 text-xs"
+                                                                                                onClick={() => setAssignmentEditId(null)}
+                                                                                            >
+                                                                                                Cancel
+                                                                                            </Button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })}
                                                                 </div>
 
                                                                 {/* Add tournament */}
@@ -781,15 +1076,6 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                                                                 ))}
                                                                         </div>
                                                                     )}
-                                                            </div>
-                                                        )}
-
-                                                        {s.role === "admin" && (
-                                                            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 border border-amber-500/10">
-                                                                <Crown className="w-4 h-4 text-amber-400" />
-                                                                <p className="text-xs text-amber-400/80">
-                                                                    Administrators have access to <strong>all</strong> tournaments in this organization.
-                                                                </p>
                                                             </div>
                                                         )}
 
@@ -819,6 +1105,70 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
             {/* ─── Audit Log ─── */}
             {activeSection === "audit" && (
                 <div className="space-y-3">
+                    <div className="flex flex-col gap-3 p-4 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+                                <Filter className="w-4 h-4 text-zinc-500" />
+                                Filters
+                            </div>
+                            {hasAuditFilters && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={clearAuditFilters}
+                                    className="text-zinc-400 hover:text-white h-8 px-2"
+                                >
+                                    Clear filters
+                                </Button>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <Select value={auditActorId} onValueChange={setAuditActorId}>
+                                <SelectTrigger className="bg-zinc-900/50 border-zinc-800 text-white">
+                                    <SelectValue placeholder="All members" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                    <SelectItem value="all">All members</SelectItem>
+                                    {auditActorOptions.map((option) => (
+                                        <SelectItem key={option.id} value={option.id}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select value={auditAction} onValueChange={setAuditAction}>
+                                <SelectTrigger className="bg-zinc-900/50 border-zinc-800 text-white">
+                                    <SelectValue placeholder="All actions" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                    <SelectItem value="all">All actions</SelectItem>
+                                    {AUDIT_ACTION_OPTIONS.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Select value={auditTournamentId} onValueChange={setAuditTournamentId}>
+                                <SelectTrigger className="bg-zinc-900/50 border-zinc-800 text-white">
+                                    <SelectValue placeholder="All tournaments" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                    <SelectItem value="all">All tournaments</SelectItem>
+                                    {orgTournaments.map((tournament) => (
+                                        <SelectItem key={tournament.id} value={tournament.id}>
+                                            {tournament.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <p className="text-xs text-zinc-500">
+                            Showing {auditTotal} event{auditTotal === 1 ? "" : "s"}
+                        </p>
+                    </div>
+
                     {auditLoading ? (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
@@ -826,12 +1176,39 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                     ) : auditLogs.length === 0 ? (
                         <div className="text-center py-12 text-zinc-500">
                             <History className="w-10 h-10 mx-auto mb-3 text-zinc-700" />
-                            <p className="text-sm">No audit events recorded yet.</p>
+                            <p className="text-sm">
+                                {hasAuditFilters
+                                    ? "No events match these filters."
+                                    : "No audit events recorded yet."}
+                            </p>
                         </div>
                     ) : (
                         <div className="space-y-1">
-                            {auditLogs.map((log) => (
-                                <div key={log.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-zinc-900/50 transition-all">
+                            {auditLogs.map((log) => {
+                                const auditLink = resolveOrganizationAuditLogLink(log.action, log.details);
+                                const isClickable = Boolean(auditLink);
+
+                                return (
+                                <div
+                                    key={log.id}
+                                    role={isClickable ? "button" : undefined}
+                                    tabIndex={isClickable ? 0 : undefined}
+                                    onClick={() => {
+                                        if (auditLink) navigate(auditLink);
+                                    }}
+                                    onKeyDown={(event) => {
+                                        if (!auditLink) return;
+                                        if (event.key === "Enter" || event.key === " ") {
+                                            event.preventDefault();
+                                            navigate(auditLink);
+                                        }
+                                    }}
+                                    className={`flex items-start gap-3 p-3 rounded-xl transition-all ${
+                                        isClickable
+                                            ? "hover:bg-zinc-900/70 cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+                                            : "hover:bg-zinc-900/50"
+                                    }`}
+                                >
                                     {/* Avatar */}
                                     <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center overflow-hidden flex-shrink-0 mt-0.5">
                                         {(log.actor as any)?.avatar_url ? (
@@ -849,13 +1226,19 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                             <span className="text-sm font-medium text-white">
                                                 {(log.actor as any)?.full_name || (log.actor as any)?.username || "Unknown"}
                                             </span>
-                                            <Badge className="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700">
-                                                {log.action}
+                                            <Badge className="text-[10px] bg-zinc-800 text-zinc-400 border border-zinc-700 normal-case tracking-normal font-sans font-medium">
+                                                {auditActionLabel(log.action, AUDIT_ACTION_OPTIONS)}
                                             </Badge>
                                         </div>
-                                        {log.details && Object.keys(log.details).length > 0 && (
-                                            <p className="text-xs text-zinc-500 mt-0.5 truncate">
-                                                {formatAuditDetails(log)}
+                                        {shouldShowOrganizationAuditDetailLine(log) && (
+                                            <p
+                                                className={
+                                                    isTournamentOpsAudit(log.action)
+                                                        ? "text-xs text-zinc-500 mt-0.5 leading-relaxed"
+                                                        : "text-xs text-zinc-500 mt-0.5 truncate"
+                                                }
+                                            >
+                                                {formatOrganizationAuditDetails(log)}
                                             </p>
                                         )}
                                     </div>
@@ -865,7 +1248,8 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                         {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
                                     </span>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -873,28 +1257,5 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
         </div>
     );
 };
-
-/** Format audit log details into a human-readable string */
-function formatAuditDetails(log: AuditLogEntry): string {
-    const d = log.details;
-    switch (log.action) {
-        case "staff.invite":
-            return `Invited ${d.invitedEmail || "user"} as ${d.role || "staff"}`;
-        case "staff.accept":
-            return "Accepted staff invitation";
-        case "staff.decline":
-            return "Declined staff invitation";
-        case "staff.remove":
-            return `Removed ${d.removedEmail || "a staff member"}`;
-        case "staff.update_permissions":
-            return `Updated to role: ${d.role || "unknown"}`;
-        case "staff.assign_tournament":
-            return `Assigned to ${Array.isArray(d.tournamentIds) ? d.tournamentIds.length : 1} tournament(s)`;
-        case "staff.unassign_tournament":
-            return `Unassigned from a tournament`;
-        default:
-            return JSON.stringify(d).slice(0, 80);
-    }
-}
 
 export default OrganizationStaffManager;

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -80,7 +79,7 @@ const DisputeCenter: React.FC = () => {
   const [liftingBan, setLiftingBan] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
     setLoading(true);
       
@@ -129,7 +128,7 @@ const DisputeCenter: React.FC = () => {
     } finally {
     setLoading(false);
     }
-  };
+  }, [toast, user?.id]);
 
   const fetchComments = useCallback(async (disputeId: string) => {
     try {
@@ -180,7 +179,7 @@ const DisputeCenter: React.FC = () => {
 
   useEffect(() => { 
     load(); 
-  }, []);
+  }, [load]);
 
   useEffect(() => {
     if (selectedDispute) {
@@ -244,25 +243,16 @@ const DisputeCenter: React.FC = () => {
         setUploadingAttachment(true);
         
         const disputeReason = disputeData?.dispute_reason || 'general';
-        const fileExt = commentAttachment.name.split('.').pop();
-        
-        // Path structure: {dispute_id}/{dispute_reason}/{user_id}-{timestamp}.{ext}
-        // For general support: {dispute_id}/general_support/{user_id}-{timestamp}.{ext}
-        const fileName = disputeData?.tournament_id
-          ? `${disputeId}/${disputeReason}/${user.id}-${Date.now()}.${fileExt}`
-          : `${disputeId}/general_support/${user.id}-${Date.now()}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('tournaments.disputes.evidence')
-          .upload(fileName, commentAttachment, { upsert: false });
+        const folder = disputeData?.tournament_id
+          ? `${disputeId}/${disputeReason}`
+          : `${disputeId}/general_support`;
 
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabase.storage
-          .from('tournaments.disputes.evidence')
-          .getPublicUrl(fileName);
-
-        attachmentUrl = urlData.publicUrl;
+        const fd = new FormData();
+        fd.append('file', commentAttachment);
+        fd.append('bucket', 'tournaments.disputes.evidence');
+        fd.append('folder', folder);
+        const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+        attachmentUrl = url;
         setUploadingAttachment(false);
       }
 
@@ -480,7 +470,7 @@ const DisputeCenter: React.FC = () => {
               </Tabs>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1.5" data-lenis-prevent>
               {loading ? (
                 <div className="text-zinc-400 text-center py-12">
                   <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-rose-500" />
@@ -495,7 +485,6 @@ const DisputeCenter: React.FC = () => {
               ) : (
                 filteredDisputes.map((d) => {
                   const meta = statusMeta[d.status] || defaultMeta;
-                  const StatusIcon = meta.icon;
                   const isSelected = selectedDispute?.id === d.id;
                   return (
                     <button
@@ -575,7 +564,7 @@ const DisputeCenter: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4" data-lenis-prevent>
                   {/* Description */}
                   <div>
                     <label className="text-zinc-500 text-xs uppercase tracking-wider mb-1.5 block font-medium">Description</label>
@@ -705,7 +694,7 @@ const DisputeCenter: React.FC = () => {
             {selectedDispute ? (
               <>
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                <div className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-3" data-lenis-prevent>
                   {loadingComments ? (
                     <div className="text-center text-zinc-500 text-sm py-12">
                       <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-2 text-rose-500" />

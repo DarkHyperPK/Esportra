@@ -1,14 +1,16 @@
-import { useCallback, useRef, type WheelEvent } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export function useBracketWheelScroll<TElement extends HTMLElement>() {
   const scrollRef = useRef<TElement | null>(null);
 
-  const onWheel = useCallback((event: WheelEvent<TElement>) => {
+  const handleWheel = useCallback((event: WheelEvent) => {
     if (event.ctrlKey || event.defaultPrevented) return;
 
-    const element = event.currentTarget;
+    const element = scrollRef.current;
+    if (!element) return;
+
     const maxLeft = Math.max(0, element.scrollWidth - element.clientWidth);
     const maxTop = Math.max(0, element.scrollHeight - element.clientHeight);
     if (maxLeft === 0 && maxTop === 0) return;
@@ -42,5 +44,13 @@ export function useBracketWheelScroll<TElement extends HTMLElement>() {
     element.scrollTop = nextTop;
   }, []);
 
-  return { scrollRef, onWheel };
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
+
+  return { scrollRef };
 }

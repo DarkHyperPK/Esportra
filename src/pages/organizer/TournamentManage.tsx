@@ -2,14 +2,14 @@
 // This file is for managing a single tournament (participants, brackets, settings, etc.)
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams, Navigate } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
-import { cn } from '@/lib/utils';
 import { OrganizerTeamCard } from '@/components/organizer/OrganizerTeamCard';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import Footer from '@/components/Footer';
-import { Button } from '@/components/ui/button';
+import { CancelButton, DangerButton, OutlineButton } from '@/components/ui/app-buttons';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +25,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import {
   AlertTriangle,
@@ -32,10 +33,12 @@ import {
   CheckCircle,
   Edit2,
   Eye,
+  EyeOff,
   GamepadIcon,
   Globe,
-  Layers,
+  Copy,
   Loader2,
+  Mail,
   MapPin,
   RefreshCw,
   ShieldCheck,
@@ -53,7 +56,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
-import type { StaffPermission } from '@/lib/tournamentStaff';
+import { useRole } from '@/hooks/useRole';
+import { useAdmin } from '@/hooks/useAdmin';
+import { isSuperAdminUser } from '@/lib/adminAccess';
+import type { StaffPermission } from '@/types/staff';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,25 +71,52 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import esportsGames from '@/data/esportsGames.json';
-import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { getEffectiveGameFeatures, getParticipantMode, isBattleRoyaleTournament, getBRConfig, getGameByName, getPersistedTournamentFormat } from '@/utils/gameFeatures';
 import BanManagement from '@/components/organizer/BanManagement';
 import PaymentManagement from '@/components/organizer/PaymentManagement';
-import DisputeCenter from '@/components/organizer/DisputeCenter';
-import MatchChecker from '@/components/organizer/MatchChecker';
+import { useOrganizerDisputeUnread } from '@/hooks/useOrganizerDisputeUnread';
 import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnouncementPanel';
 // Staff management has moved to Organization Settings (OrganizationStaffManager)
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
 import { BRStageManagementTab } from '@/components/organizer/tabs/BRStageManagementTab';
 import { BRGamesTab } from '@/components/organizer/tabs/BRGamesTab';
+import { BRScheduleTab } from '@/components/organizer/tabs/BRScheduleTab';
+import StageSchedulingConfig from '@/components/tournament/StageSchedulingConfig';
+import RoundSchedulingPanel from '@/components/tournament/RoundSchedulingPanel';
 import { useTournamentDashboard, type DashboardParticipant } from '@/hooks/useTournamentDashboard';
+import { useStageRealtime } from '@/hooks/useStageRealtime';
 import { MockModePanel } from '@/components/tournament/MockModePanel';
 import { useMockTournament } from '@/hooks/useMockTournament';
-import { StageGuidelineModal } from '@/components/organizer/wizard/StageGuidelineModal';
+import { useTournamentInvitations } from '@/hooks/useTournamentInvitations';
+import { EMPTY_INVITATION_SUMMARY } from '@/types/invitation';
+import {
+  buildInviteSettingsPayload,
+  canConfigureInvitedTeams,
+  defaultReservedInviteSlots,
+  getInviteExpiryDaysFromTournament,
+  getReservedInviteSlotsFromTournament,
+} from '@/utils/tournamentInviteUtils';
+import { resolveBRRegisteredUnitCount } from '@/utils/brStageFlow';
+import {
+  launchStateToUpdatePayload,
+  makePrivateUpdatePayload,
+} from '@/utils/tournamentVisibilityUtils';
+import {
+  countCheckedInParticipants,
+  countPendingCheckInParticipants,
+  isActiveRegistration,
+} from '@/utils/brCheckIn';
+import {
+  hasCheckInClosed,
+  hasCheckInNotOpenedYet,
+  resolveCheckInWindow,
+} from '@/utils/tournamentLifecycle';
 import { CommandButton, CommandTabButton } from '@/components/management/CommandSurface';
 
 const normalize = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '');
 const PARTICIPANTS_PAGE_SIZE = 24;
+const isValidInviteEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
 interface Participant {
   id: string;
   user_id: string;
@@ -193,7 +227,9 @@ const TournamentDashboard = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { currentRole, isLoading: roleLoading } = useRole();
+  const admin = useAdmin();
 
   const {
     data: dashboardData,
@@ -202,14 +238,38 @@ const TournamentDashboard = () => {
     refetch: refetchDashboard
   } = useTournamentDashboard(slug);
 
+  const {
+    access: tournamentAccess,
+    isLoading: accessLoading,
+    isStaffAdmin,
+    can,
+  } = useTournamentAccess(slug);
+
   const tournament = dashboardData?.tournament;
+  useStageRealtime({ tournamentId: tournament?.id });
   const tournamentModeFeatures = getEffectiveGameFeatures(tournament?.game || '', tournament?.game_mode);
+  const registrationParticipantMode = getParticipantMode(tournament?.game || '', tournament?.game_mode);
   const participants = useMemo(
     () => (dashboardData?.participants || []) as Participant[],
     [dashboardData?.participants],
   );
-  const stages = dashboardData?.stages || [];
-  const isOrganizer = dashboardData?.isOrganizer || false;
+  const stages = useMemo(
+    () => dashboardData?.stages ?? [],
+    [dashboardData?.stages],
+  );
+  const isOrganizer = tournamentAccess?.isOrganizer || dashboardData?.isOrganizer || false;
+  const isPlatformAdmin = tournamentAccess?.isPlatformAdmin || false;
+  const isSuperAdmin = isSuperAdminUser(admin, profile);
+  const inOrganizerSession = currentRole === 'organizer' || isSuperAdmin;
+  /** Owner powers when session role is Organizer OR user is a platform admin. */
+  const canActAsOwner = (isOrganizer || isPlatformAdmin) && inOrganizerSession;
+
+  const needsStageCompletionCheck = useMemo(() => {
+    if (!canActAsOwner || !tournament?.end_date || stages.length === 0) return false;
+    const start = tournament.start_date ? new Date(tournament.start_date) : null;
+    if (!start || Number.isNaN(start.getTime())) return false;
+    return Date.now() >= start.getTime();
+  }, [canActAsOwner, tournament?.end_date, tournament?.start_date, stages.length]);
 
   const stageCompletionQueries = useQueries({
     queries: stages.map((stage) => ({
@@ -218,27 +278,51 @@ const TournamentDashboard = () => {
         const raw = await apiClient.get<{ isComplete?: boolean }>(`/api/stages/${stage.id}/completion-status`);
         return Boolean(raw.isComplete);
       },
-      enabled: Boolean(stage.id) && isOrganizer,
+      enabled: Boolean(stage.id) && needsStageCompletionCheck,
       staleTime: 60_000,
     })),
   });
 
-  const hasIncompleteStages = useMemo(() => {
-    if (stages.length === 0) return false;
-    return stageCompletionQueries.some((query, _index) => {
-      if (query.isLoading || query.isError) return true;
-      return !query.data;
-    });
-  }, [stages.length, stageCompletionQueries]);
-
   const staffPermissions = useMemo(
-    () => (dashboardData?.staffPermissions || []) as StaffPermission[],
-    [dashboardData?.staffPermissions],
+    () => (tournamentAccess?.permissions ?? []) as StaffPermission[],
+    [tournamentAccess?.permissions],
   );
+  const _staffRole = tournamentAccess?.role ?? 'none';
+  const hasTournamentStaffAccess = Boolean(
+    tournamentAccess && !tournamentAccess.isOrganizer && tournamentAccess.role !== 'none',
+  );
+
+  // Player session: leave organizer dashboard unless staff on this tournament
+  useEffect(() => {
+    if (dashboardLoading || accessLoading || roleLoading || admin.loading) return;
+    if (inOrganizerSession || hasTournamentStaffAccess) return;
+    if (slug) {
+      toast({
+        title: 'Organizer mode required',
+        description: 'Switch to Organizer role to manage this tournament.',
+      });
+      navigate(`/tournaments/${slug}`, { replace: true });
+      return;
+    }
+    navigate('/unauthorized', { replace: true });
+  }, [
+    dashboardLoading,
+    accessLoading,
+    roleLoading,
+    admin.loading,
+    inOrganizerSession,
+    hasTournamentStaffAccess,
+    slug,
+    navigate,
+    toast,
+  ]);
   const mockCount = dashboardData?.mockCount ?? 0;
 
   // BR game results management
-  const isBR = isBattleRoyale(tournament?.game || '');
+  const isBR = isBattleRoyaleTournament(
+    tournament?.game || '',
+    getPersistedTournamentFormat(tournament),
+  );
   const brConf = isBR ? getBRConfig(tournament?.game || '') : null;
   const brSettings = isBR ? tournament?.settings : null;
   const brPresetKey = brSettings?.brScoringPreset || brConf?.defaultPreset || '';
@@ -247,12 +331,16 @@ const TournamentDashboard = () => {
     || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
 
   // Tab State & Direction
-  const TAB_ORDER = ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'staff', 'settings'];
+  const TAB_ORDER = ['overview', 'participants', 'stages', 'brackets', 'schedule', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
   // activeTab is declared below with location.state init
   const [direction, setDirection] = useState(0);
   const prevTabRef = React.useRef(0);
 
   const handleTabChange = (newTab: string) => {
+    if (newTab === 'disputes' && slug) {
+      navigate(`/organizer/tournament/${slug}/disputes`);
+      return;
+    }
     const newIndex = TAB_ORDER.indexOf(newTab);
     const oldIndex = prevTabRef.current;
 
@@ -286,14 +374,117 @@ const TournamentDashboard = () => {
   const [now, setNow] = useState(Date.now());
   const [participantsPage, setParticipantsPage] = useState(1);
   const [publishMockGuardOpen, setPublishMockGuardOpen] = useState(false);
-  const [showGuidelines, setShowGuidelines] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [pendingPublishMode, setPendingPublishMode] = useState<'private' | 'public' | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [draftInviteEmails, setDraftInviteEmails] = useState<string[]>([]);
+  const [csvImportText, setCsvImportText] = useState('');
+  const [showCsvImport, setShowCsvImport] = useState(false);
+  const [inviteSettingsEnabled, setInviteSettingsEnabled] = useState(false);
+  const [inviteSettingsReservedSlots, setInviteSettingsReservedSlots] = useState(0);
+  const [inviteSettingsExpiryDays, setInviteSettingsExpiryDays] = useState(7);
+  const [savingInviteSettings, setSavingInviteSettings] = useState(false);
   const openedParticipantParamRef = React.useRef<string | null>(null);
+
+  const {
+    invitations: invitationQuery,
+    createDrafts: createInviteDrafts,
+    sendInvites,
+    revokeInvite,
+    resendInvites,
+    importCsv,
+  } = useTournamentInvitations(tournament?.id);
+
+  const invitationResult = invitationQuery.data;
+  const invitationRows = invitationResult?.invitations ?? [];
+  const inviteSummary = invitationResult?.summary ?? EMPTY_INVITATION_SUMMARY;
+  const registrationType = tournament?.registration_type ?? (tournament?.settings as any)?.registrationType ?? 'open';
+  const maxTeams = tournament?.max_teams ?? tournament?.max_participants ?? 0;
+  const configuredReservedInviteSlots = getReservedInviteSlotsFromTournament(tournament);
+  const effectiveReservedInviteSlots = inviteSummary.reservedSlots > 0
+    ? inviteSummary.reservedSlots
+    : configuredReservedInviteSlots > 0
+      ? configuredReservedInviteSlots
+      : registrationType === 'invite_only'
+        ? maxTeams
+        : 0;
+  const usedInviteSlots = inviteSummary.activeSlots + draftInviteEmails.length;
+  const remainingInviteSlots = Math.max(0, inviteSummary.remainingSlots - draftInviteEmails.length);
+  const showInvitedTeamsFeature = canConfigureInvitedTeams(tournament?.team_size ?? 1, isBR);
+  const openRegistrationSlots = maxTeams > 0
+    ? Math.max(maxTeams - effectiveReservedInviteSlots, 0)
+    : null;
+  const brRegisteredUnitCount = useMemo(
+    () => resolveBRRegisteredUnitCount(participants, maxTeams, !!tournament?.check_in_required),
+    [participants, maxTeams, tournament?.check_in_required],
+  );
 
   const { clear: clearMockForPublish } = useMockTournament({
     tournamentId: tournament?.id ?? '',
     slug: slug ?? '',
     userId: user?.id,
   });
+
+  const executePublish = useCallback(async (mode: 'private' | 'public', clearMocksFirst = false) => {
+    if (!tournament?.id || isPublishing) return;
+    setIsPublishing(true);
+    try {
+      if (clearMocksFirst) {
+        await clearMockForPublish.mutateAsync();
+      }
+      const payload = launchStateToUpdatePayload(mode, tournament.status);
+      await apiClient.put(`/api/tournaments/${tournament.id}`, payload);
+      await refetchDashboard();
+      toast({
+        title: mode === 'private' ? 'Published privately' : 'Published publicly',
+        description: mode === 'private'
+          ? 'Your tournament is live via direct link. It will not appear in public listings.'
+          : 'Your tournament is now discoverable and open for registration.',
+      });
+      setPublishDialogOpen(false);
+      setPublishMockGuardOpen(false);
+      setPendingPublishMode(null);
+    } catch (err: unknown) {
+      toast({
+        title: 'Publish failed',
+        description: getApiErrorMessage(err, { context: 'tournamentPublish' }),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [tournament?.id, tournament?.status, isPublishing, clearMockForPublish, refetchDashboard, toast]);
+
+  const requestPublish = useCallback((mode: 'private' | 'public') => {
+    if (isPublishing) return;
+    if (mockCount > 0) {
+      setPendingPublishMode(mode);
+      setPublishDialogOpen(false);
+      setPublishMockGuardOpen(true);
+      return;
+    }
+    void executePublish(mode);
+  }, [mockCount, isPublishing, executePublish]);
+
+  const handleMakePrivate = useCallback(async () => {
+    if (!tournament?.id) return;
+    try {
+      const payload = makePrivateUpdatePayload(tournament.status);
+      await apiClient.put(`/api/tournaments/${tournament.id}`, payload);
+      refetchDashboard();
+      toast({
+        title: 'Tournament is now private',
+        description: 'It remains accessible via direct link but is hidden from public listings.',
+      });
+    } catch (err: unknown) {
+      toast({
+        title: 'Update failed',
+        description: getApiErrorMessage(err, { context: 'tournamentPrivate' }),
+        variant: 'destructive',
+      });
+    }
+  }, [tournament?.id, tournament?.status, refetchDashboard, toast]);
 
   const activeParticipants = useMemo(
     () => participants.filter((participant) => !['rejected', 'cancelled', 'disqualified'].includes(participant.status)),
@@ -311,27 +502,43 @@ const TournamentDashboard = () => {
 
   // Sync staff access state
   useEffect(() => {
-    setHasStaffAccess(staffPermissions.length > 0);
-  }, [staffPermissions]);
+    setHasStaffAccess(hasTournamentStaffAccess);
+  }, [hasTournamentStaffAccess]);
+
+  useEffect(() => {
+    if (!tournament) return;
+    const reserved = getReservedInviteSlotsFromTournament(tournament);
+    setInviteSettingsEnabled(reserved > 0);
+    setInviteSettingsReservedSlots(reserved > 0 ? reserved : defaultReservedInviteSlots(maxTeams));
+    setInviteSettingsExpiryDays(getInviteExpiryDaysFromTournament(tournament));
+  }, [tournament, maxTeams]);
 
   // Overdue Check & Auto-Extension Effect
   useEffect(() => {
     const checkOverdue = async () => {
-      if (!tournament || !isOrganizer || stages.length === 0) return;
+      if (!tournament || !canActAsOwner || stages.length === 0) return;
 
+      const startDate = tournament.start_date ? new Date(tournament.start_date) : null;
       const endDate = tournament.end_date ? new Date(tournament.end_date) : null;
       if (!endDate) return;
 
       const currentTime = new Date();
+
+      // Never auto-extend before the tournament starts or when dates are invalid.
+      if (!startDate || currentTime < startDate || endDate < startDate) return;
+
       const isOverdue = currentTime > endDate;
-      const incompleteStages = hasIncompleteStages;
+      const confirmedIncompleteStages = stageCompletionQueries.some(
+        (query) => !query.isLoading && !query.isError && !query.data,
+      );
 
-      if (isOverdue && incompleteStages && tournament.status !== 'completed') {
-        console.log('[TournamentManage] Tournament is overdue with incomplete stages. Extending matches...');
-
-        // Extend by 24 hours
-        const newEndDate = new Date();
+      if (isOverdue && confirmedIncompleteStages && tournament.status !== 'completed') {
+        const newEndDate = new Date(currentTime);
         newEndDate.setDate(newEndDate.getDate() + 1);
+        if (newEndDate < startDate) {
+          newEndDate.setTime(startDate.getTime());
+          newEndDate.setDate(newEndDate.getDate() + 1);
+        }
 
         try {
           await apiClient.put(`/api/tournaments/${tournament.id}`, { endDate: newEndDate.toISOString() });
@@ -339,7 +546,7 @@ const TournamentDashboard = () => {
             title: 'Tournament Extended',
             description: 'Tournament end time has passed with incomplete stages. Extended by 24 hours.',
             variant: 'default',
-            duration: 6000
+            duration: 6000,
           });
           refetchDashboard();
         } catch (err) {
@@ -349,7 +556,7 @@ const TournamentDashboard = () => {
     };
 
     checkOverdue();
-  }, [tournament, isOrganizer, stages.length, hasIncompleteStages, refetchDashboard, toast]);
+  }, [tournament, canActAsOwner, stages.length, stageCompletionQueries, refetchDashboard, toast]);
 
 
   const handleTeamClick = useCallback(async (participant: Participant) => {
@@ -382,9 +589,12 @@ const TournamentDashboard = () => {
         setSelectedTeamMembers(rawTokens);
       }
       // Resolve team id and logo
+      const isSoloParticipant = participant.participant_type === 'solo' || participant.entry_kind === 'solo_player';
       let teamId = participant.team_id as string | null;
-      let logoUrl: string | null = participant.team_logo || null;
-      if (!teamId) {
+      let logoUrl: string | null = participant.team_logo || participant.display_logo_url || null;
+      if (isSoloParticipant) {
+        logoUrl = logoUrl || participant.display_logo_url || null;
+      } else if (!teamId) {
         // Try exact name match first
         try {
           // Search teams by name — use team search endpoint
@@ -427,9 +637,9 @@ const TournamentDashboard = () => {
             });
             if (areUuids) {
               const mapTok = new Map<string, string>();
-              const isVal = tournament?.game?.toLowerCase() === 'valorant';
+              const preferRiotTag = tournamentModeFeatures.assistedReporting;
               (resolved || []).forEach((p: any) => {
-                const tag = isVal ? p.riot_tag : (p.riot_tag || p.steam_tag);
+                const tag = preferRiotTag ? p.riot_tag : (p.riot_tag || p.steam_tag);
                 mapTok.set(p.id, tag || p.username || p.full_name || `player_${String(p.id).substring(0, 8)}`);
               });
               namesResolved = tokens.map(id => mapTok.get(id) || `player_${String(id).substring(0, 8)}`);
@@ -462,7 +672,7 @@ const TournamentDashboard = () => {
       console.error(e);
       setTeamLoading(false);
     }
-  }, [tournament?.id, tournament?.game, selectedTeam]);
+  }, [tournament?.id, selectedTeam, tournamentModeFeatures.assistedReporting]);
 
   // Data managed by useTournamentDashboard
 
@@ -544,11 +754,54 @@ const TournamentDashboard = () => {
     }
   };
 
+  const handleAddInviteEmail = () => {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!isValidInviteEmail(email)) {
+      toast({ title: 'Invalid email', description: 'Enter a valid captain email address.', variant: 'destructive' });
+      return;
+    }
+    if (draftInviteEmails.includes(email) || invitationRows.some((invite) => invite.email.toLowerCase() === email && invite.status !== 'revoked')) {
+      toast({ title: 'Already added', description: `${email} already has an invitation.` });
+      return;
+    }
+    if (effectiveReservedInviteSlots <= 0) {
+      toast({ title: 'Invite slots not configured', description: 'Add reserved invite slots before sending guaranteed invite codes.', variant: 'destructive' });
+      return;
+    }
+    if (effectiveReservedInviteSlots > 0 && remainingInviteSlots <= 0) {
+      toast({ title: 'No invite slots remaining', description: 'Increase reserved invite slots or revoke an existing invitation.', variant: 'destructive' });
+      return;
+    }
+    setDraftInviteEmails((current) => [...current, email]);
+    setInviteEmail('');
+  };
+
+  const handleSendInviteEmails = async () => {
+    if (!tournament?.id || draftInviteEmails.length === 0) return;
+    try {
+      const created = await createInviteDrafts.mutateAsync({ emails: draftInviteEmails });
+      const invitationIds = created.map((invite) => invite.id).filter(Boolean);
+      await sendInvites.mutateAsync(invitationIds.length > 0 ? { invitationIds } : {});
+      setDraftInviteEmails([]);
+      toast({ title: 'Invitations sent', description: 'Codes were generated and emailed to the selected captains.' });
+    } catch (error: any) {
+      toast({ title: 'Unable to send invitations', description: error.message || 'Please try again later.', variant: 'destructive' });
+    }
+  };
+
+  const handleRevokeInvitation = async (invitationId: string) => {
+    try {
+      await revokeInvite.mutateAsync(invitationId);
+      toast({ title: 'Invitation revoked', description: 'The code can no longer be redeemed.' });
+    } catch (error: any) {
+      toast({ title: 'Unable to revoke invitation', description: error.message || 'Please try again later.', variant: 'destructive' });
+    }
+  };
+
   // Payment rejection
   const [rejectingPayment, setRejectingPayment] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState<string | null>(null);
-  const [receiptViewUrl, setReceiptViewUrl] = useState<string | null>(null);
 
   const handleRejectPayment = async (participantId: string) => {
     if (!tournament?.id) return;
@@ -565,6 +818,70 @@ const TournamentDashboard = () => {
       toast({ title: 'Rejection Failed', description: error.message, variant: 'destructive' });
     } finally {
       setRejectingPayment(null);
+    }
+  };
+
+  const handleSaveInviteSettings = async () => {
+    if (!tournament?.id) return;
+
+    if (inviteSettingsEnabled) {
+      if (inviteSettingsReservedSlots < 1) {
+        toast({ title: 'Invalid configuration', description: `Reserve at least 1 slot for invited ${inviteParticipantLabel}.`, variant: 'destructive' });
+        return;
+      }
+      if (maxTeams > 0 && inviteSettingsReservedSlots > maxTeams) {
+        toast({ title: 'Invalid configuration', description: 'Reserved invite slots cannot exceed max teams.', variant: 'destructive' });
+        return;
+      }
+      if (inviteSettingsReservedSlots < inviteSummary.activeSlots) {
+        toast({
+          title: 'Cannot reduce slots',
+          description: `${inviteSummary.activeSlots} active invitation${inviteSummary.activeSlots === 1 ? '' : 's'} — revoke some before lowering reserved slots.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    } else if (inviteSummary.activeSlots > 0) {
+      toast({
+        title: `Cannot disable invited ${inviteParticipantLabel}`,
+        description: 'Revoke all active invitations before disabling reserved invite slots.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSavingInviteSettings(true);
+    try {
+      const currentSettings = typeof tournament.settings === 'object' && tournament.settings
+        ? tournament.settings as Record<string, unknown>
+        : {};
+      const payload = buildInviteSettingsPayload(
+        inviteSettingsEnabled,
+        inviteSettingsReservedSlots,
+        inviteSettingsExpiryDays,
+        currentSettings,
+      );
+      await apiClient.put(`/api/tournaments/${tournament.id}`, {
+        reservedInviteSlots: payload.reservedInviteSlots,
+        inviteExpiryDays: payload.inviteExpiryDays,
+        settings: payload.settings,
+      });
+      toast({
+        title: inviteSettingsEnabled ? 'Invited teams configured' : 'Invited teams disabled',
+        description: inviteSettingsEnabled
+          ? `${payload.reservedInviteSlots} slot${payload.reservedInviteSlots === 1 ? '' : 's'} reserved. Send codes from the Participants tab.`
+          : 'Reserved invite slots have been cleared.',
+      });
+      refetchDashboard();
+      invitationQuery.refetch();
+    } catch (error: any) {
+      toast({
+        title: 'Failed to update invite settings',
+        description: error.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingInviteSettings(false);
     }
   };
 
@@ -680,43 +997,83 @@ const TournamentDashboard = () => {
   }, []);
 
   const effectiveCheckInRequired = !!tournament?.check_in_required;
-  const effectiveDeadlineMs = tournament?.check_in_deadline
-    ? new Date(tournament.check_in_deadline).getTime()
-    : null;
+  const checkInWindow = useMemo(
+    () => resolveCheckInWindow({
+      startDate: tournament?.start_date,
+      checkInDeadline: tournament?.check_in_deadline,
+      settings: tournament?.settings,
+    }),
+    [tournament?.start_date, tournament?.check_in_deadline, tournament?.settings],
+  );
 
-  const teamParticipants = useMemo(
-    () => participants.filter((p) => p.participant_type === 'team'),
-    [participants]
+  const checkInEligibleParticipants = useMemo(
+    () => participants.filter((participant) => isActiveRegistration(participant.status)),
+    [participants],
   );
-  const checkedInTeams = useMemo(
-    () => teamParticipants.filter((p) => Boolean(p.checked_in_at)),
-    [teamParticipants]
+  const checkedInParticipants = useMemo(
+    () => countCheckedInParticipants(participants),
+    [participants],
   );
-  const pendingTeams = Math.max(0, teamParticipants.length - checkedInTeams.length);
-  const checkInProgress = teamParticipants.length
-    ? Math.round((checkedInTeams.length / teamParticipants.length) * 100)
+  const pendingCheckInParticipants = useMemo(
+    () => countPendingCheckInParticipants(participants),
+    [participants],
+  );
+  const checkInProgress = checkInEligibleParticipants.length
+    ? Math.round((checkedInParticipants / checkInEligibleParticipants.length) * 100)
     : 0;
-  const isCheckInClosed = effectiveDeadlineMs ? now > effectiveDeadlineMs : false;
-  const checkInCountdown =
-    effectiveDeadlineMs && !isCheckInClosed
-      ? formatCountdown(effectiveDeadlineMs - now)
+  const isCheckInNotYetOpen = hasCheckInNotOpenedYet(checkInWindow, new Date(now));
+  const isCheckInClosed = hasCheckInClosed(checkInWindow, new Date(now));
+  const checkInCountdownTargetMs = isCheckInNotYetOpen
+    ? checkInWindow.opensAt?.getTime()
+    : !isCheckInClosed
+      ? checkInWindow.closesAt?.getTime()
       : null;
-  const showCheckInSummary = Boolean((effectiveCheckInRequired || isOrganizer) && teamParticipants.length > 0);
+  const checkInCountdown =
+    checkInCountdownTargetMs != null && checkInCountdownTargetMs > now
+      ? formatCountdown(checkInCountdownTargetMs - now)
+      : null;
+  const checkInCountdownLabel = isCheckInNotYetOpen ? 'until open' : 'left';
+  const showCheckInSummary = Boolean(
+    (effectiveCheckInRequired || canActAsOwner) && checkInEligibleParticipants.length > 0,
+  );
 
   const staffPermissionSummary =
     staffPermissions.map((perm) => STAFF_PERMISSION_LABELS[perm] || perm).join(', ') || 'Limited access';
 
-  const canManageStaff = isOrganizer;
-  const canAssistDisputes = isOrganizer || staffPermissions.includes('disputes:assist');
-  const canManageTeams = isOrganizer || staffPermissions.includes('teams:manage');
-  const canEditBracket = isOrganizer || staffPermissions.includes('bracket:edit');
-  const canSendAnnouncements = isOrganizer || staffPermissions.includes('announcements:send');
+  const canManageStaff = canActAsOwner;
+  const canAssistDisputes = canActAsOwner || isStaffAdmin || tournamentAccess?.isPlatformAdmin || staffPermissions.includes('disputes:assist');
+  const { badgeCount: disputeBadgeCount, refresh: _refreshDisputeUnread } = useOrganizerDisputeUnread(
+    tournament?.id,
+    canAssistDisputes,
+  );
+  const canManageTeams = canActAsOwner || isStaffAdmin || staffPermissions.includes('teams:manage');
+  const canEditBracket =
+    can('bracket:edit')
+    && (inOrganizerSession || hasTournamentStaffAccess || Boolean(tournamentAccess?.isPlatformAdmin));
+  const canSendAnnouncements = canActAsOwner || isStaffAdmin || staffPermissions.includes('announcements:send');
 
   const PermissionNotice = ({ message }: { message: string }) => (
     <Card className="bg-[#080d18] border border-white/5">
       <CardContent className="py-6 text-center text-gray-400 text-sm">{message}</CardContent>
     </Card>
   );
+
+  const renderTabLabel = (tab: string) => {
+    if (tab !== 'disputes' || disputeBadgeCount <= 0) {
+      return tab;
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        {tab}
+        <span
+          className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold leading-none text-black"
+          title={`${disputeBadgeCount} pending dispute${disputeBadgeCount === 1 ? '' : 's'}`}
+        >
+          {disputeBadgeCount > 9 ? '9+' : disputeBadgeCount}
+        </span>
+      </span>
+    );
+  };
 
   const renderCheckInBadge = (participant: Participant) => {
     // Payment status badges take priority
@@ -731,6 +1088,14 @@ const TournamentDashboard = () => {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-red-500/40 bg-red-500/10 text-red-300">
           Rejected
+        </span>
+      );
+    }
+
+    if (participant.status === 'pending') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs border border-amber-400/40 bg-amber-500/10 text-amber-200">
+          Pending Approval
         </span>
       );
     }
@@ -818,10 +1183,7 @@ const TournamentDashboard = () => {
 
       // 3. Update State
       // Check static data for logo override
-      const foundGame = esportsGames.games.find(g =>
-        normalize(g.name) === normalize(gameName) ||
-        g.name.toLowerCase() === gameName.toLowerCase()
-      );
+      const foundGame = getGameByName(gameName);
       if (foundGame?.logo) {
         setGameLogo(foundGame.logo);
       } else if (logo) {
@@ -884,12 +1246,12 @@ const TournamentDashboard = () => {
                 (dashboardError ? `Error details: ${JSON.stringify(dashboardError)}` : null) ||
                 "We couldn't find the tournament you're looking for or you don't have permission to manage it."}
             </p>
-            <Button
+            <button type="button"
               onClick={() => navigate('/organizer/tournaments')}
               className="bg-red-600 hover:bg-red-500 font-bold px-8 py-6 rounded-none transition-all hover:scale-105"
             >
               Back to Tournaments
-            </Button>
+            </button>
           </div>
         </main>
         <Footer />
@@ -923,6 +1285,28 @@ const TournamentDashboard = () => {
   const handleEditTournament = () => {
     if (!slug) return;
     navigate(`/tournaments/edit/${slug}`);
+  };
+
+  const tournamentLinkUrl = slug
+    ? `${window.location.origin}/tournaments/${slug}`
+    : tournament?.id
+      ? `${window.location.origin}/tournaments/${tournament.id}`
+      : '';
+  const showDirectLinks = Boolean(tournament && (!tournament.is_public || tournament.status === 'draft'));
+  const inviteParticipantLabel = (tournament?.team_size ?? 1) > 1 ? 'teams' : 'players';
+
+  const copyTournamentLink = async (url: string) => {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ title: 'Link copied', description: 'Tournament link copied to clipboard.' });
+    } catch {
+      toast({
+        title: 'Copy failed',
+        description: 'Could not copy the link. Copy it manually from the address bar.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -989,7 +1373,7 @@ const TournamentDashboard = () => {
                     <MapPin className="w-4 h-4" />
                     {tournament.venue || 'Remote'}
                   </div>
-                  {tournament.status === 'completed' && tournament.winner_team_name && (
+                  {tournament.winner_team_name && (
                     <div className="flex items-center gap-2 text-yellow-400">
                       <Trophy className="w-4 h-4" />
                       Winner: {tournament.winner_team_name}
@@ -1002,83 +1386,139 @@ const TournamentDashboard = () => {
             {/* Right: Actions & Status */}
             <div className="flex flex-col items-end gap-3 self-end sm:self-auto">
               <div className="flex flex-wrap items-center justify-end gap-3 mt-auto">
-                {isOrganizer && (tournament.status === 'draft' || !tournament.is_public) && (
-                  <>
-                    <CommandButton
-                      onClick={() => {
-                        if (mockCount > 0) {
-                          setPublishMockGuardOpen(true);
-                        } else {
-                          (async () => {
-                            try {
-                              await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open', isPublic: true });
-                              refetchDashboard();
-                              toast({ title: 'Tournament Published!', description: 'Your tournament is now live and public.' });
-                            } catch (err: unknown) {
-                              toast({
-                                title: 'Publish failed',
-                                description: getApiErrorMessage(err, 'We could not publish this tournament. Check required settings and try again.'),
-                                variant: 'destructive'
-                              });
-                            }
-                          })();
-                        }
-                      }}
-                      variant="primary"
-                      size="sm"
-                    >
-                      <Globe className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
-                      Publish Tournament
-                    </CommandButton>
-
-                    {/* Mock-participants-exist guard before publish */}
-                    <AlertDialog open={publishMockGuardOpen} onOpenChange={setPublishMockGuardOpen}>
-                      <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="flex items-center gap-2">
-                            <AlertTriangle className="h-5 w-5 text-amber-400" />
-                            Mock teams detected
-                          </AlertDialogTitle>
-                          <AlertDialogDescription className="text-zinc-400">
-                            This tournament has {mockCount} mock team{mockCount !== 1 ? 's' : ''} from simulation
-                            mode. They must be removed before publishing. Click "Clear & Publish" to remove
-                            them and publish immediately.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel asChild>
-                            <CommandButton variant="secondary" size="sm">Cancel</CommandButton>
-                          </AlertDialogCancel>
-                          <AlertDialogAction asChild>
-                            <CommandButton
-                              variant="primary"
-                              size="sm"
-                              onClick={async () => {
-                                try {
-                                  await clearMockForPublish.mutateAsync();
-                                  await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'open', isPublic: true });
-                                  refetchDashboard();
-                                  toast({ title: 'Tournament Published!', description: 'Mock data cleared and tournament is now live.' });
-                                } catch (err: unknown) {
-                                  toast({
-                                    title: 'Publish failed',
-                                    description: getApiErrorMessage(err, 'We could not clear mock data and publish. Try clearing mocks from Mock Mode first, then publish again.'),
-                                    variant: 'destructive'
-                                  });
-                                }
-                                setPublishMockGuardOpen(false);
-                              }}
-                            >
-                              Clear & Publish
-                            </CommandButton>
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </>
+                {canActAsOwner && tournament.status === 'draft' && (
+                  <CommandButton
+                    onClick={() => setPublishDialogOpen(true)}
+                    variant="primary"
+                    size="sm"
+                  >
+                    <Globe className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
+                    Publish Tournament
+                  </CommandButton>
                 )}
 
-                {isOrganizer && tournament.status !== 'completed' && tournament.status !== 'draft' && (
+                {canActAsOwner && tournament.status !== 'draft' && !tournament.is_public && (
+                  <CommandButton
+                    onClick={() => requestPublish('public')}
+                    variant="primary"
+                    size="sm"
+                  >
+                    <Globe className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
+                    Make Public
+                  </CommandButton>
+                )}
+
+                {canActAsOwner && tournament.status !== 'draft' && tournament.is_public && (
+                  <CommandButton
+                    onClick={() => void handleMakePrivate()}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    <EyeOff className="w-4 h-4 mr-2" />
+                    Make Private
+                  </CommandButton>
+                )}
+
+                <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+                  <DialogContent className="bg-[#0a0a0c] border-white/10 max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="text-white">Publish Tournament</DialogTitle>
+                      <DialogDescription className="text-gray-400">
+                        Choose how players can discover this tournament. You can change visibility later from the dashboard.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-3 py-2">
+                      <CommandButton
+                        variant="secondary"
+                        size="sm"
+                        className="w-full justify-start h-auto py-4 px-4"
+                        disabled={isPublishing}
+                        onClick={() => requestPublish('private')}
+                      >
+                        {isPublishing ? (
+                          <Loader2 className="w-5 h-5 mr-3 shrink-0 animate-spin text-purple-400" />
+                        ) : (
+                          <EyeOff className="w-5 h-5 mr-3 shrink-0 text-purple-400" />
+                        )}
+                        <div className="text-left">
+                          <div className="font-bold text-white">Publish privately</div>
+                          <div className="text-xs text-gray-500 font-normal mt-0.5">Link-only access. Hidden from browse and search.</div>
+                        </div>
+                      </CommandButton>
+                      <CommandButton
+                        variant="primary"
+                        size="sm"
+                        className="w-full justify-start h-auto py-4 px-4"
+                        disabled={isPublishing}
+                        onClick={() => requestPublish('public')}
+                      >
+                        {isPublishing ? (
+                          <Loader2 className="w-5 h-5 mr-3 shrink-0 animate-spin" />
+                        ) : (
+                          <Globe className="w-5 h-5 mr-3 shrink-0" />
+                        )}
+                        <div className="text-left">
+                          <div className="font-bold">Publish publicly</div>
+                          <div className="text-xs opacity-80 font-normal mt-0.5">Listed in discovery. Open for registration.</div>
+                        </div>
+                      </CommandButton>
+                    </div>
+                    <DialogFooter>
+                      <CommandButton variant="ghost" size="sm" onClick={() => setPublishDialogOpen(false)}>
+                        Cancel
+                      </CommandButton>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <AlertDialog
+                  open={publishMockGuardOpen}
+                  onOpenChange={(open) => {
+                    setPublishMockGuardOpen(open);
+                    if (!open) setPendingPublishMode(null);
+                  }}
+                >
+                  <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-amber-400" />
+                        Mock teams detected
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="text-zinc-400">
+                        This tournament has {mockCount} mock team{mockCount !== 1 ? 's' : ''} from simulation
+                        mode. They must be removed before publishing.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel asChild>
+                        <CommandButton variant="secondary" size="sm">Cancel</CommandButton>
+                      </AlertDialogCancel>
+                      <AlertDialogAction asChild>
+                        <CommandButton
+                          variant="primary"
+                          size="sm"
+                          disabled={isPublishing}
+                          onClick={async (event) => {
+                            event.preventDefault();
+                            const mode = pendingPublishMode ?? 'public';
+                            await executePublish(mode, true);
+                          }}
+                        >
+                          {isPublishing ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                              Publishing...
+                            </>
+                          ) : (
+                            'Clear & Publish'
+                          )}
+                        </CommandButton>
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {canActAsOwner && tournament.status !== 'completed' && tournament.status !== 'draft' && (
                   <CommandButton
                     onClick={handleCompleteTournament}
                     variant="secondary"
@@ -1089,7 +1529,7 @@ const TournamentDashboard = () => {
                   </CommandButton>
                 )}
 
-                {isOrganizer && tournament.status === 'completed' && (
+                {canActAsOwner && tournament.status === 'completed' && (
                   <CommandButton
                     onClick={() => handleStatusChange('published')}
                     variant="warning"
@@ -1100,18 +1540,7 @@ const TournamentDashboard = () => {
                   </CommandButton>
                 )}
 
-                {isOrganizer && (
-                  <CommandButton
-                    onClick={() => setShowGuidelines(true)}
-                    variant="secondary"
-                    size="sm"
-                  >
-                    <Layers className="w-4 h-4 mr-2" />
-                    Guidelines
-                  </CommandButton>
-                )}
-
-                {isOrganizer && (
+                {canActAsOwner && (
                   <CommandButton
                     onClick={handleEditTournament}
                     variant="warning"
@@ -1128,8 +1557,19 @@ const TournamentDashboard = () => {
                   size="sm"
                 >
                   <Eye className="w-4 h-4 mr-2 transition-transform group-hover:scale-110" />
-                  View Public Page
+                  View Page
                 </CommandButton>
+
+                {showDirectLinks && (
+                  <CommandButton
+                    onClick={() => void copyTournamentLink(tournamentLinkUrl)}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Tournament Link
+                  </CommandButton>
+                )}
               </div>
             </div>
           </div>
@@ -1184,21 +1624,25 @@ const TournamentDashboard = () => {
                 </SelectTrigger>
                 <SelectContent className="bg-[#09090b] border-white/10 text-white z-[60]">
                   {(() => {
-                    const isBRMobile = isBattleRoyale(tournament?.game || '');
+                    const isBRMobile = isBattleRoyaleTournament(
+                      tournament?.game || '',
+                      getPersistedTournamentFormat(tournament),
+                    );
                     const mobileTabs = isBRMobile
-                      ? ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
-                      : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
+                      ? ['overview', 'participants', 'stages', 'schedule', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                      : ['overview', 'participants', 'stages', 'brackets', 'schedule', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
                     return mobileTabs.map((tab) => {
                     // Filter tabs based on permissions
                     if (tab === 'bans' && !canManageTeams) return null;
                     if (tab === 'disputes' && !canAssistDisputes) return null;
                     if (tab === 'announcements' && !canSendAnnouncements) return null;
+                    if (tab === 'schedule' && !canEditBracket) return null;
                     if (tab === 'staff' && !canManageStaff) return null;
-                    if (tab === 'settings' && !isOrganizer) return null;
+                    if (tab === 'settings' && !canActAsOwner) return null;
 
                     return (
                       <SelectItem key={tab} value={tab} className="capitalize font-medium focus:bg-white/10 focus:text-white cursor-pointer py-3">
-                        {tab}
+                        {renderTabLabel(tab)}
                       </SelectItem>
                     );
                   });
@@ -1218,10 +1662,13 @@ const TournamentDashboard = () => {
             >
               <TabsList className="bg-transparent p-0 h-auto gap-1">
                 {(() => {
-                  const isBR = isBattleRoyale(tournament?.game || '');
+                  const isBR = isBattleRoyaleTournament(
+    tournament?.game || '',
+    getPersistedTournamentFormat(tournament),
+  );
                   const tabs = isBR
-                    ? ['overview', 'participants', 'stages', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
-                    : ['overview', 'participants', 'stages', 'brackets', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
+                    ? ['overview', 'participants', 'stages', 'schedule', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                    : ['overview', 'participants', 'stages', 'brackets', 'schedule', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
                   return tabs.map((tab) => {
                   if (tab === 'brackets') {
                     return (
@@ -1238,8 +1685,9 @@ const TournamentDashboard = () => {
 
                   if (tab === 'bans' && !canManageTeams) return null;
                   if (tab === 'disputes' && !canAssistDisputes) return null;
+                  if (tab === 'schedule' && !canEditBracket) return null;
                   if (tab === 'staff' && !canManageStaff) return null;
-                  if (tab === 'settings' && !isOrganizer) return null;
+                  if (tab === 'settings' && !canActAsOwner) return null;
 
                   return (
                     <TabsTrigger
@@ -1247,7 +1695,7 @@ const TournamentDashboard = () => {
                       value={tab}
                       className="h-auto rounded-none border border-transparent px-6 py-2.5 text-sm font-medium capitalize text-gray-400 transition-colors hover:border-white/10 hover:bg-white/5 hover:text-white data-[state=active]:border-rose-500 data-[state=active]:bg-rose-500 data-[state=active]:text-white data-[state=active]:shadow-lg"
                     >
-                      <span className="relative z-10">{tab}</span>
+                      <span className="relative z-10">{renderTabLabel(tab)}</span>
                     </TabsTrigger>
                   );
                 });
@@ -1260,7 +1708,7 @@ const TournamentDashboard = () => {
           {/* Premium Tab Navigation */}
 
 
-          <div className="relative min-h-[400px]">
+          <div className="tournament-dashboard-tab-content relative min-h-[400px]">
             <AnimatePresence mode="wait" custom={direction}>
               {activeTab === 'overview' && (
                 <TabsContent value="overview" forceMount key="overview">
@@ -1312,14 +1760,15 @@ const TournamentDashboard = () => {
               {activeTab === 'stages' && (
                 <TabsContent value="stages" forceMount key="stages">
                   <TabTransition direction={direction}>
-                    {/* Mock Mode panel pinned above stages when in draft — easy access from here */}
-                    {isOrganizer && !tournament.is_public && (
+                    {/* Mock Mode panel pinned above stages; always show clear controls while mocks exist. */}
+                    {canActAsOwner && ((tournament.status === 'draft' && !tournament.is_public) || mockCount > 0) && (
                       <div className="mb-4">
                         <MockModePanel
                           tournamentId={tournament.id}
                           slug={slug ?? ''}
                           maxTeams={tournament.max_teams}
                           mockCount={mockCount}
+                          canGenerate={tournament.status === 'draft' && !tournament.is_public}
                         />
                       </div>
                     )}
@@ -1328,10 +1777,15 @@ const TournamentDashboard = () => {
                         tournamentId={tournament.id}
                         stages={stages}
                         participants={participants}
+                        maxTeams={tournament.max_teams ?? tournament.max_participants ?? null}
                         maxParticipants={tournament.max_participants ?? null}
                         teamSize={tournament.team_size ?? null}
+                        gameMode={tournament.game_mode ?? null}
+                        participantMode={registrationParticipantMode}
                         game={tournament.game || ''}
+                        tournamentSettings={brSettings as Record<string, unknown> | null}
                         scoringPreset={brScoringPreset}
+                        checkInRequired={!!tournament.check_in_required}
                         onUpdate={() => refetchDashboard()}
                       />
                     ) : (
@@ -1347,14 +1801,99 @@ const TournamentDashboard = () => {
                 </TabsContent>
               )}
 
+              {activeTab === 'schedule' && canEditBracket && (
+                <TabsContent value="schedule" forceMount key="schedule">
+                  <TabTransition direction={direction}>
+                    {isBR ? (
+                      <BRScheduleTab
+                        tournamentId={tournament.id}
+                        tournamentStartDate={tournament.start_date || null}
+                        tournamentEndDate={tournament.end_date || null}
+                        stages={stages}
+                        registeredUnitCount={brRegisteredUnitCount}
+                        onUpdate={() => refetchDashboard()}
+                      />
+                    ) : (
+                      <div className="space-y-6">
+                        <Card className="border-white/10 bg-[#0a0a0c]/90">
+                          <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-white">
+                              <Calendar className="h-5 w-5 text-rose-400" />
+                              Schedule
+                            </CardTitle>
+                            <p className="text-sm text-zinc-400">
+                              Configure match scheduling, check-in windows, and round deadlines for each stage.
+                            </p>
+                          </CardHeader>
+                        </Card>
+
+                        {stages.length === 0 ? (
+                          <Card className="border-dashed border-white/10 bg-[#0a0a0c]/70">
+                            <CardContent className="p-10 text-center text-sm text-zinc-500">
+                              Add a stage before configuring match schedules.
+                            </CardContent>
+                          </Card>
+                        ) : (
+                          [...stages]
+                            .sort((a: any, b: any) => (a.stage_order ?? 0) - (b.stage_order ?? 0))
+                            .map((stage: any) => {
+                              const schedulingConfig = typeof stage.scheduling_config === 'string'
+                                ? (() => { try { return JSON.parse(stage.scheduling_config); } catch { return null; } })()
+                                : stage.scheduling_config;
+                              const selfPlayEnabled = Boolean(schedulingConfig?.self_play_enabled);
+
+                              return (
+                                <Card key={stage.id} className="border-white/10 bg-[#0a0a0c]/90">
+                                  <CardHeader>
+                                    <CardTitle className="flex items-center justify-between gap-3 text-white">
+                                      <span>{stage.name}</span>
+                                      <Badge className="border-white/10 bg-white/5 text-zinc-300">
+                                        {(stage.format || 'single_elimination').replace(/_/g, ' ')}
+                                      </Badge>
+                                    </CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                                    <StageSchedulingConfig
+                                      stageId={stage.id}
+                                      stageFormat={stage.format || 'single_elimination'}
+                                      gameName={tournament.game || ''}
+                                      onConfigChange={() => refetchDashboard()}
+                                    />
+                                    <RoundSchedulingPanel
+                                      stageId={stage.id}
+                                      stageFormat={stage.format || 'single_elimination'}
+                                      tournamentStartDate={tournament.start_date || null}
+                                      tournamentEndDate={tournament.end_date || null}
+                                      selfPlayEnabled={selfPlayEnabled}
+                                      onScheduleApplied={() => refetchDashboard()}
+                                    />
+                                  </CardContent>
+                                </Card>
+                              );
+                            })
+                        )}
+                      </div>
+                    )}
+                  </TabTransition>
+                </TabsContent>
+              )}
+
               {/* BR Games Tab */}
               {activeTab === 'games' && isBR && (
                 <TabsContent value="games" forceMount key="games">
                   <TabTransition direction={direction}>
                     <BRGamesTab
                       tournamentId={tournament!.id}
+                      tournamentStartDate={tournament.start_date || null}
+                      tournamentEndDate={tournament.end_date || null}
                       stages={stages}
+                      game={tournament.game || ''}
+                      tournamentSettings={brSettings as Record<string, unknown> | null}
+                      teamSize={tournament.team_size ?? 1}
+                      maxTeams={tournament.max_teams ?? tournament.max_participants ?? null}
+                      participants={participants}
                       scoringPreset={brScoringPreset}
+                      checkInRequired={!!tournament.check_in_required}
                     />
                   </TabTransition>
                 </TabsContent>
@@ -1376,9 +1915,9 @@ const TournamentDashboard = () => {
                               />
                             </CardTitle>
                             <p className="text-xs font-medium text-gray-400 mt-1 font-mono uppercase tracking-wider">
-                              {tournament.check_in_deadline
-                                ? `Deadline: ${new Date(tournament.check_in_deadline).toLocaleString()}`
-                                : 'Deadline not set'}
+                              {checkInWindow.opensAt && checkInWindow.closesAt
+                                ? `Opens ${checkInWindow.opensAt.toLocaleString()} · Closes ${checkInWindow.closesAt.toLocaleString()}`
+                                : 'Check-in schedule not set'}
                               {checkInCountdown && (
                                 <motion.span
                                   key={checkInCountdown}
@@ -1386,7 +1925,7 @@ const TournamentDashboard = () => {
                                   animate={{ opacity: 1, y: 0 }}
                                   className="text-rose-400 font-bold ml-2"
                                 >
-                                  · {checkInCountdown} left
+                                  · {checkInCountdown} {checkInCountdownLabel}
                                 </motion.span>
                               )}
                             </p>
@@ -1401,6 +1940,8 @@ const TournamentDashboard = () => {
                           >
                             {isCheckInClosed
                               ? 'Closed'
+                              : isCheckInNotYetOpen
+                                ? 'Opens Soon'
                               : checkInProgress === 100
                                 ? 'Ready'
                                 : 'Check-In Open'}
@@ -1410,15 +1951,15 @@ const TournamentDashboard = () => {
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-0">
                             <div className="flex flex-col sm:border-r border-white/10 px-4 gap-1">
                               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Participants</span>
-                              <span className="text-3xl font-black text-white tracking-tight">{participants.filter(p => p.status !== 'rejected').length}</span>
+                              <span className="text-3xl font-black text-white tracking-tight">{checkInEligibleParticipants.length}</span>
                             </div>
                             <div className="flex flex-col sm:border-r border-white/10 px-4 gap-1">
                               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Checked In</span>
-                              <span className="text-3xl font-black text-rose-400 tracking-tight">{participants.filter(p => p.status === 'checked_in').length}</span>
+                              <span className="text-3xl font-black text-rose-400 tracking-tight">{checkedInParticipants}</span>
                             </div>
                             <div className="flex flex-col px-4 gap-1">
                               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Pending</span>
-                              <span className="text-3xl font-black text-amber-400 tracking-tight">{Math.max(0, participants.filter(p => p.status === 'approved' || p.status === 'pending').length)}</span>
+                              <span className="text-3xl font-black text-amber-400 tracking-tight">{pendingCheckInParticipants}</span>
                             </div>
                           </div>
                           <div>
@@ -1438,28 +1979,253 @@ const TournamentDashboard = () => {
                             </div>
                           </div>
 
-                          {isOrganizer && (
+                          {canActAsOwner && (
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
                               <div className="flex gap-2">
-                                <Button
-                                  onClick={() => refetchDashboard()}
-                                  variant="outline"
+                                <OutlineButton
+                                  type="button"
                                   size="sm"
-                                  className="border-white/10 bg-white/5 hover:bg-white/10 text-white"
+                                  onClick={() => refetchDashboard()}
                                 >
                                   Refresh
-                                </Button>
+                                </OutlineButton>
                               </div>
-                              <Button
+                              <DangerButton
                                 onClick={handleRemoveUncheckedParticipants}
-                                disabled={pendingTeams <= 0 || removingUnchecked}
-                                className="bg-red-600 hover:bg-red-500 text-white w-full sm:w-auto shadow-lg shadow-red-900/20"
+                                disabled={pendingCheckInParticipants <= 0 || removingUnchecked}
+                                className="w-full sm:w-auto shadow-lg shadow-red-900/20"
                                 size="sm"
                               >
-                                {removingUnchecked ? 'Clearing...' : 'Remove unchecked teams'}
-                              </Button>
+                                {removingUnchecked
+                                  ? 'Clearing...'
+                                  : registrationParticipantMode === 'solo'
+                                    ? 'Remove unchecked players'
+                                    : 'Remove unchecked teams'}
+                              </DangerButton>
                             </div>
                           )}
+                        </CardContent>
+                      </Card>
+                    )}
+                    {canManageTeams && showInvitedTeamsFeature && (
+                      <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
+                        <CardHeader className="p-0 border-b border-white/5 pb-4 mb-6 relative z-10">
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                              <CardTitle className="text-lg font-bold text-white tracking-wide flex items-center gap-2">
+                                <Mail className="h-5 w-5 text-rose-300" />
+                                Invite Participants
+                              </CardTitle>
+                              <p className="mt-1 text-sm text-gray-400">
+                                Email-locked codes let invited {inviteParticipantLabel} register into this tournament.
+                                {openRegistrationSlots !== null && effectiveReservedInviteSlots > 0 && (
+                                  <> {openRegistrationSlots} open registration slot{openRegistrationSlots === 1 ? '' : 's'} remain alongside {effectiveReservedInviteSlots} reserved.</>
+                                )}
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                              <div className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-3">
+                                <p className="text-gray-500 uppercase tracking-wider">Reserved</p>
+                                <p className="mt-1 text-lg font-black text-white">{effectiveReservedInviteSlots}</p>
+                              </div>
+                              <div className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-3">
+                                <p className="text-gray-500 uppercase tracking-wider">Used</p>
+                                <p className="mt-1 text-lg font-black text-white">{usedInviteSlots}</p>
+                              </div>
+                              <div className="rounded-none border border-white/10 bg-white/[0.03] px-4 py-3">
+                                <p className="text-gray-500 uppercase tracking-wider">Remaining</p>
+                                <p className="mt-1 text-lg font-black text-emerald-300">{remainingInviteSlots}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="p-0 relative z-10 space-y-5">
+                          {/* Invitation stats breakdown */}
+                          {invitationRows.length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-[10px]">
+                              {[
+                                { label: 'Draft', value: invitationRows.filter(i => i.status === 'draft').length, color: 'text-amber-300' },
+                                { label: 'Sent', value: invitationRows.filter(i => i.status === 'sent').length, color: 'text-amber-300' },
+                                { label: 'Redeemed', value: invitationRows.filter(i => i.status === 'redeemed').length, color: 'text-emerald-300' },
+                                { label: 'Expired', value: invitationRows.filter(i => i.status === 'expired').length, color: 'text-red-300' },
+                                { label: 'Revoked', value: invitationRows.filter(i => i.status === 'revoked').length, color: 'text-zinc-400' },
+                              ].map((stat) => (
+                                <div key={stat.label} className="rounded-none border border-white/5 bg-white/[0.02] px-2 py-2">
+                                  <p className="text-zinc-500 uppercase tracking-wider">{stat.label}</p>
+                                  <p className={`mt-0.5 text-sm font-bold ${stat.color}`}>{stat.value}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {effectiveReservedInviteSlots <= 0 && (
+                            <div className="rounded-none border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
+                              Reserved invite slots are not configured. Enable invited participants in the Settings tab before sending guaranteed invite codes.
+                            </div>
+                          )}
+                          <div className="flex flex-col gap-3 sm:flex-row">
+                            <Input
+                              type="email"
+                              value={inviteEmail}
+                              onChange={(event) => setInviteEmail(event.target.value)}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                  event.preventDefault();
+                                  handleAddInviteEmail();
+                                }
+                              }}
+                              placeholder={(tournament?.team_size ?? 1) > 1 ? 'captain@team.com' : 'player@email.com'}
+                              className="border-white/10 bg-black/30 text-white"
+                            />
+                            <OutlineButton
+                              type="button"
+                              onClick={handleAddInviteEmail}
+                              disabled={effectiveReservedInviteSlots <= 0}
+                            >
+                              Add
+                            </OutlineButton>
+                            <button
+                              type="button"
+                              onClick={handleSendInviteEmails}
+                              disabled={effectiveReservedInviteSlots <= 0 || draftInviteEmails.length === 0 || createInviteDrafts.isPending || sendInvites.isPending}
+                              className={cn(buttonVariants({ size: 'sm' }), 'border-transparent bg-purple-600 hover:bg-rose-500 text-white')}
+                            >
+                              {(createInviteDrafts.isPending || sendInvites.isPending) ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Mail className="mr-2 h-4 w-4" />
+                              )}
+                              Send Codes
+                            </button>
+                          </div>
+
+                          {draftInviteEmails.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {draftInviteEmails.map((email) => (
+                                <Badge key={email} className="bg-white/10 text-white border border-white/10">
+                                  {email}
+                                  <button
+                                    type="button"
+                                    onClick={() => setDraftInviteEmails((current) => current.filter((item) => item !== email))}
+                                    className="ml-2 text-gray-400 hover:text-white"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* CSV Import */}
+                          <div className="flex gap-2">
+                            <OutlineButton
+                              type="button"
+                              size="sm"
+                              onClick={() => setShowCsvImport(!showCsvImport)}
+                              disabled={effectiveReservedInviteSlots <= 0 || remainingInviteSlots <= 0}
+                              className="text-xs"
+                            >
+                              {showCsvImport ? 'Hide' : 'CSV Import'}
+                            </OutlineButton>
+                          </div>
+
+                          {showCsvImport && (
+                            <div className="rounded-none border border-white/10 bg-black/20 p-4 space-y-3">
+                              <p className="text-xs text-gray-400">Paste emails separated by commas, semicolons, or newlines:</p>
+                              <textarea
+                                value={csvImportText}
+                                onChange={(e) => setCsvImportText(e.target.value)}
+                                placeholder="captain1@team.com, captain2@team.com\ncaptain3@team.com"
+                                rows={4}
+                                className="w-full rounded-none border border-white/10 bg-black/30 p-3 text-sm text-white placeholder:text-zinc-600 focus:border-rose-500/50 focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!csvImportText.trim()) return;
+                                  importCsv.mutate({ csvContent: csvImportText }, {
+                                    onSuccess: (data) => {
+                                      toast({ title: 'CSV Import complete', description: `${data.imported} imported, ${data.skipped} skipped.` });
+                                      setCsvImportText('');
+                                      setShowCsvImport(false);
+                                    },
+                                    onError: (err: any) => toast({ title: 'CSV import failed', description: err.message || 'Try again.', variant: 'destructive' }),
+                                  });
+                                }}
+                                disabled={importCsv.isPending || !csvImportText.trim() || effectiveReservedInviteSlots <= 0 || remainingInviteSlots <= 0}
+                                className={cn(buttonVariants({ size: 'sm' }), 'border-transparent bg-purple-600 hover:bg-rose-500 text-white')}
+                              >
+                                {importCsv.isPending ? 'Importing...' : 'Import Emails'}
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="rounded-none border border-white/10 overflow-hidden">
+                            {invitationQuery.isLoading ? (
+                              <div className="flex items-center justify-center gap-2 p-6 text-sm text-gray-400">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Loading invitations...
+                              </div>
+                            ) : invitationRows.length === 0 ? (
+                              <div className="p-6 text-sm text-gray-500">No invitation codes generated yet.</div>
+                            ) : (
+                              <div className="divide-y divide-white/10">
+                                {invitationRows.map((invite) => (
+                                  <div key={invite.id} className="grid gap-3 p-4 text-sm md:grid-cols-[minmax(0,1.3fr)_120px_100px_160px_90px] md:items-center">
+                                    <div className="min-w-0">
+                                      <p className="truncate font-medium text-white">{invite.email}</p>
+                                      {invite.teamName && <p className="truncate text-xs text-gray-500">{invite.teamName}</p>}
+                                    </div>
+                                    <code className="rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs text-rose-200">
+                                      {invite.code || 'Pending'}
+                                    </code>
+                                    <Badge className={cn(
+                                      'w-fit capitalize',
+                                      invite.status === 'redeemed' && 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30',
+                                      invite.status === 'sent' && 'bg-amber-500/20 text-amber-200 border-amber-500/30',
+                                      invite.status === 'expired' && 'bg-red-500/20 text-red-200 border-red-500/30',
+                                      invite.status === 'revoked' && 'bg-zinc-500/20 text-zinc-200 border-zinc-500/30',
+                                      invite.status === 'draft' && 'bg-amber-500/20 text-amber-200 border-amber-500/30',
+                                    )}>
+                                      {invite.status}
+                                    </Badge>
+                                    <span className="text-xs text-gray-500">
+                                      Expires {invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString() : '—'}
+                                    </span>
+                                    <div className="flex gap-1">
+                                      {(invite.status === 'sent' || invite.status === 'expired') && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            resendInvites.mutate({ invitationIds: [invite.id] }, {
+                                              onSuccess: () => toast({ title: 'Invitation resent', description: `Re-sent to ${invite.email}` }),
+                                              onError: (err: any) => toast({ title: 'Resend failed', description: err.message || 'Try again later.', variant: 'destructive' }),
+                                            });
+                                          }}
+                                          disabled={resendInvites.isPending}
+                                          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'justify-start text-amber-300 hover:bg-amber-500/10 hover:text-amber-200 text-xs px-2')}
+                                        >
+                                          Resend
+                                        </button>
+                                      )}
+                                      {invite.status === 'sent' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRevokeInvitation(invite.id)}
+                                          disabled={revokeInvite.isPending}
+                                          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'justify-start text-red-300 hover:bg-red-500/10 hover:text-red-200 text-xs px-2')}
+                                        >
+                                          Revoke
+                                        </button>
+                                      )}
+                                      {invite.status !== 'sent' && invite.status !== 'expired' && (
+                                        <span className="text-xs text-gray-600">—</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </CardContent>
                       </Card>
                     )}
@@ -1474,7 +2240,7 @@ const TournamentDashboard = () => {
                     <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
                       <CardHeader className="p-0 border-b border-white/5 pb-4 mb-6 relative z-10">
                         <CardTitle className="text-lg font-bold text-white tracking-wide">
-                          {tournament.team_size === 1 ? 'Registered Participants' : 'Registered Teams'}
+                          {registrationParticipantMode === 'solo' ? 'Registered Participants' : 'Registered Teams'}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="p-0 relative z-10">
@@ -1560,27 +2326,9 @@ const TournamentDashboard = () => {
                 </TabsContent>
               )}
 
-              {activeTab === 'disputes' && (
+              {activeTab === 'disputes' && slug && (
                 <TabsContent value="disputes" forceMount key="disputes">
-                  <TabTransition direction={direction}>
-                    {!canAssistDisputes ? (
-                      <PermissionNotice message="Your staff role does not include dispute assistance permissions." />
-                    ) : (
-                      tournament?.id && user?.id && (
-                        <>
-                          <DisputeCenter
-                            key={tournament.id}
-                            tournamentId={tournament.id}
-                            organizerId={tournament.organizer_id}
-                            currentUserId={user.id}
-                          />
-                          <div className="mt-6">
-                            <MatchChecker tournamentId={tournament.id} />
-                          </div>
-                        </>
-                      )
-                    )}
-                  </TabTransition>
+                  <Navigate to={`/organizer/tournament/${slug}/disputes`} replace />
                 </TabsContent>
               )}
 
@@ -1595,12 +2343,12 @@ const TournamentDashboard = () => {
                           Staff is now managed at the <strong>organization level</strong>.
                           Staff members added to your organization automatically gain access to all your tournaments.
                         </p>
-                        <Button
+                        <button type="button"
                           onClick={() => navigate('/organizer/settings?tab=staff')}
                           className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 py-3 rounded-none transition-all hover:scale-105"
                         >
                           Go to Organization Settings
-                        </Button>
+                        </button>
                       </CardContent>
                     </Card>
                   </TabTransition>
@@ -1622,7 +2370,7 @@ const TournamentDashboard = () => {
               {activeTab === 'settings' && (
                 <TabsContent value="settings" forceMount key="settings">
                   <TabTransition direction={direction}>
-                    {!isOrganizer ? (
+                    {!canActAsOwner ? (
                       <PermissionNotice message="Tournament settings are available only to the organizer." />
                     ) : (
                       <>
@@ -1648,18 +2396,105 @@ const TournamentDashboard = () => {
                                 <p className="font-semibold text-white">Manual Enforcement</p>
                                 <p className="text-sm text-gray-400">You can manually trigger removal of teams who haven't checked in yet.</p>
                               </div>
-                              <Button
-                                variant="destructive"
+                              <DangerButton
                                 onClick={handleRemoveUncheckedParticipants}
                                 disabled={removingUnchecked}
                                 className="w-full sm:w-auto min-w-[200px]"
                               >
                                 {removingUnchecked ? 'Processing...' : 'Remove Unchecked Teams'}
-                              </Button>
+                              </DangerButton>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
+
+                      {showInvitedTeamsFeature && (
+                        <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
+                          <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
+                            <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+                              <Mail className="w-5 h-5 text-rose-300" />
+                              Invited Participants
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-0 space-y-4">
+                            <div className="flex items-start gap-4 p-4 rounded-none bg-white/[0.02] border border-white/5">
+                              <Switch
+                                checked={inviteSettingsEnabled}
+                                onCheckedChange={(enabled) => {
+                                  if (!enabled && inviteSummary.activeSlots > 0) {
+                                    toast({
+                                      title: 'Cannot disable',
+                                      description: 'Revoke all active invitations before disabling reserved invite slots.',
+                                      variant: 'destructive',
+                                    });
+                                    return;
+                                  }
+                                  setInviteSettingsEnabled(enabled);
+                                  if (enabled && inviteSettingsReservedSlots < 1) {
+                                    setInviteSettingsReservedSlots(defaultReservedInviteSlots(maxTeams));
+                                  }
+                                }}
+                                disabled={savingInviteSettings || inviteSummary.activeSlots > 0}
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium text-white text-sm">
+                                  {savingInviteSettings ? 'Saving...' : `Reserve slots for invited ${inviteParticipantLabel}`}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  Hold guaranteed spots for email invites. Send codes from the Participants tab after saving.
+                                  {maxTeams > 0 && inviteSettingsEnabled && (
+                                    <> {Math.max(maxTeams - inviteSettingsReservedSlots, 0)} slot{Math.max(maxTeams - inviteSettingsReservedSlots, 0) === 1 ? '' : 's'} remain for open registration.</>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+
+                            {inviteSettingsEnabled && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-none bg-white/[0.02] border border-white/5">
+                                <div className="space-y-2">
+                                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Reserved slots</p>
+                                  <Input
+                                    type="number"
+                                    min={Math.max(1, inviteSummary.activeSlots)}
+                                    max={maxTeams > 0 ? maxTeams : 1024}
+                                    value={inviteSettingsReservedSlots}
+                                    onChange={(event) => setInviteSettingsReservedSlots(Math.max(0, parseInt(event.target.value, 10) || 0))}
+                                    className="border-white/10 bg-black/30 text-white"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Code expiry (days)</p>
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    max={365}
+                                    value={inviteSettingsExpiryDays}
+                                    onChange={(event) => setInviteSettingsExpiryDays(Math.min(365, Math.max(1, parseInt(event.target.value, 10) || 7)))}
+                                    className="border-white/10 bg-black/30 text-white"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {inviteSummary.activeSlots > 0 && (
+                              <p className="text-xs text-amber-300 px-4">
+                                {inviteSummary.activeSlots} active invitation{inviteSummary.activeSlots === 1 ? '' : 's'} — reserved slots cannot go below this count.
+                              </p>
+                            )}
+
+                            <div className="flex justify-end px-4 pb-2">
+                              <button
+                                type="button"
+                                onClick={handleSaveInviteSettings}
+                                disabled={savingInviteSettings}
+                                className={cn(buttonVariants(), 'border-transparent bg-purple-600 hover:bg-rose-500 text-white')}
+                              >
+                                {savingInviteSettings ? 'Saving...' : 'Save Invite Settings'}
+                              </button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
 
                       {/* Assisted Match Reporting — games with API integration */}
                       {tournamentModeFeatures.assistedReporting && (
@@ -1783,9 +2618,8 @@ const TournamentDashboard = () => {
                   )}
                 </div>
                 <div className="p-6 pt-0 flex items-center justify-end gap-3">
-                  <Button variant="ghost" onClick={() => setTeamDialogOpen(false)} className="border border-white/10 text-white hover:bg-white/5 h-10 px-5 rounded-lg">Close</Button>
-                  <Button
-                    variant="destructive"
+                  <button type="button" onClick={() => setTeamDialogOpen(false)} className="border border-white/10 text-white hover:bg-white/5 h-10 px-5 rounded-lg">Close</button>
+                  <button type="button"
                     onClick={() => {
                       if (!selectedTeam) return;
                       setBanDialogOpen(true);
@@ -1795,7 +2629,7 @@ const TournamentDashboard = () => {
                     className="bg-red-500 hover:bg-red-600 text-white h-10 px-6 rounded-lg font-bold shadow-lg shadow-red-900/20 transition-all hover:scale-105"
                   >
                     Ban Team
-                  </Button>
+                  </button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -1804,7 +2638,6 @@ const TournamentDashboard = () => {
       </main >
       <Footer />
 
-      <StageGuidelineModal open={showGuidelines} onOpenChange={setShowGuidelines} />
       {
         banDialogOpen && (
           <AlertDialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
@@ -1855,38 +2688,16 @@ const TournamentDashboard = () => {
             className="bg-white/5 border-white/10 text-white min-h-[80px]"
           />
           <DialogFooter className="gap-2">
-            <Button variant="outline" className="border-white/10 text-white hover:bg-white/10" onClick={() => setShowRejectDialog(null)}>
+            <CancelButton type="button" onClick={() => setShowRejectDialog(null)}>
               Cancel
-            </Button>
-            <Button
-              className="bg-red-600 hover:bg-red-500 text-white"
+            </CancelButton>
+            <DangerButton
               disabled={!!rejectingPayment}
               onClick={() => showRejectDialog && handleRejectPayment(showRejectDialog)}
             >
               {rejectingPayment ? 'Rejecting...' : 'Reject Payment'}
-            </Button>
+            </DangerButton>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Receipt Viewer Dialog */}
-      <Dialog open={!!receiptViewUrl} onOpenChange={(open) => { if (!open) setReceiptViewUrl(null); }}>
-        <DialogContent className="bg-[#0a0a0c] border-white/10 text-white max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Payment Receipt</DialogTitle>
-          </DialogHeader>
-          {receiptViewUrl && (
-            receiptViewUrl.toLowerCase().endsWith('.pdf') ? (
-              <div className="text-center py-4">
-                <a href={receiptViewUrl} target="_blank" rel="noopener noreferrer"
-                  className="text-rose-400 hover:text-rose-300 underline">
-                  Open PDF Receipt ↗
-                </a>
-              </div>
-            ) : (
-              <img src={receiptViewUrl} alt="Payment receipt" className="w-full rounded-lg border border-white/10" />
-            )
-          )}
         </DialogContent>
       </Dialog>
     </div >

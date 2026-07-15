@@ -63,6 +63,7 @@ export const adminKeys = {
 
   dashboardWidgets: () => ['admin', 'dashboard-widgets'] as const,
   dashboardPreferences: () => ['admin', 'dashboard-preferences'] as const,
+  operationsSystemConfig: (category?: string) => ['admin', 'operations-system-config', category ?? 'all'] as const,
 };
 
 // ── Stats ───────────────────────────────────────────────────────────────────
@@ -306,8 +307,22 @@ export const useAdminUserSuspend = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ userId, reason }: { userId: string; reason: string }) =>
-      apiClient.post(`/api/admin/users/${userId}/suspend`, { reason }),
+    mutationFn: ({
+      userId,
+      reason,
+      suspensionType,
+      suspensionUntil,
+    }: {
+      userId: string;
+      reason: string;
+      suspensionType?: string | null;
+      suspensionUntil?: string | null;
+    }) =>
+      apiClient.post(`/api/admin/users/${userId}/suspend`, {
+        reason,
+        suspensionType: suspensionType ?? null,
+        suspensionUntil: suspensionUntil ?? null,
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.all });
     },
@@ -548,7 +563,7 @@ interface EntityHistoryEntry {
 export const useEntityHistory = (targetType: string, targetId: string, page: number = 1, limit: number = 15) => {
   return useQuery({
     queryKey: adminKeys.entityHistory(targetType, targetId, page),
-    queryFn: () => apiClient.get<{ data: EntityHistoryEntry[]; total: number; page: number; limit: number }>(
+    queryFn: () => apiClient.get<{ data: EntityHistoryEntry[]; total: number; page: number; limit: number } | EntityHistoryEntry[]>(
       `/api/admin/entity-history/${targetType}/${targetId}?page=${page}&limit=${limit}`
     ),
     enabled: !!targetType && !!targetId,
@@ -598,6 +613,53 @@ export const useUpdateSystemSettings = () => {
       const message = body?.error || body?.message || (error as Error)?.message || 'Failed to save settings.';
       const details = Array.isArray(body?.details) ? body.details.join(', ') : null;
       toast({ title: 'Save failed', description: details || message, variant: 'destructive' });
+    },
+  });
+};
+
+// ── Operations Infrastructure ───────────────────────────────────────────────
+
+export interface OperationsSystemConfig {
+  key: string;
+  value: boolean | number | string | Record<string, unknown> | null;
+  category: string;
+  label: string;
+  description: string;
+  data_type: 'boolean' | 'number' | 'string' | 'json';
+  is_kill_switch: boolean;
+  is_sensitive: boolean;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export const useOperationsSystemConfig = (category?: string) =>
+  useQuery({
+    queryKey: adminKeys.operationsSystemConfig(category),
+    queryFn: () => {
+      const qs = category ? `?category=${encodeURIComponent(category)}` : '';
+      return apiClient.get<OperationsSystemConfig[]>(`/api/admin/operations/system-config${qs}`);
+    },
+    staleTime: 1000 * 15,
+  });
+
+export const useUpdateOperationsSystemConfig = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ key, value, reason }: { key: string; value: unknown; reason?: string }) =>
+      apiClient.put(`/api/admin/operations/system-config/${encodeURIComponent(key)}`, { value, reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'operations-system-config'] });
+      toast({ title: 'Operations config updated', description: 'The change was written and audited.' });
+    },
+    onError: (error: unknown) => {
+      const body = (error as any)?.body;
+      toast({
+        title: 'Config update failed',
+        description: body?.error || (error as Error)?.message || 'Unable to update operations config.',
+        variant: 'destructive',
+      });
     },
   });
 };
@@ -854,6 +916,8 @@ export interface ActiveSession {
   avatarUrl: string | null;
   roles: string[];
   lastSignInAt: string | null;
+  lastActivityAt?: string | null;
+  hasRecentActivity?: boolean;
   createdAt: string;
 }
 
@@ -874,6 +938,8 @@ interface ActiveSessionsResponse {
   total: number;
   page: number;
   limit: number;
+  source?: string;
+  description?: string;
 }
 
 interface SessionAuditResponse {

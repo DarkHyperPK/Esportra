@@ -58,7 +58,7 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto" data-mounted="true">
+        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto overscroll-contain" data-lenis-prevent data-mounted="true">
           {NAV_ITEMS.map((item) => {
             const active = isActive(item.path);
             return (
@@ -115,7 +115,7 @@ const OrganizerLayout: React.FC<OrganizerLayoutProps> = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto overscroll-contain" data-lenis-prevent>
           {children}
         </main>
       </div>

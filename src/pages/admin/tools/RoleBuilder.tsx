@@ -226,7 +226,7 @@ function PermissionMatrix({
             variant="outline"
             size="sm"
             onClick={toggleAll}
-            className="border-zinc-700 text-zinc-300 hover:text-white hover:border-rose-500/50 text-xs h-8"
+            className="border-zinc-700 text-zinc-300 hover:text-white hover:border-white/25 text-xs h-8"
           >
             {allSelected ? "Deselect All" : "Select All"}
           </Button>
@@ -426,8 +426,8 @@ function RoleCard({
           </div>
         </div>
 
-        {/* Actions — only for custom roles and super_admin */}
-        {!isProtected && isSuperAdmin && (
+        {/* Actions — super_admin can edit and delete all roles */}
+        {isSuperAdmin && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
               variant="ghost"
@@ -560,7 +560,7 @@ function RoleFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#121214] border-zinc-800 text-white max-w-3xl max-h-[90vh] overflow-y-auto sm:rounded-2xl">
+      <DialogContent className="bg-[#121214] border-zinc-800 text-white max-w-3xl max-h-[90vh] overflow-y-auto overscroll-contain sm:rounded-2xl" data-lenis-prevent>
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
             <Shield className="w-5 h-5 text-rose-500" />
@@ -952,8 +952,8 @@ const RoleBuilder = () => {
                       role={role}
                       isProtected
                       isSuperAdmin={canManageRoles}
-                      onEdit={() => {}}
-                      onDelete={() => {}}
+                      onEdit={() => handleEdit(role.id)}
+                      onDelete={() => handleDeletePrompt(role)}
                     />
                   ))}
                 </AnimatePresence>
@@ -988,7 +988,7 @@ const RoleBuilder = () => {
                   <Button
                     onClick={handleCreate}
                     variant="outline"
-                    className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                    className="border-white/15 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Create First Role

@@ -37,6 +37,18 @@ export const getTimezoneLabel = (): string => {
     return getTimezoneAbbr();
 };
 
+/**
+ * Normalizes a DB or partial timestamp to a full UTC ISO string (with `Z`).
+ * Never use `toISOString().slice(0, 16)` for schedule state — that drops the
+ * timezone suffix and makes UTC wall-clock display as local time.
+ */
+export const toUtcIsoString = (value: string | Date | null | undefined): string => {
+    if (!value) return '';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString();
+};
+
 // ─── Input Conversion (Local → UTC) ──────────────────────────────────────
 
 /**
@@ -172,4 +184,34 @@ export const localDateTimeToUTC = (dateStr: string, timeStr: string): string => 
     if (!dateStr || !timeStr) return '';
     const date = new Date(`${dateStr}T${timeStr}`);
     return date.toISOString();
+};
+
+/** True when scheduled time is more than 15 minutes in the future (player go-live window). */
+export const isMatchTooEarlyForLive = (scheduledTime?: string | null): boolean => {
+    if (!scheduledTime) return false;
+    return new Date(scheduledTime).getTime() - Date.now() > 15 * 60 * 1000;
+};
+
+/** True when tournament end is strictly before start (invalid DB state). */
+export const isInvalidTournamentDateWindow = (
+    startDate?: string | null,
+    endDate?: string | null,
+): boolean => {
+    if (!startDate || !endDate) return false;
+    return new Date(endDate).getTime() < new Date(startDate).getTime();
+};
+
+/** Local date bounds for schedule pickers; drops max when it would invert min. */
+export const getTournamentScheduleDateBounds = (
+    startDate?: string | null,
+    endDate?: string | null,
+): { minDate: string; maxDate: string; isInvalidWindow: boolean } => {
+    const minDate = startDate ? utcToLocalDate(startDate) : '';
+    const maxDateRaw = endDate ? utcToLocalDate(endDate) : '';
+    const isInvalidWindow = Boolean(minDate && maxDateRaw && maxDateRaw < minDate);
+    return {
+        minDate,
+        maxDate: isInvalidWindow ? '' : maxDateRaw,
+        isInvalidWindow,
+    };
 };

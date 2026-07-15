@@ -1,455 +1,1309 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Card } from "@/components/ui/card";
-import { Trophy, Skull, Target, Map as MapIcon, ChevronDown, ChevronUp, Clock, Zap, List, BarChart3
-} from "lucide-react";
+import { Card } from '@/components/ui/card';
+import { Trophy, Skull, Map as MapIcon, ChevronDown, ChevronUp, Zap, List, BarChart3, Crosshair } from 'lucide-react';
 import {
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    AreaChart,
-    Area
-} from 'recharts';
+    RiotEconomyChart,
+    RiotWeaponSummaries,
+} from '@/components/tournament/RiotMatchAnalytics';
+import { RiotTimelineMap, type ValorantMapMetadata } from '@/components/debug/RiotTimelineMap';
+import { getTeamAlias, getTeamTone, RoundEventLog } from '@/components/debug/RoundEventLog';
+import type { EnrichedRiotMatchData } from '@/types/enrichedRiotMatch';
+import { resolveEnrichedPlayer } from '@/types/enrichedRiotMatch';
+import { formatAbilityCasts, formatStat } from '@/types/scoreboardPlayer';
+import { resolveRoundResultCode, type EconomyTimelineEntry, type RiotRoundResult, type RoundTimelineEntry } from '@/types/riotMatchDetails';
+import { cn } from '@/lib/utils';
 
-// External Valorant/Riot API match data — deeply nested, schema varies by game version.
-// Using `any` intentionally as full typing would require 200+ interface definitions
-// for a debug-only component consuming third-party API responses.
 interface MatchHistoryCardProps {
-    matchData: Record<string, unknown>;
+    matchData: EnrichedRiotMatchData;
     targetPuuid: string;
+    team1Name?: string;
+    team2Name?: string;
+    t1Side?: 'Blue' | 'Red';
+    /** Skip personal-stat collapse header; show analytics tabs immediately (captain match room). */
+    directView?: boolean;
 }
 
-const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ matchData, targetPuuid }) => {
-    // Riot API agent/map/weapon metadata — variable structure per game version
-    const [agentData, setAgentData] = useState<Record<string, unknown> | null>(null);
-    const [mapData, setMapData] = useState<Record<string, unknown> | null>(null);
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [activeTab, setActiveTab] = useState<'scoreboard' | 'economy' | 'rounds'>('scoreboard');
-    const [allAgents, setAllAgents] = useState<Record<string, Record<string, unknown>>>({});
+interface CompetitiveTierMetadata {
+    tier: number;
+    tierName?: string;
+    divisionName?: string;
+    smallIcon?: string;
+    largeIcon?: string;
+}
 
-    // Parse Core Player Info
-    const player = matchData.players.find((p: any) => p.puuid === targetPuuid);
+interface ValorantAgentMetadata {
+    uuid: string;
+    displayIcon?: string;
+    displayName?: string;
+    abilities?: Array<{
+        slot?: string;
+        displayIcon?: string;
+        displayName?: string;
+    }>;
+}
+
+function buildCompetitiveTierMap(
+    entries: Array<{ tiers?: CompetitiveTierMetadata[] }>,
+): Record<number, CompetitiveTierMetadata> {
+    const latestWithRanks = entries
+        .slice()
+        .reverse()
+        .find((entry) => entry.tiers?.some((tier) => tier.largeIcon || tier.smallIcon));
+
+    const tiers: Record<number, CompetitiveTierMetadata> = {};
+    latestWithRanks?.tiers?.forEach((tier) => {
+        if (typeof tier.tier === 'number') {
+            tiers[tier.tier] = tier;
+        }
+    });
+    return tiers;
+}
+
+function formatRankName(rank?: CompetitiveTierMetadata, tierNumber?: number): string {
+    if (!tierNumber || tierNumber <= 0) return 'Unrated';
+    const name = rank?.tierName || rank?.divisionName;
+    if (!name) return `Tier ${tierNumber}`;
+    return name
+        .replace('Ascendant', 'Asc')
+        .replace('Immortal', 'Imm')
+        .replace('Diamond', 'Dia')
+        .replace('Platinum', 'Plat')
+        .replace('Gold', 'Gold')
+        .replace('Silver', 'Silv')
+        .replace('Bronze', 'Bronze')
+        .replace('Iron', 'Iron');
+}
+
+function getRoundResultMeta(code?: string | null) {
+    if (code === 'Elimination') return { label: 'Elimination', short: 'ELIM', tone: 'text-white' };
+    if (code === 'Detonate') return { label: 'Spike detonated', short: 'BOOM', tone: 'text-amber-100' };
+    if (code === 'Defuse') return { label: 'Spike defused', short: 'DEF', tone: 'text-cyan-100' };
+    if (code === 'TimeOut') return { label: 'Time expired', short: 'TIME', tone: 'text-slate-100' };
+    return { label: code || 'Round win', short: 'WIN', tone: 'text-white' };
+};
+
+function formatRoundNumber(round: RiotRoundResult, index: number): number {
+    return typeof round.roundNum === 'number' ? round.roundNum + 1 : index + 1;
+}
+
+function normalizeRoundResult(round: RiotRoundResult, roundNumber: number): RoundTimelineEntry {
+    return {
+        round: roundNumber,
+        winningTeam: round.winningTeam ?? '',
+        resultCode: round.roundResultCode,
+        result: round.roundResult,
+        plantSite: round.plantSite,
+    };
+}
+
+type ValorantTeamId = 'Blue' | 'Red';
+
+function isValorantTeamId(value?: string | null): value is ValorantTeamId {
+    return value === 'Blue' || value === 'Red';
+}
+
+function getOppositeTeam(team: ValorantTeamId): ValorantTeamId {
+    return team === 'Red' ? 'Blue' : 'Red';
+}
+
+function getRoundSideSegment(round: number): 'first' | 'second' | 'ot-attack-red' | 'ot-attack-blue' {
+    if (round <= 12) return 'first';
+    if (round <= 24) return 'second';
+    return round % 2 === 1 ? 'ot-attack-red' : 'ot-attack-blue';
+}
+
+function getFallbackAttackingTeam(round: number): ValorantTeamId {
+    if (round <= 12) return 'Red';
+    if (round <= 24) return 'Blue';
+    return round % 2 === 1 ? 'Red' : 'Blue';
+}
+
+const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({
+    matchData,
+    targetPuuid,
+    team1Name,
+    team2Name,
+    t1Side,
+    directView = false,
+}) => {
+    const [agentData, setAgentData] = useState<{ displayIcon?: string } | null>(null);
+    const [mapData, setMapData] = useState<ValorantMapMetadata | null>(null);
+    const [isExpanded, setIsExpanded] = useState(directView);
+    const [activeTab, setActiveTab] = useState<'scoreboard' | 'timeline' | 'economy' | 'rounds' | 'weapons'>('scoreboard');
+    const [selectedPuuid, setSelectedPuuid] = useState(targetPuuid);
+    const [selectedRoundNumber, setSelectedRoundNumber] = useState<number | null>(null);
+    const [allAgents, setAllAgents] = useState<Record<string, ValorantAgentMetadata>>({});
+    const [competitiveTiers, setCompetitiveTiers] = useState<Record<number, CompetitiveTierMetadata>>({});
+
+    const player = matchData.players.find((entry) => entry.puuid === targetPuuid);
+    const enrichedTarget = resolveEnrichedPlayer(matchData, targetPuuid);
     const teamId = player?.teamId;
-    const isWin = matchData.teams.find((t: any) => t.teamId === teamId)?.won;
+    const tournamentMode = Boolean(team1Name && team2Name && t1Side);
+    const opponentTeam = matchData.teams.find((team) => team.teamId !== teamId);
+    const teamAId = tournamentMode ? t1Side! : teamId;
+    const teamBId = tournamentMode ? (t1Side === 'Blue' ? 'Red' : 'Blue') : opponentTeam?.teamId;
+    const teamALabel = tournamentMode ? team1Name! : 'Team A';
+    const teamBLabel = tournamentMode ? team2Name! : 'Team B';
+    const labelForTeam = (riotTeam?: string | null) => {
+        if (!riotTeam) return 'Unknown';
+        if (tournamentMode) {
+            if (riotTeam === 'Blue') return t1Side === 'Blue' ? team1Name! : team2Name!;
+            if (riotTeam === 'Red') return t1Side === 'Red' ? team1Name! : team2Name!;
+        }
+        return getTeamAlias(riotTeam, teamAId ?? undefined) === 'Team A' ? teamALabel : teamBLabel;
+    };
+    const isTeamOneSide = (riotTeam?: string | null) => {
+        if (tournamentMode) return riotTeam === t1Side;
+        return getTeamTone(riotTeam, teamAId ?? undefined) === 'teamA';
+    };
+    const isWin = tournamentMode
+        ? Boolean(matchData.teams.find((team) => team.teamId === t1Side)?.won)
+        : matchData.teams.find((team) => team.teamId === teamId)?.won;
+    const parsedInfo = matchData.matchInfoParsed;
+    const roundResults = useMemo(() => matchData.roundResults ?? [], [matchData.roundResults]);
 
-    // Advanced Stats & Analytics Engine
     const analytics = useMemo(() => {
-        if (!matchData.roundResults || !player) return null;
+        if (!roundResults.length || !player) return null;
 
-        const rounds = matchData.roundResults;
+        const rounds = roundResults as Array<{
+            roundNum?: number;
+            playerStats?: Array<{
+                puuid: string;
+                economy?: { spent?: number };
+                damage?: Array<{ headshots?: number; bodyshots?: number; legshots?: number }>;
+                kills?: Array<{ killer?: string; victim?: string; timeSinceRoundStartMillis?: number; assistants?: string[] }>;
+            }>;
+        }>;
         const players = matchData.players;
 
-        // 1. Economy Analytics
-        const economyData = rounds.map((round: any, index: number) => {
-            let blueBank = 0;
-            let redBank = 0;
-            round.playerStats.forEach((ps: any) => {
-                const p = players.find((pl: any) => pl.puuid === ps.puuid);
-                if (p.teamId === "Blue") blueBank += ps.economy.spent;
-                else redBank += ps.economy.spent;
+        const economyData = matchData.economyTimeline?.length
+            ? matchData.economyTimeline.map((entry) => ({
+                round: entry.round,
+                blueBank: entry.blueSpent,
+                redBank: entry.redSpent,
+                blueLoadout: entry.blueLoadout ?? 0,
+                redLoadout: entry.redLoadout ?? 0,
+            }))
+            : rounds.map((round, index) => {
+                let blueBank = 0;
+                let redBank = 0;
+                round.playerStats?.forEach((ps) => {
+                    const p = players.find((pl) => pl.puuid === ps.puuid);
+                    const spent = ps.economy?.spent ?? 0;
+                    if (p?.teamId === 'Blue') blueBank += spent;
+                    else if (p?.teamId === 'Red') redBank += spent;
+                });
+                const roundNumber = typeof round.roundNum === 'number' ? round.roundNum + 1 : index + 1;
+                return { round: roundNumber, blueBank, redBank, blueLoadout: 0, redLoadout: 0 };
             });
 
-            return {
-                round: index + 1,
-                blueBank,
-                redBank,
-                diff: blueBank - redBank
-            };
-        });
+        const playerStatsMap: Record<string, {
+            kastCount: number;
+            fb: number;
+            fd: number;
+            multiKills: Record<2 | 3 | 4 | 5, number>;
+            hits: { head: number; body: number; leg: number };
+        }> = {};
 
-        // Check if API already provides advanced stats (e.g. via HenrikDev/Unoffical API or detailed match v1)
-        const hasApiStats = players.some((p: any) => p.stats?.firstBloods !== undefined);
+        const hasEnrichedStats = Boolean(matchData.enrichedPlayers?.length);
 
-        // 2. Performance Metrics (KAST, FB, FD)
-        const playerStatsMap: Record<string, any> = {};
-        players.forEach((p: any) => {
+        players.forEach((p) => {
+            const enriched = resolveEnrichedPlayer(matchData, p.puuid);
             playerStatsMap[p.puuid] = {
                 kastCount: 0,
-                // Use API stats if available, otherwise 0 (will calc below)
-                fb: hasApiStats ? (p.stats?.firstBloods || 0) : 0,
-                fd: hasApiStats ? (p.stats?.firstDeaths || 0) : 0,
+                fb: enriched?.firstBloods ?? 0,
+                fd: 0,
                 multiKills: { 2: 0, 3: 0, 4: 0, 5: 0 },
-                hits: { head: 0, body: 0, leg: 0 }
+                hits: { head: 0, body: 0, leg: 0 },
             };
         });
 
-        rounds.forEach((round: any) => {
-            // Robust First Blood Logic: Gather ALL kills in the round, sort by time.
-            // Only calculate if API doesn't provide it.
-            if (!hasApiStats) {
-                const allKills = round.playerStats.flatMap((ps: any) =>
-                    ps.kills.map((k: any) => ({
-                        ...k,
-                        killer: ps.puuid,
-                        killerTeam: players.find((p: any) => p.puuid === ps.puuid)?.teamId
-                    }))
-                ).filter((k: any) => k.killer !== k.victim); // Ignore self-kills
+        rounds.forEach((round) => {
+            if (!hasEnrichedStats) {
+                const allKills = (round.playerStats ?? []).flatMap((ps) =>
+                    (ps.kills ?? []).map((kill) => ({
+                        ...kill,
+                        killer: kill.killer || ps.puuid,
+                        victim: kill.victim,
+                    })),
+                ).filter((kill) => kill.killer && kill.victim && kill.killer !== kill.victim);
 
-                allKills.sort((a: any, b: any) => a.timeSinceRoundStartMillis - b.timeSinceRoundStartMillis);
+                allKills.sort(
+                    (a, b) => (a.timeSinceRoundStartMillis ?? 0) - (b.timeSinceRoundStartMillis ?? 0),
+                );
 
                 const firstBlood = allKills[0];
-                if (firstBlood) {
-                    playerStatsMap[firstBlood.killer].fb++;
-                    playerStatsMap[firstBlood.victim].fd++;
+                if (firstBlood?.killer && playerStatsMap[firstBlood.killer]) {
+                    playerStatsMap[firstBlood.killer].fb += 1;
+                    if (firstBlood.victim && playerStatsMap[firstBlood.victim]) {
+                        playerStatsMap[firstBlood.victim].fd += 1;
+                    }
                 }
             }
 
-            // Correctly track hits for stats (HS%) - moved outside FB logic block
-            round.playerStats.forEach((ps: any) => {
-                ps.damage.forEach((d: any) => {
-                    playerStatsMap[ps.puuid].hits.head += d.headshots;
-                    playerStatsMap[ps.puuid].hits.body += d.bodyshots;
-                    playerStatsMap[ps.puuid].hits.leg += d.legshots;
+            round.playerStats?.forEach((ps) => {
+                ps.damage?.forEach((damageEntry) => {
+                    if (!playerStatsMap[ps.puuid]) return;
+                    playerStatsMap[ps.puuid].hits.head += damageEntry.headshots ?? 0;
+                    playerStatsMap[ps.puuid].hits.body += damageEntry.bodyshots ?? 0;
+                    playerStatsMap[ps.puuid].hits.leg += damageEntry.legshots ?? 0;
                 });
             });
 
-            // KAST & Multi-Kill Logic
-            players.forEach((p: any) => {
-                const ps = round.playerStats.find((s: any) => s.puuid === p.puuid);
-                const killedSomeone = ps?.kills.length > 0;
-                // ... (rest of the KAST logic remains same)
-                const gotAssist = matchData.players.some((other: any) =>
-                    other.puuid !== p.puuid &&
-                    round.playerStats.find((os: any) => os.puuid === other.puuid)?.kills.some((k: any) =>
-                        k.assistants.includes(p.puuid)
-                    )
+            players.forEach((p) => {
+                const ps = round.playerStats?.find((entry) => entry.puuid === p.puuid);
+                const killedSomeone = (ps?.kills?.length ?? 0) > 0;
+                const gotAssist = players.some((other) =>
+                    other.puuid !== p.puuid
+                    && round.playerStats?.some((os) =>
+                        os.puuid === other.puuid
+                        && os.kills?.some((kill) => kill.assistants?.includes(p.puuid)),
+                    ),
                 );
-                const survived = !round.playerStats.some((os: any) => os.kills.some((k: any) => k.victim === p.puuid));
+                const survived = !round.playerStats?.some((os) =>
+                    os.kills?.some((kill) => kill.victim === p.puuid),
+                );
 
                 let traded = false;
-                const death = round.playerStats.flatMap((os: any) => os.kills).find((k: any) => k.victim === p.puuid);
-                if (death) {
-                    const victimTeammates = players.filter((t: any) => t.teamId === p.teamId && t.puuid !== p.puuid);
-                    traded = round.playerStats.some((os: any) =>
-                        victimTeammates.some(vt => vt.puuid === os.puuid) &&
-                        os.kills.some((k: any) =>
-                            k.victim === death.killer &&
-                            Math.abs(k.timeSinceRoundStartMillis - death.timeSinceRoundStartMillis) < 4000
-                        )
+                const death = round.playerStats
+                    ?.flatMap((os) => os.kills ?? [])
+                    .find((kill) => kill.victim === p.puuid);
+                if (death?.killer) {
+                    const victimTeammates = players.filter(
+                        (teammate) => teammate.teamId === p.teamId && teammate.puuid !== p.puuid,
                     );
+                    traded = round.playerStats?.some((os) =>
+                        victimTeammates.some((teammate) => teammate.puuid === os.puuid)
+                        && os.kills?.some((kill) =>
+                            kill.victim === death.killer
+                            && Math.abs(
+                                (kill.timeSinceRoundStartMillis ?? 0) - (death.timeSinceRoundStartMillis ?? 0),
+                            ) < 4000,
+                        ),
+                    ) ?? false;
                 }
 
                 if (killedSomeone || gotAssist || survived || traded) {
-                    playerStatsMap[p.puuid].kastCount++;
+                    playerStatsMap[p.puuid].kastCount += 1;
                 }
 
-                if (ps?.kills.length >= 2) {
-                    const count = Math.min(ps.kills.length, 5) as 2 | 3 | 4 | 5;
-                    playerStatsMap[p.puuid].multiKills[count]++;
+                const killCount = ps?.kills?.length ?? 0;
+                if (killCount >= 2) {
+                    const count = Math.min(killCount, 5) as 2 | 3 | 4 | 5;
+                    playerStatsMap[p.puuid].multiKills[count] += 1;
                 }
             });
         });
 
-        return { economyData, playerStatsMap, roundCount: rounds.length };
-    }, [matchData, player]);
+        return {
+            economyData,
+            playerStatsMap,
+            roundCount: matchData.roundTimeline?.length
+                ?? player.stats?.roundsPlayed
+                ?? rounds.length
+                ?? 1,
+        };
+    }, [matchData, player, roundResults]);
 
-    const targetKAST = analytics ? Math.round((analytics.playerStatsMap[targetPuuid].kastCount / analytics.roundCount) * 100) : 0;
+    const roundCount = analytics?.roundCount ?? 1;
 
-    // Valorant API assets
+    const targetKAST = analytics
+        ? Math.round((analytics.playerStatsMap[targetPuuid]?.kastCount ?? 0) / roundCount * 100)
+        : 0;
+
     useEffect(() => {
+        setSelectedPuuid(targetPuuid);
+    }, [targetPuuid, matchData.matchInfo.matchId]);
+
+    useEffect(() => {
+        let cancelled = false;
+
         if (player?.characterId) {
             fetch(`https://valorant-api.com/v1/agents/${player.characterId}`)
-                .then(res => res.json())
-                .then(data => setAgentData(data.data));
+                .then((res) => res.json())
+                .then((data) => {
+                    if (!cancelled) setAgentData(data.data ?? null);
+                })
+                .catch(() => {
+                    if (!cancelled) setAgentData(null);
+                });
+        } else {
+            setAgentData(null);
         }
 
-        fetch(`https://valorant-api.com/v1/agents?isPlayableCharacter=true`)
-            .then(res => res.json())
-            .then(data => {
-                const map: Record<string, any> = {};
-                data.data.forEach((a: any) => { map[a.uuid.toLowerCase()] = a; });
+        fetch('https://valorant-api.com/v1/agents?isPlayableCharacter=true')
+            .then((res) => res.json())
+            .then((data) => {
+                if (cancelled || !Array.isArray(data?.data)) return;
+                const map: Record<string, ValorantAgentMetadata> = {};
+                data.data.forEach((agent: ValorantAgentMetadata) => {
+                    if (!agent.uuid) return;
+                    map[agent.uuid.toLowerCase()] = agent;
+                });
                 setAllAgents(map);
-            });
+            })
+            .catch(() => undefined);
 
         const mapUri = matchData.matchInfo.mapId;
-        fetch(`https://valorant-api.com/v1/maps`)
-            .then(res => res.json())
-            .then(data => {
-                const foundMap = data.data.find((m: any) => m.mapUrl === mapUri);
+        fetch('https://valorant-api.com/v1/maps')
+            .then((res) => res.json())
+            .then((data) => {
+                if (cancelled || !Array.isArray(data?.data)) return;
+                const foundMap = data.data.find((mapEntry: ValorantMapMetadata) => mapEntry.mapUrl === mapUri);
                 setMapData(foundMap);
+            })
+            .catch(() => {
+                if (!cancelled) setMapData(null);
             });
+
+        fetch('https://valorant-api.com/v1/competitivetiers')
+            .then((res) => res.json())
+            .then((data) => {
+                if (!cancelled && Array.isArray(data?.data)) {
+                    setCompetitiveTiers(buildCompetitiveTierMap(data.data));
+                }
+            })
+            .catch(() => undefined);
+
+        return () => {
+            cancelled = true;
+        };
     }, [player?.characterId, matchData.matchInfo.mapId]);
+
+    const roundTimeline = useMemo(() => matchData.roundTimeline ?? [], [matchData.roundTimeline]);
+    const economyTimeline = matchData.economyTimeline ?? [];
+    const weaponSummaries = matchData.weaponSummaries ?? [];
+
+    const debugRounds = useMemo(() => {
+        const rawRounds = roundResults as RiotRoundResult[];
+        const rawByRound = new Map<number, RiotRoundResult>();
+        rawRounds.forEach((round, index) => {
+            rawByRound.set(formatRoundNumber(round, index), round);
+        });
+
+        if (roundTimeline.length) {
+            return roundTimeline.map((round) => ({
+                summary: round,
+                raw: rawByRound.get(round.round) ?? null,
+            }));
+        }
+
+        return rawRounds.map((round, index) => {
+            const roundNumber = formatRoundNumber(round, index);
+            return {
+                summary: normalizeRoundResult(round, roundNumber),
+                raw: round,
+            };
+        });
+    }, [roundResults, roundTimeline]);
+
+    const playersByPuuid = useMemo(
+        () => new Map(matchData.players.map((entry) => [entry.puuid, entry])),
+        [matchData.players],
+    );
+
+    const attackingTeamsBySegment = useMemo(() => {
+        const segmentAttackers: Record<string, ValorantTeamId> = {};
+        (roundResults as RiotRoundResult[]).forEach((round, index) => {
+            if (!round.bombPlanter) return;
+            const planterTeam = playersByPuuid.get(round.bombPlanter)?.teamId;
+            if (!isValorantTeamId(planterTeam)) return;
+            segmentAttackers[getRoundSideSegment(formatRoundNumber(round, index))] = planterTeam;
+        });
+
+        if (segmentAttackers.first && !segmentAttackers.second) {
+            segmentAttackers.second = getOppositeTeam(segmentAttackers.first);
+        }
+        if (segmentAttackers.second && !segmentAttackers.first) {
+            segmentAttackers.first = getOppositeTeam(segmentAttackers.second);
+        }
+
+        return segmentAttackers;
+    }, [playersByPuuid, roundResults]);
+
+    useEffect(() => {
+        setSelectedRoundNumber((current) => {
+            if (current && debugRounds.some((round) => round.summary.round === current)) return current;
+            return debugRounds[0]?.summary.round ?? null;
+        });
+    }, [debugRounds]);
 
     if (!player) {
         return (
-            <div className="bg-[#0a0a0c] border border-white/5 rounded-xl p-4 text-center">
-                <p className="text-zinc-400 text-sm">Player data not found in this match.</p>
+            <div className="rounded-xl border border-white/5 bg-[#0a0a0c] p-4 text-center">
+                <p className="text-sm text-zinc-400">Player data not found in this match.</p>
             </div>
         );
     }
 
-    const renderScoreboardTable = (players: any[], _teamName: string, _color: string) => (
-        <div className="overflow-x-auto">
-            <table className="w-full text-[11px] text-left border-separate border-spacing-y-1">
+    const renderScoreboardTable = (players: EnrichedRiotMatchData['players']) => (
+        <div className="overflow-x-auto rounded-lg border border-white/[0.06] bg-[#0d1117]">
+            <table className="w-full border-collapse text-left text-[11px]">
                 <thead>
-                    <tr className="text-zinc-500 uppercase font-black tracking-tighter">
-                        <th className="pb-2 pl-4">Player</th>
-                        <th className="pb-2 text-center">ACS</th>
-                        <th className="pb-2 text-center">K</th>
-                        <th className="pb-2 text-center">D</th>
-                        <th className="pb-2 text-center">A</th>
-                        <th className="pb-2 text-center">+/-</th>
-                        <th className="pb-2 text-center">K/D</th>
-                        <th className="pb-2 text-center">HS%</th>
-                        <th className="pb-2 text-center">ADR</th>
-                        <th className="pb-2 text-center">KAST</th>
-                        <th className="pb-2 text-center">FK</th>
-                        <th className="pb-2 text-center">FD</th>
+                    <tr className="border-b border-white/[0.08] bg-[#161b22]">
+                        <th className="px-4 py-2.5 font-black uppercase tracking-tighter text-zinc-500">Player</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-left font-black uppercase tracking-tighter text-zinc-500">Rank</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">ACS</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">K</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">D</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">A</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">+/-</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">K/D</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">HS%</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">ADR</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">Util</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">KAST</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">FK</th>
+                        <th className="border-l border-white/[0.06] px-3 py-2.5 text-center font-black uppercase tracking-tighter text-zinc-500">FD</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {players.sort((a, b) => b.stats.score - a.stats.score).map((p) => {
-                        const agent = allAgents[p.characterId.toLowerCase()];
-                        const pAnalytics = analytics?.playerStatsMap[p.puuid];
+                    {players
+                        .slice()
+                        .sort((a, b) => b.stats.score - a.stats.score)
+                        .map((p, idx) => {
+                            const agent = allAgents[p.characterId?.toLowerCase() ?? ''];
+                            const rank = competitiveTiers[p.competitiveTier ?? 0];
+                            const pAnalytics = analytics?.playerStatsMap[p.puuid];
+                            const enriched = resolveEnrichedPlayer(matchData, p.puuid);
 
-                        const hits = pAnalytics?.hits || { head: 0, body: 0, leg: 0 };
-                        const totalHits = hits.head + hits.body + hits.leg;
-                        const hsPerc = totalHits > 0 ? Math.round((hits.head / totalHits) * 100) : 0;
+                            const hits = pAnalytics?.hits ?? { head: 0, body: 0, leg: 0 };
+                            const totalHits = hits.head + hits.body + hits.leg;
+                            const hsPerc = enriched?.hsPct ?? (totalHits > 0 ? Math.round((hits.head / totalHits) * 100) : 0);
+                            const adr = enriched?.adr ?? Math.round(p.stats.score / Math.max(1, roundCount));
+                            const acs = enriched?.acs ?? Math.round(p.stats.score / Math.max(1, roundCount));
 
-                        const killDiff = p.stats.kills - p.stats.deaths;
-                        const kdRatio = (p.stats.kills / Math.max(1, p.stats.deaths)).toFixed(2);
-                        const diffColor = killDiff > 0 ? 'text-emerald-400' : (killDiff < 0 ? 'text-rose-400' : 'text-zinc-500');
-                        const kdColor = Number(kdRatio) >= 1 ? 'text-emerald-400' : 'text-rose-400';
+                            const killDiff = p.stats.kills - p.stats.deaths;
+                            const kdRatio = enriched?.kdRatio
+                                ?? (p.stats.deaths > 0
+                                    ? (p.stats.kills / p.stats.deaths).toFixed(2)
+                                    : String(p.stats.kills));
+                            const diffColor = killDiff > 0 ? 'text-emerald-400' : (killDiff < 0 ? 'text-rose-400' : 'text-zinc-500');
+                            const kdColor = Number(kdRatio) >= 1 ? 'text-emerald-400' : 'text-rose-400';
 
-                        return (
-                            <tr key={p.puuid} className={`group/row ${p.puuid === targetPuuid ? 'bg-zinc-800/80 ring-1 ring-white/10 shadow-lg' : 'hover:bg-zinc-900/40'} transition-all duration-300`}>
-                                <td className="py-2 pl-4 rounded-l-lg">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded bg-black/40 border border-white/5 overflow-hidden">
-                                            {agent && <img src={agent.displayIcon} loading="lazy" className="w-full h-full" />}
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-zinc-200 flex items-center gap-1">
-                                                {p.gameName} <span className="text-zinc-500 font-normal">#{p.tagLine}</span>
+                            const isHighlighted = p.puuid === targetPuuid;
+                            const isEven = idx % 2 === 0;
+
+                            return (
+                                <tr
+                                    key={p.puuid}
+                                    className={`group/row border-b border-white/[0.04] transition-colors duration-200 ${
+                                        isHighlighted
+                                            ? 'bg-white/[0.07] shadow-[inset_2px_0_0_0_theme(colors.white/0.4)]'
+                                            : isEven
+                                                ? 'bg-[#0d1117] hover:bg-white/[0.03]'
+                                                : 'bg-[#111820] hover:bg-white/[0.03]'
+                                    }`}
+                                >
+                                    <td className="px-4 py-2.5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-8 w-8 overflow-hidden rounded border border-white/[0.08] bg-black/40">
+                                                {agent?.displayIcon ? (
+                                                    <img src={agent.displayIcon} loading="lazy" className="h-full w-full" alt="" />
+                                                ) : null}
                                             </div>
-                                            <div className="text-[9px] text-zinc-600 flex items-center gap-1 mt-0.5">
-                                                <img src={`https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/${p.competitiveTier}/smallicon.png`} loading="lazy" className="w-3 h-3 opacity-80" />
+                                            <div>
+                                                <div className="flex items-center gap-1 font-bold text-zinc-200">
+                                                    {p.gameName}{' '}
+                                                    <span className="font-normal text-zinc-500">#{p.tagLine}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </td>
-                                <td className="text-center font-bold text-zinc-300">{Math.round(p.stats.score / analytics!.roundCount)}</td>
-                                <td className="text-center font-bold text-white">{p.stats.kills}</td>
-                                <td className="text-center text-zinc-400">{p.stats.deaths}</td>
-                                <td className="text-center text-zinc-400">{p.stats.assists}</td>
-                                <td className={`text-center font-bold ${diffColor}`}>{killDiff > 0 ? `+${killDiff}` : killDiff}</td>
-                                <td className={`text-center font-bold ${kdColor}`}>{kdRatio}</td>
-                                <td className="text-center font-mono text-white/90">{hsPerc}%</td>
-                                <td className="text-center text-zinc-300">{Math.round(p.stats.score / analytics!.roundCount)}</td>
-                                <td className="text-center text-zinc-400 font-mono italic">{Math.round((pAnalytics?.kastCount || 0) / analytics!.roundCount * 100)}%</td>
-                                <td className="text-center text-emerald-500 font-bold">{pAnalytics?.fb || 0}</td>
-                                <td className="text-center text-rose-500 font-bold">{pAnalytics?.fd || 0}</td>
-                            </tr>
-                        )
-                    })}
+                                    </td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5">
+                                        <div className="flex min-w-[96px] items-center gap-2">
+                                            {rank?.smallIcon || rank?.largeIcon ? (
+                                                <img
+                                                    src={rank.smallIcon || rank.largeIcon}
+                                                    loading="lazy"
+                                                    className="h-6 w-6 object-contain drop-shadow"
+                                                    alt=""
+                                                />
+                                            ) : (
+                                                <span className="h-2 w-2 rounded-full bg-zinc-700" />
+                                            )}
+                                            <span className="whitespace-nowrap text-[10px] font-black uppercase tracking-tight text-zinc-300">
+                                                {formatRankName(rank, p.competitiveTier)}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-bold text-zinc-300">{acs}</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-bold text-white">{p.stats.kills}</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center text-zinc-400">{p.stats.deaths}</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center text-zinc-400">{p.stats.assists}</td>
+                                    <td className={`border-l border-white/[0.06] px-3 py-2.5 text-center font-bold ${diffColor}`}>
+                                        {killDiff > 0 ? `+${killDiff}` : killDiff}
+                                    </td>
+                                    <td className={`border-l border-white/[0.06] px-3 py-2.5 text-center font-bold ${kdColor}`}>{kdRatio}</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-mono text-white/90">{formatStat(hsPerc)}%</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center text-zinc-300">{adr}</td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center text-zinc-400">
+                                        {formatAbilityCasts(enriched?.abilityCasts ?? p.stats.abilityCasts)}
+                                    </td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-mono italic text-zinc-400">
+                                        {analytics
+                                            ? `${Math.round((pAnalytics?.kastCount ?? 0) / roundCount * 100)}%`
+                                            : '-'}
+                                    </td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-bold text-emerald-500">
+                                        {enriched?.firstBloods ?? pAnalytics?.fb ?? 0}
+                                    </td>
+                                    <td className="border-l border-white/[0.06] px-3 py-2.5 text-center font-bold text-rose-500">{pAnalytics?.fd ?? 0}</td>
+                                </tr>
+                            );
+                        })}
                 </tbody>
             </table>
         </div>
     );
 
-    // const roundEvents = matchData.roundResults[selectedRound]?.playerStats.flatMap((ps: any) => ps.kills.map((k: any) => ({ ...k, killer: ps.puuid })))
-    //     .sort((a: any, b: any) => a.timeSinceRoundStartMillis - b.timeSinceRoundStartMillis) || [];
+    const gameModeLabel = parsedInfo?.gameMode || matchData.matchInfo.gameMode;
+    const rankedLabel = parsedInfo?.isRanked ?? matchData.matchInfo.isRanked;
+
+    const selectedPlayer = matchData.players.find((entry) => entry.puuid === selectedPuuid) ?? player;
+    const selectedEnrichedPlayer = resolveEnrichedPlayer(matchData, selectedPlayer.puuid);
+    const selectedAgent = selectedPlayer.characterId ? allAgents[selectedPlayer.characterId.toLowerCase()] : undefined;
+    const selectedRank = competitiveTiers[selectedPlayer.competitiveTier ?? 0];
+    const selectedAnalytics = analytics?.playerStatsMap[selectedPlayer.puuid];
+    const selectedHits = selectedAnalytics?.hits ?? { head: 0, body: 0, leg: 0 };
+    const selectedTotalHits = selectedHits.head + selectedHits.body + selectedHits.leg;
+    const selectedHsPct = selectedEnrichedPlayer?.hsPct ?? (selectedTotalHits > 0 ? Math.round((selectedHits.head / selectedTotalHits) * 100) : 0);
+    const selectedAdr = selectedEnrichedPlayer?.adr ?? Math.round(selectedPlayer.stats.score / Math.max(1, roundCount));
+    const selectedAcs = selectedEnrichedPlayer?.acs ?? Math.round(selectedPlayer.stats.score / Math.max(1, roundCount));
+    const selectedKd = selectedEnrichedPlayer?.kdRatio
+        ?? (selectedPlayer.stats.deaths > 0
+            ? (selectedPlayer.stats.kills / selectedPlayer.stats.deaths).toFixed(2)
+            : String(selectedPlayer.stats.kills));
+    const selectedKast = analytics
+        ? Math.round((selectedAnalytics?.kastCount ?? 0) / roundCount * 100)
+        : 0;
+    const selectedRound = debugRounds.find((round) => round.summary.round === selectedRoundNumber) ?? debugRounds[0] ?? null;
+    const targetTeam = tournamentMode
+        ? matchData.teams.find((team) => team.teamId === t1Side)
+        : matchData.teams.find((team) => team.teamId === teamId);
+    const opposingTeam = tournamentMode
+        ? matchData.teams.find((team) => team.teamId !== t1Side)
+        : matchData.teams.find((team) => team.teamId !== teamId);
+    const targetRounds = targetTeam?.roundsWon ?? 0;
+    const opponentRounds = opposingTeam?.roundsWon ?? 0;
+    const toPerspectiveEconomy = (entries: EconomyTimelineEntry[]): EconomyTimelineEntry[] => entries.map((entry) => {
+        const teamASpent = teamAId === 'Red' ? entry.redSpent : entry.blueSpent;
+        const teamBSpent = teamAId === 'Red' ? entry.blueSpent : entry.redSpent;
+        const teamALoadout = teamAId === 'Red' ? entry.redLoadout : entry.blueLoadout;
+        const teamBLoadout = teamAId === 'Red' ? entry.blueLoadout : entry.redLoadout;
+
+        return {
+            round: entry.round,
+            blueSpent: teamASpent,
+            redSpent: teamBSpent,
+            blueLoadout: teamALoadout,
+            redLoadout: teamBLoadout,
+        };
+    });
+    const resultTone = isWin
+        ? {
+            rail: 'border-l-[#20f5c6]',
+            text: 'text-[#20f5c6]',
+            soft: 'text-[#8fffe6]',
+            badge: 'border-[#20f5c6]/45 bg-[#20f5c6]/16 text-[#b8fff0]',
+            glow: 'shadow-[0_0_30px_rgba(32,245,198,0.18)]',
+        }
+        : {
+            rail: 'border-l-[#ff4d6d]',
+            text: 'text-[#ff4d6d]',
+            soft: 'text-[#ff9aad]',
+            badge: 'border-[#ff4d6d]/45 bg-[#ff4d6d]/16 text-[#ffd0d8]',
+            glow: 'shadow-[0_0_30px_rgba(255,77,109,0.18)]',
+        };
+    const matchMvp = matchData.players
+        .map((entry) => {
+            const enriched = resolveEnrichedPlayer(matchData, entry.puuid);
+            const entryAnalytics = analytics?.playerStatsMap[entry.puuid];
+            const hits = entryAnalytics?.hits ?? { head: 0, body: 0, leg: 0 };
+            const totalHits = hits.head + hits.body + hits.leg;
+            const hsPct = enriched?.hsPct ?? (totalHits > 0 ? Math.round((hits.head / totalHits) * 100) : 0);
+            const adr = enriched?.adr ?? Math.round(entry.stats.score / Math.max(1, roundCount));
+            const acs = enriched?.acs ?? Math.round(entry.stats.score / Math.max(1, roundCount));
+            const kast = analytics ? Math.round((entryAnalytics?.kastCount ?? 0) / roundCount * 100) : 0;
+            const kdRatio = enriched?.kdRatio
+                ?? (entry.stats.deaths > 0
+                    ? (entry.stats.kills / entry.stats.deaths).toFixed(2)
+                    : String(entry.stats.kills));
+
+            return {
+                player: entry,
+                enriched,
+                analytics: entryAnalytics,
+                agent: entry.characterId ? allAgents[entry.characterId.toLowerCase()] : undefined,
+                rank: competitiveTiers[entry.competitiveTier ?? 0],
+                acs,
+                adr,
+                hsPct,
+                kast,
+                kdRatio,
+                teamAlias: labelForTeam(entry.teamId),
+                isTeamA: isTeamOneSide(entry.teamId),
+            };
+        })
+        .sort((a, b) => (
+            b.acs - a.acs
+            || b.player.stats.score - a.player.stats.score
+            || b.player.stats.kills - a.player.stats.kills
+            || a.player.stats.deaths - b.player.stats.deaths
+        ))[0];
+
+    const renderPremiumRounds = () => {
+        if (!debugRounds.length) {
+            return (
+                <div className="border border-white/5 bg-[#0e1a24] px-6 py-10 text-center">
+                    <p className="text-sm font-bold text-slate-300">No round timeline available.</p>
+                    <p className="mt-1 text-xs text-slate-500">This match did not include round-level Riot data.</p>
+                </div>
+            );
+        }
+
+        const getRoundSideInfo = (roundNumber: number) => {
+            const attackingTeam = attackingTeamsBySegment[getRoundSideSegment(roundNumber)] ?? getFallbackAttackingTeam(roundNumber);
+            const defendingTeam = getOppositeTeam(attackingTeam);
+            return { attackingTeam, defendingTeam };
+        };
+
+        const selectedSummary = selectedRound?.summary ?? debugRounds[0].summary;
+        const selectedRaw = selectedRound?.raw ?? null;
+        const selectedResult = resolveRoundResultCode(selectedSummary);
+        const selectedMeta = getRoundResultMeta(selectedResult);
+        const sideInfo = getRoundSideInfo(selectedSummary.round);
+        const winningTeam = selectedSummary.winningTeam;
+        const isTeamAWinner = winningTeam === teamAId;
+        const winningTone = isTeamAWinner ? 'text-[#b8fff0]' : 'text-[#ffd0d8]';
+        const winningSurface = isTeamAWinner
+            ? 'from-[#20f5c6]/20 via-[#0a302d] to-[#08131f]'
+            : 'from-[#ff4d6d]/22 via-[#28121d] to-[#0f1118]';
+
+        const allRoundKills = (selectedRaw?.playerStats ?? [])
+            .flatMap((stats) => (stats.kills ?? []).map((kill) => ({
+                ...kill,
+                killer: kill.killer || stats.puuid,
+            })))
+            .filter((kill) => kill.killer && kill.victim && kill.killer !== kill.victim);
+
+        const getPlayerRoundStats = (entry: EnrichedRiotMatchData['players'][number]) => {
+            const rawStats = selectedRaw?.playerStats?.find((stats) => stats.puuid === entry.puuid);
+            const kills = (rawStats?.kills ?? []).filter((kill) => (kill.killer || entry.puuid) === entry.puuid && kill.victim !== entry.puuid).length;
+            const deaths = allRoundKills.some((kill) => kill.victim === entry.puuid) ? 1 : 0;
+            const assists = allRoundKills.filter((kill) => kill.assistants?.includes(entry.puuid)).length;
+            const damage = (rawStats?.damage ?? []).reduce((sum, damageEntry) => sum + (damageEntry.damage ?? 0), 0);
+            return {
+                kills,
+                deaths,
+                assists,
+                damage,
+                spent: rawStats?.economy?.spent ?? 0,
+                loadout: rawStats?.economy?.loadoutValue ?? 0,
+            };
+        };
+
+        const renderTeamRoundTable = (team: string) => {
+            const teamPlayers = matchData.players
+                .filter((entry) => entry.teamId === team)
+                .map((entry) => ({ entry, roundStats: getPlayerRoundStats(entry) }))
+                .sort((a, b) => b.roundStats.kills - a.roundStats.kills || b.roundStats.damage - a.roundStats.damage);
+            const isTeamA = isTeamOneSide(team);
+            const teamLabel = labelForTeam(team);
+
+            return (
+                <div className="min-w-0 bg-[#0e1a24]">
+                    <div className={cn(
+                        'flex items-center justify-between border-b border-white/5 px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em]',
+                        isTeamA ? 'bg-[#20f5c6]/10 text-[#b8fff0]' : 'bg-[#ff4d6d]/10 text-[#ffd0d8]',
+                    )}>
+                        <span className="flex items-center gap-2">
+                            <span className={cn('h-2 w-2', isTeamA ? 'bg-[#20f5c6]' : 'bg-[#ff4d6d]')} />
+                            {teamLabel}
+                        </span>
+                        <span className="text-slate-300/70">{sideInfo.attackingTeam === team ? 'Attack' : 'Defense'}</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-[11px]">
+                            <thead className="bg-[#101d28] text-[9px] uppercase tracking-wider text-slate-500">
+                                <tr>
+                                    <th className="px-3 py-2">Player</th>
+                                    <th className="px-2 py-2 text-center">K</th>
+                                    <th className="px-2 py-2 text-center">D</th>
+                                    <th className="px-2 py-2 text-center">A</th>
+                                    <th className="px-2 py-2 text-right">DMG</th>
+                                    <th className="px-3 py-2 text-right">Spend</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {teamPlayers.map(({ entry, roundStats }) => {
+                                    const agent = entry.characterId ? allAgents[entry.characterId.toLowerCase()] : undefined;
+                                    return (
+                                        <tr
+                                            key={entry.puuid}
+                                            className={cn(
+                                                'border-t border-black/40 bg-[#0b141d] text-slate-300 transition-colors',
+                                                selectedPlayer.puuid === entry.puuid && (isTeamA
+                                                    ? 'bg-[#20f5c6]/[0.08] text-white'
+                                                    : 'bg-[#ff4d6d]/[0.08] text-white'),
+                                            )}
+                                        >
+                                            <td className="px-3 py-2">
+                                                <div className="flex min-w-[140px] items-center gap-2">
+                                                    <div className={cn(
+                                                        'h-7 w-7 overflow-hidden border bg-black/30 shadow-[0_0_10px_rgba(0,0,0,0.35)]',
+                                                        isTeamA ? 'border-[#20f5c6]/45' : 'border-[#ff4d6d]/45',
+                                                    )}>
+                                                        {agent?.displayIcon ? (
+                                                            <img src={agent.displayIcon} loading="lazy" className="h-full w-full object-cover" alt="" />
+                                                        ) : null}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="truncate font-black">{entry.gameName}</div>
+                                                        <div className="text-[9px] text-slate-500">#{entry.tagLine}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-2 py-2 text-center font-black text-white">{roundStats.kills}</td>
+                                            <td className="px-2 py-2 text-center text-slate-400">{roundStats.deaths}</td>
+                                            <td className="px-2 py-2 text-center text-slate-400">{roundStats.assists}</td>
+                                            <td className="px-2 py-2 text-right font-mono text-slate-200">{roundStats.damage}</td>
+                                            <td className="px-3 py-2 text-right font-mono text-slate-400">{roundStats.spent.toLocaleString()}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        return (
+            <div className="space-y-4">
+                <RoundEventLog
+                    rounds={debugRounds.map(({ summary }) => summary)}
+                    teamAId={teamAId}
+                    teamBId={teamBId}
+                    teamALabel={teamALabel}
+                    teamBLabel={teamBLabel}
+                    activeRound={selectedSummary.round}
+                    onSelectRound={setSelectedRoundNumber}
+                    teamAScore={targetRounds}
+                    teamBScore={opponentRounds}
+                />
+
+                <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
+                    <div className={cn('relative overflow-hidden bg-gradient-to-br p-5 shadow-[0_18px_55px_rgba(0,0,0,0.3)]', winningSurface)}>
+                        <div className={cn(
+                            'absolute inset-y-0 left-0 w-1',
+                            isTeamAWinner ? 'bg-[#20f5c6]' : 'bg-[#ff4d6d]',
+                        )} />
+                        <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-slate-300/70">Round {selectedSummary.round}</p>
+                                <div className="mt-2 flex items-center gap-3">
+                                    <div className={cn(
+                                        'flex h-12 w-12 items-center justify-center border font-mono text-[11px] font-black tracking-wider',
+                                        isTeamAWinner
+                                            ? 'border-[#20f5c6]/50 bg-[#20f5c6]/10 text-[#b8fff0]'
+                                            : 'border-[#ff4d6d]/50 bg-[#ff4d6d]/10 text-[#ffd0d8]',
+                                    )}>
+                                        {selectedMeta.short}
+                                    </div>
+                                    <div>
+                                        <div className={cn('text-lg font-black', winningTone)}>
+                                            {winningTeam ? labelForTeam(winningTeam) : 'Unknown team'} won
+                                        </div>
+                                        <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                            {selectedMeta.label}
+                                            {selectedSummary.plantSite ? ` · Site ${selectedSummary.plantSite}` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-5 grid grid-cols-2 gap-2 text-xs">
+                            <div className="border border-white/5 bg-black/20 p-3">
+                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Attack</div>
+                                <div className="mt-1 font-black text-slate-100">{labelForTeam(sideInfo.attackingTeam)}</div>
+                            </div>
+                            <div className="border border-white/5 bg-black/20 p-3">
+                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Defense</div>
+                                <div className="mt-1 font-black text-slate-100">{labelForTeam(sideInfo.defendingTeam)}</div>
+                            </div>
+                            <div className="border border-white/5 bg-black/20 p-3">
+                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Kills</div>
+                                <div className="mt-1 font-mono text-lg font-black text-white">{allRoundKills.length}</div>
+                            </div>
+                            <div className="border border-white/5 bg-black/20 p-3">
+                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Spike</div>
+                                <div className="mt-1 font-black text-white">{selectedSummary.plantSite ? `Site ${selectedSummary.plantSite}` : '-'}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid gap-4 lg:grid-cols-2">
+                        {teamAId ? renderTeamRoundTable(teamAId) : null}
+                        {teamBId ? renderTeamRoundTable(teamBId) : null}
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     return (
-        <Card className={`relative overflow-hidden bg-zinc-950/60 border border-zinc-900 border-l-4 ${isWin ? 'border-l-emerald-600' : 'border-l-rose-600'} transition-all duration-500 backdrop-blur-xl shadow-2xl group`}>
-            {/* Header / Summary Card */}
+        <Card className={cn(
+            'group relative overflow-hidden rounded-none border border-white/10 border-l-4 bg-[#070d13] shadow-[0_22px_80px_rgba(0,0,0,0.45)] transition-all duration-500 hover:border-white/20',
+            resultTone.rail,
+            directView ? '' : resultTone.glow,
+        )}>
+            {directView ? (
+                <div className="relative overflow-hidden border-b border-white/10 bg-[linear-gradient(90deg,#101a24_0%,#0c151e_48%,#091017_100%)] px-5 py-4">
+                    {mapData?.listViewIcon ? (
+                        <div
+                            className="pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-25"
+                            style={{
+                                backgroundImage: `linear-gradient(to right, rgba(7, 13, 19, 0.98), rgba(7, 13, 19, 0.55)), url(${mapData.listViewIcon})`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                            }}
+                        />
+                    ) : null}
+                    <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+                        <div className="min-w-0">
+                            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-slate-400">Official match data</p>
+                            <h3 className="mt-1 font-heading text-xl font-black uppercase tracking-tight text-white">
+                                {mapData?.displayName || 'Valorant match'}
+                            </h3>
+                            <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                {matchData.matchInfo.queueId || 'Custom'}
+                                {parsedInfo?.region ? ` · ${parsedInfo.region}` : ''}
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-slate-500">Match score</p>
+                            <p className="mt-1 font-mono text-2xl font-black tabular-nums text-white">
+                                <span className={cn(tournamentMode && t1Side && matchData.teams.find((team) => team.teamId === t1Side)?.won ? 'text-[#20f5c6]' : 'text-white')}>
+                                    {targetRounds}
+                                </span>
+                                <span className="mx-2 text-slate-600">–</span>
+                                <span className={cn(tournamentMode && t1Side && !matchData.teams.find((team) => team.teamId === t1Side)?.won ? 'text-[#ff4d6d]' : 'text-[#ff4d6d]')}>
+                                    {opponentRounds}
+                                </span>
+                            </p>
+                            {tournamentMode ? (
+                                <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                    {team1Name} vs {team2Name}
+                                </p>
+                            ) : null}
+                        </div>
+                    </div>
+                </div>
+            ) : (
             <div
-                className="flex items-center p-5 gap-6 cursor-pointer hover:bg-white/5 transition-colors relative z-10"
+                className="relative z-10 grid cursor-pointer gap-4 overflow-hidden border-b border-white/10 bg-[linear-gradient(90deg,#101a24_0%,#0c151e_48%,#091017_100%)] px-5 py-4 transition-colors hover:bg-[#101b26] md:grid-cols-[minmax(260px,1fr)_auto_auto]"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
-                <div className="relative w-16 h-16 flex-shrink-0">
-                    <img src={agentData?.displayIcon} loading="lazy" className="w-full h-full object-cover rounded-xl bg-zinc-900 border border-zinc-800 shadow-xl group-hover:scale-110 transition-transform duration-500" />
-                    <div className={`absolute -bottom-2 -right-2 rounded-full p-1.5 border ${isWin ? 'bg-emerald-500 border-emerald-400' : 'bg-rose-500 border-rose-400'}`}>
-                        {isWin ? <Trophy className="w-3 h-3 text-white" /> : <Skull className="w-3 h-3 text-white" />}
-                    </div>
-                </div>
-
-                <div className="flex-grow grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
-                    <div>
-                        <div className="text-sm font-black text-white flex items-center gap-2">
-                            <MapIcon className="w-4 h-4 text-rose-500" /> {mapData?.displayName || "Loading..."}
-                        </div>
-                        <div className="text-[10px] text-zinc-500 font-black uppercase tracking-widest mt-0.5">
-                            {matchData.matchInfo.queueId || "Custom"} • {Math.round(matchData.matchInfo.gameLengthMillis / 60000)}M
-                        </div>
-                    </div>
-
-                    <div className="text-center">
-                        <div className="text-2xl font-black text-white tracking-tighter leading-none drop-shadow-lg">
-                            {player.stats.kills}<span className="text-zinc-500 mx-1">/</span>{player.stats.deaths}<span className="text-zinc-500 mx-1">/</span>{player.stats.assists}
-                        </div>
-                        <div className="flex items-center justify-center gap-3 mt-1">
-                            <div className="text-[10px] text-zinc-400 font-black uppercase drop-shadow-md">
-                                KD <span className="text-white">{(player.stats.kills / Math.max(1, player.stats.deaths)).toFixed(2)}</span>
-                            </div>
-                            <div className="w-1 h-1 bg-zinc-600 rounded-full" />
-                            <div className="text-[10px] text-zinc-400 font-black uppercase drop-shadow-md">
-                                KDA {((player.stats.kills + player.stats.assists) / Math.max(1, player.stats.deaths)).toFixed(2)}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="hidden md:block text-center">
-                        <div className="text-2xl font-black flex justify-center gap-3">
-                            <span className={isWin ? "text-emerald-500" : "text-rose-500"}>
-                                {matchData.teams.find((t: any) => t.teamId === teamId)?.roundsWon}
-                            </span>
-                            <span className="text-zinc-500">/</span>
-                            <span className={!isWin ? "text-emerald-500" : "text-rose-500"}>
-                                {matchData.teams.find((t: any) => t.teamId !== teamId)?.roundsWon}
-                            </span>
-                        </div>
-                        <div className="text-[10px] text-zinc-400 font-black uppercase mt-1 drop-shadow-md">Match Score</div>
-                    </div>
-
-                    <div className="flex flex-col items-end pr-4">
-                        <div className="flex gap-4 text-right">
-                            <div>
-                                <div className="text-[9px] text-zinc-400 font-black drop-shadow-md">KAST</div>
-                                <div className="text-xs font-mono text-zinc-300 drop-shadow-md">{targetKAST}%</div>
-                            </div>
-                            <div>
-                                <div className="text-[9px] text-zinc-400 font-black drop-shadow-md">FB</div>
-                                <div className="text-xs font-mono text-emerald-400 drop-shadow-md">{analytics?.playerStatsMap[targetPuuid].fb || 0}</div>
-                            </div>
-                        </div>
-                        <div className="mt-2 text-zinc-700 transition-colors">
-                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 animate-bounce" />}
-                        </div>
-                    </div>
-                </div>
-
-                {mapData?.listViewIcon && (
+                {mapData?.listViewIcon ? (
                     <div
-                        className="absolute right-0 top-0 w-2/3 h-full opacity-40 pointer-events-none transition-all duration-500 group-hover:opacity-60"
+                        className="pointer-events-none absolute inset-y-0 left-[34%] right-0 opacity-35 transition-all duration-500 group-hover:opacity-50"
                         style={{
-                            backgroundImage: `linear-gradient(to left, rgba(9, 9, 11, 1) 20%, rgba(9, 9, 11, 0.6) 60%, rgba(9, 9, 11, 0.2)), url(${mapData.listViewIcon})`,
+                            backgroundImage: `linear-gradient(to right, rgba(7, 13, 19, 0.98) 0%, rgba(7, 13, 19, 0.62) 38%, rgba(7, 13, 19, 0.86) 100%), url(${mapData.listViewIcon})`,
                             backgroundSize: 'cover',
-                            backgroundPosition: 'right center',
-                            filter: 'contrast(1.1) brightness(0.7)'
+                            backgroundPosition: 'center',
+                            filter: 'contrast(1.18) saturate(1.18) brightness(0.78)',
                         }}
                     />
-                )}
+                ) : null}
+
+                <div className="relative z-10 flex min-w-0 items-center gap-4">
+                    <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden border border-white/10 bg-black/40">
+                        {agentData?.displayIcon ? (
+                            <img
+                                src={agentData.displayIcon}
+                                loading="lazy"
+                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                alt=""
+                            />
+                        ) : null}
+                        <div className={cn('absolute bottom-0 right-0 border-l border-t p-1.5', resultTone.badge)}>
+                            {isWin ? <Trophy className="h-3.5 w-3.5" /> : <Skull className="h-3.5 w-3.5" />}
+                        </div>
+                    </div>
+                    <div className="min-w-0">
+                        <div className="flex min-w-0 items-center gap-2">
+                            <MapIcon className={cn('h-4 w-4 flex-shrink-0', resultTone.text)} />
+                            <div className="truncate text-lg font-black leading-none text-white">
+                                {mapData?.displayName || 'Loading…'}
+                            </div>
+                            <span className={cn('hidden border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider sm:inline-flex', resultTone.badge)}>
+                                {isWin ? 'Win' : 'Loss'}
+                            </span>
+                        </div>
+                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-black uppercase tracking-wider text-slate-300/65">
+                            <span>{matchData.matchInfo.queueId || 'Custom'}</span>
+                            {gameModeLabel ? <span>{gameModeLabel}</span> : null}
+                            {rankedLabel ? <span>Ranked</span> : null}
+                            <span>{Math.round((matchData.matchInfo.gameLengthMillis ?? 0) / 60000)}m</span>
+                        </div>
+                        {parsedInfo?.region ? (
+                            <div className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                                Region {parsedInfo.region}
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+
+                <div className="relative z-10 grid grid-cols-2 items-center gap-4 md:grid-cols-[minmax(130px,auto)_minmax(110px,auto)]">
+                    <div className="text-left md:text-right">
+                        <div className="text-2xl font-black leading-none tracking-tight text-white drop-shadow-lg">
+                            {player.stats.kills}
+                            <span className="mx-1.5 text-slate-600">/</span>
+                            {player.stats.deaths}
+                            <span className="mx-1.5 text-slate-600">/</span>
+                            {player.stats.assists}
+                        </div>
+                        <div className="mt-1 flex justify-start gap-3 md:justify-end">
+                            <div className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+                                KD{' '}
+                                <span className="text-slate-100">
+                                    {(player.stats.kills / Math.max(1, player.stats.deaths)).toFixed(2)}
+                                </span>
+                            </div>
+                            <div className="text-[9px] font-black uppercase tracking-wider text-slate-400">
+                                ACS <span className="text-slate-100">{enrichedTarget?.acs ?? '-'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="text-left md:text-center">
+                        <div className="flex items-baseline gap-2 text-2xl font-black">
+                            <span className={resultTone.text}>
+                                {targetRounds}
+                            </span>
+                            <span className="text-slate-600">/</span>
+                            <span className="text-[#ff4d6d]">{opponentRounds}</span>
+                        </div>
+                        <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-slate-400">
+                            Match Score
+                        </div>
+                    </div>
+                </div>
+
+                <div className="relative z-10 flex items-center justify-between gap-4 md:justify-end">
+                    <div className="grid grid-cols-2 gap-2 text-right">
+                        <div className="border border-white/10 bg-black/20 px-3 py-2">
+                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-500">KAST</div>
+                            <div className="font-mono text-sm font-black text-slate-100">{targetKAST}%</div>
+                        </div>
+                        <div className="border border-white/10 bg-black/20 px-3 py-2">
+                            <div className="text-[8px] font-black uppercase tracking-widest text-slate-500">FK</div>
+                            <div className={cn('font-mono text-sm font-black', resultTone.text)}>
+                                {enrichedTarget?.firstBloods ?? analytics?.playerStatsMap[targetPuuid]?.fb ?? 0}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="text-slate-500 transition-colors group-hover:text-white/70">
+                        {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                    </div>
+                </div>
             </div>
+            )}
 
-            {/* Expanded Detailed View */}
-            {isExpanded && (
-                <div className="bg-black/60 border-t border-white/10 animate-in slide-in-from-top-4 duration-500 backdrop-blur-3xl">
-
-                    {/* Inner Tabs */}
-                    <div className="flex items-center gap-8 px-8 py-4 border-b border-white/5 overflow-x-auto scroller-hide">
+            {(directView || isExpanded) ? (
+                <div className="animate-in slide-in-from-top-4 bg-[#0b141d] duration-500">
+                    <div className="grid border-b border-rose-500/40 bg-[#263b4d] text-center sm:grid-cols-5">
                         {[
                             { id: 'scoreboard', label: 'Scoreboard', icon: List },
+                            { id: 'timeline', label: 'Timeline', icon: MapIcon },
                             { id: 'economy', label: 'Economy', icon: BarChart3 },
-                            { id: 'rounds', label: 'Rounds', icon: Zap }
+                            { id: 'rounds', label: 'Rounds', icon: Zap },
+                            { id: 'weapons', label: 'Weapons', icon: Crosshair },
                         ].map((tab) => (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all pb-1 border-b-2 ${activeTab === tab.id ? 'text-rose-500 border-rose-500' : 'text-zinc-500 border-transparent hover:text-zinc-300'}`}
+                                type="button"
+                                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                                className={`flex items-center justify-center gap-2 border-b-2 px-4 py-3 text-[11px] font-black transition-all ${
+                                    activeTab === tab.id
+                                        ? 'border-rose-400 bg-[#0f1c28] text-white'
+                                        : 'border-transparent text-slate-200/75 hover:bg-[#203141] hover:text-white'
+                                }`}
                             >
-                                <tab.icon className="w-3.5 h-3.5" /> {tab.label}
+                                <tab.icon className="h-3.5 w-3.5 text-slate-300/80" /> {tab.label}
                             </button>
                         ))}
                     </div>
 
-                    {/* Tab Content */}
-                    <div className="p-6">
-                        {activeTab === 'scoreboard' && (
-                            <div className="space-y-8 animate-in fade-in duration-500">
-                                <div>
-                                    <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3 flex items-center gap-2 px-2">
-                                        <div className="w-1.5 h-4 bg-blue-500 rounded-full" /> Blue Team
-                                    </div>
-                                    {renderScoreboardTable(matchData.players.filter((p: any) => p.teamId === "Blue"), "Blue", "blue")}
+                    <div className="border-b border-white/5 bg-[#0f1c28] px-5 py-4">
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                            <span className="mr-2 text-xs font-bold text-[#20f5c6]">{teamALabel}</span>
+                            {matchData.players
+                                .slice()
+                                .sort((a, b) => (a.teamId === teamAId ? -1 : 1) - (b.teamId === teamAId ? -1 : 1))
+                                .map((entry, index) => {
+                                    const agent = entry.characterId ? allAgents[entry.characterId.toLowerCase()] : undefined;
+                                    const isFriendly = entry.teamId === teamAId;
+
+                                    return (
+                                        <React.Fragment key={entry.puuid}>
+                                            {index === 5 ? (
+                                                <span className="mx-1 bg-[#203141] px-2 py-1 text-[10px] font-black uppercase text-slate-300">
+                                                    vs
+                                                </span>
+                                            ) : null}
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedPuuid(entry.puuid)}
+                                                title={`${entry.gameName}#${entry.tagLine}`}
+                                                className={cn(
+                                                    'relative h-9 w-9 overflow-hidden border bg-[#0b141d] transition-all duration-200',
+                                                    'hover:-translate-y-0.5 hover:brightness-125 focus:outline-none focus:ring-2 focus:ring-white/40',
+                                                    isFriendly ? 'border-teal-400/70' : 'border-rose-400/70',
+                                                    selectedPlayer.puuid === entry.puuid && (isFriendly
+                                                        ? 'border-teal-200 brightness-125 shadow-[0_0_16px_rgba(45,212,191,0.45)]'
+                                                        : 'border-rose-200 brightness-125 shadow-[0_0_16px_rgba(251,113,133,0.45)]'),
+                                                    selectedPlayer.puuid !== entry.puuid && 'opacity-75',
+                                                )}
+                                            >
+                                                {agent?.displayIcon ? (
+                                                    <img src={agent.displayIcon} loading="lazy" className="h-full w-full object-cover" alt="" />
+                                                ) : null}
+                                                {selectedPlayer.puuid === entry.puuid ? (
+                                                    <span className={cn(
+                                                        'absolute inset-x-1 bottom-0 h-0.5',
+                                                        isFriendly ? 'bg-teal-200' : 'bg-rose-200',
+                                                    )} />
+                                                ) : null}
+                                            </button>
+                                        </React.Fragment>
+                                    );
+                                })}
+                            <span className="ml-2 text-xs font-bold text-[#ff5b73]">{teamBLabel}</span>
+                        </div>
+                    </div>
+
+                    <div className="bg-[#0b141d] p-4 lg:p-5">
+                        <div className="mb-4 grid gap-4 bg-[#092f31] p-4 md:grid-cols-[120px_minmax(0,1fr)_auto]">
+                            <div className="hidden h-28 items-end justify-center md:flex">
+                                {selectedAgent?.displayIcon ? (
+                                    <img src={selectedAgent.displayIcon} loading="lazy" className="max-h-28 object-contain opacity-85 drop-shadow-[0_0_20px_rgba(45,212,191,0.12)]" alt="" />
+                                ) : null}
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h3 className="truncate text-2xl font-black text-white">{selectedPlayer.gameName}</h3>
+                                    <span className="bg-white/10 px-2 py-1 text-xs font-black text-slate-200">#{selectedPlayer.tagLine}</span>
+                                    {selectedRank?.smallIcon || selectedRank?.largeIcon ? (
+                                        <img src={selectedRank.smallIcon || selectedRank.largeIcon} loading="lazy" className="h-6 w-6 object-contain" alt="" />
+                                    ) : null}
                                 </div>
-                                <div>
-                                    <div className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-3 flex items-center gap-2 px-2">
-                                        <div className="w-1.5 h-4 bg-rose-500 rounded-full" /> Red Team
-                                    </div>
-                                    {renderScoreboardTable(matchData.players.filter((p: any) => p.teamId === "Red"), "Red", "rose")}
+                                <div className="mt-4 grid grid-cols-3 gap-4 text-sm sm:grid-cols-6">
+                                    {[
+                                        ['K/D/A', `${selectedPlayer.stats.kills} / ${selectedPlayer.stats.deaths} / ${selectedPlayer.stats.assists}`],
+                                        ['K/D', selectedKd],
+                                        ['ADR', selectedAdr],
+                                        ['ACS', selectedAcs],
+                                        ['HS%', `${formatStat(selectedHsPct)}%`],
+                                        ['KAST', `${selectedKast}%`],
+                                    ].map(([label, value]) => (
+                                        <div key={label}>
+                                            <div className="text-[10px] font-black uppercase text-slate-300/65">{label}</div>
+                                            <div className="text-lg font-black text-slate-100">{value}</div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        )}
-
-                        {activeTab === 'economy' && (
-                            <div className="h-[300px] w-full pt-4 animate-in zoom-in-95 duration-500">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={analytics?.economyData}>
-                                        <defs>
-                                            <linearGradient id="colorBlue" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                            </linearGradient>
-                                            <linearGradient id="colorRed" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
-                                                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                                        <XAxis dataKey="round" stroke="#4b5563" fontSize={10} axisLine={false} tickLine={false} />
-                                        <YAxis stroke="#4b5563" fontSize={10} axisLine={false} tickLine={false} />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#09090b', border: '1px solid #27272a', borderRadius: '8px' }}
-                                            itemStyle={{ fontSize: '10px', fontWeight: 'bold' }}
-                                        />
-                                        <Area type="monotone" dataKey="blueBank" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorBlue)" name="Blue Team Economy" />
-                                        <Area type="monotone" dataKey="redBank" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorRed)" name="Red Team Economy" />
-                                    </AreaChart>
-                                </ResponsiveContainer>
+                            <div className="text-right text-xs font-black uppercase tracking-wider text-slate-300/70">
+                                {formatRankName(selectedRank, selectedPlayer.competitiveTier)}
                             </div>
-                        )}
+                        </div>
 
-                        {activeTab === 'rounds' && (
-                            <div className="flex flex-col gap-6 animate-in slide-in-from-right-4 duration-500">
-                                <div className="space-y-4">
-                                    <div className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] px-1">Round Timeline</div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {matchData.roundResults.map((r: any, i: number) => {
-                                            const winningTeam = r.winningTeam;
-                                            const isBlueWin = winningTeam === 'Blue';
-                                            const resultColor = isBlueWin ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-rose-500/20 border-rose-500/50 text-rose-400';
-
-                                            // Determine win type icon
-                                            let WinIcon = Trophy;
-                                            if (r.roundResultCode === "Elimination") WinIcon = Skull;
-                                            if (r.roundResultCode === "Detonate") WinIcon = Target;
-                                            if (r.roundResultCode === "Defuse") WinIcon = Zap;
-                                            if (r.roundResultCode === "TimeOut") WinIcon = Clock;
-
-                                            return (
-                                                <div key={i} className={`h-12 w-10 rounded-md border ${resultColor} flex flex-col items-center justify-center gap-1 transition-all hover:scale-110`}>
-                                                    <div className="text-[8px] font-bold opacity-60">{i + 1}</div>
-                                                    <WinIcon className="w-3.5 h-3.5" />
+                        {activeTab === 'scoreboard' ? (
+                            <div className="animate-in fade-in space-y-8 duration-500">
+                                {matchMvp ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedPuuid(matchMvp.player.puuid)}
+                                        className={cn(
+                                            'group/mvp relative grid w-full overflow-hidden border bg-[#07131d] text-left shadow-[0_18px_55px_rgba(0,0,0,0.32)] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 md:grid-cols-[104px_minmax(0,1fr)_auto]',
+                                            matchMvp.isTeamA
+                                                ? 'border-[#20f5c6]/35'
+                                                : 'border-[#ff5b73]/35',
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            'absolute inset-x-0 top-0 h-0.5',
+                                            matchMvp.isTeamA ? 'bg-[#20f5c6]' : 'bg-[#ff5b73]',
+                                        )} />
+                                        <div className={cn(
+                                            'relative hidden min-h-[108px] items-end justify-center overflow-hidden md:flex',
+                                            matchMvp.isTeamA
+                                                ? 'bg-[radial-gradient(circle_at_50%_30%,rgba(32,245,198,0.22),rgba(7,19,29,0)_68%)]'
+                                                : 'bg-[radial-gradient(circle_at_50%_30%,rgba(255,91,115,0.22),rgba(7,19,29,0)_68%)]',
+                                        )}>
+                                            {matchMvp.agent?.displayIcon ? (
+                                                <img
+                                                    src={matchMvp.agent.displayIcon}
+                                                    loading="lazy"
+                                                    className="max-h-[104px] object-contain opacity-95 drop-shadow-[0_12px_22px_rgba(0,0,0,0.45)] transition-transform duration-300 group-hover/mvp:scale-105"
+                                                    alt=""
+                                                />
+                                            ) : null}
+                                        </div>
+                                        <div className="min-w-0 px-4 py-4">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className={cn(
+                                                    'inline-flex items-center gap-1 border px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em]',
+                                                    matchMvp.isTeamA
+                                                        ? 'border-[#20f5c6]/45 bg-[#20f5c6]/10 text-[#b8fff0]'
+                                                        : 'border-[#ff5b73]/45 bg-[#ff5b73]/10 text-[#ffd0d8]',
+                                                )}>
+                                                    <Trophy className="h-3.5 w-3.5" />
+                                                    Match MVP
+                                                </span>
+                                                <span className={cn(
+                                                    'text-[10px] font-black uppercase tracking-[0.18em]',
+                                                    matchMvp.isTeamA ? 'text-[#20f5c6]' : 'text-[#ff5b73]',
+                                                )}>
+                                                    {matchMvp.teamAlias}
+                                                </span>
+                                            </div>
+                                            <div className="mt-3 flex min-w-0 flex-wrap items-center gap-3">
+                                                <div className="min-w-0">
+                                                    <div className="flex min-w-0 items-center gap-2">
+                                                        <h4 className="truncate text-2xl font-black leading-none text-white">
+                                                            {matchMvp.player.gameName || 'Unknown'}
+                                                        </h4>
+                                                        {matchMvp.player.tagLine ? (
+                                                            <span className="bg-white/10 px-2 py-1 text-xs font-black text-slate-200">
+                                                                #{matchMvp.player.tagLine}
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
+                                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                                                        <span>{matchMvp.agent?.displayName || 'Agent'}</span>
+                                                        <span className="h-1 w-1 rounded-full bg-slate-600" />
+                                                        <span>{formatRankName(matchMvp.rank, matchMvp.player.competitiveTier)}</span>
+                                                    </div>
                                                 </div>
-                                            )
-                                        })}
-                                    </div>
-                                    <div className="flex items-center gap-6 mt-2 px-2">
-                                        <div className="flex items-center gap-2 text-[9px] font-bold text-blue-400 uppercase tracking-wider">
-                                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" /> Blue Team Won
+                                                {matchMvp.rank?.smallIcon || matchMvp.rank?.largeIcon ? (
+                                                    <img
+                                                        src={matchMvp.rank.smallIcon || matchMvp.rank.largeIcon}
+                                                        loading="lazy"
+                                                        className="h-7 w-7 object-contain drop-shadow"
+                                                        alt=""
+                                                    />
+                                                ) : null}
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2 text-[9px] font-bold text-rose-400 uppercase tracking-wider">
-                                            <div className="w-1.5 h-1.5 bg-rose-500 rounded-full" /> Red Team Won
+                                        <div className="grid grid-cols-3 gap-x-5 gap-y-3 border-t border-white/5 px-4 py-4 md:border-l md:border-t-0">
+                                            {[
+                                                ['K/D/A', `${matchMvp.player.stats.kills} / ${matchMvp.player.stats.deaths} / ${matchMvp.player.stats.assists}`],
+                                                ['ACS', matchMvp.acs],
+                                                ['ADR', matchMvp.adr],
+                                                ['K/D', matchMvp.kdRatio],
+                                                ['HS%', `${formatStat(matchMvp.hsPct)}%`],
+                                                ['KAST', analytics ? `${matchMvp.kast}%` : '-'],
+                                            ].map(([label, value]) => (
+                                                <div key={label} className="min-w-[72px]">
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">{label}</div>
+                                                    <div className="mt-0.5 font-mono text-base font-black text-slate-100">{value}</div>
+                                                </div>
+                                            ))}
                                         </div>
+                                    </button>
+                                ) : null}
+
+                                <div>
+                                    <div className="mb-3 flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest text-[#20f5c6]">
+                                        <div className="h-4 w-1.5 rounded-full bg-[#20f5c6]" /> {teamALabel}
                                     </div>
+                                    {renderScoreboardTable(matchData.players.filter((entry) => entry.teamId === teamAId))}
+                                </div>
+                                <div>
+                                    <div className="mb-3 flex items-center gap-2 px-2 text-[10px] font-black uppercase tracking-widest text-[#ff5b73]">
+                                        <div className="h-4 w-1.5 rounded-full bg-[#ff5b73]" /> {teamBLabel}
+                                    </div>
+                                    {renderScoreboardTable(matchData.players.filter((entry) => entry.teamId === teamBId))}
                                 </div>
                             </div>
-                        )}
+                        ) : null}
+
+                        {activeTab === 'timeline' ? (
+                            <div className="animate-in fade-in duration-500">
+                                <RiotTimelineMap
+                                    matchData={matchData}
+                                    targetPuuid={targetPuuid}
+                                    mapData={mapData}
+                                    agents={allAgents}
+                                    teamALabel={teamALabel}
+                                    teamBLabel={teamBLabel}
+                                    displayTeamASide={tournamentMode ? t1Side : undefined}
+                                />
+                            </div>
+                        ) : null}
+
+                        {activeTab === 'economy' ? (
+                            <div className="animate-in zoom-in-95 duration-500">
+                                {economyTimeline.length > 0 ? (
+                                    <RiotEconomyChart
+                                        economy={toPerspectiveEconomy(economyTimeline)}
+                                        teamALabel={teamALabel}
+                                        teamBLabel={teamBLabel}
+                                        teamAColor="#20f5c6"
+                                        teamBColor="#ff5b73"
+                                    />
+                                ) : (
+                                    <RiotEconomyChart
+                                        economy={toPerspectiveEconomy((analytics?.economyData ?? []).map((entry) => ({
+                                            round: entry.round,
+                                            blueSpent: entry.blueBank,
+                                            redSpent: entry.redBank,
+                                            blueLoadout: entry.blueLoadout,
+                                            redLoadout: entry.redLoadout,
+                                        })))}
+                                        teamALabel={teamALabel}
+                                        teamBLabel={teamBLabel}
+                                        teamAColor="#20f5c6"
+                                        teamBColor="#ff5b73"
+                                    />
+                                )}
+                            </div>
+                        ) : null}
+
+                        {activeTab === 'rounds' ? (
+                            <div className="animate-in slide-in-from-right-4 duration-500">
+                                {renderPremiumRounds()}
+                            </div>
+                        ) : null}
+
+                        {activeTab === 'weapons' ? (
+                            <div className="animate-in fade-in duration-500">
+                                <RiotWeaponSummaries weapons={weaponSummaries} />
+                            </div>
+                        ) : null}
                     </div>
                 </div>
-            )}
+            ) : null}
 
-            {/* Footer Footnote */}
-            <div className="mt-4 pt-4 px-8 pb-6 border-t border-white/5 flex items-center justify-between opacity-30">
-                <div className="text-[9px] uppercase font-bold text-zinc-500 tracking-[0.2em] flex items-center gap-2">
-                    <Zap className="w-3 h-3 text-rose-500" /> PRO-TIER ANALYTICS • MATCH ID: {matchData.matchInfo.matchId.slice(0, 12)}...
+            {!directView ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/5 bg-[#050a0f] px-5 py-3">
+                <div className="flex min-w-0 items-center gap-2 text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">
+                    <span className={cn('h-1.5 w-1.5 rounded-full shadow-[0_0_12px_currentColor]', resultTone.text)} />
+                    <span className="truncate">Enriched match data</span>
+                    <span className="hidden text-slate-700 sm:inline">/</span>
+                    <span className="hidden font-mono text-slate-600 sm:inline">{matchData.matchInfo.matchId?.slice(0, 12)}…</span>
                 </div>
-                <div className="text-[9px] uppercase font-bold text-zinc-500 tracking-[0.2em]">
-                    Server Cluster: {matchData.matchInfo.gameServerAddress || "Asia Pulse"}
+                <div className="flex items-center gap-3 text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                    <span>{roundTimeline.length || roundResults.length} rounds</span>
+                    <span className="h-1 w-1 rounded-full bg-slate-700" />
+                    <span>{weaponSummaries.length} weapons</span>
                 </div>
             </div>
+            ) : null}
         </Card>
     );
 };

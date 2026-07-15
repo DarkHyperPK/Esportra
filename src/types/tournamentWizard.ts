@@ -5,14 +5,26 @@ import type { BRScoringPreset } from './battleRoyale';
 export type BracketType = 'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin';
 export type TournamentType = 'bracket' | 'battle_royale';
 export type SeedingType = 'random' | 'manual' | 'skill_based';
+import type { LaunchState } from '@/utils/tournamentVisibilityUtils';
+
+/** @deprecated Use LaunchState — kept for localStorage draft migration only */
 export type Visibility = 'public' | 'unlisted';
 
+/**
+ * @deprecated Use StageRow or StageDto from @/types/stage.ts instead.
+ * Kept for wizard compatibility during migration.
+ */
 export interface TournamentStage {
     id?: string;
     name: string;
     format: BracketType;
     stage_order: number;
-    config?: any;
+    capacity?: number | null;
+    advancement_count?: number | null;
+    best_of?: number;
+    bo_mode?: 'per_stage' | 'per_round';
+    round_bo_overrides?: Record<string, number>;
+    config?: Record<string, unknown>;
 }
 
 export interface TournamentWizardData {
@@ -21,7 +33,7 @@ export interface TournamentWizardData {
     game: string;
     gameMode: string;
     isOnline: boolean;
-    visibility: Visibility;
+    launchState: LaunchState;
     startDate: string;
     startTime: string;
     endDate: string;
@@ -45,6 +57,8 @@ export interface TournamentWizardData {
     brCustomScoring: BRScoringPreset | null;
     brKillCap: number | null;
     brTiebreaker: 'most_wins' | 'most_kills' | 'head_to_head';
+    brDefaultLobbySize: number;
+    brDefaultMapMode: 'none' | 'fixed_stage' | 'per_round' | 'rotation';
 
     // Step 3: Branding
     bannerUrl: string | null;
@@ -65,6 +79,9 @@ export interface TournamentWizardData {
     autoRemoveUnchecked: boolean;
     waitlistEnabled: boolean;
     waitlistMax: number;
+    invitedTeamsEnabled: boolean;
+    reservedInviteSlots: number;
+    inviteExpiryDays: number;
 
     // Game-specific settings
     assistedMatchReporting: boolean;
@@ -78,6 +95,7 @@ export interface WizardStepProps {
     isEditMode?: boolean;
     tournamentId?: string;
     participantsCount?: number;
+    activeInvitationCount?: number;
 }
 
 export interface WizardStep {
@@ -103,13 +121,13 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     game: '',
     gameMode: '',
     isOnline: true,
-    visibility: 'unlisted',
+    launchState: 'draft',
     startDate: '',
     startTime: '',
     endDate: '',
     endTime: '',
     venue: '',
-    status: 'open',
+    status: 'draft',
 
     // Step 2
     tournamentType: 'bracket',
@@ -127,6 +145,8 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     brCustomScoring: null,
     brKillCap: null,
     brTiebreaker: 'most_wins',
+    brDefaultLobbySize: 100,
+    brDefaultMapMode: 'none',
 
     // Step 3
     bannerUrl: null,
@@ -147,6 +167,9 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     autoRemoveUnchecked: true,
     waitlistEnabled: false,
     waitlistMax: 10,
+    invitedTeamsEnabled: false,
+    reservedInviteSlots: 0,
+    inviteExpiryDays: 7,
 
     // Game-specific
     assistedMatchReporting: false,

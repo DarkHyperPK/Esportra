@@ -12,9 +12,9 @@ Only three primary colors are used across the platform.
 
 | Token            | Hex / Tailwind             | Used for |
 | ---------------- | -------------------------- | -------- |
-| **Matte black**  | `#0a0a0c` / `bg-[#0a0a0c]` | Default surface, navbar pill, dropdown panels, command surfaces. |
+| **Matte black**  | `#0a0a0c` / `text-matte-black`, `bg-matte-black` | Default surface, navbar pill, dropdown panels, command surfaces, button label on white. |
 | **White**        | `#ffffff` / `bg-white`     | Primary CTA fill, foreground text on dark, button surface. |
-| **Rose pink**    | `#f43f5e` / `rose-500`     | Sole accent. Hover fills, active rails, focus rings, single status accents. |
+| **Rose pink**    | `#f43f5e` / `rose-500`     | Sole accent. Hover fills, active fills, slide-up panels — not button borders or focus rings. |
 
 ### Allowed neutrals
 
@@ -75,9 +75,11 @@ import { ChevronRight } from "lucide-react";
 
 | Variant   | Surface          | Text   | Hover                                |
 | --------- | ---------------- | ------ | ------------------------------------ |
-| `primary` | `bg-white`       | black  | Rose-pink panel slides up from below |
-| `invert`  | `bg-[#0a0a0c]`   | white  | Rose-pink panel slides up from below |
+| `primary` | `bg-white`       | matte black (`text-matte-black`) | Rose-pink panel slides up from below |
+| `invert`  | `bg-matte-black` | white  | Rose-pink panel slides up from below |
 | `ghost`   | `bg-white/5` + border | white | Rose-pink panel slides up from below |
+
+Focus ring on all JackButton variants: `ring-white/30` (never rose).
 
 ### Sizes
 

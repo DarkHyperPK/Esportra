@@ -122,4 +122,3 @@ export const roleApi = {
     return await apiClient.put(`/api/users/${userId}/role`, { role });
   }
 };
-

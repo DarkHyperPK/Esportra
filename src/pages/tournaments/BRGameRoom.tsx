@@ -9,20 +9,29 @@ import {
   useBRGroupLeaderboard,
   useBRGroupRounds,
 } from '@/hooks/useBRGroupLeaderboard';
-import { useBRRoundEvidence, useBRCompletedRoundResults } from '@/hooks/useBRRounds';
+import { useBRLobbyEvidence, useBRCompletedLobbyResults } from '@/hooks/useBRLobbies';
+import { useBRGames } from '@/hooks/useBRGames';
 import { useBRRealtime } from '@/hooks/useBRRealtime';
-import { isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { isBattleRoyaleTournament, getBRConfig, getPersistedTournamentFormat } from '@/utils/gameFeatures';
+import { getQualificationCutoff } from '@/utils/brConfigResolve';
+import { useBRStageConfig } from '@/hooks/useBRStageConfig';
 import BRLeaderboard from '@/components/tournament/br/BRLeaderboard';
-import { Button } from '@/components/ui/button';
+import { Button, SuccessButton } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PremiumLoadingScreen } from '@/components/ui/PremiumLoadingScreen';
-import PremiumBackground from '@/components/ui/PremiumBackground';
 import {
   Trophy, Copy, ArrowLeft, Radio, Clock, CheckCircle, Key, Send,
-  Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown, Medal, Shield,
+  Target, Gamepad2, ImagePlus, X, AlertTriangle, ChevronDown, Medal, Shield, User, Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
+import { useGameCatalogGame } from '@/hooks/useGameCatalogGame';
+import { getMapImageUrl } from '@/utils/gameCatalogBr';
+import { resolveActiveBRGameMap, resolveActiveBRGameQueue, isBrGameLive } from '@/utils/brGameContext';
+import { BRMapCompact } from '@/components/organizer/br/BRMapOptionList';
+import { useBRLobbyReadiness } from '@/hooks/useBRLobbyReadiness';
+import { formatMatchPairingFromLabel, formatRoundLabel } from '@/utils/brWaveScheduleDisplay';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { BRScoringPreset } from '@/types/battleRoyale';
 
@@ -45,7 +54,9 @@ const BRGameRoom: React.FC = () => {
 
   const tournament = tournamentData?.tournament || tournamentData;
   const game = tournament?.game || '';
-  const isBR = isBattleRoyale(game);
+  const tournamentType = getPersistedTournamentFormat(tournament);
+  const isBR = isBattleRoyaleTournament(game, tournamentType);
+  const { data: catalogGame } = useGameCatalogGame(game);
   const [brStreamConnected, setBrStreamConnected] = useState(false);
 
   const { context, isInGroup, isLoading: contextLoading } = useBRPlayerContext(
@@ -57,7 +68,7 @@ const BRGameRoom: React.FC = () => {
   const { connected } = useBRRealtime({
     stageId: context.stageId,
     groupId: context.groupId,
-    roundId: context.activeRound?.id ?? null,
+    lobbyId: context.activeRound?.id ?? null,
     tournamentId: tournament?.id,
     enabled: Boolean(context.stageId && context.groupId),
   });
@@ -66,26 +77,45 @@ const BRGameRoom: React.FC = () => {
     setBrStreamConnected(connected);
   }, [connected]);
 
-  const fallbackPollingMs = connected ? false : 30_000;
+  const fallbackPollingMs = connected ? 60_000 : 30_000;
   const { leaderboard } = useBRGroupLeaderboard(
     context.stageId,
     context.groupId,
     { refetchIntervalMs: fallbackPollingMs },
   );
-  const { rounds, completedRounds, activeRound, totalRounds } = useBRGroupRounds(
+  const { rounds, activeRound } = useBRGroupRounds(
     context.stageId,
     context.groupId,
     { refetchIntervalMs: fallbackPollingMs, realtimeConnected: connected },
   );
-  const effectiveActiveRoundId = activeRound?.id ?? context.activeRound?.id ?? null;
+  const effectiveActiveRoundId = activeRound?.id ?? context.activeRound?.id ?? context.activeRound?.lobbyId ?? null;
   const hasActiveRound = Boolean(activeRound ?? context.activeRound);
-  const { evidence, submitEvidence, isSubmitting, refetch: refetchEvidence } = useBRRoundEvidence(
+  const _activeGameNumber = context.activeGame?.gameNumber ?? null;
+  const { data: lobbyGames = [] } = useBRGames(effectiveActiveRoundId, {
+    enabled: Boolean(effectiveActiveRoundId),
+  });
+  const activeGameFromLobby = useMemo(
+    () => lobbyGames.find((g) => g.status === 'active') ?? null,
+    [lobbyGames],
+  );
+  const liveGameNumber = activeGameFromLobby?.game_number ?? null;
+  const { evidence, submitEvidence, isSubmitting, refetch: refetchEvidence } = useBRLobbyEvidence(
     effectiveActiveRoundId,
     context.stageId,
     context.groupId,
-    { realtimeConnected: connected },
+    {
+      realtimeConnected: connected,
+      gameNumber: liveGameNumber ?? undefined,
+      gameId: activeGameFromLobby?.id ?? context.activeGame?.id ?? null,
+    },
   );
-  const { completedRounds: finishedRounds, resultsByRoundNumber } = useBRCompletedRoundResults(
+
+  const { data: tournamentStages = [] } = useQuery({
+    queryKey: ['tournament-stages', tournament?.id],
+    queryFn: () => apiClient.get<any[]>(`/api/tournaments/${tournament!.id}/stages`),
+    enabled: !!tournament?.id,
+  });
+  const { completedGameSlots, resultsByRoundNumber } = useBRCompletedLobbyResults(
     rounds,
     Boolean(context.groupId),
   );
@@ -142,7 +172,9 @@ const BRGameRoom: React.FC = () => {
     || brConf?.scoringPresets?.[brPresetKey]
     || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
   const brKillCap = brSettings?.brKillCap ?? brScoringPreset.killCap ?? null;
-  const brGameCount = context.totalRounds || brSettings?.brGameCount || brConf?.defaultGameCount || 6;
+  const gamesPerLobby = context.gamesPerLobby ?? brSettings?.brGameCount ?? brConf?.defaultGameCount ?? 6;
+  const totalGames = context.totalGames ?? ((context.totalRounds * gamesPerLobby) || gamesPerLobby);
+  const completedGames = context.completedGames ?? context.completedRounds ?? 0;
 
   const [reportPlacement, setReportPlacement] = useState<number>(1);
   const [reportKills, setReportKills] = useState<number>(0);
@@ -150,12 +182,82 @@ const BRGameRoom: React.FC = () => {
   const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [scheduleExpanded, setScheduleExpanded] = useState(false);
 
-  const activeRoundNumber = activeRound?.round_number ?? context.activeRound?.roundNumber ?? null;
+  const activeRoundNumber = activeRound?.round_number ?? context.activeRound?.waveNumber ?? context.activeRound?.roundNumber ?? null;
+  const activeMatchupRaw = context.activeRound?.matchupLabel ?? null;
+  const activeMatchup = activeMatchupRaw ? formatMatchPairingFromLabel(activeMatchupRaw) : null;
   const activeCode = activeRound?.lobby_code ?? context.activeRound?.lobbyCode ?? null;
-  const gamesCompleted = completedRounds || context.completedRounds;
-  const allGamesFinished = totalRounds > 0 && gamesCompleted >= totalRounds && !hasActiveRound;
+  const activeGameFromContext = context.activeGame;
+
+  const gameQueueFromLobby = useMemo(
+    () => resolveActiveBRGameQueue(lobbyGames),
+    [lobbyGames],
+  );
+  const usesPerGameQueue = Boolean(context.gamesModelActive);
+
+  const queueTimerMinutes = usesPerGameQueue
+    ? (activeGameFromContext?.queueTimerMinutes
+      ?? gameQueueFromLobby.queueTimerMinutes
+      ?? null)
+    : (activeRound?.queue_timer_minutes ?? context.activeRound?.queueTimerMinutes ?? null);
+  const queueStartedAt = usesPerGameQueue
+    ? (activeGameFromContext?.queueStartedAt
+      ?? gameQueueFromLobby.queueStartedAt
+      ?? null)
+    : (activeRound?.queue_started_at ?? context.activeRound?.queueStartedAt ?? null);
+  const [queueRemainingSec, setQueueRemainingSec] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!queueStartedAt || !queueTimerMinutes || queueTimerMinutes <= 0) {
+      setQueueRemainingSec(null);
+      return;
+    }
+    const endMs = new Date(queueStartedAt).getTime() + queueTimerMinutes * 60_000;
+    const tick = () => setQueueRemainingSec(Math.max(0, Math.ceil((endMs - Date.now()) / 1000)));
+    tick();
+    const timerId = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timerId);
+  }, [queueStartedAt, queueTimerMinutes]);
+
+  const activeStage = tournamentStages.find((item) => item.id === context.stageId);
+  const { config: resolvedStageConfig } = useBRStageConfig(context.stageId, {
+    tournamentSettings: tournament?.settings as Record<string, unknown> | undefined,
+    stage: activeStage ?? null,
+    gameName: game,
+    catalogBrConfig: catalogGame?.brConfig,
+  });
+
+  const qualificationCutoff = useMemo(() => {
+    if (!resolvedStageConfig) return undefined;
+    return getQualificationCutoff(resolvedStageConfig, 1);
+  }, [resolvedStageConfig]);
+  const activeMap = useMemo(() => {
+    if (!isBrGameLive(activeGameFromLobby?.status ?? context.activeGame?.status)) return null;
+    return activeGameFromLobby?.map ?? context.activeGame?.map ?? resolveActiveBRGameMap(lobbyGames) ?? null;
+  }, [activeGameFromLobby, context.activeGame, lobbyGames]);
+  const activeMapImageUrl = activeMap ? getMapImageUrl(catalogGame?.brConfig, activeMap) : null;
+  const activeGameStatus = useMemo(
+    () => activeGameFromLobby?.status ?? context.activeGame?.status ?? null,
+    [activeGameFromLobby?.status, context.activeGame?.status],
+  );
+  const isGameLive = isBrGameLive(activeGameStatus);
+  const isLobbyLive = hasActiveRound && !isGameLive;
+  const {
+    readyCount,
+    totalAssigned,
+    isReady,
+    checkIn,
+    checkOut,
+    isCheckingIn,
+  } = useBRLobbyReadiness(effectiveActiveRoundId, {
+    enabled: Boolean(effectiveActiveRoundId && isLobbyLive && userTeam),
+    realtimeConnected: connected,
+  });
+  const gamesCompleted = completedGames;
+  const allGamesFinished = totalGames > 0 && gamesCompleted >= totalGames && !hasActiveRound && !context.activeGame;
   const winner = allGamesFinished && leaderboard.length > 0 ? leaderboard[0] : null;
+  const progressPercent = totalGames > 0 ? Math.min(100, Math.round((gamesCompleted / totalGames) * 100)) : 0;
 
   const userRank = userTeam
     ? leaderboard.findIndex((e) => userEntityIds.has(e.teamId)) + 1
@@ -215,17 +317,22 @@ const BRGameRoom: React.FC = () => {
         imageUrl,
         placement: reportPlacement,
         kills: reportKills,
+        gameNumber: liveGameNumber ?? undefined,
       });
-
-      await refetchEvidence();
 
       toast({
         title: 'Evidence Submitted',
         description: `Placement: #${reportPlacement}, Kills: ${reportKills}. The organizer will review your submission.`,
       });
       clearEvidence();
+
+      try {
+        await refetchEvidence();
+      } catch {
+        // PUT succeeded; refetch failure should not look like a failed submission.
+      }
     } catch (error) {
-      const message = getApiErrorMessage(error, 'Could not submit your report. Please try again.');
+      const message = getApiErrorMessage(error, { context: 'brEvidence' });
       if (message.includes('409') || message.toLowerCase().includes('already')) {
         await refetchEvidence();
         clearEvidence();
@@ -263,120 +370,275 @@ const BRGameRoom: React.FC = () => {
   }
 
   if (!isInGroup) {
+    const hint = context.assignmentHint;
+    const message =
+      hint === 'check_in_required'
+        ? 'Check in to the tournament first. The organizer can only place checked-in players into a lobby.'
+        : hint === 'registered_not_seeded'
+          ? 'You are registered but not seeded into a group yet. Ask the organizer to run group seeding — once assigned, your game room will unlock.'
+          : hint === 'not_registered'
+            ? 'You are not registered for this tournament yet. Register first, then wait for the organizer to seed groups.'
+            : 'You are not assigned to a BR lobby yet. Ask the organizer to confirm you are seeded into a group.';
+
     return (
-      <PremiumBackground className="min-h-screen">
-        <div className="max-w-lg mx-auto px-4 py-16 text-center space-y-4">
+      <div className="esportra-ambient-page relative min-h-screen overflow-hidden text-white">
+        <div className="relative z-10 max-w-lg mx-auto px-4 py-16 text-center space-y-4">
           <Shield className="w-10 h-10 text-zinc-600 mx-auto" />
           <h1 className="text-lg font-bold text-white">{tournament.name}</h1>
-          <p className="text-sm text-zinc-400">
-            You are not assigned to a BR lobby yet. Check back once the organizer seeds groups.
-          </p>
+          <p className="text-sm text-zinc-400">{message}</p>
           <Button variant="outline" onClick={() => navigate(`/tournaments/${slug}`)}>Back to tournament</Button>
         </div>
-      </PremiumBackground>
+      </div>
     );
   }
 
   return (
-    <PremiumBackground className="min-h-screen">
+    <div className="esportra-ambient-page relative min-h-screen overflow-hidden text-white">
       <motion.div
-        className="max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-5"
+        className="relative z-10 max-w-3xl mx-auto px-4 py-6 sm:py-10 space-y-6"
         variants={stagger.container}
         initial="hidden"
         animate="visible"
       >
-        <motion.div variants={stagger.item} className="flex items-center gap-3">
-          <button
-            onClick={() => navigate(`/tournaments/${slug}`)}
-            className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/[0.08] hover:border-white/10 transition-all duration-200"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold text-white truncate tracking-tight">{tournament.name}</h1>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">{game}</span>
-              <span className="w-1 h-1 rounded-full bg-zinc-700" />
-              <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Battle Royale</span>
-              {context.groupName && (
-                <>
-                  <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                  <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest truncate">{context.groupName}</span>
-                </>
-              )}
-              <span className="w-1 h-1 rounded-full bg-zinc-700" />
-              <span className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">
-                {gamesCompleted}/{totalRounds || brGameCount} Rounds
-              </span>
+        {/* Header */}
+        <motion.header variants={stagger.item} className="space-y-4">
+          <div className="flex items-start gap-3">
+            <button
+              onClick={() => navigate(`/tournaments/${slug}`)}
+              className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+              aria-label="Back to tournament"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.22em]">Game Room</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-white truncate tracking-tight mt-0.5">
+                {tournament.name}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                {context.stageName && (
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.06]">
+                    {context.stageName}
+                  </span>
+                )}
+                {context.groupName && (
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider px-2 py-0.5 rounded-md bg-white/[0.03] border border-white/[0.05]">
+                    {context.groupName}
+                  </span>
+                )}
+                {activeMatchup && (
+                  <span className="text-[10px] font-mono text-zinc-500">{activeMatchup}</span>
+                )}
+              </div>
+            </div>
+            {connected && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">Live</span>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0a0a0c]/60 backdrop-blur-md p-4">
+            <div className="flex items-center justify-between text-xs text-zinc-500 mb-2">
+              <span className="font-medium uppercase tracking-wider">Progress</span>
+              <span className="font-mono text-zinc-400">{gamesCompleted} / {totalGames} games</span>
+            </div>
+            <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+              <motion.div
+                className="h-full rounded-full bg-green-600"
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPercent}%` }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+              />
             </div>
           </div>
-          {userTeam && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/[0.08] border border-rose-500/20">
-              <Shield className="w-3.5 h-3.5 text-rose-400" />
-              <span className="text-xs font-semibold text-rose-300 truncate max-w-[120px]">{userTeam.name}</span>
-            </div>
-          )}
-        </motion.div>
+        </motion.header>
+
+        {context.lobbies && context.lobbies.length > 0 && (
+          <motion.div variants={stagger.item}>
+            <button
+              type="button"
+              onClick={() => setScheduleExpanded((prev) => !prev)}
+              className="w-full flex items-center justify-between rounded-2xl border border-white/[0.08] bg-[#0a0a0c]/50 px-4 py-3 text-left hover:bg-white/[0.03] transition-colors"
+            >
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5" />
+                Game schedule
+              </span>
+              <motion.div animate={{ rotate: scheduleExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                <ChevronDown className="w-4 h-4 text-zinc-600" />
+              </motion.div>
+            </button>
+            <AnimatePresence>
+              {scheduleExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-2 space-y-2 rounded-2xl border border-white/[0.06] bg-[#0a0a0c]/40 p-3">
+                    {context.lobbies.map((lobby) => (
+                      <div key={lobby.lobbyId} className="rounded-xl border border-white/[0.05] p-3">
+                        <p className="text-sm text-zinc-300 font-medium">
+                          {formatRoundLabel(lobby.waveNumber)}
+                          {lobby.matchupLabel ? ` · ${formatMatchPairingFromLabel(lobby.matchupLabel)}` : ''}
+                        </p>
+                        <ul className="mt-2 space-y-1.5">
+                          {lobby.games.map((gameItem) => (
+                            <li key={gameItem.id} className="flex justify-between gap-3 text-xs text-zinc-500">
+                              <span>
+                                Game {gameItem.gameNumber}
+                                {gameItem.map ? ` · ${gameItem.map}` : ''}
+                                <span className="ml-2 text-[10px] uppercase text-zinc-600">{gameItem.status}</span>
+                              </span>
+                              <span className="text-zinc-600 shrink-0">
+                                {gameItem.scheduledAt
+                                  ? new Date(gameItem.scheduledAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                  : 'TBD'}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
 
         {activeRoundNumber ? (
           <motion.div variants={stagger.item}>
-            <div className="relative rounded-2xl overflow-hidden">
-              <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-rose-500/40 via-rose-500/10 to-rose-500/40 animate-pulse" />
-              <Card className="relative bg-[#0a0a0c]/90 backdrop-blur-xl border-0 rounded-2xl overflow-hidden">
-                <div className="h-[2px] bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
+            <Card className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl overflow-hidden shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+              <div className={cn(
+                'h-[3px]',
+                isGameLive
+                  ? 'bg-gradient-to-r from-transparent via-green-500 to-transparent'
+                  : 'bg-gradient-to-r from-transparent via-zinc-600 to-transparent',
+              )} />
 
-                <CardHeader className="pb-0 pt-5 px-5 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <div className="w-11 h-11 bg-rose-500/15 rounded-xl flex items-center justify-center border border-rose-500/20">
-                          <Gamepad2 className="w-5 h-5 text-rose-400" />
-                        </div>
-                        <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-rose-500 rounded-full border-2 border-[#0a0a0c] animate-pulse" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base sm:text-lg font-bold text-white tracking-tight">
-                          Round {activeRoundNumber}
-                        </CardTitle>
-                        <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest mt-0.5">
-                          {gamesCompleted} of {totalRounds || brGameCount} completed
-                        </p>
-                      </div>
+              <CardHeader className="pb-0 pt-5 px-5 sm:px-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className={cn(
+                      'w-11 h-11 rounded-xl flex items-center justify-center border flex-shrink-0',
+                      isGameLive
+                        ? 'bg-green-600/15 border-green-600/25'
+                        : 'bg-white/[0.04] border-white/[0.08]',
+                    )}>
+                      <Gamepad2 className={cn('w-5 h-5', isGameLive ? 'text-green-400' : 'text-zinc-400')} />
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20">
-                      <Radio className="w-3 h-3 text-rose-400 animate-pulse" />
-                      <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">Live</span>
+                    <div className="min-w-0">
+                      <CardTitle className="text-base sm:text-lg font-bold text-white tracking-tight">
+                        {liveGameNumber
+                          ? `Game ${liveGameNumber}`
+                          : formatRoundLabel(activeRoundNumber)}
+                        {activeMatchup ? ` · ${activeMatchup}` : ''}
+                      </CardTitle>
+                      <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mt-1">
+                        {isGameLive ? 'Match in progress — report when finished' : 'Join the lobby below'}
+                      </p>
                     </div>
                   </div>
-                </CardHeader>
+                  <div className={cn(
+                    'flex items-center gap-2 px-3 py-1 rounded-full border flex-shrink-0',
+                    isGameLive
+                      ? 'bg-green-600/10 border-green-600/25'
+                      : 'bg-white/[0.03] border-white/[0.08]',
+                  )}>
+                    <Radio className={cn('w-3 h-3', isGameLive ? 'text-green-400 animate-pulse' : 'text-zinc-500')} />
+                    <span className={cn(
+                      'text-[10px] font-bold uppercase tracking-widest',
+                      isGameLive ? 'text-green-400' : 'text-zinc-400',
+                    )}>
+                      {isGameLive ? 'In game' : 'Lobby live'}
+                    </span>
+                  </div>
+                </div>
+              </CardHeader>
 
                 <CardContent className="p-5 sm:p-6 space-y-5">
-                  {activeCode ? (
-                    <div className="relative rounded-xl overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.06] to-transparent" />
-                      <div className="relative p-4 border border-emerald-500/15 rounded-xl">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Key className="w-3.5 h-3.5 text-emerald-500/60" />
-                          <span className="text-[10px] text-emerald-500/60 font-bold uppercase tracking-widest">Lobby Code</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1 bg-black/40 rounded-lg px-5 py-3 border border-emerald-500/10">
-                            <span className="text-2xl sm:text-3xl font-mono font-black text-emerald-400 tracking-[0.2em] select-all">
-                              {activeCode}
-                            </span>
+                  {queueRemainingSec != null && queueRemainingSec > 0 && (
+                    <div className="flex items-center justify-between rounded-xl border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-amber-400" />
+                        <span className="text-xs font-semibold text-amber-200 uppercase tracking-wider">
+                          {usesPerGameQueue || isGameLive ? 'Queue closes in' : 'Lobby queue closes in'}
+                        </span>
+                      </div>
+                      <span className="text-lg font-mono font-bold text-amber-300 tabular-nums">
+                        {String(Math.floor(queueRemainingSec / 60)).padStart(2, '0')}:
+                        {String(queueRemainingSec % 60).padStart(2, '0')}
+                      </span>
+                    </div>
+                  )}
+
+                  {BR_FEATURE_FLAGS.mapsEnabled && isGameLive && activeMap && (
+                    <BRMapCompact mapName={activeMap} imageUrl={activeMapImageUrl} />
+                  )}
+
+                  {userTeam && isLobbyLive && activeCode && (
+                    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Users className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">Lobby readiness</p>
+                            <p className="text-sm text-zinc-300">
+                              {readyCount}/{totalAssigned || '—'} teams checked in
+                            </p>
                           </div>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => {
-                              navigator.clipboard.writeText(activeCode);
-                              toast({ title: 'Copied!' });
-                            }}
-                            className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-                          >
-                            <Copy className="w-5 h-5" />
-                          </motion.button>
                         </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={isReady ? 'outline' : 'default'}
+                          disabled={isCheckingIn}
+                          onClick={() => { void (isReady ? checkOut() : checkIn()); }}
+                          className={cn(
+                            'flex-shrink-0',
+                            !isReady && 'bg-emerald-600 hover:bg-emerald-500 text-white',
+                          )}
+                        >
+                          {isReady ? 'Undo check-in' : "I'm in the lobby"}
+                        </Button>
+                      </div>
+                      {isReady && (
+                        <p className="text-xs text-emerald-400/90 flex items-center gap-1.5">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Organizer can see you are ready.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {activeCode ? (
+                    <div className="rounded-2xl border border-green-600/20 bg-green-600/[0.06] p-4 sm:p-5">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Key className="w-4 h-4 text-green-500/80" />
+                        <span className="text-[10px] text-green-500/80 font-bold uppercase tracking-[0.2em]">Lobby Code</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-black/30 rounded-xl px-5 py-4 border border-green-600/15">
+                          <span className="text-2xl sm:text-3xl font-mono font-black text-green-400 tracking-[0.25em] select-all">
+                            {activeCode}
+                          </span>
+                        </div>
+                        <motion.button
+                          whileHover={{ scale: 1.04 }}
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => {
+                            navigator.clipboard.writeText(activeCode);
+                            toast({ title: 'Copied!' });
+                          }}
+                          className="w-12 h-12 rounded-xl bg-green-600/15 border border-green-600/30 flex items-center justify-center text-green-400 hover:bg-green-600/25 transition-colors"
+                          aria-label="Copy lobby code"
+                        >
+                          <Copy className="w-5 h-5" />
+                        </motion.button>
                       </div>
                     </div>
                   ) : (
@@ -387,7 +649,23 @@ const BRGameRoom: React.FC = () => {
                     </div>
                   )}
 
-                  {userTeam && !userAlreadySubmitted && (
+                  {userTeam && !isGameLive && !userAlreadySubmitted && activeCode && (
+                    <div className="flex items-start gap-3 px-4 py-3 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+                      <Clock className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-zinc-300 font-medium">
+                          {liveGameNumber
+                            ? `Game ${liveGameNumber} hasn't started yet`
+                            : 'Waiting for the match to start'}
+                        </p>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          Join with the lobby code above. Result reporting opens when the organizer starts the game.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {userTeam && isGameLive && !userAlreadySubmitted && (
                     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-4">
                       <div className="flex items-center gap-2">
                         <Target className="w-3.5 h-3.5 text-zinc-500" />
@@ -407,7 +685,7 @@ const BRGameRoom: React.FC = () => {
                                 const v = parseInt(e.target.value) || 1;
                                 setReportPlacement(Math.max(1, Math.min(100, v)));
                               }}
-                              className="h-11 text-center text-lg font-bold pl-7 bg-black/30 border-white/[0.06] focus:border-rose-500/40 [color-scheme:dark]"
+                              className="h-11 text-center text-lg font-bold pl-7 bg-black/30 border-white/[0.06] focus:border-green-600/40 [color-scheme:dark]"
                             />
                           </div>
                         </div>
@@ -419,7 +697,7 @@ const BRGameRoom: React.FC = () => {
                             max={brKillCap || 99}
                             value={reportKills}
                             onChange={(e) => setReportKills(Math.max(0, Math.min(brKillCap || 99, parseInt(e.target.value) || 0)))}
-                            className="h-11 text-center text-lg font-bold bg-black/30 border-white/[0.06] focus:border-rose-500/40 [color-scheme:dark]"
+                            className="h-11 text-center text-lg font-bold bg-black/30 border-white/[0.06] focus:border-green-600/40 [color-scheme:dark]"
                           />
                         </div>
                       </div>
@@ -443,7 +721,7 @@ const BRGameRoom: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            className="w-full h-24 border border-dashed border-zinc-800 hover:border-rose-500/30 rounded-xl flex flex-col items-center justify-center gap-1.5 text-zinc-600 hover:text-zinc-400 transition-all duration-200 bg-black/20"
+                            className="w-full h-24 border border-dashed border-zinc-800 hover:border-green-600/30 rounded-xl flex flex-col items-center justify-center gap-1.5 text-zinc-600 hover:text-zinc-400 transition-all duration-200 bg-black/20"
                           >
                             <ImagePlus className="w-5 h-5" />
                             <span className="text-[10px] font-semibold uppercase tracking-wider">Upload screenshot</span>
@@ -458,22 +736,15 @@ const BRGameRoom: React.FC = () => {
                         />
                       </div>
 
-                      <motion.button
+                      <SuccessButton
                         type="button"
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.98 }}
                         onClick={submitReport}
                         disabled={isSubmitting || !evidenceFile}
-                        className={cn(
-                          'w-full h-11 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200',
-                          evidenceFile
-                            ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-[0_0_20px_rgba(244,63,94,0.2)]'
-                            : 'bg-zinc-900 text-zinc-600 cursor-not-allowed border border-white/[0.04]',
-                        )}
+                        className="w-full h-11"
                       >
                         <Send className="w-4 h-4" />
                         {isSubmitting ? 'Submitting...' : 'Submit Report'}
-                      </motion.button>
+                      </SuccessButton>
                       <p className="text-[9px] text-zinc-700 text-center">
                         The organizer will verify your results and finalize scores.
                       </p>
@@ -484,16 +755,15 @@ const BRGameRoom: React.FC = () => {
                     <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/15">
                       <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                       <p className="text-sm text-emerald-300/80">
-                        Evidence submitted for Round {activeRoundNumber}.
+                        Evidence submitted for {liveGameNumber ? `Game ${liveGameNumber}` : formatRoundLabel(activeRoundNumber)}.
                         {userEvidence?.reviewed
-                          ? ' Your submission has been reviewed.'
+                          ? ' Your reported result has been approved.'
                           : ' Awaiting organizer review.'}
                       </p>
                     </div>
                   )}
                 </CardContent>
               </Card>
-            </div>
           </motion.div>
         ) : allGamesFinished || winner ? (
           <motion.div variants={stagger.item}>
@@ -533,7 +803,7 @@ const BRGameRoom: React.FC = () => {
                 </div>
                 <h3 className="text-base font-bold text-white tracking-tight mb-1">Waiting for Next Round</h3>
                 <p className="text-sm text-zinc-500 max-w-xs">
-                  {gamesCompleted} of {totalRounds || brGameCount} rounds completed. The organizer will start the next round soon.
+                  {gamesCompleted} of {totalGames} games completed. The organizer will start the next game soon.
                 </p>
               </CardContent>
             </Card>
@@ -542,7 +812,7 @@ const BRGameRoom: React.FC = () => {
 
         {userTeam && userEntry && (
           <motion.div variants={stagger.item}>
-            <Card className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl overflow-hidden">
+            <Card className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.08] rounded-2xl overflow-hidden">
               <div className={cn(
                 'h-[2px]',
                 userRank === 1 ? 'bg-gradient-to-r from-transparent via-amber-400 to-transparent' :
@@ -560,17 +830,20 @@ const BRGameRoom: React.FC = () => {
                   )}>
                     #{userRank}
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-white tracking-tight">Your Standing</p>
-                    <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest">
-                      {userEntry.gamesPlayed} round{userEntry.gamesPlayed !== 1 ? 's' : ''} played
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                      <User className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
+                      <span className="truncate">{userTeam.name}</span>
+                    </p>
+                    <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest mt-0.5">
+                      Your standing · {userEntry.gamesPlayed} round{userEntry.gamesPlayed !== 1 ? 's' : ''} played
                     </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-4 gap-3">
                   {[
                     { label: 'Points', value: userEntry.totalPoints, color: 'text-white' },
-                    { label: 'Kills', value: userEntry.totalKills, color: 'text-rose-400' },
+                    { label: 'Kills', value: userEntry.totalKills, color: 'text-green-400' },
                     { label: 'Best', value: `#${userEntry.bestPlacement === 999 ? '-' : userEntry.bestPlacement}`, color: 'text-emerald-400' },
                     { label: 'Wins', value: userEntry.wins, color: 'text-amber-400' },
                   ].map((stat) => (
@@ -608,21 +881,28 @@ const BRGameRoom: React.FC = () => {
                   transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
                   className="overflow-hidden space-y-2"
                 >
-                  {finishedRounds.map((round) => {
-                    const results = resultsByRoundNumber.get(round.round_number) ?? [];
+                  {completedGameSlots.map((slot) => {
+                    const roundOrdinal = slot.lobby.round_number ?? slot.lobby.wave_number;
+                    const resultKey = slot.gameNumber > 1
+                      ? roundOrdinal * 100 + slot.gameNumber
+                      : roundOrdinal;
+                    const results = resultsByRoundNumber.get(resultKey) ?? [];
                     const userResult = userTeam
                       ? results.find((r) => userEntityIds.has(r.team_id))
                       : null;
+                    const label = slot.gameNumber > 1
+                      ? `${formatRoundLabel(roundOrdinal)} · Game ${slot.gameNumber}`
+                      : formatRoundLabel(roundOrdinal);
                     return (
                       <div
-                        key={round.id}
+                        key={`${slot.lobby.id}-${slot.gameNumber}`}
                         className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.03] transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center">
                             <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                           </div>
-                          <span className="text-sm font-semibold text-zinc-300">Round {round.round_number}</span>
+                          <span className="text-sm font-semibold text-zinc-300">{label}</span>
                         </div>
                         {userResult ? (
                           <div className="flex items-center gap-3 text-xs">
@@ -633,7 +913,7 @@ const BRGameRoom: React.FC = () => {
                             )}>
                               #{userResult.placement}
                             </span>
-                            <span className="text-rose-400 font-medium">{userResult.kills} kills</span>
+                            <span className="text-green-400 font-medium">{userResult.kills} kills</span>
                             <span className="text-white font-bold">{userResult.total_points} pts</span>
                           </div>
                         ) : (
@@ -651,8 +931,9 @@ const BRGameRoom: React.FC = () => {
         <motion.div variants={stagger.item}>
           <BRLeaderboard
             entries={leaderboard}
-            totalGames={totalRounds || brGameCount}
+            totalGames={totalGames}
             gamesCompleted={gamesCompleted}
+            qualificationCutoff={qualificationCutoff}
           />
         </motion.div>
 
@@ -669,7 +950,7 @@ const BRGameRoom: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate(`/user/raise-dispute?tournament_id=${tournament.id}`)}
-                className="text-xs text-zinc-500 hover:text-rose-400 border border-white/[0.06] hover:border-rose-500/20 rounded-lg px-3 py-1.5 h-auto flex-shrink-0"
+                className="text-xs text-zinc-500 hover:text-rose-400 border border-white/[0.06] hover:border-white/20 rounded-lg px-3 py-1.5 h-auto flex-shrink-0"
               >
                 Raise Dispute
               </Button>
@@ -677,7 +958,7 @@ const BRGameRoom: React.FC = () => {
           </motion.div>
         )}
       </motion.div>
-    </PremiumBackground>
+    </div>
   );
 };
 

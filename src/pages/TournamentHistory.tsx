@@ -6,6 +6,7 @@ import { Trophy, Calendar, Search, Users, Crown, ChevronRight } from "lucide-rea
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion } from 'framer-motion';
+import { OutlineButton } from '@/components/ui/app-buttons';
 import { useRawgGame } from '@/hooks/useRawgGame';
 
 interface HistoryCardProps {
@@ -250,13 +251,12 @@ const TournamentHistoryPage = () => {
                                             : 'There are no completed tournaments in the archive yet.'}
                                     </p>
                                     {searchQuery && (
-                                        <Button
-                                            variant="outline"
-                                            className="mt-6 border-white/10 hover:bg-white/5"
+                                        <OutlineButton
+                                            className="mt-6"
                                             onClick={() => setSearchQuery('')}
                                         >
                                             Clear Search
-                                        </Button>
+                                        </OutlineButton>
                                     )}
                                 </motion.div>
                             )}

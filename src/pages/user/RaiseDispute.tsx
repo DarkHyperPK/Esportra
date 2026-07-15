@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -319,29 +318,18 @@ const RaiseDispute = () => {
       // Upload evidence if provided
       if (evidenceFile) {
         setUploading(true);
-        const fileExt = evidenceFile.name.split('.').pop();
-        
-        let fileName: string;
-        if (disputeType === 'general') {
-          // General support: temp/general/{user_id}-{timestamp}.{ext}
-          fileName = `temp/general/${user.id}-${Date.now()}.${fileExt}`;
-        } else {
-          // Tournament dispute: temp/{tournament_id}/{dispute_reason}/{user_id}-{timestamp}.{ext}
-          const reasonSlug = disputeReason?.toLowerCase().replace(/\s+/g, '_') || 'general';
-          fileName = `temp/${selectedTournament}/${reasonSlug}/${user.id}-${Date.now()}.${fileExt}`;
-        }
-        
-        const { error: uploadError } = await supabase.storage
-          .from('tournaments.disputes.evidence')
-          .upload(fileName, evidenceFile, { upsert: false });
 
-        if (uploadError) throw uploadError;
+        const reasonSlug = disputeReason?.toLowerCase().replace(/\s+/g, '_') || 'general';
+        const folder = disputeType === 'general'
+          ? `temp/general`
+          : `temp/${selectedTournament}/${reasonSlug}`;
 
-        const { data: urlData } = supabase.storage
-          .from('tournaments.disputes.evidence')
-          .getPublicUrl(fileName);
-
-        evidenceUrl = urlData.publicUrl;
+        const fd = new FormData();
+        fd.append('file', evidenceFile);
+        fd.append('bucket', 'tournaments.disputes.evidence');
+        fd.append('folder', folder);
+        const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
+        evidenceUrl = url;
         setUploading(false);
       }
 

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { CancelButton, CtaButton, GhostButton, OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from "@/components/ui/input";
 import { Calendar, Clock, Check, X, ArrowRightLeft, AlertCircle } from 'lucide-react';
 import { useTimeProposal } from '@/hooks/useTimeProposal';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
-import { getTimezoneAbbr, utcToLocalDate } from '@/lib/timeUtils';
+import { getTimezoneAbbr, utcToLocalDate, utcToLocalTime } from '@/lib/timeUtils';
 import { Countdown } from '@/components/ui/Countdown';
 
 interface TimeProposalCardProps {
@@ -17,7 +19,11 @@ interface TimeProposalCardProps {
     userTeamId: string | undefined;
     team1Id: string | undefined;
     isCaptain: boolean;
-    onTimeAccepted?: () => void;
+    /** Tournament start time — offers a one-click propose for round 1 self-play. */
+    suggestedStartTime?: string | null;
+    onTimeAccepted?: (acceptedTime: string) => void;
+    /** When false, parent page handles MatchHub realtime (avoids duplicate JoinMatch). */
+    subscribeRealtime?: boolean;
 }
 
 const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
@@ -28,19 +34,26 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
     userTeamId: _userTeamId,
     team1Id: _team1Id,
     isCaptain,
+    suggestedStartTime = null,
     onTimeAccepted,
+    subscribeRealtime = true,
 }) => {
     const { user } = useAuth();
-    const { activeProposal, acceptedProposal, proposeTime, acceptProposal, rejectProposal, counterProposal } = useTimeProposal(matchId);
+    const { activeProposal, acceptedProposal, proposeTime, acceptProposal, rejectProposal, counterProposal } = useTimeProposal(matchId, { subscribeRealtime });
 
     const [showPicker, setShowPicker] = useState(false);
     const [proposedDate, setProposedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
     const [proposedTime, setProposedTime] = useState<string>('20:00');
     const [showCounter, setShowCounter] = useState(false);
 
-    console.log('[TimeProposalCard] Match:', matchId, 'Deadline:', roundDeadline);
-
     const isMyProposal = activeProposal?.proposed_by === user?.id;
+
+    const handleProposeSuggestedStart = async () => {
+        if (!suggestedStartTime) return;
+        const start = new Date(suggestedStartTime);
+        if (Number.isNaN(start.getTime())) return;
+        await proposeTime.mutateAsync(start);
+    };
 
     const handlePropose = async () => {
         // Convert local date+time to a Date object (interpreted as local time)
@@ -51,8 +64,9 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
 
     const handleAccept = async () => {
         if (activeProposal) {
+            const acceptedTime = activeProposal.proposed_time;
             await acceptProposal.mutateAsync(activeProposal.id);
-            onTimeAccepted?.();
+            onTimeAccepted?.(acceptedTime);
         }
     };
 
@@ -163,15 +177,45 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                 </div>
 
                 <div className="p-4 space-y-4">
-                    {/* No active proposal - show propose button */}
+                    {/* No active proposal - show propose buttons */}
                     {!activeProposal && !showPicker && isCaptain && (
-                        <Button
-                            onClick={() => setShowPicker(true)}
-                            className="w-full bg-rose-500 hover:bg-rose-600 transition-all text-white font-semibold"
-                        >
-                            <Calendar className="w-4 h-4 mr-2" />
-                            Propose Match Time
-                        </Button>
+                        <div className="space-y-2">
+                            {suggestedStartTime && (
+                                <SuccessButton type="button"
+                                    onClick={() => void handleProposeSuggestedStart()}
+                                    disabled={proposeTime.isPending}
+                                    className="w-full font-semibold"
+                                >
+                                    <Clock className="w-4 h-4 mr-2" />
+                                    {proposeTime.isPending
+                                        ? 'Sending...'
+                                        : `Propose tournament start (${format(new Date(suggestedStartTime), 'MMM d, h:mm a')} ${getTimezoneAbbr()})`}
+                                </SuccessButton>
+                            )}
+                            {suggestedStartTime ? (
+                              <OutlineButton type="button"
+                                onClick={() => {
+                                    if (suggestedStartTime) {
+                                        setProposedDate(utcToLocalDate(suggestedStartTime));
+                                        setProposedTime(utcToLocalTime(suggestedStartTime));
+                                    }
+                                    setShowPicker(true);
+                                }}
+                                className="w-full"
+                              >
+                                <Calendar className="w-4 h-4 mr-2" />
+                                Pick a different time
+                              </OutlineButton>
+                            ) : (
+                              <CtaButton type="button"
+                                onClick={() => setShowPicker(true)}
+                                className="w-full font-semibold"
+                              >
+                                <Calendar className="w-4 h-4 mr-2" />
+                                Propose Match Time
+                              </CtaButton>
+                            )}
+                        </div>
                     )}
 
                     {/* Time picker */}
@@ -223,20 +267,18 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                                 })()
                             )}
                             <div className="flex gap-2">
-                                <Button
+                                <button type="button"
                                     onClick={handlePropose}
                                     disabled={proposeTime.isPending || (roundDeadline && new Date(`${proposedDate}T${proposedTime}`) > new Date(roundDeadline))}
-                                    className="flex-1 bg-blue-600 hover:bg-blue-700"
+                                    className={cn(buttonVariants(), 'flex-1 border-transparent bg-blue-600 hover:bg-blue-700')}
                                 >
                                     {proposeTime.isPending ? 'Sending...' : 'Send Proposal'}
-                                </Button>
-                                <Button
-                                    variant="ghost"
+                                </button>
+                                <CancelButton type="button"
                                     onClick={() => setShowPicker(false)}
-                                    className="border-zinc-700"
                                 >
                                     Cancel
-                                </Button>
+                                </CancelButton>
                             </div>
                         </div>
                     )}
@@ -275,33 +317,29 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                             {/* Opponent's proposal - show actions */}
                             {!isMyProposal && isCaptain && (
                                 <div className="space-y-2">
-                                    <Button
+                                    <SuccessButton type="button"
                                         onClick={handleAccept}
                                         disabled={acceptProposal.isPending}
-                                        className="w-full bg-emerald-600 hover:bg-emerald-700"
+                                        className="w-full"
                                     >
                                         <Check className="w-4 h-4 mr-2" />
                                         Accept Time
-                                    </Button>
+                                    </SuccessButton>
 
                                     <div className="grid grid-cols-2 gap-2">
-                                        <Button
+                                        <OutlineButton type="button"
                                             onClick={() => setShowCounter(true)}
-                                            variant="outline"
-                                            className="border-zinc-700 hover:bg-zinc-800"
                                         >
                                             <ArrowRightLeft className="w-4 h-4 mr-2" />
                                             Counter
-                                        </Button>
-                                        <Button
+                                        </OutlineButton>
+                                        <GhostButton type="button"
                                             onClick={handleReject}
                                             disabled={rejectProposal.isPending}
-                                            variant="outline"
-                                            className="border-red-500/50 text-red-400 hover:bg-red-500/10"
                                         >
                                             <X className="w-4 h-4 mr-2" />
                                             Decline
-                                        </Button>
+                                        </GhostButton>
                                     </div>
                                 </div>
                             )}
@@ -343,19 +381,19 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                                         })()
                                     )}
                                     <div className="flex gap-2">
-                                        <Button
+                                        <button type="button"
                                             onClick={handleCounter}
                                             disabled={counterProposal.isPending || (roundDeadline && new Date(`${proposedDate}T${proposedTime}`) > new Date(roundDeadline))}
-                                            className="flex-1 bg-purple-600 hover:bg-purple-700"
+                                            className={cn(buttonVariants(), 'flex-1 border-transparent bg-purple-600 hover:bg-purple-700')}
                                         >
                                             Send Counter
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
+                                        </button>
+                                        <CancelButton
+                                            type="button"
                                             onClick={() => setShowCounter(false)}
                                         >
                                             Cancel
-                                        </Button>
+                                        </CancelButton>
                                     </div>
                                 </div>
                             )}

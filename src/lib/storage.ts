@@ -10,6 +10,29 @@ if (!SUPABASE_URL) {
 }
 export const STORAGE_ROOT = `${SUPABASE_URL}/storage/v1/object/public`;
 
+/** Rewrites legacy prod storage URLs to the current Supabase project (staging/local). */
+export function normalizeStorageUrl(url?: string | null): string | undefined {
+    if (!url) return undefined;
+    const trimmed = url.trim();
+    if (!trimmed) return undefined;
+
+    if (trimmed.startsWith('/')) {
+        return `${SUPABASE_URL}${trimmed}`;
+    }
+
+    try {
+        const parsed = new URL(trimmed);
+        if (!parsed.pathname.includes('/storage/v1/object/')) return trimmed;
+
+        const stagingHost = new URL(SUPABASE_URL).host;
+        if (parsed.host === stagingHost) return trimmed;
+
+        return `${SUPABASE_URL}${parsed.pathname}${parsed.search}`;
+    } catch {
+        return trimmed;
+    }
+}
+
 /**
  * Generates a full Supabase storage URL for a given bucket and path.
  * 
@@ -34,3 +57,16 @@ export const getStorageUrl = (bucket: string, path: string): string => {
 export const getWebsiteAssetUrl = (path: string): string => {
     return getStorageUrl('system.assets.website', path);
 };
+
+/** Build a stable public URL from a payment_receipt_url DB ref or legacy full URL. */
+export function resolvePaymentReceiptUrl(receiptRef?: string | null): string | undefined {
+    if (!receiptRef?.trim()) return undefined;
+
+    const trimmed = receiptRef.trim();
+    if (trimmed.startsWith('http')) return normalizeStorageUrl(trimmed);
+
+    const slash = trimmed.indexOf('/');
+    if (slash <= 0) return undefined;
+
+    return getStorageUrl(trimmed.slice(0, slash), trimmed.slice(slash + 1));
+}

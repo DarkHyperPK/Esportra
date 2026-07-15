@@ -1,9 +1,8 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { CheckCircle, Sword, Shield as ShieldIcon } from 'lucide-react';
+import { CancelButton, CtaButton, GhostButton } from '@/components/ui/app-buttons';
 import { cn } from '@/lib/utils';
-import { MatchMapVeto, getVetoFormat, getSidePickerTeam, GameMap } from '@/hooks/useMapVetoMachine';
+import { MatchMapVeto, getVetoFormat, getSidePickerTeam, GameMap, VetoService } from '@/hooks/useMapVetoMachine';
 
 interface VetoDialogsProps {
     showRoleSwitchPrompt: boolean;
@@ -31,6 +30,7 @@ interface VetoDialogsProps {
 
     team1Name: string;
     team2Name: string;
+    game?: string;
 
     // Props for compatibility if passed from parent but unused
     dialogStep?: any;
@@ -60,38 +60,36 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
     team1Name,
     team2Name,
     bestOf,
+    game = 'valorant',
 }) => {
     return (
         <>
             {/* Role Switch Prompt */}
             <Dialog open={showRoleSwitchPrompt} onOpenChange={setShowRoleSwitchPrompt}>
-                <DialogContent className="bg-gray-900 border-gray-700">
+                <DialogContent className="bg-zinc-950 border-white/10">
                     <DialogHeader>
                         <DialogTitle className="text-white text-xl font-black">Switch Role Required</DialogTitle>
-                        <DialogDescription className="text-gray-400">
+                        <DialogDescription className="text-zinc-400">
                             You are currently in organizer mode, but you are also the captain of one of the teams in this match.
                             To participate in the map veto process, you need to switch to player role.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                        <p className="text-gray-300 mb-4">
+                        <p className="text-zinc-300 mb-4">
                             As an organizer, you can only view the veto process. To make picks/bans, switch to player role.
                         </p>
                     </div>
                     <DialogFooter>
-                        <Button
+                        <GhostButton type="button"
                             onClick={() => setShowRoleSwitchPrompt(false)}
-                            variant="outline"
-                            className="bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
                         >
                             Stay as Organizer (View Only)
-                        </Button>
-                        <Button
+                        </GhostButton>
+                        <CtaButton
                             onClick={handleRoleSwitch}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
                         >
                             Switch to Player Role
-                        </Button>
+                        </CtaButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -110,7 +108,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                             Choose the format for this match. This will determine the map veto sequence.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-8">
+                    <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-8 py-6 sm:py-8" data-lenis-prevent>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-2xl mx-auto">
                             {[1, 3, 5].map((bo) => {
                                 const isSelected = selectedBO === bo;
@@ -125,10 +123,10 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                             "relative p-6 sm:p-8 rounded-xl border-2 transition-all duration-200",
                                             "hover:scale-[1.02] hover:shadow-xl",
                                             isSelected
-                                                ? "bg-blue-600 border-blue-500 text-white shadow-xl shadow-blue-500/30"
+                                                ? "bg-emerald-500/15 border-emerald-400 text-white shadow-xl shadow-emerald-500/20"
                                                 : isDisabled
                                                     ? "bg-black/30 border-white/10 text-white/30 cursor-not-allowed opacity-50"
-                                                    : "bg-black/50 border-white/20 text-white hover:border-blue-500/50 hover:bg-white/5"
+                                                    : "bg-black/50 border-white/20 text-white hover:border-emerald-500/50 hover:bg-white/5"
                                         )}
                                     >
                                         <div className="text-center">
@@ -137,24 +135,19 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                                 {bo === 1 ? 'Pick 1 map' : bo === 3 ? '7 actions' : '11 actions'}
                                             </div>
                                         </div>
-                                        {isSelected && (
-                                            <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
-                                                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-                                            </div>
-                                        )}
+                                        {isSelected && <div className="absolute inset-2 rounded-lg border border-emerald-300/60" aria-hidden />}
                                     </button>
                                 );
                             })}
                         </div>
                     </div>
                     <DialogFooter className="px-8 py-6 border-t border-white/10 bg-black/50 gap-3">
-                        <Button
+                        <button type="button"
                             onClick={() => setShowBODialog(false)}
-                            variant="outline"
-                            className="bg-transparent border-white/20 text-white/80 hover:bg-white/10 hover:text-white hover:border-white/30 px-6"
+                            className="bg-transparent border-white/20 text-white/80 hover:bg-rose-500 hover:text-white hover:border-transparent px-6"
                         >
                             Cancel
-                        </Button>
+                        </button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -173,13 +166,8 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                         if (!veto) return null;
                         const currentActionNum = veto.current_action_number || 1;
                         const vetoFormat = getVetoFormat(bestOf || 1);
-
-                        // For decider side picks, use the current action number directly
-                        // because there's no preceding 'pick' action - the map is auto-determined
-                        const isFinalDecider =
-                            (vetoFormat === 1 && currentActionNum === 7) ||
-                            (vetoFormat === 3 && currentActionNum === 9) ||
-                            (vetoFormat === 5 && currentActionNum === 11);
+                        const service = new VetoService(game, availableMaps.length || undefined);
+                        const isFinalDecider = service.isDeciderAction(vetoFormat, currentActionNum);
 
                         const actionNumberForSidePicker = isFinalDecider
                             ? currentActionNum
@@ -196,14 +184,16 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
 
                         return (
                             <div className="flex items-center justify-center gap-2 py-4 border-y border-white/10">
-                                <CheckCircle className="h-6 w-6 text-green-500" />
+                                <span className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-white/70">
+                                    Side choice
+                                </span>
                                 <span className="text-white font-bold text-lg">{sidePickerTeamName}</span>
                             </div>
                         );
                     })()}
 
                     <div className="space-y-3 py-4">
-                        <Button
+                        <CtaButton
                             onClick={async () => {
                                 if (pendingMapId) {
                                     await performMapAction(pendingMapId, 'pick_side', 'attack');
@@ -211,12 +201,12 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                     setPendingMapId(null);
                                 }
                             }}
-                            className="w-full h-20 bg-orange-600 hover:bg-orange-700 text-white text-lg font-black gap-3 border-2 border-white/20 flex items-center justify-center"
+                            className="w-full h-20 font-black gap-3 flex items-center justify-center"
                         >
-                            <Sword className="h-8 w-8" />
+                            <span className="rounded border border-white/30 bg-white/10 px-2 py-1 text-xs tracking-widest">ATK</span>
                             <span className="text-xl">ATTACK</span>
-                        </Button>
-                        <Button
+                        </CtaButton>
+                        <CtaButton
                             onClick={async () => {
                                 if (pendingMapId) {
                                     await performMapAction(pendingMapId, 'pick_side', 'defend');
@@ -224,15 +214,14 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                                     setPendingMapId(null);
                                 }
                             }}
-                            className="w-full h-20 bg-blue-600 hover:bg-blue-700 text-white text-lg font-black gap-3 border-2 border-white/20 flex items-center justify-center"
+                            className="w-full h-20 font-black gap-3 flex items-center justify-center"
                         >
-                            <ShieldIcon className="h-8 w-8" />
+                            <span className="rounded border border-black/20 bg-black/10 px-2 py-1 text-xs tracking-widest">DEF</span>
                             <span className="text-xl">DEFEND</span>
-                        </Button>
+                        </CtaButton>
                     </div>
                     <DialogFooter>
-                        <Button
-                            variant="outline"
+                        <CancelButton type="button"
                             onClick={() => {
                                 setShowSideDialog(false);
                                 setPendingMapId(null);
@@ -240,7 +229,7 @@ export const VetoDialogs: React.FC<VetoDialogsProps> = ({
                             }}
                         >
                             Cancel
-                        </Button>
+                        </CancelButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

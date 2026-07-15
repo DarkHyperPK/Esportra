@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,17 +8,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Check, ChevronRight, ArrowLeft, Trophy, Users, Shield, Plus, Trash2, Pencil, Book } from 'lucide-react';
+import { Check, ChevronRight, ArrowLeft, Trophy, Users, Shield, Plus, Trash2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 
 import { RECOMMENDED_TEMPLATES } from '@/data/recommended_templates';
-import { StageGuidelineModal } from './StageGuidelineModal';
+import { RoundBoConfigSection } from './RoundBoConfigSection';
 import { cn } from '@/lib/utils';
-import esportsGames from '@/data/esportsGames.json';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
+import { getGameByName } from '@/utils/gameFeatures';
+import { buildStageConfigPayload, normalizeBestOf } from '@/utils/stageMapper';
 
-// Maps series format strings from esportsGames.json to display labels and numeric best_of values
+// Maps series format strings from catalog game features to display labels and numeric best_of values
 const SERIES_FORMAT_MAP: Record<string, { label: string; value: number }> = {
     bo1: { label: "Best of 1", value: 1 },
     bo2: { label: "Best of 2", value: 2 },
@@ -71,6 +72,8 @@ interface StageConfig {
     capacity: number | '';
     advancement_count: number | '';
     best_of: number;
+    bo_mode: 'per_stage' | 'per_round';
+    round_bo_overrides: Record<string, number>;
     settings?: {
         swiss_rounds?: number;
         group_count?: number;
@@ -88,6 +91,8 @@ const DEFAULT_STAGE_CONFIG: StageConfig = {
     capacity: '',
     advancement_count: '',
     best_of: 1,
+    bo_mode: 'per_stage',
+    round_bo_overrides: {},
 };
 
 // Validation helper functions
@@ -211,6 +216,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     existingStages,
     onComplete
 }) => {
+    useGameCatalog();
     const { toast } = useToast();
     const [step, setStep] = useState<'mode-select' | 'template-select' | 'template-config' | 'manual-config' | 'review'>('mode-select');
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -218,16 +224,10 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     const [deletedStageIds, setDeletedStageIds] = useState<string[]>([]);
     const [currentStageIndex, setCurrentStageIndex] = useState(0);
     const [loading, setLoading] = useState(false);
-    const [showGuideline, setShowGuideline] = useState(false);
     const [participantsCount, setParticipantsCount] = useState<number>(0);
     const [checkInEnabled, setCheckInEnabled] = useState(false);
     const [tournamentMaxParticipants, setTournamentMaxParticipants] = useState<number | null>(null);
-    const [gameData, setGameData] = useState(() => {
-        if (!game) return null;
-        return esportsGames.games.find(g =>
-            g.name.toLowerCase() === game.toLowerCase()
-        );
-    });
+    const [gameData, setGameData] = useState(() => (game ? getGameByName(game) : null));
 
     // Manual Form State (Lifted up for Edit capability)
     const [manualFormState, setManualFormState] = useState<StageConfig>({
@@ -235,101 +235,94 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
         format: 'single_elimination'
     });
     const [editingStageIndex, setEditingStageIndex] = useState<number | null>(null);
+    const prevOpenRef = useRef(false);
 
-    // Reset state when opening
+    // Initialize wizard state only when the dialog opens (not on step/stage navigation).
     useEffect(() => {
-        console.log('[StageWizard] Open changed:', open, 'Existing stages:', existingStages?.length);
-        console.log('[StageWizard] Current step:', step);
-        console.log('[StageWizard] Stages config:', stagesConfig.length);
+        const justOpened = open && !prevOpenRef.current;
+        prevOpenRef.current = open;
 
-        if (open) {
+        if (!open || !justOpened) {
+            return;
+        }
 
-            // Fetch participants count for validation
-            const fetchParticipants = async () => {
-                const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
-                if (participants) setParticipantsCount(participants.length);
-            };
-            fetchParticipants();
+        const fetchParticipants = async () => {
+            const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
+            if (participants) setParticipantsCount(participants.length);
+        };
+        fetchParticipants();
 
-            // Fetch tournament settings (check-in enabled, max participants)
-            const fetchTournamentSettings = async () => {
-                const response = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
-                const data = response?.tournament || response;
-                if (data) {
-                    const d = data as any;
-                    setCheckInEnabled(d.check_in_required);
-                    // Treat 0 as unlimited (null) since column is not nullable
-                    const maxTeams = d.max_teams === 0 ? null : d.max_teams;
-                    setTournamentMaxParticipants(maxTeams);
+        const fetchTournamentSettings = async () => {
+            const response = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
+            const data = response?.tournament || response;
+            if (!data) return;
 
-                    const gData = gameData;
-                    if (game) {
-                        // Check game data again in case it changed or wasn't set initially
-                        const gData = esportsGames.games.find(g =>
-                            g.name.toLowerCase() === game.toLowerCase()
-                        );
-                        setGameData(gData || null);
-                    }
+            const d = data as any;
+            setCheckInEnabled(d.check_in_required);
+            const maxTeams = d.max_teams === 0 ? null : d.max_teams;
+            setTournamentMaxParticipants(maxTeams);
 
-                    // Auto-set manual form capacity if creating new and max teams is set
-                    const initialCapacity = maxTeams || '';
-                    if (!existingStages || existingStages.length === 0) {
-                        setManualFormState(prev => ({
-                            ...prev,
-                            capacity: initialCapacity
-                        }));
-                    }
-                }
-            };
-            fetchTournamentSettings();
-
-            if (existingStages && existingStages.length > 0) {
-                // Edit Mode
-                console.log('[StageWizard] Loading existing stages:', existingStages.map(s => ({ id: s.id, name: s.name })));
-                setStagesConfig(existingStages.map(s => {
-                    // Use new columns directly instead of config JSONB
-
-                    // Read bestOf from new column
-                    const stageAny = s as any;
-                    const bestOf = stageAny.best_of || 1;
-
-                    // Load settings from config JSON
-                    const stageConfig = typeof stageAny.config === 'string'
-                        ? (() => { try { return JSON.parse(stageAny.config); } catch { return {}; } })()
-                        : (stageAny.config || {});
-                    const result: StageConfig = {
-                        id: s.id,
-                        name: s.name,
-                        format: s.format,
-                        capacity: s.capacity || '',
-                        advancement_count: s.advancement_count || '',
-                        best_of: bestOf,
-                        settings: {
-                            ...(stageConfig.swiss_groups != null && { swiss_groups: stageConfig.swiss_groups }),
-                            ...(stageConfig.swiss_rounds != null && { swiss_rounds: stageConfig.swiss_rounds }),
-                            ...(stageConfig.group_count != null && { group_count: stageConfig.group_count }),
-                            ...(stageConfig.points_per_win != null && { points_per_win: stageConfig.points_per_win }),
-                            ...(stageConfig.points_per_draw != null && { points_per_draw: stageConfig.points_per_draw }),
-                            ...(stageConfig.points_per_loss != null && { points_per_loss: stageConfig.points_per_loss }),
-                            ...(stageConfig.use_check_in_only != null && { use_check_in_only: stageConfig.use_check_in_only }),
-                        },
-                    };
-                    console.log('[StageWizard] Mapped stage:', result);
-                    return result;
-                }));
-                setDeletedStageIds([]);
-                setStep('manual-config');
-            } else {
-                // Create Mode
-                setStep('mode-select');
-                setStagesConfig([]);
+            if (game) {
+                setGameData(getGameByName(game) || null);
             }
 
-            setSelectedTemplateId(null);
-            setCurrentStageIndex(0);
+            if (!existingStages || existingStages.length === 0) {
+                setManualFormState(prev => ({
+                    ...prev,
+                    capacity: maxTeams || '',
+                }));
+            }
+        };
+        fetchTournamentSettings();
+
+        const isEditMode = Boolean(existingStages && existingStages.length > 0);
+
+        if (isEditMode) {
+            setStagesConfig(existingStages.map(s => {
+                const stageAny = s as any;
+                const bestOf = stageAny.best_of || 1;
+                const boMode = stageAny.bo_mode || 'per_stage';
+                // Parse round_bo_overrides - may be JSON string from database
+                let roundBoOverrides = stageAny.round_bo_overrides || {};
+                if (typeof roundBoOverrides === 'string') {
+                    try { roundBoOverrides = JSON.parse(roundBoOverrides); } catch { roundBoOverrides = {}; }
+                }
+                const stageConfig = typeof stageAny.config === 'string'
+                    ? (() => { try { return JSON.parse(stageAny.config); } catch { return {}; } })()
+                    : (stageAny.config || {});
+                const result: StageConfig = {
+                    id: s.id,
+                    name: s.name,
+                    format: s.format,
+                    capacity: s.capacity || '',
+                    advancement_count: s.advancement_count || '',
+                    best_of: bestOf,
+                    bo_mode: boMode,
+                    round_bo_overrides: roundBoOverrides,
+                    settings: {
+                        ...(stageConfig.swiss_groups != null && { swiss_groups: stageConfig.swiss_groups }),
+                        ...(stageConfig.swiss_rounds != null && { swiss_rounds: stageConfig.swiss_rounds }),
+                        ...(stageConfig.group_count != null && { group_count: stageConfig.group_count }),
+                        ...(stageConfig.points_per_win != null && { points_per_win: stageConfig.points_per_win }),
+                        ...(stageConfig.points_per_draw != null && { points_per_draw: stageConfig.points_per_draw }),
+                        ...(stageConfig.points_per_loss != null && { points_per_loss: stageConfig.points_per_loss }),
+                        ...(stageConfig.use_check_in_only != null && { use_check_in_only: stageConfig.use_check_in_only }),
+                    },
+                };
+                return result;
+            }));
+            setDeletedStageIds([]);
+            setStep('manual-config');
             setManualFormState(DEFAULT_STAGE_CONFIG);
-            setEditingStageIndex(null);
+        } else {
+            setStep('mode-select');
+            setStagesConfig([]);
+            setManualFormState({ ...DEFAULT_STAGE_CONFIG, format: 'single_elimination' });
         }
+
+        setSelectedTemplateId(null);
+        setCurrentStageIndex(0);
+        setEditingStageIndex(null);
     }, [open, tournamentId, game, existingStages]);
 
 
@@ -367,9 +360,11 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                 return {
                     name: s.name,
                     format: s.format,
-                    capacity: (i === 0 && tournamentMaxParticipants) ? tournamentMaxParticipants : '', // Auto-detect max teams for first stage
+                    capacity: (i === 0 && tournamentMaxParticipants) ? tournamentMaxParticipants : '',
                     advancement_count: adv || '',
                     best_of: s.best_of,
+                    bo_mode: s.bo_mode || 'per_stage',
+                    round_bo_overrides: s.round_bo_overrides || {},
                     settings: {
                         ...s.settings,
                         swiss_groups: swissGroups,
@@ -415,8 +410,28 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     };
 
     const handleSaveStages = async () => {
+        if (stagesConfig.length === 0 && deletedStageIds.length === 0) {
+            toast({
+                title: 'No stages to save',
+                description: 'Add at least one stage before saving your tournament setup.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
         try {
             setLoading(true);
+
+            if (stagesConfig.length === 0 && deletedStageIds.length > 0) {
+                await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds: deletedStageIds });
+                toast({
+                    title: 'Stages Removed',
+                    description: 'All tournament stages have been deleted.',
+                });
+                onComplete();
+                onOpenChange(false);
+                return;
+            }
 
             // 0. Validate all stages
             for (const stage of stagesConfig) {
@@ -437,22 +452,9 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                 await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds: deletedStageIds });
             }
 
-            // 2. Batch sync all remaining stages via PUT (upsert)
-            console.log('[StageWizard] Saving stages:', stagesConfig.map(s => ({ id: s.id, name: s.name, capacity: s.capacity })));
             const stageDtos = stagesConfig.map((stage, i) => {
-                const validBestOfValues = [1, 2, 3, 5, 7, 9];
-                const normalizedBestOf = validBestOfValues.includes(stage.best_of) ? stage.best_of : 1;
-                // Build config from settings for format-specific parameters
-                const config = stage.settings ? {
-                    ...(stage.settings.swiss_groups != null && { swiss_groups: stage.settings.swiss_groups }),
-                    ...(stage.settings.swiss_rounds != null && { swiss_rounds: stage.settings.swiss_rounds }),
-                    ...(stage.settings.group_count != null && { group_count: stage.settings.group_count }),
-                    ...(stage.settings.points_per_win != null && { points_per_win: stage.settings.points_per_win }),
-                    ...(stage.settings.points_per_draw != null && { points_per_draw: stage.settings.points_per_draw }),
-                    ...(stage.settings.points_per_loss != null && { points_per_loss: stage.settings.points_per_loss }),
-                    ...(stage.settings.use_check_in_only != null && { use_check_in_only: stage.settings.use_check_in_only }),
-                } : undefined;
-                const hasConfig = config && Object.keys(config).length > 0;
+                const config = buildStageConfigPayload(stage.settings);
+                const hasOverrides = stage.bo_mode === 'per_round' && Object.keys(stage.round_bo_overrides).length > 0;
                 return {
                     id: stage.id || null,
                     name: stage.name,
@@ -460,12 +462,13 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                     stageOrder: i + 1,
                     capacity: stage.capacity === '' ? null : Number(stage.capacity),
                     advancementCount: stage.advancement_count === '' ? null : Number(stage.advancement_count),
-                    bestOf: normalizedBestOf,
-                    ...(hasConfig && { config }),
+                    bestOf: normalizeBestOf(stage.best_of),
+                    boMode: stage.bo_mode,
+                    ...(hasOverrides && { roundBoOverrides: stage.round_bo_overrides }),
+                    ...(config && { config }),
                 };
             });
 
-            console.log('[StageWizard] Batch sync stages:', stageDtos);
             await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
 
             toast({
@@ -836,25 +839,39 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
                 <div className="border-t border-white/10 pt-6 mt-6">
                     <h4 className="text-sm font-medium mb-4 flex items-center gap-2 text-emerald-400">
-                        <Shield className="h-4 w-4" /> Veto Settings
+                        <Shield className="h-4 w-4" /> Series Format
                     </h4>
                     <div className="grid grid-cols-1 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-gray-300">Series Format</Label>
-                            <Select
-                                value={String(stage.best_of)}
-                                onValueChange={(val) => updateStageConfig(currentStageIndex, 'best_of', Number(val))}
-                            >
-                                <SelectTrigger className="bg-black/20 border-white/10">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {getSeriesOptions(gameData).map(opt => (
-                                        <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        {/* Only show default selector when NOT in per-round mode */}
+                        {stage.bo_mode !== 'per_round' && (
+                            <div className="space-y-2">
+                                <Label className="text-gray-300">Series Format (All Rounds)</Label>
+                                <Select
+                                    value={String(stage.best_of)}
+                                    onValueChange={(val) => updateStageConfig(currentStageIndex, 'best_of', Number(val))}
+                                >
+                                    <SelectTrigger className="bg-black/20 border-white/10">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {getSeriesOptions(gameData).map(opt => (
+                                            <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+
+                        <RoundBoConfigSection
+                            format={stage.format}
+                            bracketSize={typeof stage.capacity === 'number' && stage.capacity > 0 ? stage.capacity : 8}
+                            boMode={stage.bo_mode}
+                            defaultBestOf={stage.best_of}
+                            roundBoOverrides={stage.round_bo_overrides}
+                            seriesOptions={getSeriesOptions(gameData)}
+                            onBoModeChange={(mode) => updateStageConfig(currentStageIndex, 'bo_mode', mode)}
+                            onOverridesChange={(overrides) => updateStageConfig(currentStageIndex, 'round_bo_overrides', overrides)}
+                        />
                     </div>
                 </div>
             </motion.div>
@@ -1214,6 +1231,18 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                             </div>
                         </div>
 
+                        {/* Per-Round BO Configuration for elimination formats */}
+                        <RoundBoConfigSection
+                            format={manualFormState.format}
+                            bracketSize={typeof manualFormState.capacity === 'number' && manualFormState.capacity > 0 ? manualFormState.capacity : 8}
+                            boMode={manualFormState.bo_mode}
+                            defaultBestOf={manualFormState.best_of}
+                            roundBoOverrides={manualFormState.round_bo_overrides}
+                            seriesOptions={getSeriesOptions(gameData)}
+                            onBoModeChange={(mode) => setManualFormState({ ...manualFormState, bo_mode: mode })}
+                            onOverridesChange={(overrides) => setManualFormState({ ...manualFormState, round_bo_overrides: overrides })}
+                        />
+
                         <div className="flex justify-end gap-2 pt-2">
                             {editingStageIndex !== null && (
                                 <Button
@@ -1389,36 +1418,14 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
         <>
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col bg-[#0a0a0c] border-white/10/30">
+                <DialogContent className="max-w-3xl max-h-[90vh] !flex !flex-col bg-[#0a0a0c] border-white/10/30">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-bold text-white flex items-center justify-between">
-                            <span className="flex items-center gap-2">
-                                {step === 'mode-select' && 'Create Tournament Stages'}
-                                {step === 'template-select' && 'Select a Template'}
-                                {step === 'template-config' && 'Configure Stages'}
-                                {step === 'manual-config' && 'Manual Stage Setup'}
-                                {step === 'review' && 'Review & Create'}
-                            </span>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => setShowGuideline(true)}
-                                            className="text-gray-400 hover:text-emerald-400 hover:bg-emerald-400/10"
-                                        >
-                                            <div className="relative">
-                                                <div className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                                                <Book className="h-5 w-5" />
-                                            </div>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Tournament Stages Guideline</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+                        <DialogTitle className="text-xl font-bold text-white">
+                            {step === 'mode-select' && 'Create Tournament Stages'}
+                            {step === 'template-select' && 'Select a Template'}
+                            {step === 'template-config' && 'Configure Stages'}
+                            {step === 'manual-config' && 'Manual Stage Setup'}
+                            {step === 'review' && 'Review & Create'}
                         </DialogTitle>
                         <DialogDescription className="text-gray-400">
                             {step === 'mode-select' && 'Choose how you want to set up your tournament structure.'}
@@ -1429,7 +1436,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto min-h-[400px] px-1 overflow-x-hidden">
+                    <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-1 pr-2 overscroll-contain" data-lenis-prevent>
                         <AnimatePresence mode="wait">
                             {step === 'mode-select' && renderModeSelection()}
                             {step === 'template-select' && renderTemplateSelection()}
@@ -1500,15 +1507,18 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                         )}
 
                         {step === 'review' && (
-                            <Button onClick={handleSaveStages} disabled={loading} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+                            <Button
+                                onClick={handleSaveStages}
+                                disabled={loading || (stagesConfig.length === 0 && deletedStageIds.length === 0)}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            >
                                 {loading ? 'Saving...' : (stagesConfig.some(s => s.id) ? 'Update Stages' : 'Create Stages')}
                             </Button>
                         )}
                     </DialogFooter>
                 </DialogContent>
 
-            </Dialog >
-            <StageGuidelineModal open={showGuideline} onOpenChange={setShowGuideline} />
+            </Dialog>
         </>
     );
 };

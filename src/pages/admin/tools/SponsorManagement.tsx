@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { csvEscape } from '@/lib/exportUtils';
 import { Button } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
@@ -144,7 +145,7 @@ const SponsorManagement = () => {
 
     // Modals
     const [appModal, setAppModal] = useState<{ open: boolean; app: Application | null }>({ open: false, app: null });
-    const [sponsorModal, setSponsorModal] = useState<{ open: boolean; sponsor: Partial<Sponsor> | null; isNew: boolean; linkedAppId?: string; linkedAppEmail?: string }>({ open: false, sponsor: null, isNew: true });
+    const [sponsorModal, setSponsorModal] = useState<{ open: boolean; sponsor: Partial<Sponsor> | null; isNew: boolean }>({ open: false, sponsor: null, isNew: true });
     const [inviteModal, setInviteModal] = useState<{ open: boolean; sponsor: Sponsor | null; email: string }>({ open: false, sponsor: null, email: '' });
 
     // Stats derived from query data
@@ -187,8 +188,11 @@ const SponsorManagement = () => {
     });
 
     const inviteUserMutation = useMutation({
-        mutationFn: (data: { email: string; sponsorId: string; applicationId?: string }) =>
-            apiClient.post<any>('/api/sponsors/invite', data),
+        mutationFn: (data: { email: string; sponsorId: string }) =>
+            apiClient.post<{ invitationId: string; requiresPasswordSetup: boolean }>(
+                `/api/admin/sponsors/${data.sponsorId}/invitations`,
+                { email: data.email, role: 'owner' },
+            ),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: adminKeys.sponsors() });
             queryClient.invalidateQueries({ queryKey: adminKeys.sponsorApplications() });
@@ -197,7 +201,7 @@ const SponsorManagement = () => {
 
     const approveAppMutation = useMutation({
         mutationFn: (id: string) =>
-            apiClient.post<{ success: boolean; sponsorId: string; isNewUser: boolean; companyName: string; contactEmail: string }>(`/api/sponsors/applications/${id}/approve`),
+            apiClient.post<{ success: boolean; sponsorId: string; requiresPasswordSetup: boolean; companyName: string; contactEmail: string }>(`/api/sponsors/applications/${id}/approve`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: adminKeys.sponsors() });
             queryClient.invalidateQueries({ queryKey: adminKeys.sponsorApplications() });
@@ -225,14 +229,17 @@ const SponsorManagement = () => {
             const result = await approveAppMutation.mutateAsync(app.id);
             setAppModal({ open: false, app: null });
 
-            const message = result.isNewUser
-                ? `Partner approved! A new account was created for ${result.contactEmail} and an invite email was sent.`
-                : `Partner approved! ${result.contactEmail} already has an account and has been linked. A welcome email was sent.`;
+            const message = result.requiresPasswordSetup
+                ? `Partner approved! An account setup invitation was sent to ${result.contactEmail}.`
+                : `Partner approved! An invitation was sent to ${result.contactEmail}.`;
 
             toast({ title: 'Partner Approved', description: message });
-            await auditLog.log('approve', 'sponsor', result.sponsorId, result.companyName, { applicationId: app.id, isNewUser: result.isNewUser });
-        } catch (err: any) {
-            toast({ title: 'Approval Failed', description: err.message || 'Could not approve application.', variant: 'destructive' });
+            await auditLog.log('approve', 'sponsor', result.sponsorId, result.companyName, {
+                applicationId: app.id,
+                requiresPasswordSetup: result.requiresPasswordSetup,
+            });
+        } catch {
+            toast({ title: 'Approval Failed', description: 'Could not approve application.', variant: 'destructive' });
         }
     };
 
@@ -271,30 +278,10 @@ const SponsorManagement = () => {
             return;
         }
 
-        // If this was a promotion from an application, mark the app as approved AND invite
-        if (sponsorModal.linkedAppId && sponsorModal.linkedAppEmail) {
-            try {
-                const inviteData = await inviteUserMutation.mutateAsync({
-                    email: sponsorModal.linkedAppEmail,
-                    sponsorId: sponsorData.id,
-                    applicationId: sponsorModal.linkedAppId
-                });
-
-                setInviteResult({
-                    open: true,
-                    message: `Sponsor created and application approved! An invitation has been sent to ${sponsorModal.linkedAppEmail}.${inviteData?.setupUrl ? '\n\nSetup URL for manual copy:' : ''}`,
-                    link: inviteData?.setupUrl
-                });
-            } catch (err: any) {
-                console.error('Failed to trigger onboarding:', err);
-                toast({ title: 'Partial Success', description: 'Sponsor created, but onboarding invite failed. Please invite manually.', variant: 'destructive' });
-            }
-        } else {
-            toast({ title: 'Success', description: `Sponsor ${sponsorModal.isNew ? 'created' : 'updated'} successfully.` });
-        }
+        toast({ title: 'Success', description: `Sponsor ${sponsorModal.isNew ? 'created' : 'updated'} successfully.` });
 
         await auditLog.log(sponsorModal.isNew ? 'create' : 'update', 'sponsor', sponsorData?.id || '', s.name || 'Unknown', { tier: s.tier, is_active: s.is_active });
-        setSponsorModal({ open: false, sponsor: null, isNew: true, linkedAppId: undefined, linkedAppEmail: undefined });
+        setSponsorModal({ open: false, sponsor: null, isNew: true });
     };
 
     const handleDeleteSponsor = async (id: string) => {
@@ -310,7 +297,7 @@ const SponsorManagement = () => {
         await auditLog.log('update', 'sponsor', sponsor.id, sponsor.name, { is_active: !sponsor.is_active, toggled: true });
     };
 
-    const [inviteResult, setInviteResult] = useState<{ open: boolean; message: string; link?: string }>({ open: false, message: '', link: '' });
+    const [inviteResult, setInviteResult] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
     const handleInviteUser = async () => {
         if (!inviteModal.email || !inviteModal.sponsor) return;
@@ -320,28 +307,16 @@ const SponsorManagement = () => {
                 sponsorId: inviteModal.sponsor.id,
             });
 
-            if (!data?.success) {
-                const message = data?.error || 'Invitation failed';
-                throw new Error(message);
-            }
-
-            if (data?.message === 'USER_LINKED') {
-                setInviteResult({
-                    open: true,
-                    message: `Account found! ${inviteModal.email} is already an Esportra member. We've granted them access to this partner dashboard.`
-                });
-            } else if (data?.success) {
-                setInviteResult({
-                    open: true,
-                    message: `An invitation has been sent to ${inviteModal.email}.${data.setupUrl ? '\n\nSetup URL for manual copy:' : ''}`,
-                    link: data.setupUrl
-                });
-            }
+            setInviteResult({
+                open: true,
+                message: data.requiresPasswordSetup
+                    ? `An account setup invitation was sent to ${inviteModal.email}.`
+                    : `An invitation was sent to ${inviteModal.email}.`,
+            });
 
             setInviteModal({ open: false, sponsor: null, email: '' });
-        } catch (err: any) {
-            console.error("Invite error:", err);
-            toast({ title: 'Invite Error', description: err.message || 'Failed to invite user', variant: 'destructive' });
+        } catch {
+            toast({ title: 'Invite Error', description: 'Failed to invite user', variant: 'destructive' });
         }
     };
 
@@ -738,7 +713,7 @@ const SponsorManagement = () => {
 
             {/* Sponsor Edit Modal - Simplified reuse of layout */}
             <Dialog open={sponsorModal.open} onOpenChange={(open) => setSponsorModal({ ...sponsorModal, open })}>
-                <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
                     <DialogHeader>
                         <DialogTitle>{sponsorModal.isNew ? 'New Partner' : 'Edit Partner'}</DialogTitle>
                     </DialogHeader>
@@ -878,38 +853,13 @@ const SponsorManagement = () => {
                     <div className="py-2 space-y-4">
                         <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
                             <p className="text-xs text-emerald-400 leading-relaxed font-medium">
-                                {inviteResult.link
-                                    ? "The account has been created/linked. Provide the link below to the sponsor if they didn't receive the email."
-                                    : "The account has been bridged. This sponsor can now log in to the Partner Portal using their existing Esportra email and password."}
+                                Access will be granted only after the recipient accepts the email invitation.
                             </p>
                         </div>
-
-                        {inviteResult.link && (
-                            <div className="space-y-2">
-                                <label className="text-[10px] uppercase text-zinc-500 font-bold ml-1">Setup Link (One-time use)</label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        readOnly
-                                        value={inviteResult.link}
-                                        className="bg-zinc-900 border-zinc-800 text-xs font-mono"
-                                    />
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(inviteResult.link!);
-                                            toast({ title: "Copied", description: "Link copied to clipboard" });
-                                        }}
-                                    >
-                                        Copy
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
                     </div>
 
                     <DialogFooter>
-                        <Button className="bg-white text-black hover:bg-zinc-200" onClick={() => setInviteResult({ ...inviteResult, open: false })}>Done</Button>
+                        <JackButton onClick={() => setInviteResult({ ...inviteResult, open: false })}>Done</JackButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

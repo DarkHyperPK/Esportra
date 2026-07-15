@@ -1,7 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { CtaButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -9,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, Check, AlertCircle, ChevronDown, ChevronUp, Zap, GitBranch, Globe, Info } from 'lucide-react';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 import { format, addDays, isWithinInterval, parseISO } from 'date-fns';
-import { getTimezoneAbbr, utcToLocalInput, localInputToUTC, utcToLocalDate, utcToLocalTime, localDateTimeToUTC, dateInputToUTCEndOfDay } from '@/lib/timeUtils';
+import { getTimezoneAbbr, utcToLocalInput, localInputToUTC, utcToLocalDate, utcToLocalTime, localDateTimeToUTC, dateInputToUTCEndOfDay, getTournamentScheduleDateBounds, isInvalidTournamentDateWindow, toUtcIsoString } from '@/lib/timeUtils';
 
 interface RoundSchedulingPanelProps {
     stageId: string;
@@ -33,34 +35,30 @@ interface RoundConfig {
 interface BracketSection {
     key: string;
     label: string;
-    icon: string;
     headerClasses: string;
     textClass: string;
     badgeClass: string;
     rounds: Map<number, any[]>;
 }
 
-const BRACKET_SECTIONS: Record<string, { label: string; icon: string; headerClasses: string; textClass: string; badgeClass: string }> = {
+const BRACKET_SECTIONS: Record<string, { label: string; headerClasses: string; textClass: string; badgeClass: string }> = {
     winners: {
         label: 'Winners Bracket',
-        icon: '🏆',
-        headerClasses: 'bg-esports-accent/10 border-esports-accent/20',
-        textClass: 'text-esports-accent',
-        badgeClass: 'text-esports-accent border-esports-accent/30',
+        headerClasses: 'bg-white/[0.03] border-white/10',
+        textClass: 'text-white',
+        badgeClass: 'text-zinc-300 border-white/15',
     },
     losers: {
         label: 'Losers Bracket',
-        icon: '⚔️',
-        headerClasses: 'bg-amber-500/10 border-amber-500/20',
-        textClass: 'text-amber-500',
-        badgeClass: 'text-amber-500 border-amber-500/30',
+        headerClasses: 'bg-white/[0.03] border-white/10',
+        textClass: 'text-white',
+        badgeClass: 'text-zinc-300 border-white/15',
     },
     final: {
         label: 'Grand Finals',
-        icon: '👑',
-        headerClasses: 'bg-esports-purple/10 border-esports-purple/20',
-        textClass: 'text-esports-purple',
-        badgeClass: 'text-esports-purple border-esports-purple/30',
+        headerClasses: 'bg-rose-500/10 border-rose-500/20',
+        textClass: 'text-rose-300',
+        badgeClass: 'text-rose-300 border-rose-500/30',
     },
 };
 
@@ -124,11 +122,17 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     const [roundConfigs, setRoundConfigs] = useState<Map<string, RoundConfig>>(new Map());
     const [matchEdits, setMatchEdits] = useState<Map<string, string>>(new Map());
     const [saving, setSaving] = useState(false);
-    const [savedRoundKeys, setSavedRoundKeys] = useState<Set<string>>(new Set());
+    const [dirtyKeys, setDirtyKeys] = useState<Set<string>>(new Set());
 
-    // Config key helper: for DE, scope by bracket type; for others, just roundIndex
+    const serverDeadlines = useMemo(() => ({
+        ...((schedulingConfig as any)?.roundDeadlines ?? {}),
+        ...((schedulingConfig as any)?.round_deadlines ?? {}),
+    }), [schedulingConfig]);
+
     const configKey = useCallback((roundIndex: number, bracketKey?: string | null): string =>
-        stageFormat === 'double_elimination' && bracketKey ? `${bracketKey}_${roundIndex}` : String(roundIndex),
+        stageFormat === 'double_elimination' && bracketKey
+            ? `${bracketKey}_${roundIndex}`
+            : String(roundIndex),
     [stageFormat]);
 
     // Optimistic scheduling mode with instant UI
@@ -136,6 +140,13 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     const schedulingMode = selfPlayEnabled
         ? 'round_based' as const
         : (optimisticMode || schedulingConfig?.scheduling_mode || 'round_based');
+
+    const scheduleDateBounds = useMemo(
+        () => getTournamentScheduleDateBounds(tournamentStartDate, tournamentEndDate),
+        [tournamentStartDate, tournamentEndDate],
+    );
+    const invalidTournamentWindow = scheduleDateBounds.isInvalidWindow
+        || isInvalidTournamentDateWindow(tournamentStartDate, tournamentEndDate);
 
     const handleSetMode = async (mode: 'round_based' | 'granular') => {
         if (selfPlayEnabled || mode === schedulingMode) return;
@@ -199,55 +210,52 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
             .map(key => ({
                 key,
                 label: BRACKET_SECTIONS[key]?.label || key,
-                icon: BRACKET_SECTIONS[key]?.icon || '📋',
-                headerClasses: BRACKET_SECTIONS[key]?.headerClasses || 'bg-gray-500/10 border-gray-500/20',
-                textClass: BRACKET_SECTIONS[key]?.textClass || 'text-gray-500',
-                badgeClass: BRACKET_SECTIONS[key]?.badgeClass || 'text-gray-500 border-gray-500/30',
+                headerClasses: BRACKET_SECTIONS[key]?.headerClasses || 'bg-white/[0.03] border-white/10',
+                textClass: BRACKET_SECTIONS[key]?.textClass || 'text-zinc-300',
+                badgeClass: BRACKET_SECTIONS[key]?.badgeClass || 'text-zinc-300 border-white/15',
                 rounds: sectionMap.get(key)!,
             }));
     }, [matches, stageFormat]);
 
     const totalRounds = matchesByRound.size;
 
-    // Initialize configs from fetched matches
+    // Sync round rows from server whenever scheduling config or matches change.
+    // Rows with unsaved local edits (dirtyKeys) are left untouched.
     React.useEffect(() => {
-        if (matchesByConfigKey.size > 0 && (!selfPlayEnabled || schedulingConfig)) {
-            const newConfigs = new Map<string, RoundConfig>();
-            matchesByConfigKey.forEach((matches, key) => {
-                const firstMatch = matches[0];
+        if (matchesByConfigKey.size === 0) return;
+        if (selfPlayEnabled && !schedulingConfig) return;
+
+        setRoundConfigs(prev => {
+            const next = new Map(prev);
+
+            matchesByConfigKey.forEach((roundMatches, key) => {
+                if (dirtyKeys.has(key)) return;
+
+                const firstMatch = roundMatches[0];
                 const existingTime = firstMatch?.scheduled_time
-                    ? new Date(firstMatch.scheduled_time).toISOString().slice(0, 16)
+                    ? toUtcIsoString(firstMatch.scheduled_time)
                     : null;
 
                 const roundIndex = firstMatch.round_index;
                 const configDeadline = selfPlayEnabled
-                    ? schedulingConfig?.round_deadlines?.[key] || existingTime
+                    ? serverDeadlines[key] || existingTime
                     : existingTime;
 
-                newConfigs.set(key, {
+                next.set(key, {
                     roundIndex,
                     roundName: getRoundNameForFormat(stageFormat, roundIndex, totalRounds),
-                    matchCount: matches.length,
+                    matchCount: roundMatches.length,
                     deadline: configDeadline,
                     startTime: !selfPlayEnabled ? existingTime : null,
-                    bracketKey: stageFormat === 'double_elimination' ? ((firstMatch as any).bracket_type || null) : null,
+                    bracketKey: stageFormat === 'double_elimination'
+                        ? ((firstMatch as any).bracket_type || null)
+                        : null,
                 });
             });
 
-            setRoundConfigs(prev => {
-                if (prev.size === 0) {
-                    // Mark rounds that already have server data as saved
-                    const alreadySaved = new Set<string>();
-                    newConfigs.forEach((cfg, key) => {
-                        if (cfg.deadline || cfg.startTime) alreadySaved.add(key);
-                    });
-                    setSavedRoundKeys(alreadySaved);
-                    return newConfigs;
-                }
-                return prev;
-            });
-        }
-    }, [matchesByConfigKey, stageFormat, totalRounds, selfPlayEnabled, schedulingConfig]);
+            return next;
+        });
+    }, [matchesByConfigKey, stageFormat, totalRounds, selfPlayEnabled, schedulingConfig, serverDeadlines, dirtyKeys]);
 
     // Calculate default dates based on format
     const getDefaultDeadline = (roundIndex: number): string => {
@@ -267,17 +275,22 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
 
         const roundDate = addDays(startDate, daysOffset);
         roundDate.setHours(23, 59, 0, 0);
-        return roundDate.toISOString().slice(0, 16);
+        return roundDate.toISOString();
     };
 
     // Validate date is within tournament window
     const isValidDate = (dateStr: string): boolean => {
-        if (!tournamentStartDate || !tournamentEndDate || !dateStr) return true;
+        if (!dateStr) return true;
+        if (invalidTournamentWindow) {
+            if (!scheduleDateBounds.minDate) return true;
+            return dateStr >= scheduleDateBounds.minDate;
+        }
+        if (!tournamentStartDate || !tournamentEndDate) return true;
         try {
             const date = parseISO(dateStr);
             return isWithinInterval(date, {
                 start: parseISO(tournamentStartDate),
-                end: parseISO(tournamentEndDate)
+                end: parseISO(tournamentEndDate),
             });
         } catch {
             return false;
@@ -285,12 +298,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     };
 
     const updateRoundConfig = (key: string, roundIndex: number, field: 'deadline' | 'startTime', value: string) => {
-        setSavedRoundKeys(prev => {
-            if (!prev.has(key)) return prev;
-            const next = new Set(prev);
-            next.delete(key);
-            return next;
-        });
+        setDirtyKeys(prev => new Set(prev).add(key));
         setRoundConfigs(prev => {
             const newMap = new Map(prev);
             const existing = newMap.get(key) || {
@@ -312,15 +320,15 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
         setSaving(true);
         try {
             if (selfPlayEnabled) {
-                const currentDeadlines = schedulingConfig?.round_deadlines || {};
                 const newDeadlines = {
-                    ...currentDeadlines,
-                    [key]: config.deadline || getDefaultDeadline(roundIndex)
+                    ...serverDeadlines,
+                    [key]: config.deadline || getDefaultDeadline(roundIndex),
                 };
 
                 await updateConfig.mutateAsync({
                     ...(schedulingConfig as any),
-                    round_deadlines: newDeadlines
+                    round_deadlines: newDeadlines,
+                    roundDeadlines: newDeadlines,
                 });
             } else {
                 const roundMatches = matchesByConfigKey.get(key) || [];
@@ -332,7 +340,11 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                 );
                 await Promise.all(updates);
             }
-            setSavedRoundKeys(prev => new Set(prev).add(key));
+            setDirtyKeys(prev => {
+                const next = new Set(prev);
+                next.delete(key);
+                return next;
+            });
         } catch (error) {
             console.error('[RoundScheduling] Failed to save round schedule:', error);
         } finally {
@@ -406,7 +418,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                     className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors"
                 >
                     <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-esports-accent/10 flex items-center justify-center text-esports-accent font-bold">
+                        <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-300 font-bold">
                             {roundIndex + 1}
                         </div>
                         <div>
@@ -421,7 +433,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                     </div>
                     <div className="flex items-center gap-3">
                         {(config?.deadline || config?.startTime) && (
-                            <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg">
+                            <span className="text-xs text-rose-300 bg-rose-500/10 px-2 py-1 rounded-lg">
                                 Configured
                             </span>
                         )}
@@ -449,38 +461,37 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                 <div className="space-y-2">
                                     <Label className="text-gray-400 text-sm">
                                         Round Deadline (End of Day)
-                                        <span className="ml-1 text-esports-accent/60">({getTimezoneAbbr()})</span>
+                                        <span className="ml-1 text-rose-300/70">({getTimezoneAbbr()})</span>
                                     </Label>
                                     <div className="flex gap-2">
                                         <Input
                                             type="date"
                                             value={config?.deadline ? utcToLocalDate(config.deadline) : ''}
-                                            min={tournamentStartDate ? utcToLocalDate(tournamentStartDate) : ''}
-                                            max={tournamentEndDate ? utcToLocalDate(tournamentEndDate) : ''}
+                                            min={scheduleDateBounds.minDate}
+                                            max={scheduleDateBounds.maxDate || undefined}
                                             onChange={(e) => {
                                                 const dateValue = e.target.value;
                                                 const utcValue = dateValue ? dateInputToUTCEndOfDay(dateValue) : '';
                                                 updateRoundConfig(cfgKey, roundIndex, 'deadline', utcValue);
                                             }}
-                                            className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20 flex-1 [color-scheme:dark]"
+                                            className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
                                         />
-                                        <Button
+                                        <CtaButton
                                             size="sm"
-                                            variant="secondary"
                                             onClick={() => handleSaveRound(cfgKey, roundIndex)}
-                                            disabled={saving || savedRoundKeys.has(cfgKey) || !config?.deadline}
-                                            className={savedRoundKeys.has(cfgKey)
-                                                ? "bg-emerald-500/5 text-emerald-400/60 border border-emerald-500/10 rounded-xl px-4 cursor-default"
-                                                : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl px-4"}
+                                            disabled={saving || !dirtyKeys.has(cfgKey) || !config?.deadline}
+                                            className={!dirtyKeys.has(cfgKey) && (config?.deadline || serverDeadlines[cfgKey])
+                                                ? "bg-rose-500/5 text-rose-300/60 border border-rose-500/10 rounded-xl px-4 cursor-default"
+                                                : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-xl px-4"}
                                         >
-                                            {saving ? '...' : savedRoundKeys.has(cfgKey) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
-                                        </Button>
+                                            {saving ? '...' : (!dirtyKeys.has(cfgKey) && (config?.deadline || serverDeadlines[cfgKey])) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
+                                        </CtaButton>
                                     </div>
                                     <p className="text-xs text-gray-500">
                                         Teams have until the end of this day to complete their match
                                     </p>
                                     {config?.deadline && !isValidDate(config.deadline) && (
-                                        <p className="text-xs text-red-400 flex items-center gap-1">
+                                        <p className="text-xs text-rose-300 flex items-center gap-1">
                                             <AlertCircle className="w-3 h-3" />
                                             Date must be within tournament window
                                         </p>
@@ -493,13 +504,13 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                         <div className="space-y-2">
                                             <Label className="text-gray-400 text-sm">
                                                 Round Deadline (End of Day)
-                                                <span className="ml-1 text-esports-accent/60">({getTimezoneAbbr()})</span>
+                                                <span className="ml-1 text-rose-300/70">({getTimezoneAbbr()})</span>
                                             </Label>
                                             <Input
                                                 type="date"
                                                 value={config?.deadline ? utcToLocalDate(config.deadline) : ''}
-                                                min={tournamentStartDate ? utcToLocalDate(tournamentStartDate) : ''}
-                                                max={tournamentEndDate ? utcToLocalDate(tournamentEndDate) : ''}
+                                                min={scheduleDateBounds.minDate}
+                                                max={scheduleDateBounds.maxDate || undefined}
                                                 onChange={(e) => {
                                                     const dateValue = e.target.value;
                                                     const utcValue = dateValue ? dateInputToUTCEndOfDay(dateValue) : '';
@@ -510,7 +521,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                         updateRoundConfig(cfgKey, roundIndex, 'startTime', localDateTimeToUTC(dateValue, existingTime));
                                                     }
                                                 }}
-                                                className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20 [color-scheme:dark]"
+                                                className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-rose-500 focus:ring-rose-500/20 [color-scheme:dark]"
                                             />
                                         </div>
                                     )}
@@ -521,7 +532,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                             <div className="space-y-2">
                                                 <Label className="text-gray-400 text-sm">
                                                     {stageFormat === 'swiss' ? 'Round Start Time' : 'Match Start Time'}
-                                                    <span className="ml-1 text-esports-accent/60">({getTimezoneAbbr()})</span>
+                                                    <span className="ml-1 text-rose-300/70">({getTimezoneAbbr()})</span>
                                                 </Label>
                                                 <div className="flex gap-2">
                                                     <Input
@@ -536,22 +547,21 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                             // Combine deadline date (or today) with selected time
                                                             const deadlineDate = config?.deadline
                                                                 ? utcToLocalDate(config.deadline)
-                                                                : (defaultDeadline ? defaultDeadline.split('T')[0] : utcToLocalDate(new Date().toISOString()));
+                                                                : (defaultDeadline ? utcToLocalDate(defaultDeadline) : utcToLocalDate(new Date().toISOString()));
                                                             updateRoundConfig(cfgKey, roundIndex, 'startTime', localDateTimeToUTC(deadlineDate, timeVal));
                                                         }}
-                                                        className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-esports-accent focus:ring-esports-accent/20 flex-1 [color-scheme:dark]"
+                                                        className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
                                                     />
-                                                    <Button
+                                                    <CtaButton
                                                         size="sm"
-                                                        variant="secondary"
                                                         onClick={() => handleSaveRound(cfgKey, roundIndex)}
-                                                        disabled={saving || savedRoundKeys.has(cfgKey)}
-                                                        className={savedRoundKeys.has(cfgKey)
-                                                            ? "bg-emerald-500/5 text-emerald-400/60 border border-emerald-500/10 rounded-xl px-4 cursor-default"
-                                                            : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-xl px-4"}
+                                                        disabled={saving || !dirtyKeys.has(cfgKey)}
+                                                        className={!dirtyKeys.has(cfgKey) && config?.startTime
+                                                            ? "bg-rose-500/5 text-rose-300/60 border border-rose-500/10 rounded-xl px-4 cursor-default"
+                                                            : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-xl px-4"}
                                                     >
-                                                        {saving ? '...' : savedRoundKeys.has(cfgKey) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
-                                                    </Button>
+                                                        {saving ? '...' : (!dirtyKeys.has(cfgKey) && config?.startTime) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
+                                                    </CtaButton>
                                                 </div>
                                             </div>
                                             <p className="text-xs text-gray-500">
@@ -565,7 +575,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                 <Label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
                                                     Individual Match Times
                                                 </Label>
-                                                <Badge variant="outline" className="text-[10px] border-esports-purple/30 text-esports-purple bg-esports-purple/5">
+                                                <Badge variant="outline" className="text-[10px] border-rose-500/30 text-rose-300 bg-rose-500/5">
                                                     Match-by-Match
                                                 </Badge>
                                             </div>
@@ -592,7 +602,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                                     </span>
                                                                 </div>
                                                                 {match.scheduled_time && !editedTime && (
-                                                                    <Badge variant="outline" className="text-[10px] border-blue-500/20 text-blue-400 bg-blue-500/5">
+                                                                    <Badge variant="outline" className="text-[10px] border-rose-500/20 text-rose-300 bg-rose-500/5">
                                                                         Scheduled
                                                                     </Badge>
                                                                 )}
@@ -602,17 +612,15 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                                     type="datetime-local"
                                                                     value={displayTime ? displayTime.slice(0, 16) : ''}
                                                                     onChange={(e) => updateMatchEdit(matchId, e.target.value ? localInputToUTC(e.target.value) : '')}
-                                                                    className="h-8 bg-[#0a0a0c] border-white/5 text-[11px] text-white rounded-lg focus:border-esports-accent focus:ring-esports-accent/20 flex-1 [color-scheme:dark]"
+                                                                    className="h-8 bg-[#0a0a0c] border-white/5 text-[11px] text-white rounded-lg focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
                                                                 />
-                                                                <Button
-                                                                    size="sm"
-                                                                    variant="ghost"
+                                                                <button type="button"
                                                                     onClick={() => handleSaveMatch(matchId)}
                                                                     disabled={saving || !matchEdits.has(matchId)}
-                                                                    className="h-8 px-3 bg-white/5 hover:bg-emerald-500/20 hover:text-emerald-400 text-[10px] rounded-lg transition-all"
+                                                                    className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 px-3 hover:text-rose-300 text-[10px] rounded-lg transition-all')}
                                                                 >
                                                                     {saving ? '...' : 'Set Time'}
-                                                                </Button>
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     );
@@ -622,7 +630,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                     )}
 
                                     {config?.startTime && !isValidDate(config.startTime) && schedulingMode === 'round_based' && (
-                                        <p className="text-xs text-red-400 flex items-center gap-1">
+                                        <p className="text-xs text-rose-300 flex items-center gap-1">
                                             <AlertCircle className="w-3 h-3" />
                                             Date must be within tournament window
                                         </p>
@@ -658,12 +666,12 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
             <CardHeader className="pb-4 border-b border-white/5">
                 <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-3 text-white font-heading text-xl">
-                        <div className="p-2 bg-esports-accent/20 rounded-xl">
-                            <Calendar className="w-5 h-5 text-esports-accent" />
+                        <div className="p-2 bg-rose-500/10 rounded-xl">
+                            <Calendar className="w-5 h-5 text-rose-400" />
                         </div>
                         Round Scheduling
                     </CardTitle>
-                    <Badge className="bg-esports-purple/20 text-esports-purple border-esports-purple/30">
+                    <Badge className="bg-rose-500/10 text-rose-300 border-rose-500/20">
                         <GitBranch className="w-3 h-3 mr-1" />
                         {formatLabel}
                     </Badge>
@@ -671,7 +679,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                 <p className="text-sm text-gray-400 mt-2">
                     {formatDescriptions[stageFormat] || formatDescriptions.single_elimination}
                 </p>
-                <div className="flex items-center gap-1.5 mt-2 text-xs text-esports-accent/70">
+                <div className="flex items-center gap-1.5 mt-2 text-xs text-rose-300/70">
                     <Globe className="w-3 h-3" />
                     <span>All times shown in your local timezone ({getTimezoneAbbr()})</span>
                 </div>
@@ -680,8 +688,8 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
             <CardContent className="p-6 space-y-4">
                 {/* Tournament Date Info */}
                 {(tournamentStartDate || tournamentEndDate) && (
-                    <div className="flex items-center gap-3 p-4 bg-esports-accent/5 border border-esports-accent/20 rounded-2xl">
-                        <Clock className="w-5 h-5 text-esports-accent" />
+                    <div className={`flex items-center gap-3 p-4 border rounded-2xl ${invalidTournamentWindow ? 'bg-rose-500/10 border-rose-500/20' : 'bg-rose-500/5 border-rose-500/20'}`}>
+                        <Clock className={`w-5 h-5 ${invalidTournamentWindow ? 'text-rose-300' : 'text-rose-400'}`} />
                         <div className="text-sm">
                             <span className="text-gray-400">Tournament Window: </span>
                             <span className="text-white font-medium">
@@ -689,6 +697,11 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                 {' — '}
                                 {tournamentEndDate && format(parseISO(tournamentEndDate), 'MMM d, yyyy')}
                             </span>
+                            {invalidTournamentWindow && (
+                                <p className="mt-1 text-xs text-rose-300">
+                                    End date is before start date. Update tournament dates via Edit Tournament — schedule pickers are open from start date onward until fixed.
+                                </p>
+                            )}
                         </div>
                     </div>
                 )}
@@ -696,10 +709,10 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                 {/* Scheduling Mode Selector */}
                 {selfPlayEnabled ? (
                     /* Self-Play: auto round-based, info banner */
-                    <div className="flex items-center gap-3 p-4 bg-esports-purple/10 border border-esports-purple/20 rounded-2xl">
-                        <Zap className="w-5 h-5 text-esports-purple" />
+                    <div className="flex items-center gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
+                        <Zap className="w-5 h-5 text-rose-400" />
                         <div className="text-sm">
-                            <span className="text-esports-purple font-medium">Self-Play Mode</span>
+                            <span className="text-rose-300 font-medium">Self-Play Mode</span>
                             <span className="text-gray-400 ml-2">— Round-based deadlines. Teams propose times to each other and play within the deadline.</span>
                         </div>
                     </div>
@@ -715,16 +728,16 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                             <button
                                 onClick={() => handleSetMode('round_based')}
                                 className={`relative p-4 rounded-2xl border-2 text-left transition-all duration-200 ${schedulingMode === 'round_based'
-                                    ? 'border-esports-accent bg-esports-accent/5 shadow-[0_0_20px_rgba(0,255,200,0.08)]'
+                                    ? 'border-rose-500 bg-rose-500/5 shadow-[0_0_20px_rgba(244,63,94,0.08)]'
                                     : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
                                     }`}
                             >
                                 {schedulingMode === 'round_based' && (
                                     <div className="absolute top-3 right-3">
-                                        <Check className="w-4 h-4 text-esports-accent" />
+                                        <Check className="w-4 h-4 text-rose-400" />
                                     </div>
                                 )}
-                                <Clock className={`w-6 h-6 mb-2 ${schedulingMode === 'round_based' ? 'text-esports-accent' : 'text-gray-500'}`} />
+                                <Clock className={`w-6 h-6 mb-2 ${schedulingMode === 'round_based' ? 'text-rose-400' : 'text-gray-500'}`} />
                                 <h4 className={`text-sm font-semibold mb-1 ${schedulingMode === 'round_based' ? 'text-white' : 'text-gray-300'}`}>
                                     Round-Based
                                 </h4>
@@ -737,16 +750,16 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                             <button
                                 onClick={() => handleSetMode('granular')}
                                 className={`relative p-4 rounded-2xl border-2 text-left transition-all duration-200 ${schedulingMode === 'granular'
-                                    ? 'border-esports-purple bg-esports-purple/5 shadow-[0_0_20px_rgba(168,85,247,0.08)]'
+                                    ? 'border-rose-500 bg-rose-500/5 shadow-[0_0_20px_rgba(244,63,94,0.08)]'
                                     : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
                                     }`}
                             >
                                 {schedulingMode === 'granular' && (
                                     <div className="absolute top-3 right-3">
-                                        <Check className="w-4 h-4 text-esports-purple" />
+                                        <Check className="w-4 h-4 text-rose-400" />
                                     </div>
                                 )}
-                                <GitBranch className={`w-6 h-6 mb-2 ${schedulingMode === 'granular' ? 'text-esports-purple' : 'text-gray-500'}`} />
+                                <GitBranch className={`w-6 h-6 mb-2 ${schedulingMode === 'granular' ? 'text-rose-400' : 'text-gray-500'}`} />
                                 <h4 className={`text-sm font-semibold mb-1 ${schedulingMode === 'granular' ? 'text-white' : 'text-gray-300'}`}>
                                     Match-by-Match
                                 </h4>
@@ -767,7 +780,6 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                 <div key={section.key} className="space-y-2">
                                     {/* Bracket Section Header */}
                                     <div className={`flex items-center gap-3 px-4 py-3 ${section.headerClasses} border rounded-2xl`}>
-                                        <span className="text-lg">{section.icon}</span>
                                         <h3 className={`font-heading font-semibold ${section.textClass} text-sm uppercase tracking-wider`}>
                                             {section.label}
                                         </h3>
@@ -831,9 +843,9 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
 
                 {/* No Matches Warning */}
                 {matchesByConfigKey.size === 0 && (
-                    <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
-                        <AlertCircle className="w-5 h-5 text-amber-500" />
-                        <p className="text-sm text-amber-400">
+                    <div className="flex items-center gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
+                        <AlertCircle className="w-5 h-5 text-rose-400" />
+                        <p className="text-sm text-rose-300">
                             No matches found. Generate the bracket first.
                         </p>
                     </div>

@@ -1,8 +1,9 @@
 import { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion, useInView } from "framer-motion";
-import esportsData from "@/data/esportsGames.json";
-import { getManifestGameAssets } from "@/hooks/useRawgGame";
+import { useGameCatalog } from '@/hooks/useGameCatalog';
+import { listCatalogGames } from '@/utils/gameFeatures';
+import { getManifestGameAssets } from '@/hooks/useRawgGame';
 import { apiClient } from "@/lib/apiClient";
 import { getWebsiteAssetUrl } from "@/lib/storage";
 import {
@@ -135,13 +136,14 @@ const GameCard = ({
 const SupportedGames = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "200px" });
+  const { data: catalogData } = useGameCatalog();
   const games = useMemo(
-    () => (esportsData.games as Array<Game & { logo?: string }>).map(({ name, slug, category }) => ({
-      name,
-      slug,
-      category,
-    })),
-    [],
+    () => (catalogData?.games ?? listCatalogGames()).map((game) => ({
+      name: game.name,
+      slug: game.slug,
+      category: game.category,
+    })) as Game[],
+    [catalogData],
   );
 
   const seedAssetsMap = useMemo(() => buildSeedAssetsMap(games), [games]);
@@ -196,8 +198,6 @@ const SupportedGames = () => {
     return () => { cancelled = true; };
   }, [assetsRequested, games, isInView, seedAssetsMap]);
 
-  const navClass = "bg-white/5 border-white/10 hover:bg-white/10 text-white disabled:opacity-30";
-
   return (
     <section ref={sectionRef} className="py-32 bg-[#0a0a0a] relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
@@ -251,8 +251,8 @@ const SupportedGames = () => {
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious className={navClass} />
-            <CarouselNext className={navClass} />
+            <CarouselPrevious variant="secondary" className="disabled:opacity-30" />
+            <CarouselNext variant="secondary" className="disabled:opacity-30" />
           </Carousel>
         </motion.div>
 

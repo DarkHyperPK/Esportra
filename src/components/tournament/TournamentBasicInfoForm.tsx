@@ -7,8 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import esportsGames from '@/data/esportsGames.json';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
+import { getGameByName, listCatalogGames } from '@/utils/gameFeatures';
 
 interface FormData {
   name: string;
@@ -37,10 +38,11 @@ const TournamentBasicInfoForm = ({
   onSelectChange,
   onCheckboxChange
 }: TournamentBasicInfoFormProps) => {
+  useGameCatalog();
+  const catalogGames = listCatalogGames();
+
   // Find the selected game object
-  const selectedGame = esportsGames.games.find(
-    (g) => g.name.toLowerCase().replace(/\s+/g, '') === formData.game.toLowerCase().replace(/\s+/g, '')
-  );
+  const selectedGame = getGameByName(formData.game);
 
   // Team format options (for structure)
   let structureOptions: { value: string; label: string }[] = [];
@@ -77,7 +79,7 @@ const TournamentBasicInfoForm = ({
               <SelectValue placeholder="Select game" />
             </SelectTrigger>
             <SelectContent>
-              {esportsGames.games.map((game) => (
+              {catalogGames.map((game) => (
                 <SelectItem key={game.name} value={game.name}>
                   {game.name}
                 </SelectItem>

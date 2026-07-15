@@ -1,0 +1,7 @@
+{
+  "catalogVersion": "2026.06.08-mode-overlays-catalog",
+  "schemaVersion": 1,
+  "contentHash": "f27571f6bbdb8f59322fcaa3a168064c0e18862298777544c28d4741ab09bd3d",
+  "backendCatalogRelativePath": "src/Esportra.Api/GameCatalog/esportsGames.json",
+  "updatedAt": "2026-06-07"
+}

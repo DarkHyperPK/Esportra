@@ -12,10 +12,11 @@ import {
     EyeOff,
     Settings
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { GhostButton } from '@/components/ui/app-buttons';
 import { TournamentWizardData } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS, SEEDING_TYPE_LABELS } from '@/schemas/tournamentSchema';
-import { getEffectiveGameFeatures, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
+import { LAUNCH_STATE_LABELS } from '@/utils/tournamentVisibilityUtils';
+import { getEffectiveGameFeatures, getParticipantMode, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 
 interface StepReviewProps {
     data: TournamentWizardData;
@@ -26,6 +27,16 @@ interface StepReviewProps {
 const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
     const hasErrors = Object.keys(errors).length > 0;
     const features = getEffectiveGameFeatures(data.game || '', data.gameMode);
+    const participantMode = getParticipantMode(data.game || '', data.gameMode);
+    const isSoloMode = participantMode === 'solo';
+    const teamSizeLabel = isSoloMode
+        ? 'Solo (Individual)'
+        : data.teamSize === 2
+            ? 'Duo (2 players)'
+            : data.teamSize === 3
+                ? 'Trio (3 players)'
+                : `${data.teamSize} players`;
+    const maxParticipantsUnit = isSoloMode ? 'Players' : data.teamSize === 2 ? 'Duos' : data.teamSize === 3 ? 'Trios' : 'Squads';
     const isBR = isBattleRoyale(data.game || '');
     const brConfig = getBRConfig(data.game || '');
 
@@ -42,10 +53,11 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
         });
     };
 
-    const getVisibilityIcon = () => {
-        switch (data.visibility) {
+    const getLaunchStateIcon = () => {
+        switch (data.launchState) {
             case 'public': return <Eye className="w-4 h-4" />;
-            case 'unlisted': return <EyeOff className="w-4 h-4" />;
+            case 'private': return <EyeOff className="w-4 h-4" />;
+            case 'draft': return <EyeOff className="w-4 h-4" />;
         }
     };
 
@@ -58,7 +70,7 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 { label: 'Tournament Name', value: data.name || 'Not set' },
                 { label: 'Game', value: data.game || 'Not selected' },
                 { label: 'Type', value: data.isOnline ? 'Online' : 'LAN', icon: data.isOnline ? <Globe className="w-4 h-4" /> : <MapPin className="w-4 h-4" /> },
-                { label: 'Visibility', value: data.visibility, icon: getVisibilityIcon() },
+                { label: 'Launch State', value: LAUNCH_STATE_LABELS[data.launchState] ?? data.launchState, icon: getLaunchStateIcon() },
                 { label: 'Start', value: formatDate(data.startDate, data.startTime) },
                 ...(data.endDate ? [{ label: 'End', value: formatDate(data.endDate, data.endTime) }] : []),
                 ...(!data.isOnline && data.venue ? [{ label: 'Venue', value: data.venue }] : []),
@@ -70,18 +82,12 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
             icon: <Trophy className="w-5 h-5" />,
             items: isBR ? [
                 { label: 'Tournament Type', value: 'Points-Based (Battle Royale)' },
-                { label: 'Structure', value: data.brMultiStage ? 'Multi-Stage (Groups to Finals)' : 'Single Lobby' },
-                { label: data.brMultiStage ? 'Group Stage Games' : 'Lobby Games', value: `${data.brGameCount} games` },
+                { label: 'Team Format', value: teamSizeLabel },
                 { label: 'Scoring', value: data.brScoringPreset === 'custom' ? 'Custom' : (brConfig?.scoringPresets?.[data.brScoringPreset]?.name || data.brScoringPreset) },
                 { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
-                { label: 'Max Participants', value: data.maxTeams ? `${data.maxTeams} ${data.teamSize === 1 ? 'Players' : data.teamSize === 2 ? 'Duos' : data.teamSize === 3 ? 'Trios' : 'Squads'}` : 'Unlimited' },
-                { label: 'Team Size', value: data.teamSize === 1 ? 'Solo (Individual)' : data.teamSize === 2 ? 'Duo (2 players)' : data.teamSize === 3 ? 'Trio (3 players)' : `${data.teamSize} players` },
-                ...(data.brMultiStage ? [
-                    { label: 'Lobby Size', value: `${data.brLobbySize} teams per group` },
-                    { label: 'Groups', value: data.maxTeams ? `${Math.ceil(data.maxTeams / data.brLobbySize)} groups` : 'TBD' },
-                    { label: 'Advancement', value: `Top ${data.brAdvancementCount} per group` },
-                    { label: 'Finals Games', value: `${data.brFinalsGameCount} games` },
-                ] : []),
+                { label: 'Tiebreaker', value: data.brTiebreaker === 'most_wins' ? 'Most Wins' : data.brTiebreaker === 'most_kills' ? 'Most Kills' : 'Best Placement' },
+                { label: 'Max Participants', value: data.maxTeams ? `${data.maxTeams} ${maxParticipantsUnit}` : 'Unlimited' },
+                { label: 'Stages', value: 'Configure format and matches per lobby in Stages tab' },
             ] : [
                 { label: 'Total Stages', value: `${data.stages.length} stage(s)` },
                 ...data.stages.map((stage, i) => ({
@@ -114,6 +120,20 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                 { label: 'Check-in', value: `${data.checkInWindowMinutes} min before start` },
                 { label: 'Auto-remove no-shows', value: 'Enabled' },
                 { label: 'Waitlist', value: data.waitlistEnabled ? `Yes (max ${data.waitlistMax})` : 'Disabled' },
+                ...(data.invitedTeamsEnabled
+                    ? [
+                        {
+                            label: 'Invited participants',
+                            value: `${data.reservedInviteSlots} reserved slot${data.reservedInviteSlots === 1 ? '' : 's'} (${data.inviteExpiryDays}-day codes)`,
+                        },
+                        ...(data.maxTeams > 0
+                            ? [{
+                                label: 'Open registration',
+                                value: `${Math.max(data.maxTeams - data.reservedInviteSlots, 0)} of ${data.maxTeams} ${data.teamSize > 1 ? 'team' : 'player'} slots`,
+                            }]
+                            : []),
+                    ]
+                    : []),
             ]
         },
         {
@@ -126,12 +146,6 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                     : []),
                 ...(features.assistedReporting
                     ? [{ label: 'Assisted Match Reporting', value: data.assistedMatchReporting ? 'Enabled' : 'Disabled' }]
-                    : []),
-                ...(isBR
-                    ? [
-                        { label: 'Kill Cap', value: data.brKillCap ? `${data.brKillCap} per game` : 'No cap' },
-                        { label: 'Tiebreaker', value: data.brTiebreaker === 'most_wins' ? 'Most Wins' : data.brTiebreaker === 'most_kills' ? 'Most Kills' : 'Best Placement' },
-                    ]
                     : []),
                 ...(!features.mapVeto && !features.assistedReporting && !isBR
                     ? [{ label: 'Game Settings', value: 'No game-specific settings' }]
@@ -193,15 +207,14 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                                 <div className="text-emerald-400">{section.icon}</div>
                                 <h3 className="font-semibold text-white">{section.title}</h3>
                             </div>
-                            <Button
-                                variant="ghost"
+                            <GhostButton
+                                type="button"
                                 size="sm"
                                 onClick={() => onEdit(section.step)}
-                                className="text-gray-400 hover:text-white"
                             >
                                 <Edit2 className="w-4 h-4 mr-1" />
                                 Edit
-                            </Button>
+                            </GhostButton>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                             {section.items.map((item, i) => (

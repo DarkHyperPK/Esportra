@@ -20,43 +20,70 @@ interface BracketVersion {
     created_at: string;
 }
 
-export const usePublicBracketData = (tournamentId: string | undefined) => {
-    const { data, isLoading: loading, error: queryError, refetch } = useQuery({
-        queryKey: ['public-bracket', tournamentId],
+type UsePublicBracketDataOptions = {
+    /** When false, skip fetching entirely. */
+    enabled?: boolean;
+    /** Bracket version lookup is only needed on bracket/leaderboard views. */
+    includeVersions?: boolean;
+};
+
+export const usePublicBracketData = (
+    tournamentId: string | undefined,
+    options: UsePublicBracketDataOptions = {},
+) => {
+    const { enabled = true, includeVersions = true } = options;
+    const canFetch = enabled && !!tournamentId;
+
+    const stagesQuery = useQuery({
+        queryKey: ['tournament-stages', tournamentId],
         queryFn: async () => {
-            const [stagesData, versionsData] = await Promise.all([
-                apiClient.get<Stage[]>(`/api/tournaments/${tournamentId}/stages`),
-                apiClient.get<BracketVersion[]>(
-                    `/api/tournaments/${tournamentId}/bracket-versions?status=active,draft,completed`
-                ),
-            ]);
-
-            const sortedStages = (stagesData || [])
-                .sort((a, b) => a.stage_order - b.stage_order);
-
-            // Build version map: for each stage, pick the most recent version
-            const vMap: Record<string, string> = {};
-            for (const stage of sortedStages) {
-                const stageVersions = (versionsData || [])
-                    .filter(v => v.stage_id === stage.id)
-                    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-                if (stageVersions.length > 0) {
-                    vMap[stage.id] = stageVersions[0].id;
-                }
-            }
-
-            return { stages: sortedStages, activeVersionsMap: vMap };
+            const stagesData = await apiClient.get<Stage[]>(`/api/tournaments/${tournamentId}/stages`);
+            return (stagesData || []).sort((a, b) => a.stage_order - b.stage_order);
         },
-        enabled: !!tournamentId,
-        staleTime: 30 * 1000,
+        enabled: canFetch,
+        staleTime: 2 * 60 * 1000,
     });
 
+    const versionsQuery = useQuery({
+        queryKey: ['tournament-bracket-versions', tournamentId],
+        queryFn: async () =>
+            apiClient.get<BracketVersion[]>(
+                `/api/tournaments/${tournamentId}/bracket-versions?status=active,draft,completed`
+            ),
+        enabled: canFetch && includeVersions,
+        staleTime: 2 * 60 * 1000,
+    });
+
+    const stages = stagesQuery.data ?? [];
+    const activeVersionsMap: Record<string, string> = {};
+
+    if (includeVersions && versionsQuery.data) {
+        for (const stage of stages) {
+            const stageVersions = versionsQuery.data
+                .filter(v => v.stage_id === stage.id)
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+            if (stageVersions.length > 0) {
+                activeVersionsMap[stage.id] = stageVersions[0].id;
+            }
+        }
+    }
+
+    const loading = stagesQuery.isLoading || (includeVersions && versionsQuery.isLoading);
+    const error = (stagesQuery.error ?? versionsQuery.error) as Error | null;
+
+    const refetch = async () => {
+        await Promise.all([
+            stagesQuery.refetch(),
+            includeVersions ? versionsQuery.refetch() : Promise.resolve(),
+        ]);
+    };
+
     return {
-        stages: data?.stages ?? [],
-        activeVersionsMap: data?.activeVersionsMap ?? {},
+        stages,
+        activeVersionsMap,
         loading,
-        error: queryError as Error | null,
+        error,
         refetch,
     };
 };

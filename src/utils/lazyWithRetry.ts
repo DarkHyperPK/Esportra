@@ -19,6 +19,11 @@ export function lazyWithRetry(
       // Guard: if the chunk was served as HTML (e.g. SPA fallback on 404),
       // the import resolves but .default is undefined
       if (!module?.default) {
+        if (!hasReloaded) {
+          sessionStorage.setItem('chunk-reload-retry', '1');
+          window.location.reload();
+          return new Promise(() => {});
+        }
         throw new Error('Chunk loaded but missing default export');
       }
 

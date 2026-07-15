@@ -116,6 +116,7 @@ export function getBundledGameAssets(gameName: string): CachedGame | null {
     };
 }
 
+/** Lightweight banner/cover pair for landing cards and other static surfaces. */
 export function getManifestGameAssets(gameName: string): { banner: string | null; cover: string | null } {
     const bundled = getBundledGameAssets(gameName);
     if (!bundled) return { banner: null, cover: null };

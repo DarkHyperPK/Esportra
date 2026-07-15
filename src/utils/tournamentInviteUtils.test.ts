@@ -1,0 +1,142 @@
+import { describe, expect, it } from 'vitest';
+import {
+  canConfigureInvitedTeams,
+  canShowInviteRedemption,
+  canShowOpenRegistration,
+  getOpenRegistrationCapacity,
+  getReservedInviteSlotsFromTournament,
+  isTournamentRegistrationOpen,
+} from '@/utils/tournamentInviteUtils';
+
+describe('tournamentInviteUtils', () => {
+  describe('getReservedInviteSlotsFromTournament', () => {
+    it('prefers column value when positive', () => {
+      expect(
+        getReservedInviteSlotsFromTournament({
+          reserved_invite_slots: 4,
+          settings: { reservedInviteSlots: 2 },
+        }),
+      ).toBe(4);
+    });
+
+    it('falls back to settings when column is zero', () => {
+      expect(
+        getReservedInviteSlotsFromTournament({
+          reserved_invite_slots: 0,
+          settings: { reservedInviteSlots: 3 },
+        }),
+      ).toBe(3);
+    });
+  });
+
+  describe('getOpenRegistrationCapacity', () => {
+    it('returns full capacity when no reserved slots', () => {
+      expect(getOpenRegistrationCapacity(16, 0)).toBe(16);
+    });
+
+    it('subtracts reserved slots from max teams', () => {
+      expect(getOpenRegistrationCapacity(16, 4)).toBe(12);
+    });
+  });
+
+  describe('isTournamentRegistrationOpen', () => {
+    const futureDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const futureStart = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+
+    it('accepts published and open statuses within the registration window', () => {
+      expect(isTournamentRegistrationOpen('published', {
+        registrationDeadline: futureDeadline,
+        startDate: futureStart,
+      })).toBe(true);
+      expect(isTournamentRegistrationOpen('open', {
+        registrationDeadline: futureDeadline,
+        startDate: futureStart,
+      })).toBe(true);
+    });
+
+    it('rejects closed or draft statuses', () => {
+      expect(isTournamentRegistrationOpen('draft')).toBe(false);
+      expect(isTournamentRegistrationOpen('completed')).toBe(false);
+    });
+
+    it('rejects when registration deadline has passed', () => {
+      const pastDeadline = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      expect(isTournamentRegistrationOpen('open', {
+        registrationDeadline: pastDeadline,
+        startDate: futureStart,
+      })).toBe(false);
+    });
+  });
+
+  describe('canConfigureInvitedTeams', () => {
+    it('allows reserved invite slots for solo and team formats', () => {
+      expect(canConfigureInvitedTeams(1, false)).toBe(true);
+      expect(canConfigureInvitedTeams(2, false)).toBe(true);
+      expect(canConfigureInvitedTeams(4, true)).toBe(true);
+    });
+  });
+
+  describe('canShowInviteRedemption', () => {
+    const base = {
+      isOrganizer: false,
+      isRegistered: false,
+      status: 'open',
+      registrationType: 'open' as const,
+      reservedSlots: 0,
+      isPublic: true,
+      registrationDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      startDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+    };
+
+    it('shows for invite-only tournaments when registration is open', () => {
+      expect(canShowInviteRedemption({ ...base, registrationType: 'invite_only' })).toBe(true);
+    });
+
+    it('shows for private tournaments when registration is open', () => {
+      expect(canShowInviteRedemption({ ...base, isPublic: false })).toBe(true);
+    });
+
+    it('shows when reserved invite slots exist', () => {
+      expect(canShowInviteRedemption({ ...base, reservedSlots: 2 })).toBe(true);
+    });
+
+    it('hides when registration is closed', () => {
+      expect(canShowInviteRedemption({ ...base, status: 'completed', reservedSlots: 2 })).toBe(false);
+    });
+
+    it('hides for organizers and registered users', () => {
+      expect(canShowInviteRedemption({ ...base, isOrganizer: true, reservedSlots: 2 })).toBe(false);
+      expect(canShowInviteRedemption({ ...base, isRegistered: true, reservedSlots: 2 })).toBe(false);
+    });
+  });
+
+  describe('canShowOpenRegistration', () => {
+    const base = {
+      isOrganizer: false,
+      isRegistered: false,
+      status: 'open',
+      registrationType: 'open' as const,
+      reservedSlots: 0,
+      isPublic: true,
+      maxTeams: 16,
+      registrationDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      startDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+    };
+
+    it('shows for public open-registration tournaments', () => {
+      expect(canShowOpenRegistration(base)).toBe(true);
+    });
+
+    it('hides for invite-only tournaments', () => {
+      expect(canShowOpenRegistration({ ...base, registrationType: 'invite_only' })).toBe(false);
+    });
+
+    it('hides when open capacity is exhausted', () => {
+      expect(canShowOpenRegistration({ ...base, reservedSlots: 16 })).toBe(false);
+    });
+
+    it('hides for private tournaments', () => {
+      expect(canShowOpenRegistration({ ...base, isPublic: false })).toBe(false);
+    });
+  });
+});

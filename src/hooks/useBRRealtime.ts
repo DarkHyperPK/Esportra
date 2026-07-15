@@ -1,76 +1,111 @@
 /**
- * useBRRealtime — live BR round/evidence/leaderboard updates via SignalR BRHub.
+ * useBRRealtime — live BR lobby/evidence/leaderboard updates via SignalR BRHub.
  * Invalidates TanStack Query caches on hub events; does not push full state.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { HubConnectionState } from '@microsoft/signalr';
-import { useHub } from '@/hooks/useSignalR';
+import { useSignalR } from '@/hooks/useSignalR';
+import { useHubGroupJoin } from '@/hooks/useHubGroupJoin';
 import { HubPaths } from '@/lib/signalrClient';
 
 interface BrEventScope {
   stageId?: string | null;
   groupId?: string | null;
-  roundId?: string | null;
+  lobbyId?: string | null;
 }
 
 interface UseBRRealtimeOptions extends BrEventScope {
+  roundId?: string | null;
   tournamentId?: string | null;
   enabled?: boolean;
 }
 
 interface BrScopedPayload extends BrEventScope {
-  roundId?: string;
+  lobbyId?: string;
+  gameId?: string;
 }
 
 const matchesScope = (payload: BrScopedPayload, scope: BrEventScope) => {
   if (scope.stageId && payload.stageId && payload.stageId !== scope.stageId) return false;
+  if (scope.lobbyId && payload.lobbyId && payload.lobbyId === scope.lobbyId) return true;
   if (scope.groupId && payload.groupId && payload.groupId !== scope.groupId) return false;
-  if (scope.roundId && payload.roundId && payload.roundId !== scope.roundId) return false;
+  if (scope.lobbyId && payload.lobbyId && payload.lobbyId !== scope.lobbyId) return false;
   return true;
 };
 
 export function useBRRealtime({
   stageId,
   groupId,
+  lobbyId,
   roundId,
   tournamentId,
   enabled = true,
 }: UseBRRealtimeOptions) {
-  const conn = useHub(HubPaths.BR);
+  const effectiveLobbyId = lobbyId ?? roundId ?? null;
+  const { getConnection, ensureHubStarted } = useSignalR();
+  const conn = getConnection(HubPaths.BR);
   const queryClient = useQueryClient();
-  const [connected, setConnected] = useState(false);
+  const isEnabled = enabled && Boolean(stageId || groupId || effectiveLobbyId);
+
+  const joinGroups = useCallback(async () => {
+    await Promise.all([
+      stageId ? conn.invoke('JoinStage', stageId) : Promise.resolve(),
+      groupId ? conn.invoke('JoinGroup', groupId) : Promise.resolve(),
+      effectiveLobbyId ? conn.invoke('JoinLobby', effectiveLobbyId) : Promise.resolve(),
+    ]);
+  }, [conn, stageId, groupId, effectiveLobbyId]);
+
+  const leaveGroups = useCallback(async () => {
+    await Promise.all([
+      effectiveLobbyId ? conn.invoke('LeaveLobby', effectiveLobbyId) : Promise.resolve(),
+      groupId ? conn.invoke('LeaveGroup', groupId) : Promise.resolve(),
+      stageId ? conn.invoke('LeaveStage', stageId) : Promise.resolve(),
+    ]);
+  }, [conn, stageId, groupId, effectiveLobbyId]);
+
+  const { joined } = useHubGroupJoin(conn, {
+    enabled: isEnabled,
+    ensureConnected: () => ensureHubStarted(HubPaths.BR),
+    join: joinGroups,
+    leave: leaveGroups,
+    onJoinError: (error) => {
+      if (import.meta.env.DEV) {
+        console.warn('[BRRealtime] Failed to join stream', error);
+      }
+    },
+  });
 
   useEffect(() => {
-    if (!enabled) {
-      setConnected(false);
-      return;
-    }
+    if (!isEnabled) return;
 
     let active = true;
-    let joined = false;
-    const scope = { stageId, groupId, roundId };
+    const scope = { stageId, groupId, lobbyId: effectiveLobbyId };
 
-    const invalidateRounds = () => {
+    const invalidateLobbies = () => {
       if (stageId && groupId) {
-        queryClient.invalidateQueries({ queryKey: ['br-rounds', stageId, groupId] });
+        queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, groupId] });
+      } else if (stageId) {
+        queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId] });
       } else {
-        queryClient.invalidateQueries({ queryKey: ['br-rounds'] });
+        queryClient.invalidateQueries({ queryKey: ['br-lobbies'] });
+      }
+      if (stageId) {
+        queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, 'stage-all'] });
       }
     };
 
-    const invalidateRoundResults = (targetRoundId?: string | null) => {
-      const id = targetRoundId ?? roundId;
+    const invalidateLobbyResults = (targetLobbyId?: string | null) => {
+      const id = targetLobbyId ?? effectiveLobbyId;
       if (id) {
-        queryClient.invalidateQueries({ queryKey: ['br-round-results', id] });
+        queryClient.invalidateQueries({ queryKey: ['br-lobby-results', id] });
       }
     };
 
-    const invalidateRoundEvidence = (targetRoundId?: string | null) => {
-      const id = targetRoundId ?? roundId;
+    const invalidateLobbyEvidence = (targetLobbyId?: string | null) => {
+      const id = targetLobbyId ?? effectiveLobbyId;
       if (id) {
-        queryClient.invalidateQueries({ queryKey: ['br-round-evidence', id] });
+        queryClient.invalidateQueries({ queryKey: ['br-lobby-evidence', id] });
       }
     };
 
@@ -79,6 +114,9 @@ export function useBRRealtime({
         queryClient.invalidateQueries({ queryKey: ['br-group-leaderboard', stageId, groupId] });
       } else {
         queryClient.invalidateQueries({ queryKey: ['br-group-leaderboard'] });
+      }
+      if (stageId) {
+        queryClient.invalidateQueries({ queryKey: ['br-stage-leaderboard', stageId] });
       }
     };
 
@@ -98,25 +136,46 @@ export function useBRRealtime({
       }
     };
 
-    const handleRoundCreated = (payload: BrScopedPayload) => {
-      if (!active || !matchesScope(payload, scope)) return;
-      invalidateRounds();
-      invalidatePlayerContext();
+    const invalidateGames = (targetLobbyId?: string | null) => {
+      const id = targetLobbyId ?? effectiveLobbyId;
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['br-games', id] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['br-games'] });
+      }
     };
 
-    const handleRoundUpdated = (payload: BrScopedPayload) => {
+    const handleGameUpdated = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
-      invalidateRounds();
+      invalidateGames(payload.lobbyId);
+      invalidateLobbies();
       invalidatePlayerContext();
       invalidateLeaderboard();
       invalidateStageCompletion();
     };
 
-    const handleRoundReset = (payload: BrScopedPayload) => {
+    const handleLobbyCreated = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
-      invalidateRounds();
-      invalidateRoundResults(payload.roundId);
-      invalidateRoundEvidence(payload.roundId);
+      invalidateLobbies();
+      invalidatePlayerContext();
+    };
+
+    const handleLobbyUpdated = (payload: BrScopedPayload) => {
+      if (!active || !matchesScope(payload, scope)) return;
+      invalidateLobbies();
+      invalidateGames(payload.lobbyId);
+      invalidatePlayerContext();
+      invalidateLeaderboard();
+      invalidateStageCompletion();
+    };
+
+    const handleLobbyReset = (payload: BrScopedPayload) => {
+      if (!active || !matchesScope(payload, scope)) return;
+      invalidateLobbies();
+      invalidateGames(payload.lobbyId);
+      invalidateLobbyResults(payload.lobbyId);
+      invalidateLobbyEvidence(payload.lobbyId);
+      queryClient.invalidateQueries({ queryKey: ['br-lobby-readiness', payload.lobbyId] });
       invalidateLeaderboard();
       invalidatePlayerContext();
       invalidateStageCompletion();
@@ -124,20 +183,30 @@ export function useBRRealtime({
 
     const handleEvidenceSubmitted = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
-      invalidateRoundEvidence(payload.roundId);
-      invalidateRounds();
+      invalidateLobbyEvidence(payload.lobbyId);
+      invalidateGames(payload.lobbyId);
+      invalidateLobbies();
     };
 
     const handleEvidenceReviewed = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
-      invalidateRoundEvidence(payload.roundId);
-      invalidateRounds();
+      invalidateLobbyEvidence(payload.lobbyId);
+      invalidateLobbyResults(payload.lobbyId);
+      invalidateGames(payload.lobbyId);
+      invalidateLobbies();
+      invalidateLeaderboard();
+    };
+
+    const handleLobbyReadinessUpdated = (payload: BrScopedPayload) => {
+      if (!active || !matchesScope(payload, scope)) return;
+      queryClient.invalidateQueries({ queryKey: ['br-lobby-readiness', payload.lobbyId] });
+      invalidateLobbies();
     };
 
     const handleResultsUpdated = (payload: BrScopedPayload) => {
       if (!active || !matchesScope(payload, scope)) return;
-      invalidateRoundResults(payload.roundId);
-      invalidateRounds();
+      invalidateLobbyResults(payload.lobbyId);
+      invalidateLobbies();
       invalidateLeaderboard();
       invalidateStageCompletion();
     };
@@ -148,72 +217,43 @@ export function useBRRealtime({
       invalidateStageCompletion();
     };
 
-    conn.on('RoundCreated', handleRoundCreated);
-    conn.on('RoundUpdated', handleRoundUpdated);
-    conn.on('RoundReset', handleRoundReset);
+    conn.on('LobbyCreated', handleLobbyCreated);
+    conn.on('LobbyUpdated', handleLobbyUpdated);
+    conn.on('LobbyReset', handleLobbyReset);
+    conn.on('LobbyCompleted', handleLobbyUpdated);
+    conn.on('GameUpdated', handleGameUpdated);
+    conn.on('GameCompleted', handleGameUpdated);
     conn.on('EvidenceSubmitted', handleEvidenceSubmitted);
     conn.on('EvidenceReviewed', handleEvidenceReviewed);
+    conn.on('LobbyReadinessUpdated', handleLobbyReadinessUpdated);
     conn.on('ResultsUpdated', handleResultsUpdated);
     conn.on('LeaderboardUpdated', handleLeaderboardUpdated);
 
-    const join = async () => {
-      if (!active || joined || conn.state !== HubConnectionState.Connected) return;
-
-      try {
-        await Promise.all([
-          stageId ? conn.invoke('JoinStage', stageId) : Promise.resolve(),
-          groupId ? conn.invoke('JoinGroup', groupId) : Promise.resolve(),
-          roundId ? conn.invoke('JoinRound', roundId) : Promise.resolve(),
-        ]);
-
-        if (active) {
-          joined = true;
-          setConnected(true);
-        }
-      } catch (error) {
-        if (active) {
-          joined = false;
-          setConnected(false);
-          console.warn('[BRRealtime] Failed to join stream', error);
-        }
-      }
-    };
-
-    const syncConnection = () => {
-      if (!active) return;
-
-      if (conn.state !== HubConnectionState.Connected) {
-        joined = false;
-        setConnected(false);
-        return;
-      }
-
-      void join();
-    };
-
-    syncConnection();
-    const timer = window.setInterval(syncConnection, 1_000);
-
     return () => {
       active = false;
-      window.clearInterval(timer);
-      conn.off('RoundCreated', handleRoundCreated);
-      conn.off('RoundUpdated', handleRoundUpdated);
-      conn.off('RoundReset', handleRoundReset);
+      conn.off('LobbyCreated', handleLobbyCreated);
+      conn.off('LobbyUpdated', handleLobbyUpdated);
+      conn.off('LobbyReset', handleLobbyReset);
+      conn.off('LobbyCompleted', handleLobbyUpdated);
+      conn.off('GameUpdated', handleGameUpdated);
+      conn.off('GameCompleted', handleGameUpdated);
       conn.off('EvidenceSubmitted', handleEvidenceSubmitted);
       conn.off('EvidenceReviewed', handleEvidenceReviewed);
+      conn.off('LobbyReadinessUpdated', handleLobbyReadinessUpdated);
       conn.off('ResultsUpdated', handleResultsUpdated);
       conn.off('LeaderboardUpdated', handleLeaderboardUpdated);
-
-      if (conn.state === HubConnectionState.Connected) {
-        if (roundId) conn.invoke('LeaveRound', roundId).catch(() => {});
-        if (groupId) conn.invoke('LeaveGroup', groupId).catch(() => {});
-        if (stageId) conn.invoke('LeaveStage', stageId).catch(() => {});
-      }
     };
-  }, [conn, stageId, groupId, roundId, tournamentId, enabled, queryClient]);
+  }, [
+    conn,
+    stageId,
+    groupId,
+    effectiveLobbyId,
+    tournamentId,
+    isEnabled,
+    queryClient,
+  ]);
 
-  return { connected };
+  return { connected: joined, joined };
 }
 
 export default useBRRealtime;

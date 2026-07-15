@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button, CtaButton } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
@@ -89,9 +90,9 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Button className="w-full bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white shadow-lg shadow-rose-500/20">
+                  <CtaButton className="w-full">
                     Apply as Organizer
-                  </Button>
+                  </CtaButton>
                 </div>
               </CardContent>
             </Card>
@@ -128,9 +129,9 @@ const VerificationRequestForm: React.FC<VerificationRequestFormProps> = ({
                   </div>
                 </div>
                 <div className="mt-4">
-                  <Button className="w-full bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider">
+                  <JackButton className="w-full">
                     Apply as Venue Owner
-                  </Button>
+                  </JackButton>
                 </div>
               </CardContent>
             </Card>

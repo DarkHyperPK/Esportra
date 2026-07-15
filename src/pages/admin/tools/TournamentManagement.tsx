@@ -25,7 +25,8 @@ import {
   StarOff,
   AlertTriangle,
   Loader2,
-  History
+  History,
+  Settings
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAdminTournaments, useAdminTournamentUpdate, useAdminBulkTournamentAction } from "@/hooks/useAdminQueries";
@@ -49,6 +50,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 interface Tournament {
   id: string;
+  slug: string;
   name: string;
   game: string;
   status: string;
@@ -598,6 +600,12 @@ const TournamentManagementTool = () => {
                             <Eye className="w-4 h-4 mr-2" />
                             View Details
                           </DropdownMenuItem>
+                          <DropdownMenuItem asChild className="text-blue-400 focus:text-blue-300 focus:bg-blue-500/10">
+                            <Link to={`/organizer/tournament/${tournament.slug}`}>
+                              <Settings className="w-4 h-4 mr-2" />
+                              Manage Tournament
+                            </Link>
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10"
                             onClick={() => handleStatusChange(tournament.id, 'ongoing')}
@@ -725,7 +733,7 @@ const TournamentManagementTool = () => {
 
       {/* Tournament Detail Modal */}
       <Dialog open={!!selectedTournament} onOpenChange={() => { setSelectedTournament(null); setModalTab('details'); }}>
-        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-3xl max-h-[80vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <Trophy className="w-5 h-5 text-amber-500" />

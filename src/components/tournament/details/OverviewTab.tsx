@@ -1,6 +1,7 @@
 import React from 'react';
 import { Users, ChevronRight, Trophy, Clock, Zap, CheckCircle, MapPin, Globe, ExternalLink, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { formatDateTime } from '@/utils/dateFormat';
 import { VerticalAdPlacement } from './VerticalAdPlacement';
 import { TournamentSponsorSidebar } from '@/components/tournament/TournamentSponsorSidebar';
 
@@ -137,8 +138,16 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                                     </h4>
                                     <ul className="space-y-4">
                                         <li className="flex justify-between text-sm text-gray-400 font-mono border-b border-white/5 pb-2">
-                                            <span>Registration Deadline</span>
+                                            <span>Tournament Start</span>
                                             <span className="text-white">{tournament.date}{tournament.time && ` • ${tournament.time}`}</span>
+                                        </li>
+                                        <li className="flex justify-between text-sm text-gray-400 font-mono border-b border-white/5 pb-2">
+                                            <span>Registration Deadline</span>
+                                            <span className="text-white">
+                                              {tournament.registration_deadline
+                                                ? formatDateTime(tournament.registration_deadline)
+                                                : '—'}
+                                            </span>
                                         </li>
                                         <li className="flex justify-between text-sm text-gray-400 font-mono border-b border-white/5 pb-2">
                                             <span>Check-In Window</span>

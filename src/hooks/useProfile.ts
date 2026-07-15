@@ -1,17 +1,12 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import { UserProfile, UserRole } from '@/types/auth';
+import { UserProfile } from '@/types/auth';
+import { normalizeProfileFromApi } from '@/utils/profileFields';
 
-const fetchProfileById = async (userId: string): Promise<UserProfile> => {
-  const data = await apiClient.get<UserProfile>(`/api/profiles/${userId}`);
-  const role: UserRole = (data as any).role ?? 'casual';
-  return {
-    ...data,
-    id: data.id ?? userId,
-    email: data.email ?? null,
-    role,
-  } as UserProfile;
+const fetchOwnProfile = async (userId: string): Promise<UserProfile> => {
+  const data = await apiClient.get<Record<string, unknown>>('/api/profiles/me');
+  return normalizeProfileFromApi(data, userId);
 };
 
 export const useProfile = () => {
@@ -20,7 +15,7 @@ export const useProfile = () => {
 
   const { data: profile = null, isLoading: loading, error: queryError } = useQuery({
     queryKey: ['profile', trackedUserId],
-    queryFn: () => fetchProfileById(trackedUserId!),
+    queryFn: () => fetchOwnProfile(trackedUserId!),
     enabled: !!trackedUserId,
     staleTime: 5 * 60 * 1000,
   });
@@ -31,14 +26,22 @@ export const useProfile = () => {
     if (!userId) return null;
     setTrackedUserId(userId);
     try {
+      await queryClient.invalidateQueries({ queryKey: ['profile', userId] });
       return await queryClient.fetchQuery({
         queryKey: ['profile', userId],
-        queryFn: () => fetchProfileById(userId),
-        staleTime: 5 * 60 * 1000,
+        queryFn: () => fetchOwnProfile(userId),
+        staleTime: 0,
       });
     } catch {
       return null;
     }
+  }, [queryClient]);
+
+  const applyProfilePatch = useCallback((userId: string, patch: Record<string, unknown>) => {
+    queryClient.setQueryData<UserProfile>(['profile', userId], (current) => {
+      if (!current) return current;
+      return normalizeProfileFromApi({ ...current, ...patch }, userId);
+    });
   }, [queryClient]);
 
   const clearProfile = useCallback(() => {
@@ -46,5 +49,5 @@ export const useProfile = () => {
     setTrackedUserId(null);
   }, [queryClient, trackedUserId]);
 
-  return { profile, loading, error, fetchProfile, clearProfile };
+  return { profile, loading, error, fetchProfile, applyProfilePatch, clearProfile };
 };

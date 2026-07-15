@@ -2,33 +2,46 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import type { BRGroup } from '@/types/brGroups';
 import type { BRLeaderboardEntry } from '@/types/battleRoyale';
-import type { BRRound } from '@/types/brRounds';
+import type { BRRound } from '@/types/brLobbies';
+
+type LeaderboardRowInput = GroupLeaderboardResponse & Record<string, unknown>;
 
 interface GroupLeaderboardResponse {
-  team_id: string;
-  team_name: string;
-  logo_url: string | null;
-  games_played: number;
-  total_placement_points: number;
-  total_kill_points: number;
-  total_points: number;
-  total_kills: number;
-  wins: number;
-  best_placement: number;
+  team_id?: string;
+  team_name?: string;
+  logo_url?: string | null;
+  games_played?: number;
+  total_placement_points?: number;
+  total_kill_points?: number;
+  total_points?: number;
+  total_kills?: number;
+  wins?: number;
+  best_placement?: number;
 }
 
-function mapToLeaderboardEntry(row: GroupLeaderboardResponse): BRLeaderboardEntry {
+function pickLeaderboardField<T>(row: LeaderboardRowInput, snake: string, camel: string): T | undefined {
+  const value = row[snake] ?? row[camel];
+  return value as T | undefined;
+}
+
+function mapToLeaderboardEntry(row: LeaderboardRowInput): BRLeaderboardEntry | null {
+  const teamId = pickLeaderboardField<string>(row, 'team_id', 'teamId');
+  if (!teamId) return null;
+
+  const teamName = pickLeaderboardField<string>(row, 'team_name', 'teamName') || 'Unknown';
+  const logoUrl = pickLeaderboardField<string | null>(row, 'logo_url', 'logoUrl');
+
   return {
-    teamId: row.team_id,
-    teamName: row.team_name,
-    teamLogo: row.logo_url ?? undefined,
-    totalPoints: Number(row.total_points) || 0,
-    totalKills: Number(row.total_kills) || 0,
-    totalPlacementPoints: Number(row.total_placement_points) || 0,
-    totalKillPoints: Number(row.total_kill_points) || 0,
-    gamesPlayed: Number(row.games_played) || 0,
-    wins: Number(row.wins) || 0,
-    bestPlacement: Number(row.best_placement) || 0,
+    teamId,
+    teamName,
+    teamLogo: logoUrl ?? undefined,
+    totalPoints: Number(pickLeaderboardField(row, 'total_points', 'totalPoints')) || 0,
+    totalKills: Number(pickLeaderboardField(row, 'total_kills', 'totalKills')) || 0,
+    totalPlacementPoints: Number(pickLeaderboardField(row, 'total_placement_points', 'totalPlacementPoints')) || 0,
+    totalKillPoints: Number(pickLeaderboardField(row, 'total_kill_points', 'totalKillPoints')) || 0,
+    gamesPlayed: Number(pickLeaderboardField(row, 'games_played', 'gamesPlayed')) || 0,
+    wins: Number(pickLeaderboardField(row, 'wins', 'wins')) || 0,
+    bestPlacement: Number(pickLeaderboardField(row, 'best_placement', 'bestPlacement')) || 0,
     perGameResults: [],
   };
 }
@@ -59,7 +72,7 @@ const selectPreferredActiveRound = (rounds: BRRound[]) => {
       return startedDifference;
     }
 
-    return right.round_number - left.round_number;
+    return (right.round_number ?? right.wave_number) - (left.round_number ?? left.wave_number);
   })[0];
 };
 
@@ -83,20 +96,49 @@ export const useBRGroupStage = (stageId: string | null) => {
 export const useBRGroupLeaderboard = (
   stageId: string | null,
   groupId: string | null,
-  options: { refetchIntervalMs?: number | false } = {},
+  options: { enabled?: boolean; refetchIntervalMs?: number | false } = {},
 ) => {
-  const { refetchIntervalMs = false } = options;
+  const { enabled = true, refetchIntervalMs = false } = options;
+  const queryEnabled = enabled && !!stageId && !!groupId;
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['br-group-leaderboard', stageId, groupId],
     queryFn: async () => {
       const raw = await apiClient.get<GroupLeaderboardResponse[]>(
         `/api/stages/${stageId}/br/groups/${groupId}/leaderboard`
       );
-      return raw.map(mapToLeaderboardEntry);
+      return raw.map(mapToLeaderboardEntry).filter((entry): entry is BRLeaderboardEntry => entry != null);
     },
-    enabled: !!stageId && !!groupId,
+    enabled: queryEnabled,
     staleTime: 1000 * 30,
-    refetchInterval: !!stageId && !!groupId ? refetchIntervalMs : false,
+    refetchInterval: queryEnabled ? refetchIntervalMs : false,
+    refetchIntervalInBackground: Boolean(refetchIntervalMs),
+  });
+
+  return {
+    leaderboard: data ?? [],
+    isLoading,
+    error,
+    refetch,
+  };
+};
+
+export const useBRStageLeaderboard = (
+  stageId: string | null,
+  options: { enabled?: boolean; refetchIntervalMs?: number | false } = {},
+) => {
+  const { enabled = true, refetchIntervalMs = false } = options;
+  const queryEnabled = enabled && !!stageId;
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['br-stage-leaderboard', stageId],
+    queryFn: async () => {
+      const raw = await apiClient.get<GroupLeaderboardResponse[]>(
+        `/api/stages/${stageId}/br/leaderboard`,
+      );
+      return raw.map(mapToLeaderboardEntry).filter((entry): entry is BRLeaderboardEntry => entry != null);
+    },
+    enabled: queryEnabled,
+    staleTime: 1000 * 30,
+    refetchInterval: queryEnabled ? refetchIntervalMs : false,
     refetchIntervalInBackground: Boolean(refetchIntervalMs),
   });
 
@@ -124,9 +166,9 @@ export const useBRGroupRounds = (
     ? false
     : refetchIntervalMs;
   const { data, isLoading, error } = useQuery({
-    queryKey: ['br-rounds', stageId, groupId],
+    queryKey: ['br-lobbies', stageId, groupId],
     queryFn: () =>
-      apiClient.get<BRRound[]>(`/api/stages/${stageId}/br/groups/${groupId}/rounds`),
+      apiClient.get<BRRound[]>(`/api/stages/${stageId}/br/groups/${groupId}/lobbies`),
     enabled: enabled && !!stageId && !!groupId,
     staleTime: 1000 * 60,
     refetchInterval: enabled && !!stageId && !!groupId ? effectiveInterval : false,
@@ -134,13 +176,27 @@ export const useBRGroupRounds = (
   });
 
   const rounds = data ?? [];
-  const completed = rounds.filter((r) => r.status === 'completed').length;
-  const activeRound = selectPreferredActiveRound(rounds);
+  const normalizedRounds = rounds.map((round) => ({
+    ...round,
+    round_number: round.round_number ?? round.wave_number,
+  }));
+  const completed = normalizedRounds.filter((r) => r.status === 'completed').length;
+  const activeRound = selectPreferredActiveRound(normalizedRounds);
+  const totalGames = normalizedRounds.reduce((sum, lobby) => sum + (lobby.game_count ?? 1), 0);
+  const completedGames = normalizedRounds.reduce(
+    (sum, lobby) => sum + (
+      lobby.games_completed
+      ?? (lobby.status === 'completed' ? (lobby.game_count ?? 1) : 0)
+    ),
+    0,
+  );
 
   return {
-    rounds,
-    totalRounds: rounds.length,
+    rounds: normalizedRounds,
+    totalRounds: normalizedRounds.length,
     completedRounds: completed,
+    totalGames,
+    completedGames,
     activeRound,
     isLoading,
     error,
@@ -149,22 +205,61 @@ export const useBRGroupRounds = (
 
 // ── Player context ────────────────────────────────────────────────────────────
 
+export interface BRPlayerGameSchedule {
+  id: string;
+  gameNumber: number;
+  map: string | null;
+  status: string;
+  scheduledAt: string | null;
+  queueTimerMinutes?: number | null;
+  queueStartedAt?: string | null;
+}
+
+export interface BRPlayerLobbySchedule {
+  lobbyId: string;
+  waveNumber: number;
+  matchupLabel: string | null;
+  status: string;
+  scheduledAt: string | null;
+  games: BRPlayerGameSchedule[];
+}
+
 export interface BRPlayerContext {
   stageId: string | null;
   stageName: string | null;
   groupId: string | null;
   groupName: string | null;
+  assignmentHint?: 'not_registered' | 'check_in_required' | 'registered_not_seeded' | null;
+  gamesModelActive?: boolean;
+  gamesPerLobby?: number;
   totalRounds: number;
   completedRounds: number;
+  totalGames?: number;
+  completedGames?: number;
   activeRound: {
-    id: string;
-    roundNumber: number;
+    id?: string;
+    lobbyId?: string;
+    waveNumber?: number;
+    roundNumber?: number;
+    matchupLabel?: string | null;
     lobbyCode: string | null;
     status: string;
     queueTimerMinutes: number | null;
     queueStartedAt: string | null;
     scheduledAt: string | null;
+    map?: string | null;
   } | null;
+  activeGame?: {
+    id: string;
+    lobbyId: string;
+    gameNumber: number;
+    map: string | null;
+    status: string;
+    scheduledAt: string | null;
+    queueTimerMinutes?: number | null;
+    queueStartedAt?: string | null;
+  } | null;
+  lobbies?: BRPlayerLobbySchedule[];
 }
 
 export const useBRPlayerContext = (
@@ -188,6 +283,7 @@ export const useBRPlayerContext = (
     groupId: null,
     groupName: null,
     stageName: null,
+    gamesModelActive: false,
     totalRounds: 0,
     completedRounds: 0,
     activeRound: null,

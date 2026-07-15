@@ -1,32 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { SuccessButton } from '@/components/ui/app-buttons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Layers, Trophy, Lock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, RefreshCw, Check } from 'lucide-react';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { Database } from '@/integrations/supabase/types';
 import { StageSetupWizard } from '@/components/organizer/wizard/StageSetupWizard';
-import { SingleEliminationGenerator } from '@/services/bracket/SingleEliminationGenerator';
-import { DoubleEliminationGenerator } from '@/services/bracket/DoubleEliminationGenerator';
-import { SwissGenerator } from '@/services/bracket/SwissGenerator';
-import { RoundRobinGenerator } from '@/services/bracket/RoundRobinGenerator';
-import { MatchRepository } from '@/services/bracket/MatchRepository';
-import { GraphValidator } from '@/services/bracket/BracketGenerator';
 import { StageCompletionService } from '@/services/bracket/StageCompletionService';
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import { getStageProgressFromStage } from '@/components/tournament/getStageProgressFromStage';
 import type { StageCompletionStatus } from '@/types/stageCompletion';
 import { normalizeStageProgressLabel } from '@/types/stageCompletion';
+import { buildStageSyncPayload } from '@/utils/stageSync';
+import { runInChunks } from '@/utils/runInChunks';
+import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
+import type { DashboardStage } from '@/hooks/useTournamentDashboard';
 // import { useStageRealtime } from '@/hooks/useStageRealtime';
-
-type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
 
 interface StageManagementTabProps {
     tournamentId: string;
-    stages: TournamentStage[];
+    stages: DashboardStage[];
     onUpdate: () => void;
     game: string;
     isPublic?: boolean;
@@ -34,6 +30,7 @@ interface StageManagementTabProps {
 
 export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic = false }) => {
     const { toast } = useToast();
+    const queryClient = useQueryClient();
     const navigate = useNavigate();
     const { slug } = useParams<{ slug: string }>();
     const [addStageDialogOpen, setAddStageDialogOpen] = useState(false);
@@ -48,7 +45,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const [deleteBracketDialogOpen, setDeleteBracketDialogOpen] = useState(false);
     const [stageToDelete, setStageToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [tournamentWinner, setTournamentWinner] = useState<{ id: string; name: string; logo_url?: string | null } | null>(null);
+    const [tournamentWinner, setTournamentWinner] = useState<{ id?: string; name: string; logo_url?: string | null } | null>(null);
 
     const sortedStages = useMemo(
         () => [...stages].sort((a, b) => a.stage_order - b.stage_order),
@@ -94,16 +91,10 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     });
     */
 
-    // Refetch parent data on mount to pick up status changes made in bracket views
-    useEffect(() => {
-        onUpdate();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
     useEffect(() => {
         const checkBrackets = async () => {
             setBracketsLoading(true);
             try {
-                const stageIds = stages.map(s => s.id);
                 // Optimized: Check all stages in a single query instead of a loop
                 const versions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
 
@@ -128,7 +119,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         } else {
             setBracketsLoading(false);
         }
-    }, [stages]);
+    }, [stages, tournamentId]);
 
     // Fetch tournament winner from last stage's final match
     useEffect(() => {
@@ -137,7 +128,12 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             // Get the last stage
             const lastStage = stages[stages.length - 1];
-            if (lastStage.status !== 'completed') {
+            const lastStageComplete =
+                lastStage.status === 'completed' ||
+                lastStage.progress_label === 'completed' ||
+                lastStage.progress_label === 'advanced';
+
+            if (!lastStageComplete) {
                 setTournamentWinner(null);
                 return;
             }
@@ -158,9 +154,37 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                     .sort((a: any, b: any) => (b.round_index || 0) - (a.round_index || 0))[0] || null;
 
                 if (finalMatch?.winner_id) {
-                    // Get team info
-                    const team = await apiClient.get<any>(`/api/teams/${finalMatch.winner_id}`).catch(() => null);
+                    const winnerId = String(finalMatch.winner_id);
+                    const winnerName = winnerId === String(finalMatch.team1_id)
+                        ? finalMatch.team1_name
+                        : winnerId === String(finalMatch.team2_id)
+                            ? finalMatch.team2_name
+                            : null;
+                    const winnerLogo = winnerId === String(finalMatch.team1_id)
+                        ? finalMatch.team1_logo
+                        : winnerId === String(finalMatch.team2_id)
+                            ? finalMatch.team2_logo
+                            : null;
 
+                    if (winnerName) {
+                        setTournamentWinner({ name: winnerName, logo_url: winnerLogo ?? null });
+                        return;
+                    }
+
+                    const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
+                    const winnerParticipant = (participants || []).find(
+                        (p) => String(p.id) === winnerId || String(p.team_id) === winnerId,
+                    );
+
+                    if (winnerParticipant) {
+                        setTournamentWinner({
+                            name: winnerParticipant.display_name || winnerParticipant.team_name || 'Winner',
+                            logo_url: winnerParticipant.display_logo_url || winnerParticipant.team_logo_url || null,
+                        });
+                        return;
+                    }
+
+                    const team = await apiClient.get<any>(`/api/teams/${winnerId}`).catch(() => null);
                     if (team) {
                         setTournamentWinner(team);
                     }
@@ -171,21 +195,20 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         };
 
         fetchWinner();
-    }, [stages]);
+    }, [stages, tournamentId]);
 
     const handleAddStage = async () => {
         if (!tournamentId || !newStageName) return;
         try {
-            const newOrder = stages.length + 1;
-            await apiClient.post(`/api/tournaments/${tournamentId}/stages`, {
-                    tournament_id: tournamentId,
-                    name: newStageName,
-                    format: newStageFormat,
-                    stage_order: newOrder,
-                    capacity: newStageCapacity === '' ? null : Number(newStageCapacity),
-                    advancement_count: newStageAdvancement === '' ? null : Number(newStageAdvancement),
-                    status: 'upcoming'
-                });
+            const stageDtos = buildStageSyncPayload(sortedStages, {
+                name: newStageName,
+                format: newStageFormat,
+                capacity: newStageCapacity === '' ? null : Number(newStageCapacity),
+                advancementCount: newStageAdvancement === '' ? null : Number(newStageAdvancement),
+                bestOf: 1,
+            });
+
+            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
 
             toast({ title: 'Stage added', description: `${newStageName} has been added to the tournament.` });
             setAddStageDialogOpen(false);
@@ -242,15 +265,20 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             setIsDeleting(true);
             const stageIds = stages.map(s => s.id);
 
+            if (stageIds.length === 0) {
+                toast({ title: 'No stages to delete', description: 'There are no stages configured for this tournament.' });
+                setDeleteAllDialogOpen(false);
+                return;
+            }
+
             // Get all versions for these stages
             const allVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
             const versions = (allVersions || []).filter((v: any) => stageIds.includes(v.stage_id));
 
             if (versions && versions.length > 0) {
-                // Delete each version (cascades to matches/advancements on backend)
-                for (const v of versions) {
+                await runInChunks(versions, 5, async (v) => {
                     await apiClient.delete(`/api/brackets/${v.id}`);
-                }
+                });
             }
 
             // Delete all stages
@@ -261,7 +289,14 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             onUpdate();
         } catch (error: any) {
             console.error('Error deleting all stages:', error);
-            toast({ title: 'Error', description: error.message || 'Failed to delete stages', variant: 'destructive' });
+            const isRateLimited = error?.status === 429 || String(error?.message ?? '').includes('Too many requests');
+            toast({
+                title: 'Error',
+                description: isRateLimited
+                    ? 'Too many requests. Please wait a minute and try again.'
+                    : error.message || 'Failed to delete stages',
+                variant: 'destructive',
+            });
         } finally {
             setIsDeleting(false);
         }
@@ -282,56 +317,41 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             const versions = (allVersions || []).filter((v: any) => stageIds.includes(v.stage_id));
 
             if (versions && versions.length > 0) {
-                // Reset each version (cascades to layout, edges, matches on backend)
-                for (const v of versions) {
+                await runInChunks(versions, 5, async (v) => {
                     await apiClient.post(`/api/brackets/${v.id}/reset`, {});
-                }
-                // Delete the versions themselves
-                for (const v of versions) {
+                });
+                await runInChunks(versions, 5, async (v) => {
                     await apiClient.delete(`/api/brackets/${v.id}`);
-                }
+                });
             }
 
             // Reset all stage statuses to 'upcoming'
-            for (const stageId of stageIds) {
+            await runInChunks(stageIds, 5, async (stageId) => {
                 await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
                     stage_id: stageId,
-                    status: 'upcoming'
+                    status: 'upcoming',
                 });
-            }
+            });
 
             // Clear hasBrackets state
             setHasBrackets({});
 
             toast({ title: 'All stages reset', description: 'All brackets and team data have been cleared. Stages are ready to generate new brackets.' });
+            invalidateMatchLifecycleQueries(queryClient, {});
             setResetAllDialogOpen(false);
             onUpdate();
         } catch (error: any) {
             console.error('Error resetting all stages:', error);
-            toast({ title: 'Error', description: error.message || 'Failed to reset stages', variant: 'destructive' });
+            const isRateLimited = error?.status === 429 || String(error?.message ?? '').includes('Too many requests');
+            toast({
+                title: 'Error',
+                description: isRateLimited
+                    ? 'Too many requests. Please wait a minute and try again.'
+                    : error.message || 'Failed to reset stages',
+                variant: 'destructive',
+            });
         } finally {
             setIsResetting(false);
-        }
-    };
-
-    const handleUpdateStage = async (stageId: string, updates: any) => {
-        try {
-            // Build full stages array with the update applied to the target stage
-            const stageDtos = stages.map(s => ({
-                id: s.id,
-                name: s.id === stageId ? (updates.name ?? s.name) : s.name,
-                format: s.id === stageId ? (updates.format ?? s.format) : s.format,
-                stageOrder: s.stage_order,
-                bestOf: s.id === stageId ? (updates.bestOf ?? updates.best_of ?? s.best_of ?? 1) : (s.best_of ?? 1),
-                capacity: s.id === stageId ? (updates.capacity ?? s.capacity) : s.capacity,
-                advancementCount: s.id === stageId ? (updates.advancementCount ?? updates.advancement_count ?? s.advancement_count) : s.advancement_count,
-            }));
-            await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stageDtos });
-            toast({ title: 'Stage updated', description: 'The stage configuration has been saved.' });
-            onUpdate();
-        } catch (error: any) {
-            console.error('Error updating stage:', error);
-            toast({ title: 'Error', description: error.message || 'Failed to update stage', variant: 'destructive' });
         }
     };
 
@@ -357,6 +377,10 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 // First stage: Get participants from tournament_participants
                 console.log('[StageManagement] Fetching teams for stage 1, tournamentId:', tournamentId);
 
+                const allParticipants = useCheckInOnly
+                    ? await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => null)
+                    : null;
+
                 const statusFilter = useCheckInOnly ? '?status=checked_in' : '';
                 const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants${statusFilter}`).catch(() => null);
 
@@ -370,10 +394,30 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                     return;
                 }
 
+                if (useCheckInOnly) {
+                    const checkedInCount = participants.length;
+                    const eligibleCount = allParticipants?.length ?? checkedInCount;
+                    const pendingCount = Math.max(eligibleCount - checkedInCount, 0);
+                    const minimumRequired = 2;
+
+                    if (checkedInCount < minimumRequired) {
+                        toast({
+                            title: 'Not enough checked-in teams',
+                            description: pendingCount > 0
+                                ? `Need at least ${minimumRequired} checked-in teams to generate this bracket. ${pendingCount} eligible ${pendingCount === 1 ? 'entry is' : 'entries are'} still pending check-in.`
+                                : `Need at least ${minimumRequired} checked-in teams to generate this bracket.`,
+                            variant: 'destructive',
+                        });
+                        return;
+                    }
+                }
+
                 console.log('[StageManagement] Found participants raw count:', participants?.length || 0);
 
                 teams = (participants || []).map((p: any) => {
-                    const isTeam = p.participant_type === 'team' || p.registration_type === 'team' || !!p.team_id;
+                    const isTeam = p.participant_type === 'team'
+                        || p.registration_type === 'team'
+                        || p.entry_kind === 'real_team';
 
                     if (isTeam) {
                         return {
@@ -403,6 +447,15 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 })).filter(t => t.id);
             }
             if (teams.length < 2) {
+                if (useCheckInOnly) {
+                    toast({
+                        title: 'Not enough checked-in teams',
+                        description: 'Need at least 2 checked-in teams to generate this bracket.',
+                        variant: 'destructive',
+                    });
+                    return;
+                }
+
                 if (!isPublic) {
                     // Draft mode: refuse empty brackets — organizer must generate mock teams first.
                     toast({
@@ -434,105 +487,113 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             console.log(`[StageManagement] Deleted ${stageVersions.length} existing versions for stage ${stageId}`);
 
-            // Get next version_number across the whole tournament
-            const allTournamentVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
-
-            const allTournamentVersionsSorted = (allTournamentVersions || []).sort((a: any, b: any) => (b.version_number || 0) - (a.version_number || 0));
-
-            const maxV = allTournamentVersionsSorted.length > 0 ? allTournamentVersionsSorted[0].version_number : 0;
-            const nextVersionNumber = maxV + 1;
-            console.log(`[StageManagement] Max version in tournament: ${maxV}, Assigning: ${nextVersionNumber}`);
-
-            // Generate based on stage format
-            const format = stage.format || 'single_elimination';
-            let generator;
-            let bracketSize: number | undefined = undefined;
-
-            // Bracket Size remains undefined to allow auto-sizing based on participant count
-
             // Parse config once — API may return it as JSON string
             const stageConfig: any = typeof stage.config === 'string'
                 ? (() => { try { return JSON.parse(stage.config as string); } catch { return {}; } })()
                 : (stage.config || {});
 
-            if (format === 'single_elimination') {
-                generator = new SingleEliminationGenerator();
-            } else if (format === 'double_elimination') {
-                generator = new DoubleEliminationGenerator();
-            } else if (format === 'swiss') {
-                generator = new SwissGenerator();
-                console.log('[StageManagement] Swiss config from stage:', stageConfig);
-                if (stageConfig.swiss_rounds) {
-                    bracketSize = Number(stageConfig.swiss_rounds);
+            const format = stage.format || 'single_elimination';
+
+            // Extract BO configuration from stage (supports per-round BO)
+            const bestOf = (stage as any).best_of ?? stageConfig.best_of ?? 1;
+            const boMode = (stage as any).bo_mode ?? stageConfig.bo_mode ?? 'per_stage';
+
+            // Parse round_bo_overrides - may be a JSON string from the database
+            let roundBoOverrides = (stage as any).round_bo_overrides ?? stageConfig.round_bo_overrides ?? null;
+            if (typeof roundBoOverrides === 'string') {
+                try {
+                    roundBoOverrides = JSON.parse(roundBoOverrides);
+                } catch {
+                    roundBoOverrides = null;
                 }
+            }
+            const advancementCount = stage.advancement_count || undefined;
+
+            // Calculate bracket size based on format
+            let bracketSize: number | undefined = undefined;
+            const tbdSize = (teams as any).__tbdSize as number | undefined;
+
+            if (tbdSize !== undefined) {
+                bracketSize = tbdSize;
+            } else if (format === 'swiss' && stageConfig.swiss_rounds) {
+                bracketSize = Number(stageConfig.swiss_rounds);
             } else if (format === 'round_robin') {
-                generator = new RoundRobinGenerator();
                 if (stageConfig.group_count) {
                     bracketSize = Number(stageConfig.group_count);
                 } else if (stage.capacity) {
-                    const groupSize = 4;
-                    bracketSize = Math.ceil(Number(stage.capacity) / groupSize);
-                    console.log('[StageManagement] Auto-calculated RR group_count:', bracketSize, 'from capacity:', stage.capacity);
+                    bracketSize = Math.ceil(Number(stage.capacity) / 4);
                 } else {
                     bracketSize = Math.ceil(teams.length / 4);
-                    console.log('[StageManagement] Fallback RR group_count:', bracketSize, 'from teams:', teams.length);
                 }
-            } else {
-                toast({ title: 'Error', description: `Unsupported format: ${format}`, variant: 'destructive' });
-                return;
             }
 
-            const bestOf = (stage as any).best_of || stageConfig.best_of || 1;
-            const advancementCount = stage.advancement_count || undefined;
+            // Fetch tournament start date for scheduling
+            let dailyStartTime: string | undefined;
+            let tournamentStartDate: string | undefined;
 
-            // For TBD (no-participant) brackets, override bracketSize from the captured capacity
-            // so the structure is sized correctly regardless of format-specific logic above.
-            const tbdSize = (teams as any).__tbdSize as number | undefined;
-            if (tbdSize !== undefined) {
-                bracketSize = tbdSize;
-            }
-
-            // Fetch tournament start date and scheduling config for auto-scheduling (Swiss/RR)
-            const enrichedConfig = { ...stageConfig };
             if (format === 'swiss' || format === 'round_robin') {
                 try {
                     const response = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
                     const tournamentData = response?.tournament || response;
-
                     const stageScheduling = await apiClient.get<any>(`/api/stages/${stageId}`).catch(() => null);
 
-                    if (tournamentData?.start_date) {
-                        enrichedConfig.tournament_start_date = tournamentData.start_date;
-                    }
-                    if (stageScheduling?.scheduling_config?.daily_start_time) {
-                        enrichedConfig.daily_start_time = stageScheduling.scheduling_config.daily_start_time;
-                    }
+                    tournamentStartDate = tournamentData?.start_date;
+                    dailyStartTime = stageScheduling?.scheduling_config?.daily_start_time;
                 } catch (err) {
                     console.warn('[StageManagement] Could not fetch scheduling config:', err);
                 }
             }
 
-            console.log('[StageManagement] Calling generator with:', {
+            // Only include roundBoOverrides when per_round mode is active AND overrides exist
+            const hasValidOverrides = boMode === 'per_round'
+                && roundBoOverrides
+                && typeof roundBoOverrides === 'object'
+                && Object.keys(roundBoOverrides).length > 0;
+
+            // Detailed logging for BO configuration debugging
+            console.log('[StageManagement] BO Configuration:', {
+                boMode,
+                bestOf,
+                hasValidOverrides,
+                roundBoOverrides,
+                format,
+                stageId,
+            });
+
+            console.log('[StageManagement] Calling backend API with:', {
                 format,
                 teams: teams.length,
                 bestOf,
+                boMode,
+                roundBoOverrides: hasValidOverrides ? roundBoOverrides : null,
                 bracketSize,
                 advancementCount,
-                config: enrichedConfig
             });
-            const graph = generator.generate(teams, tournamentId, stageId, bestOf, bracketSize, advancementCount, enrichedConfig);
-            graph.version.version_number = nextVersionNumber;
 
-            // Validate
-            const errors = GraphValidator.validate(graph);
-            if (errors.length > 0) {
-                console.error('Validation errors:', errors);
-                throw new Error('Graph validation failed: ' + errors.join(', '));
+            // Show BO mode in toast for transparency
+            if (boMode === 'per_round' && hasValidOverrides) {
+                toast({
+                    title: 'Generating bracket with per-round BO',
+                    description: `${Object.keys(roundBoOverrides).length} round(s) configured with custom BO values`,
+                });
             }
 
-            // Save to DB
-            const repo = new MatchRepository();
-            await repo.createVersion(graph);
+            // Call backend API - handles generation, validation, and persistence
+            await apiClient.post('/api/brackets/generate', {
+                tournamentId,
+                stageId,
+                format,
+                teams: teams.map(t => ({ id: t.id, name: t.name })),
+                bestOf,
+                boMode,
+                ...(hasValidOverrides && { roundBoOverrides }),
+                bracketSize,
+                advancementCount,
+                dailyStartTime,
+                tournamentStartDate,
+                swissGroups: stageConfig.group_count,
+                swissRounds: stageConfig.swiss_rounds,
+            });
 
             // Update state and navigate
             setHasBrackets(prev => ({ ...prev, [stageId]: true }));
@@ -555,7 +616,11 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             navigate(`/organizer/tournament/${slug}/manage-bracket/${stageId}`);
         } catch (error: any) {
             console.error('Error generating bracket:', error);
-            toast({ title: 'Error', description: error.message || 'Failed to generate bracket', variant: 'destructive' });
+            toast({
+                title: 'Error',
+                description: getApiErrorMessage(error, 'Failed to generate bracket'),
+                variant: 'destructive',
+            });
         }
     };
 
@@ -710,13 +775,12 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                 Delete All
                             </Button>
                         )}
-                        <Button
+                        <SuccessButton
                             onClick={() => setWizardOpen(true)}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2"
                         >
                             <Layers className="w-4 h-4" />
                             {stages.length > 0 ? 'Manage Stages' : 'Create Tournament Stages'}
-                        </Button>
+                        </SuccessButton>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -729,7 +793,9 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                         <div className="space-y-4">
                             {stages.map((stage, index) => {
                                 const completion = completionByStageId.get(stage.id);
-                                const progressLabel = completion?.progressLabel ?? getStageProgressFromStage(stage);
+                                const progressLabel = stage.progress_label
+                                    ? normalizeStageProgressLabel(stage.progress_label)
+                                    : (completion?.progressLabel ?? getStageProgressFromStage(stage));
                                 const stageComplete = completion?.isComplete ?? false;
 
                                 return (
@@ -1006,7 +1072,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setAddStageDialogOpen(false)}>Cancel</Button>
-                        <Button
+                        <SuccessButton
                             onClick={() => {
                                 // Auto-set capacity from previous stage advancement
                                 if (stages.length > 0) {
@@ -1017,11 +1083,10 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                 }
                                 handleAddStage();
                             }}
-                            className="bg-emerald-600 hover:bg-emerald-500"
                             disabled={!newStageName || (stages.length > 0 && !stages[stages.length - 1]?.advancement_count)}
                         >
                             Create Stage
-                        </Button>
+                        </SuccessButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

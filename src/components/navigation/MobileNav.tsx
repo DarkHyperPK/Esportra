@@ -1,8 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
-import { Bell, ChevronDown, LogOut, MapPin, Medal, Plus, Shield, Trophy, User, Info, Handshake } from "lucide-react";
+import { Bell, ChevronDown, LogOut, MapPin, Medal, Plus, Shield, Trophy, User, Info, Handshake, Wrench } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useOrgStaffContext } from "@/hooks/useOrgStaffContext";
+import { isSuperAdminUser } from "@/lib/adminAccess";
 import { useNotifications } from "@/hooks/useNotifications";
 import { UserRole } from "@/types/auth";
 import RoleSwitcher from "@/components/RoleSwitcher";
@@ -23,14 +25,16 @@ const MobileNav = ({
   const { user, profile } = useAuth();
   const { currentRole } = useRole();
   const admin = useAdmin();
+  const { assignments: staffAssignments } = useOrgStaffContext();
   const { unreadCount } = useNotifications();
   const location = useLocation();
   const userRole = currentRole as UserRole;
-  const isSuperAdmin = admin.isAdmin && admin.roles.includes("super_admin");
+  const isSuperAdmin = isSuperAdminUser(admin, profile);
+  const hasStaffAssignments = staffAssignments.length > 0;
   const canManageVenues =
     userRole === "venue_owner" || isSuperAdmin || admin.hasPermission("venues:view");
   const canManageTournaments =
-    userRole === "organizer" || isSuperAdmin || admin.hasPermission("tournaments:create");
+    userRole === "organizer" || isSuperAdmin || admin.hasPermission("tournaments:create") || hasStaffAssignments;
 
   const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
   const toggleMenu = (menu: string) => setExpandedMenu(expandedMenu === menu ? null : menu);
@@ -51,7 +55,7 @@ const MobileNav = ({
     <Link
       to={to}
       onClick={onClose}
-      className="block w-full bg-white px-4 py-2.5 text-left font-mono text-[11px] font-bold uppercase tracking-wider text-black transition-colors hover:bg-rose-500 hover:text-white"
+      className="block w-full bg-white px-4 py-2.5 text-left font-mono text-[11px] font-bold uppercase tracking-wider text-matte-black transition-colors hover:bg-rose-500 hover:text-white"
     >
       {children}
     </Link>
@@ -74,7 +78,7 @@ const MobileNav = ({
           transition={{ duration: 0.2 }}
           className="fixed inset-x-3 top-[5.25rem] z-[998] border border-white/10 bg-[#0a0a0c]/95 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl lg:hidden"
         >
-          <div className="max-h-[calc(100vh-4rem)] overflow-y-auto px-4 py-3">
+          <div className="max-h-[calc(100vh-4rem)] overflow-y-auto overscroll-contain px-4 py-3" data-lenis-prevent>
             {/* Main nav */}
             <div className="space-y-0.5">
               {/* Venues */}
@@ -159,6 +163,35 @@ const MobileNav = ({
                 </span>
               </Link>
 
+              {/* Tools */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => toggleMenu("tools")}
+                  className={linkClass(isActive(["/tools"]))}
+                >
+                  <span className="flex items-center gap-2">
+                    <Wrench className="h-4 w-4" />
+                    Tools
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${
+                      expandedMenu === "tools" ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                <AnimatePresence>
+                  {expandedMenu === "tools" && (
+                    <motion.div {...accordionMotion} className="overflow-hidden">
+                      <div className="mx-3 mb-2 mt-1 space-y-px bg-black">
+                        <JackSubItem to="/tools/brackets">Bracket Builder</JackSubItem>
+                        <JackSubItem to="/tools/map-veto">Map Veto</JackSubItem>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               {/* About */}
               <div>
                 <button
@@ -234,7 +267,7 @@ const MobileNav = ({
                   </Link>
                 </div>
 
-                {profile?.role === "admin" && (
+                {admin.isAdmin && (
                   <div className="mt-2 space-y-0.5">
                     <Link to="/admin/dashboard" className={linkClass(isActive(["/admin"]))} onClick={onClose}>
                       <span className="flex items-center gap-2">

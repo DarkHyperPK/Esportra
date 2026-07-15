@@ -18,20 +18,22 @@ import { cn } from '@/lib/utils';
 import { ArrowRight, Loader2, Eye, ChevronUp } from 'lucide-react';
 import { useBRAdvancement } from '@/hooks/useBRAdvancement';
 import type { QualifiedTeam } from '@/hooks/useBRAdvancement';
+import type { BRAdvancementConfig } from '@/types/battleRoyale';
 
 interface AdvanceTeamsPanelProps {
   stageId: string;
-  advancementCount: number;
+  advancement: BRAdvancementConfig | null;
   onAdvanced: () => void;
 }
 
 const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
   stageId,
-  advancementCount,
+  advancement,
   onAdvanced,
 }) => {
   const { preview, execute } = useBRAdvancement(stageId);
-  const [teamsPerGroup, setTeamsPerGroup] = useState(advancementCount || 4);
+  const defaultPerGroup = advancement?.perGroup ?? 4;
+  const [teamsPerGroup, setTeamsPerGroup] = useState(defaultPerGroup);
   const [previewData, setPreviewData] = useState<{
     qualified_teams: QualifiedTeam[];
     total_qualified: number;
@@ -39,9 +41,11 @@ const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
   } | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  const advanceBody = { teamsPerGroup };
+
   const handlePreview = async () => {
     try {
-      const data = await preview.mutateAsync(teamsPerGroup);
+      const data = await preview.mutateAsync(advanceBody);
       setPreviewData(data);
     } catch {
       /* toast handled by hook */
@@ -50,7 +54,7 @@ const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
 
   const handleAdvance = async () => {
     try {
-      await execute.mutateAsync(teamsPerGroup);
+      await execute.mutateAsync(advanceBody);
       setPreviewData(null);
       onAdvanced();
     } catch {
@@ -60,7 +64,6 @@ const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
     }
   };
 
-  // Group qualified teams by their source group
   const groupedTeams = previewData?.qualified_teams.reduce<Record<string, QualifiedTeam[]>>(
     (acc, team) => {
       const key = team.from_group;
@@ -80,7 +83,6 @@ const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-4 space-y-4">
-        {/* Configuration */}
         <div className="flex items-end gap-3">
           <div className="flex-1">
             <Label className="text-xs text-zinc-400 mb-1">Teams per group to advance</Label>
@@ -109,7 +111,6 @@ const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
           </Button>
         </div>
 
-        {/* Preview results */}
         {previewData && groupedTeams && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -146,13 +147,12 @@ const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
               </div>
             ))}
 
-            {/* Advance button */}
             {previewData.total_qualified === 0 ? (
               <p className="text-sm text-amber-400 text-center py-2">
                 No teams qualified. Check that rounds have results recorded.
               </p>
             ) : (
-              <Button
+              <button type="button"
                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
                 onClick={() => setShowConfirm(true)}
                 disabled={execute.isPending}
@@ -163,12 +163,11 @@ const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
                   <ArrowRight className="w-4 h-4 mr-2" />
                 )}
                 Advance {previewData.total_qualified} Teams to Finals
-              </Button>
+              </button>
             )}
           </div>
         )}
 
-        {/* Confirmation dialog */}
         <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
           <AlertDialogContent className="bg-[#121214] border-white/10">
             <AlertDialogHeader>

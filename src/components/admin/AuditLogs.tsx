@@ -26,6 +26,7 @@ import {
 import { apiClient } from '@/lib/apiClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useAdminAuditLogs } from '@/hooks/useAdminQueries';
+import { AuditLogDetailsPanel } from '@/components/admin/AuditLogDetailsPanel';
 
 interface AuditLog {
   id: string;
@@ -367,10 +368,7 @@ const AuditLogs: React.FC = () => {
                   </div>
                 )}
               </div>
-              <div className="rounded-xl bg-zinc-950 border border-zinc-800 p-4">
-                <p className="text-xs text-zinc-500 uppercase mb-2">Details</p>
-                <pre className="text-sm text-zinc-300 overflow-auto max-h-80 whitespace-pre-wrap break-words font-mono">{JSON.stringify(selectedLog.details, null, 2)}</pre>
-              </div>
+              <AuditLogDetailsPanel details={selectedLog.details} actionType={selectedLog.action_type} />
             </div>
           )}
           <DialogFooter>

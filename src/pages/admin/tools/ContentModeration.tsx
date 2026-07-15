@@ -17,7 +17,7 @@ import {
   ImageIcon,
   Zap,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, DangerButton, SuccessButton } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -359,14 +359,14 @@ function ModerationCard({ item, onApprove, onReject, onDismiss }: ModerationCard
       {/* Action buttons */}
       {isPending && (
         <div className="flex gap-2">
-          <Button
+          <SuccessButton
             size="sm"
             onClick={() => onApprove(item)}
-            className="flex-1 bg-green-600 hover:bg-green-500 text-white border-0 h-9"
+            className="flex-1 h-9"
           >
             <CheckCircle className="w-4 h-4 mr-1.5" />
             Approve
-          </Button>
+          </SuccessButton>
           <Button
             size="sm"
             onClick={() => onReject(item)}
@@ -456,18 +456,23 @@ function ReviewDialog({ open, onOpenChange, item, action, onConfirm, isSubmittin
           >
             Cancel
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!canSubmit || isSubmitting}
-            className={
-              isReject
-                ? "bg-red-600 hover:bg-red-500 text-white border-0"
-                : "bg-green-600 hover:bg-green-500 text-white border-0"
-            }
-          >
-            {isSubmitting && <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" />}
-            {isReject ? "Reject" : "Approve"}
-          </Button>
+          {isReject ? (
+            <DangerButton
+              onClick={handleSubmit}
+              disabled={!canSubmit || isSubmitting}
+            >
+              {isSubmitting && <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" />}
+              Reject
+            </DangerButton>
+          ) : (
+            <SuccessButton
+              onClick={handleSubmit}
+              disabled={!canSubmit || isSubmitting}
+            >
+              {isSubmitting && <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" />}
+              Approve
+            </SuccessButton>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -575,7 +580,7 @@ const ContentModeration = () => {
           variant="outline"
           size="sm"
           onClick={() => refetch()}
-          className="border-zinc-800 text-zinc-400 hover:text-white hover:border-rose-500/30 self-start sm:self-auto"
+          className="border-zinc-800 text-zinc-400 hover:text-white hover:border-white/25 self-start sm:self-auto"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
@@ -654,7 +659,7 @@ const ContentModeration = () => {
             variant="outline"
             size="sm"
             onClick={() => refetch()}
-            className="border-zinc-800 text-zinc-400 hover:text-white hover:border-rose-500/30"
+            className="border-zinc-800 text-zinc-400 hover:text-white hover:border-white/25"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Retry

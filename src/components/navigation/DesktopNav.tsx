@@ -1,9 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
-import { ChevronDown, MapPin, Trophy, Medal, Info, Handshake, Shield } from "lucide-react";
+import { ChevronDown, MapPin, Trophy, Medal, Info, Handshake, Shield, Wrench } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { useAdmin } from "@/hooks/useAdmin";
-import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
+import { useOrgStaffContext } from "@/hooks/useOrgStaffContext";
+import { isSuperAdminUser } from "@/lib/adminAccess";
+import { NotificationSidebar } from "@/components/notifications/NotificationSidebar";
 import UserMenu from "./UserMenu";
 import { cn } from "@/lib/utils";
 import { getWebsiteAssetUrl } from "@/lib/storage";
@@ -21,16 +23,18 @@ const DesktopNav = ({
 }: {
   handleSignOut: () => Promise<void>;
 }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { currentRole } = useRole();
   const admin = useAdmin();
+  const { assignments: staffAssignments } = useOrgStaffContext();
   const location = useLocation();
   const userRole = currentRole;
-  const isSuperAdmin = admin.isAdmin && admin.roles.includes("super_admin");
+  const isSuperAdmin = isSuperAdminUser(admin, profile);
+  const hasStaffAssignments = staffAssignments.length > 0;
   const canManageVenues =
     userRole === "venue_owner" || isSuperAdmin || admin.hasPermission("venues:view");
   const canManageTournaments =
-    userRole === "organizer" || isSuperAdmin || admin.hasPermission("tournaments:create");
+    userRole === "organizer" || isSuperAdmin || admin.hasPermission("tournaments:create") || hasStaffAssignments;
 
   const isActive = (paths: string[]) =>
     paths.some(
@@ -124,6 +128,23 @@ const DesktopNav = ({
           {activeBar(isActive(["/leaderboards"]))}
         </Link>
 
+        {/* Tools */}
+        <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
+          <FramerDropdownTrigger asChild>
+            <button type="button" className={linkClass(isActive(["/tools"]))}>
+              <Wrench className="h-4 w-4" />
+              Tools
+              <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+            </button>
+          </FramerDropdownTrigger>
+          <FramerDropdownContent className="min-w-[220px] !rounded-none !border-rose-500/40 !bg-[#0a0a0c] !p-0 !backdrop-blur-0">
+            <div className="space-y-px bg-[#0a0a0c]">
+              <JackItem to="/tools/brackets">Bracket Builder</JackItem>
+              <JackItem to="/tools/map-veto">Map Veto</JackItem>
+            </div>
+          </FramerDropdownContent>
+        </FramerDropdownRoot>
+
         {/* About */}
         <FramerDropdownRoot borderRadius={0} accentColor="#f43f5e" backgroundColor="#0a0a0c" borderColor="rgba(244,63,94,0.4)">
           <FramerDropdownTrigger asChild>
@@ -163,7 +184,7 @@ const DesktopNav = ({
       <div className="flex items-center gap-3">
         {user ? (
           <>
-            <NotificationDropdown />
+            <NotificationSidebar />
             <UserMenu handleSignOut={handleSignOut} />
           </>
         ) : (

@@ -1,15 +1,7 @@
-/**
- * useMatchChat — match chat via SignalR ChatHub.
- * - Initial messages: GET /api/matches/{id}/messages (.NET)
- * - Real-time: SignalR ChatHub MessageReceived → cache append (no refetch)
- * - sendMessage: SignalR hub invocation (hub persists to DB + broadcasts)
- * - sendSystemMessage: POST /api/matches/{id}/messages/system (.NET, broadcasts via ChatHub)
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { HubConnectionState } from '@microsoft/signalr';
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useHub } from '@/hooks/useSignalR';
@@ -30,20 +22,24 @@ interface MatchMessage {
 
 type ChatConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
 
-// Map SignalR MessageDto (camelCase) → MatchMessage (snake_case)
 function fromDto(dto: Record<string, any>): MatchMessage {
   return {
     id:           dto.id,
-    match_id:     dto.matchId,
-    sender_id:    dto.senderId,
-    sender_name:  dto.senderName ?? null,
-    team_id:      dto.teamId ?? null,
+    match_id:     dto.matchId ?? dto.match_id,
+    sender_id:    dto.senderId ?? dto.sender_id,
+    sender_name:  dto.senderName ?? dto.sender_name ?? null,
+    team_id:      dto.teamId ?? dto.team_id ?? null,
     content:      dto.content,
-    message_type: dto.messageType ?? 'text',
+    message_type: dto.messageType ?? dto.message_type ?? 'text',
     metadata:     dto.metadata ?? null,
-    created_at:   dto.createdAt,
+    created_at:   dto.createdAt ?? dto.created_at,
     is_organizer: dto.isOrganizer ?? dto.is_organizer ?? false,
   };
+}
+
+function normalizeMessages(rows: unknown): MatchMessage[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => fromDto(row as Record<string, any>));
 }
 
 export const useMatchChat = (matchId: string | undefined) => {
@@ -54,18 +50,31 @@ export const useMatchChat = (matchId: string | undefined) => {
   const conn        = useHub(HubPaths.Chat);
   const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>('connecting');
   const [isJoined, setIsJoined] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
 
-  // ── Initial fetch (.NET API) ─────────────────────────────────────────────────
-  const { data: messages, isLoading } = useQuery<MatchMessage[]>({
-    queryKey: ['match-messages', matchId],
-    queryFn:  () => apiClient.get<MatchMessage[]>(`/api/matches/${matchId}/messages`),
-    enabled:  !!matchId,
+  const messagesQueryKey = ['match-messages', matchId, user?.id ?? 'anonymous'] as const;
+
+  const { data: messages, isLoading, isError, error } = useQuery<MatchMessage[]>({
+    queryKey: messagesQueryKey,
+    queryFn:  async () => {
+      const rows = await apiClient.get<unknown>(`/api/matches/${matchId}/messages`);
+      return normalizeMessages(rows);
+    },
+    enabled:  !!matchId && !!user?.id,
     staleTime: 30_000,
+    retry: false,
   });
 
-  // ── SignalR real-time subscription ───────────────────────────────────────────
   useEffect(() => {
-    if (!matchId) return;
+    if (isError) {
+      setChatError(getApiErrorMessage(error, 'Unable to load match chat.'));
+    } else {
+      setChatError(null);
+    }
+  }, [isError, error]);
+
+  useEffect(() => {
+    if (!matchId || !user?.id) return;
 
     let active = true;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
@@ -77,11 +86,10 @@ export const useMatchChat = (matchId: string | undefined) => {
       const msg = fromDto(dto);
 
       queryClient.setQueryData<MatchMessage[]>(
-        ['match-messages', matchId],
+        messagesQueryKey,
         (old = []) => {
-          if (old.some((m) => m.id === msg.id)) return old; // deduplicate
+          if (old.some((m) => m.id === msg.id)) return old;
           const next = [...old, msg];
-          // Scroll to bottom after append
           setTimeout(() => scrollRef.current?.scrollTo({
             top: scrollRef.current.scrollHeight,
             behavior: 'smooth',
@@ -89,6 +97,13 @@ export const useMatchChat = (matchId: string | undefined) => {
           return next;
         },
       );
+    };
+
+    const handleHubError = (message: string) => {
+      if (!active) return;
+      setChatError(message || 'Unable to join match chat.');
+      joined = false;
+      setIsJoined(false);
     };
 
     const syncStatus = () => {
@@ -117,7 +132,10 @@ export const useMatchChat = (matchId: string | undefined) => {
         try {
           await conn.start();
         } catch {
-          if (active) scheduleJoin(1500);
+          if (active) {
+            setChatError('Chat connection failed. Retrying...');
+            scheduleJoin(1500);
+          }
           return;
         }
       }
@@ -133,15 +151,18 @@ export const useMatchChat = (matchId: string | undefined) => {
         joined = true;
         setConnectionStatus('connected');
         setIsJoined(true);
-      } catch {
+        setChatError(null);
+      } catch (err) {
         if (!active) return;
         joined = false;
         setIsJoined(false);
+        setChatError(getApiErrorMessage(err, 'Unable to join match chat.'));
         scheduleJoin(1500);
       }
     };
 
     conn.on('MessageReceived', handleMessageReceived);
+    conn.on('Error', handleHubError);
     join();
     monitorTimer = setInterval(() => {
       if (!active) return;
@@ -160,13 +181,12 @@ export const useMatchChat = (matchId: string | undefined) => {
       clearRetry();
       if (monitorTimer) clearInterval(monitorTimer);
       conn.off('MessageReceived', handleMessageReceived);
+      conn.off('Error', handleHubError);
       if (conn.state === HubConnectionState.Connected)
         conn.invoke('LeaveChat', matchId).catch(() => {});
     };
-  }, [conn, matchId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [conn, matchId, user?.id, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Send message via hub ─────────────────────────────────────────────────────
-  // Hub persists to DB and broadcasts to all in chat:{matchId} — including sender
   const sendMessage = useMutation({
     mutationFn: async ({ content }: { content: string; teamId?: string; messageType?: string; metadata?: any }) => {
       if (!matchId || !user) throw new Error('Missing required data');
@@ -179,12 +199,10 @@ export const useMatchChat = (matchId: string | undefined) => {
     },
   });
 
-  // ── System message (.NET API — server inserts + broadcasts via ChatHub) ──────
   const sendSystemMessage = useCallback(async (content: string, metadata?: any) => {
     if (!matchId) return;
     try {
       await apiClient.post(`/api/matches/${matchId}/messages/system`, { content, metadata });
-      // ChatHub broadcasts MessageReceived to all in chat — cache update happens via SignalR
     } catch (err) {
       console.error('System message error:', err);
     }
@@ -194,5 +212,16 @@ export const useMatchChat = (matchId: string | undefined) => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, []);
 
-  return { messages, isLoading, sendMessage, sendSystemMessage, scrollRef, scrollToBottom, connectionStatus, isJoined };
+  return {
+    messages,
+    isLoading,
+    isError,
+    chatError,
+    sendMessage,
+    sendSystemMessage,
+    scrollRef,
+    scrollToBottom,
+    connectionStatus,
+    isJoined,
+  };
 };

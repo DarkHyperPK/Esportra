@@ -62,6 +62,8 @@ export class MatchRepository {
             team1_logo: m.team1_logo,
             team2_name: m.team2_name,
             team2_logo: m.team2_logo,
+            team1_seed: m.team1_seed,
+            team2_seed: m.team2_seed,
             team1_score: m.team1_score,
             team2_score: m.team2_score,
             winner_id: m.winner_id,

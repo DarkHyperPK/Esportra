@@ -17,6 +17,31 @@ import { PageTransition } from '@/components/PageTransition';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
+import DisputeEvidencePanel, {
+  type DisputeReport,
+  type DisputeRiotAccount,
+  type MatchDisputeEvidence,
+} from '@/components/organizer/DisputeEvidencePanel';
+import {
+  getPrimaryDisputeReport,
+  parseDisputeReports,
+  parseDisputeRiotAccounts,
+  parseMatchDispute,
+} from '@/utils/disputeReportUtils';
+
+interface DisputeMatch {
+  match_number?: number | null;
+  round_index?: number | null;
+  best_of?: number | null;
+  bracket_type?: string | null;
+  scheduled_time?: string | null;
+  team1_score?: number | null;
+  team2_score?: number | null;
+  team1_name?: string | null;
+  team2_name?: string | null;
+  team1_id?: string | null;
+  team2_id?: string | null;
+}
 
 interface Dispute {
   id: string;
@@ -33,16 +58,34 @@ interface Dispute {
   tournament_slug?: string;
   match_id?: string | null;
   evidence_url?: string | null;
-  // Match context (populated when match_id exists)
-  match_team1_name?: string | null;
-  match_team2_name?: string | null;
-  match_team1_score?: number | null;
-  match_team2_score?: number | null;
-  match_number?: number | null;
-  round_index?: number | null;
-  best_of?: number | null;
-  bracket_type?: string | null;
-  scheduled_time?: string | null;
+  match?: DisputeMatch | null;
+  reports?: DisputeReport[];
+  riot_accounts?: DisputeRiotAccount[];
+  match_dispute?: MatchDisputeEvidence | null;
+}
+
+function getDisputeMatchView(dispute: Dispute) {
+  const match = dispute.match;
+  const primaryReport = getPrimaryDisputeReport(parseDisputeReports(dispute.reports));
+  return {
+    team1Name: match?.team1_name ?? null,
+    team2Name: match?.team2_name ?? null,
+    team1Score: primaryReport?.team1_score ?? match?.team1_score ?? 0,
+    team2Score: primaryReport?.team2_score ?? match?.team2_score ?? 0,
+    scoreLabel: primaryReport ? 'Reported score' : 'Score at dispute',
+    hasMatch: !!(match?.team1_name && match?.team2_name),
+    matchNumber: match?.match_number ?? null,
+    bestOf: match?.best_of ?? null,
+    bracketType: match?.bracket_type ?? null,
+    scheduledTime: match?.scheduled_time ?? null,
+    matchContext: match ? {
+      team1_name: match.team1_name ?? undefined,
+      team2_name: match.team2_name ?? undefined,
+      team1_id: match.team1_id ?? undefined,
+      team2_id: match.team2_id ?? undefined,
+      best_of: match.best_of ?? undefined,
+    } : null,
+  };
 }
 
 const statusMeta: Record<string, { label: string; className: string; icon: React.ElementType }> = {
@@ -106,51 +149,13 @@ const MyDisputes = () => {
     try {
       setLoading(true);
 
-      const disputesRaw = await apiClient.get<any>('/api/disputes/mine');
-      const disputesData: any[] = Array.isArray(disputesRaw) ? disputesRaw : (disputesRaw?.items || disputesRaw?.data || []);
+      const disputesRaw = await apiClient.get<Dispute[]>('/api/disputes/mine');
+      const disputesData: Dispute[] = Array.isArray(disputesRaw) ? disputesRaw : [];
 
-      // Fetch tournament names
-      const tournamentIds = Array.from(new Set((disputesData || []).map((d: any) => d.tournament_id).filter(Boolean)));
-      const tournamentsMap = new Map<string, { name: string; slug: string }>();
-      if (tournamentIds.length > 0) {
-        const rawT = await apiClient.get<any>(
-          `/api/tournaments?ids=${tournamentIds.join(',')}`
-        ).catch(() => []);
-        const tournamentsData: any[] = Array.isArray(rawT) ? rawT : (rawT?.items || rawT?.data || []);
-        tournamentsData.forEach((t: any) => tournamentsMap.set(t.id, { name: t.name, slug: t.slug }));
-      }
-
-      // Fetch match context for disputes that have a match_id
-      const matchIds = [...new Set((disputesData || []).filter((d: any) => d.match_id).map((d: any) => d.match_id as string))];
-      const matchesMap = new Map<string, any>();
-      if (matchIds.length > 0) {
-        const rawM = await apiClient.get<any>(
-          `/api/brackets/matches?ids=${matchIds.join(',')}`
-        ).catch(() => []);
-        const matchesData: any[] = Array.isArray(rawM) ? rawM : (rawM?.items || rawM?.data || []);
-        matchesData.forEach((m: any) => matchesMap.set(m.id, m));
-      }
-
-      const disputesWithData: Dispute[] = disputesData.map((d: any) => {
-        const tournament = d.tournament_id ? tournamentsMap.get(d.tournament_id) : null;
-        const match = d.match_id ? matchesMap.get(d.match_id) : null;
-        return {
-          ...d,
-          tournament_name: tournament?.name || (d.tournament_id ? 'Unknown Tournament' : 'General Support'),
-          tournament_slug: tournament?.slug || null,
-          match_team1_name: match?.team1?.name || match?.team1_name || null,
-          match_team2_name: match?.team2?.name || match?.team2_name || null,
-          match_team1_score: match?.team1_score ?? null,
-          match_team2_score: match?.team2_score ?? null,
-          match_number: match?.match_number ?? null,
-          round_index: match?.round_index ?? null,
-          best_of: match?.best_of ?? null,
-          bracket_type: match?.bracket_type ?? null,
-          scheduled_time: match?.scheduled_time ?? null,
-        };
-      });
-
-      setDisputes(disputesWithData);
+      setDisputes(disputesData.map((d) => ({
+        ...d,
+        tournament_name: d.tournament_name || (d.tournament_id ? 'Unknown Tournament' : 'General Support'),
+      })));
     } catch (error: unknown) {
       console.error('Error fetching disputes:', error);
       const errorMessage = error instanceof Error ? error.message : (error as any)?.message || JSON.stringify(error);
@@ -408,7 +413,7 @@ const MyDisputes = () => {
                     const reasonLabel = dispute.dispute_reason
                       ? DISPUTE_REASON_LABELS[dispute.dispute_reason] || dispute.dispute_reason
                       : null;
-                    const hasMatch = !!(dispute.match_team1_name && dispute.match_team2_name);
+                    const matchView = getDisputeMatchView(dispute);
 
                     return (
                       <motion.div
@@ -419,7 +424,7 @@ const MyDisputes = () => {
                         transition={{ delay: index * 0.03 }}
                       >
                         <button
-                          className="w-full text-left bg-[#0a0a0c] border border-white/[0.06] rounded-2xl overflow-hidden hover:-translate-y-0.5 hover:shadow-lg hover:shadow-rose-500/5 hover:border-rose-500/20 transition-all duration-200"
+                          className="w-full text-left bg-[#0a0a0c] border border-white/[0.06] rounded-2xl overflow-hidden hover:-translate-y-0.5 hover:shadow-lg hover:border-white/20 transition-all duration-200"
                           onClick={() => openDisputeDialog(dispute)}
                         >
                           <div className="flex">
@@ -457,42 +462,45 @@ const MyDisputes = () => {
                               </div>
 
                               {/* Match context block */}
-                              {hasMatch ? (
+                              {matchView.hasMatch ? (
                                 <div className="mx-4 mb-3 rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
                                   <div className="px-4 py-3 flex items-center justify-between gap-4">
                                     <span className="text-sm font-semibold text-white truncate flex-1 text-left">
-                                      {dispute.match_team1_name}
+                                      {matchView.team1Name}
                                     </span>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <span className="text-xl font-bold text-white tabular-nums">
-                                        {dispute.match_team1_score ?? 0}
-                                      </span>
-                                      <span className="text-white/30 text-xs font-medium">–</span>
-                                      <span className="text-xl font-bold text-white tabular-nums">
-                                        {dispute.match_team2_score ?? 0}
-                                      </span>
+                                    <div className="flex flex-col items-center shrink-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xl font-bold text-white tabular-nums">
+                                          {matchView.team1Score}
+                                        </span>
+                                        <span className="text-white/30 text-xs font-medium">–</span>
+                                        <span className="text-xl font-bold text-white tabular-nums">
+                                          {matchView.team2Score}
+                                        </span>
+                                      </div>
+                                      <span className="text-[10px] text-white/30 mt-0.5">{matchView.scoreLabel}</span>
                                     </div>
                                     <span className="text-sm font-semibold text-white truncate flex-1 text-right">
-                                      {dispute.match_team2_name}
+                                      {matchView.team2Name}
                                     </span>
                                   </div>
                                   <div className="px-4 py-2 border-t border-white/[0.05] bg-white/[0.02] flex items-center gap-3 flex-wrap">
-                                    {dispute.match_number !== null && (
+                                    {matchView.matchNumber !== null && matchView.matchNumber !== undefined && (
                                       <span className="text-xs text-white/45 flex items-center gap-1">
                                         <Trophy className="w-3 h-3" />
-                                        Match #{dispute.match_number}
+                                        Match #{matchView.matchNumber}
                                       </span>
                                     )}
-                                    {dispute.best_of !== null && (
-                                      <span className="text-xs text-white/45">BO{dispute.best_of}</span>
+                                    {matchView.bestOf !== null && matchView.bestOf !== undefined && (
+                                      <span className="text-xs text-white/45">BO{matchView.bestOf}</span>
                                     )}
-                                    {dispute.bracket_type && (
-                                      <span className="text-xs text-white/45">{formatBracketType(dispute.bracket_type)}</span>
+                                    {matchView.bracketType && (
+                                      <span className="text-xs text-white/45">{formatBracketType(matchView.bracketType)}</span>
                                     )}
-                                    {dispute.scheduled_time && (
+                                    {matchView.scheduledTime && (
                                       <span className="text-xs text-white/45 flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
-                                        {format(new Date(dispute.scheduled_time), 'MMM d, HH:mm')}
+                                        {format(new Date(matchView.scheduledTime), 'MMM d, HH:mm')}
                                       </span>
                                     )}
                                   </div>
@@ -537,14 +545,19 @@ const MyDisputes = () => {
               setCommentAttachment(null);
             }
           }}>
-            <DialogContent className="bg-[#0a0a0c] border border-white/[0.06] max-w-3xl h-[92vh] max-h-[92vh] flex flex-col overflow-hidden p-0">
+            <DialogContent className="bg-[#0a0a0c] border border-white/[0.06] max-w-3xl h-[92vh] max-h-[92vh] min-h-0 !grid grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
               {selectedDispute && (() => {
                 const meta = statusMeta[selectedDispute.status] || defaultStatusMeta;
                 const Icon = meta.icon;
                 const reasonLabel = selectedDispute.dispute_reason
                   ? DISPUTE_REASON_LABELS[selectedDispute.dispute_reason] || selectedDispute.dispute_reason
                   : null;
-                const hasMatch = !!(selectedDispute.match_team1_name && selectedDispute.match_team2_name);
+                const matchView = getDisputeMatchView(selectedDispute);
+                const safeReports = parseDisputeReports(selectedDispute.reports);
+                const safeRiotAccounts = parseDisputeRiotAccounts(selectedDispute.riot_accounts);
+                const matchDispute = parseMatchDispute(selectedDispute.match_dispute);
+                const _primaryReport = getPrimaryDisputeReport(safeReports);
+                const canComment = selectedDispute.status === 'open' || selectedDispute.status === 'in_review';
 
                 return (
                   <>
@@ -571,8 +584,8 @@ const MyDisputes = () => {
                             )}
                           </div>
                           <DialogTitle className="text-white text-lg leading-snug">
-                            {hasMatch
-                              ? `${selectedDispute.match_team1_name} vs ${selectedDispute.match_team2_name}`
+                            {matchView.hasMatch
+                              ? `${matchView.team1Name} vs ${matchView.team2Name}`
                               : selectedDispute.title}
                           </DialogTitle>
                           {reasonLabel && (
@@ -584,75 +597,68 @@ const MyDisputes = () => {
                       </div>
                     </DialogHeader>
 
-                    {/* Scrollable info section — capped so conversation always has room */}
-                    <div className="shrink-0 overflow-y-auto px-6 py-5 space-y-5 max-h-[42%] scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
-                      {/* Match context panel */}
-                      {hasMatch && (
+                    <div className="grid grid-rows-[minmax(0,1fr)_minmax(180px,38vh)] min-h-0 overflow-hidden">
+                    {/* Scrollable evidence / match details */}
+                    <div className="min-h-0 overflow-y-auto overscroll-contain px-6 py-5 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
+                      {matchView.hasMatch && (
                         <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
                           <div className="px-5 py-4 flex items-center justify-between gap-4">
                             <div className="flex-1 text-left">
-                              <p className="text-base font-semibold text-white">{selectedDispute.match_team1_name}</p>
+                              <p className="text-base font-semibold text-white">{matchView.team1Name}</p>
                               <p className="text-xs text-white/40 mt-0.5">Team 1</p>
                             </div>
                             <div className="text-center shrink-0">
                               <div className="flex items-center gap-3">
-                                <span className="text-3xl font-bold text-white tabular-nums">
-                                  {selectedDispute.match_team1_score ?? 0}
-                                </span>
+                                <span className="text-3xl font-bold text-white tabular-nums">{matchView.team1Score}</span>
                                 <span className="text-white/30 text-sm">–</span>
-                                <span className="text-3xl font-bold text-white tabular-nums">
-                                  {selectedDispute.match_team2_score ?? 0}
-                                </span>
+                                <span className="text-3xl font-bold text-white tabular-nums">{matchView.team2Score}</span>
                               </div>
-                              <p className="text-xs text-white/30 mt-1">Score at dispute</p>
+                              <p className="text-xs text-white/30 mt-1">{matchView.scoreLabel}</p>
                             </div>
                             <div className="flex-1 text-right">
-                              <p className="text-base font-semibold text-white">{selectedDispute.match_team2_name}</p>
+                              <p className="text-base font-semibold text-white">{matchView.team2Name}</p>
                               <p className="text-xs text-white/40 mt-0.5">Team 2</p>
                             </div>
                           </div>
                           <div className="px-5 py-2.5 border-t border-white/[0.07] bg-white/[0.02] flex items-center gap-4 flex-wrap">
-                            {selectedDispute.match_number !== null && (
+                            {matchView.matchNumber !== null && matchView.matchNumber !== undefined && (
                               <div className="flex items-center gap-1.5 text-xs text-white/50">
                                 <Trophy className="w-3.5 h-3.5" />
-                                <span>Match #{selectedDispute.match_number}</span>
+                                <span>Match #{matchView.matchNumber}</span>
                               </div>
                             )}
-                            {selectedDispute.best_of !== null && (
-                              <span className="text-xs text-white/50">BO{selectedDispute.best_of}</span>
+                            {matchView.bestOf !== null && matchView.bestOf !== undefined && (
+                              <span className="text-xs text-white/50">BO{matchView.bestOf}</span>
                             )}
-                            {selectedDispute.bracket_type && (
-                              <span className="text-xs text-white/50">{formatBracketType(selectedDispute.bracket_type)}</span>
+                            {matchView.bracketType && (
+                              <span className="text-xs text-white/50">{formatBracketType(matchView.bracketType)}</span>
                             )}
-                            {selectedDispute.scheduled_time && (
+                            {matchView.scheduledTime && (
                               <div className="flex items-center gap-1.5 text-xs text-white/50">
                                 <Calendar className="w-3.5 h-3.5" />
-                                <span>{format(new Date(selectedDispute.scheduled_time), 'MMM d, HH:mm')}</span>
+                                <span>{format(new Date(matchView.scheduledTime), 'MMM d, HH:mm')}</span>
                               </div>
                             )}
                           </div>
                         </div>
                       )}
 
-                      {/* Dispute description */}
-                      <div>
-                        <label className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2 block">Dispute Details</label>
-                        <div className="p-4 bg-white/[0.04] rounded-xl text-white/85 text-sm border border-white/[0.08] leading-relaxed whitespace-pre-wrap min-h-[60px]">
-                          {selectedDispute.description || 'No description provided.'}
-                        </div>
-                      </div>
+                      <DisputeEvidencePanel
+                        reports={safeReports}
+                        riotAccounts={safeRiotAccounts}
+                        matchDispute={matchDispute}
+                        fallbackEvidenceUrl={selectedDispute.evidence_url}
+                        disputeDescription={selectedDispute.description}
+                        matchContext={matchView.matchContext}
+                        onImageClick={(url) => setViewingImage(url)}
+                      />
 
-                      {/* Evidence image */}
-                      {selectedDispute.evidence_url && (
+                      {safeReports.length === 0 && !matchDispute && !selectedDispute.evidence_url && (
                         <div>
-                          <label className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2 block">Evidence</label>
-                          <img
-                            src={selectedDispute.evidence_url}
-                            alt="Dispute evidence"
-                            className="max-w-full max-h-52 rounded-lg border border-white/20 cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={() => setViewingImage(selectedDispute.evidence_url || null)}
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                          />
+                          <label className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2 block">Dispute Details</label>
+                          <div className="p-4 bg-white/[0.04] rounded-xl text-white/85 text-sm border border-white/[0.08] leading-relaxed whitespace-pre-wrap min-h-[60px]">
+                            {selectedDispute.description || 'No description provided.'}
+                          </div>
                         </div>
                       )}
 
@@ -667,9 +673,9 @@ const MyDisputes = () => {
                       )}
                     </div>
 
-                    {/* Chat section — fills all remaining space with proper scroll */}
-                    <div className="flex-1 border-t border-white/[0.06] flex flex-col min-h-0">
-                      <div className="px-6 py-2.5 flex items-center gap-2 border-b border-white/[0.05]">
+                    {/* Chat section — pinned below evidence */}
+                    <div className="flex flex-col min-h-0 border-t border-white/[0.06] overflow-hidden bg-[#0a0a0c]">
+                      <div className="shrink-0 px-6 py-2.5 flex items-center gap-2 border-b border-white/[0.05]">
                         <MessageSquare className="w-3.5 h-3.5 text-white/40" />
                         <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">Conversation</span>
                         {comments.length > 0 && (
@@ -677,7 +683,7 @@ const MyDisputes = () => {
                         )}
                       </div>
 
-                      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 min-h-0 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+                      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-4 space-y-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
                         {loadingComments ? (
                           <div className="flex items-center justify-center py-6 text-white/40 text-sm">
                             <RefreshCw className="w-4 h-4 animate-spin mr-2" />
@@ -687,7 +693,7 @@ const MyDisputes = () => {
                           <div className="text-center py-6">
                             <MessageSquare className="w-8 h-8 text-white/10 mx-auto mb-2" />
                             <p className="text-white/30 text-sm">
-                              {selectedDispute.status === 'open'
+                              {canComment
                                 ? 'No messages yet. Start the conversation below.'
                                 : 'No messages were exchanged.'}
                             </p>
@@ -732,8 +738,8 @@ const MyDisputes = () => {
                       </div>
 
                       {/* Composer */}
-                      {selectedDispute.status === 'open' ? (
-                        <div className="px-6 py-3 border-t border-white/[0.07] bg-white/[0.02]">
+                      {canComment ? (
+                        <div className="shrink-0 px-6 py-3 border-t border-white/[0.07] bg-white/[0.02]">
                           <div className="flex items-end gap-2">
                             <label className="shrink-0 p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 cursor-pointer transition-colors">
                               <ImageIcon className="h-4 w-4" />
@@ -802,6 +808,7 @@ const MyDisputes = () => {
                           </p>
                         </div>
                       )}
+                    </div>
                     </div>
                   </>
                 );

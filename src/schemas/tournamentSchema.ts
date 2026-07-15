@@ -10,7 +10,7 @@ const basicInfoBase = z.object({
         .max(100, 'Tournament name cannot exceed 100 characters'),
     game: z.string().min(1, 'Please select a game'),
     isOnline: z.boolean(),
-    visibility: z.enum(['public', 'unlisted']),
+    launchState: z.enum(['draft', 'private', 'public']),
     startDate: z.string().min(1, 'Start date is required'),
     startTime: z.string().min(1, 'Start time is required'),
     endDate: z.string().optional(),
@@ -92,19 +92,35 @@ const registrationSchemaBase = z.object({
     autoRemoveUnchecked: z.boolean(),
     waitlistEnabled: z.boolean(),
     waitlistMax: z.number().min(0).max(100),
+    invitedTeamsEnabled: z.boolean().optional().default(false),
+    reservedInviteSlots: z.number().min(0).max(1024).optional().default(0),
+    inviteExpiryDays: z.number().min(1).max(365).optional().default(7),
 });
 
 // Step 4: Registration Schema (with conditional validation for step 4)
-export const registrationSchema = registrationSchemaBase.refine(
-    (data) => {
-        // Only validate checkInWindowMinutes range when check-in is enabled
-        if (data.checkInRequired) {
-            return data.checkInWindowMinutes >= 5 && data.checkInWindowMinutes <= 120;
-        }
-        return true; // Skip validation when check-in is disabled
-    },
-    { message: 'Check-in window must be between 5 and 120 minutes', path: ['checkInWindowMinutes'] }
-);
+export const registrationSchema = registrationSchemaBase
+    .refine(
+        (data) => {
+            if (data.checkInRequired) {
+                return data.checkInWindowMinutes >= 5 && data.checkInWindowMinutes <= 120;
+            }
+            return true;
+        },
+        { message: 'Check-in window must be between 5 and 120 minutes', path: ['checkInWindowMinutes'] },
+    )
+    .refine(
+        (data) => !data.invitedTeamsEnabled || (data.reservedInviteSlots ?? 0) >= 1,
+        { message: 'Reserve at least 1 slot for invited teams', path: ['reservedInviteSlots'] },
+    )
+    .refine(
+        (data) => {
+            if (!data.invitedTeamsEnabled) return true;
+            const maxTeams = (data as { maxTeams?: number }).maxTeams ?? 0;
+            if (maxTeams <= 0) return true;
+            return (data.reservedInviteSlots ?? 0) <= maxTeams;
+        },
+        { message: 'Reserved invite slots cannot exceed max teams', path: ['reservedInviteSlots'] },
+    );
 
 // Full tournament schema
 export const fullTournamentSchema = basicInfoBase
@@ -138,7 +154,19 @@ export const fullTournamentSchema = basicInfoBase
     }, {
         message: "Total prize distribution cannot exceed 100%",
         path: ["rewards"]
-    });
+    })
+    .refine(
+        (data) => !data.invitedTeamsEnabled || (data.reservedInviteSlots ?? 0) >= 1,
+        { message: 'Reserve at least 1 slot for invited teams', path: ['reservedInviteSlots'] },
+    )
+    .refine(
+        (data) => {
+            if (!data.invitedTeamsEnabled) return true;
+            if (data.maxTeams <= 0) return true;
+            return (data.reservedInviteSlots ?? 0) <= data.maxTeams;
+        },
+        { message: 'Reserved invite slots cannot exceed max teams', path: ['reservedInviteSlots'] },
+    );
 
 // Helper function to validate a specific step
 export const validateStep = (step: number, data: any): { valid: boolean; errors: Record<string, string> } => {
@@ -154,8 +182,14 @@ export const validateStep = (step: number, data: any): { valid: boolean; errors:
     const schema = schemas[step];
     if (!schema) return { valid: true, errors: {} };
 
+    // BR tournaments use tournamentType + stage format battle_royale; bracketType is legacy/unused.
+    const payload =
+        data?.tournamentType === 'battle_royale' && (step === 2 || step === 6)
+            ? (({ bracketType: _ignored, ...rest }) => rest)(data)
+            : data;
+
     try {
-        schema.parse(data);
+        schema.parse(payload);
         console.log('[Wizard Validation] Step', step, 'passed');
         return { valid: true, errors: {} };
     } catch (e) {

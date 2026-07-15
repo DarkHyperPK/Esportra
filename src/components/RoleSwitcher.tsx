@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ArrowRightLeft, Building2, Gamepad2, Trophy } from 'lucide-react';
 import { useRole } from '@/hooks/useRole';
 import { useAuth } from '@/hooks/useAuth';
-import { apiClient } from '@/lib/apiClient';
+import { useMeRoles } from '@/hooks/useMeRoles';
+import { meRolesQueryKey } from '@/lib/meRoles';
 import { useToast } from "@/hooks/use-toast";
 import VerificationRequestForm from '@/components/VerificationRequestForm';
 import { JackButton } from '@/components/ui/JackButton';
@@ -43,12 +45,12 @@ const RoleTile: React.FC<{
     className={cn(
       'group relative block w-full overflow-hidden border px-4 py-3 text-left font-mono text-[12px] font-bold uppercase tracking-wider transition-colors',
       isCurrent
-        ? 'border-rose-500 bg-rose-500 text-white'
-        : 'border-white/10 bg-white text-black disabled:opacity-50',
+        ? 'border-transparent bg-rose-500 text-white'
+        : 'border-white/10 bg-white text-matte-black disabled:opacity-50',
     )}
   >
     <span className="relative z-10 flex w-full items-center gap-2">
-      <span className={cn('flex h-7 w-7 items-center justify-center', isCurrent ? 'text-white' : 'text-black')}>
+      <span className={cn('flex h-7 w-7 items-center justify-center', isCurrent ? 'text-white' : 'text-matte-black')}>
         {getRoleIcon(role)}
       </span>
       <span className="flex-1">{getRoleLabel(role)}</span>
@@ -56,7 +58,7 @@ const RoleTile: React.FC<{
         <span
           className={cn(
             'border px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider',
-            isCurrent ? 'border-white/40 text-white' : 'border-black/40 text-black',
+            isCurrent ? 'border-white/40 text-white' : 'border-matte-black/40 text-matte-black',
           )}
         >
           {badge}
@@ -78,6 +80,7 @@ export const RoleSwitcherDialog: React.FC<{
   const { currentRole, isLoading, switchRole } = useRole();
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [reason, setReason] = useState('');
   const [showVerificationForm, setShowVerificationForm] = useState(false);
@@ -88,40 +91,30 @@ export const RoleSwitcherDialog: React.FC<{
   }>({ organizer: false, venue_owner: false });
   const [verificationSystemReady, setVerificationSystemReady] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const { data: rolesData, isLoading: rolesLoading } = useMeRoles(open && !!user);
 
-  // Check verification status for organizer and venue_owner roles using multi-role system
-  const checkVerificationStatus = useCallback(async () => {
-    if (!user) return;
+  useEffect(() => {
+    if (!open || !user) return;
+    if (rolesLoading) return;
+
     try {
-      const rolesData = await apiClient.get<{
-        userRoles: Array<{ role: string; is_active: boolean }>;
-        verifiedRoles: Array<{ role: string; status: string; is_active: boolean }>;
-      }>('/api/me/roles');
-
       const isAdmin = profile?.is_admin;
-      const hasOrganizerRole = rolesData.userRoles?.some(r => r.role === 'organizer' && r.is_active) || false;
-      const hasVenueOwnerRole = rolesData.userRoles?.some(r => r.role === 'venue_owner' && r.is_active) || false;
-      const isOrganizerVerified = rolesData.verifiedRoles?.some(r => r.role === 'organizer' && r.status === 'approved' && r.is_active) || false;
-      const isVenueOwnerVerified = rolesData.verifiedRoles?.some(r => r.role === 'venue_owner' && r.status === 'approved' && r.is_active) || false;
+      const hasOrganizerRole = rolesData?.userRoles?.some(r => r.role === 'organizer' && r.is_active) || false;
+      const hasVenueOwnerRole = rolesData?.userRoles?.some(r => r.role === 'venue_owner' && r.is_active) || false;
+      const isOrganizerVerified = rolesData?.verifiedRoles?.some(r => r.role === 'organizer' && r.status === 'approved' && r.is_active) || false;
+      const isVenueOwnerVerified = rolesData?.verifiedRoles?.some(r => r.role === 'venue_owner' && r.status === 'approved' && r.is_active) || false;
 
       setVerificationSystemReady(true);
       setVerificationStatus({
         organizer: isAdmin || (hasOrganizerRole && isOrganizerVerified),
-        venue_owner: isAdmin || (hasVenueOwnerRole && isVenueOwnerVerified)
+        venue_owner: isAdmin || (hasVenueOwnerRole && isVenueOwnerVerified),
       });
-
     } catch (error) {
       console.error('Error checking verification status:', error);
       setVerificationSystemReady(false);
       setVerificationStatus({ organizer: false, venue_owner: false });
     }
-  }, [profile?.is_admin, user]);
-
-  useEffect(() => {
-    if (open) {
-      void checkVerificationStatus();
-    }
-  }, [checkVerificationStatus, open]);
+  }, [open, user, profile?.is_admin, rolesData, rolesLoading]);
 
   const handleRoleSwitch = async (newRole: 'casual' | 'organizer' | 'venue_owner') => {
     if (currentRole === 'admin' || isLoading) {
@@ -224,7 +217,7 @@ export const RoleSwitcherDialog: React.FC<{
       </Dialog>
 
       <Dialog open={showVerificationForm} onOpenChange={setShowVerificationForm}>
-        <DialogContent className="z-[1060] max-h-[90vh] max-w-4xl overflow-y-auto rounded-none border border-rose-500/40 bg-[#0a0a0c] p-6">
+        <DialogContent className="z-[1060] max-h-[90vh] max-w-4xl overflow-y-auto overscroll-contain rounded-none border border-rose-500/40 bg-[#0a0a0c] p-6" data-lenis-prevent>
           <DialogHeader>
             <div className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.4em] text-rose-400">
               License gate
@@ -241,7 +234,7 @@ export const RoleSwitcherDialog: React.FC<{
             requestedRole={verificationRequestedRole}
             onSuccess={() => {
               setShowVerificationForm(false);
-              checkVerificationStatus();
+              void queryClient.invalidateQueries({ queryKey: meRolesQueryKey });
             }}
             onCancel={() => setShowVerificationForm(false)}
           />

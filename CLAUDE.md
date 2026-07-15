@@ -1,140 +1,157 @@
-# Esportra
+# Esportra Frontend
 
-Esports tournament management and venue booking platform built with React, TypeScript, Vite, and Supabase.
+React 18 + TypeScript + Vite + Supabase esports tournament management and venue booking platform.
 
-## Tech stack
-
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI**: Tailwind CSS + shadcn/ui (Radix primitives) + Framer Motion
-- **State/Data**: TanStack React Query + React Hook Form + Zod
-- **Backend**: Supabase (Postgres, Auth, Storage, Edge Functions, RLS)
-- **Deployment**: Coolify (frontend), GitHub Actions (DB migrations + Edge Functions)
-- **Mobile**: Capacitor (Android/iOS)
-
-## Project structure
+## Architecture
 
 ```
 src/
-  components/   # React components
-  contexts/     # React context providers
-  hooks/        # Custom hooks
-  pages/        # Route-level page components
-  types/        # TypeScript interfaces/types
-  services/     # API/service layer
-  lib/          # Utilities (supabase client, etc.)
-  config/       # App configuration
-  schemas/      # Zod validation schemas
-  utils/        # Helper functions
+  pages/          # Route-level composition — no direct DB calls
+  components/     # UI only — data via props, no Supabase in components
+    ui/           # shadcn primitives, shared design system
+    {domain}/     # tournament, organizer, player, landing (<200 lines each)
+  hooks/          # ALL Supabase/React Query logic — one concern per hook
+  services/       # Pure domain algorithms (brackets, veto, etc.)
+  schemas/        # Zod validation at boundaries
+  types/          # TS interfaces mirroring DB — no runtime logic
+  contexts/       # Auth, theme, hub providers (thin wrappers)
+  lib/            # Supabase client, utilities
 supabase/
-  migrations/   # SQL migration files (auto-deployed to prod on push to main)
+  migrations/     # Schema + RLS + triggers (one concern per file)
 ```
+
+**Stack:** TanStack Query, React Hook Form + Zod, Tailwind + shadcn/ui, Framer Motion, Capacitor mobile, SignalR.
+
+Cross-repo: `esportra-backend` is the .NET API. `esportra-desktop` is ow-electron + SignalR Station Agent.
+
+## Layer Rules
+
+1. **Pages** compose — they wire hooks and pass data to components. Never call Supabase directly.
+2. **Components** render UI — data via props or local UI state only. No DB access, no secrets.
+3. **Hooks** own all Supabase/React Query logic. Parameterized queries, Zod before mutations.
+4. **Services** own pure domain algorithms. Testable units, no side effects.
+5. **Schemas** own Zod validation. Shared between forms and hooks.
+
+**Forbidden:**
+```typescript
+// In a component or page — NEVER
+const { data } = await supabase.from('tournaments').select('*');
+
+// N+1 in a hook — NEVER
+for (const id of ids) {
+  await supabase.from('profiles').select('*').eq('id', id);
+}
+```
+
+## Coding Style
+
+- TypeScript only in `src/` — no `any`, no `as` casts unless truly necessary
+- Immutable updates with spread — never mutate objects in-place
+- Functions < 50 lines, files < 800 lines, components < 200 lines
+- One component per file
+- Path aliases `@/` for imports
+- Organize by feature/domain, not by file type
+- No `console.log` in production code
+- Components: PascalCase. Hooks: `use` prefix. CSS classes: kebab-case
+
+## Data Fetching
+
+- Hooks encapsulate queries with `.limit()` and joins — one round trip
+- Consolidate counts/stats into RPCs — no N+1
+- Paginate lists: always `.limit()` + cursor/offset
+- Invalidate queries narrowly on mutation success
+- Server state via TanStack Query — don't duplicate into client stores
+- Optimistic updates: snapshot → apply → rollback on failure with visible error feedback
+- Parallel fetching for independent data — avoid request waterfalls
+
+### Match Room Realtime
+
+- Page-level: `useMatchRoomRealtime({ matchId })` — single `JoinMatch` per match page
+- On `CheckInUpdated`: invalidate `match-checkins`, `match-room-state`
+- On `TimeProposalUpdated`: invalidate `match-time-proposals`, `match-room-state`
+- Child hooks: pass `subscribeRealtime: false` when parent coordinates
+
+### Auth Roles
+
+- Invalidate `meRolesQueryKey` after sign-in and on user-id change
+- `removeQueries` on sign-out
+- Gate role switcher on `deriveHasApprovedLicense(meRoles)` with session hint while loading
+
+## Security (Blocking)
+
+Security is blocking, not advisory.
+
+### Non-negotiables
+
+1. **Never trust the client** — role, ownership, eligibility enforced in RLS/RPC
+2. **Every table has RLS** — `ENABLE ROW LEVEL SECURITY` before any policy
+3. **Default deny** — explicit `USING`/`WITH CHECK`; no `USING (true)` on writes
+4. **Service role key never in client** — only anon key in `VITE_*` env
+5. **No `dangerouslySetInnerHTML`** without DOMPurify
+6. **Supabase client methods only** — `.eq()`, never string-built filters
+7. **File upload** — validate type, size, extension in hook before upload
+8. **No secrets in bundle** — only `VITE_*`; rotate if leaked
+9. **Never weaken RLS, triggers, or storage policies to fix bugs**
+
+### Protected areas (do not touch)
+
+- Tournament organizer field blocks (is_featured, status, approved_by, winner_id)
+- Team invitation rules
+- Match report participant checks
+- Venue booking payment triggers
+- Storage anonymous-write deny
+
+### Response protocol
+
+1. STOP — no workaround that weakens Layer 1 (Postgres)
+2. Fix CRITICAL/HIGH before continuing
+3. Rotate exposed secrets immediately
+4. Grep for same anti-pattern repo-wide
+
+## Design Quality
+
+No generic template-looking UI. Output must look intentional and product-specific.
+
+**Banned:** Default card grids with no hierarchy, stock hero sections, unmodified library defaults, flat layouts with no depth/motion, uniform spacing everywhere.
+
+**Required (at least 4):** Clear hierarchy through scale contrast, intentional rhythm, depth/layering, typography with character, semantic color, designed interaction states, grid-breaking composition, motion that clarifies.
+
+## Testing
+
+- **Vitest** for unit tests
+- TDD: write test (RED) → implement (GREEN) → refactor (IMPROVE)
+- Target 80%+ coverage on domain logic and hooks
+- Test as non-admin user for RLS changes
+
+## Git Workflow
+
+- Conventional commits: `<type>: <description>` (feat, fix, refactor, docs, test, chore, perf, ci)
+- `npm run build` must pass before commit (includes chunk checks and button antipattern checks)
+- No secrets in diff (check for `sk-`, `eyJ`, passwords, `service_role`)
+- PRs: analyze full commit history, comprehensive summary, include test plan
 
 ## Commands
 
-- `npm run dev` — Start dev server
-- `npm run build` — Production build (always run before pushing)
-- `npm run lint` — ESLint
-- `npm run preview` — Preview production build
-- `npx vitest` — Run tests
-- `supabase db diff -f <name>` — Generate migration from local DB changes
-
-## Mandatory guidelines
-
-These six documents govern all work on this project. Read and follow them:
-
-- **[CODING_GUIDELINES.md](./project-guidelines/CODING_GUIDELINES.md)** — Performance (query consolidation, N+1 prevention, pagination), security (RLS, triggers, secrets), migrations, code style, naming, commit messages
-- **[UI_STYLE_GUIDE.md](./project-guidelines/UI_STYLE_GUIDE.md)** — Dark theme (#050505 base, rose-500 accents), typography (Poppins/Inter), glassmorphism, card patterns, animations (Framer Motion), accessibility (4.5:1 contrast, 44px touch targets, reduced motion)
-- **[IMPLEMENTATION_GUIDE.md](./project-guidelines/IMPLEMENTATION_GUIDE.md)** — E2E mandate (no UI-only changes), 4-phase protocol (DB+RLS → hooks/types → UI → verify), custom hooks for all data fetching, TanStack Query patterns, storage buckets, realtime subscriptions
-- **[UX_GUIDELINES.md](./project-guidelines/UX_GUIDELINES.md)** — Navigation, loading/error/empty states, forms, feedback, real-time interactions, tournament flow UX, responsive/mobile, accessibility UX
-- **[FEATURES_GUIDELINES.md](./project-guidelines/FEATURES_GUIDELINES.md)** — Feature scoping, categories (player/organizer/venue/admin), definition of done, delivery checklist, breaking changes, feature flags
-- **[CODE_QUALITY_GUIDELINES.md](./project-guidelines/CODE_QUALITY_GUIDELINES.md)** — TypeScript standards, error handling, dependency management, code review checklist, performance budgets, testing, git hygiene, security checklist
-- **[FEATURES_DOCUMENTATION.md](./project-guidelines/FEATURES_DOCUMENTATION.md)** — Complete inventory of all platform features, pages, hooks, edge functions, database tables, and SignalR hubs
-
-## Key rules (summary)
-
-- **TypeScript only** in `src/`. No `.js` files.
-- **E2E implementation** — every feature needs backend (schema + RLS) → logic (hooks + types) → UI → verification.
-- **No raw Supabase calls in components** — always through custom hooks in `src/hooks/`.
-- **Conventional commits**: `fix:`, `feat:`, `chore:`, `docs:` — first line under 72 chars.
-- **Database**: Consolidate queries (use RPCs), use Supabase joins (no N+1), always paginate with `.limit()`.
-- **Security**: Every table gets RLS (default deny). Admin ops through `SECURITY DEFINER` RPCs. Never weaken existing security triggers/policies.
-- **Migrations**: Via `supabase db diff`. Never edit production DB directly. One migration per concern.
-- **Components**: One per file, filename matches component name. Show error states visibly.
-- **UI**: Dark base, rose accents, glassmorphism, Framer Motion animations, accessible.
-- **Naming**: DB columns `snake_case`, TS `camelCase`, React components `PascalCase`.
-
-## Branches
-
-- `main` — production (auto-deploys frontend, DB, and Edge Functions)
-- `staging` — staging environment
-
----
-
-## Related repo: Esportra Desktop Suite
-
-Separate repo at `d:\esportra-desktop` → GitHub: `DarkHyperPK/esportra-desktop`
-
-### Tech stack
-- **Desktop shell**: `@overwolf/ow-electron` 37 + React 18 + Vite + Zustand + Tailwind
-- **Real-time backend**: ASP.NET Core 9 + SignalR (`apps/signalr-hub/`)
-- **Station Agent**: .NET 9 WinForms (`apps/station-agent/EsportraAgent/`)
-- **Shared types**: `packages/shared-types/` (TypeScript)
-- **Monorepo**: Turborepo
-
-### Phase status
-| Phase | Status | Deliverable |
-|-------|--------|-------------|
-| 0 | ✅ Complete | Monorepo, ow-electron shell, SignalR hub skeleton, shared-types |
-| 1 | ✅ Complete | Station Agent: lock screen, keyboard hooks, admin gateway (Ctrl+Shift+A + PIN), SignalR client, WMI health monitoring, tray icon |
-| 2 | 🔄 In Progress | Venue Management: real-time station grid (desktop), booking system (web), hub agent registry |
-| 3 | Not started | Broadcasting Suite: GEP (CS2+Valorant), HUDs, overlays |
-| 4 | Not started | Polish: analytics, auto-updater, NDI, stress testing |
-
-### Commands (desktop repo)
 ```bash
-# Desktop app (ow-electron)
-cd d:\esportra-desktop
-npm run dev
-
-# SignalR hub
-cd apps/signalr-hub/EsportraSignalRHub
-dotnet run   # needs appsettings.Development.json
-
-# Station agent
-cd apps/station-agent/EsportraAgent
-dotnet run   # Windows only — needs appsettings.local.json with AccessToken
+npm run dev          # Start dev server
+npm run build        # Production build (with checks)
+npm run lint         # ESLint (zero warnings)
+npm run test         # Vitest
+npm run preview      # Preview production build
 ```
 
-### Key rules (desktop)
-- **No CS2 integration** until explicitly requested — it is parked
-- Agent auth: 1-year JWT generated via SignalR `GenerateAgentToken` hub method (not HTTP — avoids CORS). Requires an authenticated admin WS connection.
-- Agent config: `appsettings.json` (template, committed) + `appsettings.local.json` (gitignored, has real token + AdminPin)
-- `appsettings.Development.json` (hub) and `appsettings.local.json` (agent) are gitignored — never commit secrets
-- Supabase JWT issuer: self-hosted staging omits `iss` claim — set `"JwtIssuer": ""` in `appsettings.Development.json` to disable issuer validation
-- Supabase JWT audience: `authenticated`
-- **SignalR connection**: lifted to `StationHubProvider` in `Layout.tsx` — connection persists across page navigation. Never put `useStationHub` inside a page component or the connection will drop on unmount.
-- **Hub agent registry**: in-memory `ConcurrentDictionary<string, AgentInfo>` in `StationHub.cs`. New admins receive `CurrentAgents` snapshot on connect. Registry is process-scoped (cleared on hub restart).
-- Admin gateway: `Ctrl+Shift+A` on lock screen toggles PIN panel. Tray exit also requires PIN via `AdminPinDialog`. Default PIN is `"0000"` — always change via `appsettings.local.json`.
+## Feature Build Order
 
-### Key desktop files
-```
-apps/desktop/src/renderer/
-  contexts/StationHubContext.tsx   # SignalR connection provider (mount at Layout)
-  pages/Venue.tsx                  # Real-time station grid, lock/unlock/extend controls
-  pages/Settings.tsx               # Hub config + GenerateAgentToken via SignalR
-  components/Layout.tsx            # Wraps app with StationHubProvider
+Migration (RLS) → types → schema → hook → components → page → verify as non-admin
 
-apps/signalr-hub/EsportraSignalRHub/
-  Hubs/StationHub.cs               # All hub methods + agent registry + CurrentAgents
+## Implementation Protocol (New Features)
 
-apps/station-agent/EsportraAgent/
-  Forms/LockScreenForm.cs          # Ctrl+Shift+A admin panel
-  Forms/AdminPinDialog.cs          # PIN gate for tray exit
-  AgentApplicationContext.cs       # Tray icon + lifecycle
-  Models/AgentConfig.cs            # HubUrl, StationId, VenueId, AccessToken, AdminPin
-```
+7 phases — phases 1–4 are thinking, phases 5–7 are building:
 
-### Web platform — booking system
-- `src/hooks/useVenueBooking.ts` — custom hook for booking flow; NO payments table insert (table doesn't exist); graceful availability check via `maybeSingle`
-- `src/components/VenueBooking.tsx` — booking dialog, uses `UseVenueBookingProps`
-- `src/pages/venues/VenueDetails.tsx` — Book Now button restored; derives `pricePerHour` from `venue.price_per_hour` or parses `price_range` string
+1. **Discovery** — scope, actors, data, dependencies
+2. **Interaction map** — per-actor actions and system responses
+3. **Edge cases** — timing, permissions, state conflicts, scale
+4. **Plan** — file-level task list, DB → backend → frontend build order
+5. **Backend** — migration + RLS + triggers + RPCs
+6. **Frontend** — hooks + types + schemas + components + page
+7. **Verify** — persistence, role access, error recovery, build passes

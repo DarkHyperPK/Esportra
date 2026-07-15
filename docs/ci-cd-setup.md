@@ -56,7 +56,7 @@ You merge to `staging` or `main`. GitHub Actions tests, then updates `deploy/*`.
 
 |----------|------|---------|--------|--------|
 
-| **CI — Frontend** | FE | Push/PR to `staging`/`main` | Lint + build only (placeholders) | Code/lint/build broken |
+| **CI — Frontend** | FE | Push/PR/manual for frontend changes | Lint + route checks + build artifact (placeholders) | Code/lint/build broken |
 
 | **Build & Deploy — Staging** | FE | Push `staging` | E2E preflight + stable Playwright (`@flaky` excluded) + promote | Misconfig **or** real test failure |
 
@@ -69,6 +69,8 @@ You merge to `staging` or `main`. GitHub Actions tests, then updates `deploy/*`.
 
 
 **Why CI passes but Deploy fails:** CI never runs Playwright or checks secrets. Deploy runs E2E — failures there are usually auth/env (preflight catches early) or real regressions.
+
+Frontend and partner portal CI runs use read-only repository permissions, cancel stale runs for the same PR or branch, and keep the built `dist/` output as a 7-day artifact for quick inspection.
 
 
 

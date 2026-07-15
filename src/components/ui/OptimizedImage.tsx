@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { normalizeStorageUrl } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -37,12 +38,14 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
     const getOptimizedUrl = (originalUrl: string) => {
         if (!originalUrl) return '';
 
+        const normalizedUrl = normalizeStorageUrl(originalUrl) ?? originalUrl;
+
         // Define Supabase storage markers
         const isSupabaseStorage =
-            originalUrl.includes('/storage/v1/object/public');
+            normalizedUrl.includes('/storage/v1/object/public');
 
         if (!isSupabaseStorage) {
-            return originalUrl;
+            return normalizedUrl;
         }
 
         // Prepare transform params
@@ -66,11 +69,11 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
             params.set('height', height.toString());
         }
 
-        const canOptimize = originalUrl.includes('.supabase.co/');
+        const canOptimize = normalizedUrl.includes('.supabase.co/') || normalizedUrl.includes('esportra.com/storage/');
 
         const optimizedUrl = canOptimize
-            ? originalUrl.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
-            : originalUrl;
+            ? normalizedUrl.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
+            : normalizedUrl;
 
         // Only append transformation parameters if we're using the Supabase render endpoint
         return canOptimize ? `${optimizedUrl}?${params.toString()}` : optimizedUrl;

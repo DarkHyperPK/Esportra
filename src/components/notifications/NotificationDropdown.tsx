@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNotifications } from '@/hooks/useNotifications';
-import { Button } from '@/components/ui/button';
+import { GhostButton, SuccessButton, DangerButton, SettingsButton } from '@/components/ui/app-buttons';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Bell, CheckCheck, Users, ShieldAlert, Info, ArrowRight, Shield, Check, X, Loader2, FileText, CheckCircle2, AlertTriangle, XCircle, Swords, Map, Trophy } from 'lucide-react';
+import { Bell, CheckCheck, Users, ShieldAlert, Info, ArrowRight, Shield, Check, X, Loader2, FileText, CheckCircle2, AlertTriangle, XCircle, Swords, Map, Trophy, Ticket, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { respondToOrgStaffInvite } from '@/lib/organizationStaff';
 import { useToast } from '@/hooks/use-toast';
+import { resolveCaptainMatchNotificationLinkAsync } from '@/utils/notificationLinks';
+import { buildRedeemInvitePath, getTournamentInviteFromNotification } from '@/utils/tournamentInviteNotification';
+import { getDenseScheduleNotificationMeta } from '@/utils/notificationDisplay';
+import { MatchScheduleNotificationBody } from '@/components/notifications/MatchScheduleNotificationBody';
 
 export const NotificationDropdown = () => {
     const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications } = useNotifications();
@@ -29,16 +33,16 @@ export const NotificationDropdown = () => {
 
     const recentNotifications = notifications.slice(0, 10);
 
-    const handleMarkAllRead = async () => {
+    const handleMarkAllRead = useCallback(async () => {
         setOptimisticReadIds(prev => [...prev, ...notifications.filter(n => !n.is_read).map(n => n.id)]);
         await markAllAsRead();
-    };
+    }, [notifications, markAllAsRead]);
 
     useEffect(() => {
         if (isOpen && unreadCount > 0) {
             handleMarkAllRead();
         }
-    }, [isOpen, unreadCount]);
+    }, [isOpen, unreadCount, handleMarkAllRead]);
 
     const handleNotificationClick = async (notification: any) => {
         // Don't navigate if it's a staff_invite — actions are inline
@@ -65,12 +69,24 @@ export const NotificationDropdown = () => {
 
         setIsOpen(false);
 
-        if (notification.link) {
-            navigate(notification.link);
-        } else if (notification.data?.link) {
-            navigate(notification.data.link);
+        const destination =
+            await resolveCaptainMatchNotificationLinkAsync(notification)
+            ?? notification.link
+            ?? notification.data?.link
+            ?? null;
+
+        if (destination) {
+            navigate(destination);
         } else if (notification.type === 'team_invite') {
             navigate('/player/teams');
+        } else if (notification.type === 'tournament_invite') {
+            const invite = getTournamentInviteFromNotification(notification);
+            if (invite?.data.code) {
+                navigate(buildRedeemInvitePath(
+                    invite.data.code,
+                    invite.data.tournament_id ?? null,
+                ));
+            }
         }
     };
 
@@ -139,10 +155,14 @@ export const NotificationDropdown = () => {
             case 'dispute_resolved': return 'bg-green-500/10 border-green-500/20';
             case 'dispute_rejected': return 'bg-red-500/10 border-red-500/20';
             case 'tournament_announcement': return 'bg-rose-500/10 border-rose-500/20';
+            case 'tournament_invite': return 'bg-violet-500/10 border-violet-500/20';
             case 'ban': return 'bg-red-500/10 border-red-500/20';
             case 'kick': return 'bg-orange-500/10 border-orange-500/20';
             case 'veto_your_turn':
             case 'match_ready': return 'bg-rose-500/10 border-rose-500/20';
+            case 'match_schedule_changed': return 'bg-sky-500/10 border-sky-500/20';
+            case 'br_game_schedule_changed':
+            case 'br_lobby_schedule_changed': return 'bg-violet-500/10 border-violet-500/20';
             case 'veto_completed': return 'bg-blue-500/10 border-blue-500/20';
             case 'match_completed': return 'bg-amber-500/10 border-amber-500/20';
             default: return 'bg-zinc-500/10 border-zinc-500/20';
@@ -173,6 +193,8 @@ export const NotificationDropdown = () => {
                 return <XCircle className="h-4 w-4 text-red-400" />;
             case 'tournament_announcement':
                 return <Bell className="h-4 w-4 text-rose-400" />;
+            case 'tournament_invite':
+                return <Ticket className="h-4 w-4 text-violet-400" />;
             case 'ban':
                 return <ShieldAlert className="h-4 w-4 text-red-500" />;
             case 'kick':
@@ -180,6 +202,11 @@ export const NotificationDropdown = () => {
             case 'veto_your_turn':
             case 'match_ready':
                 return <Swords className="h-4 w-4 text-rose-400" />;
+            case 'match_schedule_changed':
+                return <Calendar className="h-4 w-4 text-sky-400" />;
+            case 'br_game_schedule_changed':
+            case 'br_lobby_schedule_changed':
+                return <Calendar className="h-4 w-4 text-violet-400" />;
             case 'veto_completed':
                 return <Map className="h-4 w-4 text-blue-400" />;
             case 'match_completed':
@@ -194,6 +221,7 @@ export const NotificationDropdown = () => {
         const isStaffInvite = n.type === 'staff_invite' && n.data?.organization_staff_id;
         const processing = processingInvites[n.id];
         const resolved = resolvedInvites[n.id];
+        const scheduleMeta = getDenseScheduleNotificationMeta(n);
 
         return (
             <div
@@ -216,11 +244,15 @@ export const NotificationDropdown = () => {
                         {n.title}
                     </p>
                     <p className={cn(
-                        "text-xs text-gray-500 mt-1 leading-relaxed whitespace-pre-wrap break-all transition-all",
-                        expandedAnnouncementId !== n.id && "line-clamp-2"
+                        "text-xs text-gray-500 mt-1 leading-relaxed whitespace-pre-wrap break-words transition-all",
+                        !scheduleMeta && expandedAnnouncementId !== n.id && "line-clamp-2"
                     )}>
-                        {n.message}
+                        {scheduleMeta ? null : n.message}
                     </p>
+
+                    {scheduleMeta && (
+                        <MatchScheduleNotificationBody notification={n} compact />
+                    )}
 
                     {n.type === 'tournament_announcement' && (
                         <div className="flex items-center gap-3 mt-1.5">
@@ -241,25 +273,24 @@ export const NotificationDropdown = () => {
                     {/* Staff Invite Action Buttons */}
                     {isStaffInvite && !resolved && (
                         <div className="flex items-center gap-2 mt-2.5">
-                            <Button
+                            <SuccessButton
                                 size="sm"
                                 disabled={!!processing}
                                 onClick={(e) => { e.stopPropagation(); handleStaffInviteAction(n, true); }}
-                                className="h-7 px-3 text-[11px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 hover:text-emerald-300"
+                                className="h-7 px-3 text-[11px]"
                             >
                                 {processing === 'accepting' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
                                 Accept
-                            </Button>
-                            <Button
+                            </SuccessButton>
+                            <DangerButton
                                 size="sm"
-                                variant="ghost"
                                 disabled={!!processing}
                                 onClick={(e) => { e.stopPropagation(); handleStaffInviteAction(n, false); }}
-                                className="h-7 px-3 text-[11px] font-semibold text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                                className="h-7 px-3 text-[11px]"
                             >
                                 {processing === 'declining' ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3 mr-1" />}
                                 Decline
-                            </Button>
+                            </DangerButton>
                         </div>
                     )}
 
@@ -287,10 +318,9 @@ export const NotificationDropdown = () => {
     return (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>
-                <Button
-                    variant="ghost"
+                <SettingsButton
                     size="icon"
-                    className="relative rounded-full border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                    className="relative rounded-full"
                 >
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
@@ -298,7 +328,7 @@ export const NotificationDropdown = () => {
                             {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                     )}
-                </Button>
+                </SettingsButton>
             </PopoverTrigger>
             <PopoverContent
                 align="end"
@@ -315,15 +345,14 @@ export const NotificationDropdown = () => {
                         )}
                     </h4>
                     {unreadCount > 0 && (
-                        <Button
-                            variant="ghost"
+                        <GhostButton
                             size="sm"
                             onClick={handleMarkAllRead}
-                            className="h-6 px-2 text-xs text-gray-400 hover:text-white hover:bg-white/10"
+                            className="h-6 px-2 text-xs"
                         >
                             <CheckCheck className="h-3 w-3 mr-1" />
                             Mark all read
-                        </Button>
+                        </GhostButton>
                     )}
                 </div>
 
@@ -343,9 +372,8 @@ export const NotificationDropdown = () => {
 
                 {/* Footer */}
                 <div className="p-2 border-t border-white/10 bg-white/5">
-                    <Button
-                        variant="ghost"
-                        className="w-full justify-between text-xs text-gray-400 hover:text-white hover:bg-white/10"
+                    <GhostButton
+                        className="w-full justify-between text-xs"
                         onClick={() => {
                             setIsOpen(false);
                             navigate('/notifications');
@@ -353,7 +381,7 @@ export const NotificationDropdown = () => {
                     >
                         View all notifications
                         <ArrowRight className="h-3 w-3" />
-                    </Button>
+                    </GhostButton>
                 </div>
             </PopoverContent>
         </Popover>

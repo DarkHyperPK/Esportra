@@ -1,7 +1,17 @@
 import React, { useState, useEffect, ReactNode } from 'react';
-import { apiClient } from '@/lib/apiClient';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useMeRoles } from '@/hooks/useMeRoles';
+import { fetchMeRoles, meRolesQueryKey, isApprovedVerifiedRole } from '@/lib/meRoles';
+import {
+  clearStoredSessionRole,
+  getStoredSessionRole,
+  isValidSessionRole,
+  resolveActiveRole,
+  setStoredSessionRole,
+  syncStoredSessionRole,
+} from '@/lib/sessionRole';
 import { RoleContext, type RoleContextType, type UserRole } from '@/contexts/role-context';
 
 export type { UserRole };
@@ -13,103 +23,89 @@ interface RoleProviderProps {
 export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [currentRole, setCurrentRole] = useState<UserRole>('casual');
   const [isLoading, setIsLoading] = useState(true);
+  const { data: rolesData, isLoading: rolesQueryLoading } = useMeRoles(!!user);
+  const rolesDataRef = React.useRef(rolesData);
+  rolesDataRef.current = rolesData;
 
-  // Load user's current role (session role takes priority over database role)
-  const loadCurrentRole = React.useCallback(async () => {
-    if (!user) {
+  const prevProfileRoleRef = React.useRef<string | null>(null);
+  const prevUserIdRef = React.useRef<string | null>(null);
+
+  const loadCurrentRole = React.useCallback(() => {
+    if (!user?.id) {
       setCurrentRole('casual');
       setIsLoading(false);
       return;
     }
 
     try {
-      // Use profile from AuthContext instead of querying the DB again
       const isAdmin = profile?.is_admin || false;
       const adminRoles = (profile?.admin_roles as string[]) || [];
       const isSuperAdmin = adminRoles.includes('super_admin');
 
-      // If user is admin, set role based on admin type
       if (isAdmin) {
         const adminRole: UserRole = isSuperAdmin ? 'admin' : 'casual';
         setCurrentRole(adminRole);
-        localStorage.setItem('sessionRole', adminRole);
+        setStoredSessionRole(user.id, adminRole);
         setIsLoading(false);
         return;
       }
 
-      // Check for session role first (from localStorage) - only for non-admins
-      const sessionRole = localStorage.getItem('sessionRole') as UserRole;
+      const storedSessionRole = getStoredSessionRole(user.id);
+      const rolesList = rolesDataRef.current?.userRoles;
+      const profileRole =
+        (profile?.base_role as UserRole) ||
+        (profile?.role as UserRole) ||
+        'casual';
 
-      // Fetch roles from API once for both checks
-      let rolesList: Array<{ role: string }> = [];
-      try {
-        const rolesData = await apiClient.get<{ userRoles: Array<{ role: string; is_active: boolean }>; verifiedRoles: any[] }>('/api/me/roles');
-        rolesList = rolesData.userRoles || [];
-      } catch {
-        rolesList = [];
-      }
+      const resolvedRole = resolveActiveRole({
+        storedSessionRole,
+        userRoles: rolesList,
+        profileRole,
+      });
 
-      if (sessionRole && ['casual', 'organizer', 'venue_owner'].includes(sessionRole)) {
-        const hasRole = rolesList.some(r => r.role === sessionRole);
-
-        if (hasRole || sessionRole === 'casual') {
-          setCurrentRole(sessionRole);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Fallback to user's active roles or base role
-      if (rolesList.length > 0) {
-        const activeRole = rolesList[0].role as UserRole;
-        setCurrentRole(activeRole);
-        localStorage.setItem('sessionRole', activeRole);
-      } else {
-        // Fallback to base role from the already-loaded profile
-        const userBaseRole = (profile?.base_role as UserRole) || (profile?.role as UserRole) || 'casual';
-        setCurrentRole(userBaseRole);
-        localStorage.setItem('sessionRole', userBaseRole);
-      }
-
+      setCurrentRole(resolvedRole);
+      syncStoredSessionRole(user.id, storedSessionRole, resolvedRole);
     } catch (error) {
       console.error('Error in loadCurrentRole:', error);
-      // Fallback to cached profile
-      const userBaseRole = (profile?.role as UserRole) || 'casual';
-      setCurrentRole(userBaseRole);
+      const storedSessionRole = getStoredSessionRole(user.id);
+      const fallbackRole = storedSessionRole ?? (profile?.role as UserRole) ?? 'casual';
+      setCurrentRole(fallbackRole);
     } finally {
       setIsLoading(false);
     }
-  }, [user, profile]);
-
-  // Update role when profile changes (but don't override session role)
-  // Use ref to track previous profile role to avoid unnecessary updates
-  const prevProfileRoleRef = React.useRef<string | null>(null);
+  }, [user?.id, profile]);
 
   useEffect(() => {
-    if (profile?.role) {
-      const currentProfileRole = profile.role;
-      const prevProfileRole = prevProfileRoleRef.current;
-
-      // Only update if profile role actually changed
-      if (currentProfileRole === prevProfileRole) {
-        return;
-      }
-
-      prevProfileRoleRef.current = currentProfileRole;
-
-      const sessionRole = localStorage.getItem('sessionRole') as UserRole;
-
-      // Only use database role if no session role is set
-      if (!sessionRole || !['casual', 'organizer', 'venue_owner', 'admin'].includes(sessionRole)) {
-        setCurrentRole(currentProfileRole as UserRole);
-        localStorage.setItem('sessionRole', currentProfileRole);
-      }
+    const currentUserId = user?.id ?? null;
+    if (prevUserIdRef.current !== currentUserId) {
+      prevProfileRoleRef.current = null;
+      prevUserIdRef.current = currentUserId;
     }
-  }, [profile?.role]);
+  }, [user?.id]);
 
-  // Switch user role (session-based, works with multi-role system)
+  useEffect(() => {
+    if (!user?.id || !profile?.role) return;
+
+    const currentProfileRole = profile.role;
+    const prevProfileRole = prevProfileRoleRef.current;
+
+    if (currentProfileRole === prevProfileRole) {
+      return;
+    }
+
+    prevProfileRoleRef.current = currentProfileRole;
+
+    const storedSessionRole = getStoredSessionRole(user.id);
+
+    if (!isValidSessionRole(storedSessionRole)) {
+      setCurrentRole(currentProfileRole as UserRole);
+      setStoredSessionRole(user.id, currentProfileRole as UserRole);
+    }
+  }, [user?.id, profile?.role]);
+
   const switchRole = React.useCallback(async (newRole: UserRole, _reason?: string): Promise<boolean> => {
     if (!user) {
       toast({
@@ -120,7 +116,6 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
       return false;
     }
 
-    // Prevent admins from switching roles (except super admin can't switch - they already have all perks)
     const isAdmin = profile?.is_admin;
     if (isAdmin) {
       const adminRoles = (profile?.admin_roles as string[]) || [];
@@ -133,14 +128,14 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
           variant: 'default',
         });
         return false;
-      } else {
-        toast({
-          title: 'Admin Account',
-          description: 'Admin accounts stay on casual role. Your admin permissions are active.',
-          variant: 'default',
-        });
-        return false;
       }
+
+      toast({
+        title: 'Admin Account',
+        description: 'Admin accounts stay on casual role. Your admin permissions are active.',
+        variant: 'default',
+      });
+      return false;
     }
 
     if (newRole === currentRole) {
@@ -155,38 +150,44 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
 
-      // Check if user has this role in the multi-role system
       if (newRole !== 'casual') {
-        let rolesData: { userRoles: Array<{ role: string }>; verifiedRoles: Array<{ role: string; status: string; is_active: boolean }> };
+        let latestRoles: Awaited<ReturnType<typeof fetchMeRoles>>;
         try {
-          rolesData = await apiClient.get<typeof rolesData>('/api/me/roles');
+          latestRoles = await queryClient.fetchQuery({
+            queryKey: meRolesQueryKey,
+            queryFn: fetchMeRoles,
+            staleTime: 5 * 60_000,
+          });
         } catch {
-          rolesData = { userRoles: [], verifiedRoles: [] };
+          latestRoles = { userRoles: [], verifiedRoles: [] };
         }
 
-        const hasRole = rolesData.userRoles?.some(r => r.role === newRole);
+        const hasRole = latestRoles.userRoles?.some(
+          (entry) =>
+            entry.role === newRole &&
+            (entry.is_active ?? entry.isActive ?? true),
+        );
 
         if (!hasRole) {
           toast({
             title: 'Access Denied',
             description: `You don't have the ${newRole.replace('_', ' ')} role assigned.`,
-            variant: 'destructive'
+            variant: 'destructive',
           });
           setIsLoading(false);
           return false;
         }
 
-        // For organizer/venue_owner, check verification status (must be approved AND active)
         if (newRole === 'organizer' || newRole === 'venue_owner') {
-          const isVerified = rolesData.verifiedRoles?.some(
-            r => r.role === newRole && r.status === 'approved' && r.is_active
+          const isVerified = latestRoles.verifiedRoles?.some(
+            (entry) => entry.role === newRole && isApprovedVerifiedRole(entry),
           );
 
           if (!isVerified) {
             toast({
               title: 'Verification required',
               description: `Your ${newRole.replace('_', ' ')} verification is not approved yet.`,
-              variant: 'destructive'
+              variant: 'destructive',
             });
             setIsLoading(false);
             return false;
@@ -194,9 +195,8 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
         }
       }
 
-      // Session-based role switching - don't update database, just localStorage
       setCurrentRole(newRole);
-      localStorage.setItem('sessionRole', newRole);
+      setStoredSessionRole(user.id, newRole);
 
       toast({
         title: 'Role Switched',
@@ -215,20 +215,16 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [user, profile, currentRole, toast]);
+  }, [user, profile, currentRole, toast, queryClient]);
 
-  // Reset to base role (clear session, return to database role)
   const resetToBaseRole = React.useCallback(async () => {
     if (!user) return;
 
-    const userBaseRole = profile?.role as UserRole || 'casual';
+    const userBaseRole = (profile?.role as UserRole) || 'casual';
 
     try {
-      // Clear session role and return to database role
       setCurrentRole(userBaseRole);
-      localStorage.removeItem('sessionRole');
-
-      // Session-only reset; no DB write
+      setStoredSessionRole(user.id, userBaseRole);
 
       toast({
         title: 'Role Reset',
@@ -245,40 +241,37 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     }
   }, [user, profile, toast]);
 
-  // Force refresh role from database
   const refreshRoleFromDatabase = React.useCallback(async () => {
-    await loadCurrentRole();
-  }, [loadCurrentRole]);
+    if (!user?.id) return;
+    clearStoredSessionRole(user.id);
+    loadCurrentRole();
+  }, [user?.id, loadCurrentRole]);
 
-  // Permission checks - Super admin gets all perks, other admins stay on casual
   const isSuperAdmin = profile?.is_admin && (profile?.admin_roles as string[])?.includes('super_admin');
 
-  // Super admin: gets all perks (casual, organizer, venue owner) without switching
-  // Other admins: stay on casual, get their specific admin role perks
   const canCreateTeams = currentRole === 'casual' || isSuperAdmin;
-  const canCreateTournaments = currentRole === 'organizer' || isSuperAdmin;
+  const canCreateTournaments = isSuperAdmin || (rolesDataRef.current?.canCreateTournament ?? false);
   const canManageTournaments = currentRole === 'organizer' || isSuperAdmin;
   const canJoinTeams = currentRole === 'casual' || isSuperAdmin;
   const canReportScores = currentRole === 'casual' || isSuperAdmin;
   const canVerifyResults = currentRole === 'organizer' || isSuperAdmin;
 
-  // Track previous user ID to prevent unnecessary reloads
-  const prevUserIdRef = React.useRef<string | null>(null);
-  const prevProfileIdRef = React.useRef<string | null>(null);
-
+  // Resolve once auth + /api/me/roles have settled. Intentionally omit rolesData from deps
+  // so background refetches do not re-run role resolution and clobber manual picks.
   useEffect(() => {
-    const currentUserId = user?.id || null;
-    const currentProfileId = profile?.id || null;
-    const prevUserId = prevUserIdRef.current;
-    const prevProfileId = prevProfileIdRef.current;
-
-    // Only reload if user or profile actually changed
-    if (currentUserId !== prevUserId || currentProfileId !== prevProfileId) {
-      prevUserIdRef.current = currentUserId;
-      prevProfileIdRef.current = currentProfileId;
-      loadCurrentRole();
+    if (!user?.id) {
+      setCurrentRole('casual');
+      setIsLoading(false);
+      return;
     }
-  }, [user?.id, profile?.id, loadCurrentRole]);
+
+    if (rolesQueryLoading) {
+      setIsLoading(true);
+      return;
+    }
+
+    loadCurrentRole();
+  }, [user?.id, profile?.id, profile?.is_admin, rolesQueryLoading, loadCurrentRole]);
 
   const value: RoleContextType = React.useMemo(() => ({
     currentRole,
@@ -303,7 +296,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     canManageTournaments,
     canJoinTeams,
     canReportScores,
-    canVerifyResults
+    canVerifyResults,
   ]);
 
   return (
@@ -312,4 +305,3 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
     </RoleContext.Provider>
   );
 };
-

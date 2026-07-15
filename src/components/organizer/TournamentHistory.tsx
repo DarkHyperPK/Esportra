@@ -9,6 +9,10 @@ import { useRawgGame } from "@/hooks/useRawgGame";
 import { Link } from "react-router-dom";
 import { usePublicBracketData } from "@/hooks/usePublicBracketData";
 import { PublicBracketView } from "@/pages/tournaments/brackets/PublicBracketView";
+import BRGroupStageView from '@/components/tournament/br/BRGroupStageView';
+import { useGameTerminology } from '@/hooks/useGameTerminology';
+import { formatParticipantDisplay, getPersistedTournamentFormat, isBattleRoyaleTournament } from '@/utils/gameFeatures';
+import { getStageBRConfig } from '@/utils/brConfigResolve';
 import { CommandButton, CommandEmptyState, CommandPanel, CommandTabs, CommandTabButton, CommandToolbar } from "@/components/management/CommandSurface";
 
 type TournamentFilterStatus = 'active' | 'upcoming' | 'completed' | 'all';
@@ -33,10 +37,8 @@ export default function TournamentHistory() {
                 // Map DB status to filter groups, inferring 'ongoing' from dates
                 let computedStatus: TournamentFilterStatus = 'completed';
                 const s = t.status as string;
-                const startDate = new Date(t.start_date);
-                const isStarted = startDate <= new Date();
 
-                if (s === 'ongoing' || (['open', 'closed'].includes(s) && isStarted)) {
+                if (s === 'ongoing') {
                     computedStatus = 'active';
                 } else if (['draft', 'published', 'open', 'closed'].includes(s)) {
                     computedStatus = 'upcoming';
@@ -76,18 +78,10 @@ export default function TournamentHistory() {
             const rawParticipants = await apiClient.get<any>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
             const participantsData: any[] = Array.isArray(rawParticipants) ? rawParticipants : (rawParticipants?.items || rawParticipants?.data || []);
 
-            const formattedParticipants = participantsData?.map(p => {
-                const teamObj = Array.isArray(p.team) ? p.team[0] : p.team as any;
-                const userObj = Array.isArray(p.user) ? p.user[0] : p.user as any;
-                return {
-                    id: p.id,
-                    name: p.participant_type === 'team'
-                        ? (teamObj?.name || p.team_name || p.name || 'Unnamed Team')
-                        : (userObj?.username || p.username || p.name || 'Unknown Player'),
-                    avatar: p.participant_type === 'team' ? (teamObj?.logo_url || p.logo_url) : (userObj?.avatar_url || p.avatar_url),
-                    type: p.participant_type || (p.team_name || teamObj ? 'team' : 'player')
-                };
-            }) || [];
+            const formattedParticipants = participantsData?.map(p => ({
+                id: p.id,
+                ...formatParticipantDisplay(p),
+            })) || [];
 
             setTournaments(prev => prev.map(t =>
                 t.id === tournamentId
@@ -173,6 +167,80 @@ export default function TournamentHistory() {
     );
 }
 
+function HistoryBRView({
+    tournamentId,
+    gameName,
+    tournamentSlug: _tournamentSlug,
+}: {
+    tournamentId: string;
+    gameName: string;
+    tournamentSlug?: string | null;
+}) {
+    const { stages, loading } = usePublicBracketData(tournamentId, { includeVersions: false });
+    const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (stages.length > 0 && !selectedStageId) {
+            const brStage =
+                stages.find((s) => (s.format || '').toLowerCase().replace(/-/g, '_') === 'battle_royale') ||
+                stages[stages.length - 1];
+            setSelectedStageId(brStage.id);
+        }
+    }, [stages, selectedStageId]);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 text-zinc-500 animate-spin" />
+            </div>
+        );
+    }
+
+    if (!stages.length) {
+        return (
+            <div className="border border-dashed border-white/10 bg-white/[0.02] p-8 text-center text-sm text-zinc-500">
+                No game stages have been created yet.
+            </div>
+        );
+    }
+
+    const selectedStage = stages.find((s) => s.id === selectedStageId);
+
+    return (
+        <div className="w-full space-y-3">
+            {stages.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                    {stages.map((stage) => (
+                        <button
+                            key={stage.id}
+                            type="button"
+                            onClick={() => setSelectedStageId(stage.id)}
+                            className={cn(
+                                'px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap border',
+                                selectedStageId === stage.id
+                                    ? 'bg-white/10 border-white/20 text-white'
+                                    : 'bg-white/[0.03] border-white/10 text-zinc-400 hover:text-white hover:bg-white/[0.06]',
+                            )}
+                        >
+                            {stage.name || `Stage ${stage.stage_order + 1}`}
+                        </button>
+                    ))}
+                </div>
+            )}
+            {selectedStageId && selectedStage && (
+                <div className="min-h-[420px] w-full overflow-hidden border border-white/10 bg-[#0a0a0c] md:min-h-[500px]">
+                    <BRGroupStageView
+                        stageId={selectedStageId}
+                        gameName={gameName}
+                        stageFormat={getStageBRConfig(selectedStage)?.format}
+                        qualificationCount={(selectedStage as { advancement_count?: number }).advancement_count}
+                    />
+                </div>
+            )}
+        </div>
+    );
+}
+
 function HistoryBracketView({ tournamentId }: { tournamentId: string }) {
     const { stages, activeVersionsMap, loading } = usePublicBracketData(tournamentId);
     const [selectedStageId, setSelectedStageId] = useState<string | null>(null);
@@ -249,6 +317,13 @@ function TournamentThumbnail({ tournament }: { tournament: any }) {
 
 const TournamentHistoryCard = memo(function TournamentHistoryCard({ tournament, isExpanded, onToggle }: { tournament: any, isExpanded: boolean, onToggle: () => void }) {
     const [activeTab, setActiveTab] = useState<'matches' | 'participants'>('participants');
+    const isBR = isBattleRoyaleTournament(
+        tournament.game || '',
+        getPersistedTournamentFormat(tournament),
+    );
+    const terminology = useGameTerminology(tournament.game, tournament.game_mode, tournament.team_size > 1 ? 'team' : 'solo');
+    const resultsTabLabel = isBR ? 'Games' : 'Brackets';
+    const participantsTabLabel = terminology.competitorLabelPlural;
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -314,7 +389,7 @@ const TournamentHistoryCard = memo(function TournamentHistoryCard({ tournament, 
                                             setActiveTab('matches');
                                         }}
                                     >
-                                        Brackets
+                                        {resultsTabLabel}
                                     </CommandTabButton>
                                     <CommandTabButton
                                         active={activeTab === 'participants'}
@@ -324,7 +399,7 @@ const TournamentHistoryCard = memo(function TournamentHistoryCard({ tournament, 
                                             setActiveTab('participants');
                                         }}
                                     >
-                                        Teams
+                                        {participantsTabLabel}
                                     </CommandTabButton>
                                 </div>
                                 <CommandButton size="sm" variant="secondary" asChild onClick={(event) => event.stopPropagation()}>
@@ -337,7 +412,15 @@ const TournamentHistoryCard = memo(function TournamentHistoryCard({ tournament, 
                             {/* Match Tab Content */}
                             {activeTab === 'matches' && (
                                 <div className="w-full overflow-hidden">
-                                    <HistoryBracketView tournamentId={tournament.id} />
+                                    {isBR ? (
+                                        <HistoryBRView
+                                            tournamentId={tournament.id}
+                                            gameName={tournament.game || ''}
+                                            tournamentSlug={tournament.slug}
+                                        />
+                                    ) : (
+                                        <HistoryBracketView tournamentId={tournament.id} />
+                                    )}
                                 </div>
                             )}
 

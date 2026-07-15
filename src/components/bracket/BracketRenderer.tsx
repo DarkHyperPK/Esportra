@@ -20,6 +20,8 @@ interface BracketRendererProps {
     bracketSpacing?: number;
     disableAnimations?: boolean;
     isSingleElimination?: boolean;
+    hoveredTeamId?: string | null;
+    onTeamHover?: (teamId: string | null) => void;
 }
 
 export const BracketRenderer: React.FC<BracketRendererProps> = ({
@@ -31,7 +33,7 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
     hasProofsMap = {},
     cardWidth = 260,
     cardHeight = 86,
-    roundGap = 100,
+    roundGap = 70,
     matchGap = 30,
     leftPadding = 10,
     headingHeight = 40,
@@ -39,7 +41,14 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
     bracketSpacing = 80,
     disableAnimations = false,
     isSingleElimination = false,
+    hoveredTeamId,
+    onTeamHover,
 }) => {
+    const isDoubleElimination = useMemo(() => {
+        if (isSingleElimination) return false;
+        return matches.some((match) => match.bracketSide === 'losers');
+    }, [isSingleElimination, matches]);
+
     // Helper to get raw ID (remove 'db-', 'wb-', 'lb-' prefixes if present)
     const getRawId = (id: string) => id.replace(/^(db-|wb-|lb-|source-)/, '');
 
@@ -72,6 +81,8 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
         const wRounds = Object.keys(rounds.winners).map(Number).sort((a, b) => a - b);
         const matchSlots = new Map<string, number>();
 
+        console.log('[BracketRenderer] Winners rounds:', wRounds, 'matches per round:', Object.fromEntries(Object.entries(rounds.winners).map(([r, m]) => [r, (m as any[]).length])));
+
         wRounds.forEach((round, rIdx) => {
             const roundMatches = rounds.winners[round];
             roundMatches.forEach((m, idx) => {
@@ -81,6 +92,8 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
                 // slot = idx * 2^r + (2^r - 1) / 2
                 const power = Math.pow(2, rIdx);
                 const slot = idx * power + (power - 1) / 2;
+
+                console.log(`[BracketRenderer] Round=${round} rIdx=${rIdx} idx=${idx} power=${power} slot=${slot} matchNumber=${m.matchNumber}`);
 
                 matchSlots.set(id, slot);
                 matchSlots.set(rawId, slot);
@@ -110,13 +123,15 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
             });
         });
 
-        // 4. Finals
+        // 4. Finals - center vertically between all matches in last winners round
         const finalX = leftPadding + (wRounds.length * (cardWidth + roundGap));
-        const lastWinnerMatch = rounds.winners[wRounds[wRounds.length - 1]]?.[0];
+        const lastRoundMatches = rounds.winners[wRounds[wRounds.length - 1]] || [];
         let finalY = 100;
-        if (lastWinnerMatch) {
-            const p = map.get(String(lastWinnerMatch.id));
-            if (p) finalY = p.y;
+        if (lastRoundMatches.length > 0) {
+            const positions = lastRoundMatches.map(m => map.get(String(m.id))?.y ?? 0);
+            const minY = Math.min(...positions);
+            const maxY = Math.max(...positions);
+            finalY = (minY + maxY + cardHeight) / 2 - cardHeight / 2;
         }
 
         const fRounds = Object.keys(rounds.final).map(Number).sort((a, b) => a - b);
@@ -223,6 +238,12 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
         return false;
     };
 
+    const matchHasHoveredTeam = (match: BracketMatch) =>
+        Boolean(
+            hoveredTeamId
+            && (match.team1?.id === hoveredTeamId || match.team2?.id === hoveredTeamId),
+        );
+
     const renderMatchCards = () => matches.map(match => {
         if (!match) return null;
         if (!isMatchVisible(match)) return null;
@@ -241,6 +262,9 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
                 onClick={() => onMatchClick?.(match)}
                 hasAutomatedResults={hasResultsMap[getRawId(String(match.id))]?.length > 0}
                 hasProofs={hasProofsMap[getRawId(String(match.id))]?.length > 0}
+                hoveredTeamId={hoveredTeamId}
+                onTeamHover={onTeamHover}
+                isDoubleElimination={isDoubleElimination}
             />
         );
 
@@ -270,6 +294,12 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
         <div
             className="relative"
             style={{ width: totalWidth, height: filteredListPositions ? filteredListPositions.height : totalHeight, minWidth: '100%' }}
+            onMouseLeave={() => onTeamHover?.(null)}
+            onMouseEnter={(e) => {
+                if (e.target === e.currentTarget) {
+                    onTeamHover?.(null);
+                }
+            }}
         >
             {/* Connector Lines (SVG) — only in full bracket view */}
             {activeFilter.type === 'all' && (
@@ -283,20 +313,25 @@ export const BracketRenderer: React.FC<BracketRendererProps> = ({
                         const targetPos = matchPositions[match.nextMatchId] || matchPositions[getRawId(match.nextMatchId)];
                         if (!sourcePos || !targetPos) return null;
 
-                        const startX = sourcePos.x + cardWidth;
+                        const connectorGap = Math.min(16, Math.max(10, roundGap * 0.18));
+                        const connectorInset = Math.min(30, Math.max(16, (roundGap - connectorGap * 2) * 0.45));
+                        const startX = sourcePos.x + cardWidth + connectorGap;
                         const startY = sourcePos.y + cardHeight / 2;
-                        const endX = targetPos.x;
+                        const endX = targetPos.x - connectorGap;
                         const endY = targetPos.y + cardHeight / 2;
-                        const midX = startX + (endX - startX) / 2;
+                        const midX = Math.max(startX + 8, Math.min(startX + connectorInset, endX - 8));
 
+                        const onTeamPath = matchHasHoveredTeam(match);
                         return (
                             <path
                                 key={`edge-w-${match.id}`}
                                 d={`M ${startX} ${startY} H ${midX} V ${endY} H ${endX}`}
                                 fill="none"
-                                stroke="#475569"
-                                strokeWidth="2"
-                                className="opacity-50"
+                                stroke={onTeamPath ? '#f43f5e' : '#cbd5e1'}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={onTeamPath ? 2.5 : 1.5}
+                                className={onTeamPath ? 'opacity-90' : 'opacity-55'}
                             />
                         );
                     })}

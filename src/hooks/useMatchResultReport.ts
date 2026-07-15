@@ -26,7 +26,12 @@ export interface MatchResultReport {
   created_at: string;
 }
 
-export const useMatchResultReport = (matchId: string | undefined, gameNumber?: number) => {
+export const useMatchResultReport = (
+  matchId: string | undefined,
+  gameNumber?: number,
+  options?: { subscribeRealtime?: boolean },
+) => {
+  const subscribeRealtime = options?.subscribeRealtime !== false;
   const queryClient = useQueryClient();
   const { toast }   = useToast();
   const { user }    = useAuth();
@@ -46,7 +51,7 @@ export const useMatchResultReport = (matchId: string | undefined, gameNumber?: n
   // Live updates via SignalR MatchHub (invalidates cache on any match event)
   useMatchRealtime({
     matchId,
-    enabled: !!matchId,
+    enabled: subscribeRealtime && !!matchId,
     onReportSubmitted: () => queryClient.invalidateQueries({ queryKey: ['match-result-reports', matchId] }),
     onReportAccepted:  () => {
       queryClient.invalidateQueries({ queryKey: ['match-result-reports', matchId] });
@@ -112,10 +117,12 @@ export const useMatchResultReport = (matchId: string | undefined, gameNumber?: n
   });
 
   // ── Evidence upload via backend storage proxy ────────────────────────────────
-  const uploadDisputeEvidence = async (file: File, _disputeId: string): Promise<string> => {
+  const uploadDisputeEvidence = async (file: File): Promise<string> => {
+    if (!matchId || !user?.id) throw new Error('Missing match or user context for evidence upload');
     const fd = new FormData();
     fd.append('file', file);
     fd.append('bucket', 'tournaments.disputes.evidence');
+    fd.append('folder', `matches/${matchId}/dispute-evidence/${user.id}`);
     const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
     return url;
   };
@@ -129,13 +136,8 @@ export const useMatchResultReport = (matchId: string | undefined, gameNumber?: n
 
       // Upload evidence to Supabase Storage (Storage stays with Supabase)
       if (params.evidenceFile) {
-        try {
-          const disputeId = crypto.randomUUID();
-          const url = await uploadDisputeEvidence(params.evidenceFile, disputeId);
-          evidenceUrls = [url];
-        } catch {
-          // Evidence upload is best-effort
-        }
+        const url = await uploadDisputeEvidence(params.evidenceFile);
+        evidenceUrls = [url];
       }
 
       return apiClient.post(`/api/matches/${matchId}/reports/${params.reportId}/dispute`, {

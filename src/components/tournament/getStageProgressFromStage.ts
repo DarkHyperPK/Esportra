@@ -8,7 +8,7 @@ export function getStageProgressFromStage(stage: { progress_label?: string | nul
     return normalizeStageProgressLabel(stage.progress_label);
   }
 
-  if (stage.status === 'completed') return 'advanced';
+  if (stage.status === 'completed') return 'completed';
   if (stage.status === 'live') return 'in_progress';
   return 'setup';
 }

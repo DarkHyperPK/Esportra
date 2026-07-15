@@ -1,7 +1,9 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Upload, X, Loader2, RotateCcw, Check, Sun } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { CtaButton, DangerButton } from '@/components/ui/app-buttons';
 import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Cropper from 'react-easy-crop';
@@ -30,7 +32,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
     label = 'Upload Image',
     helperText,
     customFileName,
-    useTimestamp = true,
+    useTimestamp: _useTimestamp = true,
 }) => {
     const [isUploading, setIsUploading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -62,7 +64,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         });
     };
 
-    const handleFileSelect = async (file: File) => {
+    const handleFileSelect = useCallback(async (file: File) => {
         if (!file.type.startsWith('image/')) {
             toast({
                 title: 'Invalid file',
@@ -87,7 +89,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         setImageSrc(imageDataUrl);
         setZoom(1);
         setBrightness(100);
-    };
+    }, [toast]);
 
     const handleCropSave = async () => {
         if (!imageSrc || !croppedAreaPixels) return;
@@ -101,7 +103,6 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
             }
 
             // Create a File from Blob
-            const fileExt = originalFile?.name.split('.').pop() || 'jpg';
             const croppedFile = new File([croppedImageBlob], originalFile?.name || 'image.jpg', {
                 type: 'image/jpeg', // getCroppedImg returns jpeg
             });
@@ -154,7 +155,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         setIsDragging(false);
         const file = e.dataTransfer.files[0];
         if (file) handleFileSelect(file);
-    }, []);
+    }, [handleFileSelect]);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -186,26 +187,22 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                         className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-end justify-center pb-4 gap-2">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="bg-white/10 backdrop-blur-md border border-white/10 hover:bg-white/20 text-white text-xs"
+                        <button type="button"
+                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'bg-white/10 backdrop-blur-md border-white/10 hover:bg-white/20 text-white text-xs')}
                             onClick={() => inputRef.current?.click()}
                         >
                             <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
                             Change
-                        </Button>
-                        <Button
+                        </button>
+                        <DangerButton
                             type="button"
-                            variant="destructive"
                             size="sm"
-                            className="bg-red-500/20 backdrop-blur-md border border-red-500/20 hover:bg-red-500/30 text-red-300 text-xs"
+                            className="backdrop-blur-md border"
                             onClick={handleRemove}
                         >
                             <X className="w-3.5 h-3.5 mr-1.5" />
                             Remove
-                        </Button>
+                        </DangerButton>
                     </div>
                 </div>
             ) : (
@@ -331,9 +328,9 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
                             <Button variant="ghost" onClick={() => setImageSrc(null)} disabled={isUploading}>
                                 Cancel
                             </Button>
-                            <Button onClick={handleCropSave} disabled={isUploading} className="bg-rose-500 hover:bg-rose-600 text-white min-w-[100px]">
+                            <CtaButton onClick={handleCropSave} disabled={isUploading} className="min-w-[100px]">
                                 {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Save Image</>}
-                            </Button>
+                            </CtaButton>
                         </DialogFooter>
                     </div>
                 </DialogContent>

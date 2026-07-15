@@ -77,21 +77,20 @@ const PlayerTournaments = () => {
 
         // Process status and filter completed
         const processedTournaments = (data || []).map((t: any) => {
-          const tournamentDate = new Date(t.date);
-          const now = new Date();
+          const dbStatus = String(t.status ?? '').toLowerCase();
           let status: 'upcoming' | 'ongoing' | 'completed';
 
-          if (tournamentDate > now) {
-            status = 'upcoming';
-          } else if (tournamentDate.toDateString() === now.toDateString()) {
+          if (dbStatus === 'completed' || dbStatus === 'cancelled') {
+            status = 'completed';
+          } else if (dbStatus === 'ongoing') {
             status = 'ongoing';
           } else {
-            status = 'completed';
+            status = 'upcoming';
           }
 
           return {
             ...t,
-            status: status as any
+            status: status as any,
           };
         }).filter((t: any) => t.status !== 'completed');
 

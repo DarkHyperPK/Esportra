@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { Check, Image, Film, Loader2, Sun, Crop as CropIcon, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { CtaButton } from '@/components/ui/app-buttons';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Slider } from '@/components/ui/slider';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '@/lib/imageUtils';
@@ -188,14 +189,14 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
           </div>
         </div>
 
-        <Button
+        <CtaButton
           type="button"
           onClick={handleSaveEdit}
           disabled={saving}
-          className="w-full bg-rose-500 hover:bg-rose-600 text-white"
+          className="w-full"
         >
           {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing…</> : 'APPLY & USE ARTWORK'}
-        </Button>
+        </CtaButton>
       </div>
     );
   }
@@ -237,7 +238,7 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
 
       {/* Image grid — click opens editor */}
       {tab === 'images' && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto overscroll-contain pr-1" data-lenis-prevent>
           {allImages.map((url, i) => (
             <button
               type="button"
@@ -263,7 +264,7 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
 
       {/* Video grid — playable YouTube embeds */}
       {tab === 'videos' && assets?.videos && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto overscroll-contain pr-1" data-lenis-prevent>
           {assets.videos.map((video) => {
             const embedUrl = `https://www.youtube.com/embed/${video.videoId}?autoplay=0&mute=1&controls=1&modestbranding=1`;
             const isSelected = selectedUrl?.includes(video.videoId);
@@ -287,19 +288,19 @@ const ArtworkPicker: React.FC<ArtworkPickerProps> = ({
                   {video.name && (
                     <p className="text-xs text-zinc-400 truncate flex-1">{video.name}</p>
                   )}
-                  <Button
+                  <button
                     type="button"
-                    size="sm"
                     onClick={() => handleSelectVideo(video.videoId)}
                     className={cn(
+                      buttonVariants({ size: 'sm' }),
                       'text-xs ml-2',
                       isSelected
-                        ? 'bg-rose-500 text-white'
-                        : 'bg-white/5 text-zinc-300 hover:bg-white/10 border border-white/10'
+                        ? 'border-transparent bg-rose-500 text-white hover:bg-rose-400'
+                        : 'bg-white/5 text-zinc-300 hover:bg-white/10 border-white/10',
                     )}
                   >
                     {isSelected ? <><Check className="w-3 h-3 mr-1" /> Selected</> : 'Use as Banner'}
-                  </Button>
+                  </button>
                 </div>
               </div>
             );

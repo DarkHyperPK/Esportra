@@ -4,12 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    ArrowLeft,
     Users,
     Search,
     Eye,
     Ban,
-    MoreVertical,
     Shield,
     CheckCircle,
     XCircle,
@@ -28,14 +26,19 @@ import {
     SortDesc,
     AlertTriangle,
     History,
+    LogOut,
+    Ghost,
 } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments, useAdminUserSuspend, useAdminUserUnsuspend, useAdminBulkUserAction } from "@/hooks/useAdminQueries";
+import { useNavigate } from "react-router-dom";
+import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments, useAdminUserSuspend, useAdminUserUnsuspend, useAdminBulkUserAction, useRevokeSession } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
+import { useAuth } from "@/hooks/useAuth";
+import { useGhostMode } from "@/hooks/useGhostMode";
 import { apiClient } from "@/lib/apiClient";
 import { downloadCsvExport } from "@/lib/exportUtils";
 import EntityHistoryTimeline from '@/components/admin/EntityHistoryTimeline';
+import { AdminEntityActionMenu, type AdminEntityAction } from '@/components/admin/AdminEntityActionMenu';
 import {
     Dialog,
     DialogContent,
@@ -43,22 +46,11 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 
 interface UserRole {
     role: string;
-}
-
-interface AdminRole {
-    id: string;
-    name: string;
-    key?: string;
 }
 
 interface User {
@@ -118,7 +110,10 @@ const USERS_PER_PAGE = 25;
 const UserManagementTool = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
-    const queryClient = useQueryClient();
+    const { can } = useAdminAccess();
+    const { profile } = useAuth();
+    const { start: startGhostMode } = useGhostMode();
+    const revokeSessionMutation = useRevokeSession();
     const [searchTerm, setSearchTerm] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -143,6 +138,10 @@ const UserManagementTool = () => {
     const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
     const [bulkConfirm, setBulkConfirm] = useState<{ action: string; reason?: string } | null>(null);
     const [bulkSuspendReason, setBulkSuspendReason] = useState('');
+    const [revokeTarget, setRevokeTarget] = useState<User | null>(null);
+    const [revokeReason, setRevokeReason] = useState('');
+    const [ghostTarget, setGhostTarget] = useState<User | null>(null);
+    const [ghostReason, setGhostReason] = useState('');
     const bulkAction = useAdminBulkUserAction();
 
     // Suspend Form State
@@ -178,7 +177,7 @@ const UserManagementTool = () => {
     }, [page, searchTerm, roleFilter, statusFilter, sortBy, sortDir]);
 
     // Derive enriched users from the three queries
-    const profiles = usersQuery.data?.users ?? [];
+    const profiles = useMemo(() => usersQuery.data?.users ?? [], [usersQuery.data?.users]);
     const totalUsers = usersQuery.data?.total ?? profiles.length;
     const roleCounts: Record<string, number> = usersQuery.data?.roleCounts ?? {};
     const adminCount = usersQuery.data?.adminCount ?? 0;
@@ -294,7 +293,9 @@ const UserManagementTool = () => {
             // 1. Update Profile securely via RPC
             await suspendMutation.mutateAsync({
                 userId,
-                reason: `${suspensionReason} [${suspensionType}, ${suspensionDuration}]`,
+                reason: suspensionReason,
+                suspensionType,
+                suspensionUntil: suspensionUntil?.toISOString() ?? null,
             });
 
             // 2. Log Action
@@ -374,24 +375,6 @@ const UserManagementTool = () => {
         return user.user_roles.map(ur => ur.role);
     };
 
-    // Check if user has a specific role
-    const userHasRole = (user: User, role: string): boolean => {
-        const regularRoles = getUserRoles(user);
-        const adminRoles = user.admin_roles || [];
-
-        // Check regular roles
-        if (role === 'casual') {
-            return regularRoles.includes('casual') || (regularRoles.length === 0 && adminRoles.length === 0);
-        }
-        if (regularRoles.includes(role)) return true;
-
-        // Check admin roles
-        // We treat "admin" filter as "has any admin role"
-        if (role === 'admin' && adminRoles.length > 0) return true;
-
-        return adminRoles.includes(role);
-    };
-
     const filteredUsers = users;
 
     // Bulk selection helpers
@@ -460,6 +443,150 @@ const UserManagementTool = () => {
         return styles[role] || styles.casual;
     };
 
+    const buildUserRowActions = (user: User): AdminEntityAction[] => [
+        {
+            id: 'view-details',
+            label: 'View Details',
+            icon: ExternalLink,
+            permission: 'users:view',
+            onClick: () => setSelectedUser(user),
+        },
+        {
+            id: 'view-profile',
+            label: 'View Public Profile',
+            icon: Eye,
+            onClick: () => handleViewProfile(user.username),
+            disabled: !user.username,
+        },
+        ...(user.is_suspended ? [{
+            id: 'unsuspend',
+            label: 'Unsuspend User',
+            icon: UserCheck,
+            permission: 'users:ban',
+            variant: 'success' as const,
+            onClick: () => handleUnsuspendUser(user.id, user.full_name || user.username || 'Unknown'),
+        }] : [{
+            id: 'suspend',
+            label: 'Suspend User',
+            icon: Ban,
+            permission: 'users:ban',
+            variant: 'destructive' as const,
+            separatorBefore: true,
+            onClick: () => {
+                setSelectedUser(user);
+                setSuspendDialogOpen(true);
+            },
+        }]),
+        {
+            id: 'revoke-session',
+            label: 'Revoke Session',
+            icon: LogOut,
+            permission: 'security:revoke_sessions',
+            variant: 'destructive',
+            separatorBefore: true,
+            disabled: user.id === profile?.id,
+            onClick: () => setRevokeTarget(user),
+        },
+        {
+            id: 'ghost-mode',
+            label: 'Enter Ghost Mode',
+            icon: Ghost,
+            permission: 'impersonation:start',
+            variant: 'destructive',
+            disabled: user.id === profile?.id,
+            onClick: () => setGhostTarget(user),
+        },
+    ];
+
+    const buildUserDetailActions = (user: User): AdminEntityAction[] => [
+        {
+            id: 'view-profile',
+            label: 'Public Profile',
+            icon: Eye,
+            onClick: () => handleViewProfile(user.username),
+            disabled: !user.username,
+        },
+        ...(user.is_suspended ? [{
+            id: 'unsuspend',
+            label: 'Unsuspend',
+            icon: UserCheck,
+            permission: 'users:ban',
+            variant: 'success' as const,
+            onClick: () => handleUnsuspendUser(user.id, user.full_name || user.username || 'Unknown'),
+        }] : [{
+            id: 'suspend',
+            label: 'Suspend',
+            icon: Ban,
+            permission: 'users:ban',
+            variant: 'destructive' as const,
+            onClick: () => setSuspendDialogOpen(true),
+        }]),
+        {
+            id: 'revoke-session',
+            label: 'Revoke Session',
+            icon: LogOut,
+            permission: 'security:revoke_sessions',
+            variant: 'destructive',
+            separatorBefore: true,
+            disabled: user.id === profile?.id,
+            onClick: () => setRevokeTarget(user),
+        },
+        {
+            id: 'ghost-mode',
+            label: 'Enter Ghost Mode',
+            icon: Ghost,
+            permission: 'impersonation:start',
+            variant: 'destructive',
+            disabled: user.id === profile?.id,
+            onClick: () => setGhostTarget(user),
+        },
+    ];
+
+    const handleRevokeSession = () => {
+        if (!revokeTarget) return;
+        revokeSessionMutation.mutate(
+            { userId: revokeTarget.id, reason: revokeReason || undefined },
+            {
+                onSettled: () => {
+                    setRevokeTarget(null);
+                    setRevokeReason('');
+                },
+            }
+        );
+    };
+
+    const handleStartGhostMode = async () => {
+        if (!ghostTarget) return;
+        if (ghostReason.trim().length < 12) {
+            toast({
+                title: 'Reason required',
+                description: 'Ghost Mode requires a clear audit reason with at least 12 characters.',
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        try {
+            await startGhostMode({
+                targetUserId: ghostTarget.id,
+                reason: ghostReason.trim(),
+                scopes: ['support:read'],
+            });
+            toast({
+                title: 'Ghost Mode active',
+                description: `You are now impersonating ${ghostTarget.username || ghostTarget.email || ghostTarget.id}.`,
+            });
+            setGhostTarget(null);
+            setGhostReason('');
+        } catch (error) {
+            toast({
+                title: 'Ghost Mode denied',
+                description: (error as Error)?.message || 'Unable to start impersonation.',
+                variant: 'destructive',
+            });
+        }
+    };
+
     return (
         <div className={`min-h-screen p-4 lg:p-8 ${selectedUserIds.size > 0 ? 'pb-24' : ''}`}>
             {/* Header */}
@@ -468,21 +595,13 @@ const UserManagementTool = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8"
             >
-                <div className="flex items-center gap-4">
-                    <Link to="/admin/dashboard">
-                        <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
-                            <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back
-                        </Button>
-                    </Link>
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
-                            <Users className="w-5 h-5 text-rose-500" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-white">User Management</h1>
-                            <p className="text-zinc-500 text-sm">Manage platform users and permissions</p>
-                        </div>
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
+                        <Users className="w-5 h-5 text-rose-500" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-white">User Management</h1>
+                        <p className="text-zinc-500 text-sm">Search, inspect, and act on platform users</p>
                     </div>
                 </div>
 
@@ -497,15 +616,17 @@ const UserManagementTool = () => {
                         <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
-                    <Button
-                        size="sm"
-                        onClick={handleExport}
-                        disabled={isExporting}
-                        className="bg-rose-500 hover:bg-rose-600 text-white"
-                    >
-                        {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-                        {isExporting ? 'Exporting…' : 'Export'}
-                    </Button>
+                    {can('users:export') && (
+                        <Button
+                            size="sm"
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="bg-rose-500 hover:bg-rose-600 text-white"
+                        >
+                            {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                            {isExporting ? 'Exporting…' : 'Export'}
+                        </Button>
+                    )}
                 </div>
             </motion.header>
 
@@ -847,49 +968,7 @@ const UserManagementTool = () => {
                                             {new Date(user.created_at).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
-                                                        <MoreVertical className="w-4 h-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="bg-[#0a0a0c] border-zinc-800">
-                                                    <DropdownMenuItem
-                                                        className="text-zinc-300 focus:text-white focus:bg-zinc-800"
-                                                        onClick={() => handleViewProfile(user.username)}
-                                                    >
-                                                        <Eye className="w-4 h-4 mr-2" />
-                                                        View Profile
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem
-                                                        className="text-blue-400 focus:text-blue-300 focus:bg-blue-500/10"
-                                                        onClick={() => setSelectedUser(user)}
-                                                    >
-                                                        <ExternalLink className="w-4 h-4 mr-2" />
-                                                        View Details
-                                                    </DropdownMenuItem>
-                                                    {user.is_suspended ? (
-                                                        <DropdownMenuItem
-                                                            className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10"
-                                                            onClick={() => handleUnsuspendUser(user.id, user.full_name || user.username || 'Unknown')}
-                                                        >
-                                                            <UserCheck className="w-4 h-4 mr-2" />
-                                                            Unsuspend User
-                                                        </DropdownMenuItem>
-                                                    ) : (
-                                                        <DropdownMenuItem
-                                                            className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
-                                                            onClick={() => {
-                                                                setSelectedUser(user);
-                                                                setSuspendDialogOpen(true);
-                                                            }}
-                                                        >
-                                                            <Ban className="w-4 h-4 mr-2" />
-                                                            Suspend User
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
+                                            <AdminEntityActionMenu actions={buildUserRowActions(user)} />
                                         </td>
                                     </motion.tr>
                                 ))
@@ -1097,14 +1176,23 @@ const UserManagementTool = () => {
 
             {/* User Detail Modal */}
             <Dialog open={!!selectedUser && !suspendDialogOpen} onOpenChange={() => setSelectedUser(null)}>
-                <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-4xl max-h-[85vh] overflow-y-auto custom-scrollbar">
-                    <DialogHeader>
-                        <DialogTitle className="text-white flex items-center gap-2">
-                            <Users className="w-5 h-5 text-rose-500" />
-                            User Details
-                        </DialogTitle>
-                    </DialogHeader>
+                <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
+                    <div className="sticky top-0 z-10 shrink-0 border-b border-zinc-800 bg-[#0a0a0c] px-6 py-4">
+                        <div className="flex items-start justify-between gap-4">
+                            <DialogHeader className="text-left space-y-1">
+                                <DialogTitle className="text-white flex items-center gap-2">
+                                    <Users className="w-5 h-5 text-rose-500" />
+                                    {selectedUser?.full_name || selectedUser?.username || 'User Details'}
+                                </DialogTitle>
+                                <p className="text-xs text-zinc-500 font-mono">{selectedUser?.id}</p>
+                            </DialogHeader>
+                            {selectedUser && (
+                                <AdminEntityActionMenu actions={buildUserDetailActions(selectedUser)} />
+                            )}
+                        </div>
+                    </div>
 
+                    <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4 custom-scrollbar" data-lenis-prevent>
                     {detailLoading && (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="w-6 h-6 text-rose-500 animate-spin" />
@@ -1299,7 +1387,7 @@ const UserManagementTool = () => {
                                 {userDetail.tournaments.length > 0 && (
                                     <div className="p-3 rounded-xl bg-zinc-900/50">
                                         <p className="text-xs text-zinc-500 uppercase mb-2">Tournaments ({userDetail.tournaments.length})</p>
-                                        <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+                                        <div className="space-y-1 max-h-32 overflow-y-auto overscroll-contain custom-scrollbar" data-lenis-prevent>
                                             {userDetail.tournaments.map((t) => (
                                                 <div key={t.id} className="flex items-center justify-between text-sm">
                                                     <span className="text-zinc-300 truncate mr-2">{t.name}</span>
@@ -1323,6 +1411,9 @@ const UserManagementTool = () => {
 
                     {!detailLoading && !userDetail && selectedUser && (
                         <div className="space-y-4">
+                            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200">
+                                Full detail payload unavailable — showing list snapshot only.
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 {[
                                     { label: 'Full Name', value: selectedUser.full_name },
@@ -1336,13 +1427,6 @@ const UserManagementTool = () => {
                                     </div>
                                 ))}
                             </div>
-                            <Button
-                                className="w-full bg-rose-500 hover:bg-rose-600"
-                                onClick={() => handleViewProfile(selectedUser.username)}
-                            >
-                                <Eye className="w-4 h-4 mr-2" />
-                                View Full Profile
-                            </Button>
                         </div>
                     )}
 
@@ -1351,11 +1435,96 @@ const UserManagementTool = () => {
                         <div className="mt-6 border-t border-zinc-800 pt-4">
                             <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                                 <History className="w-4 h-4 text-zinc-400" />
-                                Change History
+                                Audit Timeline
                             </h3>
                             <EntityHistoryTimeline targetType="User" targetId={selectedUser.id} />
                         </div>
                     )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Revoke Session Dialog */}
+            <Dialog open={!!revokeTarget} onOpenChange={(open) => { if (!open) { setRevokeTarget(null); setRevokeReason(''); } }}>
+                <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-white flex items-center gap-2">
+                            <LogOut className="w-5 h-5 text-red-400" />
+                            Revoke Session
+                        </DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-zinc-400">
+                        Force logout for{' '}
+                        <span className="text-white font-medium">
+                            {revokeTarget?.full_name || revokeTarget?.username || revokeTarget?.email}
+                        </span>
+                        . Tokens are invalidated and cached permissions are evicted.
+                    </p>
+                    <div className="space-y-2">
+                        <label htmlFor="user-revoke-reason" className="text-xs text-zinc-500 uppercase">Reason (optional)</label>
+                        <Textarea
+                            id="user-revoke-reason"
+                            value={revokeReason}
+                            onChange={(e) => setRevokeReason(e.target.value)}
+                            placeholder="Why are you revoking this session?"
+                            className="bg-zinc-900 border-zinc-800 text-white resize-none"
+                            rows={3}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => { setRevokeTarget(null); setRevokeReason(''); }} className="border-zinc-800">
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={handleRevokeSession}
+                            disabled={revokeSessionMutation.isPending}
+                        >
+                            {revokeSessionMutation.isPending ? 'Revoking…' : 'Revoke Session'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Ghost Mode Dialog */}
+            <Dialog open={!!ghostTarget} onOpenChange={(open) => { if (!open) { setGhostTarget(null); setGhostReason(''); } }}>
+                <DialogContent className="bg-[#0a0a0c] border-red-500/30 max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-white flex items-center gap-2">
+                            <Ghost className="w-5 h-5 text-red-400" />
+                            Enter Ghost Mode
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-100">
+                        You are requesting a 15-minute scoped impersonation token for{' '}
+                        <span className="font-semibold text-white">
+                            {ghostTarget?.full_name || ghostTarget?.username || ghostTarget?.email}
+                        </span>
+                        . Billing, wallet, GDPR, and admin routes are blocked while impersonating.
+                    </div>
+                    <div className="space-y-2">
+                        <label htmlFor="ghost-reason" className="text-xs text-zinc-500 uppercase">Audit Reason</label>
+                        <Textarea
+                            id="ghost-reason"
+                            value={ghostReason}
+                            onChange={(e) => setGhostReason(e.target.value)}
+                            placeholder="Required: describe the support/security reason"
+                            className="bg-zinc-900 border-zinc-800 text-white resize-none"
+                            rows={4}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => { setGhostTarget(null); setGhostReason(''); }} className="border-zinc-800">
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={handleStartGhostMode}
+                            disabled={ghostReason.trim().length < 12}
+                        >
+                            Start 15-Min Ghost Mode
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>

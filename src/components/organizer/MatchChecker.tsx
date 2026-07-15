@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { OutlineButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, AlertTriangle, Loader2, X } from 'lucide-react';
@@ -107,9 +107,9 @@ const MatchChecker: React.FC<MatchCheckerProps> = ({ tournamentId: _tournamentId
             </button>
           )}
         </div>
-        <Button onClick={handleSearch} disabled={!matchIdInput.trim() || isLoading} className="bg-emerald-600 hover:bg-emerald-700">
+        <OutlineButton type="button" onClick={handleSearch} disabled={!matchIdInput.trim() || isLoading}>
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-        </Button>
+        </OutlineButton>
       </div>
 
       {error && (

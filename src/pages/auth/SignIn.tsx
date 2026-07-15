@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
+import { Button, AccentButton } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
@@ -35,8 +36,12 @@ const SignIn = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { signIn, signInWithGoogle, signInWithDiscord, loading: authLoading, user, profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect');
   const { toast } = useToast();
   const [isAlreadySignedIn, setIsAlreadySignedIn] = useState(false);
+  const [wasRevoked, setWasRevoked] = useState(false);
+  const revokedHandledRef = useRef(false);
 
   // Initialize form
   const form = useForm<SignInFormValues>({
@@ -47,8 +52,25 @@ const SignIn = () => {
     },
   });
 
-  // Check if user is already signed in
+  // Handle revoked session - check sessionStorage flag and show message
   useEffect(() => {
+    const revoked = sessionStorage.getItem('session_revoked') === 'true';
+    if (revoked && !revokedHandledRef.current) {
+      revokedHandledRef.current = true;
+      setWasRevoked(true);
+      sessionStorage.removeItem('session_revoked');
+      void supabase.auth.signOut({ scope: 'local' });
+      toast({
+        title: "Session revoked",
+        description: "Your session was ended by an administrator. Please sign in again.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  // Check if user is already signed in (skip if session was just revoked)
+  useEffect(() => {
+    if (wasRevoked) return;
     if (user && profile) {
       setIsAlreadySignedIn(true);
       toast({
@@ -56,25 +78,21 @@ const SignIn = () => {
         description: `You are already signed in as ${profile.username || profile.full_name || user.email}`,
       });
       setTimeout(() => {
-        navigate("/");
+        navigate(redirectTo || "/");
       }, 2000);
     }
-  }, [user, profile, navigate, toast]);
+  }, [user, profile, navigate, toast, redirectTo, wasRevoked]);
 
   const handleSubmit = async (values: SignInFormValues) => {
     if (isAlreadySignedIn) {
-      navigate("/");
+      navigate(redirectTo || "/");
       return;
     }
 
     try {
       setError(null);
-      await signIn(values.email, values.password);
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully signed in.",
-      });
-      navigate('/');
+      await signIn(values.email, values.password, redirectTo || undefined);
+      // Success toast + navigation handled in useAuthActions.signIn
     } catch (error: any) {
       console.error("Sign in error:", error);
       setError(error.message);
@@ -219,9 +237,9 @@ const SignIn = () => {
 
       {/* Social Login Buttons (Visual Only) */}
       <div className="grid grid-cols-2 gap-3">
-        <Button
+        <AccentButton
           type="button"
-          className="h-11 bg-white hover:bg-gray-200 text-black border-none"
+          className="h-11 border-none"
           onClick={() => signInWithGoogle()}
           disabled={authLoading}
         >
@@ -232,7 +250,7 @@ const SignIn = () => {
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
           </svg>
           Google
-        </Button>
+        </AccentButton>
         <Button
           type="button"
           className="h-11 bg-[#5865F2] hover:bg-[#4752C4] text-white border-none"

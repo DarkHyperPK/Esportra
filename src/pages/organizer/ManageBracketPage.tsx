@@ -2,25 +2,32 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useRole } from '@/hooks/useRole';
+import { useAdmin } from '@/hooks/useAdmin';
+import { useTournamentAccess } from '@/hooks/useTournamentAccess';
+import { isSuperAdminUser } from '@/lib/adminAccess';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, CheckCircle, Calendar, Settings, GitBranch, Globe, Eye, Loader2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Globe, Eye, Loader2 } from 'lucide-react';
 import BracketVisualization from '@/pages/tournaments/brackets/BracketVisualization';
 import Footer from '@/components/Footer';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
-import RoundSchedulingPanel from '@/components/tournament/RoundSchedulingPanel';
-import StageSchedulingConfig from '@/components/tournament/StageSchedulingConfig';
 import { useQueryClient } from '@tanstack/react-query';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
+import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
+import { useStageRealtime } from '@/hooks/useStageRealtime';
+import { stageSchedulingConfigQueryKey } from '@/hooks/useMatchScheduling';
 
 const ManageBracketPage = () => {
     const { slug, stageId } = useParams<{ slug: string; stageId: string }>();
     const navigate = useNavigate();
     const { toast } = useToast();
-    const { user, loading: authLoading } = useAuth();
+    const { user: _user, profile, loading: authLoading } = useAuth();
+    const { currentRole } = useRole();
+    const admin = useAdmin();
     const queryClient = useQueryClient();
+    const { access, can, isLoading: accessLoading } = useTournamentAccess(slug);
 
     const [tournament, setTournament] = useState<any>(null);
     const [stage, setStage] = useState<any>(null);
@@ -30,8 +37,7 @@ const ManageBracketPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isOrganizer, setIsOrganizer] = useState(false);
 
-    // No longer using realtime updates for organizers to prevent data shifts 
-    // during management actions. Relying on explicit fetchData(true) calls.
+    useStageRealtime({ tournamentId: tournament?.id });
 
 
     const fetchData = useCallback(async (silent = false) => {
@@ -54,12 +60,7 @@ const ManageBracketPage = () => {
             console.log('ManageBracketPage: Tournament found:', tournamentData);
             setTournament(tournamentData);
 
-            // Staff with bracket:edit permission can manage brackets too
-            const ownsOrg = user?.id === tournamentData.organization?.owner_id;
-            const isOrganizerUser = user?.id === tournamentData.organizer_id;
-            const staffPerms: string[] = tournamentData.staffPermissions || [];
-            const hasBracketPerm = staffPerms.includes('bracket:edit');
-            setIsOrganizer(ownsOrg || isOrganizerUser || hasBracketPerm);
+            // Bracket manage permission resolved via useTournamentAccess (see effect below)
 
             // Fetch stage
             const stageData = await apiClient.get<any>(`/api/stages/${stageId}`).catch(() => null);
@@ -94,7 +95,18 @@ const ManageBracketPage = () => {
         } finally {
             if (!silent) setLoading(false);
         }
-    }, [slug, stageId, user?.id, navigate, toast]);
+    }, [slug, stageId, navigate, toast]);
+
+    useEffect(() => {
+        if (accessLoading || authLoading) return;
+        const isSuperAdmin = isSuperAdminUser(admin, profile);
+        const inOrganizerSession = currentRole === 'organizer' || isSuperAdmin;
+        const canManageBracket =
+            Boolean(access?.isOrganizer && inOrganizerSession)
+            || can('bracket:edit')
+            || Boolean(access?.isPlatformAdmin);
+        setIsOrganizer(canManageBracket);
+    }, [access, accessLoading, authLoading, currentRole, admin, profile, can]);
 
     // Handle single BYE advancement
     const handleByeAdvance = async (matchId: string) => {
@@ -167,8 +179,7 @@ const ManageBracketPage = () => {
             toast({ title: 'BYE Advanced', description: 'Team has been advanced!' });
 
             // Invalidate to sync with server truth
-            await queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
-            await queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+            invalidateMatchLifecycleQueries(queryClient, { matchId, versionId });
         } catch (error: any) {
             toast({ title: 'Error', description: error.message, variant: 'destructive' });
         }
@@ -178,14 +189,24 @@ const ManageBracketPage = () => {
     const handlePublishBracket = async () => {
         if (!versionId) return;
 
-        const selfPlayEnabled = stage?.scheduling_config?.self_play_enabled || false;
+        const selfPlayEnabled = Boolean(
+            stage?.scheduling_config?.self_play_enabled
+            ?? stage?.scheduling_config?.selfPlayEnabled,
+        );
 
         // Validate scheduling before publishing
         try {
             if (selfPlayEnabled) {
-                // Self-play mode: check that round deadlines are configured
-                const schedulingConfig = queryClient.getQueryData<any>(['stage-scheduling-config', stageId]);
-                const deadlines = schedulingConfig?.round_deadlines || schedulingConfig?.roundDeadlines || {};
+                const schedulingConfig = stageId
+                    ? await queryClient.fetchQuery({
+                        queryKey: stageSchedulingConfigQueryKey(stageId),
+                        queryFn: () => apiClient.get(`/api/stages/${stageId}/scheduling-config`),
+                    })
+                    : null;
+                const deadlines = {
+                    ...((schedulingConfig as any)?.roundDeadlines ?? {}),
+                    ...((schedulingConfig as any)?.round_deadlines ?? {}),
+                };
                 const hasDeadlines = Object.keys(deadlines).length > 0;
 
                 if (!hasDeadlines) {
@@ -215,7 +236,12 @@ const ManageBracketPage = () => {
                 }
             }
         } catch {
-            // If we can't check, allow publish (data might not be cached)
+            toast({
+                title: 'Scheduling Check Failed',
+                description: 'Could not verify round deadlines. Open Round Scheduling, save deadlines, then try again.',
+                variant: 'destructive',
+            });
+            return;
         }
 
         setIsSubmitting(true);
@@ -264,8 +290,8 @@ const ManageBracketPage = () => {
 
     return (
         <div className="min-h-screen text-white">
-            <main className="relative flex min-h-[calc(100vh-5rem)] w-full flex-col px-4 py-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <main className="relative flex min-h-[calc(100vh-5rem)] w-full flex-col px-2 py-6 md:px-3">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 px-2">
                     <div className="flex items-center gap-4">
                         <Button
                             variant="ghost"
@@ -316,62 +342,18 @@ const ManageBracketPage = () => {
                     </div>
                 </div>
 
-                {/* Tabs for Bracket vs Scheduling */}
                 {isOrganizer && (
-                    <Tabs defaultValue="bracket" className="flex min-h-0 w-full flex-1 flex-col">
-                        <div className="flex items-center justify-between mb-6">
-                            <TabsList className="bg-[#0d0d10] border border-white/10 p-1 h-auto rounded-xl">
-                                <TabsTrigger value="bracket" className="data-[state=active]:bg-white/10 data-[state=active]:text-white py-2 px-4 rounded-lg capitalize">
-                                    <GitBranch className="w-4 h-4 mr-2" />
-                                    Visualizer
-                                </TabsTrigger>
-                                <TabsTrigger value="scheduling" className="data-[state=active]:bg-white/10 data-[state=active]:text-white py-2 px-4 rounded-lg capitalize">
-                                    <Calendar className="w-4 h-4 mr-2" />
-                                    Round Scheduling
-                                </TabsTrigger>
-                                <TabsTrigger value="settings" className="data-[state=active]:bg-white/10 data-[state=active]:text-white py-2 px-4 rounded-lg capitalize">
-                                    <Settings className="w-4 h-4 mr-2" />
-                                    Settings
-                                </TabsTrigger>
-                            </TabsList>
-                        </div>
-
-                        <TabsContent value="bracket" className="mt-4 min-h-0 flex-1">
-                            <BracketVisualization
-                                versionId={versionId}
-                                tournamentId={tournament.id}
-                                tournamentSlug={slug}
-                                isOrganizer={isOrganizer}
-                                onRefresh={() => fetchData(true)}
-                                onByeAdvance={handleByeAdvance}
-                                stage={stage}
-                            />
-                        </TabsContent>
-
-                        <TabsContent value="scheduling" className="mt-4">
-                            <div className="max-w-xl mx-auto">
-                                <RoundSchedulingPanel
-                                    stageId={stageId!}
-                                    stageFormat={stage?.format || 'single_elimination'}
-                                    tournamentStartDate={tournament?.start_date || null}
-                                    tournamentEndDate={tournament?.end_date || null}
-                                    selfPlayEnabled={stage?.scheduling_config?.self_play_enabled || false}
-                                    onScheduleApplied={() => fetchData(true)}
-                                />
-                            </div>
-                        </TabsContent>
-
-                        <TabsContent value="settings" className="mt-4">
-                            <div className="max-w-xl mx-auto">
-                                <StageSchedulingConfig
-                                    stageId={stageId!}
-                                    stageFormat={stage?.format || 'single_elimination'}
-                                    gameName={tournament?.game}
-                                    onConfigChange={() => fetchData(true)}
-                                />
-                            </div>
-                        </TabsContent>
-                    </Tabs>
+                    <div className="min-h-0 w-full flex-1">
+                        <BracketVisualization
+                            versionId={versionId}
+                            tournamentId={tournament.id}
+                            tournamentSlug={slug}
+                            isOrganizer={isOrganizer}
+                            onRefresh={() => fetchData(true)}
+                            onByeAdvance={handleByeAdvance}
+                            stage={stage}
+                        />
+                    </div>
                 )}
 
                 {/* Non-organizer view - just the bracket */}

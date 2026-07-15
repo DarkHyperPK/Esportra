@@ -9,82 +9,16 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
-import { Trophy, Users, Target, Plus, Trash2, Layers, Map as MapIcon, Check, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Trophy, Users, Plus, Trash2, Layers, FileText } from 'lucide-react';
+import { OutlineButton } from '@/components/ui/app-buttons';
 import { WizardStepProps } from '@/types/tournamentWizard';
-
+import TournamentMapPoolSelector, { MapPoolSectionLabel } from './TournamentMapPoolSelector';
 
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { getWebsiteAssetUrl } from '@/lib/storage';
 import { getGameByName, isBattleRoyale, getBRConfig, getGameModes, getGameMode, getGameModeGroups, getEffectiveGameFeatures } from '@/utils/gameFeatures';
-
-/* ──────────────────────────────────────────────────────────────
-   Sub-components
-   ────────────────────────────────────────────────────────────── */
-
-interface MapCardProps {
-    map: { id: string; map_name: string; map_image_url?: string };
-    isSelected: boolean;
-    onToggle: (id: string) => void;
-    index: number;
-}
-
-const MapCard: React.FC<MapCardProps> = ({ map, isSelected, onToggle, index }) => {
-    const [isImgLoaded, setIsImgLoaded] = useState(false);
-
-    return (
-        <div
-            className={cn(
-                "group relative aspect-video rounded-none overflow-hidden border-2 cursor-pointer transition-all duration-200",
-                isSelected
-                    ? "border-rose-500 shadow-lg shadow-emerald-500/20 ring-1 ring-emerald-500"
-                    : "border-white/10 hover:border-white/30 opacity-70 hover:opacity-100"
-            )}
-            onClick={() => onToggle(map.id)}
-        >
-            {/* Skeleton / Shimmer Overlay */}
-            {!isImgLoaded && (
-                <div className="absolute inset-0 bg-white/5 animate-pulse flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full border-2 border-rose-500/20 border-t-emerald-500/80 animate-spin" />
-                </div>
-            )}
-
-            <img
-                src={map.map_image_url || getWebsiteAssetUrl('Backgrounds/grid-pattern.png')}
-                alt={map.map_name}
-                loading={index < 8 ? "eager" : "lazy"}
-                onLoad={() => setIsImgLoaded(true)}
-                className={cn(
-                    "object-cover w-full h-full transition-all duration-700",
-                    isImgLoaded ? "opacity-100 scale-100" : "opacity-0 scale-110",
-                    isSelected && isImgLoaded ? "scale-105" : "scale-100 group-hover:scale-105"
-                )}
-            />
-            <div className={cn(
-                "absolute inset-0 bg-gradient-to-t transition-opacity duration-300",
-                isSelected ? "from-black/90 via-black/40 to-transparent" : "from-black/80 via-transparent to-transparent"
-            )} />
-
-            {/* Selection Badge */}
-            {isSelected && (
-                <div className="absolute top-2 right-2 z-20 bg-emerald-500 rounded-full p-1 shadow-lg">
-                    <Check className="h-3 w-3 text-white" strokeWidth={3} />
-                </div>
-            )}
-
-            <div className="absolute bottom-2 left-2 right-2">
-                <span className={cn(
-                    "text-[10px] sm:text-xs font-bold uppercase tracking-wide drop-shadow-md transition-colors",
-                    isSelected ? "text-rose-400" : "text-white"
-                )}>
-                    {map.map_name}
-                </span>
-            </div>
-        </div>
-    );
-};
+import { deriveDefaultLobbyUnits } from '@/utils/brGameContext';
 
 /* ──────────────────────────────────────────────────────────────
    Main Component
@@ -106,7 +40,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
     const gameFeatures = getEffectiveGameFeatures(data.game || '', activeGameModeValue);
     const hasMapPool = gameFeatures.mapPool;
     const mapPoolSizeLimit = gameFeatures.mapPoolSize ?? 7;
-    const organizerMapPoolOnly = hasMapPool && !gameFeatures.mapVeto;
+    const mapVetoEnabled = gameFeatures.mapVeto && (data.mapVetoEnabled ?? true);
+    const organizerMapPoolOnly = hasMapPool && !mapVetoEnabled;
+    const exactMapPoolRequired = hasMapPool && mapVetoEnabled;
     const activeTeamSize = activeGameMode?.teamSize ?? data.teamSize ?? 1;
     const isGameModeLocked = Boolean(isEditMode || tournamentId);
 
@@ -125,10 +61,11 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         };
 
         if (isBR && brConfig) {
-            const unitsPerLobby = Math.floor(brConfig.playersPerLobby / Math.max(1, mode.teamSize));
+            const unitsPerLobby = deriveDefaultLobbyUnits(mode.teamSize, brConfig.playersPerLobby);
             const validOptions = [20, 30, 40, 60, 100, 150, 200];
             const target = unitsPerLobby * 5;
             updates.maxTeams = validOptions.find(n => n >= target) ?? validOptions[validOptions.length - 1];
+            updates.brDefaultLobbySize = unitsPerLobby;
         }
 
         updateData(updates);
@@ -171,7 +108,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                             <div className="text-xs opacity-70 mt-1">
                                 {group.modes.length > 1
                                     ? `${group.modes.length} variants`
-                                    : group.modes[0].teamSize === 1 ? 'Individual' : `${group.modes[0].teamSize} players`}
+                                    : group.modes[0].participantMode === 'solo' || group.modes[0].teamSize === 1
+                                        ? 'Individual'
+                                        : `${group.modes[0].teamSize} players`}
                             </div>
                         </button>
                     );
@@ -191,8 +130,8 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 className={cn(
                                     "rounded-none border p-3 text-center font-mono text-xs font-bold uppercase tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-60",
                                     isSelected
-                                        ? "border-white bg-white text-black"
-                                        : "border-white/10 bg-black/40 text-gray-400 hover:border-rose-500/50 hover:text-white"
+                                        ? "border-white bg-white text-matte-black"
+                                        : "border-white/10 bg-black/40 text-gray-400 hover:border-white/25 hover:text-white"
                                 )}
                             >
                                 {mode.variantLabel || mode.name}
@@ -202,7 +141,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                 </div>
             )}
             <p className="text-sm text-gray-400">
-                {activeTeamSize === 1
+                {activeGameMode?.participantMode === 'solo' || activeTeamSize === 1
                     ? 'This mode registers participants individually.'
                     : `This mode requires ${activeTeamSize} starters${activeGameMode?.maxRosterSize ? ` with a max roster of ${activeGameMode.maxRosterSize}` : ''}.`}
             </p>
@@ -217,9 +156,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         if (data.gameMode !== activeGameMode.value || data.teamSize !== activeGameMode.teamSize) {
             updateData({ gameMode: activeGameMode.value, teamSize: activeGameMode.teamSize });
         }
-    }, [data.game, data.gameMode, data.teamSize]);
-
-    const isPowerOfTwo = (n: number) => n > 0 && (n & (n - 1)) === 0;
+    }, [selectedGame, activeGameMode, data.game, data.gameMode, data.teamSize, updateData]);
 
     // Map Pool State
     const [availableMaps, setAvailableMaps] = useState<{ id: string; map_name: string; map_image_url?: string }[]>([]);
@@ -236,8 +173,14 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
             setLoadingMaps(true);
             try {
                 // Normalize game name for DB query
-                const isCS2 = ['cs2', 'counter-strike 2'].includes(data.game.toLowerCase());
-                const dbGameName = isCS2 ? 'Counter-Strike 2' : data.game;
+                const gameLower = data.game.toLowerCase();
+                const isCS2 = ['cs2', 'counter-strike 2'].includes(gameLower);
+                const isR6 = ['r6', 'r6s', 'rainbow six siege', 'rainbow-six-siege'].includes(gameLower);
+                const dbGameName = isCS2
+                    ? 'Counter-Strike 2'
+                    : isR6
+                        ? 'Rainbow Six Siege'
+                        : data.game;
 
                 const maps = await apiClient.get<{ id: string; map_name: string; map_image_url?: string }[]>(
                     `/api/games/maps?game=${encodeURIComponent(dbGameName)}${activeGameModeValue ? `&mode=${encodeURIComponent(activeGameModeValue)}` : ''}`
@@ -245,7 +188,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
 
                 setAvailableMaps(maps || []);
 
-                // Auto-select when pool is empty (e.g. after mode switch)
+                // Auto-select only on initial load for this game/mode (not when user toggles maps).
                 if (maps && maps.length > 0) {
                     if (!data.mapPoolIds || data.mapPoolIds.length === 0) {
                         updateData({ mapPoolIds: maps.slice(0, mapPoolSizeLimit).map(m => m.id) });
@@ -262,38 +205,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
         };
 
         fetchMaps();
-    }, [data.game, activeGameModeValue, hasMapPool, mapPoolSizeLimit]);
-
-
-    // Toggle map selection
-    const toggleMap = (mapId: string) => {
-        const currentIds = data.mapPoolIds || [];
-        if (currentIds.includes(mapId)) {
-            updateData({ mapPoolIds: currentIds.filter(id => id !== mapId) });
-        } else {
-            if (currentIds.length >= mapPoolSizeLimit) {
-                toast({
-                    title: "Map Limit Reached",
-                    description: `You can only select up to ${mapPoolSizeLimit} maps for the map pool.`,
-                    variant: "destructive"
-                });
-                return;
-            }
-            updateData({ mapPoolIds: [...currentIds, mapId] });
-        }
-    };
-
-    // Preload images
-    useEffect(() => {
-        if (availableMaps.length > 0) {
-            availableMaps.forEach(map => {
-                if (map.map_image_url) {
-                    const img = new Image();
-                    img.src = map.map_image_url;
-                }
-            });
-        }
-    }, [availableMaps]);
+        // Intentionally omit data.mapPoolIds — selection changes must not re-fetch the catalog.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data.game, activeGameModeValue, hasMapPool, mapPoolSizeLimit, updateData]);
 
 
     return (
@@ -312,37 +226,22 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                 </p>
             </div>
 
+            {Object.keys(errors).length > 0 && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4">
+                    <p className="text-sm font-medium text-red-400">Fix these before continuing:</p>
+                    <ul className="mt-2 space-y-1">
+                        {Object.entries(errors).map(([key, value]) => (
+                            <li key={key} className="text-sm text-red-300">• {value}</li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
             {/* ── Battle Royale Format ─────────────────────────────────── */}
             {isBR && brConfig ? (
                 <>
                     {/* Game Mode (Solo / Duo / Squad) */}
                     {renderGameModeSelector()}
-
-                    {/* Game Count */}
-                    <div className="space-y-3">
-                        <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <Target className="w-4 h-4" />
-                            Number of Games
-                        </Label>
-                        <Select
-                            value={String(data.brGameCount)}
-                            onValueChange={(v) => updateData({ brGameCount: parseInt(v) })}
-                        >
-                            <SelectTrigger className="w-full font-bold tracking-tight">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {[3, 4, 5, 6, 7, 8, 9, 10, 12].map(n => (
-                                    <SelectItem key={n} value={String(n)}>
-                                        {n} Games {n === brConfig.defaultGameCount ? '(Recommended)' : ''}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <p className="text-sm text-gray-400">
-                            Total games to be played. Points accumulate across all games.
-                        </p>
-                    </div>
 
                     {/* Scoring System */}
                     <div className="space-y-3">
@@ -455,9 +354,8 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 ))}
                             </div>
                             <div className="flex items-center gap-2">
-                                <Button
+                                <OutlineButton
                                     type="button"
-                                    variant="outline"
                                     size="sm"
                                     onClick={() => {
                                         const newPlacements = [...data.brCustomScoring!.placements, 0];
@@ -465,14 +363,12 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                             brCustomScoring: { ...data.brCustomScoring!, placements: newPlacements }
                                         });
                                     }}
-                                    className="text-xs"
                                 >
                                     <Plus className="w-3 h-3 mr-1" /> Add Position
-                                </Button>
+                                </OutlineButton>
                                 {data.brCustomScoring.placements.length > 3 && (
-                                    <Button
+                                    <OutlineButton
                                         type="button"
-                                        variant="outline"
                                         size="sm"
                                         onClick={() => {
                                             const newPlacements = data.brCustomScoring!.placements.slice(0, -1);
@@ -480,10 +376,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                                 brCustomScoring: { ...data.brCustomScoring!, placements: newPlacements }
                                             });
                                         }}
-                                        className="text-xs"
                                     >
                                         <Trash2 className="w-3 h-3 mr-1" /> Remove Last
-                                    </Button>
+                                    </OutlineButton>
                                 )}
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -521,13 +416,63 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                         </div>
                     )}
 
+                    {/* Kill cap & tiebreaker — tournament-wide scoring rules */}
+                    <div className="space-y-3">
+                        <div className="w-full h-px bg-white/5 my-6" />
+                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Kill Point Cap</Label>
+                        <Select
+                            value={data.brKillCap === null ? '0' : String(data.brKillCap)}
+                            onValueChange={(v) => {
+                                const val = parseInt(v);
+                                updateData({ brKillCap: val === 0 ? null : val });
+                            }}
+                        >
+                            <SelectTrigger className="w-full font-bold tracking-tight">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="0">No Cap</SelectItem>
+                                <SelectItem value="3">3 kills per game</SelectItem>
+                                <SelectItem value="5">5 kills per game</SelectItem>
+                                <SelectItem value="6">6 kills per game</SelectItem>
+                                <SelectItem value="8">8 kills per game</SelectItem>
+                                <SelectItem value="10">10 kills per game</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p className="text-sm text-gray-400">
+                            Maximum kill points a unit can earn per game. Applies to all stages.
+                        </p>
+                    </div>
+
+                    <div className="space-y-3">
+                        <Label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Tiebreaker Rule</Label>
+                        <Select
+                            value={data.brTiebreaker}
+                            onValueChange={(v) => updateData({ brTiebreaker: v as typeof data.brTiebreaker })}
+                        >
+                            <SelectTrigger className="w-full font-bold tracking-tight">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="most_wins">Most Wins (1st places)</SelectItem>
+                                <SelectItem value="most_kills">Most Total Kills</SelectItem>
+                                <SelectItem value="head_to_head">Best Placement Average</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <p className="text-sm text-gray-400">
+                            How to break ties when units have equal total points.
+                        </p>
+                    </div>
+
                     {/* Max Participants for BR — label and options adapt to solo/duo/squad */}
                     {(() => {
                         const ts = data.teamSize ?? 1;
                         const unitSingular = ts === 1 ? 'player'  : ts === 2 ? 'duo'  : ts === 3 ? 'trio'  : 'squad';
                         const unitPlural   = ts === 1 ? 'players' : ts === 2 ? 'duos' : ts === 3 ? 'trios' : 'squads';
                         const labelStr = ts === 1 ? 'Maximum Players' : ts === 2 ? 'Maximum Duos' : ts === 3 ? 'Maximum Trios' : 'Maximum Squads';
-                        const unitsPerLobby = brConfig ? Math.floor(brConfig.playersPerLobby / Math.max(1, ts)) : 20;
+                        const unitsPerLobby = brConfig
+                            ? deriveDefaultLobbyUnits(ts, brConfig.playersPerLobby)
+                            : deriveDefaultLobbyUnits(ts);
                         // Options: multiples of lobby size up to a reasonable cap, plus common fixed sizes
                         const raw = [1, 2, 3, 4, 5, 8, 10].map(n => n * unitsPerLobby);
                         const fixed = ts === 1 ? [20, 30, 40, 60, 100, 150, 200] : ts === 2 ? [10, 16, 20, 30, 50, 60, 100] : [8, 10, 16, 20, 30, 40, 50];
@@ -543,7 +488,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                     value={String(data.maxTeams)}
                                     onValueChange={(value) => updateData({ maxTeams: parseInt(value) })}
                                 >
-                                    <SelectTrigger className="w-full font-bold tracking-tight">
+                                    <SelectTrigger className={cn('w-full font-bold tracking-tight', errors.maxTeams && 'border-red-500')}>
                                         <SelectValue placeholder={`Select max ${unitPlural}`} />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -556,14 +501,15 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 </Select>
                                 <p className="text-sm text-gray-400">
                                     {brConfig.playersPerLobby
-                                        ? `Each lobby fits up to ${unitsPerLobby} ${unitPlural}. ${ts > 1 ? `Each ${unitSingular} has ${ts} players.` : ''}`
+                                        ? `Each lobby fits up to ${unitsPerLobby} ${unitPlural}. ${ts > 1 ? `Each ${unitSingular} has ${ts} players.` : ''} Lobby capacity is set per stage after creation.`
                                         : `Set the maximum number of ${unitPlural}.`}
                                 </p>
+                                {errors.maxTeams && (
+                                    <p className="text-sm text-red-500">{errors.maxTeams}</p>
+                                )}
                             </div>
                         );
                     })()}
-
-
 
                 </>
             ) : (
@@ -682,73 +628,26 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                     {hasMapPool && data.game && (
                         <div className="space-y-4">
                             <div className="w-full h-px bg-white/5 my-6" />
-                            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                <MapIcon className="w-4 h-4" />
-                                Map Pool
-                            </Label>
+                            <MapPoolSectionLabel />
                             <p className="text-sm text-gray-400">
                                 {organizerMapPoolOnly
                                     ? 'Select maps for this tournament. Skirmish uses an organizer-managed map pool — there is no captain map veto.'
-                                    : 'Select maps for this tournament. These will be used in map veto during matches.'}
+                                    : exactMapPoolRequired
+                                        ? `Select exactly ${mapPoolSizeLimit} maps for this tournament. These will be used in map veto during matches.`
+                                        : 'Select maps for this tournament. These will be used in map veto during matches.'}
                             </p>
-
-                            {loadingMaps ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500" />
-                                </div>
-                            ) : availableMaps.length === 0 ? (
-                                <div className="p-4 bg-amber-500/10 rounded-none border border-amber-500/30">
-                                    <p className="text-amber-400 text-sm">No maps found for {data.game}. Maps can be added to the database.</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <span className="text-sm text-gray-400">
-                                            {(data.mapPoolIds || []).length} of {availableMaps.length} maps selected
-                                        </span>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => {
-                                                    const mapsToSelect = availableMaps.slice(0, mapPoolSizeLimit);
-                                                    updateData({ mapPoolIds: mapsToSelect.map(m => m.id) });
-                                                    if (availableMaps.length > mapPoolSizeLimit) {
-                                                        toast({
-                                                            title: "Selection Limited",
-                                                            description: `Selected the first ${mapPoolSizeLimit} maps due to map pool limit.`,
-                                                        });
-                                                    }
-                                                }}
-                                                className="text-xs"
-                                            >
-                                                {availableMaps.length > mapPoolSizeLimit ? `Select Top ${mapPoolSizeLimit}` : 'Select All'}
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => updateData({ mapPoolIds: [] })}
-                                                className="text-xs"
-                                            >
-                                                Clear All
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                                        {availableMaps.map((map, index) => (
-                                            <MapCard
-                                                key={map.id}
-                                                map={map}
-                                                index={index}
-                                                isSelected={(data.mapPoolIds || []).includes(map.id)}
-                                                onToggle={toggleMap}
-                                            />
-                                        ))}
-                                    </div>
-                                </>
+                            {errors.mapPoolIds && (
+                                <p className="text-sm text-rose-400">{errors.mapPoolIds}</p>
                             )}
+                            <TournamentMapPoolSelector
+                                game={data.game}
+                                requiredCount={mapPoolSizeLimit}
+                                availableMaps={availableMaps}
+                                selectedIds={data.mapPoolIds || []}
+                                onChange={(mapPoolIds) => updateData({ mapPoolIds })}
+                                mapVetoEnabled={exactMapPoolRequired}
+                                loading={loadingMaps}
+                            />
                         </div>
                     )}
                 </>

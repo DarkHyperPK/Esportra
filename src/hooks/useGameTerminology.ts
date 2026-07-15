@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getGameByName, getDefaultTeamSize, isBattleRoyale } from '@/utils/gameFeatures';
+import { getGameByName, getParticipantMode, isBattleRoyale } from '@/utils/gameFeatures';
 
 export interface GameTerminology {
   competitorLabel: string;
@@ -14,18 +14,26 @@ export interface GameTerminology {
 }
 
 /** Returns context-aware terminology for a game (e.g. "Player" vs "Team", "Set" vs "Match") */
-export function useGameTerminology(gameName: string | undefined): GameTerminology {
+export function useGameTerminology(
+  gameName: string | undefined,
+  modeKey?: string | null,
+  participantMode?: 'solo' | 'team' | string | null,
+): GameTerminology {
   return useMemo(() => {
     if (!gameName) return DEFAULT_TERMINOLOGY;
-    return getGameTerminology(gameName);
-  }, [gameName]);
+    return getGameTerminology(gameName, modeKey, participantMode);
+  }, [gameName, modeKey, participantMode]);
 }
 
 /** Pure function version for non-hook contexts */
-export function getGameTerminology(gameName: string): GameTerminology {
+export function getGameTerminology(
+  gameName: string,
+  modeKey?: string | null,
+  participantMode?: 'solo' | 'team' | string | null,
+): GameTerminology {
   const game = getGameByName(gameName);
-  const teamSize = getDefaultTeamSize(gameName);
-  const isSolo = teamSize === 1;
+  const isSolo = participantMode === 'solo'
+    || (participantMode !== 'team' && getParticipantMode(gameName, modeKey) === 'solo');
   const isFighting = game?.category === 'Fighting';
   const isBR = isBattleRoyale(gameName);
 

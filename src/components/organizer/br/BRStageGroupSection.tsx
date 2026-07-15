@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useBRGroupTeams, useBRGroupsDetail, useBRGroupsMutations } from '@/hooks/useBRGroups';
 import { GroupCard } from '@/components/organizer/br/GroupCard';
-import { Button } from '@/components/ui/button';
+import { CtaButton } from '@/components/ui/app-buttons';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle, LayoutGrid, RefreshCw, Shuffle } from 'lucide-react';
 import {
@@ -15,11 +17,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { getApiErrorMessage } from '@/lib/apiClient';
+import { getStageBRConfig } from '@/utils/brConfigResolve';
 import type { BRDistributionMethod } from '@/types/brGroups';
 
 interface BRStageGroupSectionProps {
   stageId: string;
   stageCapacity: number | null;
+  stageConfig?: unknown;
   registeredTeamCount: number;
   hasNextStage: boolean;
   advancementCount: number | null;
@@ -28,14 +32,18 @@ interface BRStageGroupSectionProps {
 
 const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   stageId,
+  stageConfig,
   registeredTeamCount,
   onUpdate,
 }) => {
+  const brConfig = getStageBRConfig({ config: stageConfig });
+  const isRotation = brConfig?.format === 'group_rotation';
+
   const { data, isLoading, error, refetch } = useBRGroupsDetail(stageId, { includeTeams: false });
   const groups = data?.groups ?? [];
   const hasRounds = data?.has_rounds === true;
 
-  const { assignTeams, bootstrapLobby, deleteGroup } = useBRGroupsMutations(stageId);
+  const { assignTeams, bootstrapLobby, generateLobbies, deleteGroup } = useBRGroupsMutations(stageId);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [method, setMethod] = useState<BRDistributionMethod>('random');
@@ -61,6 +69,8 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   const seedingComplete = hasGroups && (!hasTeamsToSeed || !hasUnassignedTeams);
   const remainingTeams = Math.max(registeredTeamCount - totalAssigned, 0);
   const rosterLocked = hasRounds;
+  const needsMatchGeneration = !isRotation && seedingComplete && !hasRounds;
+  const readyForGames = seedingComplete && hasRounds;
 
   const handleDistribute = async () => {
     try {
@@ -92,14 +102,35 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
                   : 'All participants have been seeded into lobbies.'}
             </p>
           </div>
-          <div className={`rounded-xl border px-3 py-3 ${seedingComplete ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
+          <div className={`rounded-xl border px-3 py-3 ${readyForGames ? 'border-emerald-500/20 bg-emerald-500/[0.05]' : needsMatchGeneration ? 'border-amber-500/20 bg-amber-500/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
             <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Step 3</p>
-            <p className="mt-1 text-sm font-semibold text-white">Ready for Games</p>
-            <p className="mt-1 text-xs text-zinc-400">
-              {seedingComplete
-                ? 'Stage structure is ready. Use the Games tab to start rounds and submit results.'
-                : 'Finish seeding every participant into a lobby before moving to the Games tab.'}
+            <p className="mt-1 text-sm font-semibold text-white">
+              {readyForGames ? 'Ready for Games' : needsMatchGeneration ? (isRotation ? 'Create Matches' : 'Create Lobbies') : 'Ready for Games'}
             </p>
+            <p className="mt-1 text-xs text-zinc-400">
+              {!seedingComplete
+                ? 'Finish seeding every participant into a group before creating lobbies.'
+                : isRotation && !hasRounds
+                  ? 'Create matches from the Schedule tab, then use the Games tab.'
+                  : needsMatchGeneration
+                    ? 'Generate one lobby per group and scored games to lock the roster.'
+                    : 'Stage structure is ready. Use the Games tab to start games and submit results.'}
+            </p>
+            {needsMatchGeneration && (
+              <button
+                type="button"
+                disabled={generateLobbies.isPending}
+                onClick={() => generateLobbies.mutate(undefined, { onSuccess: () => onUpdate() })}
+                className={cn(
+                  buttonVariants({ variant: 'success', size: 'sm' }),
+                  'mt-3 h-7 text-[11px]',
+                )}
+              >
+                {generateLobbies.isPending
+                  ? (isRotation ? 'Creating matches...' : 'Creating lobbies...')
+                  : (isRotation ? 'Create matches' : 'Create group lobbies')}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -123,9 +154,13 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
               {getApiErrorMessage(error, 'We could not load the BR lobby setup for this stage.')}
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => refetch()} className="text-red-300 hover:text-red-200 hover:bg-red-500/10">
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-red-300 hover:text-red-200 hover:bg-red-500/10')}
+          >
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Retry
-          </Button>
+          </button>
         </div>
       )}
 
@@ -148,15 +183,15 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
                   <SelectItem value="snake">Snake Draft</SelectItem>
                 </SelectContent>
               </Select>
-              <Button
+              <CtaButton
                 size="sm"
                 onClick={() => totalAssigned > 0 ? setConfirmDistribute(true) : handleDistribute()}
                 disabled={assignTeams.isPending || registeredTeamCount === 0 || rosterLocked}
-                className="h-7 text-[11px] border border-rose-500/20 bg-rose-600/10 text-rose-300 hover:bg-rose-600/20"
+                className="h-7 border"
               >
                 <Shuffle className="w-3 h-3 mr-1" />
                 {assignTeams.isPending ? 'Seeding...' : totalAssigned > 0 ? 'Re-seed' : 'Seed participants'}
-              </Button>
+              </CtaButton>
             </div>
           </div>
           {rosterLocked && (
@@ -197,14 +232,14 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
           <p className="text-zinc-600 text-xs mt-1">
             Initialize the lobby structure before seeding participants.
           </p>
-          <Button
-            size="sm"
+          <button
+            type="button"
             onClick={() => bootstrapLobby.mutate()}
             disabled={bootstrapLobby.isPending}
-            className="mt-4 bg-white text-black hover:bg-white/90 font-mono text-xs font-bold uppercase tracking-wider"
+            className={cn(buttonVariants({ variant: 'success', size: 'sm' }), 'mt-4')}
           >
-            {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Lobby'}
-          </Button>
+            {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Groups'}
+          </button>
         </div>
       )}
 

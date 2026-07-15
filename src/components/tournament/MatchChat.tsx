@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { GhostButton } from "@/components/ui/app-buttons";
 import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, Minimize2, Maximize2, ChevronDown, ShieldCheck, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { useMatchChat } from '@/hooks/useMatchChat';
@@ -25,7 +25,7 @@ const MatchChat: React.FC<MatchChatProps> = ({
     allowMinimize = true,
 }) => {
     const { user } = useAuth();
-    const { messages, sendMessage, scrollRef, scrollToBottom, isLoading, connectionStatus, isJoined } = useMatchChat(matchId);
+    const { messages, sendMessage, scrollRef, scrollToBottom, isLoading, connectionStatus, isJoined, chatError, isError } = useMatchChat(matchId);
     const [messageText, setMessageText] = useState('');
     const [isMinimized, setIsMinimized] = useState(false);
     const [showScrollButton, setShowScrollButton] = useState(false);
@@ -45,7 +45,7 @@ const MatchChat: React.FC<MatchChatProps> = ({
         if (messages && messages.length > 0) {
             setTimeout(scrollToBottom, 100);
         }
-    }, [messages?.length]);
+    }, [messages, scrollToBottom]);
 
     // Track scroll position for "scroll to bottom" button
     const handleScroll = () => {
@@ -133,14 +133,13 @@ const MatchChat: React.FC<MatchChatProps> = ({
                     </div>
                 </div>
                 {allowMinimize && (
-                    <Button
+                    <GhostButton
                         size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0 hover:bg-zinc-800/80 rounded-lg"
+                        className="h-8 w-8 p-0 rounded-lg"
                         onClick={() => setIsMinimized(true)}
                     >
                         <Minimize2 className="w-4 h-4 text-zinc-400" />
-                    </Button>
+                    </GhostButton>
                 )}
             </div>
 
@@ -148,13 +147,28 @@ const MatchChat: React.FC<MatchChatProps> = ({
             <div
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0 bg-[radial-gradient(circle_at_top,rgba(6,182,212,0.08),transparent_35%)]"
+                className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4 min-h-0 bg-[radial-gradient(circle_at_top,rgba(6,182,212,0.08),transparent_35%)]" data-lenis-prevent
             >
                 {isLoading ? (
                     <div className="flex items-center justify-center h-full">
                         <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
                     </div>
-                ) : messages?.length === 0 ? (
+                ) : isError ? (
+                    <div className="text-center py-12 px-4">
+                        <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-3">
+                            <WifiOff className="w-6 h-6 text-red-400" />
+                        </div>
+                        <p className="text-red-300 text-sm font-medium">Match chat unavailable</p>
+                        <p className="text-zinc-500 text-xs mt-2">{chatError || 'You may not have access to this match chat yet.'}</p>
+                    </div>
+                ) : (
+                    <>
+                        {chatError && (
+                            <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                                {chatError}
+                            </div>
+                        )}
+                        {messages?.length === 0 ? (
                     <div className="text-center py-12">
                         <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto mb-3">
                             <MessageCircle className="w-6 h-6 text-zinc-500" />
@@ -211,18 +225,20 @@ const MatchChat: React.FC<MatchChatProps> = ({
                         );
                     })
                 )}
+                    </>
+                )}
             </div>
 
             {/* Scroll to bottom button */}
             {showScrollButton && (
                 <div className="absolute bottom-20 left-1/2 -translate-x-1/2">
-                    <Button
+                    <GhostButton
                         size="sm"
                         onClick={scrollToBottom}
-                        className="rounded-full h-8 w-8 p-0 bg-zinc-800/95 hover:bg-zinc-700 shadow-lg border border-zinc-700"
+                        className="rounded-full h-8 w-8 p-0 shadow-lg"
                     >
                         <ChevronDown className="w-4 h-4" />
-                    </Button>
+                    </GhostButton>
                 </div>
             )}
 
@@ -237,13 +253,14 @@ const MatchChat: React.FC<MatchChatProps> = ({
                     disabled={!isConnected || sendMessage.isPending}
                     className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-500 focus-visible:ring-cyan-500/40 rounded-xl"
                 />
-                <Button
+                <button
+                    type="button"
                     onClick={handleSend}
                     disabled={!messageText.trim() || sendMessage.isPending || !isConnected}
-                    className="bg-cyan-600 hover:bg-cyan-500 disabled:bg-zinc-800 disabled:text-zinc-500 px-3 rounded-xl shadow-lg shadow-cyan-950/30"
+                    className="inline-flex items-center justify-center bg-cyan-600 hover:bg-cyan-500 disabled:bg-zinc-800 disabled:text-zinc-500 px-3 h-10 rounded-xl shadow-lg shadow-cyan-950/30 transition-colors"
                 >
                     <Send className="w-4 h-4" />
-                </Button>
+                </button>
             </div>
         </Card>
     );

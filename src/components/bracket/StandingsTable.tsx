@@ -60,11 +60,11 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                     </div>
 
                     {/* Rows */}
-                    <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
+                    <div className="max-h-[600px] overflow-y-auto overscroll-contain custom-scrollbar" data-lenis-prevent>
                         <AnimatePresence mode='popLayout'>
                             {standings.map((team, index) => {
                                 const count = Number(advancementCount);
-                                const isAdvancing = (count > 0 && index < count && count < standings.length) || (qualificationWins !== undefined && team.wins >= qualificationWins);
+                                const isAdvancing = (count > 0 && index < count) || (qualificationWins !== undefined && team.wins >= qualificationWins);
                                 const isEliminated = eliminationCount !== undefined && team.losses >= eliminationCount;
 
                                 return (

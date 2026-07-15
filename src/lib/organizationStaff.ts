@@ -12,17 +12,15 @@
  */
 
 import { apiClient } from "@/lib/apiClient";
+import { normalizeAuditDetails } from "@/utils/auditLogFormat";
+import type { StaffPermission } from "@/types/staff";
+
+export type { StaffPermission } from "@/types/staff";
+export { STAFF_PERMISSION_OPTIONS, ALL_STAFF_PERMISSIONS } from "@/types/staff";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Types (unchanged)
+// Types
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-export type StaffPermission =
-    | "scores:update"
-    | "teams:manage"
-    | "bracket:edit"
-    | "announcements:send"
-    | "disputes:assist";
 
 export interface OrganizationStaffRecord {
     id: string;
@@ -66,6 +64,8 @@ export interface TournamentAssignment {
     tournament_id: string;
     assigned_by: string | null;
     created_at: string;
+    /** null = inherit organization_staff.permissions */
+    permissions?: StaffPermission[] | null;
     tournament?: {
         id: string;
         name: string;
@@ -195,14 +195,36 @@ export const respondToOrgStaffInvite = async ({
 export const assignStaffToTournaments = async ({
     orgStaffId,
     tournamentIds,
+    assignments,
     organizationId,
 }: {
     orgStaffId: string;
-    tournamentIds: string[];
+    tournamentIds?: string[];
+    assignments?: { tournamentId: string; permissions?: StaffPermission[] | null }[];
     assignedBy: string;
     organizationId: string;
 }) =>
-    apiClient.post(`/api/organizations/${organizationId}/staff/${orgStaffId}/assign-tournaments`, { tournamentIds });
+    apiClient.post(`/api/organizations/${organizationId}/staff/${orgStaffId}/assign-tournaments`, {
+        tournamentIds: tournamentIds ?? [],
+        assignments: assignments?.map((a) => ({
+            tournamentId: a.tournamentId,
+            permissions: a.permissions ?? undefined,
+        })),
+    });
+
+/** Update per-tournament permission override (null = inherit org defaults). */
+export const updateAssignmentPermissions = async ({
+    organizationId,
+    assignmentId,
+    permissions,
+}: {
+    organizationId: string;
+    assignmentId: string;
+    permissions: StaffPermission[] | null;
+}) =>
+    apiClient.put(`/api/organizations/${organizationId}/staff/assignments/${assignmentId}`, {
+        permissions,
+    });
 
 /** Remove a staff member from a tournament */
 export const removeStaffFromTournament = async ({
@@ -222,26 +244,6 @@ export const fetchTournamentAssignedStaff = async (
     tournamentId: string
 ): Promise<TournamentAssignment[]> =>
     apiClient.get<TournamentAssignment[]>(`/api/tournaments/${tournamentId}/assigned-staff`);
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Permission Helper
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/**
- * Check if the current user has staff permissions for a tournament via the organization.
- * Migrated from 2 Supabase calls to a single .NET API call.
- * Note: userId param is kept for signature compatibility but ignored — .NET reads from JWT.
- */
-export const getOrgStaffPermissionsForTournament = async (
-    _userId: string,
-    tournamentOrganizationId: string | null,
-    tournamentId?: string
-): Promise<StaffPermission[]> => {
-    if (!tournamentOrganizationId) return [];
-    const qs = new URLSearchParams({ organizationId: tournamentOrganizationId });
-    if (tournamentId) qs.set('tournamentId', tournamentId);
-    return apiClient.get<StaffPermission[]>(`/api/organizations/staff/permissions?${qs}`);
-};
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Audit Logging
@@ -267,15 +269,30 @@ export const fetchAuditLogs = async ({
     limit = 50,
     offset = 0,
     actionFilter,
+    actorId,
+    tournamentId,
 }: {
     organizationId: string;
     limit?: number;
     offset?: number;
     actionFilter?: string;
+    actorId?: string;
+    tournamentId?: string;
 }): Promise<{ logs: AuditLogEntry[]; total: number }> => {
     const qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (actionFilter) qs.set('action', actionFilter);
-    return apiClient.get(`/api/organizations/${organizationId}/audit-logs?${qs}`);
+    if (actorId) qs.set('actorId', actorId);
+    if (tournamentId) qs.set('tournamentId', tournamentId);
+    const result = await apiClient.get<{ logs: AuditLogEntry[]; total: number }>(
+        `/api/organizations/${organizationId}/audit-logs?${qs}`,
+    );
+    return {
+        total: result.total,
+        logs: (result.logs ?? []).map((log) => ({
+            ...log,
+            details: normalizeAuditDetails(log.details),
+        })),
+    };
 };
 
 /** Fetch org's tournaments for assignment dropdown */

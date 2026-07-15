@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminStats, useAdminAuditLogs, useAdminUsersList, useAdminTournaments, useAdminAlertSummary, useAdminAlerts, useAcknowledgeAlert } from "@/hooks/useAdminQueries";
+import { AuditLogDetailsPanel } from "@/components/admin/AuditLogDetailsPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
@@ -109,7 +110,7 @@ function AlertDropdownPanel({ onClose }: { onClose: () => void }) {
         </Button>
       </div>
 
-      <div className="max-h-[400px] overflow-y-auto">
+      <div className="max-h-[400px] overflow-y-auto overscroll-contain" data-lenis-prevent>
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <RefreshCw className="w-5 h-5 text-zinc-500 animate-spin" />
@@ -155,9 +156,8 @@ function AlertDropdownPanel({ onClose }: { onClose: () => void }) {
 
 const AdminManagement = () => {
   const { profile, signOut } = useAuth();
-  const { roles, hasPermission } = useAdmin();
+  const { hasPermission } = useAdmin();
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   // React Query hooks
   const statsQuery = useAdminStats();
@@ -168,7 +168,6 @@ const AdminManagement = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [auditSearch, setAuditSearch] = useState('');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'tournaments' | 'venues' | 'audit' | 'analytics'>('overview');
   const { data: alertSummary } = useAdminAlertSummary();
   const [showAlertPanel, setShowAlertPanel] = useState(false);
 
@@ -321,6 +320,7 @@ const AdminManagement = () => {
     { label: 'Team Management', href: '/admin/tools/team-management', icon: UsersRound, permission: 'users:view' },
     { label: 'Venue Management', href: '/admin/tools/venue-management', icon: MapPin, badge: stats.pendingVenues, permission: 'venues:view' },
     { label: 'Sponsor CRM', href: '/admin/tools/sponsor-management', icon: Megaphone, permission: 'system:settings' },
+    { label: 'Games', href: '/admin/tools/game-catalog', icon: Trophy, permission: 'games:manage' },
 
     { label: 'Verification System', href: '/admin/tools/verification-system', icon: Shield, badge: stats.pendingVerifications, permission: 'users:edit' },
     { label: 'License Management', href: '/admin/tools/license-management', icon: Award, badge: stats.pendingLicenses, permission: 'users:view' },
@@ -366,7 +366,7 @@ const AdminManagement = () => {
               variant="outline"
               size="sm"
               onClick={() => setShowAlertPanel(!showAlertPanel)}
-              className="border-zinc-800 text-zinc-400 hover:text-white hover:border-rose-500/30 relative"
+              className="border-zinc-800 text-zinc-400 hover:text-white hover:border-white/25 relative"
             >
               <Bell className="w-4 h-4" />
               {(alertSummary?.active_count ?? 0) > 0 && (
@@ -392,7 +392,7 @@ const AdminManagement = () => {
             size="sm"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="border-zinc-800 text-zinc-400 hover:text-white hover:border-rose-500/30"
+            className="border-zinc-800 text-zinc-400 hover:text-white hover:border-white/25"
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -497,7 +497,7 @@ const AdminManagement = () => {
             <span className="text-xs text-zinc-500">Live</span>
           </div>
 
-          <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2">
+          <div className="space-y-1 max-h-[400px] overflow-y-auto overscroll-contain pr-2" data-lenis-prevent>
             {recentActivities.length === 0 ? (
               <p className="text-zinc-500 text-sm text-center py-8">No recent activity</p>
             ) : (
@@ -559,7 +559,7 @@ const AdminManagement = () => {
             </div>
           </div>
 
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="max-h-[400px] overflow-y-auto overscroll-contain" data-lenis-prevent>
             {auditLoading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
@@ -631,12 +631,7 @@ const AdminManagement = () => {
                   <p className="text-white text-sm mt-1">{selectedLog.target_type} / {selectedLog.target_name || selectedLog.target_id?.slice(0, 12)}</p>
                 </div>
               </div>
-              <div className="p-3 rounded-md bg-zinc-900/50">
-                <p className="text-xs text-zinc-500 uppercase mb-2">Details</p>
-                <pre className="text-sm text-zinc-300 overflow-x-auto font-mono bg-zinc-950 p-4 rounded-md max-h-48">
-                  {JSON.stringify(selectedLog.details, null, 2)}
-                </pre>
-              </div>
+              <AuditLogDetailsPanel details={selectedLog.details} actionType={selectedLog.action_type} />
             </div>
           )}
         </DialogContent>

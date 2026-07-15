@@ -88,7 +88,7 @@ const PlayerHistory = () => {
                                 <Button
                                     size="sm"
                                     variant="outline"
-                                    className="border-zinc-700 hover:border-rose-500 hover:text-rose-500 bg-transparent"
+                                    className="border-zinc-700 hover:border-white/25 hover:text-white bg-transparent"
                                     onClick={() => navigate(`/tournaments/${t.slug || t.id}`)}
                                 >
                                     View Details

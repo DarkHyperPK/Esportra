@@ -1,11 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock, Mail } from 'lucide-react';
+import { buttonVariants } from '@/components/ui/button-variants';
+import { SuccessButton } from '@/components/ui/app-buttons';
 import { JackButton } from '@/components/ui/JackButton';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Countdown } from '@/components/ui/Countdown';
+import {
+  deriveTournamentPhase,
+  getDerivedPhaseColorClass,
+  getDerivedPhaseLabel,
+  getRegistrationOpensFromSettings,
+} from '@/utils/tournamentLifecycle';
 import { isBattleRoyale } from '@/utils/gameFeatures';
 import { useRawgGame } from '@/hooks/useRawgGame';
 
@@ -20,6 +27,9 @@ interface TournamentHeaderProps {
     onRegister: () => void;
     onWithdraw: () => void;
     onCheckIn: () => void;
+    showOpenRegistration?: boolean;
+    showInviteRedemption?: boolean;
+    onRedeemInvite?: () => void;
 
     isLoading?: boolean; // New prop
     checkInStartTime?: Date | null;
@@ -37,12 +47,26 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
     onRegister,
     onWithdraw,
     onCheckIn,
+    showOpenRegistration = false,
+    showInviteRedemption = false,
+    onRedeemInvite,
     isLoading = false, // Default to false
     checkInStartTime,
     awaitingApproval = false
 }) => {
     const navigate = useNavigate();
-    const gameData = useRawgGame(tournament.game || '', { enabled: !tournament.image_url });
+    const derivedPhase = deriveTournamentPhase({
+        status: tournament.status,
+        registrationOpens: getRegistrationOpensFromSettings(tournament.settings),
+        registrationDeadline: tournament.registration_deadline,
+        startDate: tournament.start_date,
+    });
+    const phaseLabel = getDerivedPhaseLabel(derivedPhase);
+    const phaseColorClass = getDerivedPhaseColorClass(derivedPhase);
+    const gameData = useRawgGame(tournament.game || '', {
+        enabled: !tournament.image_url,
+        skipRawg: true,
+    });
     const bannerSrc = tournament.image_url || gameData.gameBanner || '/placeholder.svg';
     const isVideoBanner = bannerSrc.includes('youtube.com/embed/');
 
@@ -85,21 +109,19 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                 src={bannerSrc}
                                 alt={tournament.name}
                                 decoding="async"
-                                fetchPriority="high"
+                                fetchpriority="high"
                                 className="w-full h-full object-cover contrast-110"
                             />
                         )}
                         {isOrganizer && (
                             <div className="absolute top-8 right-8 z-30">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
+                                <button type="button"
                                     onClick={() => (window as any).dispatchBannerEdit?.()}
-                                    className="bg-black/40 border-white/10 text-white backdrop-blur-md hover:bg-white/10 flex items-center gap-2"
+                                    className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'bg-black/40 border-white/10 text-white backdrop-blur-md hover:bg-white/10 flex items-center gap-2')}
                                 >
                                     <Edit className="w-4 h-4" />
                                     EDIT BANNER
-                                </Button>
+                                </button>
                             </div>
                         )}
                     </motion.div>
@@ -122,19 +144,14 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                 )}
                                 <span className={cn(
                                     "px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs font-mono tracking-[0.2em] uppercase backdrop-blur-md",
-                                    tournament.status === 'published' ? "text-blue-400" :
-                                        tournament.status === 'open' ? "text-emerald-400" :
-                                            tournament.status === 'closed' ? "text-amber-400" :
-                                                tournament.status === 'ongoing' ? "text-red-400" :
-                                                    tournament.status === 'completed' ? "text-zinc-400" :
-                                                        "text-gray-400"
+                                    phaseColorClass
                                 )}>
-                                    STATUS: {tournament.status}
+                                    STATUS: {phaseLabel}
                                 </span>
                             </div>
 
                             {/* Winner Banner */}
-                            {tournament.status === 'completed' && tournament.winner_team_name && (
+                            {tournament.winner_team_name && (
                                 <motion.div
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}
@@ -177,7 +194,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                             </div>
 
                             {/* Primary Action Button */}
-                            <div className="mt-12 md:mt-16 mb-24 flex justify-center relative z-50 h-[64px]">
+                            <div className="mt-12 md:mt-16 mb-24 flex justify-center relative z-50 min-h-[64px]">
                                 {isLoading ? (
                                     <div className="h-14 md:h-16 w-64 bg-white/5 animate-pulse rounded-none border border-white/10" />
                                 ) : isOrganizer ? (
@@ -190,11 +207,26 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                     </JackButton>
                                 ) : (
                                     <>
-                                        {!isRegistered && !hasMissedCheckIn && (tournament.status === 'published' || tournament.status === 'open') && (
-                                            <Button onClick={onRegister} className="h-14 md:h-16 px-8 md:px-12 bg-green-600 hover:bg-green-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(22,163,74,0.3)]">
-                                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none" />
-                                                <span className="relative z-10 flex items-center gap-2">INITIATE REGISTRATION <ChevronRight className="w-5 h-5" /></span>
-                                            </Button>
+                                        {!isRegistered && !hasMissedCheckIn && (showOpenRegistration || showInviteRedemption) && (
+                                            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                                                {showOpenRegistration && (
+                                                    <SuccessButton
+                                                        onClick={onRegister}
+                                                        size="hero"
+                                                        className="active:scale-[0.98] transition-transform"
+                                                    >
+                                                        <span className="flex items-center gap-2">INITIATE REGISTRATION <ChevronRight className="w-5 h-5" /></span>
+                                                    </SuccessButton>
+                                                )}
+                                                {showInviteRedemption && onRedeemInvite && (
+                                                    <button type="button"
+                                                        onClick={onRedeemInvite}
+                                                        className="h-14 md:h-16 px-8 md:px-12 border border-purple-500/40 bg-purple-600/20 hover:bg-purple-600/40 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none shadow-[0_0_30px_rgba(147,51,234,0.15)]"
+                                                    >
+                                                        <span className="flex items-center gap-2">HAVE INVITATION? <Mail className="w-5 h-5" /></span>
+                                                    </button>
+                                                )}
+                                            </div>
                                         )}
                                         {isRegistered && awaitingApproval && (
                                             <div className="flex gap-4">
@@ -203,38 +235,38 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                     PENDING APPROVAL
                                                 </div>
                                                 {isCaptain && (tournament.status === 'published' || tournament.status === 'open') && (
-                                                    <Button variant="outline" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
+                                                    <button type="button" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
                                                         WITHDRAW
-                                                    </Button>
+                                                    </button>
                                                 )}
                                             </div>
                                         )}
                                         {isRegistered && !awaitingApproval && isCaptain && (
                                             <div className="flex gap-4">
                                                 {isBattleRoyale(tournament.game || '') ? (
-                                                    <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/br-game-room`)} className="h-14 md:h-16 px-8 md:px-12 bg-emerald-600 hover:bg-emerald-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-pulse">
+                                                    <SuccessButton onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/br-game-room`)} size="hero" className="active:scale-[0.98] transition-transform">
                                                         <span className="relative z-10 flex items-center gap-2"><Swords className="w-5 h-5" /> ENTER GAME ROOM</span>
-                                                    </Button>
+                                                    </SuccessButton>
                                                 ) : (
-                                                    <Button onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/captain-match`)} className="h-14 md:h-16 px-8 md:px-12 bg-emerald-600 hover:bg-emerald-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none relative group overflow-hidden shadow-[0_0_40px_rgba(16,185,129,0.3)] animate-pulse">
+                                                    <SuccessButton onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}/captain-match`)} size="hero" className="active:scale-[0.98] transition-transform">
                                                         <span className="relative z-10 flex items-center gap-2"><Swords className="w-5 h-5" /> ENTER MATCH ROOM</span>
-                                                    </Button>
+                                                    </SuccessButton>
                                                 )}
                                                 {(tournament.status === 'published' || tournament.status === 'open') && (
-                                                    <Button variant="outline" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
+                                                    <button type="button" onClick={onWithdraw} className="h-14 md:h-16 px-8 md:px-12 bg-transparent border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 hover:text-red-400 text-base md:text-lg font-bold font-mono tracking-wider rounded-none transition-all duration-300">
                                                         WITHDRAW
-                                                    </Button>
+                                                    </button>
                                                 )}
                                             </div>
                                         )}
 
                                         {canSelfCheckIn && (
-                                            <Button onClick={onCheckIn} disabled={checkInSubmitting} className="ml-4 h-14 md:h-16 px-8 md:px-12 bg-green-600 hover:bg-green-500 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none animate-pulse">
+                                            <SuccessButton onClick={onCheckIn} disabled={checkInSubmitting} size="hero" className="ml-4 active:scale-[0.98] transition-transform">
                                                 CONFIRM PRESENCE
-                                            </Button>
+                                            </SuccessButton>
                                         )}
                                         {/* Countdown for Check-in */}
-                                        {!canSelfCheckIn && isRegistered && isCaptain && !hasMissedCheckIn && checkInStartTime && new Date() < checkInStartTime && (
+                                        {!canSelfCheckIn && !awaitingApproval && isRegistered && isCaptain && !hasMissedCheckIn && checkInStartTime && new Date() < checkInStartTime && (
                                             <div className="ml-4 h-14 md:h-16 px-8 flex flex-col justify-center items-center bg-gray-900/80 border border-white/10 text-white rounded-none backdrop-blur-md">
                                                 <span className="text-[10px] text-gray-400 uppercase tracking-widest leading-none mb-1">Check-in Opens In</span>
                                                 <div className="text-xl font-mono text-emerald-400 leading-none">

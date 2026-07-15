@@ -40,6 +40,13 @@ export function SignalRProvider({ children }: { children: ReactNode }) {
     return conn;
   }, []);
 
+  const isBenignStartError = (err: unknown): boolean => {
+    const message = err instanceof Error ? err.message : String(err);
+    return message.includes('stopped during negotiation')
+      || message.includes('Connection was stopped')
+      || message.includes('AbortError');
+  };
+
   const startConnection = useCallback((hubPath: string) => {
     if (authLoading) {
       return Promise.resolve();
@@ -67,8 +74,10 @@ export function SignalRProvider({ children }: { children: ReactNode }) {
 
     const startPromise = conn.start()
       .catch((err) => {
-        lastStartFailure.current.set(hubPath, Date.now());
-        console.warn(`[SignalR] Connect failed for ${hubPath}:`, err);
+        if (!isBenignStartError(err)) {
+          lastStartFailure.current.set(hubPath, Date.now());
+          console.warn(`[SignalR] Connect failed for ${hubPath}:`, err);
+        }
       })
       .finally(() => {
         startPromises.current.delete(hubPath);
@@ -89,6 +98,14 @@ export function SignalRProvider({ children }: { children: ReactNode }) {
         .map((c) => c.stop()),
     );
   }, []);
+
+  // Connections created while auth was loading are not auto-started — kick them off once ready.
+  useEffect(() => {
+    if (authLoading) return;
+    for (const hubPath of registry.current.keys()) {
+      void startConnection(hubPath);
+    }
+  }, [authLoading, startConnection]);
 
   // Stop all connections on sign-out to prevent reconnect loops with an expired token
   useEffect(() => {
@@ -111,8 +128,13 @@ export function SignalRProvider({ children }: { children: ReactNode }) {
     return conn;
   }, [getOrCreateConnection, startConnection]);
 
+  const ensureHubStarted = useCallback(
+    (hubPath: string) => startConnection(hubPath),
+    [startConnection],
+  );
+
   return (
-    <SignalRContext.Provider value={{ getConnection }}>
+    <SignalRContext.Provider value={{ getConnection, ensureHubStarted }}>
       {children}
     </SignalRContext.Provider>
   );

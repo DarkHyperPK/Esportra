@@ -39,16 +39,17 @@ const TournamentList = () => {
 
       // Transform the data to include status and set current_participants to 0
       const tournamentsWithCounts = (data || []).map((tournament) => {
-        const tournamentDate = new Date(tournament.date);
-        const now = new Date();
+        const dbStatus = String(tournament.status ?? '').toLowerCase();
         let status: 'upcoming' | 'ongoing' | 'completed';
-        if (tournamentDate > now) {
-          status = 'upcoming';
-        } else if (tournamentDate.toDateString() === now.toDateString()) {
+
+        if (dbStatus === 'completed' || dbStatus === 'cancelled') {
+          status = 'completed';
+        } else if (dbStatus === 'ongoing') {
           status = 'ongoing';
         } else {
-          status = 'completed';
+          status = 'upcoming';
         }
+
         return {
           ...tournament,
           image_url: tournament.banner_url ?? tournament.logo_url ?? null,

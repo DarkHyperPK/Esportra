@@ -58,7 +58,7 @@ export interface CreateTeamData {
   game_format: string;
   logo_url?: string;
   description?: string;
-  members: Array<{ user_id: string; role: 'captain' | 'member' | 'substitute' }>;
+  members: Array<{ user_id: string; role: 'captain' | 'member' | 'substitute' | 'coach' }>;
 }
 
 export interface TeamInvite {
@@ -265,6 +265,22 @@ export const useTeamManagement = () => {
     }
   }, [queryClient, toast]);
 
+  const updateRosterMemberRole = useCallback(async (
+    teamId: string,
+    rosterId: string,
+    userId: string,
+    rosterRole: 'starter' | 'substitute' | 'coach',
+  ): Promise<boolean> => {
+    try {
+      await apiClient.put(`/api/teams/${teamId}/rosters/${rosterId}/members/${userId}/role`, { rosterRole });
+      toast({ title: 'Lineup role updated', description: `Player is now a ${rosterRole}.` });
+      return true;
+    } catch (err: any) {
+      toast({ title: 'Failed to update lineup role', description: err?.body?.error || err.message, variant: 'destructive' });
+      return false;
+    }
+  }, [toast]);
+
   const submitting = createTeamMutation.isPending || updateTeamMutation.isPending
     || deleteMutation.isPending || inviteMutation.isPending;
 
@@ -291,6 +307,7 @@ export const useTeamManagement = () => {
     removeMemberFromTeam: removeTeamMember,
     transferCaptaincy,
     changeRole,
+    updateRosterMemberRole,
     getVerifiedUsers,
 
     // Refresh

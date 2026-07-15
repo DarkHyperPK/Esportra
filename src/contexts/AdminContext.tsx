@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/hooks/useAuth';
-import { ROLE_PERMISSIONS } from '@/hooks/useAdminPermissions';
+import { isSuperAdminFromProfile } from '@/lib/adminAccess';
 import { AdminContext, type AdminContextValue } from '@/contexts/admin-context';
 
 export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [roles, setRoles] = useState<string[]>([]);
   const [permissions, setPermissions] = useState<string[]>([]);
@@ -26,58 +26,64 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
+    if (!profile) {
+      if (!silent) {
+        setLoadingAdmin(true);
+      }
+      return;
+    }
+
     try {
-      const normalizeRole = (role?: string | null) =>
-        role ? role.toLowerCase().replace(/\s+/g, '_') : null;
+      const ctx = await apiClient.get<{
+        adminRoles: string[];
+        permissions: string[];
+        isSuperAdmin?: boolean;
+      }>('/api/admin/my-context');
 
-      // Fetch profile for is_admin flag
-      const profile = await apiClient.get<{
-        is_admin: boolean;
-        admin_roles: string[] | null;
-      }>('/api/profiles/me');
+      const apiRoles = (ctx.adminRoles || []).map((role) => role.toLowerCase());
+      const apiPermissions = ctx.permissions || [];
+      const hasAdminAccess = apiRoles.length > 0 || ctx.isSuperAdmin === true;
 
-      const isUserAdmin = !!profile?.is_admin;
-      setIsAdmin(isUserAdmin);
+      if (hasAdminAccess) {
+        setIsAdmin(true);
+        setRoles(apiRoles);
+        setPermissions(apiPermissions);
+        return;
+      }
 
-      if (isUserAdmin) {
-        try {
-          // Primary source: backend resolves roles + permissions from DB (plural resource names)
-          const ctx = await apiClient.get<{
-            adminRoles: string[];
-            permissions: string[];
-          }>('/api/admin/my-context');
+      // Fallback when API returns empty but profile still marks admin (sync lag)
+      if (profile.is_admin) {
+        const profileRoles = (profile.admin_roles || [])
+          .map((role) => role.toLowerCase().replace(/\s+/g, '_'))
+          .filter(Boolean);
+        setIsAdmin(profileRoles.length > 0 || isSuperAdminFromProfile(profile));
+        setRoles(profileRoles);
+        setPermissions([]);
+        return;
+      }
 
-          setRoles(ctx.adminRoles || []);
-          setPermissions(ctx.permissions || []);
-        } catch {
-          // Fallback: derive from profile's admin_roles + hardcoded ROLE_PERMISSIONS map
-          const profileRoles = (profile?.admin_roles || [])
-            .map(normalizeRole)
-            .filter((role): role is string => !!role);
-
-          setRoles(profileRoles);
-
-          const rolePermissions = new Set<string>();
-          profileRoles.forEach(role => {
-            const rolePerms = ROLE_PERMISSIONS[role] || [];
-            rolePerms.forEach(perm => rolePermissions.add(perm));
-          });
-          setPermissions(Array.from(rolePermissions));
-        }
+      setIsAdmin(false);
+      setRoles([]);
+      setPermissions([]);
+    } catch {
+      if (profile.is_admin) {
+        const profileRoles = (profile.admin_roles || [])
+          .map((role) => role.toLowerCase().replace(/\s+/g, '_'))
+          .filter(Boolean);
+        setIsAdmin(profileRoles.length > 0);
+        setRoles(profileRoles);
+        setPermissions([]);
       } else {
+        setIsAdmin(false);
         setRoles([]);
         setPermissions([]);
       }
-
-    } catch (error) {
-      setRoles([]);
-      setPermissions([]);
     } finally {
       if (!silent) {
         setLoadingAdmin(false);
       }
     }
-  }, [user?.id]);
+  }, [user, profile]);
 
   useEffect(() => {
     load();
@@ -102,8 +108,6 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [user, load]);
-
-  // Polling removed — admin roles refresh on-demand via events or page navigation
 
   const hasPermission = useCallback((perm: string): boolean => {
     if (!isAdmin) return false;

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
+import { OutlineButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { Users, Save, AlertTriangle } from 'lucide-react';
 import type { BRRoundResult, BRResultInput } from '@/types/brRounds';
 import type { BRGroupTeam } from '@/types/brGroups';
+import { calculateBRPoints } from '@/utils/brScoring';
 
 interface ScoringPreset {
   placements: number[];
@@ -44,18 +45,9 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
   const existingResults = useMemo(() => existingResultsProp ?? [], [existingResultsProp]);
 
   const calcPoints = useCallback(
-    (placement: number, kills: number) => {
-      const pp =
-        placement >= 1 && placement <= scoringPreset.placements.length
-          ? scoringPreset.placements[placement - 1]
-          : 0;
-      const effectiveKills = scoringPreset.killCap
-        ? Math.min(kills, scoringPreset.killCap)
-        : kills;
-      const kp = effectiveKills * scoringPreset.killPoints;
-      return { placementPoints: pp, killPoints: kp, totalPoints: pp + kp };
-    },
-    [scoringPreset]
+    (placement: number, kills: number) =>
+      calculateBRPoints(placement, kills, scoringPreset, scoringPreset.killCap),
+    [scoringPreset],
   );
 
   const resultsByTeamId = useMemo(() => {
@@ -191,7 +183,7 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
       </div>
 
       {/* Rows */}
-      <div className="space-y-1 max-h-[420px] overflow-y-auto overscroll-contain [contain:layout_style_paint]">
+      <div className="space-y-1 max-h-[420px] overflow-y-auto overscroll-contain [contain:layout_style_paint]" data-lenis-prevent>
         {rows.map((row) => {
           const hasDupe = duplicatePlacements.has(row.placement) && row.placement >= 1;
           return (
@@ -210,7 +202,7 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
                     alt=""
                     loading="lazy"
                     decoding="async"
-                    fetchPriority="low"
+                    {...({ fetchpriority: 'low' } as React.ImgHTMLAttributes<HTMLImageElement>)}
                     className="w-5 h-5 rounded-full object-cover flex-shrink-0"
                   />
                 ) : (
@@ -268,15 +260,18 @@ export const RoundResultsGrid: React.FC<RoundResultsGridProps> = ({
 
       {/* Save */}
       {!isLocked && (
-        <Button
-          onClick={handleSave}
-          disabled={!canSave || isSaving}
-          title={saveBlockReason ?? undefined}
-          className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Save className="w-3.5 h-3.5 mr-2" />
-          {isSaving ? 'Saving...' : 'Save Results'}
-        </Button>
+        <div className="flex justify-end pt-1">
+          <OutlineButton
+            size="sm"
+            onClick={handleSave}
+            disabled={!canSave || isSaving}
+            title={saveBlockReason ?? undefined}
+            className="h-8 px-3 text-xs disabled:cursor-not-allowed"
+          >
+            <Save className="w-3 h-3 mr-1.5" />
+            {isSaving ? 'Saving...' : 'Save results'}
+          </OutlineButton>
+        </div>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button, SuccessButton } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Users, Trophy, CheckCircle, MapPin, Eye } from 'lucide-react';
@@ -7,6 +8,7 @@ import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRawgGame } from '@/hooks/useRawgGame';
+import { GameLogoImage } from '@/components/games/GameLogoImage';
 
 const REGION_LABELS: Record<string, string> = {
   'na-east': 'NA East', 'na-west': 'NA West', 'latam': 'LATAM',
@@ -146,7 +148,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
           {hasCustomImage ? (
             <img
               src={image_url}
-              className="w-full h-full object-cover object-center opacity-50 group-hover:opacity-60 transition-opacity"
+              className="w-full h-full object-cover object-center opacity-45 group-hover:opacity-55 transition-opacity"
               alt={name}
               onError={() => setBannerFailed(true)}
             />
@@ -159,27 +161,28 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 1.5, ease: "easeInOut" }}
-                className="absolute inset-0 w-full h-full object-cover object-center opacity-50"
+                className="absolute inset-0 w-full h-full object-cover object-center opacity-45"
                 alt={`${game} screenshot`}
               />
             </AnimatePresence>
           ) : gameBanner ? (
             <img
               src={gameBanner}
-              className="w-full h-full object-cover object-center opacity-50"
+              className="w-full h-full object-cover object-center opacity-45"
               alt={game}
             />
           ) : (
             <img
               src="/placeholder.svg"
-              className="w-full h-full object-cover object-center opacity-50"
+              className="w-full h-full object-cover object-center opacity-45"
               alt={name}
             />
           )}
         </div>
 
-        {/* Gradient Overlay for Text Readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/50 to-transparent" />
+        {/* Darken banner so title and metadata stay readable */}
+        <div className="absolute inset-0 bg-black/15" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/55 to-transparent" />
       </div>
 
       {/* 2. Top Bar (Floating) */}
@@ -218,9 +221,11 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
         {/* Main Info */}
         <div className="transform transition-transform duration-300 group-hover:-translate-y-2">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-bold tracking-widest text-rose-400 uppercase font-heading">
-              {game}
-            </span>
+            <GameLogoImage
+              gameName={game}
+              className="h-9 w-auto max-w-[140px] object-contain object-left"
+              alt={`${game} logo`}
+            />
             {region && REGION_LABELS[region] && (
               <span className="text-[10px] font-bold tracking-wider text-white/60 uppercase px-1.5 py-0.5 bg-white/5 border border-white/10">
                 {REGION_LABELS[region]}
@@ -233,14 +238,14 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
             {name}
           </h3>
 
-          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-400 mb-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-300 mb-4">
             <div className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-gray-500" />
+              <Calendar className="w-4 h-4 text-gray-400" />
               <span>{date}</span>
             </div>
             {venue && !is_online && (
               <div className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-gray-500" />
+                <MapPin className="w-4 h-4 text-gray-400" />
                 <span className="line-clamp-1 max-w-[120px]">{venue.replace('Venue ', '')}</span>
               </div>
             )}
@@ -273,12 +278,12 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
         <div className="h-0 opacity-0 group-hover:h-auto group-hover:opacity-100 transition-all duration-300 overflow-hidden">
           {isOrganizer ? (
             <div className="flex gap-2 w-full pt-2">
-              <Button
+              <JackButton
                 onClick={(e) => { e.stopPropagation(); navigate(`/organizer/tournament/${slug || id}`); }}
-                className="flex-1 bg-white text-black hover:bg-rose-500 hover:text-white transition-colors duration-300 font-bold"
+                className="flex-1"
               >
                 Manage
-              </Button>
+              </JackButton>
               <Button
                 variant="outline"
                 size="icon"
@@ -296,13 +301,13 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
               )}
             </div>
           ) : registrationData ? (
-            <Button
-              className="w-full font-bold tracking-wide bg-green-500 hover:bg-green-400 text-white shadow-lg shadow-green-900/20"
+            <SuccessButton
+              className="w-full font-bold tracking-wide"
               onClick={() => navigate(`/tournaments/${slug || id}`)}
             >
               <CheckCircle className="w-4 h-4 mr-2" />
               Registered
-            </Button>
+            </SuccessButton>
           ) : isLive ? (
             <Button
               className="w-full font-bold tracking-wide bg-red-600 hover:bg-red-500 animate-pulse text-white font-heading"
@@ -312,7 +317,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
             </Button>
           ) : isUpcoming ? (
             <Button
-              className="w-full font-bold tracking-wide bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-900/20 font-heading"
+              className="w-full font-bold tracking-wide bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-900/20 font-heading"
               onClick={() => navigate(`/tournaments/${slug || id}`)}
             >
               Join Event

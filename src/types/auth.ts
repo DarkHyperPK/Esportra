@@ -15,6 +15,7 @@ export type UserProfile = {
   riot_tag?: string | null;
   steam_tag?: string | null;
   country_code?: string | null;
+  date_of_birth?: string | null;
   is_admin?: boolean;
   admin_roles?: string[];
   base_role?: UserRole;
@@ -31,8 +32,16 @@ export type AuthContextType = {
   loading: boolean;
   error?: string | null;
   isEmailVerified: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, username: string, fullName?: string, role?: UserRole, dateOfBirth?: string) => Promise<void>;
+  signIn: (email: string, password: string, redirectTo?: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    username: string,
+    fullName?: string,
+    role?: UserRole,
+    dateOfBirth?: string,
+    countryCode?: string,
+  ) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithDiscord: () => Promise<void>;
   signOut: () => Promise<void>;

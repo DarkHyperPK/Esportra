@@ -59,7 +59,12 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run test
+      - name: Run tests
+        env:
+          VITE_SUPABASE_URL: https://placeholder.supabase.co
+          VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder
+          VITE_API_URL: https://placeholder.api.com
+        run: npm run test
 
   partner-portal:
     name: Partner Portal (Build & Lint)

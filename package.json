@@ -5,18 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run check:chunks && npm run check:buttons && npm run check:jsx-symbols",
+    "check:chunks": "node tools/check-vendor-chunks.cjs",
     "build:dev": "vite build --mode development",
     "check:app-routes": "node tools/check-app-route-symbols.cjs",
     "check:critical-symbols": "node tools/check-app-route-symbols.cjs",
-    "lint": "eslint src --max-warnings 9999",
-    "preview": "vite preview",
-    "test:e2e": "playwright test",
-    "test:e2e:staging": "playwright test --grep-invert @flaky",
-    "test:e2e:flaky": "playwright test --grep @flaky",
-    "test:e2e:promotion": "playwright test --grep @promotion",
-    "test:e2e:br": "playwright test e2e/br-errors-negative.spec.ts e2e/br-organizer-games.spec.ts e2e/br-organizer-stages.spec.ts e2e/br-player-game-room.spec.ts e2e/br-public-leaderboard.spec.ts e2e/br-round-evidence.spec.ts --workers=1",
-    "test:e2e:catalog": "playwright test e2e/game-catalog-robustness.spec.ts e2e/game-catalog-gui.spec.ts --workers=1"
+    "check:jsx-symbols": "node tools/check-jsx-symbols.cjs",
+    "check:game-catalog-sync": "node scripts/verify-game-catalog-sync.mjs",
+    "seed:game-logos": "node scripts/seed-game-logos.mjs",
+    "sync:game-catalog": "node scripts/sync-game-catalog-manifest.mjs",
+    "lint": "eslint src --max-warnings 0",
+    "check:buttons": "node tools/check-button-antipatterns.cjs",
+    "test": "vitest run",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@capacitor/android": "^7.2.0",
@@ -107,8 +108,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
-    "@playwright/test": "^1.58.2",
     "@tailwindcss/typography": "^0.5.15",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@types/he": "^1.2.3",
     "@types/node": "^22.5.5",

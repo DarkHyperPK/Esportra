@@ -5,7 +5,9 @@ import { standingsService, TeamStanding } from '@/services/bracket/StandingsServ
 import { BracketMatch } from '@/types/bracketTypes';
 import { MatchCard } from '@/pages/tournaments/brackets/MatchCard';
 import { ReadOnlyMatchCard } from '@/components/bracket/ReadOnlyMatchCard';
-import { Button } from '@/components/ui/button';
+import { Button, SuccessButton } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button-variants';
+import { cn } from '@/lib/utils';
 import { SwissGenerator } from '@/services/bracket/SwissGenerator';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +19,7 @@ import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import { useStageCompletion } from '@/hooks/useStageCompletion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { FilterState } from '@/components/bracket/BracketSidebarFilter';
+import { isMatchTooEarlyForLive } from '@/lib/timeUtils';
 
 interface SwissViewProps {
     stageId: string;
@@ -25,6 +28,7 @@ interface SwissViewProps {
     isOrganizer?: boolean;
     onMatchUpdate?: () => void;
     tournamentId?: string;
+    game?: string;
     onByeAdvance?: (matchId: string) => void;
     stage?: any;
     activeFilter?: FilterState;
@@ -32,6 +36,10 @@ interface SwissViewProps {
     onMatchRoom?: (match: BracketMatch) => void;
     hasResultsMap?: Record<string, any[]>;
     hasProofsMap?: Record<string, string[]>;
+    canUseMapVeto?: boolean;
+    suppressVetoRoleSwitchPrompt?: boolean;
+    hoveredTeamId?: string | null;
+    onTeamHover?: (teamId: string | null) => void;
 }
 
 // Extracted Component to prevent re-renders
@@ -56,7 +64,11 @@ const SwissGroupPanel = React.memo(({
     onMatchClick,
     onMatchRoom,
     hasResultsMap = {},
-    hasProofsMap = {}
+    hasProofsMap = {},
+    canUseMapVeto = false,
+    suppressVetoRoleSwitchPrompt: _suppressVetoRoleSwitchPrompt = false,
+    hoveredTeamId,
+    onTeamHover
 }: {
     groupMatches: BracketMatch[],
     groupStandings: TeamStanding[],
@@ -65,7 +77,7 @@ const SwissGroupPanel = React.memo(({
     expandedMatch: string | null,
     toggleExpand: (id: string) => void,
     handleScoreChange: (id: string, t: 't1' | 't2', v: string) => void,
-    openGoLive: (m: BracketMatch) => void,
+    openGoLive: (m: BracketMatch, code?: string, force?: boolean) => void,
     openMapVeto: (m: BracketMatch) => void,
     openPartyCode: (m: BracketMatch) => void,
     saveScore: (m: BracketMatch) => void,
@@ -78,7 +90,11 @@ const SwissGroupPanel = React.memo(({
     onMatchClick?: (match: BracketMatch) => void,
     onMatchRoom?: (match: BracketMatch) => void,
     hasResultsMap?: Record<string, any[]>,
-    hasProofsMap?: Record<string, string[]>
+    hasProofsMap?: Record<string, string[]>,
+    canUseMapVeto?: boolean,
+    suppressVetoRoleSwitchPrompt?: boolean,
+    hoveredTeamId?: string | null,
+    onTeamHover?: (teamId: string | null) => void
 }) => {
     // Helper to get raw ID (remove prefixes if present)
     const getRawId = (id: string | number) => String(id).replace(/^(db-|wb-|lb-|source-)/, '');
@@ -114,19 +130,20 @@ const SwissGroupPanel = React.memo(({
                             <CardTitle className="text-base font-medium text-white">Round {round}</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+                            <div className="space-y-4 max-h-[700px] overflow-y-auto overscroll-contain pr-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent" data-lenis-prevent>
                                 {matchesByRound[round]?.sort((a, b) => (a.matchNumber - b.matchNumber) || a.id.localeCompare(b.id)).map(match => (
                                     <div key={match.id} className="relative">
                                         {isOrganizer ? (
                                             <MatchCard
                                                 match={match}
+                                                label={match.groupId ? `${match.groupId}.R${round}.M${match.matchNumber}` : `R${round}.M${match.matchNumber}`}
                                                 isOrganizer={isOrganizer}
                                                 isProcessing={isProcessing}
                                                 expandedMatchId={expandedMatch}
                                                 onToggleExpand={toggleExpand}
                                                 onScoreChange={handleScoreChange}
                                                 onGoLive={openGoLive}
-                                                onMapVeto={openMapVeto}
+                                                onMapVeto={canUseMapVeto ? openMapVeto : undefined}
                                                 onPartyCode={openPartyCode}
                                                 onSaveScore={saveScore}
                                                 scoreDraftRef={scoreDraftRef}
@@ -136,10 +153,13 @@ const SwissGroupPanel = React.memo(({
                                         ) : (
                                             <ReadOnlyMatchCard
                                                 match={match}
+                                                label={match.groupId ? `${match.groupId}.R${round}.M${match.matchNumber}` : `R${round}.M${match.matchNumber}`}
                                                 className="w-[260px]"
                                                 onClick={() => onMatchClick?.(match)}
                                                 hasAutomatedResults={hasResultsMap[getRawId(match.id)]?.length > 0}
                                                 hasProofs={hasProofsMap[getRawId(match.id)]?.length > 0}
+                                                hoveredTeamId={hoveredTeamId}
+                                                onTeamHover={onTeamHover}
                                             />
                                         )}
                                     </div>
@@ -178,13 +198,18 @@ export const SwissView: React.FC<SwissViewProps> = ({
     isOrganizer,
     onMatchUpdate,
     tournamentId,
+    game = 'valorant',
     onByeAdvance,
     stage,
     activeFilter,
     onMatchClick,
     onMatchRoom,
     hasResultsMap,
-    hasProofsMap
+    hasProofsMap,
+    canUseMapVeto = false,
+    suppressVetoRoleSwitchPrompt = false,
+    hoveredTeamId,
+    onTeamHover
 }) => {
     const { toast } = useToast();
     const [standings, setStandings] = useState<TeamStanding[]>([]);
@@ -203,7 +228,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
     const [mapVetoOpen, setMapVetoOpen] = useState(false);
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
 
-    const { isComplete, alreadyAdvanced, progressLabel, refetch: refetchCompletion } = useStageCompletion(stageId);
+    const { isComplete, alreadyAdvanced, progressLabel } = useStageCompletion(stageId);
 
     // Helpers
     const getRawId = (id: string | number) => String(id).replace('db-', '');
@@ -270,11 +295,6 @@ export const SwissView: React.FC<SwissViewProps> = ({
     const threshold = Math.ceil((maxRounds + 1) / 2);
 
     // Finalize stage — completion is derived from match results
-    const handleRefreshCompletion = useCallback(async () => {
-        await refetchCompletion();
-        onMatchUpdate?.();
-    }, [refetchCompletion, onMatchUpdate]);
-
 
     // Handlers
     const handleGenerateNextRound = async () => {
@@ -368,7 +388,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
     // --- Match Handlers ---
     const toggleExpand = useCallback((id: string) => setExpandedMatch(p => p === id ? null : id), []);
 
-    const handleGoLive = useCallback(async (matchOverride?: BracketMatch, codeOverride?: string) => {
+    const handleGoLive = useCallback(async (matchOverride?: BracketMatch, codeOverride?: string, force = false) => {
         const match = matchOverride || goLiveMatch;
         const code = codeOverride || partyCodeInput;
 
@@ -377,20 +397,24 @@ export const SwissView: React.FC<SwissViewProps> = ({
             return;
         }
         setIsProcessing(true);
-        const r = await GraphMatchService.goLive(getRawId(match.id), code.trim());
+        const r = await GraphMatchService.goLive(
+            getRawId(match.id),
+            code.trim(),
+            force || (isOrganizer && isMatchTooEarlyForLive(match.scheduledTime)),
+        );
         setIsProcessing(false);
         if (r.success) {
-            toast({ title: '🎮 Match is LIVE!' });
+            toast({ title: 'Match is live' });
             setGoLiveDialogOpen(false);
             onMatchUpdate?.();
         } else {
             toast({ title: 'Error', description: r.error, variant: 'destructive' });
         }
-    }, [goLiveMatch, partyCodeInput, toast, onMatchUpdate]);
+    }, [goLiveMatch, partyCodeInput, toast, onMatchUpdate, isOrganizer]);
 
-    const openGoLive = useCallback((m: BracketMatch, code?: string) => {
+    const openGoLive = useCallback((m: BracketMatch, code?: string, force = false) => {
         if (code) {
-            handleGoLive(m, code);
+            handleGoLive(m, code, force);
         } else {
             setGoLiveMatch(m);
             setPartyCodeInput('');
@@ -399,9 +423,13 @@ export const SwissView: React.FC<SwissViewProps> = ({
     }, [handleGoLive]);
 
     const openMapVeto = useCallback((m: BracketMatch) => {
+        if (!canUseMapVeto) {
+            toast({ title: 'Map veto unavailable', description: 'This tournament does not use map veto.', variant: 'destructive' });
+            return;
+        }
         setMapVetoMatch(m);
         setMapVetoOpen(true);
-    }, []);
+    }, [canUseMapVeto, toast]);
 
     const openPartyCode = useCallback((m: BracketMatch) => {
         setPartyCodeMatch(m);
@@ -466,21 +494,20 @@ export const SwissView: React.FC<SwissViewProps> = ({
                 <div className="flex items-center justify-between gap-2 mb-4 relative">
                     {/* Left: Auto Advance */}
                     <div className="flex gap-2">
-                        <Button
+                        <button type="button"
                             onClick={handleAutoAdvanceByes}
-                            className="bg-amber-600 hover:bg-amber-500 text-white font-medium"
+                            className={cn(buttonVariants(), 'border-transparent bg-amber-600 hover:bg-amber-500 text-white font-medium')}
                         >
                             Auto Advance Byes
-                        </Button>
-                        <Button
-                            variant="outline"
+                        </button>
+                        <button type="button"
                             onClick={handleUndoRound}
                             disabled={currentRound <= 1 || isGenerating}
-                            className="border-red-500/20 hover:bg-red-500/10 text-red-400"
+                            className={cn(buttonVariants({ variant: 'outline' }), 'border-red-500/20 hover:bg-red-500/10 text-red-400')}
                         >
                             <Undo2 className="w-4 h-4 mr-2" />
                             Undo Round
-                        </Button>
+                        </button>
                     </div>
 
                     {/* Center: Stage Complete Indicator */}
@@ -494,24 +521,14 @@ export const SwissView: React.FC<SwissViewProps> = ({
                     {/* Right: Generate Round or Finalize Stage */}
                     <div>
                         {!isMaxRoundsReached && (
-                            <Button
+                            <button type="button"
                                 onClick={handleGenerateNextRound}
                                 disabled={!isRoundComplete || isGenerating}
-                                className="bg-indigo-600 hover:bg-indigo-500"
+                                className={cn(buttonVariants(), 'border-transparent bg-indigo-600 hover:bg-indigo-500')}
                             >
                                 <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
                                 Generate Round {currentRound + 1}
-                            </Button>
-                        )}
-                        {canFinalizeStage && !isComplete && (
-                            <Button
-                                onClick={handleRefreshCompletion}
-                                variant="outline"
-                                className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-semibold"
-                            >
-                                <RefreshCw className="w-4 h-4 mr-2" />
-                                Refresh Progress
-                            </Button>
+                            </button>
                         )}
                         {(isComplete || alreadyAdvanced) && (
                             <div className="flex items-center gap-2">
@@ -571,6 +588,10 @@ export const SwissView: React.FC<SwissViewProps> = ({
                                     onMatchRoom={onMatchRoom}
                                     hasResultsMap={hasResultsMap}
                                     hasProofsMap={hasProofsMap}
+                                    canUseMapVeto={canUseMapVeto}
+                                    suppressVetoRoleSwitchPrompt={suppressVetoRoleSwitchPrompt}
+                                    hoveredTeamId={hoveredTeamId}
+                                    onTeamHover={onTeamHover}
                                 />
                             </TabsContent>
                         );
@@ -599,6 +620,10 @@ export const SwissView: React.FC<SwissViewProps> = ({
                     onMatchRoom={onMatchRoom}
                     hasResultsMap={hasResultsMap}
                     hasProofsMap={hasProofsMap}
+                    canUseMapVeto={canUseMapVeto}
+                    suppressVetoRoleSwitchPrompt={suppressVetoRoleSwitchPrompt}
+                    hoveredTeamId={hoveredTeamId}
+                    onTeamHover={onTeamHover}
                 />
             )}
 
@@ -619,7 +644,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
                         />
                         <div className="flex gap-3">
                             <Button variant="ghost" onClick={() => setGoLiveDialogOpen(false)} className="flex-1">Cancel</Button>
-                            <Button onClick={() => handleGoLive()} disabled={isProcessing || !partyCodeInput.trim()} className="flex-1 bg-green-600 hover:bg-green-500">Go Live</Button>
+                            <SuccessButton onClick={() => handleGoLive()} disabled={isProcessing || !partyCodeInput.trim()} className="flex-1">Go Live</SuccessButton>
                         </div>
                     </div>
                 </DialogContent>
@@ -635,10 +660,33 @@ export const SwissView: React.FC<SwissViewProps> = ({
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={mapVetoOpen} onOpenChange={setMapVetoOpen}>
-                <DialogContent className="bg-slate-900/95 backdrop-blur-xl border-white/10 max-w-5xl max-h-[90vh] overflow-auto p-0">
-                    <DialogHeader className="p-4 border-b border-white/10"><DialogTitle><Swords className="w-5 h-5 inline mr-2 text-orange-500" />Map Veto</DialogTitle></DialogHeader>
-                    {mapVetoMatch && tournamentId && <MapVeto matchId={getRawId(mapVetoMatch.id)} tournamentId={tournamentId} team1Id={mapVetoMatch.team1?.id} team2Id={mapVetoMatch.team2?.id} team1Name={mapVetoMatch.team1?.name} team2Name={mapVetoMatch.team2?.name} bestOf={3} matchStatus={mapVetoMatch.status as any} onComplete={() => { setMapVetoOpen(false); onMatchUpdate?.(); }} />}
+            <Dialog open={canUseMapVeto && mapVetoOpen} onOpenChange={setMapVetoOpen}>
+                <DialogContent className="bg-[#09090b] border-zinc-800/80 max-w-[min(96vw,1280px)] h-[min(86dvh,780px)] overflow-hidden p-0 flex flex-col gap-0">
+                    <DialogHeader className="px-4 py-3 border-b border-zinc-800 bg-[#18181b] flex-shrink-0">
+                        <DialogTitle className="text-white flex items-center gap-2 text-base font-semibold">
+                            <Swords className="w-4 h-4 text-rose-500" />
+                            Map Veto
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" data-lenis-prevent>
+                        {mapVetoMatch && tournamentId && (
+                            <MapVeto
+                                matchId={getRawId(mapVetoMatch.id)}
+                                tournamentId={tournamentId}
+                                team1Id={mapVetoMatch.team1?.id}
+                                team2Id={mapVetoMatch.team2?.id}
+                                team1Name={mapVetoMatch.team1?.name}
+                                team2Name={mapVetoMatch.team2?.name}
+                                game={game}
+                                bestOf={mapVetoMatch.bestOf ?? (mapVetoMatch as any).best_of ?? stage?.best_of ?? stage?.bestOf ?? 1}
+                                matchStatus={mapVetoMatch.status as any}
+                                layout="modal"
+                                showShareLinks
+                                suppressRoleSwitchPrompt={suppressVetoRoleSwitchPrompt}
+                                onComplete={() => { setMapVetoOpen(false); onMatchUpdate?.(); }}
+                            />
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

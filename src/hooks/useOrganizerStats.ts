@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/hooks/useAuth';
 import { fetchCurrentOrganizationId } from '@/lib/currentOrganization';
+import { hasTournamentStartTimePassed } from '@/utils/tournamentStatusUtils';
 
 export interface AnalyticsData {
     totalTournaments: number;
@@ -41,9 +42,9 @@ function inferTournamentBuckets(tournaments: any[], now = new Date()) {
 
     for (const tournament of tournaments) {
         const status = tournament.status as string;
-        const started = tournament.start_date ? new Date(tournament.start_date) <= now : false;
+        const started = hasTournamentStartTimePassed(tournament.start_date, now);
 
-        if (status === 'ongoing' || (['open', 'closed', 'check_in'].includes(status) && started)) {
+        if (status === 'ongoing' || ['open', 'check_in'].includes(status)) {
             active += 1;
         } else if (['draft', 'published', 'open', 'closed', 'check_in'].includes(status) && !started) {
             upcoming += 1;

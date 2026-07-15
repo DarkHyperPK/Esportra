@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { JackButton } from '@/components/ui/JackButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -51,8 +52,8 @@ const VerificationStatus: React.FC = () => {
   const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [verifiedRoles, setVerifiedRoles] = useState<VerifiedRole[]>([]);
   const [assignedRoles, setAssignedRoles] = useState<{ role: 'organizer' | 'venue_owner'; is_active: boolean }[]>([]);
-  const [orgVerifiedByProfile, setOrgVerifiedByProfile] = useState(false);
-  const [venueVerifiedByProfile, setVenueVerifiedByProfile] = useState(false);
+  const [, setOrgVerifiedByProfile] = useState(false);
+  const [, setVenueVerifiedByProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showRequestForm, setShowRequestForm] = useState(false);
   const [requestFor, setRequestFor] = useState<'organizer' | 'venue_owner' | null>(null);
@@ -65,7 +66,7 @@ const VerificationStatus: React.FC = () => {
     }
   }, [profile?.role, currentRole, navigate]);
 
-  const fetchVerificationData = async () => {
+  const fetchVerificationData = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -95,11 +96,11 @@ const VerificationStatus: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast]);
 
   useEffect(() => {
     fetchVerificationData();
-  }, [user]);
+  }, [fetchVerificationData]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -135,10 +136,6 @@ const VerificationStatus: React.FC = () => {
     );
   };
 
-  const canRequestVerification = (role: 'organizer' | 'venue_owner') => {
-    return !hasVerifiedRole(role) && !hasPendingRequest(role);
-  };
-
   // Show admin message if they somehow reach this page
   if (profile?.role === 'admin' || currentRole === 'admin') {
     return (
@@ -149,12 +146,11 @@ const VerificationStatus: React.FC = () => {
           <p className="text-gray-400 mb-6">
             As an admin, you don't need verification. You have full access to all platform features.
           </p>
-          <Button
+          <JackButton
             onClick={() => navigate('/admin/dashboard')}
-            className="bg-white text-black hover:bg-rose-500 hover:text-white text-white"
           >
             Go to Admin Dashboard
-          </Button>
+          </JackButton>
         </div>
       </div>
     );
@@ -233,13 +229,13 @@ const VerificationStatus: React.FC = () => {
                     <p className="text-gray-400 text-sm mb-4">
                       Apply for an Organizer License to host and manage tournaments.
                     </p>
-                    <Button
+                    <JackButton
                       onClick={() => { setRequestFor('organizer'); setShowRequestForm(true); }}
-                      className="bg-white text-black hover:bg-rose-500 hover:text-white rounded-none text-white shadow-lg shadow-rose-500/20"
+                      className="w-full"
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
                       Apply for License
-                    </Button>
+                    </JackButton>
                   </div>
                 )}
               </CardContent>
@@ -282,13 +278,13 @@ const VerificationStatus: React.FC = () => {
                     <p className="text-gray-400 text-sm mb-4">
                       Apply for a Venue Owner License to list and manage gaming venues.
                     </p>
-                    <Button
+                    <JackButton
                       onClick={() => { setRequestFor('venue_owner'); setShowRequestForm(true); }}
-                      className="bg-white text-black hover:bg-rose-500 hover:text-white rounded-none text-white shadow-lg shadow-emerald-500/20"
+                      className="w-full"
                     >
                       <Briefcase className="w-4 h-4 mr-2" />
                       Apply for License
-                    </Button>
+                    </JackButton>
                   </div>
                 )}
               </CardContent>

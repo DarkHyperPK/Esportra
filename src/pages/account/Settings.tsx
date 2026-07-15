@@ -8,6 +8,8 @@ import { useLicenses } from '@/hooks/useLicenses';
 import { useRiotAccount } from '@/hooks/useRiotAccount';
 import { useSteamAccount } from '@/hooks/useSteamAccount';
 import { useVenueSearch } from '@/hooks/useVenueSearch';
+import { usePasswordChange } from '@/hooks/usePasswordChange';
+import { passwordSchema } from '@/schemas/password';
 import {
   Loader2, Copy, Check, Shield, Link2, Award, Monitor, Bell,
 } from 'lucide-react';
@@ -71,7 +73,7 @@ const NAV: NavItem[] = [
 // ─── AccountSettings ──────────────────────────────────────────────────────────
 
 export default function AccountSettings() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>('connected_accounts');
@@ -114,7 +116,7 @@ export default function AccountSettings() {
         toast({ title: 'Steam Linking Failed', description: (params.get('reason') || 'unknown').replace(/_/g, ' '), variant: 'destructive' });
       }
     }
-  }, []);
+  }, [queryClient, toast, user?.id]);
 
   const visibleNav = NAV.filter((n) => !n.venueOwnerOnly || ownsVenues);
   const activeItem = visibleNav.find((n) => n.key === activeTab) ?? visibleNav[0];
@@ -264,7 +266,7 @@ function ConnectedAccountsTab() {
             acc.connected ? (
               acc.onUnlink && (
                 <Button size="sm" variant="outline"
-                  className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 shrink-0 text-xs"
+                  className="border-white/15 text-rose-400 hover:bg-rose-500/10 shrink-0 text-xs"
                   disabled={acc.unlinking} onClick={acc.onUnlink}>
                   {acc.unlinking
                     ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -479,26 +481,28 @@ function DesktopPairingTab({ userId }: { userId: string | undefined }) {
 
 function SecurityTab() {
   const { toast } = useToast();
+  const { changePassword, isChanging } = usePasswordChange();
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const isValid = newPassword.length >= 8 && newPassword === confirmPassword;
+  const isValid = passwordSchema.safeParse(newPassword).success
+    && newPassword === confirmPassword
+    && currentPassword.length > 0;
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
-    setSubmitting(true);
-    try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
+
+    const result = await changePassword(currentPassword, newPassword);
+    if (result.isSuccess) {
       toast({ title: 'Password updated', description: 'Your password has been changed.' });
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
-    } finally {
-      setSubmitting(false);
+      return;
     }
+
+    toast({ title: 'Password not updated', description: result.message, variant: 'destructive' });
   };
 
   return (
@@ -509,6 +513,12 @@ function SecurityTab() {
           <p className="text-xs text-gray-500 mt-0.5">Must be at least 8 characters. Leave blank if you sign in with magic link.</p>
         </div>
         <form onSubmit={handleChangePassword} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-500 uppercase tracking-wide">Current Password</Label>
+            <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)}
+              className="bg-black/20 border-white/10 focus:border-rose-500/50 text-white"
+              placeholder="••••••••" autoComplete="current-password" />
+          </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-gray-500 uppercase tracking-wide">New Password</Label>
             <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
@@ -523,12 +533,12 @@ function SecurityTab() {
             {confirmPassword && newPassword !== confirmPassword && (
               <p className="text-xs text-rose-400">Passwords do not match</p>
             )}
-            {newPassword.length > 0 && newPassword.length < 8 && (
-              <p className="text-xs text-yellow-400">Must be at least 8 characters</p>
+            {newPassword.length > 0 && !passwordSchema.safeParse(newPassword).success && (
+              <p className="text-xs text-yellow-400">Use 8+ characters with uppercase, lowercase, and a number</p>
             )}
           </div>
-          <Button type="submit" disabled={!isValid || submitting} className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-40">
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Update Password'}
+          <Button type="submit" disabled={!isValid || isChanging} className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-40">
+            {isChanging ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Update Password'}
           </Button>
         </form>
       </div>

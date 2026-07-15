@@ -173,7 +173,7 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
                         <DialogTitle className="text-2xl font-bold font-heading">Edit Team Profile</DialogTitle>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto px-8 pb-8 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto overscroll-contain px-8 pb-8 custom-scrollbar" data-lenis-prevent>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
                             <div className="space-y-2">
                                 <Label>Team Name *</Label>

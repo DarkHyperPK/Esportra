@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { CancelButton, CtaButton, OutlineButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Calendar, Clock, Wand2, Save, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, Save, ChevronRight } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import type { BRRound } from '@/types/brRounds';
+import { useBRStageConfig } from '@/hooks/useBRStageConfig';
+import { getStageBRConfig } from '@/utils/brConfigResolve';
+import { usesGameOnlySchedule } from '@/utils/brLobbyPatch';
+import type { BRRound } from '@/types/brLobbies';
 import type { BRGroup } from '@/types/brGroups';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -42,6 +45,11 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
   onUpdate,
 }) => {
   const { toast } = useToast();
+  const brConfig = getStageBRConfig(stage);
+  const { apiConfig } = useBRStageConfig(stage.id);
+  const gamesModelActive = apiConfig?.gamesModelActive ?? false;
+  const gamesPerLobby = brConfig?.gamesPerLobby ?? brConfig?.gameCount ?? 6;
+  const gameOnlySchedule = usesGameOnlySchedule(gamesModelActive, gamesPerLobby);
 
   // Step state
   const [step, setStep] = useState<Step>('stage');
@@ -73,7 +81,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
       setRoundSchedules({});
       setHasRoundsConfigured(false);
     }
-  }, [open, stage.id]);
+  }, [open, stage.id, stage.starts_at, stage.ends_at]);
 
   // Load stage scheduling context as soon as the dialog opens so the stepper
   // reflects whether round-level scheduling is actually available.
@@ -102,7 +110,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
   useEffect(() => {
     if (!selectedGroupId || step !== 'rounds') return;
     setLoadingRounds(true);
-    apiClient.get<BRRound[]>(`/api/stages/${stage.id}/br/groups/${selectedGroupId}/rounds`)
+    apiClient.get<BRRound[]>(`/api/stages/${stage.id}/br/groups/${selectedGroupId}/lobbies`)
       .then(r => {
         setRounds(r);
         const schedMap: Record<string, string> = {};
@@ -146,21 +154,15 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
     }
   };
 
-  const handleAutoDistribute = () => {
-    if (!startsAt || !endsAt || rounds.length === 0) return;
-    const start = new Date(startsAt).getTime();
-    const end = new Date(endsAt).getTime();
-    if (end <= start) return;
-    const interval = (end - start) / rounds.length;
-    const newSchedules: Record<string, string> = {};
-    for (let i = 0; i < rounds.length; i++) {
-      const dt = new Date(start + interval * i);
-      newSchedules[rounds[i].id] = toLocalInput(dt.toISOString());
-    }
-    setRoundSchedules(newSchedules);
-  };
-
   const handleSaveRoundSchedules = async () => {
+    if (gameOnlySchedule) {
+      toast({
+        title: 'Use the Schedule tab',
+        description: 'Per-game start times are set on each game in the main Schedule tab.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setSavingRounds(true);
     try {
       let updated = 0;
@@ -169,7 +171,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
         const isoVal = localVal ? new Date(localVal).toISOString() : null;
         const existingVal = round.scheduled_at ? new Date(round.scheduled_at).toISOString() : null;
         if (isoVal !== existingVal) {
-          await apiClient.patch(`/api/br/rounds/${round.id}`, { scheduledAt: isoVal });
+          await apiClient.patch(`/api/br/lobbies/${round.id}`, { scheduledAt: isoVal });
           updated++;
         }
       }
@@ -272,7 +274,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
 
         {/* Step 2: Round Schedule */}
         {step === 'rounds' && (
-          <div className="px-6 py-5 space-y-4 max-h-[55vh] overflow-y-auto">
+          <div className="px-6 py-5 space-y-4 max-h-[55vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
             {/* Stage window summary */}
             {startsAt && endsAt && (
               <div className="flex items-center gap-2 text-xs text-gray-400 bg-white/[0.02] border border-white/5 px-3 py-2 rounded-lg">
@@ -303,20 +305,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
               </div>
             )}
 
-            {/* Auto-distribute button */}
-            {rounds.length > 0 && startsAt && endsAt && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAutoDistribute}
-                className="border-white/10 text-gray-300 hover:text-white text-xs"
-              >
-                <Wand2 className="w-3.5 h-3.5 mr-1.5" />
-                Auto-distribute evenly across {rounds.length} rounds
-              </Button>
-            )}
-
-            {/* Round list */}
+            {/* Lobby list */}
             {loadingRounds ? (
               <div className="space-y-2">
                 {[1, 2, 3].map(i => <div key={i} className="h-12 bg-white/5 rounded-lg animate-pulse" />)}
@@ -324,8 +313,8 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
             ) : rounds.length === 0 ? (
               <div className="text-center py-8">
                 <Clock className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">No rounds created yet</p>
-                <p className="text-xs text-gray-600 mt-1">Create rounds in the group management section first.</p>
+                <p className="text-sm text-gray-400">No lobbies created yet</p>
+                <p className="text-xs text-gray-600 mt-1">Create lobbies in the group management section first.</p>
               </div>
             ) : groups.length === 0 ? (
               <div className="text-center py-8">
@@ -338,7 +327,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
                 {rounds.map((round) => (
                   <div key={round.id} className="flex items-center gap-3 p-3 bg-white/[0.02] border border-white/5 rounded-lg">
                     <div className="w-8 h-8 rounded-md bg-white/5 border border-white/10 flex items-center justify-center text-xs font-bold text-gray-400 flex-shrink-0">
-                      R{round.round_number}
+                      L{round.round_number ?? round.wave_number}
                     </div>
                     <div className="flex-1 min-w-0">
                       <Input
@@ -369,42 +358,40 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
         <div className="px-6 py-4 border-t border-white/5 flex items-center gap-3">
           {step === 'stage' ? (
             <>
-              <Button variant="ghost" className="text-gray-400" onClick={() => onOpenChange(false)}>
+              <CancelButton type="button" onClick={() => onOpenChange(false)}>
                 Cancel
-              </Button>
+              </CancelButton>
               {hasRoundsConfigured && (
-                <Button
-                  variant="outline"
-                  className="border-white/10 text-gray-300 hover:text-white"
+                <OutlineButton type="button"
                   onClick={handleSaveAndContinue}
                   disabled={savingStage || !startsAt || !endsAt}
                 >
                   <ChevronRight className="w-3.5 h-3.5 mr-1.5" />
                   {savingStage ? 'Saving...' : 'Save & Continue'}
-                </Button>
+                </OutlineButton>
               )}
-              <Button
-                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white"
+              <CtaButton
+                className="flex-1"
                 onClick={handleSaveStageSchedule}
                 disabled={savingStage || !startsAt || !endsAt}
               >
                 <Save className="w-3.5 h-3.5 mr-1.5" />
                 {savingStage ? 'Saving...' : 'Save Stage Dates'}
-              </Button>
+              </CtaButton>
             </>
           ) : (
             <>
-              <Button variant="ghost" className="text-gray-400" onClick={() => setStep('stage')}>
+              <OutlineButton type="button" onClick={() => setStep('stage')}>
                 Back
-              </Button>
-              <Button
-                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white"
+              </OutlineButton>
+              <CtaButton
+                className="flex-1"
                 onClick={handleSaveRoundSchedules}
                 disabled={savingRounds || rounds.length === 0}
               >
                 <Save className="w-3.5 h-3.5 mr-1.5" />
                 {savingRounds ? 'Saving...' : 'Save Round Schedule'}
-              </Button>
+              </CtaButton>
             </>
           )}
         </div>

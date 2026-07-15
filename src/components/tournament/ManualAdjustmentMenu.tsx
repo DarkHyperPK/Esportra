@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -17,12 +17,13 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
+import { GhostButton } from '@/components/ui/app-buttons';
 import { MoreVertical, Award, ArrowLeftRight, RotateCcw, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { optimisticBracket } from '@/services/bracket/optimisticBracket';
+import { invalidateMatchLifecycleQueries } from '@/utils/matchLifecycleQueries';
 
 interface ManualAdjustmentMenuProps {
     matchId: string;
@@ -35,11 +36,12 @@ interface ManualAdjustmentMenuProps {
     onAdjustmentMade?: () => void;
     bestOf?: number;
     versionId?: string | null;
+    defaultOpen?: boolean;
 }
 
 type AdjustmentAction = 'walkover_team1' | 'walkover_team2' | 'swap' | 'reset';
 
-const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
+const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = React.memo(({
     matchId,
     tournamentId: _tournamentId,
     team1Id,
@@ -50,12 +52,23 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
     onAdjustmentMade,
     bestOf,
     versionId,
+    defaultOpen = false,
 }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [pendingAction, setPendingAction] = useState<AdjustmentAction | null>(null);
     const [processing, setProcessing] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+    
+    // Open on next frame if defaultOpen is true - allows component to mount first
+    useEffect(() => {
+        if (defaultOpen) {
+            requestAnimationFrame(() => {
+                setIsOpen(true);
+            });
+        }
+    }, [defaultOpen]);
 
     const actionLabels: Record<AdjustmentAction, { title: string; description: string }> = {
         walkover_team1: {
@@ -190,10 +203,10 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
 
                     await apiClient.post(`/api/matches/${rawMatchId}/reset`);
 
-                    // Invalidate relevant queries to refresh the UI
-                    await queryClient.invalidateQueries({ queryKey: ['match-result-reports', rawMatchId] });
-                    await queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
-                    await queryClient.invalidateQueries({ queryKey: ['captain-all-matches'] });
+                    invalidateMatchLifecycleQueries(queryClient, {
+                        matchId: rawMatchId,
+                        versionId: versionId ?? undefined,
+                    });
 
                     toast({ title: 'Match Reset', description: 'Match data cleared and reset to pending.' });
                     break;
@@ -223,15 +236,14 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
 
     return (
         <>
-            <DropdownMenu>
+            <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
                 <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="ghost"
+                    <GhostButton
                         size="sm"
-                        className="h-8 w-8 p-0 hover:bg-zinc-800"
+                        className="h-8 w-8 p-0"
                     >
                         <MoreVertical className="h-4 w-4" />
-                    </Button>
+                    </GhostButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                     align="end"
@@ -316,6 +328,6 @@ const ManualAdjustmentMenu: React.FC<ManualAdjustmentMenuProps> = ({
             </AlertDialog>
         </>
     );
-};
+});
 
 export default ManualAdjustmentMenu;

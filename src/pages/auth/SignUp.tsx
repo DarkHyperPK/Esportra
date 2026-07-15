@@ -9,12 +9,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Button, AccentButton } from "@/components/ui/button";
 import { AlertCircle, Eye, EyeOff, Loader2, CheckCircle, ArrowRight, Check, X } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 import AuthLayout from "@/components/auth/AuthLayout";
 import { Checkbox } from "@/components/ui/checkbox";
+import { CountryCombobox } from "@/components/profile/CountryCombobox";
+import { validateCountryCode } from "@/utils/countryValidation";
+import { validateDateOfBirth } from "@/utils/dobValidation";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -28,16 +31,18 @@ const formSchema = z.object({
   fullName: z.string().min(2, {
     message: "Full name must be at least 2 characters.",
   }),
-  dateOfBirth: z.string().min(1, {
-    message: "Date of birth is required.",
-  }).refine((val) => {
-    const birth = new Date(val);
-    const now = new Date();
-    let age = now.getFullYear() - birth.getFullYear();
-    const m = now.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
-    return age >= 13;
-  }, { message: "You must be at least 13 years old to sign up." }),
+  dateOfBirth: z.string().superRefine((val, ctx) => {
+    const result = validateDateOfBirth(val);
+    if (!result.valid) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error ?? "Invalid date of birth." });
+    }
+  }),
+  countryCode: z.string().superRefine((val, ctx) => {
+    const result = validateCountryCode(val);
+    if (!result.valid) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: result.error ?? "Invalid country." });
+    }
+  }),
   password: z.string().min(8, {
     message: "Password must be at least 8 characters.",
   }),
@@ -80,6 +85,7 @@ const SignUp = () => {
       username: "",
       fullName: "",
       dateOfBirth: "",
+      countryCode: "",
       password: "",
       acceptTerms: false,
     },
@@ -115,7 +121,8 @@ const SignUp = () => {
         values.username,
         values.fullName,
         'casual',
-        values.dateOfBirth
+        values.dateOfBirth,
+        values.countryCode,
       );
       // Toast and navigation are handled by useAuthActions.signUp
     } catch (error: any) {
@@ -239,6 +246,24 @@ const SignUp = () => {
                     max={new Date().toISOString().split('T')[0]}
                     className="h-11 bg-zinc-900/50 border-zinc-800 text-white placeholder:text-zinc-500 focus:border-rose-500 focus:ring-rose-500/20 [color-scheme:dark]"
                     {...field}
+                  />
+                </FormControl>
+                <FormMessage className="text-red-400" />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="countryCode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white/70">Country</FormLabel>
+                <FormControl>
+                  <CountryCombobox
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select your country"
                   />
                 </FormControl>
                 <FormMessage className="text-red-400" />
@@ -379,9 +404,9 @@ const SignUp = () => {
 
       {/* Social Login Buttons (Visual Only) */}
       <div className="grid grid-cols-2 gap-3">
-        <Button
+        <AccentButton
           type="button"
-          className="h-11 bg-white hover:bg-gray-200 text-black border-none"
+          className="h-11 border-none"
           onClick={() => signInWithGoogle()}
           disabled={loading}
         >
@@ -392,7 +417,7 @@ const SignUp = () => {
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
           </svg>
           Google
-        </Button>
+        </AccentButton>
         <Button
           type="button"
           className="h-11 bg-[#5865F2] hover:bg-[#4752C4] text-white border-none"

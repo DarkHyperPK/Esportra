@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { apiClient } from "@/lib/apiClient";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { User, Share2, Loader2, Save, Edit, Globe, MapPin } from "lucide-react";
+import { User, Share2, Loader2, Save, Edit, Globe, MapPin, ShieldCheck } from "lucide-react";
 import AvatarUploader from "./AvatarUploader";
 import { getCountryFlag, detectUserCountry, getCountryName, countries, getCountryFlagUrl } from "@/utils/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,6 +33,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
         staleTime: 1000 * 60 * 5,
     });
     const teamName = teamQuery.data?.[0]?.name ?? null;
+    const teamId = teamQuery.data?.[0]?.id ?? null;
 
 
     // Local State for Form Fields
@@ -53,6 +54,24 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
         steam_tag: "",
         country_code: ""
     });
+
+    const handleAutodetect = useCallback(async () => {
+        setDetecting(true);
+        setDetectionFailed(false);
+        try {
+            const detected = await detectUserCountry();
+            if (detected) {
+                setFormData(prev => ({ ...prev, country_code: detected }));
+                setDetectionFailed(false);
+            } else {
+                setDetectionFailed(true);
+            }
+        } catch {
+            setDetectionFailed(true);
+        } finally {
+            setDetecting(false);
+        }
+    }, []);
 
     // Initialize form data when profile loads or dialog opens
     useEffect(() => {
@@ -76,29 +95,11 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
             });
 
             // Autodetect if empty
-            if (!profile.country_code && open && !formData.country_code) {
+            if (!profile.country_code && !formData.country_code) {
                 handleAutodetect();
             }
         }
-    }, [profile, open]);
-
-    const handleAutodetect = async () => {
-        setDetecting(true);
-        setDetectionFailed(false);
-        try {
-            const detected = await detectUserCountry();
-            if (detected) {
-                setFormData(prev => ({ ...prev, country_code: detected }));
-                setDetectionFailed(false);
-            } else {
-                setDetectionFailed(true);
-            }
-        } catch (e) {
-            setDetectionFailed(true);
-        } finally {
-            setDetecting(false);
-        }
-    };
+    }, [profile, open, formData.country_code, handleAutodetect]);
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -150,7 +151,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto overscroll-contain" data-lenis-prevent>
                     <Tabs defaultValue="general" className="flex flex-col h-full">
                         <div className="px-6 pt-4">
                             <TabsList className="w-full bg-zinc-900/50 border border-zinc-800 p-1">
@@ -179,12 +180,12 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                                 <div className="space-y-4 border-t border-zinc-800 pt-6">
                                     <Label>Player Card Picture</Label>
                                     <div className="flex items-center gap-4 p-4 bg-zinc-900/30 rounded-lg border border-zinc-800">
-                                        {teamName ? (
+                                        {teamName && teamId ? (
                                             <AvatarUploader
                                                 value={formData.card_image_url}
                                                 onChange={(url) => handleChange('card_image_url', url)}
                                                 size="lg"
-                                                uploadPath={profile?.id ? `Player-cards/${teamName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}/${profile.id}_${Date.now()}_card.png` : undefined}
+                                                teamId={teamId}
                                             />
                                         ) : (
                                             <div className="w-24 h-24 bg-zinc-900/50 rounded-lg flex items-center justify-center border-2 border-dashed border-zinc-700 opacity-50">

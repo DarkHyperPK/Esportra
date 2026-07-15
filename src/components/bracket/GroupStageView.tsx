@@ -7,15 +7,16 @@ import { BracketNode } from '@/types/bracket-graph';
 import { BracketMatch } from '@/types/bracketTypes';
 import { MatchCard } from '@/pages/tournaments/brackets/MatchCard';
 import { ReadOnlyMatchCard } from './ReadOnlyMatchCard';
-import { Button } from '@/components/ui/button';
+import { Button, SuccessButton } from '@/components/ui/button';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { Check, Copy, Gamepad2, Swords, RefreshCw } from 'lucide-react';
+import { Check, Copy, Gamepad2, LayoutGrid, List, Swords } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { GraphMatchService } from '@/services/bracket/GraphMatchService';
 import { MapVeto } from '@/components/tournament/MapVeto';
 import { StageProgressChip } from '@/components/tournament/StageProgressChip';
 import { useStageCompletion } from '@/hooks/useStageCompletion';
+import { isMatchTooEarlyForLive } from '@/lib/timeUtils';
 
 interface GroupStageViewProps {
     stageId: string;
@@ -25,6 +26,7 @@ interface GroupStageViewProps {
     isOrganizer?: boolean;
     onMatchUpdate?: () => void;
     tournamentId?: string;
+    game?: string;
     onByeAdvance?: (matchId: string) => void;
     stage?: any;
     /** Pre-fetched teams data from parent - avoids duplicate fetch */
@@ -33,19 +35,34 @@ interface GroupStageViewProps {
     onMatchRoom?: (match: BracketMatch) => void;
     hasResultsMap?: Record<string, any[]>;
     hasProofsMap?: Record<string, string[]>;
+    canUseMapVeto?: boolean;
+    suppressVetoRoleSwitchPrompt?: boolean;
+    hoveredTeamId?: string | null;
+    onTeamHover?: (teamId: string | null) => void;
+    topRightAction?: React.ReactNode;
 }
 
 // Helpers
 const getRawId = (id: string | number) => String(id).replace(/^(db-|wb-|lb-|source-)/, '');
 const isDbMatch = (id: string | number) => String(id).startsWith('db-');
+const resolveNodeSeed = (node: BracketNode, slot: 1 | 2): number | undefined => {
+    const snakeSeed = slot === 1 ? (node as any).team1_seed : (node as any).team2_seed;
+    if (typeof snakeSeed === 'number' && Number.isFinite(snakeSeed) && snakeSeed > 0) return snakeSeed;
+
+    const camelSeed = slot === 1 ? (node as any).team1Seed : (node as any).team2Seed;
+    if (typeof camelSeed === 'number' && Number.isFinite(camelSeed) && camelSeed > 0) return camelSeed;
+
+    // No fallback - return undefined if seed is missing
+    return undefined;
+};
 
 // Convert BracketNode to BracketMatch for MatchCard compatibility
 const nodeToMatch = (node: BracketNode): BracketMatch => ({
     id: `db-${node.id}`,
     round: (node.round_index || 0) + 1,
     matchNumber: node.match_number || 0,
-    team1: node.team1_id ? { id: node.team1_id, name: (node as any).team1_name || 'Team 1', seed: 1 } : null,
-    team2: node.team2_id ? { id: node.team2_id, name: (node as any).team2_name || 'Team 2', seed: 2 } : null,
+    team1: node.team1_id ? { id: node.team1_id, name: (node as any).team1_name || 'Team 1', seed: resolveNodeSeed(node, 1) } : null,
+    team2: node.team2_id ? { id: node.team2_id, name: (node as any).team2_name || 'Team 2', seed: resolveNodeSeed(node, 2) } : null,
     winner: null,
     score: null,
     team1_score: (node as any).team1_score ?? null,
@@ -80,7 +97,13 @@ const GroupPanel = React.memo(({
     onMatchClick,
     onMatchRoom,
     hasResultsMap = {},
-    hasProofsMap = {}
+    hasProofsMap = {},
+    canUseMapVeto = false,
+    suppressVetoRoleSwitchPrompt: _suppressVetoRoleSwitchPrompt = false,
+    hoveredTeamId,
+    onTeamHover,
+    activeRound,
+    viewMode
 }: {
     groupMatches: BracketMatch[],
     groupStandings: TeamStanding[],
@@ -89,7 +112,7 @@ const GroupPanel = React.memo(({
     expandedMatch: string | null,
     toggleExpand: (id: string) => void,
     handleScoreChange: (id: string, t: 't1' | 't2', v: string) => void,
-    openGoLive: (m: BracketMatch) => void,
+    openGoLive: (m: BracketMatch, code?: string, force?: boolean) => void,
     openMapVeto: (m: BracketMatch) => void,
     openPartyCode: (m: BracketMatch) => void,
     saveScore: (m: BracketMatch) => void,
@@ -99,7 +122,13 @@ const GroupPanel = React.memo(({
     onMatchClick?: (match: BracketMatch) => void,
     onMatchRoom?: (match: BracketMatch) => void,
     hasResultsMap?: Record<string, any[]>,
-    hasProofsMap?: Record<string, string[]>
+    hasProofsMap?: Record<string, string[]>,
+    canUseMapVeto?: boolean,
+    suppressVetoRoleSwitchPrompt?: boolean,
+    hoveredTeamId?: string | null,
+    onTeamHover?: (teamId: string | null) => void,
+    activeRound?: number | 'all',
+    viewMode: 'overview' | 'matches'
 }) => {
     // Group matches by round
     const matchesByRound = useMemo(() => {
@@ -113,18 +142,21 @@ const GroupPanel = React.memo(({
     }, [groupMatches]);
 
     const rounds = Object.keys(matchesByRound).map(Number).sort((a, b) => a - b);
+    const visibleRounds = activeRound === 'all' || activeRound === undefined
+        ? rounds
+        : rounds.filter(round => round === activeRound);
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className={viewMode === 'matches' ? 'grid grid-cols-1 gap-6' : 'grid grid-cols-1 lg:grid-cols-12 gap-6'}>
             {/* Left Column: Matches by Round */}
-            <div className="lg:col-span-7 space-y-6">
+            <div className={viewMode === 'matches' ? 'space-y-6' : 'lg:col-span-7 space-y-6'}>
                 <div className="flex justify-between items-center">
                     <h3 className="text-lg font-medium text-white">Matches</h3>
                     <span className="text-sm text-zinc-500">{rounds.length} Round{rounds.length !== 1 ? 's' : ''}</span>
                 </div>
 
-                <div className="space-y-6 max-h-[700px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
-                    {rounds.map(round => (
+                <div className="space-y-6 max-h-[700px] overflow-y-auto overscroll-contain pr-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent" data-lenis-prevent>
+                    {visibleRounds.map(round => (
                         <Card key={round} className="bg-zinc-900/30 border-white/10">
                             <CardHeader className="py-3 px-4 border-b border-white/5">
                                 <CardTitle className="text-sm font-medium text-zinc-300">
@@ -132,9 +164,12 @@ const GroupPanel = React.memo(({
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="pt-4 pb-4">
-                                <div className="space-y-3">
+                                <div
+                                    className={viewMode === 'matches' ? 'grid justify-start gap-3' : 'space-y-3'}
+                                    style={viewMode === 'matches' ? { gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 320px))' } : undefined}
+                                >
                                     {matchesByRound[round].sort((a, b) => (a.matchNumber - b.matchNumber)).map(match => (
-                                        <div key={match.id} className="relative">
+                                        <div key={match.id} className="relative min-w-0">
                                             {isOrganizer ? (
                                                 <MatchCard
                                                     match={match}
@@ -144,7 +179,7 @@ const GroupPanel = React.memo(({
                                                     onToggleExpand={toggleExpand}
                                                     onScoreChange={handleScoreChange}
                                                     onGoLive={openGoLive}
-                                                    onMapVeto={openMapVeto}
+                                                    onMapVeto={canUseMapVeto ? openMapVeto : undefined}
                                                     onPartyCode={openPartyCode}
                                                     onSaveScore={saveScore}
                                                     scoreDraftRef={scoreDraftRef}
@@ -154,10 +189,12 @@ const GroupPanel = React.memo(({
                                             ) : (
                                                 <ReadOnlyMatchCard
                                                     match={match}
-                                                    className="w-[260px]"
+                                                    className={viewMode === 'matches' ? 'w-full' : 'w-[260px]'}
                                                     onClick={() => onMatchClick?.(match)}
                                                     hasAutomatedResults={hasResultsMap[getRawId(match.id)]?.length > 0}
                                                     hasProofs={hasProofsMap[getRawId(match.id)]?.length > 0}
+                                                    hoveredTeamId={hoveredTeamId}
+                                                    onTeamHover={onTeamHover}
                                                 />
                                             )}
                                         </div>
@@ -174,18 +211,25 @@ const GroupPanel = React.memo(({
                     </div>
 
                 )}
+                {groupMatches.length > 0 && visibleRounds.length === 0 && (
+                    <div className="text-center p-12 text-zinc-500 bg-zinc-900/30 rounded-xl border border-white/5 border-dashed">
+                        No matches found for this round.
+                    </div>
+                )}
             </div>
 
             {/* Right Column: Standings */}
-            <div className="lg:col-span-5">
-                <div className="sticky top-6">
-                    <StandingsTable
-                        standings={groupStandings}
-                        title="Group Standings"
-                        advancementCount={advancementCount}
-                    />
+            {viewMode === 'overview' && (
+                <div className="lg:col-span-5">
+                    <div className="sticky top-6">
+                        <StandingsTable
+                            standings={groupStandings}
+                            title="Group Standings"
+                            advancementCount={advancementCount}
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 });
@@ -198,13 +242,19 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
     isOrganizer = false,
     onMatchUpdate,
     tournamentId,
+    game = 'valorant',
     onByeAdvance,
     stage: _stage,
     teamsMap: propTeamsMap,
     onMatchClick,
     onMatchRoom,
     hasResultsMap,
-    hasProofsMap
+    hasProofsMap,
+    canUseMapVeto = false,
+    suppressVetoRoleSwitchPrompt = false,
+    hoveredTeamId,
+    onTeamHover,
+    topRightAction
 }) => {
     const { toast } = useToast();
     const [standingsByGroup, setStandingsByGroup] = useState<Record<string, TeamStanding[]>>({});
@@ -225,7 +275,9 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
     const [mapVetoOpen, setMapVetoOpen] = useState(false);
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
 
-    const { isComplete, alreadyAdvanced, progressLabel, refetch: refetchCompletion } = useStageCompletion(stageId);
+    const { isComplete, alreadyAdvanced, progressLabel } = useStageCompletion(stageId);
+    const [activeRoundFilter, setActiveRoundFilter] = useState<number | 'all'>('all');
+    const [viewMode, setViewMode] = useState<'overview' | 'matches'>('overview');
 
     // Use prop teamsMap if provided (from parent), otherwise use local state
     const teamsMap = propTeamsMap || localTeamsMap;
@@ -275,13 +327,13 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
             team1: node.team1_id ? {
                 id: node.team1_id,
                 name: team1?.name || (node as any).team1_name || 'TBD',
-                seed: 1,
+                seed: resolveNodeSeed(node, 1),
                 logo_url: team1?.logo_url || (node as any).team1_logo
             } : null,
             team2: node.team2_id ? {
                 id: node.team2_id,
                 name: team2?.name || (node as any).team2_name || 'TBD',
-                seed: 2,
+                seed: resolveNodeSeed(node, 2),
                 logo_url: team2?.logo_url || (node as any).team2_logo
             } : null,
             winner: null,
@@ -330,10 +382,21 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
         return acc;
     }, {} as Record<string, BracketMatch[]>), [matches]);
 
+    const activeGroupRounds = useMemo(() => {
+        const groupMatches = matchesByGroup[activeGroup] || [];
+        return Array.from(new Set(groupMatches.map(match => match.round || 1))).sort((a, b) => a - b);
+    }, [activeGroup, matchesByGroup]);
+
+    useEffect(() => {
+        if (activeRoundFilter !== 'all' && !activeGroupRounds.includes(activeRoundFilter)) {
+            setActiveRoundFilter('all');
+        }
+    }, [activeGroupRounds, activeRoundFilter]);
+
     // --- Match Handlers (matching SwissView) ---
     const toggleExpand = useCallback((id: string) => setExpandedMatch(p => p === id ? null : id), []);
 
-    const handleGoLive = useCallback(async (matchOverride?: BracketMatch, codeOverride?: string) => {
+    const handleGoLive = useCallback(async (matchOverride?: BracketMatch, codeOverride?: string, force = false) => {
         const match = matchOverride || goLiveMatch;
         const code = codeOverride || partyCodeInput;
 
@@ -342,20 +405,24 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
             return;
         }
         setIsProcessing(true);
-        const r = await GraphMatchService.goLive(getRawId(match.id), code.trim());
+        const r = await GraphMatchService.goLive(
+            getRawId(match.id),
+            code.trim(),
+            force || (isOrganizer && isMatchTooEarlyForLive(match.scheduledTime)),
+        );
         setIsProcessing(false);
         if (r.success) {
-            toast({ title: '🎮 Match is LIVE!' });
+            toast({ title: 'Match is live' });
             setGoLiveDialogOpen(false);
             onMatchUpdate?.();
         } else {
             toast({ title: 'Error', description: r.error, variant: 'destructive' });
         }
-    }, [goLiveMatch, partyCodeInput, toast, onMatchUpdate]);
+    }, [goLiveMatch, partyCodeInput, toast, onMatchUpdate, isOrganizer]);
 
-    const openGoLive = useCallback((m: BracketMatch, code?: string) => {
+    const openGoLive = useCallback((m: BracketMatch, code?: string, force = false) => {
         if (code) {
-            handleGoLive(m, code);
+            handleGoLive(m, code, force);
         } else {
             setGoLiveMatch(m);
             setPartyCodeInput('');
@@ -364,9 +431,13 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
     }, [handleGoLive]);
 
     const openMapVeto = useCallback((m: BracketMatch) => {
+        if (!canUseMapVeto) {
+            toast({ title: 'Map veto unavailable', description: 'This tournament does not use map veto.', variant: 'destructive' });
+            return;
+        }
         setMapVetoMatch(m);
         setMapVetoOpen(true);
-    }, []);
+    }, [canUseMapVeto, toast]);
 
     const openPartyCode = useCallback((m: BracketMatch) => {
         setPartyCodeMatch(m);
@@ -424,13 +495,6 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
         }
     }, [toast, onMatchUpdate]);
 
-    const isAllMatchesComplete = matches.length > 0 && matches.every(m => m.status === 'completed');
-
-    const handleRefreshCompletion = useCallback(async () => {
-        await refetchCompletion();
-        onMatchUpdate?.();
-    }, [refetchCompletion, onMatchUpdate]);
-
     const handleAutoAdvanceByes = async () => {
         if (!versionId) return;
 
@@ -470,57 +534,100 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
 
     return (
         <div className="space-y-6">
-            {/* Controls */}
-            {isOrganizer && (
-                <div className="flex items-center gap-2 mb-4">
-                    <Button
-                        onClick={handleAutoAdvanceByes}
-                        className="bg-amber-600 hover:bg-amber-500 text-white font-medium"
-                    >
-                        Auto Advance Byes
-                    </Button>
-                    {isAllMatchesComplete && !isComplete && (
-                        <Button
-                            onClick={handleRefreshCompletion}
-                            variant="outline"
-                            className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 font-medium"
+            <Tabs value={activeGroup} onValueChange={setActiveGroup}>
+                <div className="flex flex-wrap items-center gap-2">
+                        <TabsList className="h-10 bg-[#121214] border border-white/10 p-1 rounded-xl">
+                            {groups.map(group => (
+                                <TabsTrigger
+                                    key={group}
+                                    value={group}
+                                    className="h-8 data-[state=active]:bg-rose-500 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors rounded-lg px-3.5"
+                                >
+                                    {group}
+                                </TabsTrigger>
+                            ))}
+                    </TabsList>
+                    {activeGroupRounds.length > 1 && (
+                        <div className="flex h-10 items-center gap-1 rounded-xl border border-white/10 bg-zinc-950/80 p-1">
+                            {(['all', ...activeGroupRounds] as Array<number | 'all'>).map(round => {
+                                const active = activeRoundFilter === round;
+                                return (
+                                    <button
+                                        key={round}
+                                        type="button"
+                                        onClick={() => setActiveRoundFilter(round)}
+                                        className={`h-8 min-w-[82px] shrink-0 rounded-lg px-3.5 text-sm font-medium transition-colors ${
+                                            active
+                                                ? 'bg-rose-500 text-white'
+                                                : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+                                        }`}
+                                    >
+                                        {round === 'all' ? 'All Matches' : `Round ${round}`}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+                    <div className="flex h-10 items-center gap-1 rounded-xl border border-white/10 bg-zinc-950/80 p-1">
+                        <button
+                            type="button"
+                            onClick={() => setViewMode('overview')}
+                            className={`inline-flex h-8 items-center gap-2 rounded-lg px-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+                                viewMode === 'overview'
+                                    ? 'bg-rose-500 text-white'
+                                    : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+                            }`}
                         >
-                            <RefreshCw className="w-4 h-4 mr-2" />
-                            Refresh Progress
-                        </Button>
+                            <LayoutGrid className="h-3.5 w-3.5" />
+                            Overview
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setViewMode('matches')}
+                            className={`inline-flex h-8 items-center gap-2 rounded-lg px-3 text-xs font-bold uppercase tracking-wider transition-colors ${
+                                viewMode === 'matches'
+                                    ? 'bg-rose-500 text-white'
+                                    : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+                            }`}
+                        >
+                            <List className="h-3.5 w-3.5" />
+                            Matches
+                        </button>
+                    </div>
+                    {isOrganizer && (
+                        <button
+                            type="button"
+                            onClick={handleAutoAdvanceByes}
+                            disabled={!versionId}
+                            className="inline-flex h-10 items-center justify-center whitespace-nowrap rounded-xl border border-amber-500/30 bg-amber-600 px-3.5 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Auto Advance Byes
+                        </button>
                     )}
                     {(isComplete || alreadyAdvanced) && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex h-10 items-center gap-2">
                             <StageProgressChip progressLabel={progressLabel} />
                             {isComplete && !alreadyAdvanced && (
                                 <span className="text-xs text-gray-400">Advance teams from the Stages tab.</span>
                             )}
                         </div>
                     )}
+                    {topRightAction && (
+                        <div className="ml-auto flex h-10 items-center">
+                            {topRightAction}
+                        </div>
+                    )}
                 </div>
-            )}
-
-            <Tabs value={activeGroup} onValueChange={setActiveGroup}>
-                <TabsList className="bg-[#121214] border border-white/10 p-1 rounded-xl">
-                    {groups.map(group => (
-                        <TabsTrigger
-                            key={group}
-                            value={group}
-                            className="data-[state=active]:bg-rose-500 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors rounded-lg px-4"
-                        >
-                            {group}
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
 
                 {groups.map((group, groupIndex) => {
                     const groupMatches = matchesByGroup[group] || [];
                     const groupStandings = standingsByGroup[group] || [];
                     const groupCount = groups.length || 1;
-                    // Distribute advancement slots fairly: first (remainder) groups get one extra
                     const baseAdv = advancementCount ? Math.floor(advancementCount / groupCount) : 0;
                     const remainder = advancementCount ? advancementCount % groupCount : 0;
-                    const perGroupAdvancement = advancementCount ? baseAdv + (groupIndex < remainder ? 1 : 0) : undefined;
+                    const perGroupAdvancement = advancementCount
+                        ? baseAdv + (groupIndex < remainder ? 1 : 0)
+                        : undefined;
 
                     return (
                         <TabsContent key={group} value={group} className="mt-6">
@@ -543,6 +650,12 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                                 onMatchRoom={onMatchRoom}
                                 hasResultsMap={hasResultsMap}
                                 hasProofsMap={hasProofsMap}
+                                canUseMapVeto={canUseMapVeto}
+                                suppressVetoRoleSwitchPrompt={suppressVetoRoleSwitchPrompt}
+                                hoveredTeamId={hoveredTeamId}
+                                onTeamHover={onTeamHover}
+                                activeRound={activeRoundFilter}
+                                viewMode={viewMode}
                             />
                         </TabsContent>
                     );
@@ -566,7 +679,7 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                         />
                         <div className="flex gap-3">
                             <Button variant="ghost" onClick={() => setGoLiveDialogOpen(false)} className="flex-1">Cancel</Button>
-                            <Button onClick={() => handleGoLive()} disabled={isProcessing || !partyCodeInput.trim()} className="flex-1 bg-green-600 hover:bg-green-500">Go Live</Button>
+                            <SuccessButton onClick={() => handleGoLive()} disabled={isProcessing || !partyCodeInput.trim()} className="flex-1">Go Live</SuccessButton>
                         </div>
                     </div>
                 </DialogContent>
@@ -582,10 +695,33 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={mapVetoOpen} onOpenChange={setMapVetoOpen}>
-                <DialogContent className="bg-slate-900/95 backdrop-blur-xl border-white/10 max-w-5xl max-h-[90vh] overflow-auto p-0">
-                    <DialogHeader className="p-4 border-b border-white/10"><DialogTitle><Swords className="w-5 h-5 inline mr-2 text-orange-500" />Map Veto</DialogTitle></DialogHeader>
-                    {mapVetoMatch && tournamentId && <MapVeto matchId={getRawId(mapVetoMatch.id)} tournamentId={tournamentId} team1Id={mapVetoMatch.team1?.id} team2Id={mapVetoMatch.team2?.id} team1Name={mapVetoMatch.team1?.name} team2Name={mapVetoMatch.team2?.name} bestOf={3} matchStatus={mapVetoMatch.status as any} onComplete={() => { setMapVetoOpen(false); onMatchUpdate?.(); }} />}
+            <Dialog open={canUseMapVeto && mapVetoOpen} onOpenChange={setMapVetoOpen}>
+                <DialogContent className="bg-[#09090b] border-zinc-800/80 max-w-[min(96vw,1280px)] h-[min(86dvh,780px)] overflow-hidden p-0 flex flex-col gap-0">
+                    <DialogHeader className="px-4 py-3 border-b border-zinc-800 bg-[#18181b] flex-shrink-0">
+                        <DialogTitle className="text-white flex items-center gap-2 text-base font-semibold">
+                            <Swords className="w-4 h-4 text-rose-500" />
+                            Map Veto
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain" data-lenis-prevent>
+                        {mapVetoMatch && tournamentId && (
+                            <MapVeto
+                                matchId={getRawId(mapVetoMatch.id)}
+                                tournamentId={tournamentId}
+                                team1Id={mapVetoMatch.team1?.id}
+                                team2Id={mapVetoMatch.team2?.id}
+                                team1Name={mapVetoMatch.team1?.name}
+                                team2Name={mapVetoMatch.team2?.name}
+                                game={game}
+                                bestOf={mapVetoMatch.bestOf ?? (mapVetoMatch as any).best_of ?? _stage?.best_of ?? _stage?.bestOf ?? 1}
+                                matchStatus={mapVetoMatch.status as any}
+                                layout="modal"
+                                showShareLinks
+                                suppressRoleSwitchPrompt={suppressVetoRoleSwitchPrompt}
+                                onComplete={() => { setMapVetoOpen(false); onMatchUpdate?.(); }}
+                            />
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

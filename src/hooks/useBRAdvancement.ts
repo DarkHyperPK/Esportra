@@ -35,15 +35,23 @@ interface AdvanceExecuteResponse {
   finals_group_id: string;
 }
 
+interface AdvanceRequest {
+  mode?: 'top_n_per_group' | 'top_n_per_lobby' | 'top_n_overall' | 'threshold' | 'none';
+  teamsPerGroup?: number;
+  perLobby?: number;
+  overall?: number;
+  threshold?: number;
+}
+
 export const useBRAdvancement = (stageId: string | null) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const preview = useMutation({
-    mutationFn: (teamsPerGroup?: number) =>
+    mutationFn: (body: AdvanceRequest = {}) =>
       apiClient.post<AdvancePreviewResponse>(
         `/api/stages/${stageId}/br/advance?preview=true`,
-        teamsPerGroup ? { teamsPerGroup } : {}
+        body,
       ),
     onError: (error: Error) => {
       toast({ title: 'Preview failed', description: extractErrorMessage(error), variant: 'destructive' });
@@ -51,15 +59,16 @@ export const useBRAdvancement = (stageId: string | null) => {
   });
 
   const execute = useMutation({
-    mutationFn: (teamsPerGroup?: number) =>
+    mutationFn: (body: AdvanceRequest = {}) =>
       apiClient.post<AdvanceExecuteResponse>(
         `/api/stages/${stageId}/br/advance?preview=false`,
-        teamsPerGroup ? { teamsPerGroup } : {}
+        body,
       ),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['br-groups'] });
-      queryClient.invalidateQueries({ queryKey: ['br-rounds'] });
+      queryClient.invalidateQueries({ queryKey: ['br-lobbies'] });
       queryClient.invalidateQueries({ queryKey: ['br-group-teams-batch'] });
+      queryClient.invalidateQueries({ queryKey: ['br-stage-leaderboard'] });
       toast({ title: `${data.advanced} teams advanced to ${data.to_stage}` });
     },
     onError: (error: Error) => {

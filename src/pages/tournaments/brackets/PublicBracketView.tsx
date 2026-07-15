@@ -7,10 +7,11 @@ import { useState } from 'react';
 import { BracketSidebarFilter, type FilterState } from '@/components/bracket/BracketSidebarFilter';
 import { BracketRenderer } from '@/components/bracket/BracketRenderer';
 import { BracketExporter } from '@/components/bracket/BracketExporter';
-import { Download, AlertCircle, Maximize2 } from 'lucide-react';
+import { Download, AlertCircle, Maximize2, Network, List } from 'lucide-react';
 import { SwissView } from '@/components/bracket/SwissView';
 import { GroupStageView } from '@/components/bracket/GroupStageView';
-import { MatchResultsDialog } from './dialogs/MatchResultsDialog';
+import { ReadOnlyMatchCard } from '@/components/bracket/ReadOnlyMatchCard';
+import { PublicMatchDetailsDialog } from './dialogs/PublicMatchDetailsDialog';
 import { cn } from '@/lib/utils';
 import type { BracketMatch } from '@/types/bracketTypes';
 import { CommandButton, CommandSegmentedButton } from '@/components/management/CommandSurface';
@@ -46,6 +47,8 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
     className,
 }) => {
     const [activeFilter, setActiveFilter] = useState<FilterState>({ type: 'all' });
+    const [viewMode, setViewMode] = useState<'bracket' | 'matches'>('bracket');
+    const [hoveredTeamId, setHoveredTeamId] = useState<string | null>(null);
     const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
     const [resultsDialogMatch, setResultsDialogMatch] = useState<BracketMatch | null>(null);
     const bracketScroll = useBracketWheelScroll<HTMLDivElement>();
@@ -165,11 +168,41 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
         return 'elimination';
     }, [matches]);
     const shouldDisableMotion = disableMotion ?? (mode !== 'fullscreen' || matches.length > 12);
+    const getRawId = (id: string | number) => String(id).replace(/^(db-|wb-|lb-|source-)/, '');
 
     // Derived stage object needed for config (e.g. max swiss rounds)
     const currentStage = useMemo(() => {
         return stages?.find(s => s.id === selectedStageId);
     }, [stages, selectedStageId]);
+
+    const matchListGroups = useMemo(() => {
+        const isMatchVisible = (match: BracketMatch) => {
+            if (activeFilter.type === 'all') return true;
+            if (activeFilter.type === 'winners') return (!match.bracketSide || match.bracketSide === 'winners') && match.round === activeFilter.round;
+            if (activeFilter.type === 'losers') return match.bracketSide === 'losers' && match.round === activeFilter.round;
+            if (activeFilter.type === 'final') return match.bracketSide === 'final';
+            return true;
+        };
+
+        const grouped = new Map<string, BracketMatch[]>();
+        const sorted = [...matches]
+            .filter(isMatchVisible)
+            .sort((a, b) => {
+                const sideOrder = (side?: string) => side === 'winners' ? 0 : side === 'losers' ? 1 : side === 'final' ? 2 : 0;
+                return sideOrder(a.bracketSide) - sideOrder(b.bracketSide)
+                    || (a.round ?? 0) - (b.round ?? 0)
+                    || (a.matchNumber ?? 0) - (b.matchNumber ?? 0);
+            });
+
+        sorted.forEach((match) => {
+            const key = match.bracketSide === 'final'
+                ? 'Grand Finals'
+                : `${match.bracketSide === 'losers' ? 'Losers' : 'Winners'} Round ${match.round}`;
+            grouped.set(key, [...(grouped.get(key) ?? []), match]);
+        });
+
+        return Array.from(grouped.entries());
+    }, [matches, activeFilter]);
 
     // Render loading or empty state ONLY for the content area, preserving the sidebar
     const renderContent = () => {
@@ -192,7 +225,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
 
         if (format === 'swiss') {
             return (
-                <div className="relative h-full min-h-0 overflow-auto p-2 [touch-action:pan-x_pan-y] overscroll-contain">
+                <div className="relative h-full min-h-0 overflow-auto p-2 [touch-action:pan-x_pan-y] overscroll-contain" data-lenis-prevent>
                     <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
                         {onFullscreen && (
                             <CommandButton
@@ -219,6 +252,8 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                         }}
                         hasResultsMap={automatedGames}
                         hasProofsMap={proofs}
+                        hoveredTeamId={hoveredTeamId}
+                        onTeamHover={setHoveredTeamId}
                     />
                 </div>
             );
@@ -226,26 +261,12 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
 
         // --- GROUP STAGE VIEW ---
         if (format === 'round_robin') {
-            const uniqueGroups = Array.from(new Set(matches.map(m => m.groupId || (m as any).group_id).filter(Boolean)));
-            const groupCount = uniqueGroups.length || 1;
             const perGroupAdvancement = currentStage?.advancement_count
-                ? Math.floor(currentStage.advancement_count / groupCount)
+                ? Number(currentStage.advancement_count)
                 : undefined;
 
             return (
-                <div className="relative h-full min-h-0 overflow-auto p-2 [touch-action:pan-x_pan-y] overscroll-contain">
-                    <div className="absolute top-4 right-4 z-50 flex items-center gap-2">
-                        {onFullscreen && (
-                            <CommandButton
-                                variant="secondary"
-                                size="sm"
-                                onClick={onFullscreen}
-                            >
-                                <Maximize2 className="w-4 h-4 mr-2" />
-                                Fullscreen
-                            </CommandButton>
-                        )}
-                    </div>
+                <div className="relative h-full min-h-0 overflow-auto p-2 [touch-action:pan-x_pan-y] overscroll-contain" data-lenis-prevent>
                     <GroupStageView
                         stageId={selectedStageId || ''}
                         versionId={versionId || ''}
@@ -258,6 +279,18 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                         }}
                         hasResultsMap={automatedGames}
                         hasProofsMap={proofs}
+                        hoveredTeamId={hoveredTeamId}
+                        onTeamHover={setHoveredTeamId}
+                        topRightAction={onFullscreen ? (
+                            <CommandButton
+                                variant="secondary"
+                                size="sm"
+                                onClick={onFullscreen}
+                            >
+                                <Maximize2 className="w-4 h-4 mr-2" />
+                                Fullscreen
+                            </CommandButton>
+                        ) : undefined}
                     />
                 </div>
             );
@@ -284,6 +317,24 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
             <>
                 {/* Round tabs */}
                 <div className="sticky top-0 z-40 flex shrink-0 items-center gap-1 overflow-x-auto border-b border-white/5 bg-zinc-950 px-4 py-2">
+                    <div className="mr-2 flex items-center gap-1 rounded-lg border border-white/10 bg-zinc-900/70 p-1">
+                        <CommandSegmentedButton
+                            onClick={() => setViewMode('bracket')}
+                            active={viewMode === 'bracket'}
+                            className="shrink-0 whitespace-nowrap"
+                        >
+                            <Network className="w-3.5 h-3.5 mr-1" />
+                            Bracket
+                        </CommandSegmentedButton>
+                        <CommandSegmentedButton
+                            onClick={() => setViewMode('matches')}
+                            active={viewMode === 'matches'}
+                            className="shrink-0 whitespace-nowrap"
+                        >
+                            <List className="w-3.5 h-3.5 mr-1" />
+                            Matches
+                        </CommandSegmentedButton>
+                    </div>
                     {roundTabs.map(tab => (
                         <CommandSegmentedButton
                             key={tab.label}
@@ -318,26 +369,65 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                     </div>
                 </div>
 
-                <div
-                    ref={bracketScroll.scrollRef}
-                    onWheel={bracketScroll.onWheel}
-                    tabIndex={0}
-                    aria-label="Scrollable tournament bracket canvas"
-                    className="min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus:ring-2 focus:ring-rose-500/50"
-                >
-                    <BracketRenderer
-                        matches={matches}
-                        activeFilter={activeFilter}
-                        onMatchClick={(m) => {
-                            setResultsDialogMatch(m);
-                            setResultsDialogOpen(true);
-                        }}
-                        hasResultsMap={automatedGames}
-                        hasProofsMap={proofs}
-                        isSingleElimination={currentStage?.format === 'single_elimination'}
-                        disableAnimations={shouldDisableMotion}
-                    />
-                </div>
+                {viewMode === 'matches' ? (
+                    <div className="min-h-0 flex-1 overflow-auto overscroll-contain p-4" data-lenis-prevent>
+                        <div className="mx-auto max-w-5xl space-y-5">
+                            {matchListGroups.map(([group, groupMatches]) => (
+                                <section key={group} className="rounded-xl border border-white/10 bg-zinc-900/40 p-4">
+                                    <div className="mb-3 flex items-center justify-between">
+                                        <h3 className="text-sm font-semibold uppercase tracking-wider text-white">{group}</h3>
+                                        <span className="text-xs text-zinc-500">{groupMatches.length} match{groupMatches.length === 1 ? '' : 'es'}</span>
+                                    </div>
+                                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                        {groupMatches.map((match) => (
+                                            <ReadOnlyMatchCard
+                                                key={match.id}
+                                                match={match}
+                                                className="w-full"
+                                                onClick={() => {
+                                                    setResultsDialogMatch(match);
+                                                    setResultsDialogOpen(true);
+                                                }}
+                                                hasAutomatedResults={automatedGames?.[getRawId(match.id)]?.length > 0}
+                                                hasProofs={proofs?.[getRawId(match.id)]?.length > 0}
+                                                hoveredTeamId={hoveredTeamId}
+                                                onTeamHover={setHoveredTeamId}
+                                            />
+                                        ))}
+                                    </div>
+                                </section>
+                            ))}
+                            {matchListGroups.length === 0 && (
+                                <div className="rounded-xl border border-dashed border-white/10 p-12 text-center text-sm text-zinc-500">
+                                    No matches found for this filter.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div
+                        ref={bracketScroll.scrollRef}
+                        tabIndex={0}
+                        aria-label="Scrollable tournament bracket canvas"
+                        className="min-h-0 flex-1 overflow-auto overscroll-contain [touch-action:pan-x_pan-y] focus:outline-none focus:ring-2 focus:ring-rose-500/50"
+                        data-lenis-prevent
+                    >
+                        <BracketRenderer
+                            matches={matches}
+                            activeFilter={activeFilter}
+                            onMatchClick={(m) => {
+                                setResultsDialogMatch(m);
+                                setResultsDialogOpen(true);
+                            }}
+                            hasResultsMap={automatedGames}
+                            hasProofsMap={proofs}
+                            isSingleElimination={currentStage?.format === 'single_elimination'}
+                            disableAnimations={shouldDisableMotion}
+                            hoveredTeamId={hoveredTeamId}
+                            onTeamHover={setHoveredTeamId}
+                        />
+                    </div>
+                )}
             </>
         );
     };
@@ -376,19 +466,17 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                 {renderContent()}
             </div>
 
-            <MatchResultsDialog
+            <PublicMatchDetailsDialog
                 open={resultsDialogOpen}
                 onOpenChange={setResultsDialogOpen}
-                results={resultsDialogMatch ? (proofs?.[resultsDialogMatch.id.replace(/^(db-|wb-|lb-)/, '')] || []).map((url: string) => ({
+                match={resultsDialogMatch}
+                results={resultsDialogMatch ? (proofs?.[getRawId(resultsDialogMatch.id)] || []).map((url: string) => ({
                     image_url: url,
                     comment: null,
                     created_at: new Date().toISOString(),
                     reporter_user_id: ''
                 })) : []}
-                automatedResults={resultsDialogMatch ? (automatedGames?.[resultsDialogMatch.id.replace(/^(db-|wb-|lb-)/, '')] || []) : []}
-                team1Name={resultsDialogMatch?.team1?.name}
-                team2Name={resultsDialogMatch?.team2?.name}
-                team1Id={resultsDialogMatch?.team1?.id}
+                automatedResults={resultsDialogMatch ? (automatedGames?.[getRawId(resultsDialogMatch.id)] || []) : []}
             />
         </div>
     );

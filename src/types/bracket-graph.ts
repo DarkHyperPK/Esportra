@@ -28,6 +28,8 @@ export interface BracketNode {
     // Computed State
     team1_id?: string | null;
     team2_id?: string | null;
+    team1_seed?: number | null;
+    team2_seed?: number | null;
     team1_score?: number | null;
     team2_score?: number | null;
     status: MatchStatus;

@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from "framer-motion";
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
+import { AccentButton, CancelButton, CtaButton, DangerButton, GhostButton, OutlineButton } from '@/components/ui/app-buttons';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,15 @@ import TeamCreationWizard from '@/components/player/TeamCreationWizard';
 import CaptainJourneyTour from '@/components/player/CaptainJourneyTour';
 import { hasSeenTour, markTourSeen } from '@/lib/onboardingFlags';
 import { Plus, Users, Crown, Trash2, UserMinus, Calendar, Trophy, Gamepad2, Edit, X, Shield } from 'lucide-react';
-import esportsGames from '@/data/esportsGames.json';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
+import {
+  getGameByName,
+  getDefaultGameMode,
+  getGameLogo as resolveGameLogo,
+  getGameModes,
+  getRosterLimits,
+  listCatalogGames,
+} from '@/utils/gameFeatures';
 import EditTeamDialog from '@/components/player/EditTeamDialog';
 import PlayerCard from '@/components/player/PlayerCard';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -48,7 +56,55 @@ const SortablePlayerCard: React.FC<{
   );
 };
 
+function resolveCaptainUserId(
+  ownerId?: string | null,
+  teamMembers?: Array<{ user_id?: string; role?: string }>,
+): string | undefined {
+  const byRole = teamMembers?.find((member) => member.role === 'captain')?.user_id;
+  return byRole || ownerId || undefined;
+}
+
+function sortCaptainFirst<T extends { user_id: string }>(members: T[], captainId?: string): T[] {
+  if (!captainId) return members;
+  const captain = members.find((member) => member.user_id === captainId);
+  if (!captain) return members;
+  return [captain, ...members.filter((member) => member.user_id !== captainId)];
+}
+
+function buildTeamMemberOrderPayload(
+  orderedMembers: Array<{ user_id: string }>,
+  captainId: string | undefined,
+  allTeamMembers: Array<{ user_id: string }>,
+): Array<{ userId: string; displayOrder: number }> {
+  if (!captainId) {
+    return orderedMembers.map((member, index) => ({
+      userId: member.user_id,
+      displayOrder: index,
+    }));
+  }
+
+  const rosterIds = new Set(orderedMembers.map((member) => member.user_id));
+  const withoutCaptain = orderedMembers.filter((member) => member.user_id !== captainId);
+  const notInRoster = allTeamMembers.filter(
+    (member) => member.user_id !== captainId && !rosterIds.has(member.user_id),
+  );
+
+  return [
+    { userId: captainId, displayOrder: 0 },
+    ...withoutCaptain.map((member, index) => ({
+      userId: member.user_id,
+      displayOrder: index + 1,
+    })),
+    ...notInRoster.map((member, index) => ({
+      userId: member.user_id,
+      displayOrder: withoutCaptain.length + 1 + index,
+    })),
+  ];
+}
+
 const TeamsPage = () => {
+  useGameCatalog();
+  const catalogGames = listCatalogGames();
   const { user } = useAuth();
   const { canCreateTeams, currentRole } = useRole();
   const {
@@ -57,7 +113,7 @@ const TeamsPage = () => {
     inviteUserToTeam,
     removeMemberFromTeam,
     transferCaptaincy,
-    changeRole,
+    updateRosterMemberRole,
     disbandTeam,
     leaveTeam,
     revokeTeamInvite,
@@ -104,7 +160,15 @@ const TeamsPage = () => {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
   // Rosters
-  type RosterMember = { user_id: string; username: string; avatar_url: string | null; card_image_url?: string | null; is_starter?: boolean };
+  type RosterLineupRole = 'starter' | 'substitute' | 'coach';
+  type RosterMember = {
+    user_id: string;
+    username: string;
+    avatar_url: string | null;
+    card_image_url?: string | null;
+    is_starter?: boolean;
+    roster_role?: RosterLineupRole;
+  };
   type Roster = {
     id: string;
     name: string;
@@ -124,7 +188,7 @@ const TeamsPage = () => {
   const [manageRosterModalOpen, setManageRosterModalOpen] = useState(false);
   const [manageRoster, setManageRoster] = useState<Roster | null>(null);
   const [manageMembers, setManageMembers] = useState<string[]>([]);
-  const [manageMemberStatuses, setManageMemberStatuses] = useState<Record<string, boolean>>({});
+  const [manageMemberRoles, setManageMemberRoles] = useState<Record<string, RosterLineupRole>>({});
   const [editRosterName, setEditRosterName] = useState('');
   const [inviteSearch, setInviteSearch] = useState('');
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
@@ -136,27 +200,57 @@ const TeamsPage = () => {
   const [selectedTournament, setSelectedTournament] = useState<any>(null);
   const [isTournamentModalOpen, setIsTournamentModalOpen] = useState(false);
 
-  // Simple game logo resolver (uses bundled esportsGames.json)
+  const resolveMemberRosterRole = (member: RosterMember): RosterLineupRole => {
+    if (member.roster_role === 'starter' || member.roster_role === 'substitute' || member.roster_role === 'coach') {
+      return member.roster_role;
+    }
+    return member.is_starter === false ? 'substitute' : 'starter';
+  };
+
+  const getRosterCapacity = (roster: Pick<Roster, 'game' | 'format' | 'team_size'>) =>
+    getRosterLimits(roster.game, roster.format, roster.team_size);
+
+  const countRosterRoles = (
+    memberIds: string[],
+    roles: Record<string, RosterLineupRole>,
+    rosterMembers?: RosterMember[],
+    excludeUserId?: string,
+  ) => {
+    const counts = { starter: 0, substitute: 0, coach: 0 };
+    memberIds.forEach((uid) => {
+      if (excludeUserId && uid === excludeUserId) return;
+      let role = roles[uid];
+      if (!role && rosterMembers) {
+        const member = rosterMembers.find((m) => m.user_id === uid);
+        if (member) role = resolveMemberRosterRole(member);
+      }
+      counts[role ?? 'starter'] += 1;
+    });
+    return counts;
+  };
+
   const getGameLogo = useCallback((gameName: string): string => {
     if (!gameName) return '';
     try {
       const apiImage = (gameImages as any)?.[gameName] || '';
-      const game = (esportsGames as any)?.games?.find((g: any) => String(g.name).toLowerCase() === String(gameName).toLowerCase());
-      const staticImage = game?.logo || '';
-      // Prefer API image; fall back to static; then placeholder
+      const staticImage = resolveGameLogo(gameName) || '';
       return apiImage || staticImage || '/placeholder.svg';
     } catch {
       return '/placeholder.svg';
     }
   }, [gameImages]);
 
-  // Ensure API images exist for any roster games not in the preloaded list
+  // Ensure API images exist for roster games only
   useEffect(() => {
     const fetchMissing = async () => {
-      const missing = Array.from(new Set((rosters || []).map(r => r.game).filter(g => g && !(gameImages as any)?.[g])));
+      const missing = Array.from(new Set((rosters || []).map(r => r.game).filter(Boolean)));
       if (missing.length === 0) return;
+
+      const toFetch = missing.filter((g) => !(gameImages as Record<string, string>)[g]);
+      if (toFetch.length === 0) return;
+
       const newImages: Record<string, string> = {};
-      await Promise.all(missing.map(async (g) => {
+      await Promise.all(toFetch.map(async (g) => {
         try {
           const cached = await fetchGameData(g);
           if (cached.gameLogo) newImages[g] = cached.gameLogo;
@@ -167,7 +261,8 @@ const TeamsPage = () => {
       }
     };
     fetchMissing();
-  }, [rosters, gameImages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rosters]);
 
   // State for member invitation
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -199,23 +294,6 @@ const TeamsPage = () => {
     }
   }, [currentTeam?.id]);
 
-  const fetchGameImages = useCallback(async () => {
-    const images: Record<string, string> = {};
-    const games = esportsGames.games;
-
-    await Promise.all(
-      games.map(async (game: any) => {
-        try {
-          const cached = await fetchGameData(game.name);
-          if (cached.gameLogo) images[game.name] = cached.gameLogo;
-        } catch {
-          // ignore individual failures
-        }
-      })
-    );
-    setGameImages({ ...images });
-  }, []);
-
   const fetchTeamPendingInvites = useCallback(async () => {
     if (!currentTeam?.id) return;
     try {
@@ -226,49 +304,58 @@ const TeamsPage = () => {
     }
   }, [currentTeam?.id]);
 
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserTeams();
+    }
+  }, [user?.id, fetchUserTeams]);
+
   const fetchRosters = useCallback(async () => {
-    if (!userTeams || userTeams.length === 0) return;
+    if (!currentTeam?.id) {
+      setRosters([]);
+      return;
+    }
+
     try {
-      const allRosters: Roster[] = [];
-      for (const team of userTeams) {
-        try {
-          const data = await apiClient.get<any[]>(`/api/teams/${team.id}/rosters`);
-          const rosterList: Roster[] = (data || []).map((r: any) => {
-            const members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
-              .map((m: any) => ({
-                user_id: m.user_id,
-                username: m.username || 'Unknown',
-                avatar_url: m.avatar_url || null,
-                card_image_url: m.card_image_url || null,
-                is_starter: m.is_starter ?? true
-              }));
+      const data = await apiClient.get<any[]>(`/api/teams/${currentTeam.id}/rosters`);
+      const rosterList: Roster[] = (data || []).map((r: any) => {
+        let members: RosterMember[] = (typeof r.members === 'string' ? JSON.parse(r.members) : r.members || [])
+          .map((m: any) => ({
+            user_id: m.user_id,
+            username: m.username || 'Unknown',
+            avatar_url: m.avatar_url || null,
+            card_image_url: m.card_image_url || null,
+            is_starter: m.is_starter ?? true,
+            roster_role: m.roster_role,
+          }));
 
-            if (team.owner_id && !members.some(m => m.user_id === team.owner_id)) {
-              const ownerMember = team.members?.find((m: any) => m.id === team.owner_id || m.user_id === team.owner_id);
-              members.unshift({
-                user_id: team.owner_id,
-                username: ownerMember?.username || 'Captain',
-                avatar_url: ownerMember?.avatar_url || null,
-                card_image_url: ownerMember?.card_image_url || null
-              });
-            }
-
-            return {
-              id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
-              members, member_count: members.length
-            };
+        if (currentTeam.owner_id && !members.some(m => m.user_id === currentTeam.owner_id)) {
+          const ownerMember = currentTeam.members?.find((m: any) =>
+            m.id === currentTeam.owner_id || m.user_id === currentTeam.owner_id
+          ) as { username?: string; avatar_url?: string | null; card_image_url?: string | null } | undefined;
+          members.unshift({
+            user_id: currentTeam.owner_id,
+            username: ownerMember?.username || 'Captain',
+            avatar_url: ownerMember?.avatar_url || null,
+            card_image_url: ownerMember?.card_image_url || null,
+            is_starter: true,
+            roster_role: 'starter',
           });
-          allRosters.push(...rosterList);
-        } catch (err) {
-          console.error(`Error fetching rosters for team ${team.id}:`, err);
         }
-      }
-      setRosters(allRosters);
+
+        members = sortCaptainFirst(members, currentTeam.owner_id);
+
+        return {
+          id: r.id, name: r.name, game: r.game, format: r.format, team_size: r.team_size,
+          members, member_count: members.length
+        };
+      });
+      setRosters(rosterList);
     } catch (err) {
       console.error('Error in fetchRosters:', err);
       setRosters([]);
     }
-  }, [userTeams]);
+  }, [currentTeam]);
 
   const fetchTeamRegistrations = useCallback(async () => {
     if (!currentTeam || !currentTeam.id) {
@@ -286,13 +373,6 @@ const TeamsPage = () => {
       setTeamRegistrations([]);
     }
   }, [currentTeam]);
-
-  useEffect(() => {
-    if (user?.id) {
-      fetchUserTeams();
-      fetchGameImages();
-    }
-  }, [user?.id, fetchUserTeams, fetchGameImages]);
 
   useEffect(() => {
     if (currentTeam?.id) {
@@ -578,8 +658,8 @@ const TeamsPage = () => {
         teamSize: newRosterTeamSize,
       });
       // Members can be added later through the Manage Roster dialog
-      await fetchRosters();
       setRosterModalOpen(false);
+      await fetchRosters();
     } catch (e) {
       console.error('Failed to create roster', e);
       toast({ title: 'Failed to create roster', variant: 'destructive' });
@@ -593,13 +673,13 @@ const TeamsPage = () => {
     // Set editable fields (only name is editable)
     setEditRosterName(r.name);
     // Load roster members from the roster data we already have
-    const rosterMembers = (r.members || []).filter((m: any) => m.user_id !== currentTeam?.owner_id);
-    setManageMembers(rosterMembers.map((x: any) => x.user_id));
-    const statusMap: Record<string, boolean> = {};
-    rosterMembers.forEach((x: any) => {
-      statusMap[x.user_id] = x.is_starter ?? true;
+    const rosterMembers = r.members || [];
+    setManageMembers(rosterMembers.map((x: RosterMember) => x.user_id));
+    const roleMap: Record<string, RosterLineupRole> = {};
+    rosterMembers.forEach((x: RosterMember) => {
+      roleMap[x.user_id] = resolveMemberRosterRole(x);
     });
-    setManageMemberStatuses(statusMap);
+    setManageMemberRoles(roleMap);
 
     // Fetch roster-specific invites
     try {
@@ -612,10 +692,13 @@ const TeamsPage = () => {
   };
   const addInviteeByEmail = async () => {
     if (!inviteInput || !manageRoster || !currentTeam) return;
-    const email = inviteInput.trim();
+    const email = inviteInput.trim().toLowerCase();
     try {
-      const results = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(email)}`);
-      const prof = (results || []).find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+      const cached = suggestedUsers.find((u) => u.email?.toLowerCase() === email);
+      const prof = cached
+        ? { id: cached.id, email: cached.email, username: cached.username }
+        : (await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(email)}`))
+            .find((u: any) => u.email?.toLowerCase() === email);
       if (!prof) {
         toast({ title: 'User not found', description: 'No account with that email.', variant: 'destructive' });
         return;
@@ -671,36 +754,82 @@ const TeamsPage = () => {
     }
   };
 
-  // typeahead search for invitees
+  const manageMembersRef = useRef(manageMembers);
+  const selectedInviteesRef = useRef(selectedInvitees);
+  useEffect(() => { manageMembersRef.current = manageMembers; }, [manageMembers]);
+  useEffect(() => { selectedInviteesRef.current = selectedInvitees; }, [selectedInvitees]);
+
+  // Debounced typeahead search for invitees
   useEffect(() => {
-    const run = async () => {
-      const q = inviteInput.trim();
-      if (!q || q.length < 2 || !manageRoster) {
-        setSuggestedUsers([]);
-        return;
-      }
+    const q = inviteInput.trim();
+    if (!q || q.length < 2 || !manageRoster) {
+      setSuggestedUsers([]);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
       try {
         const data = await apiClient.get<any[]>(`/api/profiles/search?q=${encodeURIComponent(q)}`);
-        const existingRosterIds = new Set(manageMembers);
+        const existingRosterIds = new Set(manageMembersRef.current);
         const toShow = (data || [])
-          .filter((u: any) => u.id !== user?.id && !existingRosterIds.has(u.id) && !selectedInvitees.some(s => s.id === u.id))
+          .filter((u: any) => u.id !== user?.id && !existingRosterIds.has(u.id) && !selectedInviteesRef.current.some(s => s.id === u.id))
           .map((u: any) => ({ id: u.id, email: u.email, username: u.username }));
         setSuggestedUsers(toShow);
       } catch {
         setSuggestedUsers([]);
       }
-    };
-    run();
-  }, [inviteInput, manageRoster, manageMembers, selectedInvitees, user?.id]);
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [inviteInput, manageRoster, user?.id]);
 
   const handleAddMemberToRoster = async (userId: string) => {
     if (!manageRoster || !currentTeam) return;
+
+    const limits = getRosterCapacity(manageRoster);
+    const counts = countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members);
+    if ((counts.starter + counts.substitute) >= limits.maxRoster) {
+      toast({
+        title: 'Player limit reached',
+        description: `Max ${limits.maxRoster} players (starters + substitutes).`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
-      await apiClient.post(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members`, { userId });
+      const res = await apiClient.post<{ success: boolean; rosterRole?: RosterLineupRole }>(
+        `/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members`,
+        { userId },
+      );
+      const assignedRole = res.rosterRole ?? 'starter';
+      const teamMember = teamMembers.find((m) => m.user_id === userId);
+      const memberEntry = {
+        user_id: userId,
+        username: teamMember?.username,
+        avatar_url: teamMember?.avatar_url,
+        roster_role: assignedRole,
+        is_starter: assignedRole === 'starter',
+      };
+
       setManageMembers(prev => [...prev, userId]);
-      toast({ title: 'Member added to roster' });
-      // update roster counts locally
-      setRosters(prev => prev.map(r => r.id === manageRoster.id ? { ...r, member_count: (r.member_count || 0) + 1 } : r));
+      setManageMemberRoles(prev => ({ ...prev, [userId]: assignedRole }));
+      setManageRoster(prev => prev
+        ? { ...prev, members: [...(prev.members || []), memberEntry] }
+        : prev);
+      setRosters(prev => prev.map(r => r.id === manageRoster.id
+        ? {
+          ...r,
+          member_count: (r.member_count || 0) + 1,
+          members: [...(r.members || []), memberEntry],
+        }
+        : r));
+      toast({
+        title: assignedRole === 'substitute' ? 'Added as substitute' : 'Member added to roster',
+        description: assignedRole === 'substitute'
+          ? 'Starter slots are full — player was added as a substitute.'
+          : undefined,
+      });
     } catch (e: any) {
       toast({ title: 'Failed to add member', description: e.message, variant: 'destructive' });
     }
@@ -709,24 +838,29 @@ const TeamsPage = () => {
   const handleRemoveFromRoster = async (userId: string) => {
     if (!manageRoster || !currentTeam) return;
     try {
-      // 1. Remove from the specific roster
       await apiClient.delete(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members/${userId}`);
 
-      // 2. Remove from the entire team (as requested: roster removal = team kick)
-      const success = await removeMemberFromTeam(currentTeam.id, userId);
+      setManageMembers(prev => prev.filter(id => id !== userId));
+      setManageMemberRoles(prev => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+      setManageRoster(prev => prev
+        ? { ...prev, members: (prev.members || []).filter((m) => m.user_id !== userId) }
+        : prev);
+      setRosters(prev => prev.map(r => r.id === manageRoster.id
+        ? {
+          ...r,
+          member_count: Math.max(0, (r.member_count || 0) - 1),
+          members: (r.members || []).filter((m) => m.user_id !== userId),
+        }
+        : r));
 
-      if (success) {
-        setManageMembers(prev => prev.filter(id => id !== userId));
-        // update roster counts locally for the current view
-        setRosters(prev => prev.map(r => r.id === manageRoster.id ? { ...r, member_count: Math.max(0, (r.member_count || 0) - 1) } : r));
-
-        toast({
-          title: 'Member Kicked',
-          description: 'User has been removed from the roster and the team.'
-        });
-      } else {
-        throw new Error('Roster entry removed, but team removal failed. Please refresh.');
-      }
+      toast({
+        title: 'Removed from lineup',
+        description: 'Player removed from this roster. They remain on the team.',
+      });
     } catch (e: any) {
       toast({ title: 'Removal Failed', description: e.message, variant: 'destructive' });
     }
@@ -739,59 +873,124 @@ const TeamsPage = () => {
     const { active, over } = event;
     if (!over || active.id === over.id || !currentTeam?.id) return;
 
+    const captainId = resolveCaptainUserId(currentTeam.owner_id, teamMembers);
     const members = roster.members || [];
     const oldIndex = members.findIndex((m: any) => m.user_id === active.id);
     const newIndex = members.findIndex((m: any) => m.user_id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    // Don't allow moving anything to position 0 (captain) or moving captain
-    if (members[oldIndex]?.user_id === currentTeam.owner_id) return;
-    if (newIndex === 0 && members[0]?.user_id === currentTeam.owner_id) return;
+    if (captainId && members[oldIndex]?.user_id === captainId) return;
+    if (captainId && newIndex === 0) return;
 
-    // Reorder locally
-    const reordered = [...members];
-    const [moved] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, moved);
+    const reordered = sortCaptainFirst(
+      (() => {
+        const next = [...members];
+        const [moved] = next.splice(oldIndex, 1);
+        next.splice(newIndex, 0, moved);
+        return next;
+      })(),
+      captainId,
+    );
 
-    // Optimistic update
     setRosters(prev => prev.map(r =>
       r.id === roster.id ? { ...r, members: reordered } : r
     ));
 
-    // Persist order
     try {
-      const order = reordered.map((m: any, i: number) => ({ userId: m.user_id, displayOrder: i }));
+      const order = buildTeamMemberOrderPayload(reordered, captainId, teamMembers);
       await apiClient.put(`/api/teams/${currentTeam.id}/members/order`, { order });
     } catch {
       toast({ title: 'Failed to save order', variant: 'destructive' });
+      fetchRosters();
     }
   };
 
-  const handleToggleStarter = async (userId: string, currentStatus: boolean) => {
+  const handleSetRosterRole = async (userId: string, rosterRole: RosterLineupRole) => {
     if (!manageRoster || !currentTeam) return;
-    try {
-      const newStatus = !currentStatus;
-      await apiClient.put(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/members/${userId}/starter`, { isStarter: newStatus });
 
-      // Update local state
-      setManageMemberStatuses(prev => ({ ...prev, [userId]: newStatus }));
+    const rosterMember = manageRoster.members?.find((m) => m.user_id === userId);
+    const currentRole = manageMemberRoles[userId]
+      ?? (rosterMember ? resolveMemberRosterRole(rosterMember) : 'starter');
+    if (currentRole === rosterRole) return;
+
+    const limits = getRosterCapacity(manageRoster);
+    const counts = countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members, userId);
+    counts[rosterRole] += 1;
+
+    if (rosterRole === 'substitute' && !limits.maxSubstitutes && limits.maxRoster <= limits.starters) {
+      toast({ title: 'Substitutes not allowed', description: 'This game mode does not allow substitutes.', variant: 'destructive' });
+      return;
+    }
+    if (rosterRole === 'substitute' && counts.substitute > limits.maxSubstitutes) {
+      toast({ title: 'Substitute limit reached', description: `Max ${limits.maxSubstitutes} substitute(s) for this mode.`, variant: 'destructive' });
+      return;
+    }
+    if (counts.coach > limits.maxCoaches) {
+      toast({ title: 'Coach limit reached', description: `Max ${limits.maxCoaches} coach(es) for this mode.`, variant: 'destructive' });
+      return;
+    }
+    if ((counts.starter + counts.substitute) > limits.maxRoster) {
+      toast({ title: 'Player limit reached', description: `Max ${limits.maxRoster} players (starters + substitutes).`, variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const ok = await updateRosterMemberRole(currentTeam.id, manageRoster.id, userId, rosterRole);
+      if (!ok) return;
+
+      const nextRoles = { ...manageMemberRoles, [userId]: rosterRole };
+      setManageMemberRoles(nextRoles);
       setRosters(prev => prev.map(r => {
         if (r.id === manageRoster.id) {
           return {
             ...r,
-            members: r.members?.map(m => m.user_id === userId ? { ...m, is_starter: newStatus } : m)
+            members: r.members?.map(m => m.user_id === userId
+              ? { ...m, roster_role: rosterRole, is_starter: rosterRole === 'starter' }
+              : m),
           };
         }
         return r;
       }));
 
       toast({
-        title: "Status Updated",
-        description: `Player is now ${newStatus ? 'Active' : 'Benched'}`
+        title: 'Lineup Updated',
+        description: `Player is now ${rosterRole === 'starter' ? 'a starter' : rosterRole === 'substitute' ? 'a substitute' : 'a coach'}.`,
       });
     } catch (e: any) {
-      toast({ title: "Update Failed", description: e.message, variant: "destructive" });
+      toast({ title: 'Update Failed', description: e.message, variant: 'destructive' });
     }
+  };
+
+  const renderRosterRolePills = (uid: string) => {
+    const rosterMember = manageRoster?.members?.find((m) => m.user_id === uid);
+    const activeRole = manageMemberRoles[uid]
+      ?? (rosterMember ? resolveMemberRosterRole(rosterMember) : 'starter');
+
+    return (
+      <div className="flex items-center gap-2 mt-1 flex-wrap">
+        {(['starter', 'substitute', 'coach'] as RosterLineupRole[]).map((role) => (
+          <button
+            key={role}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              void handleSetRosterRole(uid, role);
+            }}
+            className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border transition-all ${
+              activeRole === role
+                ? role === 'starter'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  : role === 'substitute'
+                    ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                    : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10 hover:text-white/50'
+            }`}
+          >
+            {role}
+          </button>
+        ))}
+      </div>
+    );
   };
 
   const saveManageRoster = async () => {
@@ -1057,8 +1256,8 @@ const TeamsPage = () => {
                           )}
                         </div>
                         <div className="flex gap-3">
-                          <Button size="sm" className="bg-emerald-500/80 hover:bg-emerald-500 text-white rounded-full px-6" onClick={() => acceptInvite(inv.id)}>JOIN</Button>
-                          <Button size="sm" variant="ghost" className="text-white/40 hover:text-white hover:bg-white/10 rounded-full" onClick={() => declineInvite(inv.id)}>DECLINE</Button>
+                          <CtaButton size="sm" className="rounded-full px-6" onClick={() => acceptInvite(inv.id)}>JOIN</CtaButton>
+                          <GhostButton size="sm" className="rounded-full px-6" onClick={() => declineInvite(inv.id)}>DECLINE</GhostButton>
                         </div>
                       </div>
                     ))}
@@ -1086,9 +1285,9 @@ const TeamsPage = () => {
                     Every champion starts somewhere. Register your team name, upload your logo, and begin your journey to the top of the leaderboard.
                   </p>
 
-                  <Button
+                  <CtaButton
                     size="lg"
-                    className="h-14 px-10 bg-white text-black hover:bg-white/90 rounded-full font-heading font-bold uppercase tracking-widest text-sm transition-all hover:scale-105 shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+                    className="h-14 rounded-full px-10 text-sm shadow-[0_0_40px_rgba(244,63,94,0.35)] transition-all hover:scale-105"
                     onClick={() => {
                       if (!hasSeenTour('captain')) {
                         setShowJourneyTour(true);
@@ -1098,7 +1297,7 @@ const TeamsPage = () => {
                     }}
                   >
                     Create Team
-                  </Button>
+                  </CtaButton>
                 </div>
 
                 {/* Decorative Grid */}
@@ -1121,7 +1320,7 @@ const TeamsPage = () => {
         {/* Team Creation Wizard Modal */}
         {showTeamCreationWizard && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex-center p-4">
-            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-[#0F1115] border border-white/10 rounded-none shadow-2xl">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto overscroll-contain bg-[#0F1115] border border-white/10 rounded-none shadow-2xl" data-lenis-prevent>
               <TeamCreationWizard onClose={() => {
                 setShowTeamCreationWizard(false);
                 fetchUserTeams();
@@ -1258,8 +1457,8 @@ const TeamsPage = () => {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white border-0" onClick={() => acceptInvite(inv.id)}>Accept</Button>
-                    <Button size="sm" variant="ghost" className="text-white/40 hover:text-red-400 hover:bg-red-500/10" onClick={() => declineInvite(inv.id)}>Decline</Button>
+                    <CtaButton size="sm" onClick={() => acceptInvite(inv.id)}>Accept</CtaButton>
+                    <DangerButton size="sm" variant="ghost" className="h-9" onClick={() => declineInvite(inv.id)}>Decline</DangerButton>
                   </div>
                 </div>
               ))}
@@ -1283,30 +1482,48 @@ const TeamsPage = () => {
                 <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(e, r)}>
                   <SortableContext items={(r.members || []).map((m: any) => m.user_id)} strategy={rectSortingStrategy}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                      {r.members?.map((member) => (
+                      {r.members?.map((member) => {
+                        const lineupRole = resolveMemberRosterRole(member);
+                        return (
                         <SortablePlayerCard
                           key={`${r.id}-${member.user_id}`}
                           id={member.user_id}
-                          disabled={member.user_id === currentTeam?.owner_id}
+                          disabled={member.user_id === resolveCaptainUserId(currentTeam?.owner_id, teamMembers)}
                         >
-                          <PlayerCard
-                            member={{
-                              user_id: member.user_id,
-                              username: member.username,
-                              avatar_url: member.avatar_url || undefined,
-                              card_image_url: member.card_image_url || undefined,
-                              role: member.user_id === currentTeam?.owner_id ? 'captain' : (teamMembers.find(tm => tm?.user_id === member.user_id)?.role || 'member'),
-                              stats: teamMembers.find(tm => tm?.user_id === member.user_id)?.stats,
-                              game: r.game
-                            }}
-                            isOwner={member.user_id === currentTeam?.owner_id}
-                            isCurrentUser={member.user_id === user?.id}
-                            className="transition-all duration-500 hover:scale-[1.05] hover:z-10"
-                          />
+                          <div className="relative">
+                            <PlayerCard
+                              member={{
+                                user_id: member.user_id,
+                                username: member.username,
+                                avatar_url: member.avatar_url || undefined,
+                                card_image_url: member.card_image_url || undefined,
+                                role: member.user_id === currentTeam?.owner_id ? 'captain' : (teamMembers.find(tm => tm?.user_id === member.user_id)?.role || 'member'),
+                                stats: teamMembers.find(tm => tm?.user_id === member.user_id)?.stats,
+                                game: r.game
+                              }}
+                              isOwner={member.user_id === currentTeam?.owner_id}
+                              isCurrentUser={member.user_id === user?.id}
+                              className="transition-all duration-500 hover:scale-[1.05] hover:z-10"
+                            />
+                            {member.user_id !== currentTeam?.owner_id && (
+                              <Badge
+                                variant="outline"
+                                className={`absolute top-2 right-2 text-[8px] uppercase tracking-wider ${
+                                  lineupRole === 'starter'
+                                    ? 'border-emerald-500/40 text-emerald-400'
+                                    : lineupRole === 'substitute'
+                                      ? 'border-yellow-500/40 text-yellow-400'
+                                      : 'border-cyan-500/40 text-cyan-400'
+                                }`}
+                              >
+                                {lineupRole}
+                              </Badge>
+                            )}
+                          </div>
                         </SortablePlayerCard>
-                      ))}
+                      );})}
                       {/* Vacant Slots */}
-                      {Array.from({ length: Math.max(0, (r.team_size === 5 ? 5 : r.team_size) - (r.members?.length || 0)) }).map((_, i) => (
+                      {Array.from({ length: Math.max(0, getRosterCapacity(r).starters - (r.members?.filter((m) => resolveMemberRosterRole(m) === 'starter').length || 0)) }).map((_, i) => (
                         <div
                           key={`vacant-${r.id}-${i}`}
                           className="relative w-full aspect-[3/4] rounded-2xl border border-dashed border-white/5 bg-white/[0.02] flex flex-col items-center justify-center group/vacant hover:bg-white/[0.04] transition-all duration-500"
@@ -1333,10 +1550,10 @@ const TeamsPage = () => {
               Active Rosters
             </h2>
             {isCaptain && (
-              <Button onClick={openCreateRoster} className="bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-full px-6">
+              <OutlineButton onClick={openCreateRoster} className="rounded-full px-6">
                 <Plus className="w-4 h-4 mr-2" />
                 CREATE ROSTER
-              </Button>
+              </OutlineButton>
             )}
           </div>
 
@@ -1351,7 +1568,7 @@ const TeamsPage = () => {
                   <div className="flex items-center justify-between mb-4">
                     <div className="font-heading font-medium text-white tracking-wide">{r.name}</div>
                     <Badge variant="secondary" className="bg-white/5 text-white/60 border-0 font-mono text-xs">
-                      {r.member_count || 0}/{r.team_size === 5 ? 7 : r.team_size}
+                      {r.member_count || 0}/{getRosterCapacity(r).totalSlots}
                     </Badge>
                   </div>
 
@@ -1370,15 +1587,15 @@ const TeamsPage = () => {
 
                   {isCaptain && (
                     <div className="flex gap-2 pt-4 border-t border-white/5">
-                      <Button size="sm" variant="ghost" className="h-9 flex-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 uppercase text-xs tracking-wider" onClick={() => openManageRoster(r)}>Manage</Button>
-                      <Button
+                      <GhostButton size="sm" className="h-9 flex-1 uppercase text-xs tracking-wider" onClick={() => openManageRoster(r)}>Manage</GhostButton>
+                      <DangerButton
                         size="sm"
                         variant="ghost"
-                        className="h-9 w-9 p-0 text-white/40 hover:text-red-400 hover:bg-red-500/10"
+                        className="h-9 w-9 p-0"
                         onClick={() => deleteRoster(r)}
                       >
                         <Trash2 className="w-4 h-4" />
-                      </Button>
+                      </DangerButton>
                     </div>
                   )}
                 </div>
@@ -1524,26 +1741,18 @@ const TeamsPage = () => {
         {/* Team Actions */}
         <div className="flex justify-center space-x-4">
           {!isCaptain && (
-            <Button
-              onClick={handleLeaveTeam}
-              variant="outline"
-              className="border-red-400 text-red-400 hover:bg-red-400/20"
-            >
+            <DangerButton onClick={handleLeaveTeam}>
               <UserMinus className="w-4 h-4 mr-2" />
               Leave Team
-            </Button>
+            </DangerButton>
           )}
 
           {isCaptain && (
             <>
-              <Button
-                onClick={() => setShowDisbandTeam(true)}
-                variant="outline"
-                className="border-red-400 text-red-400 hover:bg-red-400/20"
-              >
+              <DangerButton onClick={() => setShowDisbandTeam(true)}>
                 <Trash2 className="w-4 h-4 mr-2" />
                 Disband Team
-              </Button>
+              </DangerButton>
             </>
           )}
         </div>
@@ -1551,7 +1760,7 @@ const TeamsPage = () => {
 
       {/* Invite Members Modal */}
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
-        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar relative overflow-hidden">
+        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar relative overflow-hidden" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -1575,7 +1784,7 @@ const TeamsPage = () => {
             </div>
 
             {searchResults.length > 0 && (
-              <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+              <div className="max-h-48 overflow-y-auto overscroll-contain space-y-2 pr-2 custom-scrollbar" data-lenis-prevent>
                 {searchResults.map((user) => (
                   <div
                     key={user.id}
@@ -1591,16 +1800,15 @@ const TeamsPage = () => {
                         <p className="text-white/30 text-xs">{user.email}</p>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      onClick={() => toggleUserSelection(user)}
-                      variant={selectedUsers.some(u => u.id === user.id) ? "default" : "outline"}
-                      className={selectedUsers.some(u => u.id === user.id)
-                        ? "bg-indigo-600 hover:bg-indigo-700 text-white border-0 shadow-[0_0_15px_rgba(79,70,229,0.3)]"
-                        : "border-white/10 text-white/60 hover:text-white hover:bg-white/10 hover:border-white/30"}
-                    >
-                      {selectedUsers.some(u => u.id === user.id) ? "Selected" : "Select"}
-                    </Button>
+                    {selectedUsers.some(u => u.id === user.id) ? (
+                      <CtaButton size="sm" onClick={() => toggleUserSelection(user)}>
+                        Selected
+                      </CtaButton>
+                    ) : (
+                      <OutlineButton size="sm" onClick={() => toggleUserSelection(user)}>
+                        Select
+                      </OutlineButton>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1616,14 +1824,14 @@ const TeamsPage = () => {
                       className="flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-3 py-1 animate-in fade-in"
                     >
                       <span className="text-indigo-300 text-xs font-medium">{user.username}</span>
-                      <Button
+                      <GhostButton
                         size="sm"
                         variant="ghost"
                         onClick={() => removeFromSelection(user.id)}
-                        className="text-indigo-400 hover:text-white p-0 h-4 w-4 rounded-full"
+                        className="p-0 h-4 w-4 rounded-full"
                       >
                         <X className="w-3 h-3" />
-                      </Button>
+                      </GhostButton>
                     </div>
                   ))}
                 </div>
@@ -1642,20 +1850,18 @@ const TeamsPage = () => {
             </div>
 
             <div className="flex justify-end space-x-2 pt-2">
-              <Button
+              <CancelButton
                 onClick={() => setShowInviteModal(false)}
-                variant="outline"
-                className="border-white/10 text-white/60 hover:text-white hover:bg-white/5"
               >
                 Cancel
-              </Button>
-              <Button
+              </CancelButton>
+              <CtaButton
                 onClick={sendInvites}
                 disabled={selectedUsers.length === 0}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)] disabled:opacity-50 disabled:shadow-none"
+                className="disabled:opacity-50"
               >
                 Send Invites ({selectedUsers.length})
-              </Button>
+              </CtaButton>
             </div>
           </div>
         </DialogContent>
@@ -1663,7 +1869,7 @@ const TeamsPage = () => {
 
       {/* Team Invite Modal */}
       <Dialog open={showTeamInviteModal} onOpenChange={setShowTeamInviteModal}>
-        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar relative overflow-hidden">
+        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar relative overflow-hidden" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -1680,7 +1886,7 @@ const TeamsPage = () => {
                   onChange={(e) => setInviteSearch(e.target.value)}
                   className="bg-white/5 border-white/10 text-white flex-1 focus:border-indigo-500/50"
                 />
-                <Button onClick={async () => {
+                <CtaButton onClick={async () => {
                   if (!inviteSearch || !inviteSearch.includes('@') || !currentTeam?.id) return;
                   try {
                     setInvitingUserId('team');
@@ -1700,9 +1906,9 @@ const TeamsPage = () => {
                   } finally {
                     setInvitingUserId(null);
                   }
-                }} disabled={!!invitingUserId} className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_15px_rgba(79,70,229,0.3)]">
+                }} disabled={!!invitingUserId}>
                   {invitingUserId ? 'Sending...' : 'Send'}
-                </Button>
+                </CtaButton>
               </div>
             </div>
             <div>
@@ -1710,19 +1916,19 @@ const TeamsPage = () => {
               {teamInvites.length === 0 ? (
                 <div className="text-white/30 text-sm italic py-2">No pending invitations</div>
               ) : (
-                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                <div className="space-y-2 max-h-40 overflow-y-auto overscroll-contain custom-scrollbar" data-lenis-prevent>
                   {teamInvites.map(inv => (
                     <div key={inv.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10">
                       <div className="text-white text-sm">
                         <span className="text-indigo-300 font-mono">{inv.invited_email || inv.invited_user_id?.slice(0, 8)}</span>
                         <span className="text-white/30 text-xs ml-2">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''}</span>
                       </div>
-                      <Button size="sm" variant="ghost" className="text-white/40 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0" onClick={async () => {
+                      <DangerButton size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={async () => {
                         await revokeTeamInvite(inv.id);
                         setTeamInvites(prev => prev.filter(i => i.id !== inv.id));
                       }}>
                         <Trash2 className="w-4 h-4" />
-                      </Button>
+                      </DangerButton>
                     </div>
                   ))}
                 </div>
@@ -1733,7 +1939,7 @@ const TeamsPage = () => {
       </Dialog>
       {/* Create Roster Modal */}
       <Dialog open={rosterModalOpen} onOpenChange={setRosterModalOpen}>
-        <DialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-xl shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-none z-[1050] max-h-[85vh] overflow-y-auto custom-scrollbar p-0">
+        <DialogContent className="bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-xl shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-none z-[1050] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar p-0" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.05] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -1762,11 +1968,12 @@ const TeamsPage = () => {
                   value={newRosterGame}
                   onValueChange={(val) => {
                     setNewRosterGame(val);
-                    const game = (esportsGames as any).games.find((g: any) => g.name === val);
+                    const game = getGameByName(val);
                     if (game) {
-                      setNewRosterFormat(game.defaultFormat);
-                      const fmt = game.formats.find((f: any) => f.value === game.defaultFormat) || game.formats[0];
-                      setNewRosterTeamSize(fmt?.teamSize || 5);
+                      const defaultMode = getDefaultGameMode(game.name);
+                      const modeValue = defaultMode?.value || game.defaultFormat;
+                      setNewRosterFormat(modeValue);
+                      setNewRosterTeamSize(defaultMode?.teamSize || 5);
                     }
                   }}
                 >
@@ -1774,7 +1981,7 @@ const TeamsPage = () => {
                     <SelectValue placeholder="Select competitive game" />
                   </SelectTrigger>
                   <SelectContent position="popper" sideOffset={4} className="bg-[#0f1115] border-white/10 text-white rounded-xl shadow-2xl backdrop-blur-xl z-[1100]">
-                    {(esportsGames as any).games.map((g: any) => (
+                    {catalogGames.map((g) => (
                       <SelectItem key={g.name} value={g.name} className="hover:bg-white/5 focus:bg-white/10 transition-colors py-3 cursor-pointer">
                         <div className="flex items-center gap-3">
                           {getGameLogo(g.name) ? (
@@ -1802,9 +2009,9 @@ const TeamsPage = () => {
                       value={newRosterFormat}
                       onValueChange={(val) => {
                         setNewRosterFormat(val);
-                        const game = (esportsGames as any).games.find((g: any) => g.name === newRosterGame);
-                        const fmt = game?.formats.find((f: any) => f.value === val);
-                        const fmtSize = (val === '5v5') ? 5 : (fmt?.teamSize || 5);
+                        const game = getGameByName(newRosterGame);
+                        const mode = game ? getGameModes(game.name).find((candidate) => candidate.value === val) : undefined;
+                        const fmtSize = (val === '5v5') ? 5 : (mode?.teamSize || 5);
                         setNewRosterTeamSize(fmtSize);
                       }}
                     >
@@ -1812,19 +2019,22 @@ const TeamsPage = () => {
                         <SelectValue placeholder="Format" />
                       </SelectTrigger>
                       <SelectContent position="popper" sideOffset={4} className="bg-[#0f1115] border-white/10 text-white rounded-xl shadow-2xl backdrop-blur-xl z-[1100]">
-                        {((esportsGames as any).games.find((g: any) => g.name === newRosterGame)?.formats || []).map((f: any) => (
+                        {(getGameByName(newRosterGame) ? getGameModes(newRosterGame) : []).map((f) => (
                           <SelectItem key={f.value} value={f.value} className="hover:bg-white/5 py-3 cursor-pointer">{f.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-3 block">Capacity</Label>
+                    <Label className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-3 block">Lineup Capacity</Label>
                     <div className="h-12 flex items-center px-4 bg-white/[0.02] border border-white/[0.05] rounded-xl text-white/60 font-mono text-sm">
-                      {newRosterTeamSize} Members
+                      {(() => {
+                        const limits = getRosterLimits(newRosterGame, newRosterFormat, newRosterTeamSize);
+                        return `${limits.starters} starters · ${limits.maxSubstitutes} subs${limits.allowsCoaches ? ` · ${limits.maxCoaches} coaches` : ''}`;
+                      })()}
                     </div>
                     <p className="text-[9px] text-white/20 mt-2 uppercase tracking-widest leading-relaxed">
-                      {newRosterTeamSize === 5 ? 'Includes 2 Substitutes/Reserves' : 'Fixed size recruitment'}
+                      {newRosterGame ? 'Catalog limits for selected format' : 'Select game and format first'}
                     </p>
                   </div>
                 </motion.div>
@@ -1832,20 +2042,19 @@ const TeamsPage = () => {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button
-                variant="outline"
-                className="flex-1 border-white/10 text-white/60 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-[10px]"
+              <CancelButton
+                className="flex-1 h-12 rounded-xl text-[10px]"
                 onClick={() => setRosterModalOpen(false)}
               >
                 DISCARD
-              </Button>
-              <Button
+              </CancelButton>
+              <AccentButton
                 onClick={createRosterNow}
                 disabled={rosterSubmitting || !newRosterName || !newRosterGame}
-                className="flex-1 bg-white text-black hover:bg-white/90 h-12 rounded-xl font-heading font-bold tracking-widest text-[10px] shadow-[0_0_30px_rgba(255,255,255,0.1)] disabled:opacity-20 transition-all hover:scale-[1.02]"
+                className="flex-1 h-12 rounded-xl text-[10px] shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:scale-[1.02] disabled:opacity-20"
               >
                 {rosterSubmitting ? 'INITIALIZING...' : 'CREATE ROSTER'}
-              </Button>
+              </AccentButton>
             </div>
           </div>
         </DialogContent>
@@ -1853,7 +2062,7 @@ const TeamsPage = () => {
 
       {/* Manage Roster Modal */}
       <Dialog open={manageRosterModalOpen} onOpenChange={setManageRosterModalOpen}>
-        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <DialogContent className="bg-black/95 backdrop-blur-xl border border-white/10 text-white max-w-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] z-[1050] max-h-[90vh] overflow-y-auto overscroll-contain custom-scrollbar" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -1903,7 +2112,12 @@ const TeamsPage = () => {
                   <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/5 flex items-center gap-2">
                     <div className="flex flex-col">
                       <span className="text-[9px] uppercase tracking-widest text-white/30 leading-none mb-0.5">Size</span>
-                      <span className="text-xs font-medium text-white/80 leading-none">{manageRoster.team_size === 5 ? '7 (5+2)' : manageRoster.team_size}</span>
+                      <span className="text-xs font-medium text-white/80 leading-none">
+                        {(() => {
+                          const limits = getRosterCapacity(manageRoster);
+                          return `${limits.starters} starters · ${limits.maxSubstitutes} subs${limits.allowsCoaches ? ` · ${limits.maxCoaches} coaches` : ''}`;
+                        })()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1918,36 +2132,39 @@ const TeamsPage = () => {
                   </div>
                   <Badge variant="outline" className="bg-white/5 border-white/10 text-white/60 font-mono py-1 px-3">
                     {(() => {
-                      const uniqueMembers = new Set([currentTeam?.owner_id, ...manageMembers].filter(Boolean));
-                      return uniqueMembers.size;
-                    })()} / {manageRoster.team_size === 5 ? 7 : manageRoster.team_size}
+                      const limits = getRosterCapacity(manageRoster);
+                      const counts = countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members);
+                      return `${counts.starter + counts.substitute + counts.coach} / ${limits.totalSlots}`;
+                    })()}
                   </Badge>
                 </div>
 
                 {/* Member List - Premium Glassmorphic Items */}
-                <div className="space-y-3 max-h-56 overflow-y-auto custom-scrollbar pr-2">
+                <div className="space-y-3 max-h-56 overflow-y-auto overscroll-contain custom-scrollbar pr-2" data-lenis-prevent>
                   {/* Captain (Implicit Member) */}
                   {currentTeam && (() => {
+                    const captainId = currentTeam.owner_id;
                     const captainData = ownerProfile
-                      || currentTeam.members?.find((m: any) => m.id === currentTeam.owner_id || m.user_id === currentTeam.owner_id)
+                      || currentTeam.members?.find((m: any) => m.id === captainId || m.user_id === captainId)
                       || { username: 'Captain', avatar_url: undefined };
                     return (
                     <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.06] border border-white/10 relative overflow-hidden group">
                       <div className="absolute inset-0 bg-rose-500/5" />
-                      <div className="flex items-center gap-4 relative z-10">
-                        <div className="relative">
+                      <div className="flex items-center gap-4 relative z-10 flex-1 min-w-0">
+                        <div className="relative shrink-0">
                           <Avatar className="w-10 h-10 border-2 border-indigo-500/50 shadow-xl">
                             <AvatarImage src={captainData.avatar_url} />
                             <AvatarFallback className="text-xs bg-indigo-900 text-indigo-200">{captainData.username?.charAt(0) || '?'}</AvatarFallback>
                           </Avatar>
                           <Crown className="absolute -top-1 -right-1 w-4 h-4 text-yellow-500 bg-[#0a0a0a] rounded-full p-0.5 border border-white/10" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <span className="text-sm font-heading font-medium text-white block">{captainData.username || 'Captain'}</span>
                           <span className="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Team Captain</span>
+                          {captainId && renderRosterRolePills(captainId)}
                         </div>
                       </div>
-                      <Badge className="bg-white/5 border-white/10 text-white/40 text-[8px] uppercase tracking-tighter relative z-10">Permanent</Badge>
+                      <Badge className="bg-white/5 border-white/10 text-white/40 text-[8px] uppercase tracking-tighter relative z-10 shrink-0">Permanent</Badge>
                     </div>
                     );
                   })()}
@@ -1981,50 +2198,15 @@ const TeamsPage = () => {
                               </div>
                               <div>
                                 <span className="text-sm font-heading font-medium text-white/90 group-hover:text-white transition-colors block">{member.username || 'Unknown User'}</span>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleStarter(uid, manageMemberStatuses[uid] ?? true);
-                                    }}
-                                    className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border transition-all ${(manageMemberStatuses[uid] ?? true)
-                                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
-                                      : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20'
-                                      }`}
-                                  >
-                                    {(manageMemberStatuses[uid] ?? true) ? 'STARTER' : 'BENCH'}
-                                  </button>
-                                  {isCaptain && uid !== currentTeam?.owner_id && (
-                                    <button
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        const currentRole = teamMembers.find(m => m.user_id === uid)?.role;
-                                        const newRole = currentRole === 'coach' ? 'member' : 'coach';
-                                        if (currentTeam?.id) {
-                                          const ok = await changeRole(currentTeam.id, uid, newRole);
-                                          if (ok) {
-                                            setTeamMembers(prev => prev.map(m => m.user_id === uid ? { ...m, role: newRole } : m));
-                                          }
-                                        }
-                                      }}
-                                      className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border transition-all ${
-                                        teamMembers.find(m => m.user_id === uid)?.role === 'coach'
-                                          ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20'
-                                          : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10 hover:text-white/50'
-                                      }`}
-                                    >
-                                      {teamMembers.find(m => m.user_id === uid)?.role === 'coach' ? 'COACH' : 'SET COACH'}
-                                    </button>
-                                  )}
-                                </div>
+                                {renderRosterRolePills(uid)}
                               </div>
                             </div>
                             <div className="flex items-center gap-1 relative z-10 opacity-0 group-hover:opacity-100 transition-all">
                               {isCaptain && uid !== currentTeam?.owner_id && (
-                                <Button
+                                <GhostButton
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 w-8 p-0 text-white/20 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-full transition-all"
+                                  className="h-8 w-8 p-0 rounded-full"
                                   title="Transfer Captaincy"
                                   onClick={() => {
                                     setMemberToRemove(member as any);
@@ -2032,16 +2214,16 @@ const TeamsPage = () => {
                                   }}
                                 >
                                   <Shield className="w-4 h-4" />
-                                </Button>
+                                </GhostButton>
                               )}
-                              <Button
+                              <DangerButton
                                 size="sm"
                                 variant="ghost"
-                                className="h-8 w-8 p-0 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-full transition-all"
+                                className="h-8 w-8 p-0 rounded-full"
                                 onClick={() => handleRemoveFromRoster(uid)}
                               >
                                 <X className="w-4 h-4" />
-                              </Button>
+                              </DangerButton>
                             </div>
                           </motion.div>
                         );
@@ -2056,7 +2238,11 @@ const TeamsPage = () => {
                     <div className="grid grid-cols-1 gap-2">
                       {teamMembers
                         .filter(m => !manageMembers.includes(m.user_id) && m.user_id !== currentTeam?.owner_id)
-                        .map(member => (
+                        .map(member => {
+                          const addLimits = getRosterCapacity(manageRoster);
+                          const addCounts = countRosterRoles(manageMembers, manageMemberRoles, manageRoster.members);
+                          const playerBucketFull = (addCounts.starter + addCounts.substitute) >= addLimits.maxRoster;
+                          return (
                           <div key={`add-${member.user_id}`} className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.05] transition-all">
                             <div className="flex items-center gap-3">
                               <Avatar className="w-8 h-8 border border-white/10">
@@ -2065,16 +2251,19 @@ const TeamsPage = () => {
                               </Avatar>
                               <span className="text-xs text-white/70">{member.username}</span>
                             </div>
-                            <Button
+                            <OutlineButton
                               size="sm"
                               variant="ghost"
-                              className="h-8 px-3 text-[10px] text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 uppercase tracking-widest"
+                              className="h-8 px-3 text-[10px] uppercase tracking-widest"
+                              disabled={playerBucketFull}
+                              title={playerBucketFull ? `Player limit reached (max ${addLimits.maxRoster})` : undefined}
                               onClick={() => handleAddMemberToRoster(member.user_id)}
                             >
                               Add to Lineup
-                            </Button>
+                            </OutlineButton>
                           </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   </div>
                 )}
@@ -2092,14 +2281,14 @@ const TeamsPage = () => {
                     onChange={(e) => setInviteInput(e.target.value)}
                     className="bg-white/[0.03] border-white/10 text-white flex-1 focus:border-indigo-500/50 h-12 rounded-xl px-4"
                   />
-                  <Button size="icon" onClick={addInviteeByEmail} className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)] w-12 h-12 rounded-xl transition-all hover:scale-105 active:scale-95">
+                  <CtaButton size="icon" onClick={addInviteeByEmail} className="w-12 h-12 rounded-xl">
                     <Plus className="w-6 h-6" />
-                  </Button>
+                  </CtaButton>
                 </div>
 
                 {/* Typeahead suggestions */}
                 {inviteInput && suggestedUsers.length > 0 && (
-                  <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-[#0f1115] shadow-2xl backdrop-blur-xl z-50 relative">
+                  <div className="mt-2 max-h-48 overflow-y-auto overscroll-contain rounded-xl border border-white/10 bg-[#0f1115] shadow-2xl backdrop-blur-xl z-50 relative" data-lenis-prevent>
                     {suggestedUsers.map(u => (
                       <button
                         key={u.id}
@@ -2144,16 +2333,21 @@ const TeamsPage = () => {
 
                 <div className="flex justify-between items-center bg-white/[0.02] border border-white/[0.05] p-4 rounded-xl">
                   <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-medium">
-                    Lineup Capacity: <span className="text-indigo-400">{manageRoster.team_size === 5 ? '7 Slots' : `${manageRoster.team_size} Slots`}</span>
+                    Lineup Capacity: <span className="text-indigo-400">
+                      {(() => {
+                        const limits = getRosterCapacity(manageRoster);
+                        return `${limits.starters} starters, ${limits.maxSubstitutes} subs${limits.allowsCoaches ? `, ${limits.maxCoaches} coaches` : ''}`;
+                      })()}
+                    </span>
                   </p>
-                  <Button
+                  <CtaButton
                     size="sm"
                     onClick={sendBatchRosterInvites}
                     disabled={selectedInvitees.length === 0}
-                    className="bg-emerald-500/80 hover:bg-emerald-500 text-white px-6 h-9 rounded-full font-heading uppercase tracking-widest text-[10px] transition-all disabled:opacity-30"
+                    className="px-6 h-9 rounded-full font-heading uppercase tracking-widest text-[10px] disabled:opacity-30"
                   >
                     Send Invites ({selectedInvitees.length})
-                  </Button>
+                  </CtaButton>
                 </div>
               </div>
 
@@ -2169,14 +2363,14 @@ const TeamsPage = () => {
                           <span className="text-sm text-white/80 font-medium">{(inv as any).profiles?.username || inv.invited_email || inv.invited_user_id?.slice(0, 8)}</span>
                           <span className="text-[10px] text-white/20 uppercase tracking-tight">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''} at {inv.created_at ? new Date(inv.created_at).toLocaleTimeString() : ''}</span>
                         </div>
-                        <Button
+                        <DangerButton
                           size="sm"
                           variant="ghost"
-                          className="text-red-400/50 hover:text-red-400 hover:bg-red-500/10 rounded-full h-8 px-4 text-[10px] uppercase tracking-widest"
+                          className="rounded-full h-8 px-4 text-[10px] uppercase tracking-widest"
                           onClick={() => cancelRosterInvite(inv.id)}
                         >
                           Revoke
-                        </Button>
+                        </DangerButton>
                       </div>
                     ))}
                   </div>
@@ -2184,8 +2378,8 @@ const TeamsPage = () => {
               )}
 
               <div className="flex gap-3 pt-6">
-                <Button variant="outline" className="flex-1 border-white/10 text-white/60 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-xs" onClick={() => setManageRosterModalOpen(false)}>DISMISS</Button>
-                <Button onClick={saveManageRoster} className="flex-1 bg-white text-black hover:bg-white/90 h-12 rounded-xl font-heading font-bold tracking-widest text-xs shadow-xl transition-all hover:scale-[1.02]">SAVE CHANGES</Button>
+                <CancelButton className="flex-1 h-12 rounded-xl text-xs" onClick={() => setManageRosterModalOpen(false)}>DISMISS</CancelButton>
+                <AccentButton onClick={saveManageRoster} className="flex-1 h-12 rounded-xl text-xs shadow-xl transition-all hover:scale-[1.02]">SAVE CHANGES</AccentButton>
               </div>
             </div>
           )}
@@ -2194,7 +2388,7 @@ const TeamsPage = () => {
 
       {/* Remove Member Confirmation */}
       <AlertDialog open={showRemoveMember} onOpenChange={setShowRemoveMember}>
-        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar overflow-x-hidden" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2205,7 +2399,7 @@ const TeamsPage = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3">
-            <AlertDialogCancel className="bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 h-11 rounded-xl px-6 transition-all">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-11 rounded-xl px-6">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRemoveMember}
               className="bg-red-600/80 hover:bg-red-600 text-white h-11 rounded-xl px-6 font-heading tracking-widest text-xs transition-all hover:scale-105"
@@ -2218,7 +2412,7 @@ const TeamsPage = () => {
 
       {/* Transfer Captaincy Confirmation */}
       <AlertDialog open={showTransferCaptaincy} onOpenChange={setShowTransferCaptaincy}>
-        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar overflow-x-hidden" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2229,10 +2423,10 @@ const TeamsPage = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3">
-            <AlertDialogCancel className="bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 h-11 rounded-xl px-6 transition-all">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-11 rounded-xl px-6">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleTransferCaptaincy}
-              className="bg-white text-black hover:bg-white/90 h-11 rounded-xl px-6 font-heading font-bold tracking-widest text-xs transition-all hover:scale-105 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+              className="h-11 rounded-xl px-6 text-xs transition-all hover:scale-105"
             >
               TRANSFER CONTROL
             </AlertDialogAction>
@@ -2242,7 +2436,7 @@ const TeamsPage = () => {
 
       {/* Disband Team Confirmation */}
       <AlertDialog open={showDisbandTeam} onOpenChange={setShowDisbandTeam}>
-        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto custom-scrollbar overflow-x-hidden">
+        <AlertDialogContent className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] bg-black/95 backdrop-blur-2xl border border-white/10 text-white max-w-md shadow-[0_0_50px_rgba(0,0,0,0.5)] rounded-none p-8 z-[1100] max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar overflow-x-hidden" data-lenis-prevent>
           <div className="pointer-events-none absolute inset-0 opacity-[0.03] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
@@ -2253,7 +2447,7 @@ const TeamsPage = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3">
-            <AlertDialogCancel className="bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 h-11 rounded-xl px-6 transition-all">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-11 rounded-xl px-6">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDisbandTeam}
               className="bg-red-600 hover:bg-red-500 text-white h-11 rounded-xl px-6 font-heading font-bold tracking-widest text-xs transition-all hover:scale-105 shadow-[0_0_30px_rgba(239,68,68,0.2)]"
@@ -2300,12 +2494,14 @@ const TeamsPage = () => {
                       </Badge>
                     </div>
                   </div>
-                  <Link
-                    to={selectedTournament.slug ? `/tournaments/${selectedTournament.slug}` : '#'}
-                    className="bg-white text-black hover:bg-white/90 px-6 py-3 rounded-xl font-heading font-bold tracking-widest text-xs transition-all hover:scale-105 shadow-xl"
+                  <AccentButton
+                    asChild
+                    className="px-6 py-3 rounded-xl font-heading tracking-widest text-xs hover:scale-105 shadow-xl"
                   >
-                    GO TO TOURNAMENT
-                  </Link>
+                    <Link to={selectedTournament.slug ? `/tournaments/${selectedTournament.slug}` : '#'}>
+                      GO TO TOURNAMENT
+                    </Link>
+                  </AccentButton>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-8">
@@ -2330,13 +2526,12 @@ const TeamsPage = () => {
               </div>
 
               <div className="p-8 border-t border-white/5 bg-white/[0.01]">
-                <Button
-                  variant="outline"
-                  className="w-full border-white/10 text-white/40 hover:text-white hover:bg-white/5 h-12 rounded-xl font-heading tracking-widest text-xs"
+                <CancelButton
+                  className="w-full h-12 rounded-xl font-heading tracking-widest text-xs"
                   onClick={() => setIsTournamentModalOpen(false)}
                 >
                   DISMISS
-                </Button>
+                </CancelButton>
               </div>
             </div>
           )}

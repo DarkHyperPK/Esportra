@@ -1,18 +1,16 @@
 import React, { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button-variants';
+import { JackButton } from '@/components/ui/JackButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Trophy, Clock, Swords, CheckCircle2, AlertCircle, Check, ShieldAlert, Search, Info, SearchX, RefreshCcw, Zap, AlertTriangle, ImagePlus, X as XIcon } from 'lucide-react';
+import { Loader2, Trophy, Clock, Swords, Check, Search, Info, SearchX, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
-import { useAuth } from '@/hooks/useAuth';
+import type { EnrichedRiotMatchData } from '@/types/enrichedRiotMatch';
+import { resolveValShardRegion } from '@/hooks/useRiotGameDetails';
 import { useMatchResultReport } from '@/hooks/useMatchResultReport';
-import { formatDistanceToNow, format } from 'date-fns';
-import { FullScoreboard } from './FullScoreboard';
+import { formatDistanceToNow } from 'date-fns';
 import { MAP_THEMES, getAgentIcon, getMapSplash } from './fullScoreboardConstants';
-import EntityAvatar from '@/components/ui/EntityAvatar';
 
 interface MatchCandidate {
     id: string;
@@ -31,6 +29,15 @@ interface MatchCandidate {
     blueTeam: { roundsWon: number; won: boolean };
     redTeam: { roundsWon: number; won: boolean };
     players: any[];
+    roundTimeline?: Array<{ round: number; winningTeam: string; resultCode?: string | null; result?: string | null; plantSite?: string | null }>;
+    economyTimeline?: Array<{ round: number; blueSpent: number; redSpent: number; blueLoadout?: number; redLoadout?: number }>;
+    weaponSummaries?: Array<{ weapon: string; roundCount: number }>;
+    matchInfo?: {
+        mapId?: string | null;
+        gameMode?: string | null;
+        region?: string | null;
+        isRanked?: boolean;
+    } | null;
 }
 
 interface MatchAutoReportProps {
@@ -62,23 +69,18 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     userTeamId,
     team1Id,
     team2Id,
-    team1Name = 'Team 1',
-    team2Name = 'Team 2',
-    team1Logo,
-    team2Logo,
+    team1Name: _team1Name = 'Team 1',
+    team2Name: _team2Name = 'Team 2',
+    team1Logo: _team1Logo,
+    team2Logo: _team2Logo,
     isCaptain = true,
-    onSuccess,
+    onSuccess: _onSuccess,
     className
 }) => {
-    const { toast } = useToast();
-    const { user } = useAuth();
     const {
         activeReport,
         acceptedReport,
-        isMyReport,
         submitReport,
-        acceptReport,
-        disputeReport,
     } = useMatchResultReport(matchId, gameNumber);
 
     // Scan dialog state
@@ -87,13 +89,6 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
     const [candidates, setCandidates] = useState<MatchCandidate[]>([]);
     const [scanError, setScanError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
-
-    // Dispute dialog state
-    const [disputeOpen, setDisputeOpen] = useState(false);
-    const [disputeReason, setDisputeReason] = useState('');
-    const [disputeEvidenceFile, setDisputeEvidenceFile] = useState<File | null>(null);
-    const [disputeEvidencePreview, setDisputeEvidencePreview] = useState<string | null>(null);
-    const [showScoreboard, setShowScoreboard] = useState(false);
 
     const isTeam1 = userTeamId === team1Id;
 
@@ -151,6 +146,14 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
             // Reporter is NOT team1 → team1 is on the opposite side
             const t1Side = isTeam1 ? reporterSide : (reporterSide === 'Blue' ? 'Red' : 'Blue');
 
+            const enrichedSnapshot = await apiClient.post<EnrichedRiotMatchData>(
+                '/api/integrations/riot/enriched-match',
+                {
+                    matchId: candidate.id,
+                    region: resolveValShardRegion(candidate.matchInfo?.region),
+                },
+            );
+
             await submitReport.mutateAsync({
                 gameNumber,
                 riotMatchId: candidate.id,
@@ -172,6 +175,11 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                     reporterSide: reporterSide,
                     reportedByTeamId: userTeamId,
                     t1Side: t1Side,
+                    roundTimeline: candidate.roundTimeline,
+                    economyTimeline: candidate.economyTimeline,
+                    weaponSummaries: candidate.weaponSummaries,
+                    matchInfo: candidate.matchInfo,
+                    enrichedSnapshot,
                 },
             });
 
@@ -185,430 +193,22 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
         }
     };
 
-    // ── Accept Flow ──
-    const handleAccept = async () => {
-        if (!activeReport) return;
-        setSubmitting(true);
-        try {
-            console.log('[AutoReport] Accepting Report:', {
-                reportId: activeReport.id,
-                gameNumber: activeReport.game_number,
-                riotMatchId: activeReport.riot_match_id,
-            });
-
-            await acceptReport.mutateAsync({
-                reportId: activeReport.id,
-                gameNumber: activeReport.game_number,
-                riotMatchId: activeReport.riot_match_id,
-                mapId: activeReport.map_id || undefined,
-            });
-            onSuccess();
-        } catch (err: any) {
-            console.error('Accept failed:', err);
-            // Show message if it's available
-            const msg = err.message || 'Verification failed';
-            setScanError(msg);
-            setScanStep('error');
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    // ── Dispute Flow ──
-    const handleEvidenceSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0] ?? null;
-        setDisputeEvidenceFile(file);
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (ev) => setDisputeEvidencePreview(ev.target?.result as string);
-            reader.readAsDataURL(file);
-        } else {
-            setDisputeEvidencePreview(null);
-        }
-    };
-
-    const handleDispute = async () => {
-        if (!activeReport || !userTeamId) return;
-        try {
-            await disputeReport.mutateAsync({
-                reportId: activeReport.id,
-                reason: disputeReason || 'Result does not match our records.',
-                teamId: userTeamId,
-                evidenceFile: disputeEvidenceFile,
-            });
-            setDisputeOpen(false);
-            setDisputeReason('');
-            setDisputeEvidenceFile(null);
-            setDisputeEvidencePreview(null);
-        } catch (err: any) {
-            console.error('Dispute failed:', err);
-        }
-    };
-
-    // ── Accepted State ──
-    if (acceptedReport) {
-        return (
-            <Card className="bg-black border-zinc-800 overflow-hidden">
-                <CardContent className="p-0">
-                    <div className="bg-zinc-900/50 p-4 border-b border-zinc-800">
-                        <h3 className="font-semibold text-white flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                            Game {acceptedReport.game_number} — Result Verified
-                        </h3>
-                    </div>
-                    <div className="p-4 space-y-4">
-                        <div className="p-4 bg-zinc-900/30 border border-zinc-800 rounded-lg">
-                            <div className="text-center py-2">
-                                <p className="text-sm font-black text-white uppercase tracking-widest mb-6">
-                                    {acceptedReport.map_name || 'MAP'}
-                                </p>
-                                <div className="flex items-center justify-center gap-8">
-                                    <div className="flex flex-col items-center">
-                                        <div className="mb-2">
-                                            <EntityAvatar
-                                                src={team1Logo}
-                                                name={team1Name}
-                                                entityId={team1Id}
-                                                type="team"
-                                                size="w-12 h-12 rounded-lg"
-                                            />
-                                        </div>
-                                        <p className="text-xs text-zinc-500 mb-2">{team1Name}</p>
-                                        <p className="text-3xl font-black font-mono text-emerald-500">
-                                            {acceptedReport.team1_score}
-                                        </p>
-                                    </div>
-                                    <span className="text-zinc-600 text-lg flex items-center h-full pt-16">—</span>
-                                    <div className="flex flex-col items-center">
-                                        <div className="mb-2">
-                                            <EntityAvatar
-                                                src={team2Logo}
-                                                name={team2Name}
-                                                entityId={team2Id}
-                                                type="team"
-                                                size="w-12 h-12 rounded-lg"
-                                            />
-                                        </div>
-                                        <p className="text-xs text-zinc-500 mb-2">{team2Name}</p>
-                                        <p className="text-3xl font-black font-mono text-rose-500">
-                                            {acceptedReport.team2_score}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="text-center mt-6">
-                                <p className="text-xs text-zinc-500">
-                                    Verified {acceptedReport.responded_at ? format(new Date(acceptedReport.responded_at), 'MMM d, h:mm a') : ''}
-                                </p>
-                            </div>
-                        </div>
-
-                        {acceptedReport.match_data?.players && (
-                            <div className="space-y-3">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setShowScoreboard(!showScoreboard)}
-                                    className="w-full text-zinc-500 hover:text-white hover:bg-white/5 text-[10px] font-black uppercase tracking-widest h-8"
-                                >
-                                    <Swords className="w-3 h-3 mr-2" />
-                                    {showScoreboard ? 'Hide Scoreboard' : 'View Full Scoreboard'}
-                                </Button>
-
-                                <AnimatePresence>
-                                    {showScoreboard && (
-                                        <motion.div
-                                            initial={{ opacity: 0, gridTemplateRows: '0fr' }}
-                                            animate={{ opacity: 1, gridTemplateRows: '1fr' }}
-                                            exit={{ opacity: 0, gridTemplateRows: '0fr' }}
-                                            transition={{ duration: 0.2 }}
-                                            style={{ display: 'grid', overflow: 'hidden' }}
-                                        >
-                                        <div style={{ minHeight: 0, overflow: 'hidden' }}>
-                                            <FullScoreboard
-                                                players={acceptedReport.match_data.players}
-                                                team1Name={team1Name}
-                                                team2Name={team2Name}
-                                                team1Score={acceptedReport.team1_score}
-                                                team2Score={acceptedReport.team2_score}
-                                                reporterSide={acceptedReport.match_data.reporterSide}
-                                                reportedByTeamId={acceptedReport.reported_by_team_id}
-                                                team1Id={team1Id}
-                                            />
-                                        </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    // ── Pending Report State ──
-    if (activeReport) {
-        return (
-            <Card className="bg-black border-zinc-800 overflow-hidden">
-                <CardContent className="p-0">
-                    <div className="bg-zinc-900/50 p-4 border-b border-zinc-800">
-                        <div className="flex items-center justify-between">
-                            <h3 className="font-semibold text-white flex items-center gap-2">
-                                <Swords className="w-4 h-4 text-zinc-400" />
-                                Game {activeReport.game_number} — Result Reported
-                            </h3>
-                            <span className="text-xs text-zinc-500">
-                                {format(new Date(activeReport.created_at), 'MMM d, h:mm a')}
-                            </span>
-                        </div>
-                    </div>
-                    <div className="p-4 space-y-4">
-                        {/* Reported score */}
-                        <div className="p-4 bg-zinc-900/30 border border-zinc-800 rounded-lg">
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">
-                                    {isMyReport ? 'Your Report' : 'Opponent Reported'}
-                                </span>
-                            </div>
-                            <div className="text-center py-2">
-                                <p className="text-sm font-black text-white uppercase tracking-widest mb-6">
-                                    {activeReport.map_name || 'MAP'}
-                                </p>
-                                <div className="flex items-center justify-center gap-8">
-                                    <div className="flex flex-col items-center">
-                                        {/* You'd typically pass actual logo URLs here if available in activeReport/context. For now, using placeholders or initials if unavailable in this component's scope without further plumbing. Assuming we can fallback to name initials or null if no logo in activeReport. */}
-                                        <div className="w-12 h-12 rounded-lg bg-zinc-800 border border-zinc-700 mb-2 flex items-center justify-center overflow-hidden">
-                                            {/* EntityAvatar or plain image could go here, fallback to initials */}
-                                            <span className="text-xs text-zinc-500 font-bold">{team1Name.substring(0, 2).toUpperCase()}</span>
-                                        </div>
-                                        <p className="text-xs text-zinc-500 mb-2">{team1Name}</p>
-                                        <p className="text-3xl font-black font-mono text-emerald-500">
-                                            {activeReport.team1_score}
-                                        </p>
-                                    </div>
-                                    <span className="text-zinc-600 text-lg flex items-center h-full pt-16">—</span>
-                                    <div className="flex flex-col items-center">
-                                        <div className="w-12 h-12 rounded-lg bg-zinc-800 border border-zinc-700 mb-2 flex items-center justify-center overflow-hidden">
-                                            <span className="text-xs text-zinc-500 font-bold">{team2Name.substring(0, 2).toUpperCase()}</span>
-                                        </div>
-                                        <p className="text-xs text-zinc-500 mb-2">{team2Name}</p>
-                                        <p className="text-3xl font-black font-mono text-rose-500">
-                                            {activeReport.team2_score}
-                                        </p>
-                                    </div>
-                                </div>
-                                {activeReport.match_data?.players && (
-                                    <div className="mt-4 pt-4 border-t border-blue-500/10">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setShowScoreboard(!showScoreboard)}
-                                            className="w-full text-zinc-500 hover:text-white hover:bg-white/5 text-[10px] font-black uppercase tracking-widest h-8"
-                                        >
-                                            <Swords className="w-3 h-3 mr-2" />
-                                            {showScoreboard ? 'Hide Scoreboard' : 'View Full Scoreboard'}
-                                        </Button>
-
-                                        <AnimatePresence>
-                                            {showScoreboard && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, gridTemplateRows: '0fr' }}
-                                                    animate={{ opacity: 1, gridTemplateRows: '1fr' }}
-                                                    exit={{ opacity: 0, gridTemplateRows: '0fr' }}
-                                                    transition={{ duration: 0.2 }}
-                                                    style={{ display: 'grid', overflow: 'hidden' }}
-                                                    className="mt-2"
-                                                >
-                                                <div style={{ minHeight: 0, overflow: 'hidden' }}>
-                                                    <FullScoreboard
-                                                        players={activeReport.match_data.players}
-                                                        team1Name={team1Name}
-                                                        team2Name={team2Name}
-                                                        team1Score={activeReport.team1_score}
-                                                        team2Score={activeReport.team2_score}
-                                                        reporterSide={activeReport.match_data.reporterSide}
-                                                        reportedByTeamId={activeReport.reported_by_team_id}
-                                                        team1Id={team1Id}
-                                                    />
-                                                </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Screenshots (from manual reports) */}
-                        {activeReport.screenshot_urls && Array.isArray(activeReport.screenshot_urls) && activeReport.screenshot_urls.length > 0 && (
-                            <div className="space-y-2">
-                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Evidence Screenshots</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {activeReport.screenshot_urls.map((url: string, i: number) => (
-                                        <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                                            className="block relative aspect-video bg-black/40 rounded-lg border border-zinc-800 overflow-hidden group hover:border-zinc-600 transition-colors">
-                                            <img src={url} loading="lazy" alt={`Evidence ${i + 1}`} className="w-full h-full object-contain" />
-                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                <span className="text-white text-xs font-medium">View Full Image</span>
-                                            </div>
-                                        </a>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Comment */}
-                        {activeReport.comment && (
-                            <div className="p-3 bg-zinc-900/30 border border-zinc-800 rounded-lg">
-                                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">Comment</p>
-                                <p className="text-sm text-zinc-300 whitespace-pre-wrap">{activeReport.comment}</p>
-                            </div>
-                        )}
-
-                        {/* Waiting / Actions */}
-                        {isMyReport ? (
-                            <div className="text-center p-3 bg-zinc-800/50 rounded-lg">
-                                <Clock className="w-5 h-5 text-zinc-400 mx-auto mb-1 animate-pulse" />
-                                <p className="text-zinc-400 text-sm">Waiting for opponent to verify...</p>
-                            </div>
-                        ) : isCaptain ? (
-                            <div className="space-y-2">
-                                <Button
-                                    onClick={handleAccept}
-                                    disabled={acceptReport.isPending}
-                                    className="w-full bg-emerald-600 hover:bg-emerald-700"
-                                >
-                                    {acceptReport.isPending ? (
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    ) : (
-                                        <Check className="w-4 h-4 mr-2" />
-                                    )}
-                                    Accept Result
-                                </Button>
-                                <Button
-                                    onClick={() => setDisputeOpen(true)}
-                                    variant="outline"
-                                    className="w-full border-red-500/50 text-red-400 hover:bg-red-500/10"
-                                >
-                                    <ShieldAlert className="w-4 h-4 mr-2" />
-                                    Dispute Result
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                                <AlertCircle className="w-4 h-4 text-amber-500" />
-                                <p className="text-sm text-amber-400">
-                                    Only team captains can verify results.
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                </CardContent>
-
-                {/* Dispute Dialog */}
-                <Dialog open={disputeOpen} onOpenChange={(open: boolean) => {
-                    setDisputeOpen(open);
-                    if (!open) { setDisputeEvidenceFile(null); setDisputeEvidencePreview(null); setDisputeReason(''); }
-                }}>
-                    <DialogContent className="bg-zinc-900 border border-zinc-700 text-white sm:max-w-md">
-                        <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2">
-                                <ShieldAlert className="w-5 h-5 text-red-400" />
-                                Dispute Result
-                            </DialogTitle>
-                            <DialogDescription className="text-zinc-400">
-                                This will be escalated to the tournament organizer for resolution.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                                <p className="text-sm text-zinc-300">
-                                    Reported: <strong>{activeReport.map_name}</strong> — {activeReport.team1_score} to {activeReport.team2_score}
-                                </p>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-xs text-zinc-400">Reason for dispute</label>
-                                <Textarea
-                                    value={disputeReason}
-                                    onChange={(e) => setDisputeReason(e.target.value)}
-                                    placeholder="Explain why the reported result is incorrect..."
-                                    className="bg-zinc-800 border-zinc-700 text-white"
-                                    rows={3}
-                                />
-                            </div>
-
-                            {/* Evidence image attachment */}
-                            <div className="space-y-2">
-                                <label className="text-xs text-zinc-400">Attach screenshot (optional)</label>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    id="dispute-evidence-input"
-                                    onChange={handleEvidenceSelect}
-                                />
-                                {disputeEvidencePreview ? (
-                                    <div className="relative rounded-lg overflow-hidden border border-zinc-700">
-                                        <img
-                                            src={disputeEvidencePreview}
-                                            alt="Evidence preview"
-                                            className="w-full max-h-40 object-cover"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => { setDisputeEvidenceFile(null); setDisputeEvidencePreview(null); }}
-                                            className="absolute top-2 right-2 p-1 rounded-full bg-black/70 hover:bg-black text-white transition-colors"
-                                        >
-                                            <XIcon className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <label
-                                        htmlFor="dispute-evidence-input"
-                                        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors text-sm"
-                                    >
-                                        <ImagePlus className="w-4 h-4 shrink-0" />
-                                        Click to attach a screenshot
-                                    </label>
-                                )}
-                            </div>
-
-                            <div className="flex gap-2">
-                                <Button
-                                    onClick={handleDispute}
-                                    disabled={disputeReport.isPending}
-                                    className="flex-1 bg-red-600 hover:bg-red-700"
-                                >
-                                    {disputeReport.isPending ? (
-                                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Submitting...</>
-                                    ) : 'File Dispute'}
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    onClick={() => setDisputeOpen(false)}
-                                >
-                                    Cancel
-                                </Button>
-                            </div>
-                        </div>
-                    </DialogContent>
-                </Dialog>
-            </Card>
-        );
+    // Verification UI is rendered by CaptainMatchPage / MatchResultUpload
+    if (acceptedReport || activeReport) {
+        return null;
     }
 
     // ── No Report — Show Scan Button ──
     return (
         <div className="space-y-4 flex flex-col items-center">
             {isCaptain ? (
-                <Button
+                <button type="button"
                     onClick={() => setScanOpen(true)}
-                    className={`w-full bg-rose-500 hover:bg-rose-600 transition-all text-white font-bold font-mono tracking-wider shadow-lg shadow-rose-900/20 ${className}`}
+                    className={cn(buttonVariants(), 'w-full shadow-lg shadow-rose-900/20', className)}
                 >
                     <Search className="w-4 h-4 mr-2" />
                     Auto-Fetch Game {gameNumber} Result
-                </Button>
+                </button>
             ) : (
                 <div className="flex items-center gap-2 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg mb-4">
                     <Info className="w-4 h-4 text-indigo-400" />
@@ -647,46 +247,31 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                 </div>
                             )}
                             <div className="flex justify-center mt-6">
-                                <Button onClick={handleScan} className="w-full max-w-[280px] bg-indigo-600 hover:bg-indigo-700">
+                                <button type="button" onClick={handleScan} className={cn(buttonVariants(), 'w-full max-w-[280px] border-transparent bg-indigo-600 hover:bg-indigo-700')}>
                                     <Search className="w-4 h-4 mr-2" />
                                     Scan Recent Matches
-                                </Button>
+                                </button>
                             </div>
                         </div>
                     )}
 
                     {/* Step: Scanning */}
                     {scanStep === 'scanning' && (
-                        <div className="py-20 text-center relative overflow-hidden">
-                            {/* Premium Orbital Loader */}
-                            <div className="relative w-24 h-24 mx-auto mb-8">
-                                <div className="absolute inset-0 rounded-full border-2 border-indigo-500/20" />
-                                <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                    className="absolute inset-0 rounded-full border-t-2 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)]"
-                                />
-                                <motion.div
-                                    animate={{ rotate: -360 }}
-                                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                                    className="absolute inset-2 rounded-full border-b-2 border-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.4)]"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <Zap className="w-8 h-8 text-white/20 animate-pulse" />
+                        <div className="py-14 px-6 text-center space-y-5">
+                            <div className="mx-auto w-full max-w-xs space-y-3">
+                                <div className="h-1 w-full overflow-hidden rounded-full bg-zinc-800">
+                                    <div
+                                        className="h-full w-1/3 rounded-full bg-rose-500 motion-safe:animate-[scan-progress_1.2s_ease-in-out_infinite]"
+                                        aria-hidden
+                                    />
                                 </div>
+                                <p className="text-sm font-medium text-zinc-300">
+                                    Scanning recent matches
+                                </p>
+                                <p className="text-xs text-zinc-500">
+                                    Checking Riot match history for {mapName}
+                                </p>
                             </div>
-
-                            <motion.h3
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="text-xl font-black uppercase tracking-tighter text-white mb-2 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent"
-                            >
-                                Scanning Results
-                            </motion.h3>
-                            <p className="text-sm text-zinc-500 font-medium">This may take a few seconds...</p>
-
-                            {/* Background Glow */}
-                            <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-64 h-32 bg-indigo-500/10 blur-[80px] rounded-full" />
                         </div>
                     )}
 
@@ -702,12 +287,12 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                     {scanError || 'An unexpected error occurred during processing.'}
                                 </p>
                             </div>
-                            <Button
+                            <JackButton
                                 onClick={() => setScanStep('idle')}
-                                className="bg-white text-black hover:bg-zinc-200 font-bold px-8"
+                                className="px-8"
                             >
                                 TRY AGAIN
-                            </Button>
+                            </JackButton>
                         </div>
                     )}
 
@@ -717,16 +302,14 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                             <div className="flex items-center justify-between">
                                 <p className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.2em]">Select Sequence</p>
                                 <div className="flex items-center gap-2">
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
+                                    <button type="button"
                                         onClick={handleScan}
                                         disabled={submitting}
-                                        className="h-6 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10"
+                                        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-6 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10')}
                                     >
                                         <RefreshCcw className="w-3 h-3 mr-1.5" />
                                         Refetch
-                                    </Button>
+                                    </button>
                                     <span className="bg-zinc-800 text-[10px] px-2 py-0.5 rounded-full font-bold text-zinc-400 border border-zinc-700">
                                         {candidates.length} FOUND
                                     </span>
@@ -749,17 +332,16 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                             We couldn't find any recent <strong>{mapName}</strong> matches.
                                             Ensure the match is complete and public.
                                         </p>
-                                        <Button
-                                            variant="outline"
+                                        <button type="button"
                                             onClick={handleScan}
-                                            className="border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 hover:border-indigo-500/50 text-indigo-400 h-10 px-8 font-black uppercase tracking-widest text-xs transition-all"
+                                            className={cn(buttonVariants({ variant: 'outline' }), 'border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 hover:border-indigo-500/50 text-indigo-400 h-10 px-8 font-black uppercase tracking-widest text-xs transition-all')}
                                         >
                                             <RefreshCcw className="w-3 h-3 mr-2" /> Try Again
-                                        </Button>
+                                        </button>
                                     </div>
                                 </motion.div>
                             ) : (
-                                <div className="grid gap-4 max-h-[500px] overflow-y-auto px-2 -mx-2 py-2 pb-10 custom-scrollbar scroll-smooth">
+                                <div className="grid gap-4 max-h-[500px] overflow-y-auto overscroll-contain px-2 -mx-2 py-2 pb-10 custom-scrollbar scroll-smooth" data-lenis-prevent>
                                     <AnimatePresence mode="popLayout">
                                         {candidates.map((match, idx) => {
                                             const theme = MAP_THEMES[match.map.toLowerCase()] || { color: 'text-zinc-400', bg: 'bg-zinc-800', id: '2bee0dc9-4ffe-519b-1cbd-7fbe763a6047' };

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Clock, Monitor, Gamepad2, Wifi, Wind, Coffee, Car, Maximize2, Zap } from 'lucide-react';
 import { OptimizedImage } from '@/components/ui/OptimizedImage';
@@ -41,12 +41,16 @@ const VenueCardV2Inner: React.FC<Props> = ({ venue, showStatus = false }) => {
   const tracked = useRef(false);
   const gameList = venue.games ? venue.games.split(',').map(g => g.trim()).filter(Boolean).slice(0, 3) : [];
 
+  const trackCardImpression = useCallback(() => {
+    trackImpression({ venueId: venue.id, eventType: 'card_view' });
+  }, [trackImpression, venue.id]);
+
   useEffect(() => {
     if (!tracked.current && venue.id) {
       tracked.current = true;
-      trackImpression({ venueId: venue.id, eventType: 'card_view' });
+      trackCardImpression();
     }
-  }, [venue.id]);
+  }, [venue.id, trackCardImpression]);
 
   return (
     <div

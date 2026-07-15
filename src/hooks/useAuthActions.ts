@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/apiClient';
+import { meRolesQueryKey } from '@/lib/meRoles';
+import { resetClientSessionForAuthChange } from '@/lib/resetClientSession';
 import { useToast } from './use-toast';
 import { UserRole } from '@/types/auth';
 
@@ -8,8 +12,9 @@ export const useAuthActions = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, redirectTo?: string) => {
     setLoading(true);
 
     try {
@@ -26,15 +31,39 @@ export const useAuthActions = () => {
 
       console.log("Sign in successful:", data.user?.id);
 
-      // Suspension check is handled by AuthContext after profile fetch.
-      // AuthContext will redirect to /suspended if needed.
+      const profile = await apiClient.get<{
+        is_suspended?: boolean;
+        suspension_reason?: string | null;
+        suspension_until?: string | null;
+        suspension_type?: string | null;
+      }>('/api/profiles/me');
+
+      if (profile?.is_suspended) {
+        await supabase.auth.signOut();
+        toast({
+          title: 'Account Restricted',
+          description: `This account is suspended. Reason: ${profile.suspension_reason || 'Violation of terms'}`,
+          variant: 'destructive',
+        });
+        navigate('/suspended', {
+          replace: true,
+          state: {
+            reason: profile.suspension_reason,
+            type: profile.suspension_type,
+            until: profile.suspension_until,
+          },
+        });
+        return;
+      }
+
+      await queryClient.invalidateQueries({ queryKey: meRolesQueryKey });
 
       toast({
         title: 'Welcome back!',
         description: 'You have successfully signed in.',
       });
 
-      navigate('/');
+      navigate(redirectTo || '/');
     } catch (error: any) {
       console.error('Error signing in:', error);
       throw error;
@@ -49,13 +78,14 @@ export const useAuthActions = () => {
     username: string,
     fullName?: string,
     role: UserRole = 'casual',
-    _dateOfBirth?: string
+    dateOfBirth?: string,
+    countryCode?: string,
   ) => {
     setLoading(true);
     console.log("Signing up with role:", role);
 
     try {
-      // Step 1: Create the auth user with minimal metadata
+      // Step 1: Create the auth user with profile metadata used by handle_new_user trigger
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -63,7 +93,9 @@ export const useAuthActions = () => {
           data: {
             username,
             full_name: fullName || null,
-            role: role
+            role: role,
+            date_of_birth: dateOfBirth || null,
+            country_code: countryCode || null,
           },
         }
       });
@@ -78,6 +110,18 @@ export const useAuthActions = () => {
       }
 
       console.log(`User created with ID: ${authData.user.id} and role: ${role}`);
+
+      if (dateOfBirth || countryCode) {
+        try {
+          await apiClient.put(`/api/profiles/${authData.user.id}`, {
+            ...(dateOfBirth ? { date_of_birth: dateOfBirth } : {}),
+            ...(countryCode ? { country_code: countryCode } : {}),
+          });
+        } catch (profileErr) {
+          console.warn('[SignUp] Failed to persist profile fields on signup:', profileErr);
+        }
+      }
+
       // Profile is created automatically by the handle_new_user trigger on auth.users.
 
       // If email confirmation is required, redirect to verify page
@@ -106,6 +150,7 @@ export const useAuthActions = () => {
         data: { username },
       }).catch((err) => console.warn('[SignUp] Welcome email failed:', err));
 
+      await queryClient.invalidateQueries({ queryKey: meRolesQueryKey });
       navigate('/');
 
     } catch (error: any) {
@@ -123,7 +168,7 @@ export const useAuthActions = () => {
 
   const signInWithGoogle = async () => {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`
@@ -145,7 +190,7 @@ export const useAuthActions = () => {
 
   const signInWithDiscord = async () => {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
@@ -179,19 +224,13 @@ export const useAuthActions = () => {
     } catch (error: unknown) {
       console.error('Error signing out:', error);
     } finally {
-      // Force-clear any stale Supabase session from localStorage
-      for (const key of Object.keys(localStorage)) {
-        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-          localStorage.removeItem(key);
-        }
-      }
-      localStorage.removeItem('sessionRole');
+      resetClientSessionForAuthChange(queryClient);
       setLoading(false);
       toast({
         title: 'Signed out',
         description: 'You have been successfully signed out.',
       });
-      navigate('/');
+      navigate('/auth/signin', { replace: true });
     }
   };
 

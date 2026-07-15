@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Gamepad2 } from 'lucide-react';
-import esportsData from '@/data/esportsGames.json';
+import { useGameCatalog } from '@/hooks/useGameCatalog';
+import { listCatalogGames } from '@/utils/gameFeatures';
 
 interface Game {
   name: string;
@@ -17,14 +18,18 @@ interface GamesPickerProps {
   className?: string;
 }
 
-const ALL_GAMES: Game[] = esportsData.games.map(g => ({
-  name: g.name,
-  slug: g.slug,
-  logo: g.logo,
-  category: g.category,
-}));
-
 const GamesPicker: React.FC<GamesPickerProps> = ({ value, onChange, className }) => {
+  const { data: catalogData } = useGameCatalog();
+  const allGames = useMemo(
+    () => (catalogData?.games ?? listCatalogGames()).map((game) => ({
+      name: game.name,
+      slug: game.slug,
+      logo: game.logo,
+      category: game.category,
+    })),
+    [catalogData],
+  );
+
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -45,10 +50,10 @@ const GamesPicker: React.FC<GamesPickerProps> = ({ value, onChange, className })
   }, []);
 
   const filtered = useMemo(() => {
-    if (!query) return ALL_GAMES;
+    if (!query) return allGames;
     const q = query.toLowerCase();
-    return ALL_GAMES.filter(g => g.name.toLowerCase().includes(q) || g.slug.includes(q));
-  }, [query]);
+    return allGames.filter(g => g.name.toLowerCase().includes(q) || g.slug.includes(q));
+  }, [allGames, query]);
 
   const isSelected = (name: string) => selectedNames.some(s => s.toLowerCase() === name.toLowerCase());
 
@@ -68,10 +73,8 @@ const GamesPicker: React.FC<GamesPickerProps> = ({ value, onChange, className })
     onChange(updated.join(', '));
   };
 
-  // Find logo for a selected game name
   const getGameLogo = (name: string): string | undefined => {
-    const game = ALL_GAMES.find(g => g.name.toLowerCase() === name.toLowerCase());
-    return game?.logo;
+    return allGames.find(g => g.name.toLowerCase() === name.toLowerCase())?.logo;
   };
 
   return (
@@ -109,7 +112,7 @@ const GamesPicker: React.FC<GamesPickerProps> = ({ value, onChange, className })
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full max-h-64 overflow-y-auto rounded-xl bg-[#0a0a0c] border border-white/10 shadow-xl">
+        <div className="absolute z-50 mt-1 w-full max-h-64 overflow-y-auto overscroll-contain rounded-xl bg-[#0a0a0c] border border-white/10 shadow-xl" data-lenis-prevent>
           {filtered.length === 0 ? (
             <div className="px-3 py-4 text-center text-sm text-zinc-500">
               <Gamepad2 className="w-5 h-5 mx-auto mb-1 opacity-50" />

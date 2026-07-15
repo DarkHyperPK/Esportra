@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useFramerDropdown } from "@/components/ui/FramerDropdown";
+import { useFramerDropdown } from "@/components/ui/framerDropdownContext";
 
 /**
  * Sharp menu item used inside `FramerDropdownContent`.
@@ -41,7 +41,7 @@ export function JackMenuItem({
       type="button"
       onClick={handleClick}
       className={cn(
-        "block w-full bg-white px-4 py-3 text-left font-mono text-[12px] font-bold uppercase tracking-wider text-black transition-colors hover:bg-rose-500 hover:text-white",
+        "block w-full bg-white px-4 py-3 text-left font-mono text-[12px] font-bold uppercase tracking-wider text-matte-black transition-colors hover:bg-rose-500 hover:text-white",
         className,
       )}
     >

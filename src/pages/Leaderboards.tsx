@@ -119,7 +119,7 @@ const Leaderboards: React.FC = () => {
                     <div className="relative">
                         <button
                             onClick={() => setCountryMenuOpen(!countryMenuOpen)}
-                            className="flex items-center gap-2 border border-white/10 bg-[#0a0a0c]/90 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-rose-500/30 transition-all"
+                            className="flex items-center gap-2 border border-white/10 bg-[#0a0a0c]/90 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-white/25 transition-all"
                         >
                             <Globe className="w-3.5 h-3.5 text-rose-400" />
                             {country || 'All Countries'}
@@ -131,7 +131,7 @@ const Leaderboards: React.FC = () => {
                                     initial={{ opacity: 0, y: -8, scale: 0.95 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
                                     exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                                    className="absolute right-0 mt-2 w-56 bg-[#0a0a0c]/95 border border-white/10 overflow-hidden shadow-2xl z-50 max-h-72 overflow-y-auto"
+                                    className="absolute right-0 mt-2 w-56 bg-[#0a0a0c]/95 border border-white/10 overflow-hidden shadow-2xl z-50 max-h-72 overflow-y-auto overscroll-contain" data-lenis-prevent
                                 >
                                     <button
                                         onClick={() => { setCountry(''); setCountryMenuOpen(false); }}
@@ -192,8 +192,9 @@ const Leaderboards: React.FC = () => {
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="space-y-3"
+                        className="overflow-x-auto -mx-4 px-4"
                     >
+                        <div className="min-w-[32rem] space-y-3">
                         {/* Header Row */}
                         <div className="grid grid-cols-[60px,1fr,repeat(4,minmax(60px,100px)),100px] gap-2 px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">
                             <span>Rank</span>
@@ -283,6 +284,7 @@ const Leaderboards: React.FC = () => {
                                 );
                             })}
                         </AnimatePresence>
+                        </div>
                     </motion.div>
                 )}
             </div>

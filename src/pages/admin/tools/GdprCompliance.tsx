@@ -344,7 +344,7 @@ const RequestCard = ({ request, onAction }: RequestCardProps) => {
               </Button>
               <Button
                 size="sm"
-                className="h-7 px-3 text-xs bg-rose-500/10 text-rose-400 border border-rose-400/20 hover:bg-rose-500/20"
+                className="h-7 px-3 text-xs border border-white/15 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"
                 onClick={() => onAction(request, 'reject')}
               >
                 <XCircle className="w-3.5 h-3.5 mr-1" />

@@ -7,7 +7,8 @@ import { AlertTriangle, Ban as BanIcon, Upload, DollarSign, CheckCircle, FileTex
 import { RegistrationDetails } from '@/types/tournament';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
-import { Button } from '@/components/ui/button';
+import { isTeamRegistrationMode } from '@/utils/gameFeatures';
+import { CtaButton, CancelButton } from '@/components/ui/app-buttons';
 
 interface TournamentRegistrationProps {
   tournamentId: string;
@@ -15,8 +16,13 @@ interface TournamentRegistrationProps {
   game?: string;
   gameMode?: string | null;
   teamSize?: number;
+  participantMode?: 'solo' | 'team' | string | null;
   structure?: string;
   settings?: any;
+  status?: string;
+  startDate?: string | null;
+  registrationDeadline?: string | null;
+  maxTeams?: number;
   entryFee?: number | string | null;
   currency?: string;
   paymentInstructions?: string | null;
@@ -33,7 +39,12 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
   game = '',
   gameMode,
   teamSize = 1,
+  participantMode,
   settings,
+  status,
+  startDate,
+  registrationDeadline,
+  maxTeams = 100,
   entryFee,
   currency = 'USD',
   paymentInstructions,
@@ -59,9 +70,10 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
     ? (entryFee.toLowerCase() === 'free' ? 0 : parseFloat(entryFee) || 0)
     : (entryFee ?? 0);
   const isPaid = parsedFee > 0;
+  const resolvedStartDate = startDate ?? new Date().toISOString();
 
-  // Check if this is a team tournament
-  const isTeamTournament = (teamSize || 1) > 1 || game?.toLowerCase() === 'valorant';
+  // Check if this is a team tournament (catalog/tournament mode, not game-name heuristics)
+  const isTeamTournament = isTeamRegistrationMode(game, gameMode, participantMode);
 
   // Check for ban on mount
   useEffect(() => {
@@ -244,25 +256,23 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
         </div>
 
         <div className="flex gap-3">
-          <Button
+          <CtaButton
             onClick={handleUploadReceipt}
             disabled={!receiptFile || uploading}
-            className="flex-1 bg-rose-600 hover:bg-rose-500 text-white"
+            className="flex-1"
           >
             {uploading ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading...</>
             ) : (
               <><CheckCircle className="w-4 h-4 mr-2" /> Submit Receipt</>
             )}
-          </Button>
-          <Button
+          </CtaButton>
+          <CancelButton
             onClick={handleCancelReceiptUpload}
-            variant="outline"
             disabled={uploading}
-            className="border-zinc-700 text-zinc-400 hover:text-white"
           >
             Cancel
-          </Button>
+          </CancelButton>
         </div>
         <p className="text-xs text-zinc-500 text-center">
           Cancelling will withdraw your registration.
@@ -281,10 +291,12 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
           game: game || '',
           game_mode: gameMode ?? undefined,
           gameMode: gameMode ?? undefined,
-          start_date: new Date().toISOString(),
+          status,
+          start_date: resolvedStartDate,
+          registration_deadline: registrationDeadline ?? undefined,
           entry_fee: parsedFee || undefined,
           prize_pool: undefined,
-          max_teams: 100,
+          max_teams: maxTeams,
           team_size: teamSize,
           settings,
         }}
@@ -302,11 +314,14 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
         id: tournamentId,
         name: tournamentName,
         game: game || '',
-        start_date: new Date().toISOString(),
+        status,
+        start_date: resolvedStartDate,
+        registration_deadline: registrationDeadline ?? undefined,
         entry_fee: parsedFee,
         prize_pool: 0,
-        max_teams: 100,
-        description: ''
+        max_teams: maxTeams,
+        description: '',
+        settings,
       }}
       onRegistrationComplete={handleRegistrationComplete}
       onCancel={onCancel || onRegisterSuccess}

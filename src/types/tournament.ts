@@ -21,6 +21,7 @@ export interface BaseTournament {
     venue_id?: string | null;
     region?: string | null;
     is_online: boolean;
+    is_public?: boolean;
     max_participants: number;
     reserved_invite_slots?: number;
     invite_expiry_days?: number;
@@ -39,6 +40,7 @@ export interface BaseTournament {
     slug?: string;
     check_in_required?: boolean;
     check_in_deadline?: string | null;
+    registration_deadline?: string | null;
     auto_remove_unchecked?: boolean;
     settings?: any;
     rules?: string | null;

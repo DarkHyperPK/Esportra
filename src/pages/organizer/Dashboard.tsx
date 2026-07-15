@@ -81,15 +81,25 @@ const tabTitles: Record<string, { eyebrow: string; title: string; description: s
   },
 };
 
+const staffScheduleTabs = new Set(["schedule", "history"]);
+
 const OrganizerDashboard = () => {
   const { profile, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isOrgOwner, setIsOrgOwner] = useState(false);
+  const [isOrgStaff, setIsOrgStaff] = useState(false);
+  const staffOnlyView = isOrgStaff && !isOrgOwner && profile?.role !== "organizer";
+  const visibleTabs = staffOnlyView
+    ? managementTabs.filter((tab) => staffScheduleTabs.has(tab.value))
+    : managementTabs;
   const tabFromUrl = searchParams.get("tab");
-  const defaultTab = location.pathname.includes("/settings") || location.pathname.includes("/organization")
-    ? tabFromUrl || "organization"
-    : tabFromUrl || "tournaments";
+  const defaultTab = staffOnlyView
+    ? "schedule"
+    : location.pathname.includes("/settings") || location.pathname.includes("/organization")
+      ? tabFromUrl || "organization"
+      : tabFromUrl || "tournaments";
   const [activeTab, setActiveTabState] = useState(defaultTab);
   const { data: stats, isLoading: statsLoading } = useOrganizerStats();
   const [orgId, setOrgId] = useState<string | null>(null);
@@ -102,10 +112,16 @@ const OrganizerDashboard = () => {
   };
 
   useEffect(() => {
-    if (tabFromUrl && tabFromUrl !== activeTab) {
+    if (!tabFromUrl) return;
+    if (staffOnlyView && !staffScheduleTabs.has(tabFromUrl)) {
+      setActiveTabState("schedule");
+      setSearchParams({ tab: "schedule" }, { replace: true });
+      return;
+    }
+    if (tabFromUrl !== activeTab) {
       setActiveTabState(tabFromUrl);
     }
-  }, [activeTab, tabFromUrl]);
+  }, [activeTab, tabFromUrl, staffOnlyView, setSearchParams]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -114,11 +130,17 @@ const OrganizerDashboard = () => {
     const fetchOrg = async () => {
       const mine = await apiClient.get<any>("/api/organizations/mine").catch(() => null);
       const fallback = mine?.id ? mine : await apiClient.get<any>("/api/organizations/me").catch(() => null);
-      const staffData = fallback?.id ? null : await apiClient.get<any>("/api/organizations/my-staff").catch(() => null);
-      const staffOrg = Array.isArray(staffData?.organizations) ? staffData.organizations[0] : staffData?.organizations;
-      const org = fallback?.id ? fallback : staffOrg;
+      const staffData = await apiClient.get<any[]>("/api/organizations/staff/assignments").catch(() => []);
+      const activeStaff = (staffData || []).filter((row) => row.status === "active");
+      const staffOrg = activeStaff[0]?.organization;
+      const resolvedStaffOrg = Array.isArray(staffOrg) ? staffOrg[0] : staffOrg;
+      const org = fallback?.id ? fallback : resolvedStaffOrg;
 
-      if (!mounted || !org?.id) return;
+      if (!mounted) return;
+      setIsOrgOwner(Boolean(fallback?.id));
+      setIsOrgStaff(activeStaff.length > 0);
+
+      if (!org?.id) return;
       setOrgId(org.id);
       setOrgName(org.name || "");
       setOrgLogo(org.logo_url || null);
@@ -172,7 +194,7 @@ const OrganizerDashboard = () => {
             <div className="relative z-20 border-t border-white/10 pt-4">
               <p className="mb-3 px-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">Manage</p>
               <div role="navigation" aria-label="Organizer management" className="grid gap-2">
-                {managementTabs.map((tab) => {
+                {visibleTabs.map((tab) => {
                   const Icon = tab.icon;
                   const active = activeTab === tab.value;
                   return (
@@ -183,8 +205,8 @@ const OrganizerDashboard = () => {
                       className={cn(
                         "relative z-20 flex h-10 w-full items-center gap-3 border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70",
                         active
-                          ? "border-rose-500 bg-rose-500 text-white"
-                          : "border-white/15 bg-black text-zinc-200 hover:border-rose-500/45 hover:bg-white/[0.06] hover:text-white",
+                          ? "border-transparent bg-rose-500 text-white"
+                          : "border-white/15 bg-black text-zinc-200 hover:border-white/25 hover:bg-white/[0.06] hover:text-white",
                       )}
                     >
                       <Icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-zinc-400")} />
@@ -203,24 +225,28 @@ const OrganizerDashboard = () => {
           title={activeMeta.title}
           description={activeMeta.description}
           actions={
-            <>
-              <CommandButton variant="secondary" onClick={() => navigate("/organizer/tournaments")}>
-                <Trophy className="h-4 w-4" />
-                Tournaments
-              </CommandButton>
-              <CommandButton slide onClick={() => navigate("/tournaments/create")}>
-                <Plus className="h-4 w-4" />
-                Create Tournament
-              </CommandButton>
-            </>
+            staffOnlyView ? undefined : (
+              <>
+                <CommandButton variant="secondary" onClick={() => navigate("/organizer/tournaments")}>
+                  <Trophy className="h-4 w-4" />
+                  Tournaments
+                </CommandButton>
+                <CommandButton slide onClick={() => navigate("/tournaments/create")}>
+                  <Plus className="h-4 w-4" />
+                  Create Tournament
+                </CommandButton>
+              </>
+            )
           }
         />
 
-        <div className="grid grid-cols-3 gap-3">
-          {metrics.map((metric) => (
-            <CommandMetric key={metric.label} label={metric.label} value={metric.value} icon={metric.icon} />
-          ))}
-        </div>
+        {!staffOnlyView && (
+          <div className="grid grid-cols-3 gap-3">
+            {metrics.map((metric) => (
+              <CommandMetric key={metric.label} label={metric.label} value={metric.value} icon={metric.icon} />
+            ))}
+          </div>
+        )}
 
         {activeTab === "tournaments" && <TournamentsList />}
         {activeTab === "participants" && <ParticipantsList />}

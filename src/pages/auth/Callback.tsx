@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
+import { markRecoverySession } from '@/lib/authRecovery';
 import { useToast } from '@/hooks/use-toast';
 
 const Callback = () => {
@@ -28,12 +29,13 @@ const Callback = () => {
         }
       }
 
-      // Check for suspension
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_suspended, suspension_until, suspension_reason, suspension_type')
-        .eq('id', session.user.id)
-        .single();
+      // Check for suspension via API (consistent with password login + middleware allowlist)
+      const profile = await apiClient.get<{
+        is_suspended?: boolean;
+        suspension_reason?: string | null;
+        suspension_until?: string | null;
+        suspension_type?: string | null;
+      }>('/api/profiles/me');
 
       if (profile?.is_suspended) {
         await supabase.auth.signOut();
@@ -60,7 +62,7 @@ const Callback = () => {
     // PASSWORD_RECOVERY fires reliably before getSession() resolves — use it as primary handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        sessionStorage.setItem('password_recovery_pending', 'true');
+        markRecoverySession();
         toast({ title: "Link verified", description: "Please set your new password." });
         navigate('/auth/reset-password');
         return;
@@ -69,7 +71,7 @@ const Callback = () => {
       if (event === 'SIGNED_IN') {
         // Fallback: check captured hash for recovery in case event fires as SIGNED_IN
         if (initialHash.includes('type=recovery')) {
-          sessionStorage.setItem('password_recovery_pending', 'true');
+          markRecoverySession();
           toast({ title: "Link verified", description: "Please set your new password." });
           navigate('/auth/reset-password');
           return;
@@ -87,7 +89,7 @@ const Callback = () => {
         return;
       }
       if (initialHash.includes('type=recovery') && session) {
-        sessionStorage.setItem('password_recovery_pending', 'true');
+        markRecoverySession();
         toast({ title: "Link verified", description: "Please set your new password." });
         navigate('/auth/reset-password');
         return;
