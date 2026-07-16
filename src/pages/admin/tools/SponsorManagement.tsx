@@ -10,7 +10,7 @@ import {
     FileText, ExternalLink, Download, Loader2, ShieldCheck
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { apiClient } from '@/lib/apiClient';
+import { ApiError, apiClient } from '@/lib/apiClient';
 import { csvEscape } from '@/lib/exportUtils';
 import { Button } from '@/components/ui/button';
 import { JackButton } from '@/components/ui/JackButton';
@@ -159,6 +159,7 @@ const SponsorManagement = () => {
         data: invitations = [],
         isLoading: invitationsLoading,
         isError: invitationsError,
+        error: invitationsQueryError,
         refetch: refetchInvitations,
     } = useQuery({
         queryKey: adminKeys.sponsorInvitations(),
@@ -653,6 +654,11 @@ const SponsorManagement = () => {
                         ) : invitationsError ? (
                             <div className="py-16 text-center">
                                 <p className="text-sm text-red-400">Invitation history could not be loaded.</p>
+                                {invitationsQueryError instanceof ApiError && (
+                                    <p className="mt-2 text-xs text-zinc-500">
+                                        HTTP {invitationsQueryError.status}
+                                    </p>
+                                )}
                                 <Button className="mt-4" variant="outline" onClick={() => void refetchInvitations()}>
                                     Retry
                                 </Button>
