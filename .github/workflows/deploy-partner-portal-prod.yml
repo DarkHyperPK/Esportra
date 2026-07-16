@@ -1,18 +1,19 @@
-name: Partner Portal — Production
+name: Partner Portal — CI
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, staging]
     paths:
       - 'partner-portal/**'
       - '.github/workflows/deploy-partner-portal-*'
 
 concurrency:
-  group: deploy-prod-partner-portal
+  group: ci-partner-portal-${{ github.ref_name }}
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 defaults:
   run:
@@ -34,36 +35,16 @@ jobs:
       - run: npm ci
       - run: npm run lint
 
-      - name: Build (production)
+      - name: Build
         env:
-          VITE_PROD_SUPABASE_URL: ${{ secrets.VITE_PROD_SUPABASE_URL }}
-          VITE_PROD_SUPABASE_ANON_KEY: ${{ secrets.VITE_PROD_SUPABASE_ANON_KEY }}
-          VITE_PROD_API_URL: ${{ secrets.VITE_PROD_API_URL }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
-        run: |
-          export VITE_SUPABASE_URL="${VITE_PROD_SUPABASE_URL:-$VITE_SUPABASE_URL}"
-          export VITE_SUPABASE_ANON_KEY="${VITE_PROD_SUPABASE_ANON_KEY:-$VITE_SUPABASE_ANON_KEY}"
-          export VITE_API_URL="${VITE_PROD_API_URL:-$VITE_API_URL}"
-          npm run build
-
-  promote:
-    name: Promote to deploy/partner-portal-main
-    needs: [build-and-lint]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: ./.github/actions/promote-deploy-branch
-        with:
-          deploy_branch: deploy/partner-portal-main
+        run: npm run build
 
   notify-failure:
     name: Report failure
-    needs: [build-and-lint, promote]
+    needs: [build-and-lint]
     if: failure() && !cancelled()
     runs-on: ubuntu-latest
     permissions:
