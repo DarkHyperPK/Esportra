@@ -8,7 +8,7 @@ export default function InvitationCallbackHandoff() {
 
   useEffect(() => {
     const token = readInvitationTokenFromUrl();
-    if (!token || !/^[A-F0-9]{64}$/.test(token)) return;
+    if (!token || !/^[A-Fa-f0-9]{64}$/.test(token)) return;
 
     storeInvitationToken(token);
     const search = new URLSearchParams(location.search);

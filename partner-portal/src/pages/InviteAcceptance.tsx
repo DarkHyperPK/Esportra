@@ -19,7 +19,7 @@ export default function InviteAcceptance() {
 
   useEffect(() => {
     const token = searchParams.get('token') ?? readInvitationToken();
-    if (!token || !/^[A-F0-9]{64}$/.test(token)) {
+    if (!token || !/^[A-Fa-f0-9]{64}$/.test(token)) {
       navigate('/login', { replace: true });
       return;
     }
