@@ -34,6 +34,12 @@ const Login = () => {
         } else if (params.get('error') === 'no_sponsor_linked') {
             setError('Access denied: Your account is not linked to a sponsor profile in this environment. Please ensure you recreate your invite link from the Main Website.');
             window.history.replaceState({}, '', '/login');
+        } else if (params.get('error') === 'invitation_claim_failed') {
+            setError('The invitation could not be accepted with this account. Use the email address that received the invitation or request a new link.');
+            window.history.replaceState({}, '', '/login');
+        } else if (params.get('error') === 'password_setup_incomplete') {
+            setError('Your password was updated, but setup could not be completed. Sign in with the new password to resume the invitation.');
+            window.history.replaceState({}, '', '/login');
         }
     }, [navigate]);
 
@@ -87,22 +93,6 @@ const Login = () => {
             await supabase.auth.signOut({ scope: 'local' });
             setIsVerifying(false);
             setError('Unable to sign in. Check your email and password, then try again.');
-            setLoading(false);
-        }
-    };
-
-    const handleOAuthLogin = async (provider: 'google' | 'discord') => {
-        setLoading(true);
-        setError('');
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider,
-            options: {
-                redirectTo: `${window.location.origin}/auth/callback`,
-                ...(provider === 'discord' ? { scopes: 'identify email' } : {}),
-            },
-        });
-        if (error) {
-            setError(`Unable to sign in with ${provider}.`);
             setLoading(false);
         }
     };
@@ -264,24 +254,6 @@ const Login = () => {
                                     )}
                                 </button>
                             </form>
-
-                            {view === 'login' && (
-                                <div className="mt-6 space-y-3">
-                                    <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-zinc-600">
-                                        <span className="h-px flex-1 bg-white/5" />
-                                        Shared Esportra identity
-                                        <span className="h-px flex-1 bg-white/5" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <button type="button" disabled={loading} onClick={() => void handleOAuthLogin('google')} className="rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-bold text-white hover:bg-white/10 disabled:opacity-50">
-                                            Google
-                                        </button>
-                                        <button type="button" disabled={loading} onClick={() => void handleOAuthLogin('discord')} className="rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-bold text-white hover:bg-white/10 disabled:opacity-50">
-                                            Discord
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
 
                             {view === 'reset' && (
                                 <button

@@ -11,7 +11,6 @@ import DashboardLayout from './layouts/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import Toaster from './components/Toaster';
 import InvitationCallbackHandoff from './components/InvitationCallbackHandoff';
-import AuthCallback from './pages/AuthCallback';
 
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Assets = lazy(() => import('./pages/Assets'));
@@ -32,7 +31,6 @@ function App() {
         <Routes>
           <Route path="/invite/accept" element={<InviteAcceptance />} />
           <Route path="/invite/setup-password" element={<InvitePasswordSetup />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/auth/recovery" element={<Recovery />} />
           {/* Auth Routes */}
           <Route element={<AuthLayout />}>

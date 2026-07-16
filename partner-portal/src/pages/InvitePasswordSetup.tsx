@@ -40,21 +40,29 @@ export default function InvitePasswordSetup() {
 
     setIsSubmitting(true);
     setMessage('');
+    let passwordWasUpdated = false;
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
+      passwordWasUpdated = true;
 
       const invitationToken = readInvitationToken();
       if (!invitationToken) throw new Error('Invitation token is missing.');
 
       await apiClient.post('/api/sponsor-invitations/accept', { token: invitationToken });
-      clearInvitationToken();
       await apiClient.postWithToken('/api/auth/password-reset-completed', session.access_token);
 
       await supabase.auth.signOut({ scope: 'local' });
+      clearInvitationToken();
       clearInvitationPasswordSetup();
       navigate('/login?accepted=1', { replace: true });
     } catch {
+      if (passwordWasUpdated) {
+        await supabase.auth.signOut({ scope: 'local' });
+        clearInvitationPasswordSetup();
+        navigate('/login?error=password_setup_incomplete', { replace: true });
+        return;
+      }
       setMessage('Unable to set your password. Please try again.');
     } finally {
       setIsSubmitting(false);

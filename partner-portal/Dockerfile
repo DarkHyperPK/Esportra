@@ -19,7 +19,7 @@ ENV VITE_PARTNER_URL=$VITE_PARTNER_URL
 
 # Install dependencies specifically for the partner portal
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 # Copy partner portal source code
 COPY . .

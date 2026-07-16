@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import {
   clearInvitationToken,
+  exchangeInvitationOtp,
   markInvitationPasswordSetup,
   readInvitationToken,
   storeInvitationToken,
@@ -21,6 +22,7 @@ export default function InviteAcceptance() {
   useEffect(() => {
     const token = searchParams.get('token') ?? readInvitationToken();
     if (!token || !/^[A-Fa-f0-9]{64}$/.test(token)) {
+      clearInvitationToken();
       navigate('/login', { replace: true });
       return;
     }
@@ -38,19 +40,28 @@ export default function InviteAcceptance() {
       if (!session) return;
 
       hasHandledSession.current = true;
-      try {
-        await apiClient.post('/api/sponsor-invitations/accept', { token });
-        if (preview.requiresPasswordSetup) {
+      if (preview.requiresPasswordSetup) {
+        try {
+          await apiClient.post('/api/sponsor-invitations/accept', { token });
           markInvitationPasswordSetup();
           navigate('/invite/setup-password', { replace: true });
           return;
+        } catch {
+          await supabase.auth.signOut({ scope: 'local' });
+          hasHandledSession.current = false;
+          navigate('/login?error=invitation_claim_failed', { replace: true });
+          return;
         }
+      }
+
+      try {
+        await apiClient.post('/api/sponsor-invitations/accept', { token });
         clearInvitationToken();
         navigate('/onboarding', { replace: true });
       } catch {
         await supabase.auth.signOut({ scope: 'local' });
         hasHandledSession.current = false;
-        setMessage('Sign in with the email address that received this invitation.');
+        navigate('/login?error=invitation_claim_failed', { replace: true });
       }
     };
 
@@ -59,7 +70,7 @@ export default function InviteAcceptance() {
         const preview = await apiClient.post<InvitationPreview>('/api/sponsor-invitations/preview', { token });
         if (!isActive) return null;
 
-        if (preview.accountExists) {
+        if (!preview.requiresPasswordSetup) {
           const { data: { session } } = await supabase.auth.getSession();
           if (!isActive) return null;
           if (session) {
@@ -72,10 +83,8 @@ export default function InviteAcceptance() {
 
         if (authTokenHash) {
           setMessage('Setting up your account…');
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: authTokenHash,
-            type: authType,
-          });
+          const { error } = await exchangeInvitationOtp(authTokenHash, authType, () =>
+            supabase.auth.verifyOtp({ token_hash: authTokenHash, type: authType }));
           if (!isActive) return null;
           if (error) {
             navigate('/login?expired_auth_link=1', { replace: true });
