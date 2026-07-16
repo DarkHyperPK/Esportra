@@ -43,13 +43,13 @@ export default function InvitePasswordSetup() {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
-      await apiClient.postWithToken('/api/auth/password-reset-completed', session.access_token);
 
       const invitationToken = readInvitationToken();
-      if (invitationToken) {
-        await apiClient.post('/api/sponsor-invitations/accept', { token: invitationToken });
-        clearInvitationToken();
-      }
+      if (!invitationToken) throw new Error('Invitation token is missing.');
+
+      await apiClient.post('/api/sponsor-invitations/accept', { token: invitationToken });
+      clearInvitationToken();
+      await apiClient.postWithToken('/api/auth/password-reset-completed', session.access_token);
 
       await supabase.auth.signOut({ scope: 'local' });
       clearInvitationPasswordSetup();

@@ -25,7 +25,7 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { useAdminSponsors, useAdminSponsorApplications, adminKeys } from '@/hooks/useAdminQueries';
 import { Sponsor, useSponsorStats } from '@/hooks/useSponsors';
 import { PartnerApplication } from '@/hooks/usePartnerApplication';
@@ -36,6 +36,19 @@ interface Application extends PartnerApplication {
     created_at: string;
     status: 'pending' | 'reviewed' | 'approved' | 'rejected';
     notes?: string;
+}
+
+interface PartnerInvitation {
+    id: string;
+    sponsorId: string;
+    sponsorName: string;
+    email: string;
+    role: string;
+    status: 'pending' | 'accepted' | 'revoked' | 'delivery_failed' | 'expired';
+    createdAt: string;
+    expiresAt: string;
+    deliveredAt?: string;
+    acceptedAt?: string;
 }
 
 const SponsorCard = ({
@@ -138,10 +151,14 @@ const SponsorCard = ({
 };
 
 const SponsorManagement = () => {
-    const [activeTab, setActiveTab] = useState<'applications' | 'sponsors'>('applications');
+    const [activeTab, setActiveTab] = useState<'applications' | 'sponsors' | 'invitations'>('applications');
     const queryClient = useQueryClient();
     const { data: applications = [] } = useAdminSponsorApplications();
     const { data: sponsors = [] } = useAdminSponsors();
+    const { data: invitations = [], isLoading: invitationsLoading } = useQuery({
+        queryKey: ['admin', 'sponsor-invitations'],
+        queryFn: () => apiClient.get<PartnerInvitation[]>('/api/admin/sponsor-invitations'),
+    });
 
     // Modals
     const [appModal, setAppModal] = useState<{ open: boolean; app: Application | null }>({ open: false, app: null });
@@ -199,9 +216,24 @@ const SponsorManagement = () => {
         },
     });
 
+    const resendInvitationMutation = useMutation({
+        mutationFn: (invitationId: string) =>
+            apiClient.post(`/api/admin/sponsor-invitations/${invitationId}/resend`, {}),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'sponsor-invitations'] }),
+    });
+
+    const revokeInvitationMutation = useMutation({
+        mutationFn: (invitationId: string) =>
+            apiClient.post(`/api/admin/sponsor-invitations/${invitationId}/revoke`, {}),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'sponsor-invitations'] }),
+    });
+
     const approveAppMutation = useMutation({
-        mutationFn: (id: string) =>
-            apiClient.post<{ success: boolean; sponsorId: string; requiresPasswordSetup: boolean; companyName: string; contactEmail: string }>(`/api/sponsors/applications/${id}/approve`),
+        mutationFn: (application: Application) =>
+            apiClient.post<{ success: boolean; sponsorId: string; requiresPasswordSetup: boolean; companyName: string; contactEmail: string }>(
+                `/api/sponsors/applications/${application.id}/approve`,
+                { invitationEmail: application.contact_email, tier: application.partnership_tier },
+            ),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: adminKeys.sponsors() });
             queryClient.invalidateQueries({ queryKey: adminKeys.sponsorApplications() });
@@ -226,7 +258,7 @@ const SponsorManagement = () => {
 
     const handleApproveApplication = async (app: Application) => {
         try {
-            const result = await approveAppMutation.mutateAsync(app.id);
+            const result = await approveAppMutation.mutateAsync(app);
             setAppModal({ open: false, app: null });
 
             const message = result.requiresPasswordSetup
@@ -419,6 +451,7 @@ const SponsorManagement = () => {
                         variant="outline"
                         size="sm"
                         className="border-zinc-800 text-zinc-400 hover:text-white"
+                        disabled={activeTab === 'invitations'}
                         onClick={() => {
                             const data = activeTab === 'sponsors' ? sponsors : applications;
                             if (!data.length) { toast({ title: 'Nothing to export', description: 'No data available.', variant: 'destructive' }); return; }
@@ -459,6 +492,12 @@ const SponsorManagement = () => {
                             className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'sponsors' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
                         >
                             Active Partners
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('invitations')}
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'invitations' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}
+                        >
+                            Invitations
                         </button>
                     </div>
                     {activeTab === 'sponsors' && (
@@ -579,7 +618,7 @@ const SponsorManagement = () => {
                             )}
                         </div>
                     </motion.div>
-                ) : (
+                ) : activeTab === 'sponsors' ? (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
                         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
@@ -596,6 +635,52 @@ const SponsorManagement = () => {
                                 onDownload={handleDownloadAssets}
                             />
                         ))}
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                        className="overflow-hidden rounded-2xl border border-white/5 bg-[#0a0a0c]"
+                    >
+                        {invitationsLoading ? (
+                            <div className="flex items-center justify-center py-16 text-zinc-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading invitations</div>
+                        ) : invitations.length === 0 ? (
+                            <div className="py-16 text-center text-zinc-500">No partner invitations have been issued.</div>
+                        ) : (
+                            <div className="divide-y divide-white/5">
+                                {invitations.map((invitation) => (
+                                    <div key={invitation.id} className="grid gap-4 p-5 lg:grid-cols-[1.2fr_1.4fr_0.7fr_1fr_auto] lg:items-center">
+                                        <div>
+                                            <p className="font-semibold text-white">{invitation.sponsorName}</p>
+                                            <p className="text-xs uppercase tracking-wider text-zinc-600">{invitation.role}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-zinc-300">{invitation.email}</p>
+                                            <p className="text-xs text-zinc-600">Issued {new Date(invitation.createdAt).toLocaleString()}</p>
+                                        </div>
+                                        <Badge variant="outline" className="w-fit capitalize border-white/10 text-zinc-300">
+                                            {invitation.status.replace('_', ' ')}
+                                        </Badge>
+                                        <div className="text-xs text-zinc-500">
+                                            {invitation.status === 'accepted' && invitation.acceptedAt
+                                                ? `Accepted ${new Date(invitation.acceptedAt).toLocaleString()}`
+                                                : `Expires ${new Date(invitation.expiresAt).toLocaleString()}`}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {invitation.status !== 'accepted' && (
+                                                <Button size="sm" variant="outline" disabled={resendInvitationMutation.isPending} onClick={() => resendInvitationMutation.mutate(invitation.id)}>
+                                                    Resend
+                                                </Button>
+                                            )}
+                                            {['pending', 'delivery_failed'].includes(invitation.status) && (
+                                                <Button size="sm" variant="ghost" className="text-red-400" disabled={revokeInvitationMutation.isPending} onClick={() => revokeInvitationMutation.mutate(invitation.id)}>
+                                                    Revoke
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>

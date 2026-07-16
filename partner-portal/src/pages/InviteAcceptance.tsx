@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import {
+  clearInvitationToken,
   markInvitationPasswordSetup,
   readInvitationToken,
   storeInvitationToken,
@@ -45,8 +46,8 @@ export default function InviteAcceptance() {
 
       try {
         await apiClient.post('/api/sponsor-invitations/accept', { token });
-        await supabase.auth.signOut({ scope: 'local' });
-        navigate('/login?accepted=1', { replace: true });
+        clearInvitationToken();
+        navigate('/onboarding', { replace: true });
       } catch {
         hasHandledSession.current = false;
         setMessage('This invitation cannot be accepted. Ask your Esportra contact for a new invitation.');
@@ -58,18 +59,19 @@ export default function InviteAcceptance() {
         const preview = await apiClient.post<InvitationPreview>('/api/sponsor-invitations/preview', { token });
 
         if (!preview.requiresPasswordSetup) {
-          // Existing user with password — sponsor_accounts row already exists.
-          // Just mark invitation as accepted and send them to login.
           try {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
               await apiClient.post('/api/sponsor-invitations/accept', { token });
-              await supabase.auth.signOut({ scope: 'local' });
+              clearInvitationToken();
+              navigate('/onboarding', { replace: true });
+              return null;
             }
           } catch {
-            // Best-effort — sponsor_accounts row already exists from invitation creation
+            setMessage('Sign in with the invited account to accept this invitation.');
+            return null;
           }
-          navigate('/login?accepted=1', { replace: true });
+          navigate('/login', { replace: true });
           return null;
         }
 

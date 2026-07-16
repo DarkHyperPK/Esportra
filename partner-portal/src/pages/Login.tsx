@@ -56,12 +56,7 @@ const Login = () => {
 
             const invitationToken = readInvitationToken();
             if (user && invitationToken) {
-                // Best-effort: mark invitation as accepted (sponsor_accounts row already exists)
-                try {
-                    await apiClient.post('/api/sponsor-invitations/accept', { token: invitationToken });
-                } catch {
-                    // Non-fatal — sponsor_accounts row was created at invitation time
-                }
+                await apiClient.post('/api/sponsor-invitations/accept', { token: invitationToken });
                 clearInvitationToken();
             }
 
@@ -90,6 +85,22 @@ const Login = () => {
         } catch {
             setIsVerifying(false);
             setError('Unable to sign in. Check your email and password, then try again.');
+            setLoading(false);
+        }
+    };
+
+    const handleOAuthLogin = async (provider: 'google' | 'discord') => {
+        setLoading(true);
+        setError('');
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider,
+            options: {
+                redirectTo: `${window.location.origin}/auth/callback`,
+                ...(provider === 'discord' ? { scopes: 'identify email' } : {}),
+            },
+        });
+        if (error) {
+            setError(`Unable to sign in with ${provider}.`);
             setLoading(false);
         }
     };
@@ -251,6 +262,24 @@ const Login = () => {
                                     )}
                                 </button>
                             </form>
+
+                            {view === 'login' && (
+                                <div className="mt-6 space-y-3">
+                                    <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-zinc-600">
+                                        <span className="h-px flex-1 bg-white/5" />
+                                        Shared Esportra identity
+                                        <span className="h-px flex-1 bg-white/5" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button type="button" disabled={loading} onClick={() => void handleOAuthLogin('google')} className="rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-bold text-white hover:bg-white/10 disabled:opacity-50">
+                                            Google
+                                        </button>
+                                        <button type="button" disabled={loading} onClick={() => void handleOAuthLogin('discord')} className="rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-bold text-white hover:bg-white/10 disabled:opacity-50">
+                                            Discord
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             {view === 'reset' && (
                                 <button
