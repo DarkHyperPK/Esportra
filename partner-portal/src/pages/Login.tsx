@@ -53,26 +53,13 @@ const Login = () => {
 
             const invitationToken = readInvitationToken();
             if (user && invitationToken) {
+                // Best-effort: mark invitation as accepted (sponsor_accounts row already exists)
                 try {
                     await apiClient.post('/api/sponsor-invitations/accept', { token: invitationToken });
-                    clearInvitationToken();
-                    try {
-                        await supabase.auth.signOut({ scope: 'local' });
-                    } catch {
-                        // Membership was committed; local cleanup is best effort.
-                    }
-                    window.history.replaceState({}, '', '/login');
-                    setSuccessMessage('Invitation accepted. Sign in to access the partner portal.');
-                    setIsVerifying(false);
-                    setLoading(false);
-                    return;
                 } catch {
-                    await supabase.auth.signOut({ scope: 'local' });
-                    setError('Sign in with the email address that received the invitation.');
-                    setIsVerifying(false);
-                    setLoading(false);
-                    return;
+                    // Non-fatal — sponsor_accounts row was created at invitation time
                 }
+                clearInvitationToken();
             }
 
             if (user) {

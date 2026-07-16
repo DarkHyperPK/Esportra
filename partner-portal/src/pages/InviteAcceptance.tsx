@@ -58,18 +58,18 @@ export default function InviteAcceptance() {
         const preview = await apiClient.post<InvitationPreview>('/api/sponsor-invitations/preview', { token });
 
         if (!preview.requiresPasswordSetup) {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            try {
+          // Existing user with password — sponsor_accounts row already exists.
+          // Just mark invitation as accepted and send them to login.
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
               await apiClient.post('/api/sponsor-invitations/accept', { token });
               await supabase.auth.signOut({ scope: 'local' });
-              navigate('/login?accepted=1', { replace: true });
-            } catch {
-              setMessage('This invitation cannot be accepted. Ask your Esportra contact for a new invitation.');
             }
-            return null;
+          } catch {
+            // Best-effort — sponsor_accounts row already exists from invitation creation
           }
-          navigate('/login?invite=1', { replace: true });
+          navigate('/login?accepted=1', { replace: true });
           return null;
         }
 
