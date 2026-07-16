@@ -155,8 +155,13 @@ const SponsorManagement = () => {
     const queryClient = useQueryClient();
     const { data: applications = [] } = useAdminSponsorApplications();
     const { data: sponsors = [] } = useAdminSponsors();
-    const { data: invitations = [], isLoading: invitationsLoading } = useQuery({
-        queryKey: ['admin', 'sponsor-invitations'],
+    const {
+        data: invitations = [],
+        isLoading: invitationsLoading,
+        isError: invitationsError,
+        refetch: refetchInvitations,
+    } = useQuery({
+        queryKey: adminKeys.sponsorInvitations(),
         queryFn: () => apiClient.get<PartnerInvitation[]>('/api/admin/sponsor-invitations'),
     });
 
@@ -213,19 +218,20 @@ const SponsorManagement = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: adminKeys.sponsors() });
             queryClient.invalidateQueries({ queryKey: adminKeys.sponsorApplications() });
+            queryClient.invalidateQueries({ queryKey: adminKeys.sponsorInvitations() });
         },
     });
 
     const resendInvitationMutation = useMutation({
         mutationFn: (invitationId: string) =>
             apiClient.post(`/api/admin/sponsor-invitations/${invitationId}/resend`, {}),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'sponsor-invitations'] }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.sponsorInvitations() }),
     });
 
     const revokeInvitationMutation = useMutation({
         mutationFn: (invitationId: string) =>
             apiClient.post(`/api/admin/sponsor-invitations/${invitationId}/revoke`, {}),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'sponsor-invitations'] }),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.sponsorInvitations() }),
     });
 
     const approveAppMutation = useMutation({
@@ -237,6 +243,7 @@ const SponsorManagement = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: adminKeys.sponsors() });
             queryClient.invalidateQueries({ queryKey: adminKeys.sponsorApplications() });
+            queryClient.invalidateQueries({ queryKey: adminKeys.sponsorInvitations() });
         },
     });
 
@@ -643,6 +650,13 @@ const SponsorManagement = () => {
                     >
                         {invitationsLoading ? (
                             <div className="flex items-center justify-center py-16 text-zinc-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading invitations</div>
+                        ) : invitationsError ? (
+                            <div className="py-16 text-center">
+                                <p className="text-sm text-red-400">Invitation history could not be loaded.</p>
+                                <Button className="mt-4" variant="outline" onClick={() => void refetchInvitations()}>
+                                    Retry
+                                </Button>
+                            </div>
                         ) : invitations.length === 0 ? (
                             <div className="py-16 text-center text-zinc-500">No partner invitations have been issued.</div>
                         ) : (

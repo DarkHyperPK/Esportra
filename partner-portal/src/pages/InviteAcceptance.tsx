@@ -38,19 +38,19 @@ export default function InviteAcceptance() {
       if (!session) return;
 
       hasHandledSession.current = true;
-      if (preview.requiresPasswordSetup) {
-        markInvitationPasswordSetup();
-        navigate('/invite/setup-password', { replace: true });
-        return;
-      }
-
       try {
         await apiClient.post('/api/sponsor-invitations/accept', { token });
+        if (preview.requiresPasswordSetup) {
+          markInvitationPasswordSetup();
+          navigate('/invite/setup-password', { replace: true });
+          return;
+        }
         clearInvitationToken();
         navigate('/onboarding', { replace: true });
       } catch {
+        await supabase.auth.signOut({ scope: 'local' });
         hasHandledSession.current = false;
-        setMessage('This invitation cannot be accepted. Ask your Esportra contact for a new invitation.');
+        setMessage('Sign in with the email address that received this invitation.');
       }
     };
 
@@ -59,16 +59,9 @@ export default function InviteAcceptance() {
         const preview = await apiClient.post<InvitationPreview>('/api/sponsor-invitations/preview', { token });
 
         if (!preview.requiresPasswordSetup) {
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-              await apiClient.post('/api/sponsor-invitations/accept', { token });
-              clearInvitationToken();
-              navigate('/onboarding', { replace: true });
-              return null;
-            }
-          } catch {
-            setMessage('Sign in with the invited account to accept this invitation.');
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            await continueWithSession(preview);
             return null;
           }
           navigate('/login', { replace: true });
@@ -110,6 +103,10 @@ export default function InviteAcceptance() {
 
     let unsubscribe: (() => void) | undefined;
     void initialize().then((subscription) => {
+      if (!isActive) {
+        subscription?.unsubscribe();
+        return;
+      }
       unsubscribe = () => subscription?.unsubscribe();
     });
     return () => {

@@ -19,6 +19,7 @@ export const adminKeys = {
   venues: () => [...adminKeys.all, 'venues'] as const,
   sponsors: () => [...adminKeys.all, 'sponsors'] as const,
   sponsorApplications: () => [...adminKeys.all, 'sponsor-applications'] as const,
+  sponsorInvitations: () => [...adminKeys.all, 'sponsor-invitations'] as const,
 
   auditLogs: (params?: { limit?: number; offset?: number; search?: string; target_type?: string; from?: string; to?: string }) =>
     [...adminKeys.all, 'audit-logs', params ?? {}] as const,

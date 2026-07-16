@@ -6,7 +6,7 @@ import { apiClient } from '@/lib/apiClient';
 import { Loader2, Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 import { useLoginVerify } from '@/contexts/LoginVerifyContext';
-import { clearInvitationToken, readInvitationToken } from '@/lib/partnerInvitation';
+import { readInvitationToken } from '@/lib/partnerInvitation';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -56,8 +56,9 @@ const Login = () => {
 
             const invitationToken = readInvitationToken();
             if (user && invitationToken) {
-                await apiClient.post('/api/sponsor-invitations/accept', { token: invitationToken });
-                clearInvitationToken();
+                setIsVerifying(false);
+                navigate('/invite/accept', { replace: true });
+                return;
             }
 
             if (user) {
@@ -83,6 +84,7 @@ const Login = () => {
             // Redirect to dashboard explicitly
             navigate('/dashboard');
         } catch {
+            await supabase.auth.signOut({ scope: 'local' });
             setIsVerifying(false);
             setError('Unable to sign in. Check your email and password, then try again.');
             setLoading(false);

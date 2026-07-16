@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LayoutDashboard, FileImage, Settings, LogOut, BarChart } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { apiClient } from '@/lib/apiClient';
+import { ApiError, apiClient } from '@/lib/apiClient';
 import { useEffect, useState } from 'react';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 
@@ -11,6 +11,7 @@ const DashboardLayout = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [session, setSession] = useState<{ id: string } | null>(null);
     const [needsOnboarding, setNeedsOnboarding] = useState(false);
+    const [accessError, setAccessError] = useState<string | null>(null);
 
     useEffect(() => {
         // Use getUser() for initial verification as it hits the server to verify the session
@@ -38,10 +39,14 @@ const DashboardLayout = () => {
                 if (!onboardingData?.meta?.completed) {
                     setNeedsOnboarding(true);
                 }
-            } catch {
-                // No sponsor account linked
-                await supabase.auth.signOut();
-                window.location.href = '/login?error=no_sponsor_linked';
+            } catch (error) {
+                if (error instanceof ApiError && error.status === 404) {
+                    await supabase.auth.signOut({ scope: 'local' });
+                    window.location.href = '/login?error=no_sponsor_linked';
+                    return;
+                }
+                setAccessError('Partner access could not be verified. Please retry in a moment.');
+                setIsLoading(false);
                 return;
             }
 
@@ -69,6 +74,17 @@ const DashboardLayout = () => {
 
     if (!session) {
         return <Navigate to="/login" replace />;
+    }
+
+    if (accessError) {
+        return (
+            <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6 text-center text-white">
+                <div>
+                    <p className="text-zinc-300">{accessError}</p>
+                    <button type="button" onClick={() => window.location.reload()} className="mt-4 text-sm font-semibold text-rose-400">Retry</button>
+                </div>
+            </div>
+        );
     }
 
     // Redirect first-time sponsors to onboarding wizard

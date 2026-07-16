@@ -2,7 +2,11 @@ const INVITATION_TOKEN_KEY = 'partner_invitation_token';
 const PASSWORD_SETUP_KEY = 'partner_invitation_password_setup';
 
 export function storeInvitationToken(token: string): void {
-  sessionStorage.setItem(INVITATION_TOKEN_KEY, token);
+  const normalizedToken = token.trim().toUpperCase();
+  if (sessionStorage.getItem(INVITATION_TOKEN_KEY) !== normalizedToken) {
+    clearInvitationPasswordSetup();
+  }
+  sessionStorage.setItem(INVITATION_TOKEN_KEY, normalizedToken);
 }
 
 export function readInvitationToken(): string | null {
@@ -26,6 +30,7 @@ export function clearInvitationPasswordSetup(): void {
 }
 
 export function readInvitationTokenFromUrl(): string | null {
-  return new URLSearchParams(window.location.search).get('token');
+  const token = new URLSearchParams(window.location.search).get('token');
+  return token?.trim().toUpperCase() ?? null;
 }
 

@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { LoginVerifyContext } from '@/contexts/LoginVerifyContext';
+import { readInvitationToken } from '@/lib/partnerInvitation';
 
 const RECOVERY_KEY = 'partner_password_recovery';
 
@@ -37,6 +38,11 @@ const AuthLayout = () => {
                 <div className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
             </div>
         );
+    }
+
+    // A restored session must claim a pending invitation before dashboard access.
+    if (session && readInvitationToken() && !isVerifying) {
+        return <Navigate to="/invite/accept" replace />;
     }
 
     // Don't redirect while Login is verifying sponsor account

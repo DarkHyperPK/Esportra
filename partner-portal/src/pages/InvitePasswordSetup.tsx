@@ -11,7 +11,7 @@ import {
 
 export default function InvitePasswordSetup() {
   const navigate = useNavigate();
-  const [isReady, setIsReady] = useState(false);
+  const [isReady, setIsReady] = useState<boolean | null>(null);
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [message, setMessage] = useState('');
@@ -61,6 +61,9 @@ export default function InvitePasswordSetup() {
     }
   };
 
+  if (isReady === null) {
+    return <div className="min-h-screen bg-[#050505] flex items-center justify-center text-zinc-400">Preparing password setup…</div>;
+  }
   if (!isReady) return <Navigate to="/login" replace />;
 
   return (
