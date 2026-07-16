@@ -80,7 +80,8 @@ export default function InviteAcceptance() {
             type: authType,
           });
           if (error) {
-            setMessage('This invitation link has expired. Ask your Esportra contact for a new invitation.');
+            // Token expired — user account exists but needs password reset
+            navigate('/login?expired_invite=1', { replace: true });
             return null;
           }
           await continueWithSession(preview);

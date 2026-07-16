@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { ArrowRight, ArrowLeft, Loader2, Upload, X } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 
@@ -9,9 +9,10 @@ export interface StepBrandingProps {
     onBack?: () => void;
     saving: boolean;
     canContinue?: boolean;
+    termsCheckbox?: ReactNode;
 }
 
-const StepBranding = ({ data, sponsorId, onSave, onBack, saving, canContinue = true }: StepBrandingProps) => {
+const StepBranding = ({ data, sponsorId, onSave, onBack, saving, canContinue = true, termsCheckbox }: StepBrandingProps) => {
     const [logoUrl, setLogoUrl] = useState<string | null>(data?.logo_url || null);
     const [uploading, setUploading] = useState(false);
     const [dragOver, setDragOver] = useState(false);
@@ -109,6 +110,8 @@ const StepBranding = ({ data, sponsorId, onSave, onBack, saving, canContinue = t
                     </div>
                 )}
             </div>
+
+            {termsCheckbox && <div className="pt-2">{termsCheckbox}</div>}
 
             <div className="flex gap-3">
                 {onBack && (
