@@ -1,10 +1,9 @@
 import { useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { readInvitationTokenFromUrl, storeInvitationToken } from '@/lib/partnerInvitation';
 
 export default function InvitationCallbackHandoff() {
   const location = useLocation();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const token = readInvitationTokenFromUrl();
@@ -14,8 +13,8 @@ export default function InvitationCallbackHandoff() {
     const search = new URLSearchParams(location.search);
     search.delete('token');
     const nextSearch = search.size > 0 ? `?${search.toString()}` : '';
-    navigate(`/invite/accept${nextSearch}${location.hash}`, { replace: true });
-  }, [location.hash, location.search, navigate]);
+    window.history.replaceState(window.history.state, '', `/invite/accept${nextSearch}${location.hash}`);
+  }, [location.hash, location.search]);
 
   return null;
 }

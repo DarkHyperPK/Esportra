@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
-import { clearInvitationToken, readInvitationToken } from '@/lib/partnerInvitation';
+import { readInvitationToken } from '@/lib/partnerInvitation';
 import { supabase } from '@/lib/supabase';
 
 export default function AuthCallback() {
@@ -14,13 +14,17 @@ export default function AuthCallback() {
 
     const completeSignIn = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error || !session) throw error ?? new Error('Authentication session is missing.');
+        let session = (await supabase.auth.getSession()).data.session;
+        if (!session) {
+          await new Promise(resolve => window.setTimeout(resolve, 300));
+          session = (await supabase.auth.getSession()).data.session;
+        }
+        if (!session) throw new Error('Authentication session is missing.');
 
         const invitationToken = readInvitationToken();
         if (invitationToken) {
-          await apiClient.post('/api/sponsor-invitations/accept', { token: invitationToken });
-          clearInvitationToken();
+          if (isActive) navigate('/invite/accept', { replace: true });
+          return;
         }
 
         await apiClient.get('/api/sponsors/me');

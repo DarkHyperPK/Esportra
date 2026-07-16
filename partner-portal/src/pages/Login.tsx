@@ -28,8 +28,8 @@ const Login = () => {
             setSuccessMessage('Password successfully updated. Please sign in with your new password.');
             // Clean URL
             window.history.replaceState({}, '', '/login');
-        } else if (params.get('expired_invite') === '1') {
-            setSuccessMessage('Your invitation link expired. Use "Forgot password" below to set your password, then sign in.');
+        } else if (params.get('expired_auth_link') === '1') {
+            setSuccessMessage('The secure account-setup link was already used or expired. Your partner invitation remains available for 24 hours; sign in with the invited account or request a new invitation.');
             window.history.replaceState({}, '', '/login');
         } else if (params.get('error') === 'no_sponsor_linked') {
             setError('Access denied: Your account is not linked to a sponsor profile in this environment. Please ensure you recreate your invite link from the Main Website.');

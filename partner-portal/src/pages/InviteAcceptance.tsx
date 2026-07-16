@@ -10,7 +10,7 @@ import {
   storeInvitationToken,
 } from '@/lib/partnerInvitation';
 
-type InvitationPreview = { requiresPasswordSetup: boolean };
+type InvitationPreview = { accountExists: boolean; requiresPasswordSetup: boolean };
 
 export default function InviteAcceptance() {
   const [searchParams] = useSearchParams();
@@ -57,9 +57,11 @@ export default function InviteAcceptance() {
     const initialize = async () => {
       try {
         const preview = await apiClient.post<InvitationPreview>('/api/sponsor-invitations/preview', { token });
+        if (!isActive) return null;
 
-        if (!preview.requiresPasswordSetup) {
+        if (preview.accountExists) {
           const { data: { session } } = await supabase.auth.getSession();
+          if (!isActive) return null;
           if (session) {
             await continueWithSession(preview);
             return null;
@@ -74,9 +76,9 @@ export default function InviteAcceptance() {
             token_hash: authTokenHash,
             type: authType,
           });
+          if (!isActive) return null;
           if (error) {
-            // Token expired — user account exists but needs password reset
-            navigate('/login?expired_invite=1', { replace: true });
+            navigate('/login?expired_auth_link=1', { replace: true });
             return null;
           }
           await continueWithSession(preview);
