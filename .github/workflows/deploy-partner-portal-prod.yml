@@ -36,10 +36,17 @@ jobs:
 
       - name: Build (production)
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_PARTNER_PROD_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_PARTNER_PROD_SUPABASE_ANON_KEY }}
-          VITE_API_URL: ${{ secrets.VITE_PARTNER_PROD_API_URL }}
-        run: npm run build
+          VITE_PROD_SUPABASE_URL: ${{ secrets.VITE_PROD_SUPABASE_URL }}
+          VITE_PROD_SUPABASE_ANON_KEY: ${{ secrets.VITE_PROD_SUPABASE_ANON_KEY }}
+          VITE_PROD_API_URL: ${{ secrets.VITE_PROD_API_URL }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        run: |
+          export VITE_SUPABASE_URL="${VITE_PROD_SUPABASE_URL:-$VITE_SUPABASE_URL}"
+          export VITE_SUPABASE_ANON_KEY="${VITE_PROD_SUPABASE_ANON_KEY:-$VITE_SUPABASE_ANON_KEY}"
+          export VITE_API_URL="${VITE_PROD_API_URL:-$VITE_API_URL}"
+          npm run build
 
   promote:
     name: Promote to deploy/partner-portal-main
