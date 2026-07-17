@@ -29,6 +29,8 @@ import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { useAdminSponsors, useAdminSponsorApplications, adminKeys } from '@/hooks/useAdminQueries';
 import { Sponsor, useSponsorStats } from '@/hooks/useSponsors';
 import { PartnerApplication } from '@/hooks/usePartnerApplication';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
+import { PartnerAudienceDialog } from '@/components/admin/partners/PartnerAudienceDialog';
 
 // Extended type for Application with ID and metadata
 interface Application extends PartnerApplication {
@@ -57,7 +59,8 @@ const SponsorCard = ({
     onInvite,
     onDelete,
     onToggleActive,
-    onDownload
+    onDownload,
+    onAudience,
 }: {
     sponsor: Sponsor;
     onEdit: (s: Sponsor) => void;
@@ -65,6 +68,7 @@ const SponsorCard = ({
     onDelete: (id: string) => void;
     onToggleActive: (s: Sponsor) => void;
     onDownload: (s: Sponsor) => void;
+    onAudience?: (s: Sponsor) => void;
 }) => {
     const { data: stats } = useSponsorStats(sponsor.id);
 
@@ -83,6 +87,11 @@ const SponsorCard = ({
                         </div>
                     )}
                     <div className="flex gap-1">
+                        {onAudience && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-400 hover:text-cyan-400" onClick={() => onAudience(sponsor)} title="Audience demographics">
+                                <Globe className="w-4 h-4" />
+                            </Button>
+                        )}
                         <Button size="icon" variant="ghost" className="h-8 w-8 text-zinc-400 hover:text-white" onClick={() => onInvite(sponsor)} title="Invite User">
                             <User className="w-4 h-4" />
                         </Button>
@@ -151,6 +160,7 @@ const SponsorCard = ({
 };
 
 const SponsorManagement = () => {
+    const { isSuperAdmin } = useAdminAccess();
     const [activeTab, setActiveTab] = useState<'applications' | 'sponsors' | 'invitations'>('applications');
     const queryClient = useQueryClient();
     const { data: applications = [] } = useAdminSponsorApplications();
@@ -170,6 +180,7 @@ const SponsorManagement = () => {
     const [appModal, setAppModal] = useState<{ open: boolean; app: Application | null }>({ open: false, app: null });
     const [sponsorModal, setSponsorModal] = useState<{ open: boolean; sponsor: Partial<Sponsor> | null; isNew: boolean }>({ open: false, sponsor: null, isNew: true });
     const [inviteModal, setInviteModal] = useState<{ open: boolean; sponsor: Sponsor | null; email: string }>({ open: false, sponsor: null, email: '' });
+    const [audienceSponsor, setAudienceSponsor] = useState<Sponsor | null>(null);
 
     // Stats derived from query data
     const stats = {
@@ -641,6 +652,7 @@ const SponsorManagement = () => {
                                 onDelete={handleDeleteSponsor}
                                 onToggleActive={toggleSponsorActive}
                                 onDownload={handleDownloadAssets}
+                                onAudience={isSuperAdmin ? setAudienceSponsor : undefined}
                             />
                         ))}
                     </motion.div>
@@ -704,6 +716,14 @@ const SponsorManagement = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {isSuperAdmin && (
+                <PartnerAudienceDialog
+                    sponsor={audienceSponsor}
+                    open={audienceSponsor !== null}
+                    onOpenChange={(open) => { if (!open) setAudienceSponsor(null); }}
+                />
+            )}
 
             {/* Application Details Modal */}
             <Dialog open={appModal.open} onOpenChange={(open) => setAppModal({ ...appModal, open })}>

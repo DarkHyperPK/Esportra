@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { trackSponsorEvent } from '@/features/sponsorTracking/trackSponsorEvent';
 import { apiClient } from '@/lib/apiClient';
 
 export interface Sponsor {
@@ -74,24 +75,9 @@ export function useSponsorStats(sponsorId: string) {
 // Uses fetch with keepalive:true — survives page navigation like sendBeacon
 // but properly sets Content-Type: application/json (sendBeacon downgrades to text/plain).
 
-const TRACK_URL = `${import.meta.env.VITE_API_URL}/api/sponsors/track`;
-
 function invokeTrack(sponsorId: string, eventType: 'impression' | 'click', tournamentId?: string) {
-    fetch(TRACK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            sponsorId,
-            eventType,
-            pageUrl: window.location.href,
-            ...(tournamentId ? { tournamentId } : {}),
-        }),
-        keepalive: true,
-    })
-    .then(r => {
-        if (!r.ok) console.error(`[Tracking] ${eventType} failed: HTTP ${r.status}`);
-    })
-    .catch(err => console.error(`[Tracking] ${eventType} network error:`, err));
+    const placement = tournamentId ? 'tournament_sidebar' : 'partner_showcase';
+    void trackSponsorEvent(sponsorId, eventType, placement, tournamentId);
 }
 
 // ─── PUBLIC API (drop-in replacement) ────────────────────────────────

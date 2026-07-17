@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { BarChart, MousePointerClick, Eye, TrendingUp, Loader2, Globe, Users, Fingerprint } from 'lucide-react';
+import { BarChart, MousePointerClick, Eye, TrendingUp, Loader2, Globe, Fingerprint } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { usePartnerData, useDemographics } from '@/hooks/usePartnerData';
+import { usePartnerData } from '@/hooks/usePartnerData';
 import { useSponsorStats } from '@/hooks/useSponsors';
+import { useSponsorAudienceReport } from '@/hooks/useSponsorAudienceReport';
+import { AudienceReport } from '@/components/analytics/AudienceReport';
+import type { SponsorAnalyticsPeriod } from '@/types/sponsorAnalytics';
 import { normalizeTier } from '@/utils/permissions';
 
 interface ChartDataPoint {
@@ -25,8 +28,8 @@ const Analytics = () => {
     const { data: partnerData, isLoading: isPartnerLoading } = usePartnerData();
     const sponsor = partnerData?.sponsor;
     const { data: stats, isLoading: isStatsLoading } = useSponsorStats(sponsor?.id || '');
-    const { data: demographics } = useDemographics(sponsor?.id || '');
     const [range, setRange] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+    const [audiencePeriod, setAudiencePeriod] = useState<SponsorAnalyticsPeriod>(30);
 
     // Use real historical data from hook
     const historyData = partnerData?.history || [];
@@ -95,6 +98,7 @@ const Analytics = () => {
     const isRadiant = normalizedTier === 'radiant';
     const isAscendant = normalizedTier === 'ascendant';
     const isPartnerTier = normalizedTier === 'partner';
+    const audienceReport = useSponsorAudienceReport(audiencePeriod, isRadiant && !!sponsor);
 
     // Normalized tier name for display
     const displayTier = isRadiant ? 'Radiant' : isAscendant ? 'Ascendant' : 'Partner';
@@ -302,84 +306,16 @@ const Analytics = () => {
                 )}
             </div>
 
-            {/* Demographics Section — Radiant Only */}
-            {isRadiant && demographics && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Country Breakdown */}
-                    <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-8">
-                        <h3 className="font-bold flex items-center gap-2 mb-6">
-                            <Globe className="w-5 h-5 text-blue-400" />
-                            AUDIENCE_BY_COUNTRY
-                        </h3>
-                        {(demographics.countries?.length ?? 0) > 0 ? (
-                            <div className="space-y-3">
-                                {demographics.countries!.map((c, i) => {
-                                    const maxCount = demographics.countries![0]?.count || 1;
-                                    return (
-                                        <div key={i} className="group">
-                                            <div className="flex justify-between text-xs mb-1">
-                                                <span className="text-white font-mono">{c.name}</span>
-                                                <span className="text-zinc-500 font-mono">{c.count}</span>
-                                            </div>
-                                            <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden">
-                                                <div
-                                                    className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all duration-500"
-                                                    style={{ width: `${(c.count / maxCount) * 100}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <div className="h-40 flex items-center justify-center text-zinc-600 text-xs font-mono">
-                                NO_GEO_DATA_YET
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Age Distribution */}
-                    <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-8">
-                        <h3 className="font-bold flex items-center gap-2 mb-6">
-                            <Users className="w-5 h-5 text-purple-400" />
-                            AGE_DISTRIBUTION
-                        </h3>
-                        {(demographics.ageGroups?.length ?? 0) > 0 ? (
-                            <div className="space-y-3">
-                                {demographics.ageGroups!.map((ag, i) => {
-                                    const total = demographics.ageGroups!.reduce((s, a) => s + a.count, 0);
-                                    const pct = total > 0 ? ((ag.count / total) * 100).toFixed(1) : '0';
-                                    const colors = [
-                                        'from-purple-500 to-violet-400',
-                                        'from-rose-500 to-pink-400',
-                                        'from-amber-500 to-yellow-400',
-                                        'from-emerald-500 to-green-400',
-                                        'from-blue-500 to-cyan-400',
-                                        'from-zinc-500 to-zinc-400',
-                                    ];
-                                    return (
-                                        <div key={i} className="group">
-                                            <div className="flex justify-between text-xs mb-1">
-                                                <span className="text-white font-mono">{ag.group === 'unknown' ? 'Unknown' : ag.group}</span>
-                                                <span className="text-zinc-500 font-mono">{pct}%</span>
-                                            </div>
-                                            <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden">
-                                                <div
-                                                    className={`h-full bg-gradient-to-r ${colors[i % colors.length]} rounded-full transition-all duration-500`}
-                                                    style={{ width: `${pct}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <div className="h-40 flex items-center justify-center text-zinc-600 text-xs font-mono">
-                                NO_AGE_DATA_YET
-                            </div>
-                        )}
-                    </div>
-                </div>
+            {isRadiant && (
+                <AudienceReport
+                    report={audienceReport.data}
+                    period={audiencePeriod}
+                    isLoading={audienceReport.isLoading}
+                    isError={audienceReport.isError}
+                    isFetching={audienceReport.isFetching}
+                    onPeriodChange={setAudiencePeriod}
+                    onRetry={() => void audienceReport.refetch()}
+                />
             )}
 
             {/* Ascendant Tier Upgrade Prompt for Demographics */}
