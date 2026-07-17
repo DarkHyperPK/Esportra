@@ -144,7 +144,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
     const checkSession = async () => {
       try {
-        await apiClient.get('/api/auth/me');
+        await apiClient.get('/api/me');
       } catch (err: unknown) {
         const status = (err as { status?: number })?.status;
         if (status === 401 || status === 403) {
