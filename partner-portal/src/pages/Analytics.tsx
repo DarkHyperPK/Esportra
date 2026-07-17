@@ -108,7 +108,7 @@ const Analytics = () => {
             <div className="flex items-center justify-center h-[50vh]">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
-                    <p className="text-xs font-mono text-zinc-500 tracking-widest animate-pulse">SYNCHRONIZING_NODE...</p>
+                    <p className="text-sm text-zinc-400">Loading analytics…</p>
                 </div>
             </div>
         );
@@ -130,15 +130,14 @@ const Analytics = () => {
                     <TrendingUp className="w-10 h-10 text-blue-500" />
                 </div>
                 <div>
-                    <h2 className="text-3xl font-black italic tracking-tighter text-white mb-4">PARTNER_TIER_RESTRICTED</h2>
-                    <p className="text-zinc-500 font-mono text-sm leading-relaxed">
-                        Analytics modules are not enabled for Partner tier. <br />
-                        As a Partner, your brand is featured in our global logo ticker.
+                    <h2 className="text-2xl font-semibold text-white mb-3">Analytics are not included in your plan</h2>
+                    <p className="text-zinc-400 text-sm leading-relaxed">
+                        Your brand remains featured in the global logo ticker. <br />
                     </p>
                 </div>
                 <div className="p-6 bg-[#0a0a0c] border border-blue-500/10 rounded-2xl">
                     <p className="text-xs text-white font-bold mb-2 uppercase italic tracking-widest">Upgrade recommended</p>
-                    <p className="text-[10px] text-zinc-500 font-mono leading-relaxed">
+                    <p className="text-xs text-zinc-500 leading-relaxed">
                         Upgrade to <span className="text-emerald-500 font-bold">ASCENDANT</span> to unlock impression tracking and performance analytics.
                     </p>
                 </div>
@@ -158,18 +157,14 @@ const Analytics = () => {
         <div className="space-y-8 max-w-6xl mx-auto">
             {/* Header */}
             <div>
-                <h1 className="text-3xl font-black italic tracking-tighter text-white mb-2">
-                    PERFORMANCE_ANALYTICS
-                </h1>
+                <h1 className="text-3xl font-semibold text-white mb-2">Analytics</h1>
                 <div className="flex items-center gap-3">
-                    <p className="text-zinc-500 font-mono text-sm tracking-wide uppercase">
-                        LIVE_METRICS_STREAM // ID: {sponsor.id.substring(0, 8)}
-                    </p>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${isRadiant ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                    <p className="text-zinc-400 text-sm">Understand how audiences engage with your placements.</p>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded border ${isRadiant ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
                         isAscendant ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
                             'bg-pink-500/10 text-pink-500 border-white/10'
                         }`}>
-                        {displayTier}_access
+                        {displayTier} plan
                     </span>
                 </div>
             </div>
@@ -177,34 +172,34 @@ const Analytics = () => {
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <MetricCard
-                    label="GROSS IMPRESSIONS"
+                    label="Impressions"
                     value={displayStats.impressions.toLocaleString()}
                     icon={Eye}
-                    trend="LIVE"
+                    trend="All time"
                     color="text-blue-500"
                     borderColor="group-hover:border-blue-500/30"
                 />
                 <MetricCard
-                    label="UNIQUE IMPRESSIONS"
+                    label="Daily unique impressions"
                     value={displayStats.uniqueImpressions.toLocaleString()}
                     icon={Fingerprint}
-                    trend="DAILY"
+                    trend="Daily"
                     color="text-cyan-500"
                     borderColor="group-hover:border-cyan-500/30"
                 />
                 <MetricCard
-                    label="TOTAL CLICKS"
+                    label="Clicks"
                     value={displayStats.clicks.toLocaleString()}
                     icon={MousePointerClick}
-                    trend="LIVE"
+                    trend="All time"
                     color="text-rose-500"
                     borderColor="group-hover:border-rose-500/30"
                 />
                 <MetricCard
-                    label="CLICK-THROUGH RATE"
+                    label="Click-through rate"
                     value={`${displayStats.ctr}%`}
                     icon={TrendingUp}
-                    trend="LIVE"
+                    trend="All time"
                     color="text-emerald-500"
                     borderColor="group-hover:border-emerald-500/30"
                 />
@@ -215,7 +210,7 @@ const Analytics = () => {
                 <div className="flex items-center justify-between mb-8">
                     <h3 className="font-bold flex items-center gap-2">
                         <BarChart className="w-5 h-5 text-white" />
-                        PERFORMANCE_TREND
+                        Performance over time
                     </h3>
                     <div className="flex bg-black/50 rounded-lg p-1 gap-1">
                         <button

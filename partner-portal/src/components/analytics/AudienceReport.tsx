@@ -1,4 +1,4 @@
-import { Globe2, Loader2, ShieldCheck, Users } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import type { SponsorAnalyticsPeriod, SponsorAudienceDimension, SponsorAudienceReport } from '@/types/sponsorAnalytics';
 
 interface Props {
@@ -13,79 +13,137 @@ interface Props {
 
 export function AudienceReport({ report, period, isLoading, isError, isFetching, onPeriodChange, onRetry }: Props) {
   return (
-    <section className="rounded-3xl border border-white/5 bg-[#0a0a0c] p-6 md:p-8">
-      <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+    <section className="overflow-hidden rounded-2xl border border-white/8 bg-[#0a0a0c]">
+      <header className="flex flex-col gap-4 border-b border-white/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.25em] text-cyan-400">
-            <Users className="h-4 w-4" /> Audience profile
-          </div>
-          <h2 className="mt-2 text-2xl font-black italic text-white">PRIVACY_SAFE_REACH</h2>
-          <p className="mt-2 max-w-2xl text-sm text-zinc-500">Estimated unique visitors exposed to your placements. Unknown values are retained as coverage gaps, never redistributed.</p>
+          <h2 className="text-lg font-semibold text-white">Audience</h2>
+          <p className="mt-1 text-sm text-zinc-400">Unique people reached during the selected period.</p>
         </div>
-        <div className="flex rounded-xl border border-white/10 bg-black/40 p-1" role="group" aria-label="Audience period">
-          {([7, 30, 90] as SponsorAnalyticsPeriod[]).map(value => (
-            <button key={value} type="button" onClick={() => onPeriodChange(value)} className={`rounded-lg px-3 py-2 text-xs font-bold ${period === value ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-500 hover:text-white'}`}>
-              {value}D
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {isLoading ? <State icon={Loader2} text="Calculating privacy-safe audience…" spinning />
-        : isError ? <State icon={ShieldCheck} text="Audience report is temporarily unavailable." action="Retry" onAction={onRetry} />
-        : !report ? null
-        : report.status === 'empty' ? <State icon={Users} text="No qualifying impressions were recorded in this period." />
-        : report.status === 'suppressed' ? <State icon={ShieldCheck} text={`At least ${report.privacy.minimumAudience} unique visitors are required before demographics can be shown.`} />
-        : (
-          <div className="mt-8 space-y-6">
-            <div className="grid gap-4 md:grid-cols-3">
-              <Metric label="Estimated unique audience" value={report.estimatedUniqueAudience?.toLocaleString() ?? '—'} />
-              <Metric label="Country coverage" value={formatCoverage(report.country.coveragePercent)} />
-              <Metric label="Age coverage" value={formatCoverage(report.age.coveragePercent)} />
-            </div>
-            {isFetching && <p className="text-xs font-mono text-cyan-400">UPDATING_REPORT…</p>}
-            <div className="grid gap-5 lg:grid-cols-2">
-              <Distribution icon={Globe2} title="Audience by country" dimension={report.country} />
-              <Distribution icon={Users} title="Age distribution" dimension={report.age} age />
-            </div>
-            <div className="rounded-2xl border border-white/5 bg-black/20 p-4 text-xs leading-relaxed text-zinc-500">
-              <span className="font-bold text-zinc-300">Methodology:</span> audience IDs are sponsor-scoped and expire after the reporting horizon. Segments below {report.privacy.minimumAudience} visitors are suppressed. Age comes only from completed profiles; anonymous visitors never receive an inferred age.
-            </div>
+        <div className="flex items-center gap-3">
+          {isFetching && !isLoading && <span className="text-xs text-zinc-400" aria-live="polite">Updating…</span>}
+          <div className="flex rounded-lg border border-white/10 bg-black/30 p-1" role="group" aria-label="Audience period">
+            {([7, 30, 90] as SponsorAnalyticsPeriod[]).map(value => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={period === value}
+                onClick={() => onPeriodChange(value)}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${period === value ? 'bg-white/10 text-white' : 'text-zinc-400 hover:text-white'}`}
+              >
+                {value} days
+              </button>
+            ))}
           </div>
-        )}
+        </div>
+      </header>
+      {isLoading
+        ? <State text="Loading audience data…" spinning />
+        : isError
+          ? <State text="Audience data couldn’t be loaded. Existing performance data is unaffected." action="Retry" onAction={onRetry} />
+          : !report
+            ? null
+            : report.status === 'empty'
+              ? <State text="No audience data for this period. Impressions will appear after your placements receive traffic." />
+              : report.status === 'suppressed'
+                ? <State text={`Audience is still building. At least ${report.privacy.minimumAudience} unique people are required before insights can be shown.`} />
+                : <ReportBody report={report} />}
     </section>
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-2xl border border-white/5 bg-black/25 p-5"><p className="text-[10px] font-mono uppercase tracking-widest text-zinc-600">{label}</p><p className="mt-2 text-3xl font-black text-white">{value}</p></div>;
-}
-
-function Distribution({ icon: Icon, title, dimension, age = false }: { icon: typeof Globe2; title: string; dimension: SponsorAudienceDimension; age?: boolean }) {
-  if (dimension.status !== 'available') return <div className="rounded-2xl border border-white/5 p-6"><h3 className="font-bold text-white">{title}</h3><p className="mt-6 text-sm text-zinc-600">Not enough publishable data for this dimension.</p></div>;
+function ReportBody({ report }: { report: SponsorAudienceReport }) {
   return (
-    <div className="rounded-2xl border border-white/5 p-6">
-      <h3 className="flex items-center gap-2 font-bold text-white"><Icon className="h-4 w-4 text-cyan-400" />{title}</h3>
-      <div className="mt-5 space-y-4">
-        {dimension.segments.map(segment => (
-          <div key={segment.key}>
-            <div className="mb-1 flex justify-between text-xs"><span className="font-mono text-zinc-300">{age ? ageLabel(segment.key) : countryLabel(segment.key)}</span><span className="text-zinc-500">{segment.percentageOfKnown}%</span></div>
-            <div className="h-2 overflow-hidden rounded-full bg-zinc-900"><div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500" style={{ width: `${segment.percentageOfKnown}%` }} /></div>
-          </div>
-        ))}
+    <div>
+      <div className="grid border-b border-white/5 lg:grid-cols-[1fr_1.5fr]">
+        <div className="px-5 py-6 lg:border-r lg:border-white/5">
+          <p className="text-xs font-medium text-zinc-400">Unique audience</p>
+          <p className="mt-1 text-4xl font-semibold tabular-nums text-white">{report.estimatedUniqueAudience?.toLocaleString() ?? '—'}</p>
+          <p className="mt-2 text-xs text-zinc-500">{dateRange(report.window.startsOn, report.window.endsOnExclusive)}</p>
+        </div>
+        <div className="border-t border-white/5 px-5 py-5 lg:border-t-0">
+          <p className="mb-3 text-xs font-medium text-zinc-400">Profile coverage</p>
+          <Coverage label="Country" dimension={report.country} />
+          <Coverage label="Age" dimension={report.age} />
+        </div>
       </div>
-      {dimension.suppressedSegmentCount > 0 && <p className="mt-4 text-[10px] text-zinc-600">{dimension.suppressedSegmentCount} small segment(s) suppressed.</p>}
+      <div className="grid lg:grid-cols-2">
+        <Distribution title="Countries" dimension={report.country} />
+        <Distribution title="Age groups" dimension={report.age} age />
+      </div>
+      <details className="border-t border-white/5 px-5 py-4 text-sm text-zinc-400">
+        <summary className="cursor-pointer font-medium text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">How audience reporting works</summary>
+        <p className="mt-3 max-w-3xl leading-relaxed">Audience estimates are sponsor-scoped. Country and age are included only when available from a completed profile. Age is never inferred. Groups smaller than {report.privacy.minimumAudience} people are withheld, and unknown values are not redistributed.</p>
+      </details>
     </div>
   );
 }
 
-function State({ icon: Icon, text, spinning = false, action, onAction }: { icon: typeof Users; text: string; spinning?: boolean; action?: string; onAction?: () => void }) {
-  return <div className="flex min-h-56 flex-col items-center justify-center text-center"><Icon className={`h-7 w-7 text-zinc-600 ${spinning ? 'animate-spin' : ''}`} /><p className="mt-4 max-w-md text-sm text-zinc-500">{text}</p>{action && <button type="button" onClick={onAction} className="mt-4 text-sm font-bold text-rose-400">{action}</button>}</div>;
+function Coverage({ label, dimension }: { label: string; dimension: SponsorAudienceDimension }) {
+  const percentage = dimension.coveragePercent;
+  return (
+    <div className="mb-3 grid grid-cols-[72px_1fr_auto] items-center gap-3 text-xs last:mb-0">
+      <span className="text-zinc-300">{label}</span>
+      <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
+        <div className="h-full bg-cyan-500" style={{ width: `${percentage ?? 0}%` }} />
+      </div>
+      <span className="min-w-24 text-right tabular-nums text-zinc-400">{percentage === null ? 'Withheld' : `${percentage}% known`}</span>
+    </div>
+  );
 }
 
-const formatCoverage = (value: number | null) => value === null ? 'Suppressed' : `${value}%`;
+function Distribution({ title, dimension, age = false }: { title: string; dimension: SponsorAudienceDimension; age?: boolean }) {
+  return (
+    <section className="border-t border-white/5 px-5 py-5 lg:first:border-r lg:first:border-white/5">
+      <h3 className="text-sm font-semibold text-white">{title}</h3>
+      {dimension.status !== 'available'
+        ? <p className="mt-5 text-sm text-zinc-500">There isn’t enough audience data to show this breakdown yet.</p>
+        : (
+          <div className="mt-4 divide-y divide-white/5">
+            {dimension.segments.map(segment => (
+              <div key={segment.key} className="grid grid-cols-[minmax(0,1fr)_80px_70px] items-center gap-3 py-2.5 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate text-zinc-200">{age ? ageLabel(segment.key) : countryLabel(segment.key)}</p>
+                  <div className="mt-1 h-1 overflow-hidden rounded-full bg-zinc-900">
+                    <div className="h-full bg-cyan-500/70" style={{ width: `${segment.percentageOfKnown}%` }} />
+                  </div>
+                </div>
+                <span className="text-right tabular-nums text-zinc-300">{segment.audience.toLocaleString()}</span>
+                <span className="text-right tabular-nums text-zinc-500">{segment.percentageOfKnown}%</span>
+              </div>
+            ))}
+          </div>
+        )}
+      {dimension.suppressedSegmentCount > 0 && (
+        <p className="mt-3 text-xs text-zinc-500">
+          {dimension.suppressedSegmentCount} smaller group{dimension.suppressedSegmentCount === 1 ? '' : 's'} withheld for privacy.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function State({ text, spinning = false, action, onAction }: { text: string; spinning?: boolean; action?: string; onAction?: () => void }) {
+  return (
+    <div className="flex min-h-40 flex-col items-center justify-center px-5 py-8 text-center" aria-live="polite" aria-busy={spinning}>
+      {spinning ? <Loader2 className="h-5 w-5 animate-spin text-zinc-500" /> : <ShieldCheck className="h-5 w-5 text-zinc-600" />}
+      <p className="mt-3 max-w-lg text-sm text-zinc-400">{text}</p>
+      {action && (
+        <button type="button" onClick={onAction} className="mt-4 rounded-md border border-white/10 px-3 py-1.5 text-sm font-medium text-white hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
+          {action}
+        </button>
+      )}
+    </div>
+  );
+}
+
 const ageLabel = (key: string) => ({ '13_17': '13–17', '18_24': '18–24', '25_34': '25–34', '35_44': '35–44', '45_54': '45–54', '55_plus': '55+' }[key] ?? key);
 const countryLabel = (code: string) => {
   try { return `${new Intl.DisplayNames(['en'], { type: 'region' }).of(code) ?? code} · ${code}`; }
   catch { return code; }
+};
+const dateRange = (startsOn: string, endsOnExclusive: string) => {
+  const start = new Date(`${startsOn}T00:00:00Z`);
+  const end = new Date(`${endsOnExclusive}T00:00:00Z`);
+  end.setUTCDate(end.getUTCDate() - 1);
+  return `${start.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`;
 };
