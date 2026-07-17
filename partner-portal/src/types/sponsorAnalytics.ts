@@ -7,28 +7,27 @@ export interface SponsorAudienceSegment {
 }
 
 export interface SponsorAudienceDimension {
-  status: 'available' | 'unavailable' | 'suppressed';
-  knownAudience: number | null;
-  unknownAudience: number | null;
+  status: 'available' | 'unavailable';
+  knownAudience: number;
+  unknownAudience: number;
   coveragePercent: number | null;
-  suppressedSegmentCount: number;
   segments: SponsorAudienceSegment[];
 }
 
 export interface SponsorAudienceReport {
-  schemaVersion: 1;
-  status: 'available' | 'empty' | 'suppressed';
+  schemaVersion: 2;
+  status: 'available' | 'empty';
   periodDays: SponsorAnalyticsPeriod;
   window: {
     startsOn: string;
     endsOnExclusive: string;
     generatedAt: string;
   };
-  privacy: {
-    minimumAudience: number;
+  disclosure: {
     methodologyVersion: string;
+    smallSegmentsSuppressed: false;
   };
-  estimatedUniqueAudience: number | null;
+  estimatedUniqueAudience: number;
   country: SponsorAudienceDimension;
   age: SponsorAudienceDimension;
 }

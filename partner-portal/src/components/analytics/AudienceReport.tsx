@@ -43,10 +43,8 @@ export function AudienceReport({ report, period, isLoading, isError, isFetching,
           : !report
             ? null
             : report.status === 'empty'
-              ? <State text="No audience data for this period. Impressions will appear after your placements receive traffic." />
-              : report.status === 'suppressed'
-                ? <State text={`Audience is still building. At least ${report.privacy.minimumAudience} unique people are required before insights can be shown.`} />
-                : <ReportBody report={report} />}
+              ? <State text="0 unique audience. No qualifying impressions were recorded in this period." />
+              : <ReportBody report={report} />}
     </section>
   );
 }
@@ -72,7 +70,7 @@ function ReportBody({ report }: { report: SponsorAudienceReport }) {
       </div>
       <details className="border-t border-white/5 px-5 py-4 text-sm text-zinc-400">
         <summary className="cursor-pointer font-medium text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">How audience reporting works</summary>
-        <p className="mt-3 max-w-3xl leading-relaxed">Audience estimates are sponsor-scoped. Country and age are included only when available from a completed profile. Age is never inferred. Groups smaller than {report.privacy.minimumAudience} people are withheld, and unknown values are not redistributed.</p>
+        <p className="mt-3 max-w-3xl leading-relaxed">Audience estimates are sponsor-scoped. Country and age are included only when available from a completed profile. Age is never inferred. Segment counts are exact, including small groups, and unknown values are not redistributed.</p>
       </details>
     </div>
   );
@@ -113,11 +111,6 @@ function Distribution({ title, dimension, age = false }: { title: string; dimens
             ))}
           </div>
         )}
-      {dimension.suppressedSegmentCount > 0 && (
-        <p className="mt-3 text-xs text-zinc-500">
-          {dimension.suppressedSegmentCount} smaller group{dimension.suppressedSegmentCount === 1 ? '' : 's'} withheld for privacy.
-        </p>
-      )}
     </section>
   );
 }
