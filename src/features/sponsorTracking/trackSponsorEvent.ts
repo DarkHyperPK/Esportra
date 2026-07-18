@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 const API_URL = import.meta.env.VITE_API_URL;
 
 type SponsorEventType = 'impression' | 'click';
-type SponsorPlacement = 'logo_ticker' | 'partner_showcase' | 'tournament_sidebar' | 'vertical_ad' | 'unknown';
+type SponsorPlacement = 'homepage_ticker' | 'partner_showcase' | 'sidebar_partner' | 'wide_partner' | 'card_badge' | 'partner_logo' | 'unknown';
 
 interface SponsorTrackingEvent {
   eventId: string;

@@ -16,12 +16,12 @@ const SPONSOR_TYPE_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 const ZONE_LABELS: Record<string, string> = {
-  header: 'Header',
-  sidebar: 'Sidebar',
-  ticker: 'Ticker',
-  match_bar: 'Match Bar',
-  stream_overlay: 'Overlay',
+  homepage_ticker: 'Homepage Ticker',
+  sidebar_partner: 'Sidebar Partner',
+  wide_partner: 'Wide Partner',
   card_badge: 'Card Badge',
+  partner_logo: 'Partner Logo',
+  partner_showcase: 'Showcase',
 };
 
 const Campaigns = () => {

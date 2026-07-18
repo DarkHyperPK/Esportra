@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button, SuccessButton } from '@/components/ui/button';
 import { JackButton } from '@/components/ui/JackButton';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRawgGame } from '@/hooks/useRawgGame';
 import { GameLogoImage } from '@/components/games/GameLogoImage';
+import { trackImpression } from '@/hooks/useSponsors';
 
 const REGION_LABELS: Record<string, string> = {
   'na-east': 'NA East', 'na-west': 'NA West', 'latam': 'LATAM',
@@ -41,6 +42,7 @@ interface TournamentCardProps {
   end_date?: string;
   winner_name?: string;
   title_sponsor_name?: string;
+  title_sponsor_id?: string;
   region?: string;
   currency?: string;
 }
@@ -70,10 +72,19 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   end_date: _end_date,
   winner_name,
   title_sponsor_name,
+  title_sponsor_id,
   region,
   currency,
 }) => {
   const navigate = useNavigate();
+  const badgeTracked = useRef(false);
+
+  useEffect(() => {
+    if (title_sponsor_id && !badgeTracked.current) {
+      trackImpression(title_sponsor_id, 'card_badge');
+      badgeTracked.current = true;
+    }
+  }, [title_sponsor_id]);
   const { currentRole } = useRole();
   const admin = useAdmin();
   const ownerId = organizer_id || user_id;

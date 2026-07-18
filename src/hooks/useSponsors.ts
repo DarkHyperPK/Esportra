@@ -75,17 +75,18 @@ export function useSponsorStats(sponsorId: string) {
 // Uses fetch with keepalive:true — survives page navigation like sendBeacon
 // but properly sets Content-Type: application/json (sendBeacon downgrades to text/plain).
 
-function invokeTrack(sponsorId: string, eventType: 'impression' | 'click', tournamentId?: string) {
-    const placement = tournamentId ? 'tournament_sidebar' : 'partner_showcase';
+type TrackingPlacement = Parameters<typeof trackSponsorEvent>[2];
+
+function invokeTrack(sponsorId: string, eventType: 'impression' | 'click', placement: TrackingPlacement, tournamentId?: string) {
     void trackSponsorEvent(sponsorId, eventType, placement, tournamentId);
 }
 
-// ─── PUBLIC API (drop-in replacement) ────────────────────────────────
-export function trackImpression(sponsorId: string, tournamentId?: string) {
-    invokeTrack(sponsorId, 'impression', tournamentId);
+// ─── PUBLIC API ──────────────────────────────────────────────────────
+export function trackImpression(sponsorId: string, placement: TrackingPlacement = 'partner_showcase', tournamentId?: string) {
+    invokeTrack(sponsorId, 'impression', placement, tournamentId);
 }
 
-export function trackClick(sponsorId: string, tournamentId?: string) {
-    invokeTrack(sponsorId, 'click', tournamentId);
+export function trackClick(sponsorId: string, placement: TrackingPlacement = 'partner_showcase', tournamentId?: string) {
+    invokeTrack(sponsorId, 'click', placement, tournamentId);
 }
 
