@@ -1,113 +1,118 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { trackClick, trackImpression, useSponsors } from '@/hooks/useSponsors';
-import { getStorageUrl } from '@/lib/storage';
+import { trackClick, trackImpression } from '@/hooks/useSponsors';
+import {
+  useTournamentSponsorDisplay,
+  sponsorsByZone,
+} from '@/hooks/useTournamentSponsorDisplay';
 
 interface Props {
-    sponsorId?: string; // optional override — if not passed, resolves SystemOptiX from DB
+  tournamentId: string;
 }
 
-export const VerticalAdPlacement = ({ sponsorId: sponsorIdProp }: Props) => {
-    const { data: sponsors = [] } = useSponsors();
-    // Resolve sponsor ID: use prop if provided, otherwise look up SystemOptiX from DB
-    const dbSystemOptiX = sponsors.find(s => s.name?.toLowerCase() === 'systemoptix');
-    const sponsorId = sponsorIdProp || dbSystemOptiX?.id || '';
+export const VerticalAdPlacement: React.FC<Props> = ({ tournamentId }) => {
+  const { data: links = [] } = useTournamentSponsorDisplay(tournamentId);
+  const tracked = useRef(new Set<string>());
+  const containerRef = useRef<HTMLDivElement>(null);
 
-    // Performance HUD State
-    const statsConfig = useMemo(() => [
-        { ping: '1.2ms', fps: '590 FPS' },
-        { ping: '0.8ms', fps: '840 FPS' },
-        { ping: '1.0ms', fps: '673 FPS' },
-    ], []);
-    const [currentStats, setCurrentStats] = useState(statsConfig[0]);
+  const sidebarSponsors = sponsorsByZone(links, 'sidebar_partner');
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentStats(prev => {
-                const currentIndex = statsConfig.findIndex(s => s.ping === prev.ping);
-                return statsConfig[(currentIndex + 1) % statsConfig.length];
-            });
-        }, 2000);
-        return () => clearInterval(interval);
-    }, [statsConfig]);
+  useEffect(() => {
+    if (sidebarSponsors.length === 0 || !containerRef.current) return;
 
-    // Impression Tracking
-    const adRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting && sponsorId) {
-                    trackImpression(sponsorId);
-                    observer.disconnect();
-                }
-            },
-            { threshold: 0.5 }
-        );
-        if (adRef.current) observer.observe(adRef.current);
-        return () => observer.disconnect();
-    }, [sponsorId]);
-
-    return (
-        <div ref={adRef} className="mt-12 hidden lg:flex flex-col gap-8">
-            <div className="relative group bg-[#080808] border border-white/5 overflow-hidden transition-all duration-500 hover:border-emerald-500/30">
-                <div className="aspect-[1/2] relative overflow-hidden">
-                    <img
-                        src={dbSystemOptiX?.banner_image_url || getStorageUrl('system.assets.partners', 'SystemOptiX/1.jpg')}
-                        alt="Partner"
-                        loading="lazy"
-                        decoding="async"
-                        fetchpriority="low"
-                        className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all [transition-duration:1500ms]"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
-
-                    {/* Performance HUD (Simulated) */}
-                    <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end z-20">
-                        <div className="bg-black/80 border border-emerald-500/30 p-3 backdrop-blur-md">
-                            <div className="text-[8px] font-mono text-emerald-500 uppercase tracking-widest mb-1 opacity-70 whitespace-nowrap">LATENCY</div>
-                            <div className="text-xl font-mono font-bold text-white tracking-tighter">{currentStats.ping}</div>
-                        </div>
-                        <div className="bg-black/80 border border-emerald-500/30 p-3 backdrop-blur-md text-right">
-                            <div className="text-[8px] font-mono text-emerald-500 uppercase tracking-widest mb-1 opacity-70 whitespace-nowrap">FRAMERATE</div>
-                            <div className="text-xl font-mono font-bold text-white tracking-tighter">{currentStats.fps}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="p-6 bg-zinc-950/50 backdrop-blur-sm border-t border-white/5">
-                    <div className="flex items-center gap-3 mb-4">
-                        <img
-                            src={dbSystemOptiX?.logo_url || getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png')}
-                            alt="Partner"
-                            loading="lazy"
-                            decoding="async"
-                            fetchpriority="low"
-                            className="h-6 w-auto object-contain"
-                        />
-                        <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-[8px] text-amber-500 font-bold uppercase tracking-widest rounded">Radiant Partner</span>
-                    </div>
-                    <h4 className="text-white font-bold text-sm mb-2 group-hover:text-emerald-400 transition-colors">STOP BLAMING YOUR PC.</h4>
-                    <p className="text-gray-500 text-xs mb-6 font-light">Frame-perfect optimization that eliminates stutters, reduces input delay, and unlocks the FPS your hardware was built to deliver.</p>
-
-                    <div className="flex items-center justify-between gap-4">
-                        <a
-                            href={dbSystemOptiX?.website_url || 'https://systemoptix.net/'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={() => sponsorId && trackClick(sponsorId)}
-                            className="text-[10px] font-mono text-white flex items-center gap-2 hover:text-emerald-400 transition-colors group/btn"
-                        >
-                            OPTIMIZE_NOW <ChevronRight className="w-3 h-3 group-hover/btn:translate-x-1 transition-transform" />
-                        </a>
-                        <div className="px-2 py-1 border border-emerald-500/20 bg-emerald-500/5 text-[9px] font-mono text-emerald-500 uppercase">
-                            {dbSystemOptiX?.discount_text || 'esportra20'}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          sidebarSponsors.forEach((l) => {
+            if (!tracked.current.has(l.sponsor_id)) {
+              trackImpression(l.sponsor_id, 'sidebar_partner', tournamentId);
+              tracked.current.add(l.sponsor_id);
+            }
+          });
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.5 }
     );
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [sidebarSponsors, tournamentId]);
+
+  if (sidebarSponsors.length === 0) return null;
+
+  return (
+    <div ref={containerRef} className="mt-12 hidden lg:flex flex-col gap-8">
+      {sidebarSponsors.slice(0, 2).map((l) => (
+        <SidebarPartnerCard key={l.id} link={l} tournamentId={tournamentId} />
+      ))}
+    </div>
+  );
 };
 
+const SidebarPartnerCard: React.FC<{
+  link: ReturnType<typeof sponsorsByZone>[number];
+  tournamentId: string;
+}> = ({ link, tournamentId }) => {
+  const s = link.sponsor;
+  const bannerUrl = link.media_overrides?.['sidebar_partner_banner'] || s.banner_image_url;
+  const logoUrl = link.media_overrides?.['sidebar_partner_logo'] || s.logo_url;
 
+  return (
+    <div className="relative group bg-[#080808] border border-white/5 overflow-hidden transition-all duration-500 hover:border-white/10">
+      <a
+        href={s.website_url || '#'}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => trackClick(s.id, 'sidebar_partner', tournamentId)}
+        className="block"
+      >
+        <div className="absolute top-3 left-3 z-20">
+          <span className="px-2 py-0.5 bg-white/5 border border-white/10 text-[8px] font-mono uppercase tracking-widest text-zinc-400">
+            Official Partner
+          </span>
+        </div>
+
+        <div className="aspect-[1/2] relative overflow-hidden">
+          {bannerUrl ? (
+            <img
+              src={bannerUrl}
+              alt={s.name}
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all [transition-duration:1500ms]"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-b from-zinc-900 to-black" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
+
+          <div className="absolute bottom-6 left-6 right-6 z-20">
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={s.name}
+                loading="lazy"
+                decoding="async"
+                className="h-8 w-auto object-contain mb-3"
+              />
+            )}
+            <p className="text-white font-bold text-sm group-hover:text-rose-400 transition-colors">
+              {s.name}
+            </p>
+          </div>
+        </div>
+
+        <div className="p-5 bg-zinc-950/50 border-t border-white/5">
+          {s.tagline && (
+            <p className="text-gray-500 text-xs mb-4 font-light line-clamp-2">{s.tagline}</p>
+          )}
+          <div className="flex items-center gap-2 text-[10px] font-mono text-white hover:text-rose-400 transition-colors">
+            <span>{s.cta_text || 'Learn more'}</span>
+            <ChevronRight className="w-3 h-3" />
+          </div>
+        </div>
+      </a>
+    </div>
+  );
+};

@@ -3,7 +3,8 @@ import { Users, ChevronRight, Trophy, Clock, Zap, CheckCircle, MapPin, Globe, Ex
 import { useNavigate } from 'react-router-dom';
 import { formatDateTime } from '@/utils/dateFormat';
 import { VerticalAdPlacement } from './VerticalAdPlacement';
-import { TournamentSponsorSidebar } from '@/components/tournament/TournamentSponsorSidebar';
+import { TournamentWidePartners } from '@/components/tournament/TournamentWidePartners';
+import { TournamentPartnerLogos } from '@/components/tournament/TournamentPartnerLogos';
 
 import { isBattleRoyale } from '@/utils/gameFeatures';
 
@@ -48,7 +49,6 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
     const isSelfPlayEnabled = !isBR && !!selfPlayStage;
 
     // Check if vertical ad is enabled for this tournament
-    const showVerticalAd = tournament.settings?.showVerticalAd === true;
 
     return (
         <div className="space-y-32">
@@ -116,10 +116,8 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                                 CLASSIFIED INTEL <br />
                                 AUTHORIZED EYES ONLY
                             </p>
-                            {/* Vertical Ad Placement (On Demand) */}
-                            {showVerticalAd && <VerticalAdPlacement />}
-                            {/* Tournament-specific sponsor sidebar */}
-                            {tournament.id && <TournamentSponsorSidebar tournamentId={tournament.id} />}
+                            {/* Sidebar Partner Ads */}
+                            {tournament.id && <VerticalAdPlacement tournamentId={tournament.id} />}
                         </div>
 
                         {/* Right: Content */}
@@ -254,6 +252,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                                     </div>
                                 </div>
                             )}
+
+                            {/* Wide Partner Cards (2x2 grid) */}
+                            {tournament.id && <TournamentWidePartners tournamentId={tournament.id} />}
+
+                            {/* Partner Logos Row */}
+                            {tournament.id && <TournamentPartnerLogos tournamentId={tournament.id} />}
 
                         </div>
                     </div>

@@ -78,6 +78,7 @@ const TournamentManagementTool = lazyWithRetry(() => import("./pages/admin/tools
 const VenueManagementTool = lazyWithRetry(() => import("./pages/admin/tools/VenueManagement"));
 const AnalyticsTool = lazyWithRetry(() => import("./pages/admin/tools/Analytics"));
 const SponsorManagementTool = lazyWithRetry(() => import("./pages/admin/tools/SponsorManagement"));
+const SponsorAdManagerTool = lazyWithRetry(() => import("./pages/admin/tools/SponsorAdManager"));
 const LicenseManagementTool = lazyWithRetry(() => import("./pages/admin/tools/LicenseManagement"));
 const TeamManagementTool = lazyWithRetry(() => import("./pages/admin/tools/TeamManagement"));
 const AlertsManagementTool = lazyWithRetry(() => import("./pages/admin/tools/AlertsManagement"));
@@ -354,6 +355,7 @@ const AppContent = React.memo(() => {
                   <Route path="tools/audit-logs" element={<AdminRouteGuard requiredPermission="audit:view" requiredRoles={ADMIN_ROLE_SETS.auditAccess}><AuditLogsTool /></AdminRouteGuard>} />
                   <Route path="tools/analytics" element={<AdminRouteGuard requiredPermission="analytics:view" requiredRoles={ADMIN_ROLE_SETS.analytics}><AnalyticsTool /></AdminRouteGuard>} />
                   <Route path="tools/sponsor-management" element={<AdminRouteGuard requiredPermission="sponsors:view" requiredRoles={ADMIN_ROLE_SETS.systemSettings}><SponsorManagementTool /></AdminRouteGuard>} />
+                  <Route path="tools/sponsor-ad-manager" element={<AdminRouteGuard requiredPermission="sponsors:edit" requiredRoles={ADMIN_ROLE_SETS.systemSettings}><SponsorAdManagerTool /></AdminRouteGuard>} />
                   <Route path="tools/game-catalog" element={<AdminRouteGuard requiredPermission="games:manage" requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}><GameCatalogManagement /></AdminRouteGuard>} />
                   <Route path="tools/map-management" element={<AdminRouteGuard requiredPermission="games:manage" requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}><MapManagement /></AdminRouteGuard>} />
                   <Route path="tools/license-management" element={<AdminRouteGuard requiredPermission="licenses:view" requiredRoles={ADMIN_ROLE_SETS.anyAdmin}><LicenseManagementTool /></AdminRouteGuard>} />
