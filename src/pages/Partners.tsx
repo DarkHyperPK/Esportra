@@ -4,7 +4,6 @@ import { Star, Award, Zap, ArrowRight, Cpu } from 'lucide-react';
 import { useSponsors, trackImpression, trackClick, Sponsor } from '@/hooks/useSponsors';
 import PartnerApplicationForm from '@/components/PartnerApplicationForm';
 import Footer from '@/components/Footer';
-import { getStorageUrl } from '@/lib/storage';
 import { JackButton } from '@/components/ui/JackButton';
 
 /* ──────────────────────────────────────────────────────────────
@@ -61,24 +60,6 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
 
     const imageIndex = Math.abs(page % gallery.length);
 
-    // Performance HUD State (for SystemOptiX)
-    const statsConfig = React.useMemo(() => [
-        { ping: '1.2ms', fps: '590 FPS' },
-        { ping: '0.8ms', fps: '840 FPS' },
-        { ping: '1.0ms', fps: '673 FPS' },
-    ], []);
-    const [currentStats, setCurrentStats] = React.useState(statsConfig[0]);
-
-    React.useEffect(() => {
-        if (sponsor.name !== 'SystemOptiX') return;
-        const interval = setInterval(() => {
-            setCurrentStats(prev => {
-                const currentIndex = statsConfig.findIndex(s => s.ping === prev.ping);
-                return statsConfig[(currentIndex + 1) % statsConfig.length];
-            });
-        }, 2000);
-        return () => clearInterval(interval);
-    }, [sponsor.name, statsConfig]);
 
     React.useEffect(() => {
         if (gallery.length <= 1) return;
@@ -122,19 +103,6 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
                             {/* Overlay Gradient */}
                             <div className="absolute inset-0 bg-black/40 group-hover:bg-transparent transition-colors duration-500" />
 
-                            {/* Performance HUD (SystemOptiX Special) */}
-                            {sponsor.name === 'SystemOptiX' && (
-                                <div className="absolute bottom-8 left-8 right-8 flex justify-between items-end z-30 pointer-events-none">
-                                    <div className="bg-black/90 border border-emerald-500/30 p-4 backdrop-blur-md">
-                                        <div className="text-[10px] font-mono text-emerald-500 uppercase tracking-widest mb-1 opacity-70">LATENCY</div>
-                                        <div className="text-2xl font-mono font-bold text-white tracking-tighter">{currentStats.ping}</div>
-                                    </div>
-                                    <div className="bg-black/90 border border-emerald-500/30 p-4 backdrop-blur-md text-right">
-                                        <div className="text-[10px] font-mono text-emerald-500 uppercase tracking-widest mb-1 opacity-70">FRAMERATE</div>
-                                        <div className="text-2xl font-mono font-bold text-white tracking-tighter">{currentStats.fps}</div>
-                                    </div>
-                                </div>
-                            )}
                         </>
                     ) : (
                         <div
@@ -228,35 +196,7 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
 const Partners = () => {
     const { data: rawSponsors = [], isLoading } = useSponsors();
 
-    // Sort Sponsors: Platinum -> Gold -> Others
     const sponsors = React.useMemo(() => {
-        // Find the real SystemOptiX from API to get the correct DB ID
-        const apiSystemOptiX = rawSponsors.find(s => s.name?.toLowerCase() === 'systemoptix');
-
-        const hardcodedSystemOptiX: Sponsor = {
-            id: apiSystemOptiX?.id ?? '',
-            name: 'SystemOptiX',
-            tagline: "STOP BLAMING YOUR PC.",
-            description: "Frame-perfect optimization that eliminates stutters, reduces input delay, and unlocks the FPS your hardware was built to deliver.",
-            website_url: 'https://systemoptix.net/',
-            logo_url: apiSystemOptiX?.logo_url || getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
-            banner_image_url: apiSystemOptiX?.banner_image_url || getStorageUrl('system.assets.partners', 'SystemOptiX/2.jpg'),
-            accent_color: '#06b6d4',
-            tier: 'radiant',
-            placement: ['logo_ticker', 'partner_showcase'],
-            cta_text: 'Optimize Now',
-            discount_text: apiSystemOptiX?.discount_text || 'esportra20',
-            is_active: true,
-            priority: 100,
-            gallery_images: [
-                getStorageUrl('system.assets.partners', 'SystemOptiX/1.jpg'),
-                getStorageUrl('system.assets.partners', 'SystemOptiX/2.jpg')
-            ],
-            start_date: null,
-            end_date: null,
-            created_at: new Date().toISOString()
-        };
-
         const tierOrder: Record<string, number> = {
             radiant: 3,
             ascendant: 2,
@@ -264,11 +204,7 @@ const Partners = () => {
             diamond: 1,
             standard: 1
         };
-        const filteredRaw = rawSponsors.filter(s => s.name?.toLowerCase() !== 'systemoptix');
-
-        // Always include hardcoded SystemOptiX; tracking fires only when DB ID is available
-        const base = [hardcodedSystemOptiX, ...filteredRaw];
-        return base.sort((a, b) => {
+        return [...rawSponsors].sort((a, b) => {
             const scoreA = tierOrder[a.tier?.toLowerCase()] || 0;
             const scoreB = tierOrder[b.tier?.toLowerCase()] || 0;
             return scoreB - scoreA;

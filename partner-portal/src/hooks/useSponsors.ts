@@ -55,10 +55,3 @@ export function useSponsorStats(sponsorId: string) {
     });
 }
 
-export async function trackImpression(sponsorId: string) {
-    await apiClient.post('/api/sponsors/track', { sponsorId, eventType: 'impression' });
-}
-
-export async function trackClick(sponsorId: string) {
-    await apiClient.post('/api/sponsors/impressions', { sponsorId, eventType: 'click' });
-}

@@ -311,7 +311,7 @@ const SponsorManagement = () => {
             banner_image_url: s.banner_image_url || null,
             accent_color: s.accent_color || '#8b5cf6',
             tier: s.tier || 'diamond',
-            placement: s.placement || ['banner'],
+            placement: s.placement || ['homepage_ticker'],
             cta_text: s.cta_text || 'Learn More',
             discount_text: s.discount_text || null,
             priority: s.priority || 0,
@@ -872,7 +872,7 @@ const SponsorManagement = () => {
                                 <div>
                                     <label className="text-xs uppercase text-zinc-500 mb-2 block">Ad Placements</label>
                                     <div className="grid grid-cols-2 gap-2">
-                                        {['banner', 'sidebar', 'footer', 'command_center'].map(placement => (
+                                        {['homepage_ticker', 'sidebar_partner', 'wide_partner', 'card_badge', 'partner_logo', 'partner_showcase'].map(placement => (
                                             <label key={placement} className="flex items-center gap-2 p-2 rounded bg-zinc-900 border border-zinc-800 cursor-pointer hover:border-zinc-700">
                                                 <input
                                                     type="checkbox"

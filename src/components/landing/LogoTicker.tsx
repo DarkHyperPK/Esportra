@@ -1,22 +1,11 @@
 import { motion } from "framer-motion";
 import { useSponsors, trackClick, trackImpression } from '@/hooks/useSponsors';
-import { getStorageUrl } from "@/lib/storage";
 
 const LogoTicker = () => {
-    const { data: sponsors = [], isLoading } = useSponsors('logo_ticker');
-    const apiSystemOptiX = sponsors.find(s => s.name?.toLowerCase() === 'systemoptix');
-    const sponsorsWithLogos = [
-        {
-            id: apiSystemOptiX?.id || 'systemoptix-hardcoded',
-            name: 'SystemOptiX',
-            logo_url: apiSystemOptiX?.logo_url || getStorageUrl('system.assets.partners', 'SystemOptiX/logo.png'),
-            website_url: 'https://systemoptix.net/',
-            accent_color: '#06b6d4'
-        },
-        ...sponsors.filter(s => s.logo_url && s.name?.toLowerCase() !== 'systemoptix')
-    ];
+    const { data: sponsors = [], isLoading } = useSponsors('homepage_ticker');
+    const sponsorsWithLogos = sponsors.filter(s => s.logo_url);
 
-    if (isLoading) return null;
+    if (isLoading || sponsorsWithLogos.length === 0) return null;
 
     return (
         <div className="py-10 bg-[#0a0a0a] border-y border-white/5 flex flex-col items-center justify-center relative overflow-hidden">
@@ -33,19 +22,19 @@ const LogoTicker = () => {
 
             <div className="container mx-auto px-4 relative z-10">
                 <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20">
-                    {sponsorsWithLogos.map((sponsor, _index) => (
+                    {sponsorsWithLogos.map((sponsor) => (
                         <motion.a
                             key={sponsor.id}
                             href={sponsor.website_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() => { if (sponsor.id.length === 36) trackClick(sponsor.id); }}
-                            onViewportEnter={() => { if (sponsor.id.length === 36) trackImpression(sponsor.id); }}
+                            onClick={() => trackClick(sponsor.id, 'homepage_ticker')}
+                            onViewportEnter={() => trackImpression(sponsor.id, 'homepage_ticker')}
                             viewport={{ once: true, amount: 0.5 }}
                             className="group relative transition-transform duration-300 hover:scale-105"
                         >
                             <img
-                                src={sponsor.logo_url}
+                                src={sponsor.logo_url!}
                                 alt={sponsor.name}
                                 className="h-8 md:h-10 w-auto object-contain grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
                             />
@@ -53,8 +42,6 @@ const LogoTicker = () => {
                     ))}
                 </div>
             </div>
-
-
         </div>
     );
 };
