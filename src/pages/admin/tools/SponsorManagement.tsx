@@ -470,6 +470,14 @@ const SponsorManagement = () => {
                         variant="outline"
                         size="sm"
                         className="border-zinc-800 text-zinc-400 hover:text-white"
+                        onClick={() => window.location.href = '/admin/tools/sponsor-ad-manager'}
+                    >
+                        Ad Placements
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-zinc-800 text-zinc-400 hover:text-white"
                         disabled={activeTab === 'invitations'}
                         onClick={() => {
                             const data = activeTab === 'sponsors' ? sponsors : applications;
