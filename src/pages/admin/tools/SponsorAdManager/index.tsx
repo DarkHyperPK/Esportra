@@ -42,12 +42,18 @@ export default function SponsorAdManager() {
 
   const { data: sponsors = [] } = useQuery({
     queryKey: ['admin', 'sponsors-list'],
-    queryFn: () => apiClient.get<SponsorOption[]>('/api/sponsors'),
+    queryFn: async () => {
+      const res = await apiClient.get<SponsorOption[]>('/api/sponsors');
+      return Array.isArray(res) ? res : [];
+    },
   });
 
   const { data: tournaments = [] } = useQuery({
     queryKey: ['admin', 'tournaments-list'],
-    queryFn: () => apiClient.get<TournamentOption[]>('/api/admin/tournaments'),
+    queryFn: async () => {
+      const res = await apiClient.get<{ data: TournamentOption[] }>('/api/admin/tournaments?limit=100');
+      return Array.isArray(res) ? res : (res?.data ?? []);
+    },
   });
 
   const { data: previewPlacements = [] } = useTournamentPlacements(previewTournamentId ?? '');
