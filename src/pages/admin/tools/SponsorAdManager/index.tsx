@@ -37,7 +37,7 @@ export default function SponsorAdManager() {
   const [view, setView] = useState<ViewMode>('tournament');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Placement | null>(null);
-  const [modalDefaults, setModalDefaults] = useState<{ zone?: PlacementZone; tournamentId?: string | null }>({});
+  const [modalLocks, setModalLocks] = useState<{ sponsorId?: string; zone?: PlacementZone; tournamentId?: string | null }>({});
   const [previewTournamentId, setPreviewTournamentId] = useState<string | null>(null);
 
   const { data: sponsors = [] } = useQuery({
@@ -62,15 +62,15 @@ export default function SponsorAdManager() {
   const updateMutation = useUpdatePlacement();
   const deleteMutation = useDeletePlacement();
 
-  const openAssignModal = (zone?: PlacementZone, tournamentId?: string | null) => {
+  const openModalForSponsor = (sponsorId: string) => {
     setEditing(null);
-    setModalDefaults({ zone, tournamentId });
+    setModalLocks({ sponsorId });
     setModalOpen(true);
   };
 
   const openEditModal = (placement: Placement) => {
     setEditing(placement);
-    setModalDefaults({});
+    setModalLocks({});
     setModalOpen(true);
   };
 
@@ -96,7 +96,7 @@ export default function SponsorAdManager() {
       </div>
 
       {/* View switcher */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center mb-6">
         <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-1">
           <button
             onClick={() => setView('tournament')}
@@ -117,7 +117,7 @@ export default function SponsorAdManager() {
       {view === 'tournament' ? (
         <TournamentView
           tournaments={tournaments}
-          onAssign={(zone, tid) => openAssignModal(zone, tid)}
+          sponsors={sponsors}
           onEdit={openEditModal}
           onDelete={handleDelete}
           onPreview={setPreviewTournamentId}
@@ -125,21 +125,23 @@ export default function SponsorAdManager() {
       ) : (
         <SponsorView
           sponsors={sponsors}
-          onAssign={() => openAssignModal(undefined, undefined)}
+          onAssign={openModalForSponsor}
           onEdit={openEditModal}
           onDelete={handleDelete}
         />
       )}
 
-      {/* Assignment / Edit Modal */}
+      {/* Modal (used for By Sponsor flow + editing) */}
       <PlacementModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleModalSubmit}
         sponsors={sponsors}
+        tournaments={tournaments}
         editing={editing}
-        defaultZone={modalDefaults.zone}
-        defaultTournamentId={modalDefaults.tournamentId}
+        lockedSponsorId={modalLocks.sponsorId}
+        lockedZone={modalLocks.zone}
+        lockedTournamentId={modalLocks.tournamentId}
       />
 
       {/* Preview Modal */}

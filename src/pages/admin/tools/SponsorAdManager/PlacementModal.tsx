@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { X, Upload, Link as LinkIcon } from 'lucide-react';
 import { type Placement, type CreatePlacementPayload, type UpdatePlacementPayload, useUploadPlacementAsset } from '@/hooks/useAdminPlacements';
-import { type PlacementZone, ZONE_META, zonesForTier } from './types';
+import { type PlacementZone, ZONE_META, MEDIA_FIELD_LABELS, zonesForTier, displayTier } from './types';
 
 interface Sponsor {
   id: string;
@@ -10,14 +10,21 @@ interface Sponsor {
   logo_url?: string;
 }
 
+interface Tournament {
+  id: string;
+  name: string;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
   onSubmit: (payload: CreatePlacementPayload | (UpdatePlacementPayload & { id: string })) => void;
   sponsors: Sponsor[];
+  tournaments: Tournament[];
   editing: Placement | null;
-  defaultZone?: PlacementZone;
-  defaultTournamentId?: string | null;
+  lockedSponsorId?: string;
+  lockedZone?: PlacementZone;
+  lockedTournamentId?: string | null;
 }
 
 export const PlacementModal: React.FC<Props> = ({
@@ -25,12 +32,15 @@ export const PlacementModal: React.FC<Props> = ({
   onClose,
   onSubmit,
   sponsors,
+  tournaments,
   editing,
-  defaultZone,
-  defaultTournamentId,
+  lockedSponsorId,
+  lockedZone,
+  lockedTournamentId,
 }) => {
-  const [sponsorId, setSponsorId] = useState(editing?.sponsorId ?? '');
-  const [zone, setZone] = useState<string>(editing?.placementZone ?? defaultZone ?? '');
+  const [sponsorId, setSponsorId] = useState(editing?.sponsorId ?? lockedSponsorId ?? '');
+  const [zone, setZone] = useState<string>(editing?.placementZone ?? lockedZone ?? '');
+  const [tournamentId, setTournamentId] = useState<string>(editing?.tournamentId ?? lockedTournamentId ?? '');
   const [bannerUrl, setBannerUrl] = useState(editing?.bannerUrl ?? '');
   const [logoUrl, setLogoUrl] = useState(editing?.logoUrl ?? '');
   const [headline, setHeadline] = useState(editing?.headline ?? '');
@@ -43,6 +53,8 @@ export const PlacementModal: React.FC<Props> = ({
 
   const selectedSponsor = sponsors.find(s => s.id === sponsorId);
   const allowedZones = selectedSponsor ? zonesForTier(selectedSponsor.tier) : [];
+  const activeZone = (zone || lockedZone) as PlacementZone | undefined;
+  const zoneMeta = activeZone ? ZONE_META[activeZone] : null;
 
   const handleFileUpload = useCallback(async (file: File, target: 'banner' | 'logo') => {
     const url = await upload.mutateAsync(file);
@@ -53,106 +65,184 @@ export const PlacementModal: React.FC<Props> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editing) {
-      onSubmit({ id: editing.id, bannerUrl: bannerUrl || null, logoUrl: logoUrl || null, headline: headline || null, ctaText: ctaText || null, ctaUrl: ctaUrl || null, priority, isActive });
+      onSubmit({
+        id: editing.id,
+        bannerUrl: bannerUrl || null,
+        logoUrl: logoUrl || null,
+        headline: headline || null,
+        ctaText: ctaText || null,
+        ctaUrl: ctaUrl || null,
+        priority,
+        isActive,
+      });
     } else {
-      onSubmit({ sponsorId, tournamentId: defaultTournamentId ?? null, placementZone: zone, bannerUrl: bannerUrl || null, logoUrl: logoUrl || null, headline: headline || null, ctaText: ctaText || null, ctaUrl: ctaUrl || null, priority, isActive });
+      const isGlobal = zoneMeta?.isGlobal;
+      onSubmit({
+        sponsorId,
+        tournamentId: isGlobal ? null : (tournamentId || null),
+        placementZone: zone,
+        bannerUrl: bannerUrl || null,
+        logoUrl: logoUrl || null,
+        headline: headline || null,
+        ctaText: ctaText || null,
+        ctaUrl: ctaUrl || null,
+        priority,
+        isActive,
+      });
     }
   };
 
   if (!open) return null;
 
+  const showSponsorPicker = !editing && !lockedSponsorId;
+  const showZonePicker = !editing && !lockedZone;
+  const showTournamentPicker = !editing && !lockedTournamentId && zoneMeta && !zoneMeta.isGlobal;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-5 border-b border-zinc-800">
-          <h3 className="text-lg font-bold text-white">{editing ? 'Edit Placement' : 'Assign Placement'}</h3>
+          <div>
+            <h3 className="text-lg font-bold text-white">{editing ? 'Edit Placement' : 'Assign Placement'}</h3>
+            {lockedZone && <p className="text-xs text-zinc-500 mt-0.5">{ZONE_META[lockedZone].label} — {ZONE_META[lockedZone].description}</p>}
+          </div>
           <button onClick={onClose} className="p-1 hover:bg-zinc-800 rounded"><X className="w-5 h-5 text-zinc-400" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {!editing && (
-            <>
-              <div>
-                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Sponsor</label>
-                <select
-                  value={sponsorId}
-                  onChange={e => { setSponsorId(e.target.value); setZone(''); }}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white"
-                  required
-                >
-                  <option value="">Select sponsor...</option>
-                  {sponsors.map(s => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.tier})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Placement Zone</label>
-                <select
-                  value={zone}
-                  onChange={e => setZone(e.target.value)}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white"
-                  required
-                  disabled={!sponsorId}
-                >
-                  <option value="">Select zone...</option>
-                  {allowedZones.map(z => (
-                    <option key={z} value={z}>{ZONE_META[z].label} — {ZONE_META[z].description}</option>
-                  ))}
-                </select>
-                {sponsorId && allowedZones.length === 0 && (
-                  <p className="text-xs text-red-400 mt-1">No zones available for this sponsor's tier.</p>
-                )}
-              </div>
-            </>
+          {/* Sponsor picker (only when not locked) */}
+          {showSponsorPicker && (
+            <div>
+              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Sponsor</label>
+              <select
+                value={sponsorId}
+                onChange={e => { setSponsorId(e.target.value); setZone(''); }}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white"
+                required
+              >
+                <option value="">Select sponsor...</option>
+                {sponsors.filter(s => {
+                  if (!lockedZone) return true;
+                  return zonesForTier(s.tier).includes(lockedZone);
+                }).map(s => (
+                  <option key={s.id} value={s.id}>{s.name} ({displayTier(s.tier)})</option>
+                ))}
+              </select>
+            </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <MediaInput label="Banner Image" value={bannerUrl} onChange={setBannerUrl} onFileUpload={f => handleFileUpload(f, 'banner')} uploading={upload.isPending} />
-            <MediaInput label="Logo Image" value={logoUrl} onChange={setLogoUrl} onFileUpload={f => handleFileUpload(f, 'logo')} uploading={upload.isPending} />
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Headline</label>
-            <input
-              type="text"
-              value={headline}
-              onChange={e => setHeadline(e.target.value)}
-              placeholder="Optional headline text"
-              className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">CTA Text</label>
-              <input type="text" value={ctaText} onChange={e => setCtaText(e.target.value)} placeholder="Learn more" className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white" />
+          {/* Locked sponsor display */}
+          {lockedSponsorId && selectedSponsor && (
+            <div className="flex items-center gap-3 px-3 py-2 bg-zinc-800/50 border border-zinc-800 rounded">
+              {selectedSponsor.logo_url && <img src={selectedSponsor.logo_url} alt="" className="h-5 w-auto" />}
+              <span className="text-sm text-white font-medium">{selectedSponsor.name}</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 bg-zinc-700 rounded text-zinc-400">{displayTier(selectedSponsor.tier)}</span>
             </div>
-            <div>
-              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">CTA URL</label>
-              <input type="url" value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} placeholder="https://..." className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white" />
-            </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Zone picker (only when not locked) */}
+          {showZonePicker && sponsorId && (
             <div>
-              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Priority</label>
-              <input type="number" value={priority} onChange={e => setPriority(Number(e.target.value))} className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white" />
+              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Placement Zone</label>
+              <select
+                value={zone}
+                onChange={e => setZone(e.target.value)}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white"
+                required
+              >
+                <option value="">Select zone...</option>
+                {allowedZones.map(z => (
+                  <option key={z} value={z}>{ZONE_META[z].label}</option>
+                ))}
+              </select>
             </div>
-            <div className="flex items-end pb-1">
+          )}
+
+          {/* Tournament picker (only for non-global zones when not locked) */}
+          {showTournamentPicker && (
+            <div>
+              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Tournament</label>
+              <select
+                value={tournamentId}
+                onChange={e => setTournamentId(e.target.value)}
+                className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white"
+                required
+              >
+                <option value="">Select tournament...</option>
+                {tournaments.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Zone-specific media fields */}
+          {zoneMeta && (
+            <div className="space-y-3 pt-2 border-t border-zinc-800">
+              <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Creative Assets</p>
+              {zoneMeta.mediaFields.includes('logo') && (
+                <MediaInput
+                  label={MEDIA_FIELD_LABELS.logo}
+                  value={logoUrl}
+                  onChange={setLogoUrl}
+                  onFileUpload={f => handleFileUpload(f, 'logo')}
+                  uploading={upload.isPending}
+                />
+              )}
+              {(zoneMeta.mediaFields.includes('banner') || zoneMeta.mediaFields.includes('tall_banner')) && (
+                <MediaInput
+                  label={zoneMeta.mediaFields.includes('tall_banner') ? MEDIA_FIELD_LABELS.tall_banner : MEDIA_FIELD_LABELS.banner}
+                  value={bannerUrl}
+                  onChange={setBannerUrl}
+                  onFileUpload={f => handleFileUpload(f, 'banner')}
+                  uploading={upload.isPending}
+                />
+              )}
+            </div>
+          )}
+
+          {/* CTA + optional fields */}
+          {zoneMeta && (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Headline (optional)</label>
+                <input type="text" value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Short tagline" className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">CTA Text</label>
+                  <input type="text" value={ctaText} onChange={e => setCtaText(e.target.value)} placeholder="Learn more" className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">CTA URL</label>
+                  <input type="url" value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} placeholder="https://..." className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="pt-4 border-t border-zinc-800 flex items-center justify-between">
+            <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} className="rounded border-zinc-700" />
-                <span className="text-sm text-zinc-300">Active</span>
+                <span className="text-xs text-zinc-400">Active</span>
               </label>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-zinc-500">Priority:</span>
+                <input type="number" value={priority} onChange={e => setPriority(Number(e.target.value))} className="w-14 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-white" />
+              </div>
             </div>
-          </div>
-
-          <div className="pt-4 border-t border-zinc-800 flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
-            <button type="submit" disabled={!editing && (!sponsorId || !zone)} className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors">
-              {editing ? 'Save Changes' : 'Assign'}
-            </button>
+            <div className="flex gap-3">
+              <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
+              <button
+                type="submit"
+                disabled={!editing && (!sponsorId || !zone || (!zoneMeta?.isGlobal && !tournamentId && !lockedTournamentId))}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors"
+              >
+                {editing ? 'Save' : 'Assign'}
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -176,17 +266,17 @@ const MediaInput: React.FC<{
           type="url"
           value={value}
           onChange={e => onChange(e.target.value)}
-          placeholder="URL or upload"
+          placeholder="Paste URL or upload →"
           className="w-full bg-zinc-800 border border-zinc-700 rounded pl-7 pr-3 py-2 text-xs text-white"
         />
       </div>
       <label className={`flex items-center justify-center w-9 h-9 bg-zinc-800 border border-zinc-700 rounded cursor-pointer hover:bg-zinc-700 transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
         <Upload className="w-3.5 h-3.5 text-zinc-400" />
-        <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFileUpload(f); }} />
+        <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) onFileUpload(f); e.target.value = ''; }} />
       </label>
     </div>
     {value && (
-      <img src={value} alt="Preview" className="mt-2 h-12 w-auto object-contain rounded border border-zinc-800" />
+      <img src={value} alt="Preview" className="mt-2 h-16 w-auto object-contain rounded border border-zinc-800" />
     )}
   </div>
 );
