@@ -141,7 +141,7 @@ export const useUploadPlacementAsset = () => {
     mutationFn: async (file: File): Promise<string> => {
       const fd = new FormData();
       fd.append('file', file);
-      fd.append('bucket', 'sponsor-assets');
+      fd.append('bucket', 'system.assets.partners');
       fd.append('folder', 'placements');
       const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
       return url;

@@ -116,8 +116,10 @@ const InlineAssignForm: React.FC<{
     else setLogoUrl(url);
   };
 
+  const hasRequiredMedia = meta.mediaFields.includes('logo') ? !!logoUrl : !!bannerUrl;
+
   const handleSubmit = () => {
-    if (!sponsorId) return;
+    if (!sponsorId || !hasRequiredMedia) return;
     createMutation.mutate({
       sponsorId,
       tournamentId,
@@ -156,8 +158,8 @@ const InlineAssignForm: React.FC<{
             <input type="url" value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} placeholder="https://sponsor-website.com" className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-xs text-white" />
           </div>
 
-          <button onClick={handleSubmit} disabled={createMutation.isPending} className="w-full py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-sm font-medium rounded transition-colors">
-            {createMutation.isPending ? 'Assigning...' : 'Assign Sponsor'}
+          <button onClick={handleSubmit} disabled={createMutation.isPending || !hasRequiredMedia} className="w-full py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors">
+            {createMutation.isPending ? 'Assigning...' : !hasRequiredMedia ? 'Upload media to assign' : 'Assign Sponsor'}
           </button>
         </>
       )}
