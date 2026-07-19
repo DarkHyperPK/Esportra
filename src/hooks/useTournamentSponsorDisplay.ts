@@ -36,7 +36,7 @@ export function useTournamentSponsorDisplay(tournamentId?: string) {
 
 /** Filter helpers */
 export function sponsorsByZone(links: TournamentSponsorLink[], zone: string) {
-  return links.filter((l) => l.placement_zones.includes(zone));
+  return links.filter((l) => l.placement_zones?.includes(zone));
 }
 
 export function titleSponsor(links: TournamentSponsorLink[]) {
