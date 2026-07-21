@@ -9,7 +9,8 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRawgGame } from '@/hooks/useRawgGame';
 import { GameLogoImage } from '@/components/games/GameLogoImage';
-import { trackImpression } from '@/hooks/useSponsors';
+import { trackImpression, trackClick } from '@/hooks/useSponsors';
+import type { TournamentCardBadge } from '@/types/tournament';
 
 const REGION_LABELS: Record<string, string> = {
   'na-east': 'NA East', 'na-west': 'NA West', 'latam': 'LATAM',
@@ -41,8 +42,7 @@ interface TournamentCardProps {
   start_date?: string;
   end_date?: string;
   winner_name?: string;
-  title_sponsor_name?: string;
-  title_sponsor_id?: string;
+  card_badge?: TournamentCardBadge | null;
   region?: string;
   currency?: string;
 }
@@ -71,8 +71,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   start_date: _start_date,
   end_date: _end_date,
   winner_name,
-  title_sponsor_name,
-  title_sponsor_id,
+  card_badge,
   region,
   currency,
 }) => {
@@ -80,11 +79,11 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   const badgeTracked = useRef(false);
 
   useEffect(() => {
-    if (title_sponsor_id && !badgeTracked.current) {
-      trackImpression(title_sponsor_id, 'card_badge');
+    if (card_badge && !badgeTracked.current) {
+      trackImpression(card_badge.sponsorId, 'card_badge', id);
       badgeTracked.current = true;
     }
-  }, [title_sponsor_id]);
+  }, [card_badge, id]);
   const { currentRole } = useRole();
   const admin = useAdmin();
   const ownerId = organizer_id || user_id;
@@ -276,12 +275,26 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
             </div>
           )}
 
-          {/* Title Sponsor Badge */}
-          {title_sponsor_name && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full w-fit">
-              <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider">Powered by</span>
-              <span className="text-[10px] font-bold text-zinc-300">{title_sponsor_name}</span>
-            </div>
+          {card_badge && (
+            card_badge.ctaUrl ? (
+              <a
+                href={card_badge.ctaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => { e.stopPropagation(); trackClick(card_badge.sponsorId, 'card_badge', id); }}
+                className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full w-fit hover:bg-white/10 transition-colors"
+              >
+                <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider">Powered by</span>
+                <img src={card_badge.logoUrl} alt="" className="h-3.5 w-auto object-contain" />
+                <span className="text-[10px] font-bold text-zinc-300">{card_badge.headline || card_badge.sponsorName}</span>
+              </a>
+            ) : (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full w-fit">
+                <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider">Powered by</span>
+                <img src={card_badge.logoUrl} alt="" className="h-3.5 w-auto object-contain" />
+                <span className="text-[10px] font-bold text-zinc-300">{card_badge.headline || card_badge.sponsorName}</span>
+              </div>
+            )
           )}
         </div>
 
