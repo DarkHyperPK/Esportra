@@ -6,14 +6,7 @@ import {
   ExternalLink,
   Zap,
 } from 'lucide-react';
-import { usePartnerData } from '@/hooks/usePartnerData';
 import { useSponsorTournaments, type SponsorTournamentLink } from '@/hooks/useSponsorTournaments';
-
-const SPONSOR_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  title_sponsor: { label: 'TITLE SPONSOR', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-  event_sponsor: { label: 'EVENT SPONSOR', color: 'text-rose-400 bg-rose-500/10 border-rose-500/20' },
-  media_sponsor: { label: 'MEDIA SPONSOR', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
-};
 
 const ZONE_LABELS: Record<string, string> = {
   homepage_ticker: 'Homepage Ticker',
@@ -25,12 +18,7 @@ const ZONE_LABELS: Record<string, string> = {
 };
 
 const Campaigns = () => {
-  const { data: partnerData, isLoading: partnerLoading, error: partnerError } = usePartnerData();
-  const sponsorId = partnerData?.sponsor?.id;
-  const { data: tournaments = [], isLoading: tournamentsLoading, error: tournamentsError } = useSponsorTournaments(sponsorId);
-
-  const isLoading = partnerLoading || tournamentsLoading;
-  const error = partnerError || tournamentsError;
+  const { data: tournaments = [], isLoading, error, refetch } = useSponsorTournaments();
 
   if (isLoading) {
     return (
@@ -53,7 +41,7 @@ const Campaigns = () => {
             Could not load your campaign placements. Please try again.
           </p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => refetch()}
             className="px-6 py-2 bg-white text-black font-bold rounded-lg hover:bg-zinc-200 transition-colors"
           >
             RETRY
@@ -63,8 +51,8 @@ const Campaigns = () => {
     );
   }
 
-  const active = tournaments.filter((t) => t.is_active);
-  const inactive = tournaments.filter((t) => !t.is_active);
+  const active = tournaments.filter((placement) => placement.lifecycle === 'live');
+  const inactive = tournaments.filter((placement) => placement.lifecycle !== 'live');
 
   return (
     <div className="space-y-10">
@@ -74,7 +62,7 @@ const Campaigns = () => {
           CAMPAIGN<span className="text-rose-500">_PLACEMENTS</span>
         </h2>
         <p className="text-zinc-500 text-sm mt-2 font-mono tracking-wider">
-          TOURNAMENT_SPONSORSHIPS // {tournaments.length} linked
+          SPONSOR_PLACEMENTS // {tournaments.length} linked
         </p>
       </div>
 
@@ -89,7 +77,7 @@ const Campaigns = () => {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {active.map((t) => (
-              <TournamentCard key={t.tournament_id} link={t} />
+              <TournamentCard key={t.id} link={t} />
             ))}
           </div>
         </section>
@@ -111,7 +99,7 @@ const Campaigns = () => {
           </h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {inactive.map((t) => (
-              <TournamentCard key={t.tournament_id} link={t} dimmed />
+              <TournamentCard key={t.id} link={t} dimmed />
             ))}
           </div>
         </section>
@@ -124,12 +112,7 @@ const TournamentCard: React.FC<{
   link: SponsorTournamentLink;
   dimmed?: boolean;
 }> = ({ link, dimmed }) => {
-  const typeInfo = SPONSOR_TYPE_LABELS[link.sponsor_type] ?? SPONSOR_TYPE_LABELS.event_sponsor;
-  const startDate = link.start_date ? new Date(link.start_date) : null;
-  const statusColor =
-    link.status === 'ongoing' ? 'text-emerald-400' :
-    link.status === 'completed' ? 'text-zinc-500' :
-    'text-blue-400';
+  const startDate = link.startsAt ? new Date(link.startsAt) : null;
 
   return (
     <motion.div
@@ -140,11 +123,11 @@ const TournamentCard: React.FC<{
       }`}
     >
       {/* Banner */}
-      {link.tournament_banner && (
+      {(link.bannerUrl || link.logoUrl) && (
         <div className="h-28 relative overflow-hidden">
           <img
-            src={link.tournament_banner}
-            alt={link.title}
+            src={link.bannerUrl || link.logoUrl || ''}
+            alt={link.headline || link.tournamentName || 'Campaign creative'}
             className="w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0c] to-transparent" />
@@ -156,7 +139,7 @@ const TournamentCard: React.FC<{
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <h4 className="text-lg font-bold text-white truncate group-hover:text-rose-400 transition-colors">
-              {link.title || 'Untitled Tournament'}
+              {link.tournamentName || 'Global placement'}
             </h4>
             <div className="flex items-center gap-3 mt-1.5">
               {startDate && (
@@ -165,47 +148,26 @@ const TournamentCard: React.FC<{
                   {startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
               )}
-              {link.status && (
-                <span className={`text-xs font-mono uppercase ${statusColor}`}>
-                  {link.status}
-                </span>
-              )}
+              <span className="text-xs font-mono uppercase text-zinc-400">{link.lifecycle}</span>
             </div>
           </div>
-          <span className={`shrink-0 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border rounded-lg ${typeInfo.color}`}>
-            {typeInfo.label}
+          <span className="shrink-0 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border rounded-lg text-rose-400 bg-rose-500/10 border-rose-500/20">
+            Slot {link.slotNumber || 'Review'}
           </span>
         </div>
 
         {/* Placement Zones */}
-        {link.placement_zones.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {link.placement_zones.map((zone) => (
-              <span
-                key={zone}
-                className="px-2 py-0.5 text-[10px] font-mono bg-zinc-900 border border-zinc-800 rounded text-zinc-400"
-              >
-                {ZONE_LABELS[zone] || zone}
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-1.5"><span className="px-2 py-0.5 text-[10px] font-mono bg-zinc-900 border border-zinc-800 rounded text-zinc-400">{link.tournamentId ? 'Tournament' : 'Global'}</span><span className="px-2 py-0.5 text-[10px] font-mono bg-zinc-900 border border-zinc-800 rounded text-zinc-400">{ZONE_LABELS[link.placementZone] || link.placementZone}</span>{link.reviewReason && <span className="px-2 py-0.5 text-[10px] font-mono bg-amber-500/10 border border-amber-500/20 rounded text-amber-400">{link.reviewReason.replace('_', ' ')}</span>}</div>
+
+        <div className="text-xs text-zinc-500">{link.startsAt ? new Date(link.startsAt).toLocaleDateString() : 'Starts immediately'} → {link.endsAt ? new Date(link.endsAt).toLocaleDateString() : 'No end date'}</div>
+        {link.ctaUrl && <a href={link.ctaUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-rose-400 hover:text-rose-300">{link.ctaText || 'Open campaign destination'}</a>}
 
         {/* Footer: linked date + view link */}
         <div className="flex items-center justify-between pt-2 border-t border-white/5">
           <span className="text-[10px] font-mono text-zinc-600">
-            Linked {new Date(link.linked_at).toLocaleDateString()}
+            Linked {new Date(link.createdAt).toLocaleDateString()}
           </span>
-          {link.slug && (
-            <a
-              href={`${import.meta.env.VITE_MAIN_APP_URL || 'https://esportra.com'}/tournaments/${link.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[10px] font-mono text-zinc-500 hover:text-rose-400 transition-colors"
-            >
-              View Tournament <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
+          {link.tournamentId && <span className="flex items-center gap-1 text-[10px] font-mono text-zinc-500"><ExternalLink className="w-3 h-3" /> Tournament placement</span>}
         </div>
       </div>
     </motion.div>
