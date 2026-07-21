@@ -14,6 +14,7 @@ import InvitationCallbackHandoff from './components/InvitationCallbackHandoff';
 
 const Analytics = lazy(() => import('./pages/Analytics'));
 const Assets = lazy(() => import('./pages/Assets'));
+const Campaigns = lazy(() => import('./pages/Campaigns'));
 const Account = lazy(() => import('./pages/Account'));
 const OnboardingWizard = lazy(() => import('./pages/OnboardingWizard'));
 
@@ -47,6 +48,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/assets" element={<Assets />} />
+            <Route path="/campaigns" element={<Campaigns />} />
             <Route path="/account" element={<Account />} />
           </Route>
         </Routes>

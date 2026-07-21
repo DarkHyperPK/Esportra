@@ -1,0 +1,30 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+
+const { refetch, useSponsorTournaments } = vi.hoisted(() => ({ refetch: vi.fn(), useSponsorTournaments: vi.fn() }));
+vi.mock('@/hooks/useSponsorTournaments', () => ({ useSponsorTournaments }));
+import Campaigns from './Campaigns';
+
+const placement = {
+  id: 'placement-1', tournamentId: null, tournamentName: null, placementZone: 'homepage_ticker', slotNumber: 1,
+  bannerUrl: null, logoUrl: 'https://cdn.example/logo.png', headline: 'Headline', ctaText: 'Visit', ctaUrl: 'https://example.com',
+  isActive: true, lifecycle: 'review', reviewReason: 'overflow', startsAt: null, endsAt: null, createdAt: '2026-07-19T00:00:00Z',
+};
+
+describe('Campaigns', () => {
+  it('renders global review placement details and logo creative', () => {
+    useSponsorTournaments.mockReturnValue({ data: [placement], isLoading: false, error: null, refetch });
+    render(<Campaigns />);
+    expect(screen.getByText('Global')).toBeInTheDocument();
+    expect(screen.getByText('overflow')).toBeInTheDocument();
+    expect(screen.getByRole('img')).toHaveAttribute('src', placement.logoUrl);
+    expect(screen.getByRole('link', { name: 'Visit' })).toHaveAttribute('href', placement.ctaUrl);
+  });
+
+  it('refetches after an error', () => {
+    useSponsorTournaments.mockReturnValue({ data: [], isLoading: false, error: new Error('failed'), refetch });
+    render(<Campaigns />);
+    fireEvent.click(screen.getByRole('button', { name: 'RETRY' }));
+    expect(refetch).toHaveBeenCalled();
+  });
+});
