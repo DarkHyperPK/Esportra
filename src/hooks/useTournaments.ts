@@ -10,6 +10,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import { mapTournamentCardBadge, type TournamentCardBadge, type TournamentCardBadgeFields } from '@/types/tournament';
 
 export interface Tournament {
   id: string;
@@ -37,11 +38,12 @@ export interface Tournament {
   organization_slug?: string;
   venue_city?: string | null;
   venue_country?: string | null;
+  card_badge?: TournamentCardBadge | null;
 }
 
 type TournamentStatus = 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled';
 
-interface ApiTournamentRow {
+interface ApiTournamentRow extends TournamentCardBadgeFields {
   id: string;
   name: string;
   game: string;
@@ -94,6 +96,7 @@ function mapRow(item: ApiTournamentRow): Tournament {
     is_public:           item.is_public,
     venue_city:          item.venue_city,
     venue_country:       item.venue_country,
+    card_badge:          mapTournamentCardBadge(item),
   };
 }
 

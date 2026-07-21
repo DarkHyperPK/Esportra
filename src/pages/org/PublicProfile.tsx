@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from 'framer-motion';
 import Footer from '@/components/Footer';
 import { TournamentCard } from '@/components/TournamentCard';
+import { mapTournamentCardBadge } from '@/types/tournament';
 
 const OrganizationPublicProfile = () => {
     const { slug } = useParams<{ slug: string }>();
@@ -237,6 +238,7 @@ const OrganizationPublicProfile = () => {
                                             start_date={t.start_date}
                                             end_date={t.end_date}
                                             currency={t.currency}
+                                            card_badge={mapTournamentCardBadge(t)}
                                         />
                                     ))}
                                 </div>
@@ -278,6 +280,7 @@ const OrganizationPublicProfile = () => {
                                             organizer_id={t.organizer_owner_id}
                                             currentUserId={user?.id}
                                             start_date={t.start_date}
+                                            card_badge={mapTournamentCardBadge(t)}
                                             end_date={t.end_date}
                                             winner_name={t.winner_team_name}
                                             currency={t.currency}
