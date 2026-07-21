@@ -22,7 +22,7 @@ export const ZONE_META: Record<PlacementZone, {
   partner_showcase: { label: 'Partner Showcase', maxSlots: 6, isGlobal: true, description: 'Full sections on /partners page', mediaFields: ['banner', 'logo'] },
   sidebar_partner: { label: 'Sidebar Partner', maxSlots: 2, isGlobal: false, description: 'Tall vertical ads in tournament sidebar', mediaFields: ['tall_banner'] },
   wide_partner: { label: 'Wide Partner', maxSlots: 4, isGlobal: false, description: '2×2 grid cards in tournament content', mediaFields: ['banner'] },
-  card_badge: { label: 'Card Badge', maxSlots: 1, isGlobal: true, description: '"Powered by" badge on tournament cards', mediaFields: ['logo'] },
+  card_badge: { label: 'Card Badge', maxSlots: 1, isGlobal: false, description: '"Powered by" badge on this tournament card', mediaFields: ['logo'] },
   partner_logo: { label: 'Partner Logo', maxSlots: 4, isGlobal: false, description: 'Logo row below wide partners', mediaFields: ['logo'] },
 };
 
@@ -50,4 +50,10 @@ export function displayTier(tier: string | null | undefined): string {
   if (t === 'ascendant') return 'Ascendant';
   if (t === 'radiant') return 'Radiant';
   return 'Partner';
+}
+
+export function requiredAssetRole(zone: PlacementZone): 'banner' | 'logo' {
+  const meta = ZONE_META[zone];
+  if (meta.mediaFields.includes('logo') && !meta.mediaFields.includes('banner') && !meta.mediaFields.includes('tall_banner')) return 'logo';
+  return 'banner';
 }

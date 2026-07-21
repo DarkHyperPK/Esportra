@@ -11,9 +11,12 @@ interface Props {
   onAssign: (sponsorId: string) => void;
   onEdit: (placement: Placement) => void;
   onDelete: (id: string) => void;
+  onReplace?: (placement: Placement) => void;
+  onRemove?: (placement: Placement) => void;
+  onUnassign?: (placement: Placement) => void;
 }
 
-export const SponsorView: React.FC<Props> = ({ sponsors, onAssign, onEdit, onDelete }) => {
+export const SponsorView: React.FC<Props> = ({ sponsors, onAssign, onEdit, onDelete, onReplace, onRemove, onUnassign }) => {
   const [selectedId, setSelectedId] = useState('');
   const { data: placements = [], isLoading } = useSponsorPlacements(selectedId);
 
@@ -71,7 +74,7 @@ export const SponsorView: React.FC<Props> = ({ sponsors, onAssign, onEdit, onDel
               <h4 className="text-sm font-bold text-white mb-4">Global Placements</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {globalPlacements.map(p => (
-                  <PlacementCard key={p.id} placement={p} onEdit={onEdit} onDelete={onDelete} />
+                  <PlacementCard key={p.id} placement={p} onEdit={onEdit} onDelete={onDelete} onReplace={onReplace} onRemove={onRemove} onUnassign={onUnassign} />
                 ))}
               </div>
             </div>
@@ -86,7 +89,7 @@ export const SponsorView: React.FC<Props> = ({ sponsors, onAssign, onEdit, onDel
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {group.placements.map(p => (
-                  <PlacementCard key={p.id} placement={p} onEdit={onEdit} onDelete={onDelete} />
+                  <PlacementCard key={p.id} placement={p} onEdit={onEdit} onDelete={onDelete} onReplace={onReplace} onRemove={onRemove} onUnassign={onUnassign} />
                 ))}
               </div>
             </div>

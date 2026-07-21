@@ -1,14 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
+import type { PlacementZone } from '@/pages/admin/tools/SponsorAdManager/types';
+
+export type PlacementLifecycle = 'live' | 'draft' | 'scheduled' | 'inactive' | 'expired' | 'review';
 
 export interface Placement {
   id: string;
   sponsorId: string;
   tournamentId: string | null;
-  placementZone: string;
+  placementZone: PlacementZone;
+  slotNumber: number | null;
   bannerUrl: string | null;
+  bannerAssetId: string | null;
   logoUrl: string | null;
+  logoAssetId: string | null;
   headline: string | null;
   ctaText: string | null;
   ctaUrl: string | null;
@@ -17,6 +23,9 @@ export interface Placement {
   startsAt: string | null;
   endsAt: string | null;
   createdAt: string;
+  updatedAt: string;
+  lifecycle: PlacementLifecycle;
+  reviewReason: 'overflow' | 'invalid_scope' | 'unassigned' | null;
   sponsorName: string;
   sponsorTier: string | null;
   sponsorLogoUrl: string | null;
@@ -27,9 +36,12 @@ export interface Placement {
 export interface CreatePlacementPayload {
   sponsorId: string;
   tournamentId?: string | null;
-  placementZone: string;
+  placementZone: PlacementZone;
+  slotNumber: number;
   bannerUrl?: string | null;
+  bannerAssetId?: string | null;
   logoUrl?: string | null;
+  logoAssetId?: string | null;
   headline?: string | null;
   ctaText?: string | null;
   ctaUrl?: string | null;
@@ -41,7 +53,9 @@ export interface CreatePlacementPayload {
 
 export interface UpdatePlacementPayload {
   bannerUrl?: string | null;
+  bannerAssetId?: string | null;
   logoUrl?: string | null;
+  logoAssetId?: string | null;
   headline?: string | null;
   ctaText?: string | null;
   ctaUrl?: string | null;
@@ -49,6 +63,27 @@ export interface UpdatePlacementPayload {
   isActive?: boolean;
   startsAt?: string | null;
   endsAt?: string | null;
+}
+
+export interface PlacementPage {
+  items: Placement[];
+  page: number;
+  pageSize: number;
+  total: number;
+  statusCounts: Record<string, number>;
+}
+
+export interface PlacementQuery {
+  sponsorId?: string;
+  tournamentId?: string;
+  zone?: string;
+  scope?: 'all' | 'global' | 'tournament';
+  status?: PlacementLifecycle;
+  search?: string;
+  sortBy?: string;
+  sortDirection?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
 }
 
 const keys = {
@@ -59,7 +94,7 @@ const keys = {
   global: () => [...keys.all, 'global'] as const,
 };
 
-export const useAdminPlacements = (params?: { sponsorId?: string; tournamentId?: string; zone?: string }) =>
+export const useAdminPlacements = (params?: PlacementQuery) =>
   useQuery({
     queryKey: keys.list(params as Record<string, string | undefined>),
     queryFn: () => {
@@ -67,8 +102,15 @@ export const useAdminPlacements = (params?: { sponsorId?: string; tournamentId?:
       if (params?.sponsorId) search.set('sponsorId', params.sponsorId);
       if (params?.tournamentId) search.set('tournamentId', params.tournamentId);
       if (params?.zone) search.set('zone', params.zone);
+      if (params?.scope && params.scope !== 'all') search.set('scope', params.scope);
+      if (params?.status) search.set('status', params.status);
+      if (params?.search) search.set('search', params.search);
+      if (params?.sortBy) search.set('sortBy', params.sortBy);
+      if (params?.sortDirection) search.set('sortDirection', params.sortDirection);
+      if (params?.page) search.set('page', String(params.page));
+      if (params?.pageSize) search.set('pageSize', String(params.pageSize));
       const qs = search.toString();
-      return apiClient.get<Placement[]>(`/api/admin/placements${qs ? `?${qs}` : ''}`);
+      return apiClient.get<PlacementPage>(`/api/admin/placements${qs ? `?${qs}` : ''}`);
     },
   });
 
@@ -97,9 +139,23 @@ export const useCreatePlacement = () => {
       qc.invalidateQueries({ queryKey: keys.all });
       toast({ title: 'Placement created' });
     },
-    onError: (err: any) => {
-      toast({ title: 'Failed to create placement', description: err?.message || 'Unknown error', variant: 'destructive' });
+    onError: (error: Error) => {
+      toast({ title: 'Failed to create placement', description: error.message || 'Unknown error', variant: 'destructive' });
     },
+  });
+};
+
+export const useResolvePlacementReview = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: ({ id, ...payload }: { id: string; tournamentId: string | null; placementZone: PlacementZone; slotNumber: number }) =>
+      apiClient.put(`/api/admin/placements/${id}/resolve`, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.all });
+      toast({ title: 'Placement review resolved' });
+    },
+    onError: (error: Error) => toast({ title: 'Failed to resolve placement', description: error.message, variant: 'destructive' }),
   });
 };
 
@@ -114,8 +170,8 @@ export const useUpdatePlacement = () => {
       qc.invalidateQueries({ queryKey: keys.all });
       toast({ title: 'Placement updated' });
     },
-    onError: (err: any) => {
-      toast({ title: 'Failed to update', description: err?.message, variant: 'destructive' });
+    onError: (error: Error) => {
+      toast({ title: 'Failed to update', description: error.message, variant: 'destructive' });
     },
   });
 };
@@ -130,21 +186,69 @@ export const useDeletePlacement = () => {
       qc.invalidateQueries({ queryKey: keys.all });
       toast({ title: 'Placement removed' });
     },
-    onError: (err: any) => {
-      toast({ title: 'Failed to remove', description: err?.message, variant: 'destructive' });
+    onError: (error: Error) => {
+      toast({ title: 'Failed to remove', description: error.message, variant: 'destructive' });
     },
   });
 };
 
 export const useUploadPlacementAsset = () => {
   return useMutation({
-    mutationFn: async (file: File): Promise<string> => {
+    mutationFn: async ({ file, zone, assetRole }: { file: File; zone: PlacementZone; assetRole: 'banner' | 'logo' }): Promise<{ assetId: string; url: string }> => {
       const fd = new FormData();
       fd.append('file', file);
-      fd.append('bucket', 'system.assets.partners');
-      fd.append('folder', 'placements');
-      const { url } = await apiClient.upload<{ url: string; path: string }>('/api/storage/upload', fd);
-      return url;
+      fd.append('zone', zone);
+      fd.append('assetRole', assetRole);
+      return apiClient.upload<{ assetId: string; url: string }>('/api/admin/placement-assets', fd);
+    },
+  });
+};
+
+export const useReplaceCreative = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, assetId }: { id: string; assetId: string }) =>
+      apiClient.put(`/api/admin/placements/${id}/replace-creative`, { assetId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.all });
+      toast({ title: 'Creative replaced' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to replace creative', description: error.message, variant: 'destructive' });
+    },
+  });
+};
+
+export const useRemoveCreative = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => apiClient.post(`/api/admin/placements/${id}/remove-creative`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.all });
+      toast({ title: 'Creative removed' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to remove creative', description: error.message, variant: 'destructive' });
+    },
+  });
+};
+
+export const useUnassignPlacement = () => {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => apiClient.post(`/api/admin/placements/${id}/unassign`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.all });
+      toast({ title: 'Placement unassigned' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to unassign', description: error.message, variant: 'destructive' });
     },
   });
 };
