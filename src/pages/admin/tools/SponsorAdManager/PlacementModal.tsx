@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { X, Upload, Link as LinkIcon } from 'lucide-react';
 import { type Placement, type CreatePlacementPayload, type UpdatePlacementPayload, useUploadPlacementAsset } from '@/hooks/useAdminPlacements';
 import { type PlacementZone, ZONE_META, MEDIA_FIELD_LABELS, zonesForTier, displayTier } from './types';
@@ -25,6 +25,7 @@ interface Props {
   lockedSponsorId?: string;
   lockedZone?: PlacementZone;
   lockedTournamentId?: string | null;
+  lockedSlotNumber?: number;
 }
 
 export const PlacementModal: React.FC<Props> = ({
@@ -37,17 +38,42 @@ export const PlacementModal: React.FC<Props> = ({
   lockedSponsorId,
   lockedZone,
   lockedTournamentId,
+  lockedSlotNumber,
 }) => {
   const [sponsorId, setSponsorId] = useState(editing?.sponsorId ?? lockedSponsorId ?? '');
   const [zone, setZone] = useState<string>(editing?.placementZone ?? lockedZone ?? '');
   const [tournamentId, setTournamentId] = useState<string>(editing?.tournamentId ?? lockedTournamentId ?? '');
   const [bannerUrl, setBannerUrl] = useState(editing?.bannerUrl ?? '');
   const [logoUrl, setLogoUrl] = useState(editing?.logoUrl ?? '');
+  const [bannerAssetId, setBannerAssetId] = useState<string | null>(editing?.bannerAssetId ?? null);
+  const [logoAssetId, setLogoAssetId] = useState<string | null>(editing?.logoAssetId ?? null);
   const [headline, setHeadline] = useState(editing?.headline ?? '');
   const [ctaText, setCtaText] = useState(editing?.ctaText ?? '');
   const [ctaUrl, setCtaUrl] = useState(editing?.ctaUrl ?? '');
   const [priority, setPriority] = useState(editing?.priority ?? 0);
   const [isActive, setIsActive] = useState(editing?.isActive ?? true);
+  const [slotNumber, setSlotNumber] = useState(editing?.slotNumber ?? lockedSlotNumber ?? 1);
+  const [startsAt, setStartsAt] = useState(editing?.startsAt?.slice(0, 16) ?? '');
+  const [endsAt, setEndsAt] = useState(editing?.endsAt?.slice(0, 16) ?? '');
+
+  useEffect(() => {
+    if (!open) return;
+    setSponsorId(editing?.sponsorId ?? lockedSponsorId ?? '');
+    setZone(editing?.placementZone ?? lockedZone ?? '');
+    setTournamentId(editing?.tournamentId ?? lockedTournamentId ?? '');
+    setSlotNumber(editing?.slotNumber ?? lockedSlotNumber ?? 1);
+    setBannerUrl(editing?.bannerUrl ?? '');
+    setLogoUrl(editing?.logoUrl ?? '');
+    setBannerAssetId(editing?.bannerAssetId ?? null);
+    setLogoAssetId(editing?.logoAssetId ?? null);
+    setHeadline(editing?.headline ?? '');
+    setCtaText(editing?.ctaText ?? '');
+    setCtaUrl(editing?.ctaUrl ?? '');
+    setPriority(editing?.priority ?? 0);
+    setIsActive(editing?.isActive ?? true);
+    setStartsAt(editing?.startsAt?.slice(0, 16) ?? '');
+    setEndsAt(editing?.endsAt?.slice(0, 16) ?? '');
+  }, [editing, lockedSlotNumber, lockedSponsorId, lockedTournamentId, lockedZone, open]);
 
   const upload = useUploadPlacementAsset();
 
@@ -57,10 +83,11 @@ export const PlacementModal: React.FC<Props> = ({
   const zoneMeta = activeZone ? ZONE_META[activeZone] : null;
 
   const handleFileUpload = useCallback(async (file: File, target: 'banner' | 'logo') => {
-    const url = await upload.mutateAsync(file);
-    if (target === 'banner') setBannerUrl(url);
-    else setLogoUrl(url);
-  }, [upload]);
+    if (!activeZone) return;
+    const asset = await upload.mutateAsync({ file, zone: activeZone, assetRole: target });
+    if (target === 'banner') { setBannerUrl(asset.url); setBannerAssetId(asset.assetId); }
+    else { setLogoUrl(asset.url); setLogoAssetId(asset.assetId); }
+  }, [activeZone, upload]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,12 +95,16 @@ export const PlacementModal: React.FC<Props> = ({
       onSubmit({
         id: editing.id,
         bannerUrl: bannerUrl || null,
+        bannerAssetId,
         logoUrl: logoUrl || null,
+        logoAssetId,
         headline: headline || null,
         ctaText: ctaText || null,
         ctaUrl: ctaUrl || null,
         priority,
         isActive,
+        startsAt: startsAt ? new Date(startsAt).toISOString() : null,
+        endsAt: endsAt ? new Date(endsAt).toISOString() : null,
       });
     } else {
       const isGlobal = zoneMeta?.isGlobal;
@@ -81,13 +112,18 @@ export const PlacementModal: React.FC<Props> = ({
         sponsorId,
         tournamentId: isGlobal ? null : (tournamentId || null),
         placementZone: zone,
+        slotNumber,
         bannerUrl: bannerUrl || null,
+        bannerAssetId,
         logoUrl: logoUrl || null,
+        logoAssetId,
         headline: headline || null,
         ctaText: ctaText || null,
         ctaUrl: ctaUrl || null,
         priority,
         isActive,
+        startsAt: startsAt ? new Date(startsAt).toISOString() : null,
+        endsAt: endsAt ? new Date(endsAt).toISOString() : null,
       });
     }
   };
@@ -184,7 +220,6 @@ export const PlacementModal: React.FC<Props> = ({
                 <MediaInput
                   label={MEDIA_FIELD_LABELS.logo}
                   value={logoUrl}
-                  onChange={setLogoUrl}
                   onFileUpload={f => handleFileUpload(f, 'logo')}
                   uploading={upload.isPending}
                 />
@@ -193,7 +228,6 @@ export const PlacementModal: React.FC<Props> = ({
                 <MediaInput
                   label={zoneMeta.mediaFields.includes('tall_banner') ? MEDIA_FIELD_LABELS.tall_banner : MEDIA_FIELD_LABELS.banner}
                   value={bannerUrl}
-                  onChange={setBannerUrl}
                   onFileUpload={f => handleFileUpload(f, 'banner')}
                   uploading={upload.isPending}
                 />
@@ -204,6 +238,14 @@ export const PlacementModal: React.FC<Props> = ({
           {/* CTA + optional fields */}
           {zoneMeta && (
             <div className="space-y-3">
+              {!editing && !lockedSlotNumber && (
+                <div>
+                  <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Slot</label>
+                  <select value={slotNumber} onChange={event => setSlotNumber(Number(event.target.value))} className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white">
+                    {Array.from({ length: zoneMeta.maxSlots }, (_, index) => <option key={index + 1} value={index + 1}>Slot {index + 1}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Headline (optional)</label>
                 <input type="text" value={headline} onChange={e => setHeadline(e.target.value)} placeholder="Short tagline" className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white" />
@@ -216,6 +258,16 @@ export const PlacementModal: React.FC<Props> = ({
                 <div>
                   <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">CTA URL</label>
                   <input type="url" value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} placeholder="https://..." className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Starts</label>
+                  <input type="datetime-local" value={startsAt} onChange={event => setStartsAt(event.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Ends</label>
+                  <input type="datetime-local" value={endsAt} onChange={event => setEndsAt(event.target.value)} className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white" />
                 </div>
               </div>
             </div>
@@ -253,22 +305,15 @@ export const PlacementModal: React.FC<Props> = ({
 const MediaInput: React.FC<{
   label: string;
   value: string;
-  onChange: (v: string) => void;
   onFileUpload: (f: File) => void;
   uploading: boolean;
-}> = ({ label, value, onChange, onFileUpload, uploading }) => (
+}> = ({ label, value, onFileUpload, uploading }) => (
   <div>
     <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">{label}</label>
     <div className="flex gap-1">
       <div className="relative flex-1">
         <LinkIcon className="absolute left-2 top-2.5 w-3 h-3 text-zinc-600" />
-        <input
-          type="url"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder="Paste URL or upload →"
-          className="w-full bg-zinc-800 border border-zinc-700 rounded pl-7 pr-3 py-2 text-xs text-white"
-        />
+        <input type="text" value={value} readOnly placeholder="Upload a validated creative →" className="w-full bg-zinc-800 border border-zinc-700 rounded pl-7 pr-3 py-2 text-xs text-zinc-400" />
       </div>
       <label className={`flex items-center justify-center w-9 h-9 bg-zinc-800 border border-zinc-700 rounded cursor-pointer hover:bg-zinc-700 transition-colors ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
         <Upload className="w-3.5 h-3.5 text-zinc-400" />
