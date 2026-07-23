@@ -2057,6 +2057,26 @@ const TournamentDashboard = () => {
                               ))}
                             </div>
                           )}
+                          {invitationRows.filter(i => i.status === 'draft').length > 0 && (
+                            <div className="flex items-center gap-3 rounded-none border border-amber-500/20 bg-amber-500/10 p-3">
+                              <span className="text-sm text-amber-100">
+                                {invitationRows.filter(i => i.status === 'draft').length} invitation{invitationRows.filter(i => i.status === 'draft').length === 1 ? '' : 's'} pending in draft
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  sendInvites.mutate({}, {
+                                    onSuccess: () => toast({ title: 'All drafts sent', description: 'Invitation emails and notifications dispatched.' }),
+                                    onError: (err: any) => toast({ title: 'Send failed', description: err.message || 'Try again later.', variant: 'destructive' }),
+                                  });
+                                }}
+                                disabled={sendInvites.isPending}
+                                className={cn(buttonVariants({ size: 'sm' }), 'border-transparent bg-emerald-600 hover:bg-emerald-500 text-white ml-auto')}
+                              >
+                                {sendInvites.isPending ? 'Sending...' : 'Send All Drafts'}
+                              </button>
+                            </div>
+                          )}
                           {effectiveReservedInviteSlots <= 0 && (
                             <div className="rounded-none border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
                               Reserved invite slots are not configured. Enable invited participants in the Settings tab before sending guaranteed invite codes.
@@ -2143,8 +2163,17 @@ const TournamentDashboard = () => {
                                 onClick={() => {
                                   if (!csvImportText.trim()) return;
                                   importCsv.mutate({ csvContent: csvImportText }, {
-                                    onSuccess: (data) => {
-                                      toast({ title: 'CSV Import complete', description: `${data.imported} imported, ${data.skipped} skipped.` });
+                                    onSuccess: async (data) => {
+                                      if (data.inviteIds && data.inviteIds.length > 0) {
+                                        try {
+                                          await sendInvites.mutateAsync({ invitationIds: data.inviteIds });
+                                          toast({ title: 'CSV Import complete', description: `${data.imported} invitations sent.` });
+                                        } catch {
+                                          toast({ title: 'CSV Import complete', description: `${data.imported} imported as drafts but failed to send. Use the Send button on each.`, variant: 'destructive' });
+                                        }
+                                      } else {
+                                        toast({ title: 'CSV Import complete', description: `${data.imported} imported, ${data.skipped} skipped.` });
+                                      }
                                       setCsvImportText('');
                                       setShowCsvImport(false);
                                     },
@@ -2192,6 +2221,21 @@ const TournamentDashboard = () => {
                                       Expires {invite.expiresAt ? new Date(invite.expiresAt).toLocaleDateString() : '—'}
                                     </span>
                                     <div className="flex gap-1">
+                                      {invite.status === 'draft' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            sendInvites.mutate({ invitationIds: [invite.id] }, {
+                                              onSuccess: () => toast({ title: 'Invitation sent', description: `Sent to ${invite.email}` }),
+                                              onError: (err: any) => toast({ title: 'Send failed', description: err.message || 'Try again later.', variant: 'destructive' }),
+                                            });
+                                          }}
+                                          disabled={sendInvites.isPending}
+                                          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'justify-start text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200 text-xs px-2')}
+                                        >
+                                          Send
+                                        </button>
+                                      )}
                                       {(invite.status === 'sent' || invite.status === 'expired') && (
                                         <button
                                           type="button"
@@ -2207,7 +2251,7 @@ const TournamentDashboard = () => {
                                           Resend
                                         </button>
                                       )}
-                                      {invite.status === 'sent' && (
+                                      {(invite.status === 'draft' || invite.status === 'sent') && (
                                         <button
                                           type="button"
                                           onClick={() => handleRevokeInvitation(invite.id)}
@@ -2216,9 +2260,6 @@ const TournamentDashboard = () => {
                                         >
                                           Revoke
                                         </button>
-                                      )}
-                                      {invite.status !== 'sent' && invite.status !== 'expired' && (
-                                        <span className="text-xs text-gray-600">—</span>
                                       )}
                                     </div>
                                   </div>
