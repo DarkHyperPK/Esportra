@@ -1034,7 +1034,7 @@ const TournamentDashboard = () => {
       : null;
   const checkInCountdownLabel = isCheckInNotYetOpen ? 'until open' : 'left';
   const showCheckInSummary = Boolean(
-    (effectiveCheckInRequired || canActAsOwner) && checkInEligibleParticipants.length > 0,
+    effectiveCheckInRequired && checkInEligibleParticipants.length > 0,
   );
 
   const staffPermissionSummary =
@@ -2420,32 +2420,43 @@ const TournamentDashboard = () => {
                           <CardTitle className="text-lg font-semibold text-white">Check-In Requirements</CardTitle>
                         </CardHeader>
                         <CardContent className="p-0 space-y-5">
-                          <div className="flex flex-col gap-4">
+                          {effectiveCheckInRequired ? (
+                            <div className="flex flex-col gap-4">
+                              <div className="flex items-start gap-2 text-sm text-gray-300 p-4 rounded-none bg-white/[0.02] border border-white/5">
+                                <AlertTriangle className="w-5 h-5 text-rose-400 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <p className="font-medium text-white mb-1">Check-in Enforcement</p>
+                                  <ul className="list-disc list-inside space-y-1 text-gray-400">
+                                    <li>Check-in is <span className="text-rose-400 font-medium">required</span> for all teams.</li>
+                                    <li>Teams who fail to check in before the deadline will be <span className="text-red-400 font-medium">auto-removed</span>.</li>
+                                    <li>Only checked-in teams will be added to the bracket.</li>
+                                  </ul>
+                                </div>
+                              </div>
+                              <div className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-none bg-white/[0.02] border border-white/5 gap-4">
+                                <div>
+                                  <p className="font-semibold text-white">Manual Enforcement</p>
+                                  <p className="text-sm text-gray-400">You can manually trigger removal of teams who haven't checked in yet.</p>
+                                </div>
+                                <DangerButton
+                                  onClick={handleRemoveUncheckedParticipants}
+                                  disabled={removingUnchecked}
+                                  className="w-full sm:w-auto min-w-[200px]"
+                                >
+                                  {removingUnchecked ? 'Processing...' : 'Remove Unchecked Teams'}
+                                </DangerButton>
+                              </div>
+                            </div>
+                          ) : (
                             <div className="flex items-start gap-2 text-sm text-gray-300 p-4 rounded-none bg-white/[0.02] border border-white/5">
-                              <AlertTriangle className="w-5 h-5 text-rose-400 mt-0.5 flex-shrink-0" />
                               <div>
-                                <p className="font-medium text-white mb-1">Check-in Enforcement</p>
-                                <ul className="list-disc list-inside space-y-1 text-gray-400">
-                                  <li>Check-in is <span className="text-rose-400 font-medium">mandatory</span> for all teams.</li>
-                                  <li>Teams who fail to check in before the deadline will be <span className="text-red-400 font-medium">auto-removed</span>.</li>
-                                  <li>Only checked-in teams will be added to the bracket.</li>
-                                </ul>
+                                <p className="font-medium text-white mb-1">Check-in Disabled</p>
+                                <p className="text-gray-400">
+                                  Check-in is not required for this tournament. All approved teams are eligible for bracket seeding.
+                                </p>
                               </div>
                             </div>
-                            <div className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-none bg-white/[0.02] border border-white/5 gap-4">
-                              <div>
-                                <p className="font-semibold text-white">Manual Enforcement</p>
-                                <p className="text-sm text-gray-400">You can manually trigger removal of teams who haven't checked in yet.</p>
-                              </div>
-                              <DangerButton
-                                onClick={handleRemoveUncheckedParticipants}
-                                disabled={removingUnchecked}
-                                className="w-full sm:w-auto min-w-[200px]"
-                              >
-                                {removingUnchecked ? 'Processing...' : 'Remove Unchecked Teams'}
-                              </DangerButton>
-                            </div>
-                          </div>
+                          )}
                         </CardContent>
                       </Card>
 
