@@ -50,7 +50,7 @@ const StepRegistration: React.FC<WizardStepProps> = ({
         return toLocalDateTimeInputValue(closeDate);
     }, [data.startDate, data.startTime]);
 
-    // Auto-set defaults and mandatory fields on mount
+    // Auto-set defaults on mount
     useEffect(() => {
         const updates: Partial<any> = {};
 
@@ -61,18 +61,10 @@ const StepRegistration: React.FC<WizardStepProps> = ({
             updates.registrationCloses = getDefaultRegistrationClose();
         }
 
-        // Enforce mandatory check-in fields
-        if (!data.checkInRequired) {
-            updates.checkInRequired = true;
-        }
-        if (!data.autoRemoveUnchecked) {
-            updates.autoRemoveUnchecked = true;
-        }
-
         if (Object.keys(updates).length > 0) {
             updateData(updates);
         }
-    }, [data.startDate, data.startTime, data.registrationOpens, data.registrationCloses, data.checkInRequired, data.autoRemoveUnchecked, updateData, getDefaultRegistrationOpen, getDefaultRegistrationClose]);
+    }, [data.startDate, data.startTime, data.registrationOpens, data.registrationCloses, updateData, getDefaultRegistrationOpen, getDefaultRegistrationClose]);
 
     return (
         <motion.div
@@ -113,59 +105,65 @@ const StepRegistration: React.FC<WizardStepProps> = ({
                 </div>
             </div>
 
-            {/* Check-in Settings - Mandatory */}
+            {/* Check-in Settings - Optional */}
             <div className="w-full h-px bg-white/5 my-6" />
             <div className="p-4 bg-white/[0.02] rounded-lg border border-white/10 space-y-4">
                 <div className="flex items-center gap-3">
                     <UserCheck className="w-5 h-5 text-emerald-400" />
                     <div>
-                        <div className="font-medium text-white">Check-in Required</div>
+                        <div className="font-medium text-white">Require Check-In</div>
                         <div className="text-sm text-gray-400">
                             Teams must confirm attendance before the tournament starts
                         </div>
                     </div>
-                    <span className="ml-auto text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">
-                        Mandatory
-                    </span>
+                    <Switch
+                        checked={data.checkInRequired}
+                        onCheckedChange={(checked) => updateData({
+                            checkInRequired: checked,
+                            autoRemoveUnchecked: checked ? (data.autoRemoveUnchecked ?? true) : false,
+                        })}
+                        className="ml-auto"
+                    />
                 </div>
 
-                <div className="space-y-4 pt-4 border-t border-white/10">
-                    <div className="space-y-2">
-                        <Label htmlFor="checkInWindow" className="flex items-center gap-2 text-sm text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <Clock className="w-4 h-4" />
-                            Check-in window (minutes before start)
-                        </Label>
-                        <div className="flex items-center gap-3">
-                            <Input
-                                id="checkInWindow"
-                                type="number"
-                                min={5}
-                                max={120}
-                                value={data.checkInWindowMinutes}
-                                onChange={(e) => updateData({ checkInWindowMinutes: parseInt(e.target.value) || 30 })}
-                                className="w-24 font-bold tracking-tight"
-                            />
-                            <span className="text-sm text-gray-400">minutes</span>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                            Teams can check in starting {data.checkInWindowMinutes} minutes before the tournament starts
-                        </p>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <div className="font-medium text-white text-sm">Auto-remove no-shows</div>
-                            <div className="text-xs text-gray-400">
-                                Automatically remove teams who don't check in
+                {data.checkInRequired && (
+                    <div className="space-y-4 pt-4 border-t border-white/10">
+                        <div className="space-y-2">
+                            <Label htmlFor="checkInWindow" className="flex items-center gap-2 text-sm text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                <Clock className="w-4 h-4" />
+                                Check-in window (minutes before start)
+                            </Label>
+                            <div className="flex items-center gap-3">
+                                <Input
+                                    id="checkInWindow"
+                                    type="number"
+                                    min={5}
+                                    max={120}
+                                    value={data.checkInWindowMinutes}
+                                    onChange={(e) => updateData({ checkInWindowMinutes: parseInt(e.target.value) || 30 })}
+                                    className="w-24 font-bold tracking-tight"
+                                />
+                                <span className="text-sm text-gray-400">minutes</span>
                             </div>
+                            <p className="text-xs text-gray-500">
+                                Teams can check in starting {data.checkInWindowMinutes} minutes before the tournament starts
+                            </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">
-                                Mandatory
-                            </span>
+
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="font-medium text-white text-sm">Auto-remove no-shows</div>
+                                <div className="text-xs text-gray-400">
+                                    Automatically remove teams who don't check in
+                                </div>
+                            </div>
+                            <Switch
+                                checked={data.autoRemoveUnchecked}
+                                onCheckedChange={(checked) => updateData({ autoRemoveUnchecked: checked })}
+                            />
                         </div>
                     </div>
-                </div>
+                )}
             </div>
 
             <div className="w-full h-px bg-white/5 my-6" />

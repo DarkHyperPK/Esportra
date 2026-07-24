@@ -162,7 +162,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     // Step 4
     registrationOpens: '',
     registrationCloses: '',
-    checkInRequired: true,
+    checkInRequired: false,
     checkInWindowMinutes: 30,
     autoRemoveUnchecked: true,
     waitlistEnabled: false,
