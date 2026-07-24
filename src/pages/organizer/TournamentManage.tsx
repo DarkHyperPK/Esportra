@@ -1795,6 +1795,7 @@ const TournamentDashboard = () => {
                         onUpdate={() => refetchDashboard()}
                         game={tournament.game || ''}
                         isPublic={tournament.is_public}
+                        checkInRequired={!!tournament.check_in_required}
                       />
                     )}
                   </TabTransition>
