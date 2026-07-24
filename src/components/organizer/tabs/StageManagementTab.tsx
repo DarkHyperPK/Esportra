@@ -26,9 +26,10 @@ interface StageManagementTabProps {
     onUpdate: () => void;
     game: string;
     isPublic?: boolean;
+    checkInRequired?: boolean;
 }
 
-export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic = false }) => {
+export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic = false, checkInRequired = false }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
@@ -371,7 +372,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             const stageConf = typeof stage.config === 'string'
                 ? (() => { try { return JSON.parse(stage.config as string); } catch { return {}; } })()
                 : (stage.config || {});
-            const useCheckInOnly = stage.stage_order === 1 && !!stageConf.use_check_in_only;
+            const useCheckInOnly = stage.stage_order === 1 && checkInRequired && !!stageConf.use_check_in_only;
 
             if (stage.stage_order === 1) {
                 // First stage: Get participants from tournament_participants
