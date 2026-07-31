@@ -679,7 +679,7 @@ const TournamentDetails = () => {
         showInviteRedemption={showInviteRedemption}
         onRedeemInvite={() => setShowInviteDialog(true)}
         isLoading={registrationLoading}
-        checkInStartTime={checkInStartTime}
+        checkInStartTime={requiresCheckIn ? checkInStartTime : null}
         awaitingApproval={awaitingApproval}
       />
 
