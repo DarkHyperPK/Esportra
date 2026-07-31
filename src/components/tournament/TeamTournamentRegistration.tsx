@@ -92,6 +92,7 @@ interface RosterMember {
   username?: string;
   full_name?: string;
   avatar_url?: string;
+  riot_tag?: string | null;
   is_starter?: boolean;
   roster_role?: 'starter' | 'substitute' | 'coach';
   team_role?: string;
@@ -227,7 +228,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
           roster_role: resolveRosterRole(m),
           is_starter: resolveRosterRole(m) === 'starter',
           is_captain: m.user_id === captainId,
-          profile: m.profiles || { username: m.username, full_name: m.full_name, avatar_url: m.avatar_url },
+          profile: m.profiles || { username: m.username, full_name: m.full_name, avatar_url: m.avatar_url, riot_tag: m.riot_tag },
           is_verified: accountMap.has(String(m.user_id)),
           riot_tag_fallback: typeof accountMap.get(String(m.user_id)) === 'string' ? accountMap.get(String(m.user_id)) : null
         }));
