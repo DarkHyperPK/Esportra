@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams, Navigate } from 'react-router-dom';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { OrganizerTeamCard } from '@/components/organizer/OrganizerTeamCard';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -227,6 +227,7 @@ const TournamentDashboard = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { user, profile } = useAuth();
   const { currentRole, isLoading: roleLoading } = useRole();
   const admin = useAdmin();
@@ -975,7 +976,9 @@ const TournamentDashboard = () => {
       setBanDialogOpen(false);
       setBanReason('');
       setBanTarget(null);
-      refetchDashboard(); // Refresh participants
+      refetchDashboard();
+      queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
+      queryClient.invalidateQueries({ queryKey: ['bracket-versions'] });
     } catch (error: any) {
       console.error('Error banning participant:', error);
       toast({
