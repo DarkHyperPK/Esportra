@@ -29,7 +29,7 @@ interface StageManagementTabProps {
     checkInRequired?: boolean;
 }
 
-export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic = false, checkInRequired = false }) => {
+export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic = false, checkInRequired: _checkInRequired = false }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const navigate = useNavigate();

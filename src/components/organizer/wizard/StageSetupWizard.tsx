@@ -225,7 +225,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     const [currentStageIndex, setCurrentStageIndex] = useState(0);
     const [loading, setLoading] = useState(false);
     const [participantsCount, setParticipantsCount] = useState<number>(0);
-    const [checkInEnabled, setCheckInEnabled] = useState(false);
     const [tournamentMaxParticipants, setTournamentMaxParticipants] = useState<number | null>(null);
     const [gameData, setGameData] = useState(() => (game ? getGameByName(game) : null));
 
@@ -258,7 +257,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             if (!data) return;
 
             const d = data as any;
-            setCheckInEnabled(d.check_in_required);
             const maxTeams = d.max_teams === 0 ? null : d.max_teams;
             setTournamentMaxParticipants(maxTeams);
 
