@@ -29,7 +29,7 @@ interface StageManagementTabProps {
     checkInRequired?: boolean;
 }
 
-export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic = false, checkInRequired: _checkInRequired = false }) => {
+export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic = false, checkInRequired = false }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
@@ -386,7 +386,12 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
                 console.log('[StageManagement] Found participants raw count:', participants?.length || 0);
 
-                teams = (participants || []).map((p: any) => {
+                // When check-in is required, exclude participants who haven't checked in
+                const eligible = checkInRequired
+                    ? (participants || []).filter((p: any) => p.checked_in_at || p.status === 'checked_in')
+                    : (participants || []);
+
+                teams = eligible.map((p: any) => {
                     const isTeam = p.participant_type === 'team'
                         || p.registration_type === 'team'
                         || p.entry_kind === 'real_team';
