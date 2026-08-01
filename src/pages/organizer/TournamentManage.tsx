@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams, Navigate } from 'react-router-dom';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { OrganizerTeamCard } from '@/components/organizer/OrganizerTeamCard';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -227,6 +227,7 @@ const TournamentDashboard = () => {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { user, profile } = useAuth();
   const { currentRole, isLoading: roleLoading } = useRole();
   const admin = useAdmin();
@@ -975,7 +976,9 @@ const TournamentDashboard = () => {
       setBanDialogOpen(false);
       setBanReason('');
       setBanTarget(null);
-      refetchDashboard(); // Refresh participants
+      refetchDashboard();
+      queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
+      queryClient.invalidateQueries({ queryKey: ['bracket-versions'] });
     } catch (error: any) {
       console.error('Error banning participant:', error);
       toast({
@@ -2631,6 +2634,24 @@ const TournamentDashboard = () => {
                 </div>
                 <div className="p-6 pt-0 flex items-center justify-end gap-3">
                   <button type="button" onClick={() => setTeamDialogOpen(false)} className="border border-white/10 text-white hover:bg-white/5 h-10 px-5 rounded-lg">Close</button>
+                  {effectiveCheckInRequired && selectedTeam && !selectedTeam.checked_in_at && selectedTeam.status !== 'disqualified' && (
+                    <button type="button"
+                      onClick={async () => {
+                        if (!selectedTeam || !tournament?.id) return;
+                        try {
+                          await apiClient.post(`/api/tournaments/${tournament.id}/participants/${selectedTeam.id}/check-in`, {});
+                          toast({ title: 'Checked In', description: `${selectedTeam.team_name || 'Participant'} has been manually checked in.` });
+                          setTeamDialogOpen(false);
+                          refetchDashboard();
+                        } catch (err: any) {
+                          toast({ title: 'Error', description: err.message || 'Failed to check in participant.', variant: 'destructive' });
+                        }
+                      }}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white h-10 px-6 rounded-lg font-bold shadow-lg shadow-emerald-900/20 transition-all hover:scale-105"
+                    >
+                      Check In
+                    </button>
+                  )}
                   <button type="button"
                     onClick={() => {
                       if (!selectedTeam) return;

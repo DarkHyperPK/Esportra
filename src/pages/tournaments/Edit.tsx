@@ -164,7 +164,7 @@ const EditTournament = () => {
           }
           return 30;
         })(),
-        autoRemoveUnchecked: tournamentData.auto_remove_unchecked ?? false,
+        autoRemoveUnchecked: tournamentData.auto_remove_unchecked ?? true,
         waitlistEnabled: false, // Default
         waitlistMax: 10, // Default
         invitedTeamsEnabled: (() => {

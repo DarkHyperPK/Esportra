@@ -225,7 +225,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     const [currentStageIndex, setCurrentStageIndex] = useState(0);
     const [loading, setLoading] = useState(false);
     const [participantsCount, setParticipantsCount] = useState<number>(0);
-    const [checkInEnabled, setCheckInEnabled] = useState(false);
     const [tournamentMaxParticipants, setTournamentMaxParticipants] = useState<number | null>(null);
     const [gameData, setGameData] = useState(() => (game ? getGameByName(game) : null));
 
@@ -258,7 +257,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             if (!data) return;
 
             const d = data as any;
-            setCheckInEnabled(d.check_in_required);
             const maxTeams = d.max_teams === 0 ? null : d.max_teams;
             setTournamentMaxParticipants(maxTeams);
 
@@ -715,29 +713,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                 )}
                             </>
                         )}
-                        {/* Check-in option for first stage only */}
-                        {currentStageIndex === 0 && checkInEnabled && (
-                            <div className="space-y-2 mt-2">
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        id={`useCheckInOnly-${currentStageIndex}`}
-                                        className="rounded border-gray-700 bg-gray-800 text-emerald-500 focus:ring-emerald-500"
-                                        checked={stage.settings?.use_check_in_only || false}
-                                        onChange={(e) => {
-                                            const newSettings = { ...stage.settings, use_check_in_only: e.target.checked };
-                                            updateStageConfig(currentStageIndex, 'settings', newSettings);
-                                        }}
-                                    />
-                                    <label
-                                        htmlFor={`useCheckInOnly-${currentStageIndex}`}
-                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-300"
-                                    >
-                                        Use Checked-in Teams Only
-                                    </label>
-                                </div>
-                            </div>
-                        )}
                     </div>
 
 
@@ -1136,32 +1111,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                                         )}
                                                     />
                                                 </>
-                                            )}
-                                            {isFirstStage && checkInEnabled && (
-                                                <div className="space-y-2 mt-2">
-                                                    <p className="text-xs text-gray-500">Capacity is determined by tournament's max teams setting</p>
-                                                    <div className="flex items-center space-x-2">
-                                                        <input
-                                                            type="checkbox"
-                                                            id="useCheckInOnly"
-                                                            className="rounded border-gray-700 bg-gray-800 text-emerald-500 focus:ring-emerald-500"
-                                                            checked={manualFormState.settings?.use_check_in_only || false}
-                                                            onChange={(e) => {
-                                                                const newSettings = { ...manualFormState.settings, use_check_in_only: e.target.checked };
-                                                                setManualFormState({ ...manualFormState, settings: newSettings });
-                                                            }}
-                                                        />
-                                                        <label
-                                                            htmlFor="useCheckInOnly"
-                                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-300"
-                                                        >
-                                                            Use Checked-in Teams Only
-                                                        </label>
-                                                    </div>
-                                                    <p className="text-[10px] text-gray-500 ml-6">
-                                                        If checked, only teams that have checked in will be included in the bracket.
-                                                    </p>
-                                                </div>
                                             )}
                                         </>
                                     );
