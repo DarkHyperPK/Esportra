@@ -368,22 +368,11 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             // Get teams/participants for this stage
             let teams: Array<{ id: string; name: string; logo_url?: string | null }> = [];
 
-            // Check stage config for check-in filtering
-            const stageConf = typeof stage.config === 'string'
-                ? (() => { try { return JSON.parse(stage.config as string); } catch { return {}; } })()
-                : (stage.config || {});
-            const useCheckInOnly = stage.stage_order === 1 && checkInRequired && !!stageConf.use_check_in_only;
-
             if (stage.stage_order === 1) {
                 // First stage: Get participants from tournament_participants
                 console.log('[StageManagement] Fetching teams for stage 1, tournamentId:', tournamentId);
 
-                const allParticipants = useCheckInOnly
-                    ? await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => null)
-                    : null;
-
-                const statusFilter = useCheckInOnly ? '?status=checked_in' : '';
-                const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants${statusFilter}`).catch(() => null);
+                const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => null);
 
                 if (!participants) {
                     console.error('[StageManagement] Error fetching participants');
@@ -393,24 +382,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                         variant: 'destructive'
                     });
                     return;
-                }
-
-                if (useCheckInOnly) {
-                    const checkedInCount = participants.length;
-                    const eligibleCount = allParticipants?.length ?? checkedInCount;
-                    const pendingCount = Math.max(eligibleCount - checkedInCount, 0);
-                    const minimumRequired = 2;
-
-                    if (checkedInCount < minimumRequired) {
-                        toast({
-                            title: 'Not enough checked-in teams',
-                            description: pendingCount > 0
-                                ? `Need at least ${minimumRequired} checked-in teams to generate this bracket. ${pendingCount} eligible ${pendingCount === 1 ? 'entry is' : 'entries are'} still pending check-in.`
-                                : `Need at least ${minimumRequired} checked-in teams to generate this bracket.`,
-                            variant: 'destructive',
-                        });
-                        return;
-                    }
                 }
 
                 console.log('[StageManagement] Found participants raw count:', participants?.length || 0);
@@ -448,15 +419,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 })).filter(t => t.id);
             }
             if (teams.length < 2) {
-                if (useCheckInOnly) {
-                    toast({
-                        title: 'Not enough checked-in teams',
-                        description: 'Need at least 2 checked-in teams to generate this bracket.',
-                        variant: 'destructive',
-                    });
-                    return;
-                }
-
                 if (!isPublic) {
                     // Draft mode: refuse empty brackets — organizer must generate mock teams first.
                     toast({
