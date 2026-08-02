@@ -33,7 +33,6 @@ import {
   seedGroupShortLabel,
   summarizeGroupRotationSchedule,
 } from '@/utils/brWaveScheduleDisplay';
-import { validateLiveActionInTournamentWindow } from '@/utils/tournamentScheduleValidation';
 import { omitLobbyGameFieldsWhenGamesModel, usesPerGameLobbyUi } from '@/utils/brLobbyPatch';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 
@@ -312,22 +311,7 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
                     });
                     return;
                   }
-                  if (action === 'start') {
-                    const windowErr = validateLiveActionInTournamentWindow(
-                      tournamentStartDate,
-                      tournamentEndDate,
-                      'Starting a round',
-                    );
-                    if (windowErr) {
-                      toast({
-                        title: 'Outside tournament window',
-                        description: windowErr,
-                        variant: 'destructive',
-                      });
-                      return;
-                    }
-                  }
-                  if (
+                   if (
                     BR_FEATURE_FLAGS.mapsEnabled
                     && action === 'start'
                     && mapConfig.mode === 'per_round'

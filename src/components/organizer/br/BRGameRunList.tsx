@@ -18,7 +18,6 @@ import type { BRGame } from '@/types/brLobbies';
 import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
 import { resolveMapFromConfig } from '@/hooks/useBRStageConfig';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
-import { validateLiveActionInTournamentWindow } from '@/utils/tournamentScheduleValidation';
 import { useToast } from '@/hooks/use-toast';
 import { MapPin, Play, CheckCircle, ChevronDown, ChevronRight, Clock, AlertTriangle, Undo2 } from 'lucide-react';
 
@@ -38,8 +37,6 @@ interface BRGameRunListProps {
   scoringPreset: ScoringPreset;
   mapConfig: BRMapConfig;
   mapCatalogItems?: BRMapCatalogItem[];
-  tournamentStartDate?: string | null;
-  tournamentEndDate?: string | null;
   realtimeConnected?: boolean;
 }
 
@@ -53,8 +50,6 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
   scoringPreset,
   mapConfig,
   mapCatalogItems = [],
-  tournamentStartDate,
-  tournamentEndDate,
   realtimeConnected = false,
 }) => {
   const { toast } = useToast();
@@ -83,15 +78,9 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
 
   const lobbyIsLive = lobbyStatus === 'active' && Boolean(lobbyCode?.trim());
   const sortedGames = [...games].sort((a, b) => a.game_number - b.game_number);
-  const liveWindowError = validateLiveActionInTournamentWindow(
-    tournamentStartDate,
-    tournamentEndDate,
-    'Starting a game',
-  );
 
   const canStartGame = (gameNumber: number, status: string) => {
     if (!lobbyIsLive || status !== 'pending') return false;
-    if (liveWindowError) return false;
     if (gameNumber <= 1) return true;
     const previous = sortedGames.find((g) => g.game_number === gameNumber - 1);
     return previous?.status === 'completed';
@@ -103,14 +92,6 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
     map: string | null,
     queueTimerMinutes: number | null,
   ) => {
-    if (liveWindowError) {
-      toast({
-        title: 'Outside tournament window',
-        description: liveWindowError,
-        variant: 'destructive',
-      });
-      return;
-    }
     if (!canStartGame(gameNumber, 'pending')) {
       toast({
         title: 'Complete the previous game first',
@@ -161,9 +142,6 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
         <p className="text-[10px] text-amber-300/90 px-1 leading-relaxed">
           Start the group lobby with a lobby code above before starting individual games.
         </p>
-      )}
-      {lobbyIsLive && liveWindowError && (
-        <p className="text-[10px] text-amber-300/90 px-1 leading-relaxed">{liveWindowError}</p>
       )}
       {sortedGames.map((game) => (
         <BRGameRunRow

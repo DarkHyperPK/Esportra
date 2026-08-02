@@ -39,7 +39,6 @@ import type { BRRound, BRResultInput } from '@/types/brRounds';
 import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
 import { resolveMapFromConfig } from '@/hooks/useBRStageConfig';
 import { BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
-import { validateLiveActionInTournamentWindow } from '@/utils/tournamentScheduleValidation';
 import { BR_FEATURE_FLAGS } from '@/config/brFeatureFlags';
 import { omitLobbyGameFieldsWhenGamesModel, usesPerGameLobbyUi } from '@/utils/brLobbyPatch';
 import { useBRLobbyReadiness } from '@/hooks/useBRLobbyReadiness';
@@ -263,23 +262,6 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
                    return;
                  }
 
-                 if (action === 'start') {
-                   const liveLabel = allowCreateLobby ? 'Starting the lobby' : 'Starting a round';
-                   const windowErr = validateLiveActionInTournamentWindow(
-                     tournamentStartDate,
-                     tournamentEndDate,
-                     liveLabel,
-                   );
-                   if (windowErr) {
-                     toast({
-                       title: 'Outside tournament window',
-                       description: windowErr,
-                       variant: 'destructive',
-                     });
-                     return;
-                   }
-                 }
-
                  if (
                    BR_FEATURE_FLAGS.mapsEnabled
                    && action === 'start'
@@ -414,8 +396,6 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   mapCatalogItems,
   groupLobbyMode = false,
   matchupLabel,
-  tournamentStartDate,
-  tournamentEndDate,
   gamesPerLobby = 6,
   gamesModelActive = false,
   teamSize = 1,
@@ -835,8 +815,6 @@ export const RoundRow: React.FC<RoundRowProps> = ({
             scoringPreset={scoringPreset}
             mapConfig={mapConfig}
             mapCatalogItems={mapCatalogItems}
-            tournamentStartDate={tournamentStartDate}
-            tournamentEndDate={tournamentEndDate}
             realtimeConnected={realtimeConnected}
           />
         </div>
