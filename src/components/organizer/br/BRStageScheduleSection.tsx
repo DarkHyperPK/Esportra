@@ -276,6 +276,12 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
           updated += 1;
         }
       }
+      setLobbies((prev) => prev.map((l) => {
+        if (!lobbyIds.includes(l.id)) return l;
+        const localVal = lobbySchedules[l.id] || '';
+        const isoVal = localVal ? new Date(localVal).toISOString() : null;
+        return { ...l, scheduled_at: isoVal };
+      }));
       toast({ title: updated > 0 ? `${updated} lobby time(s) saved` : 'No lobby changes to save' });
       onUpdate();
     } catch (error: unknown) {
@@ -324,6 +330,17 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
           updated += 1;
         }
       }
+      setGamesByLobby((prev) => {
+        const next = { ...prev };
+        for (const lobbyId of lobbyIds) {
+          next[lobbyId] = (next[lobbyId] ?? []).map((g) => {
+            const localVal = gameSchedules[g.id] || '';
+            const isoVal = localVal ? new Date(localVal).toISOString() : null;
+            return { ...g, scheduled_at: isoVal };
+          });
+        }
+        return next;
+      });
       toast({ title: updated > 0 ? `${updated} game time(s) saved` : 'No game changes to save' });
       onUpdate();
     } catch (error: unknown) {
