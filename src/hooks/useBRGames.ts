@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import type { BRGame } from '@/types/brLobbies';
+import type { BRGame, BRScheduleTimesSaveResult } from '@/types/brLobbies';
 
 export const useBRGames = (
   lobbyId: string | null,
@@ -14,6 +15,72 @@ export const useBRGames = (
     queryFn: () => apiClient.get<BRGame[]>(`/api/lobbies/${lobbyId}/games`),
     enabled,
     staleTime: 1000 * 30,
+  });
+};
+
+/** Games for every lobby id, fetched through the shared `br-games` query cache (deduped, per-lobby). */
+export const useBRGamesForLobbies = (lobbyIds: string[]) => {
+  const results = useQueries({
+    queries: lobbyIds.map((lobbyId) => ({
+      queryKey: ['br-games', lobbyId] as const,
+      queryFn: () => apiClient.get<BRGame[]>(`/api/lobbies/${lobbyId}/games`),
+      staleTime: 1000 * 30,
+      enabled: Boolean(lobbyId),
+    })),
+  });
+
+  const gamesByLobby = useMemo(() => {
+    const map: Record<string, BRGame[]> = {};
+    lobbyIds.forEach((lobbyId, index) => {
+      map[lobbyId] = results[index]?.data ?? [];
+    });
+    return map;
+  }, [lobbyIds, results]);
+
+  const isLoading = results.some((result) => result.isLoading);
+
+  return { gamesByLobby, isLoading };
+};
+
+/** Batch-persists game scheduled times and refreshes every query that consumes them. */
+export const useSaveBRGameSchedules = (
+  stageId?: string | null,
+  groupId?: string | null,
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      scheduledAtByGame: Record<string, string | null>;
+      lobbyIds: string[];
+    }): Promise<BRScheduleTimesSaveResult> => {
+      const result: BRScheduleTimesSaveResult = { saved: [], failed: 0, firstError: null };
+      for (const [gameId, scheduledAt] of Object.entries(params.scheduledAtByGame)) {
+        try {
+          await apiClient.patch<BRGame>(`/api/br/games/${gameId}`, { scheduledAt });
+          result.saved.push(gameId);
+        } catch (error) {
+          result.failed += 1;
+          result.firstError ??= error;
+        }
+      }
+      return result;
+    },
+    onSuccess: async (result, variables) => {
+      if (result.saved.length === 0) return;
+      for (const lobbyId of variables.lobbyIds) {
+        await queryClient.invalidateQueries({ queryKey: ['br-games', lobbyId] });
+      }
+      await queryClient.invalidateQueries({ queryKey: ['br-player-context'] });
+      if (stageId) {
+        await queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, groupId ?? null] });
+        await queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, 'stage-all'] });
+        await queryClient.invalidateQueries({ queryKey: ['br-stage-leaderboard', stageId] });
+        if (groupId) {
+          await queryClient.invalidateQueries({ queryKey: ['br-group-leaderboard', stageId, groupId] });
+        }
+      }
+    },
   });
 };
 
