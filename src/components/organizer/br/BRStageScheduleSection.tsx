@@ -1,16 +1,18 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CtaButton, OutlineButton } from '@/components/ui/app-buttons';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Save, AlertTriangle } from 'lucide-react';
-import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
+import { getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { useBRGroupsDetail, useBRGroupsMutations } from '@/hooks/useBRGroups';
 import { formatBRStageFormatLabel } from '@/utils/brGameContext';
 import { computeStageFlows } from '@/utils/brStageFlow';
 import { useBRStageSchedule } from '@/hooks/useBRStageSchedule';
+import { useBRLobbies } from '@/hooks/useBRLobbies';
+import { useBRGamesForLobbies, useSaveBRGameSchedules } from '@/hooks/useBRGames';
 import { getStageBRConfig } from '@/utils/brConfigResolve';
 import { useBRStageConfig } from '@/hooks/useBRStageConfig';
 import { usesGameOnlySchedule } from '@/utils/brLobbyPatch';
@@ -33,7 +35,7 @@ import {
 } from '@/utils/brScheduleLabels';
 import { getTournamentDatetimeLocalBounds } from '@/utils/tournamentScheduleValidation';
 import { utcToLocalInput } from '@/lib/timeUtils';
-import type { BRRound, BRGame } from '@/types/brLobbies';
+import type { BRRound } from '@/types/brLobbies';
 import type { Database } from '@/integrations/supabase/types';
 
 type TournamentStage = Database['public']['Tables']['tournament_stages']['Row'];
@@ -81,15 +83,19 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
 
   const { schedule: committedFormation, commitSchedule } = useBRStageSchedule(stage.id);
   const { generateLobbies } = useBRGroupsMutations(stage.id);
+  const { lobbies, isLoading: lobbiesLoading, saveLobbySchedules } = useBRLobbies(stage.id, null);
+  const lobbyIds = useMemo(() => lobbies.map((lobby) => lobby.id), [lobbies]);
+  const { gamesByLobby, isLoading: gamesLoading } = useBRGamesForLobbies(lobbyIds);
+  const saveGameSchedules = useSaveBRGameSchedules(stage.id, null);
+  const loadingLobbies = lobbiesLoading || gamesLoading;
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [lobbies, setLobbies] = useState<BRRound[]>([]);
   const [lobbySchedules, setLobbySchedules] = useState<Record<string, string>>({});
   const [gameSchedules, setGameSchedules] = useState<Record<string, string>>({});
-  const [gamesByLobby, setGamesByLobby] = useState<Record<string, BRGame[]>>({});
-  const [loadingLobbies, setLoadingLobbies] = useState(false);
   const [savingLobbies, setSavingLobbies] = useState(false);
   const [savingGames, setSavingGames] = useState(false);
+  const seededLobbyStageRef = useRef<string | null>(null);
+  const seededGamesStageRef = useRef<string | null>(null);
 
   const activeGroupId = selectedGroupId && groups.some((g) => g.id === selectedGroupId)
     ? selectedGroupId
@@ -101,57 +107,37 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
 
   useEffect(() => {
     if (!hasLobbies) {
-      setLobbies([]);
+      seededLobbyStageRef.current = null;
       setLobbySchedules({});
-      setGamesByLobby({});
+      return;
+    }
+    if (lobbies.length === 0) return;
+    if (seededLobbyStageRef.current === stage.id) return;
+    seededLobbyStageRef.current = stage.id;
+    const schedMap: Record<string, string> = {};
+    for (const lobby of lobbies) {
+      schedMap[lobby.id] = utcToLocalInput(lobby.scheduled_at ?? '');
+    }
+    setLobbySchedules(schedMap);
+  }, [hasLobbies, lobbies, stage.id]);
+
+  useEffect(() => {
+    if (!hasLobbies) {
+      seededGamesStageRef.current = null;
       setGameSchedules({});
       return;
     }
-
-    let cancelled = false;
-    setLoadingLobbies(true);
-    apiClient
-      .get<BRRound[]>(`/api/stages/${stage.id}/br/lobbies`)
-      .then(async (rows) => {
-        if (cancelled) return;
-        const list = Array.isArray(rows) ? rows : [];
-        setLobbies(list);
-        const schedMap: Record<string, string> = {};
-        const gameMap: Record<string, BRGame[]> = {};
-        const gameSchedMap: Record<string, string> = {};
-        await Promise.all(
-          list.map(async (lobby) => {
-            schedMap[lobby.id] = utcToLocalInput(lobby.scheduled_at ?? '');
-            try {
-              const games = await apiClient.get<BRGame[]>(`/api/lobbies/${lobby.id}/games`);
-              gameMap[lobby.id] = games;
-              for (const game of games) {
-                gameSchedMap[game.id] = utcToLocalInput(game.scheduled_at ?? '');
-              }
-            } catch {
-              gameMap[lobby.id] = [];
-            }
-          }),
-        );
-        if (cancelled) return;
-        setLobbySchedules(schedMap);
-        setGamesByLobby(gameMap);
-        setGameSchedules(gameSchedMap);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setLobbies([]);
-          setLobbySchedules({});
-          setGamesByLobby({});
-          setGameSchedules({});
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingLobbies(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [stage.id, hasLobbies]);
+    if (lobbyIds.length === 0 || gamesLoading) return;
+    if (seededGamesStageRef.current === stage.id) return;
+    seededGamesStageRef.current = stage.id;
+    const gameSchedMap: Record<string, string> = {};
+    for (const games of Object.values(gamesByLobby)) {
+      for (const game of games) {
+        gameSchedMap[game.id] = utcToLocalInput(game.scheduled_at ?? '');
+      }
+    }
+    setGameSchedules(gameSchedMap);
+  }, [hasLobbies, lobbyIds, gamesLoading, gamesByLobby, stage.id]);
 
   const gamesPerLobby = brConfig?.gamesPerLobby ?? brConfig?.gameCount ?? 6;
   const hasGamesModel = usesGameOnlySchedule(gamesModelActive, gamesPerLobby);
@@ -262,37 +248,48 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
       return;
     }
 
+    const scheduledAtByLobby: Record<string, string | null> = {};
+    for (const lobbyId of lobbyIds) {
+      const lobby = lobbies.find((l) => l.id === lobbyId);
+      if (!lobby) continue;
+      const localVal = lobbySchedules[lobbyId] || '';
+      const isoVal = localVal ? new Date(localVal).toISOString() : null;
+      const existingVal = lobby.scheduled_at ? new Date(lobby.scheduled_at).toISOString() : null;
+      if (isoVal !== existingVal) {
+        scheduledAtByLobby[lobbyId] = isoVal;
+      }
+    }
+
+    if (Object.keys(scheduledAtByLobby).length === 0) {
+      toast({ title: 'No lobby changes to save' });
+      return;
+    }
+
     setSavingLobbies(true);
     try {
-      let updated = 0;
-      for (const lobbyId of lobbyIds) {
-        const lobby = lobbies.find((l) => l.id === lobbyId);
-        if (!lobby) continue;
-        const localVal = lobbySchedules[lobbyId] || '';
-        const isoVal = localVal ? new Date(localVal).toISOString() : null;
-        const existingVal = lobby.scheduled_at ? new Date(lobby.scheduled_at).toISOString() : null;
-        if (isoVal !== existingVal) {
-          await apiClient.patch(`/api/br/lobbies/${lobbyId}`, { scheduledAt: isoVal });
-          updated += 1;
-        }
+      const result = await saveLobbySchedules.mutateAsync({ scheduledAtByLobby });
+      if (result.saved.length > 0) {
+        setLobbySchedules((prev) => {
+          const next = { ...prev };
+          for (const lobbyId of result.saved) {
+            next[lobbyId] = utcToLocalInput(scheduledAtByLobby[lobbyId] ?? '');
+          }
+          return next;
+        });
       }
-      setLobbies((prev) => prev.map((l) => {
-        if (!lobbyIds.includes(l.id)) return l;
-        const localVal = lobbySchedules[l.id] || '';
-        const isoVal = localVal ? new Date(localVal).toISOString() : null;
-        return { ...l, scheduled_at: isoVal };
-      }));
-      toast({ title: updated > 0 ? `${updated} lobby time(s) saved` : 'No lobby changes to save' });
-      onUpdate();
-    } catch (error: unknown) {
-      toast({
-        title: 'Could not save lobby times',
-        description: getApiErrorMessage(error, { context: 'brStageSchedule' }),
-        variant: 'destructive',
-      });
+      if (result.failed > 0) {
+        toast({
+          title: 'Could not save all lobby times',
+          description: `${result.saved.length} of ${result.saved.length + result.failed} lobby time(s) saved — ${getApiErrorMessage(result.firstError, { context: 'brStageSchedule' })}`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: `${result.saved.length} lobby time(s) saved` });
+      }
     } finally {
       setSavingLobbies(false);
     }
+    onUpdate();
   };
 
   const handleSaveGameTimes = async (lobbyIds: string[]) => {
@@ -318,40 +315,46 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
       return;
     }
 
+    const scheduledAtByGame: Record<string, string | null> = {};
+    for (const game of relevantGames) {
+      const localVal = gameSchedules[game.id] || '';
+      const isoVal = localVal ? new Date(localVal).toISOString() : null;
+      const existingVal = game.scheduled_at ? new Date(game.scheduled_at).toISOString() : null;
+      if (isoVal !== existingVal) {
+        scheduledAtByGame[game.id] = isoVal;
+      }
+    }
+
+    if (Object.keys(scheduledAtByGame).length === 0) {
+      toast({ title: 'No game changes to save' });
+      return;
+    }
+
     setSavingGames(true);
     try {
-      let updated = 0;
-      for (const game of relevantGames) {
-        const localVal = gameSchedules[game.id] || '';
-        const isoVal = localVal ? new Date(localVal).toISOString() : null;
-        const existingVal = game.scheduled_at ? new Date(game.scheduled_at).toISOString() : null;
-        if (isoVal !== existingVal) {
-          await apiClient.patch(`/api/br/games/${game.id}`, { scheduledAt: isoVal });
-          updated += 1;
-        }
+      const result = await saveGameSchedules.mutateAsync({ scheduledAtByGame, lobbyIds });
+      if (result.saved.length > 0) {
+        setGameSchedules((prev) => {
+          const next = { ...prev };
+          for (const gameId of result.saved) {
+            next[gameId] = utcToLocalInput(scheduledAtByGame[gameId] ?? '');
+          }
+          return next;
+        });
       }
-      setGamesByLobby((prev) => {
-        const next = { ...prev };
-        for (const lobbyId of lobbyIds) {
-          next[lobbyId] = (next[lobbyId] ?? []).map((g) => {
-            const localVal = gameSchedules[g.id] || '';
-            const isoVal = localVal ? new Date(localVal).toISOString() : null;
-            return { ...g, scheduled_at: isoVal };
-          });
-        }
-        return next;
-      });
-      toast({ title: updated > 0 ? `${updated} game time(s) saved` : 'No game changes to save' });
-      onUpdate();
-    } catch (error: unknown) {
-      toast({
-        title: 'Could not save game times',
-        description: getApiErrorMessage(error, { context: 'brStageSchedule' }),
-        variant: 'destructive',
-      });
+      if (result.failed > 0) {
+        toast({
+          title: 'Could not save all game times',
+          description: `${result.saved.length} of ${result.saved.length + result.failed} game time(s) saved — ${getApiErrorMessage(result.firstError, { context: 'brStageSchedule' })}`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: `${result.saved.length} game time(s) saved` });
+      }
     } finally {
       setSavingGames(false);
     }
+    onUpdate();
   };
 
   const renderGameRows = (lobby: BRRound) => {
