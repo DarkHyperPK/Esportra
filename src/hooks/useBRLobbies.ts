@@ -3,7 +3,7 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { BR_CONFIG } from '@/config/brConfig';
-import type { BRRound, BRRoundResult, BRResultInput } from '@/types/brLobbies';
+import type { BRRound, BRRoundResult, BRResultInput, BRScheduleTimesSaveResult } from '@/types/brLobbies';
 import type { BRGroup } from '@/types/brGroups';
 import { normalizeBREvidenceList } from '@/utils/brEvidenceNormalize';
 
@@ -116,6 +116,29 @@ export const useBRLobbies = (
     },
   });
 
+  const saveLobbySchedules = useMutation({
+    mutationFn: async (params: {
+      scheduledAtByLobby: Record<string, string | null>;
+    }): Promise<BRScheduleTimesSaveResult> => {
+      const result: BRScheduleTimesSaveResult = { saved: [], failed: 0, firstError: null };
+      for (const [lobbyId, scheduledAt] of Object.entries(params.scheduledAtByLobby)) {
+        try {
+          await apiClient.patch<BRRound>(`/api/br/lobbies/${lobbyId}`, { scheduledAt });
+          result.saved.push(lobbyId);
+        } catch (error) {
+          result.failed += 1;
+          result.firstError ??= error;
+        }
+      }
+      return result;
+    },
+    onSuccess: () => {
+      if (!stageId) return;
+      queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, groupId] });
+      queryClient.invalidateQueries({ queryKey: ['br-lobbies', stageId, 'stage-all'] });
+    },
+  });
+
   const resetLobby = useMutation({
     mutationFn: (params: { lobbyId: string; roundNumber: number }) =>
       apiClient.post<BRRound>(`/api/br/lobbies/${params.lobbyId}/reset`, {}),
@@ -143,6 +166,7 @@ export const useBRLobbies = (
     refetch,
     createLobby,
     updateLobby,
+    saveLobbySchedules,
     resetLobby,
   };
 };

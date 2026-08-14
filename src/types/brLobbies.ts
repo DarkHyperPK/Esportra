@@ -46,6 +46,13 @@ export interface BRLobbyWithGames extends BRRound {
   games: BRGame[];
 }
 
+/** Per-row outcome of a batch scheduled-time save. `saved` holds the persisted ids; `failed` counts rows that threw; `firstError` keeps the first failure for reporting. */
+export interface BRScheduleTimesSaveResult {
+  saved: string[];
+  failed: number;
+  firstError: unknown | null;
+}
+
 export interface BRRoundResult {
   id: string;
   team_id: string;
