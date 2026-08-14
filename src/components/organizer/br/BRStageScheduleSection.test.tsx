@@ -34,7 +34,7 @@ vi.mock('@/lib/apiClient', () => ({
 }));
 
 const lobbyTimes: Record<string, string | null> = { l1: '2026-08-05T09:30:00.000Z' };
-const gameTimes: Record<string, string | null> = { g1: '2026-08-05T09:35:00.000Z' };
+const gameTimes: Record<string, string | null> = { g1: '2026-08-05T09:35:00.000Z', g2: '2026-08-05T09:40:00.000Z' };
 
 const makeLobby = (scheduledAt: string | null) => ({
   id: 'l1',
@@ -68,11 +68,11 @@ const renderSection = () => {
   );
 };
 
-describe('BRStageScheduleSection', () => {
-  beforeEach(() => {
+describe('BRStageScheduleSection', () => {    beforeEach(() => {
     vi.clearAllMocks();
     lobbyTimes.l1 = '2026-08-05T09:30:00.000Z';
     gameTimes.g1 = '2026-08-05T09:35:00.000Z';
+    gameTimes.g2 = '2026-08-05T09:40:00.000Z';
 
     const get = apiClient.get as ReturnType<typeof vi.fn>;
     get.mockImplementation(async (path: string) => {
@@ -91,6 +91,16 @@ describe('BRStageScheduleSection', () => {
             started_at: null,
             completed_at: null,
           },
+          {
+            id: 'g2',
+            lobby_id: 'l1',
+            game_number: 2,
+            map: null,
+            status: 'pending',
+            scheduled_at: gameTimes.g2,
+            started_at: null,
+            completed_at: null,
+          },
         ];
       }
       return null;
@@ -106,6 +116,10 @@ describe('BRStageScheduleSection', () => {
         gameTimes.g1 = body.scheduledAt ?? null;
         return { id: 'g1' };
       }
+      if (path === '/api/br/games/g2') {
+        gameTimes.g2 = body.scheduledAt ?? null;
+        return { id: 'g2' };
+      }
       return {};
     });
   });
@@ -115,6 +129,7 @@ describe('BRStageScheduleSection', () => {
 
     expect(await screen.findByDisplayValue(utcToLocalInput(lobbyTimes.l1 ?? ''))).toBeInTheDocument();
     expect(screen.getByDisplayValue(utcToLocalInput(gameTimes.g1 ?? ''))).toBeInTheDocument();
+    expect(screen.getByDisplayValue(utcToLocalInput(gameTimes.g2 ?? ''))).toBeInTheDocument();
     expect(screen.queryByText(/unsaved schedule changes/i)).not.toBeInTheDocument();
   });
 
@@ -150,8 +165,11 @@ describe('BRStageScheduleSection', () => {
   it('clears the unsaved-changes notice after game times are saved', async () => {
     renderSection();
 
-    const gameInput = await screen.findByDisplayValue(utcToLocalInput(gameTimes.g1 ?? ''));
-    fireEvent.change(gameInput, { target: { value: '2026-08-05T16:00' } });
+    // Edit Game 2 to a fixed instant (10:00Z) — always after Game 1 (09:35Z)
+    // and the lobby (09:30Z) in any timezone, so sequencing validation passes.
+    const editedLocal = utcToLocalInput('2026-08-05T10:00:00.000Z');
+    const gameInput = await screen.findByDisplayValue(utcToLocalInput(gameTimes.g2 ?? ''));
+    fireEvent.change(gameInput, { target: { value: editedLocal } });
 
     expect(await screen.findByText(/unsaved schedule changes/i)).toBeInTheDocument();
 
@@ -160,8 +178,8 @@ describe('BRStageScheduleSection', () => {
     await waitFor(() => {
       expect(screen.queryByText(/unsaved schedule changes/i)).not.toBeInTheDocument();
     });
-    expect(apiClient.patch).toHaveBeenCalledWith('/api/br/games/g1', {
-      scheduledAt: new Date('2026-08-05T16:00').toISOString(),
+    expect(apiClient.patch).toHaveBeenCalledWith('/api/br/games/g2', {
+      scheduledAt: new Date(editedLocal).toISOString(),
     });
   });
 });
