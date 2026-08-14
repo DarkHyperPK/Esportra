@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CtaButton, OutlineButton } from '@/components/ui/app-buttons';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -90,12 +90,11 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   const loadingLobbies = lobbiesLoading || gamesLoading;
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [lobbySchedules, setLobbySchedules] = useState<Record<string, string>>({});
-  const [gameSchedules, setGameSchedules] = useState<Record<string, string>>({});
+  // User-typed overrides on top of the server-derived schedule values.
+  const [lobbyEdits, setLobbyEdits] = useState<Record<string, string>>({});
+  const [gameEdits, setGameEdits] = useState<Record<string, string>>({});
   const [savingLobbies, setSavingLobbies] = useState(false);
   const [savingGames, setSavingGames] = useState(false);
-  const seededLobbyStageRef = useRef<string | null>(null);
-  const seededGamesStageRef = useRef<string | null>(null);
 
   const activeGroupId = selectedGroupId && groups.some((g) => g.id === selectedGroupId)
     ? selectedGroupId
@@ -103,41 +102,31 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
 
   useEffect(() => {
     setSelectedGroupId(null);
+    setLobbyEdits({});
+    setGameEdits({});
   }, [stage.id]);
 
-  useEffect(() => {
-    if (!hasLobbies) {
-      seededLobbyStageRef.current = null;
-      setLobbySchedules({});
-      return;
-    }
-    if (lobbies.length === 0) return;
-    if (seededLobbyStageRef.current === stage.id) return;
-    seededLobbyStageRef.current = stage.id;
-    const schedMap: Record<string, string> = {};
+  // Server truth is the base of the schedule form; user edits overlay it. The
+  // maps are therefore always complete for every rendered lobby/game — no
+  // seeding step, no undefined reads, and the dirty check compares the overlay
+  // against the same `utcToLocalInput` round-trip used to build the base.
+  const lobbySchedules = useMemo(() => {
+    const base: Record<string, string> = {};
     for (const lobby of lobbies) {
-      schedMap[lobby.id] = utcToLocalInput(lobby.scheduled_at ?? '');
+      base[lobby.id] = utcToLocalInput(lobby.scheduled_at ?? '');
     }
-    setLobbySchedules(schedMap);
-  }, [hasLobbies, lobbies, stage.id]);
+    return { ...base, ...lobbyEdits };
+  }, [lobbies, lobbyEdits]);
 
-  useEffect(() => {
-    if (!hasLobbies) {
-      seededGamesStageRef.current = null;
-      setGameSchedules({});
-      return;
-    }
-    if (lobbyIds.length === 0 || gamesLoading) return;
-    if (seededGamesStageRef.current === stage.id) return;
-    seededGamesStageRef.current = stage.id;
-    const gameSchedMap: Record<string, string> = {};
+  const gameSchedules = useMemo(() => {
+    const base: Record<string, string> = {};
     for (const games of Object.values(gamesByLobby)) {
       for (const game of games) {
-        gameSchedMap[game.id] = utcToLocalInput(game.scheduled_at ?? '');
+        base[game.id] = utcToLocalInput(game.scheduled_at ?? '');
       }
     }
-    setGameSchedules(gameSchedMap);
-  }, [hasLobbies, lobbyIds, gamesLoading, gamesByLobby, stage.id]);
+    return { ...base, ...gameEdits };
+  }, [gamesByLobby, gameEdits]);
 
   const gamesPerLobby = brConfig?.gamesPerLobby ?? brConfig?.gameCount ?? 6;
   const hasGamesModel = usesGameOnlySchedule(gamesModelActive, gamesPerLobby);
@@ -269,7 +258,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     try {
       const result = await saveLobbySchedules.mutateAsync({ scheduledAtByLobby });
       if (result.saved.length > 0) {
-        setLobbySchedules((prev) => {
+        setLobbyEdits((prev) => {
           const next = { ...prev };
           for (const lobbyId of result.saved) {
             next[lobbyId] = utcToLocalInput(scheduledAtByLobby[lobbyId] ?? '');
@@ -334,7 +323,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
     try {
       const result = await saveGameSchedules.mutateAsync({ scheduledAtByGame, lobbyIds });
       if (result.saved.length > 0) {
-        setGameSchedules((prev) => {
+        setGameEdits((prev) => {
           const next = { ...prev };
           for (const gameId of result.saved) {
             next[gameId] = utcToLocalInput(scheduledAtByGame[gameId] ?? '');
@@ -372,7 +361,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
         <p className="text-[10px] text-zinc-600 uppercase tracking-wide">Games</p>
         {lobbyGames.map((game, gameIdx) => {
           const prevGame = gameIdx > 0 ? lobbyGames[gameIdx - 1] : null;
-          const prevTime = prevGame ? gameSchedules[prevGame.id] : '';
+          const prevTime = prevGame ? (gameSchedules[prevGame.id] || '') : '';
           const gameMin = resolveGameScheduleMin(
             prevTime,
             lobbyScheduleLocal,
@@ -389,7 +378,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                   type="datetime-local"
                   value={gameSchedules[game.id] || ''}
                   onChange={(e) =>
-                    setGameSchedules((prev) => ({ ...prev, [game.id]: e.target.value }))
+                    setGameEdits((prev) => ({ ...prev, [game.id]: e.target.value }))
                   }
                   min={gameMin || scheduleBounds.min || undefined}
                   max={scheduleBounds.max || undefined}
@@ -435,10 +424,9 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
         {!hasGamesModel && (
           <Input
             type="datetime-local"
-            value={lobbySchedules[lobby.id] || ''}
-            onChange={(e) =>
-              setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))
-            }
+            value={lobbySchedules[lobby.id] || ''}                  onChange={(e) =>
+                    setLobbyEdits((prev) => ({ ...prev, [lobby.id]: e.target.value }))
+                  }
             min={scheduleBounds.min || undefined}
             max={scheduleBounds.max || undefined}
             className="h-9 text-sm max-w-xs [color-scheme:dark] bg-white/5 border-white/10"
@@ -614,10 +602,9 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                               {!hasGamesModel && (
                                 <Input
                                   type="datetime-local"
-                                  value={lobbySchedules[lobby.id] || ''}
-                                  onChange={(e) =>
-                                    setLobbySchedules((prev) => ({ ...prev, [lobby.id]: e.target.value }))
-                                  }
+                                  value={lobbySchedules[lobby.id] || ''}            onChange={(e) =>
+              setLobbyEdits((prev) => ({ ...prev, [lobby.id]: e.target.value }))
+            }
                                   min={scheduleBounds.min || undefined}
                                   max={scheduleBounds.max || undefined}
                                   className="h-8 text-xs [color-scheme:dark] bg-white/5 border-white/10"
