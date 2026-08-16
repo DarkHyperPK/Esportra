@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiClient, ApiError } from '@/lib/apiClient';
+import { useToast } from '@/hooks/use-toast';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import {
   useCreatePlacement,
@@ -120,11 +121,31 @@ export default function SponsorAdManager() {
     setPendingAction(null);
   };
 
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
   const handleModalSubmit = (payload: CreatePlacementPayload | (UpdatePlacementPayload & { id: string })) => {
     if ('id' in payload && payload.id) {
       updateMutation.mutate(payload as UpdatePlacementPayload & { id: string }, { onSuccess: () => setModalOpen(false) });
     } else {
-      createMutation.mutate(payload as CreatePlacementPayload, { onSuccess: () => setModalOpen(false) });
+      createMutation.mutate(payload as CreatePlacementPayload, {
+        onSuccess: () => setModalOpen(false),
+        onError: (error) => {
+          if (error instanceof ApiError && error.status === 409) {
+            const body = error.body as { existingId?: string } | undefined;
+            if (body?.existingId) {
+              toast({ title: 'Placement already exists', description: 'Opening it for editing.' });
+              setModalOpen(false);
+              apiClient.get<Placement>(`/api/admin/placements/${body.existingId}`).then(existing => {
+                openEditModal(existing);
+                qc.invalidateQueries({ queryKey: ['admin-placements'] });
+              });
+              return;
+            }
+          }
+          toast({ title: 'Failed to create placement', description: error.message, variant: 'destructive' });
+        },
+      });
     }
   };
 

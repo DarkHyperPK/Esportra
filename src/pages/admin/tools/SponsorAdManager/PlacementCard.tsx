@@ -47,10 +47,10 @@ export const PlacementCard: React.FC<Props> = ({ placement, onEdit, onDelete, on
       </div>
 
       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        {hasCreative && onReplace && (
+        {onReplace && (
           <button
             onClick={() => onReplace(placement)}
-            title="Replace creative"
+            title={hasCreative ? "Replace creative" : "Upload creative"}
             className="p-1.5 bg-zinc-800/90 border border-zinc-700 rounded hover:bg-zinc-700 transition-colors"
           >
             <RefreshCw className="w-3 h-3 text-zinc-300" />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { useSponsorPlacements, type Placement } from '@/hooks/useAdminPlacements';
 import { ZONE_META, displayTier, zonesForTier } from './types';
@@ -18,6 +18,10 @@ interface Props {
 
 export const SponsorView: React.FC<Props> = ({ sponsors, onAssign, onEdit, onDelete, onReplace, onRemove, onUnassign }) => {
   const [selectedId, setSelectedId] = useState('');
+
+  useEffect(() => {
+    if (!selectedId && sponsors.length > 0) setSelectedId(sponsors[0].id);
+  }, [selectedId, sponsors]);
   const { data: placements = [], isLoading } = useSponsorPlacements(selectedId);
 
   const selectedSponsor = sponsors.find(s => s.id === selectedId);
