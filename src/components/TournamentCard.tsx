@@ -282,17 +282,13 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => { e.stopPropagation(); trackClick(card_badge.sponsorId, 'card_badge', id); }}
-                className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full w-fit hover:bg-white/10 transition-colors"
+                className="flex items-center px-2.5 py-1 bg-white/5 border border-white/10 rounded-full w-fit hover:bg-white/10 transition-colors"
               >
-                <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider">Powered by</span>
-                <img src={card_badge.logoUrl} alt="" className="h-3.5 w-auto object-contain" />
-                <span className="text-[10px] font-bold text-zinc-300">{card_badge.headline || card_badge.sponsorName}</span>
+                <img src={card_badge.logoUrl} alt="" className="h-4 w-auto object-contain" />
               </a>
             ) : (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full w-fit">
-                <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider">Powered by</span>
-                <img src={card_badge.logoUrl} alt="" className="h-3.5 w-auto object-contain" />
-                <span className="text-[10px] font-bold text-zinc-300">{card_badge.headline || card_badge.sponsorName}</span>
+              <div className="flex items-center px-2.5 py-1 bg-white/5 border border-white/10 rounded-full w-fit">
+                <img src={card_badge.logoUrl} alt="" className="h-4 w-auto object-contain" />
               </div>
             )
           )}

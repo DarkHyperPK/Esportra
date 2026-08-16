@@ -49,12 +49,7 @@ const WidePartnerCard: React.FC<{
   const bannerUrl = link.media_overrides?.['wide_partner_banner'];
 
   const content = (
-    <>
-      <img src={bannerUrl} alt={link.headline || `${s.name} partner advertisement`} loading="lazy" decoding="async" className="aspect-[16/7] w-full object-cover transition-transform duration-700 group-hover:scale-[1.02]" />
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-4 pb-3 pt-10">
-        <span className="text-xs font-medium text-white">{link.headline || s.name}</span>
-      </div>
-    </>
+    <img src={bannerUrl} alt="" loading="lazy" decoding="async" className="aspect-[16/7] w-full object-cover transition-transform duration-700 group-hover:scale-[1.02]" />
   );
 
   return (
