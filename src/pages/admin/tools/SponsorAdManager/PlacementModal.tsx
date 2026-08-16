@@ -219,10 +219,20 @@ export const PlacementModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Zone-specific media fields */}
+          {/* Slot */}
+          {zoneMeta && !editing && !lockedSlotNumber && (
+            <div>
+              <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Slot</label>
+              <select value={slotNumber} onChange={event => setSlotNumber(Number(event.target.value))} className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white">
+                {Array.from({ length: zoneMeta.maxSlots }, (_, index) => <option key={index + 1} value={index + 1}>Slot {index + 1}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Creative upload */}
           {zoneMeta && (
             <div className="space-y-3 pt-2 border-t border-zinc-800">
-              <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Creative Assets</p>
+              <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Upload Ad Creative</p>
               {zoneMeta.mediaFields.includes('logo') && (
                 <MediaInput
                   label={MEDIA_FIELD_LABELS.logo}
@@ -242,17 +252,10 @@ export const PlacementModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Slot + Schedule */}
+          {/* Schedule (time-limited ads) */}
           {zoneMeta && (
-            <div className="space-y-3">
-              {!editing && !lockedSlotNumber && (
-                <div>
-                  <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Slot</label>
-                  <select value={slotNumber} onChange={event => setSlotNumber(Number(event.target.value))} className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white">
-                    {Array.from({ length: zoneMeta.maxSlots }, (_, index) => <option key={index + 1} value={index + 1}>Slot {index + 1}</option>)}
-                  </select>
-                </div>
-              )}
+            <div className="space-y-3 pt-2 border-t border-zinc-800">
+              <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Schedule (optional)</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Starts</label>
