@@ -21,9 +21,10 @@ import { TournamentView } from './TournamentView';
 import { SponsorView } from './SponsorView';
 import { PlacementModal } from './PlacementModal';
 import { PlacementPreview } from './PlacementPreview';
+import { AuditLog } from './AuditLog';
 import { PlacementInventory } from './PlacementInventory';
 
-type ViewMode = 'tournament' | 'sponsor' | 'placements';
+type ViewMode = 'tournament' | 'sponsor' | 'placements' | 'audit';
 
 interface SponsorOption {
   id: string;
@@ -180,6 +181,12 @@ export default function SponsorAdManager() {
           >
             Active Placements
           </button>
+          <button
+            onClick={() => setView('audit')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'audit' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            Audit Log
+          </button>
         </div>
       </div>
 
@@ -205,7 +212,8 @@ export default function SponsorAdManager() {
           onRemove={handleRemove}
           onUnassign={handleUnassign}
         />
-      ) : <PlacementInventory onEdit={openEditModal} onDelete={handleDelete} onReplace={handleReplace} onRemove={handleRemove} onUnassign={handleUnassign} />}
+      ) : view === 'placements' ? <PlacementInventory onEdit={openEditModal} onDelete={handleDelete} onReplace={handleReplace} onRemove={handleRemove} onUnassign={handleUnassign} />
+      : <AuditLog />}
 
       {/* Modal (used for By Sponsor flow + editing) */}
       <PlacementModal
