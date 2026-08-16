@@ -139,15 +139,22 @@ const InlineAssignForm: React.FC<{
   const [logoUrl, setLogoUrl] = useState('');
   const [bannerAssetId, setBannerAssetId] = useState<string | null>(null);
   const [logoAssetId, setLogoAssetId] = useState<string | null>(null);
-  const [ctaUrl, setCtaUrl] = useState('');
+  const [startsAt, setStartsAt] = useState('');
+  const [endsAt, setEndsAt] = useState('');
+  const [uploadError, setUploadError] = useState('');
 
   const createMutation = useCreatePlacement();
   const upload = useUploadPlacementAsset();
 
   const handleFileUpload = async (file: File, target: 'banner' | 'logo') => {
-    const asset = await upload.mutateAsync({ file, zone, assetRole: target });
-    if (target === 'banner') { setBannerUrl(asset.url); setBannerAssetId(asset.assetId); }
-    else { setLogoUrl(asset.url); setLogoAssetId(asset.assetId); }
+    setUploadError('');
+    try {
+      const asset = await upload.mutateAsync({ file, zone, assetRole: target });
+      if (target === 'banner') { setBannerUrl(asset.url); setBannerAssetId(asset.assetId); }
+      else { setLogoUrl(asset.url); setLogoAssetId(asset.assetId); }
+    } catch (err: any) {
+      setUploadError(err?.body?.error || err?.message || 'Upload failed. Check image dimensions and format.');
+    }
   };
 
   const hasRequiredMedia = meta.mediaFields.includes('logo') ? !!logoUrl : !!bannerUrl;
@@ -163,8 +170,9 @@ const InlineAssignForm: React.FC<{
       bannerAssetId,
       logoUrl: logoUrl || null,
       logoAssetId,
-      ctaUrl: ctaUrl || null,
       isActive: true,
+      startsAt: startsAt ? new Date(startsAt).toISOString() : null,
+      endsAt: endsAt ? new Date(endsAt).toISOString() : null,
     }, { onSuccess: () => onClose() });
   };
 
@@ -190,9 +198,17 @@ const InlineAssignForm: React.FC<{
             <MediaRow label={meta.mediaFields.includes('tall_banner') ? MEDIA_FIELD_LABELS.tall_banner : MEDIA_FIELD_LABELS.banner} value={bannerUrl} onUpload={f => handleFileUpload(f, 'banner')} uploading={upload.isPending} />
           )}
 
-          <div>
-            <label className="text-[10px] text-zinc-500 uppercase mb-1 block">Link URL (optional)</label>
-            <input type="url" value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} placeholder="https://sponsor-website.com" className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-xs text-white" />
+          {uploadError && <p className="text-xs text-red-400">{uploadError}</p>}
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-zinc-500 uppercase mb-1 block">Starts (optional)</label>
+              <input type="datetime-local" value={startsAt} onChange={e => setStartsAt(e.target.value)} className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-xs text-white" />
+            </div>
+            <div>
+              <label className="text-[10px] text-zinc-500 uppercase mb-1 block">Ends (optional)</label>
+              <input type="datetime-local" value={endsAt} onChange={e => setEndsAt(e.target.value)} className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-xs text-white" />
+            </div>
           </div>
 
           <button onClick={handleSubmit} disabled={createMutation.isPending || !hasRequiredMedia} className="w-full py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors">
