@@ -55,7 +55,6 @@ const SidebarPartnerCard: React.FC<{
 }> = ({ link, tournamentId }) => {
   const s = link.sponsor;
   const bannerUrl = link.media_overrides?.['sidebar_partner_banner'] || s.banner_image_url;
-  const logoUrl = link.media_overrides?.['sidebar_partner_logo'] || s.logo_url;
 
   const content = (
     <div className="aspect-[1/2] relative overflow-hidden">
