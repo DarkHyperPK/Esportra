@@ -76,13 +76,18 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   currency,
 }) => {
   const navigate = useNavigate();
-  const badgeTracked = useRef(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (card_badge && !badgeTracked.current) {
-      trackImpression(card_badge.sponsorId, 'card_badge', id);
-      badgeTracked.current = true;
-    }
+    if (!card_badge || !cardRef.current) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        trackImpression(card_badge.sponsorId, 'card_badge', id);
+        observer.disconnect();
+      }
+    }, { threshold: 0.5 });
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
   }, [card_badge, id]);
   const { currentRole } = useRole();
   const admin = useAdmin();
@@ -146,6 +151,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
 
   return (
     <div
+      ref={cardRef}
       className="group relative h-[380px] w-full overflow-hidden bg-[#0a0a0c] border border-white/5 cursor-pointer transition-transform duration-300 hover:-translate-y-1"
       onClick={() => navigate(`/tournaments/${slug || id}`)}
     >

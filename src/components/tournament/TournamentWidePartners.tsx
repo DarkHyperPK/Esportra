@@ -13,22 +13,31 @@ interface Props {
 export const TournamentWidePartners: React.FC<Props> = ({ tournamentId }) => {
   const { data: links = [] } = useTournamentSponsorDisplay(tournamentId);
   const tracked = useRef(new Set<string>());
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const wideSponsors = sponsorsByZone(links, 'wide_partner');
 
   useEffect(() => {
-    wideSponsors.forEach((l) => {
-      if (!tracked.current.has(l.sponsor_id)) {
-        trackImpression(l.sponsor_id, 'wide_partner', tournamentId);
-        tracked.current.add(l.sponsor_id);
+    if (wideSponsors.length === 0 || !containerRef.current) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        wideSponsors.forEach((l) => {
+          if (!tracked.current.has(l.sponsor_id)) {
+            trackImpression(l.sponsor_id, 'wide_partner', tournamentId);
+            tracked.current.add(l.sponsor_id);
+          }
+        });
+        observer.disconnect();
       }
-    });
+    }, { threshold: 0.5 });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
   }, [wideSponsors, tournamentId]);
 
   if (wideSponsors.length === 0) return null;
 
   return (
-    <div className="mt-16">
+    <div ref={containerRef} className="mt-16">
       <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-600 mb-6">
         Tournament Partners
       </p>
