@@ -23,6 +23,14 @@ export interface SponsorTournamentLink {
 export const useSponsorTournaments = () =>
   useQuery<SponsorTournamentLink[]>({
     queryKey: ['sponsor-placements', 'me'],
-    queryFn: () => apiClient.get<SponsorTournamentLink[]>('/api/sponsors/me/placements'),
+    queryFn: async () => {
+      try {
+        return await apiClient.get<SponsorTournamentLink[]>('/api/sponsors/me/placements');
+      } catch (err: any) {
+        if (err?.status === 404) return [];
+        throw err;
+      }
+    },
     staleTime: 60 * 1000,
+    retry: (count, err: any) => err?.status !== 404 && count < 2,
   });

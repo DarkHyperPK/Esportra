@@ -17,6 +17,14 @@ export interface HistoryEntry {
 export function usePlacementHistory() {
   return useQuery({
     queryKey: ['sponsor', 'placements', 'history'],
-    queryFn: () => apiClient.get<HistoryEntry[]>('/api/sponsors/me/placements/history'),
+    queryFn: async () => {
+      try {
+        return await apiClient.get<HistoryEntry[]>('/api/sponsors/me/placements/history');
+      } catch (err: any) {
+        if (err?.status === 404) return [];
+        throw err;
+      }
+    },
+    retry: false,
   });
 }
