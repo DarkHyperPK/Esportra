@@ -251,7 +251,11 @@ const TournamentCard: React.FC<{
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <h4 className="text-lg font-bold text-white truncate group-hover:text-rose-400 transition-colors">
-              {link.tournamentName || 'Global placement'}
+              {link.tournamentId ? (
+                <a href={`${import.meta.env.VITE_FRONTEND_URL || 'https://esportra.com'}/tournaments/${link.tournamentId}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  {link.tournamentName || 'Tournament'}
+                </a>
+              ) : 'Global placement'}
             </h4>
             <div className="flex items-center gap-3 mt-1.5">
               {startDate && (
