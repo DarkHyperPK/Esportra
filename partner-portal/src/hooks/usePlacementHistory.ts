@@ -20,8 +20,8 @@ export function usePlacementHistory() {
     queryFn: async () => {
       try {
         return await apiClient.get<HistoryEntry[]>('/api/sponsors/me/placements/history');
-      } catch (err: any) {
-        if (err?.status === 404) return [];
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 404) return [];
         throw err;
       }
     },
