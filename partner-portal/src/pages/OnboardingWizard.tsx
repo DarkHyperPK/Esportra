@@ -93,7 +93,7 @@ const OnboardingWizard = () => {
                                             onChange={(event) => setHasAcceptedTerms(event.target.checked)}
                                             className="mt-1"
                                         />
-                                        I agree to the Esportra Partner Portal terms (version 2026-07).
+                                        I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-rose-400 underline hover:text-rose-300">Esportra Partner Portal terms</a> (version 2026-07).
                                     </label>
                                 }
                             />
