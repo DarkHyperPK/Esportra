@@ -19,13 +19,29 @@ interface AnalyticsSummary {
 export function usePlacementAnalytics(days = 30) {
   return useQuery({
     queryKey: ['sponsor', 'analytics', 'placements', days],
-    queryFn: () => apiClient.get<PlacementStat[]>(`/api/sponsors/me/analytics/placements?days=${days}`),
+    queryFn: async () => {
+      try {
+        return await apiClient.get<PlacementStat[]>(`/api/sponsors/me/analytics/placements?days=${days}`);
+      } catch (err: any) {
+        if (err?.status === 404 || err?.status === 500) return [];
+        throw err;
+      }
+    },
+    retry: false,
   });
 }
 
 export function useAnalyticsSummary(days = 30) {
   return useQuery({
     queryKey: ['sponsor', 'analytics', 'summary', days],
-    queryFn: () => apiClient.get<AnalyticsSummary>(`/api/sponsors/me/analytics/summary?days=${days}`),
+    queryFn: async () => {
+      try {
+        return await apiClient.get<AnalyticsSummary>(`/api/sponsors/me/analytics/summary?days=${days}`);
+      } catch (err: any) {
+        if (err?.status === 404 || err?.status === 500) return null;
+        throw err;
+      }
+    },
+    retry: false,
   });
 }
