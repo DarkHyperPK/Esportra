@@ -22,8 +22,8 @@ export function usePlacementAnalytics(days = 30) {
     queryFn: async () => {
       try {
         return await apiClient.get<PlacementStat[]>(`/api/sponsors/me/analytics/placements?days=${days}`);
-      } catch (err: any) {
-        if (err?.status === 404 || err?.status === 500) return [];
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'status' in err && ((err as { status: number }).status === 404 || (err as { status: number }).status === 500)) return [];
         throw err;
       }
     },
@@ -37,8 +37,8 @@ export function useAnalyticsSummary(days = 30) {
     queryFn: async () => {
       try {
         return await apiClient.get<AnalyticsSummary>(`/api/sponsors/me/analytics/summary?days=${days}`);
-      } catch (err: any) {
-        if (err?.status === 404 || err?.status === 500) return null;
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'status' in err && ((err as { status: number }).status === 404 || (err as { status: number }).status === 500)) return null;
         throw err;
       }
     },

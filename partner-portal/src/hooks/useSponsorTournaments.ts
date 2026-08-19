@@ -26,11 +26,11 @@ export const useSponsorTournaments = () =>
     queryFn: async () => {
       try {
         return await apiClient.get<SponsorTournamentLink[]>('/api/sponsors/me/placements');
-      } catch (err: any) {
-        if (err?.status === 404) return [];
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 404) return [];
         throw err;
       }
     },
     staleTime: 60 * 1000,
-    retry: (count, err: any) => err?.status !== 404 && count < 2,
+    retry: (count, err: unknown) => !(err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 404) && count < 2,
   });
