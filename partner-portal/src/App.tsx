@@ -17,6 +17,7 @@ const Assets = lazy(() => import('./pages/Assets'));
 const Campaigns = lazy(() => import('./pages/Campaigns'));
 const Account = lazy(() => import('./pages/Account'));
 const OnboardingWizard = lazy(() => import('./pages/OnboardingWizard'));
+const Terms = lazy(() => import('./pages/Terms'));
 
 const PageLoader = () => (
   <div className="min-h-screen bg-[#050505] flex items-center justify-center">
@@ -30,6 +31,7 @@ function App() {
       <InvitationCallbackHandoff />
       <Suspense fallback={<PageLoader />}>
         <Routes>
+          <Route path="/terms" element={<Terms />} />
           <Route path="/invite/accept" element={<InviteAcceptance />} />
           <Route path="/invite/setup-password" element={<InvitePasswordSetup />} />
           <Route path="/auth/recovery" element={<Recovery />} />
