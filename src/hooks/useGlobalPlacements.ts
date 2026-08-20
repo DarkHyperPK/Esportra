@@ -10,6 +10,7 @@ export interface GlobalPlacement {
   bannerUrl: string | null;
   logoUrl: string | null;
   headline: string | null;
+  description: string | null;
   ctaText: string | null;
   ctaUrl: string | null;
   priority: number;

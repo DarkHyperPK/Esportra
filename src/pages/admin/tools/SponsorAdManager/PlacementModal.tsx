@@ -49,6 +49,7 @@ export const PlacementModal: React.FC<Props> = ({
   const [bannerAssetId, setBannerAssetId] = useState<string | null>(editing?.bannerAssetId ?? null);
   const [logoAssetId, setLogoAssetId] = useState<string | null>(editing?.logoAssetId ?? null);
   const [headline, setHeadline] = useState(editing?.headline ?? '');
+  const [description, setDescription] = useState(editing?.description ?? '');
   const [ctaText, setCtaText] = useState(editing?.ctaText ?? '');
   const [ctaUrl, setCtaUrl] = useState(editing?.ctaUrl ?? '');
   const [priority, setPriority] = useState(editing?.priority ?? 0);
@@ -68,6 +69,7 @@ export const PlacementModal: React.FC<Props> = ({
     setBannerAssetId(editing?.bannerAssetId ?? null);
     setLogoAssetId(editing?.logoAssetId ?? null);
     setHeadline(editing?.headline ?? '');
+    setDescription(editing?.description ?? '');
     setCtaText(editing?.ctaText ?? '');
     setCtaUrl(editing?.ctaUrl ?? '');
     setPriority(editing?.priority ?? 0);
@@ -106,6 +108,7 @@ export const PlacementModal: React.FC<Props> = ({
         logoUrl: logoUrl || null,
         logoAssetId,
         headline: headline || null,
+        description: description || null,
         ctaText: ctaText || null,
         ctaUrl: ctaUrl || null,
         priority,
@@ -125,6 +128,7 @@ export const PlacementModal: React.FC<Props> = ({
         logoUrl: logoUrl || null,
         logoAssetId,
         headline: headline || null,
+        description: description || null,
         ctaText: ctaText || null,
         ctaUrl: ctaUrl || null,
         priority,
@@ -249,6 +253,58 @@ export const PlacementModal: React.FC<Props> = ({
                   uploading={upload.isPending}
                 />
               )}
+            </div>
+          )}
+
+          {/* Copy */}
+          {zoneMeta && (
+            <div className="space-y-3 pt-2 border-t border-zinc-800">
+              <p className="text-[10px] font-mono text-zinc-600 uppercase tracking-widest">Copy (optional)</p>
+              <div>
+                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Headline</label>
+                <input
+                  type="text"
+                  value={headline}
+                  onChange={e => setHeadline(e.target.value)}
+                  maxLength={120}
+                  placeholder="Bold partner headline..."
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white placeholder:text-zinc-600"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Description</label>
+                <textarea
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  maxLength={2000}
+                  rows={4}
+                  placeholder="Write comprehensive partner copy shown on the Partners page..."
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white placeholder:text-zinc-600 resize-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">CTA Text</label>
+                  <input
+                    type="text"
+                    value={ctaText}
+                    onChange={e => setCtaText(e.target.value)}
+                    maxLength={60}
+                    placeholder="VISIT_SITE"
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white placeholder:text-zinc-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">CTA URL</label>
+                  <input
+                    type="url"
+                    value={ctaUrl}
+                    onChange={e => setCtaUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white placeholder:text-zinc-600"
+                  />
+                </div>
+              </div>
             </div>
           )}
 

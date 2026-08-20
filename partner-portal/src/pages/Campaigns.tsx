@@ -191,7 +191,7 @@ const TournamentCard: React.FC<{
                 <a href={`${import.meta.env.VITE_FRONTEND_URL || 'https://esportra.com'}/tournaments/${link.tournamentId}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
                   {link.tournamentName || 'Tournament'}
                 </a>
-              ) : 'Global placement'}
+              ) : (ZONE_LABELS[link.placementZone] || link.placementZone)}
             </h4>
             <div className="flex items-center gap-3 mt-1.5">
               {startDate && (
@@ -221,7 +221,10 @@ const TournamentCard: React.FC<{
           <span className="text-[10px] font-mono text-zinc-600">
             Linked {new Date(link.createdAt).toLocaleDateString()}
           </span>
-          {link.tournamentId && <span className="flex items-center gap-1 text-[10px] font-mono text-zinc-500"><ExternalLink className="w-3 h-3" /> Tournament placement</span>}
+          {link.tournamentId
+            ? <span className="flex items-center gap-1 text-[10px] font-mono text-zinc-500"><ExternalLink className="w-3 h-3" /> Tournament placement</span>
+            : <span className="text-[10px] font-mono text-violet-500/70">Global placement</span>
+          }
         </div>
       </div>
     </motion.div>

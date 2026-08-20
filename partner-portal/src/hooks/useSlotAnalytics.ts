@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 
 export interface SlotStat {
-  tournamentId: string;
+  tournamentId: string | null;
   tournamentName: string | null;
   placementZone: string;
   impressions: number;

@@ -16,6 +16,7 @@ export interface Placement {
   logoUrl: string | null;
   logoAssetId: string | null;
   headline: string | null;
+  description: string | null;
   ctaText: string | null;
   ctaUrl: string | null;
   priority: number;
@@ -45,6 +46,7 @@ export interface CreatePlacementPayload {
   logoUrl?: string | null;
   logoAssetId?: string | null;
   headline?: string | null;
+  description?: string | null;
   ctaText?: string | null;
   ctaUrl?: string | null;
   priority?: number;
@@ -59,6 +61,7 @@ export interface UpdatePlacementPayload {
   logoUrl?: string | null;
   logoAssetId?: string | null;
   headline?: string | null;
+  description?: string | null;
   ctaText?: string | null;
   ctaUrl?: string | null;
   priority?: number;

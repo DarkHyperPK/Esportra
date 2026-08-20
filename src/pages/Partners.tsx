@@ -73,15 +73,6 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
 
             {/* ── Image Side (The Visual) ── */}
             <div className="w-full lg:w-1/2 relative group bg-[#080808] overflow-hidden">
-                {/* Corner Accents (About Theme) */}
-                <div
-                    className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 transition-all duration-500 group-hover:w-[calc(100%-32px)] group-hover:h-[calc(100%-32px)] z-20 pointer-events-none"
-                    style={{ borderColor: '#f43f5e' }}
-                />
-                <div
-                    className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 transition-all duration-500 group-hover:w-[calc(100%-32px)] group-hover:h-[calc(100%-32px)] z-20 pointer-events-none"
-                    style={{ borderColor: '#f43f5e' }}
-                />
 
                 {/* Image Container */}
                 <div className="relative w-full h-full min-h-[400px]">
@@ -150,9 +141,11 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
                             {sponsor.headline}
                         </h3>
                     )}
-                    <p className="text-zinc-500 text-lg leading-relaxed mb-10 max-w-lg font-light">
-                        Official Esportra ecosystem partner.
-                    </p>
+                    {sponsor.description && (
+                        <p className="text-zinc-500 text-lg leading-relaxed mb-10 max-w-lg font-light">
+                            {sponsor.description}
+                        </p>
+                    )}
                 </>
 
                 {/* CTA */}

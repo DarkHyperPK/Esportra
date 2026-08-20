@@ -302,8 +302,12 @@ const Analytics = () => {
                             </thead>
                             <tbody className="divide-y divide-zinc-800">
                                 {slotStats.map((s) => (
-                                    <tr key={`${s.tournamentId}-${s.placementZone}`} className="text-zinc-300">
-                                        <td className="px-4 py-3 font-medium text-white">{s.tournamentName || 'Unknown'}</td>
+                                    <tr key={`${s.tournamentId ?? 'global'}-${s.placementZone}`} className="text-zinc-300">
+                                        <td className="px-4 py-3 font-medium text-white">
+                                            {s.tournamentId ? s.tournamentName || 'Unknown' : (
+                                                <span className="text-violet-400 font-mono text-[10px] uppercase tracking-widest">Global</span>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 text-zinc-400">{ZONE_LABELS[s.placementZone] || s.placementZone}</td>
                                         <td className="px-4 py-3 text-right font-mono">{fmt(s.impressions)}</td>
                                         <td className="px-4 py-3 text-right font-mono">{fmt(s.clicks)}</td>
