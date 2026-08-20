@@ -43,24 +43,12 @@ export const TournamentPartnerLogos: React.FC<Props> = ({ tournamentId }) => {
   return (
     <div ref={containerRef} className="mt-10 pt-8 border-t border-white/5">
       <div className="flex items-center justify-center gap-8 flex-wrap">
-        {logoSponsors.slice(0, 4).map((l) => (
-          <a
-            key={l.id}
-            href={l.sponsor.website_url || '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => trackClick(l.sponsor.id, 'partner_logo', tournamentId)}
-            className="group"
-          >
-            <img
-              src={l.media_overrides?.['partner_logo_logo'] || l.sponsor.logo_url || undefined}
-              alt={l.sponsor.name}
-              loading="lazy"
-              decoding="async"
-              className="h-8 w-auto object-contain grayscale opacity-40 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300"
-            />
-          </a>
-        ))}
+        {logoSponsors.slice(0, 4).map((link) => {
+          const logoUrl = link.media_overrides?.['partner_logo_logo'] || link.sponsor.logo_url;
+          if (!logoUrl) return null;
+          const image = <img src={logoUrl} alt={link.sponsor.name} loading="lazy" decoding="async" className="h-32 w-auto object-contain" />;
+          return link.cta_url ? <a key={link.id} href={link.cta_url} target="_blank" rel="noopener noreferrer" onClick={() => trackClick(link.sponsor.id, 'partner_logo', tournamentId)} className="group">{image}</a> : <div key={link.id} className="group">{image}</div>;
+        })}
       </div>
     </div>
   );

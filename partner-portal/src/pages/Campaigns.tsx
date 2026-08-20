@@ -5,13 +5,9 @@ import {
   Calendar,
   ExternalLink,
   Zap,
-  TrendingUp,
-  TrendingDown,
-  BarChart3,
   History,
 } from 'lucide-react';
 import { useSponsorTournaments, type SponsorTournamentLink } from '../hooks/useSponsorTournaments';
-import { usePlacementAnalytics, useAnalyticsSummary } from '../hooks/usePlacementAnalytics';
 import { usePlacementHistory, type HistoryEntry } from '../hooks/usePlacementHistory';
 
 const ZONE_LABELS: Record<string, string> = {
@@ -35,8 +31,6 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
 
 const Campaigns = () => {
   const { data: tournaments = [], isLoading, error, refetch } = useSponsorTournaments();
-  const { data: summary } = useAnalyticsSummary(30);
-  const { data: placementStats = [] } = usePlacementAnalytics(30);
   const { data: history = [] } = usePlacementHistory();
 
   if (isLoading) {
@@ -85,15 +79,6 @@ const Campaigns = () => {
         </p>
       </div>
 
-      {/* KPI Summary Cards */}
-      {summary && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <KpiCard label="Impressions (30d)" value={summary.impressions.toLocaleString()} trend={summary.impressionsTrend} />
-          <KpiCard label="Clicks (30d)" value={summary.clicks.toLocaleString()} trend={summary.clicksTrend} />
-          <KpiCard label="CTR" value={`${summary.ctr.toFixed(1)}%`} />
-        </div>
-      )}
-
       {/* Active Campaigns */}
       {active.length > 0 ? (
         <section className="space-y-4">
@@ -117,40 +102,6 @@ const Campaigns = () => {
             When an Esportra admin links your brand to a tournament, your active campaign placements will appear here.
           </p>
         </div>
-      )}
-
-      {/* Per-Zone Analytics */}
-      {placementStats.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-blue-400" />
-            <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">
-              Performance by Zone (30d)
-            </h3>
-          </div>
-          <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-500">
-                <tr>
-                  <th className="px-4 py-3">Zone</th>
-                  <th className="px-4 py-3 text-right">Impressions</th>
-                  <th className="px-4 py-3 text-right">Clicks</th>
-                  <th className="px-4 py-3 text-right">CTR</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800">
-                {placementStats.map((stat) => (
-                  <tr key={stat.placement} className="text-zinc-300">
-                    <td className="px-4 py-3 font-medium text-white">{ZONE_LABELS[stat.placement] || stat.placement}</td>
-                    <td className="px-4 py-3 text-right font-mono">{stat.impressions.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-mono">{stat.clicks.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-mono">{stat.ctr.toFixed(1)}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
       )}
 
       {/* Inactive / Past */}
@@ -186,21 +137,6 @@ const Campaigns = () => {
     </div>
   );
 };
-
-const KpiCard: React.FC<{ label: string; value: string; trend?: number }> = ({ label, value, trend }) => (
-  <div className="bg-[#0a0a0c] border border-white/5 rounded-xl p-5">
-    <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">{label}</p>
-    <div className="flex items-end gap-2">
-      <span className="text-2xl font-black text-white">{value}</span>
-      {trend !== undefined && trend !== 0 && (
-        <span className={`flex items-center gap-0.5 text-xs font-mono ${trend > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-          {trend > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-          {Math.abs(trend).toFixed(0)}%
-        </span>
-      )}
-    </div>
-  </div>
-);
 
 const HistoryRow: React.FC<{ entry: HistoryEntry }> = ({ entry }) => {
   const actionMeta = ACTION_LABELS[entry.action] ?? { label: entry.action, color: 'text-zinc-400' };
@@ -255,7 +191,7 @@ const TournamentCard: React.FC<{
                 <a href={`${import.meta.env.VITE_FRONTEND_URL || 'https://esportra.com'}/tournaments/${link.tournamentId}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
                   {link.tournamentName || 'Tournament'}
                 </a>
-              ) : 'Global placement'}
+              ) : (ZONE_LABELS[link.placementZone] || link.placementZone)}
             </h4>
             <div className="flex items-center gap-3 mt-1.5">
               {startDate && (
@@ -285,7 +221,10 @@ const TournamentCard: React.FC<{
           <span className="text-[10px] font-mono text-zinc-600">
             Linked {new Date(link.createdAt).toLocaleDateString()}
           </span>
-          {link.tournamentId && <span className="flex items-center gap-1 text-[10px] font-mono text-zinc-500"><ExternalLink className="w-3 h-3" /> Tournament placement</span>}
+          {link.tournamentId
+            ? <span className="flex items-center gap-1 text-[10px] font-mono text-zinc-500"><ExternalLink className="w-3 h-3" /> Tournament placement</span>
+            : <span className="text-[10px] font-mono text-violet-500/70">Global placement</span>
+          }
         </div>
       </div>
     </motion.div>

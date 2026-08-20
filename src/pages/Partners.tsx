@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Award, Zap, ArrowRight, Cpu } from 'lucide-react';
-import { useSponsors, trackImpression, trackClick, Sponsor } from '@/hooks/useSponsors';
+import { trackImpression, trackClick } from '@/hooks/useSponsors';
+import { useGlobalPlacements, type GlobalPlacement } from '@/hooks/useGlobalPlacements';
 import PartnerApplicationForm from '@/components/PartnerApplicationForm';
 import Footer from '@/components/Footer';
 import { JackButton } from '@/components/ui/JackButton';
@@ -11,7 +12,7 @@ import { JackButton } from '@/components/ui/JackButton';
    ────────────────────────────────────────────────────────────── */
 
 interface PartnerSectionProps {
-    sponsor: Sponsor;
+    sponsor: GlobalPlacement;
     index: number;
 }
 
@@ -28,7 +29,7 @@ const tierConfig: Record<string, { label: string; icon: typeof Star; color: stri
    ────────────────────────────────────────────────────────────── */
 
 const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
-    const tier = tierConfig[sponsor.tier] || tierConfig.standard;
+    const tier = tierConfig[sponsor.sponsorTier || 'standard'] || tierConfig.standard;
     const isEven = index % 2 === 0;
     const sectionRef = useRef<HTMLDivElement>(null);
     const hasTracked = useRef(false);
@@ -40,7 +41,7 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting && !hasTracked.current) {
-                    trackImpression(sponsor.id);
+                    trackImpression(sponsor.sponsorId, 'partner_showcase');
                     hasTracked.current = true;
                     observer.disconnect();
                 }
@@ -50,13 +51,11 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
 
         observer.observe(sectionRef.current);
         return () => observer.disconnect();
-    }, [sponsor.id]);
+    }, [sponsor.sponsorId]);
 
     // Gallery State
     const [[page, direction], setPage] = React.useState([0, 0]);
-    const gallery = sponsor.gallery_images && sponsor.gallery_images.length > 0
-        ? sponsor.gallery_images
-        : (sponsor.banner_image_url ? [sponsor.banner_image_url] : []);
+    const gallery = sponsor.bannerUrl ? [sponsor.bannerUrl] : [];
 
     const imageIndex = Math.abs(page % gallery.length);
 
@@ -70,19 +69,10 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
     }, [gallery.length, page]);
 
     return (
-        <div ref={sectionRef} data-sponsor-id={sponsor.id} className={`flex flex-col lg:flex-row min-h-[600px] border-b border-white/5 ${isEven ? '' : 'lg:flex-row-reverse'}`}>
+        <div ref={sectionRef} data-sponsor-id={sponsor.sponsorId} className={`flex flex-col lg:flex-row min-h-[600px] border-b border-white/5 ${isEven ? '' : 'lg:flex-row-reverse'}`}>
 
             {/* ── Image Side (The Visual) ── */}
             <div className="w-full lg:w-1/2 relative group bg-[#080808] overflow-hidden">
-                {/* Corner Accents (About Theme) */}
-                <div
-                    className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 transition-all duration-500 group-hover:w-[calc(100%-32px)] group-hover:h-[calc(100%-32px)] z-20 pointer-events-none"
-                    style={{ borderColor: sponsor.accent_color }}
-                />
-                <div
-                    className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 transition-all duration-500 group-hover:w-[calc(100%-32px)] group-hover:h-[calc(100%-32px)] z-20 pointer-events-none"
-                    style={{ borderColor: sponsor.accent_color }}
-                />
 
                 {/* Image Container */}
                 <div className="relative w-full h-full min-h-[400px]">
@@ -110,9 +100,9 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
                         >
                             <span
                                 className="text-9xl font-heading font-black opacity-10 grayscale group-hover:grayscale-0 transition-all duration-500"
-                                style={{ color: sponsor.accent_color }}
+                                style={{ color: '#f43f5e' }}
                             >
-                                {sponsor.name[0]}
+                                {sponsor.sponsorName[0]}
                             </span>
                         </div>
                     )}
@@ -125,63 +115,53 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
                     <div className="w-12 h-[1px] bg-zinc-800 group-hover:bg-white transition-colors duration-500" />
                     <span
                         className="font-mono text-xs tracking-[0.2em] uppercase transition-colors duration-300"
-                        style={{ color: sponsor.accent_color }}
+                        style={{ color: '#f43f5e' }}
                     >
                         {tier.label}
                     </span>
                 </div>
 
                 {/* Header / Logo */}
-                {sponsor.logo_url ? (
+                {(sponsor.logoUrl || sponsor.sponsorLogoUrl) ? (
                     <img
-                        src={sponsor.logo_url}
-                        alt={sponsor.name}
+                        src={sponsor.logoUrl || sponsor.sponsorLogoUrl || ''}
+                        alt={sponsor.sponsorName}
                         className="h-16 w-auto object-contain mb-8 self-start opacity-80 group-hover:opacity-100 transition-opacity"
                     />
                 ) : (
                     <h2 className="text-4xl md:text-6xl font-black font-heading tracking-tighter mb-6 text-white leading-none">
-                        {sponsor.name.toUpperCase()}
+                        {sponsor.sponsorName.toUpperCase()}
                     </h2>
                 )}
 
                 {/* Standard Description */}
                 <>
-                    {sponsor.tagline && (
+                    {sponsor.headline && (
                         <h3 className="text-2xl font-bold text-white mb-4 tracking-tight">
-                            {sponsor.tagline}
+                            {sponsor.headline}
                         </h3>
                     )}
-                    <p className="text-zinc-500 text-lg leading-relaxed mb-10 max-w-lg font-light">
-                        {sponsor.description}
-                    </p>
+                    {sponsor.description && (
+                        <p className="text-zinc-500 text-lg leading-relaxed mb-10 max-w-lg font-light">
+                            {sponsor.description}
+                        </p>
+                    )}
                 </>
 
                 {/* CTA */}
                 <div className="flex items-center gap-6 mt-auto pt-6 border-t border-white/5">
-                    <JackButton
+                    {sponsor.ctaUrl && <JackButton
                         as="a"
-                        href={sponsor.website_url}
+                        href={sponsor.ctaUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={() => trackClick(sponsor.id)}
+                        onClick={() => trackClick(sponsor.sponsorId, 'partner_showcase')}
                         variant="invert"
                         size="sm"
                     >
-                        {sponsor.cta_text || 'INITIATE_LINK'}
+                        {sponsor.ctaText || 'INITIATE_LINK'}
                         <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-2" />
-                    </JackButton>
-
-                    {sponsor.discount_text && (
-                        <div
-                            className="px-3 py-1 text-xs font-mono border"
-                            style={{
-                                borderColor: `${sponsor.accent_color}40`,
-                                color: sponsor.accent_color
-                            }}
-                        >
-                            CODE: {sponsor.discount_text}
-                        </div>
-                    )}
+                    </JackButton>}
                 </div>
 
             </div>
@@ -194,21 +174,10 @@ const PartnerSection: React.FC<PartnerSectionProps> = ({ sponsor, index }) => {
    ────────────────────────────────────────────────────────────── */
 
 const Partners = () => {
-    const { data: rawSponsors = [], isLoading } = useSponsors();
+    const { data: rawSponsors = [], isLoading } = useGlobalPlacements('partner_showcase');
 
     const sponsors = React.useMemo(() => {
-        const tierOrder: Record<string, number> = {
-            radiant: 3,
-            ascendant: 2,
-            partner: 1,
-            diamond: 1,
-            standard: 1
-        };
-        return [...rawSponsors].sort((a, b) => {
-            const scoreA = tierOrder[a.tier?.toLowerCase()] || 0;
-            const scoreB = tierOrder[b.tier?.toLowerCase()] || 0;
-            return scoreB - scoreA;
-        });
+        return [...rawSponsors].sort((a, b) => a.slotNumber - b.slotNumber);
     }, [rawSponsors]);
 
     // Impression tracking is now handled per-section via IntersectionObserver
@@ -254,7 +223,7 @@ const Partners = () => {
                     <div className="flex flex-col">
                         {/* Showcase Section - Only for Radiant and Ascendant partners */}
                         {sponsors
-                            .filter(s => s.tier === 'radiant' || s.tier === 'ascendant')
+                            .filter(s => s.sponsorTier === 'radiant' || s.sponsorTier === 'ascendant')
                             .map((sponsor, idx) => (
                                 <PartnerSection key={sponsor.id} sponsor={sponsor} index={idx} />
                             ))}

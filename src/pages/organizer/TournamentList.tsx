@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search } from 'lucide-react';
 import { Tournament } from '@/hooks/useTournaments';
+import { mapTournamentCardBadge } from '@/types/tournament';
 import { apiClient } from '@/lib/apiClient';
 import { useAuth } from '@/hooks/useAuth';
 import { TournamentCard } from '@/components/TournamentCard';
@@ -55,7 +56,8 @@ const TournamentList = () => {
           image_url: tournament.banner_url ?? tournament.logo_url ?? null,
           current_participants: 0,
           status,
-          team_size: tournament.team_size ?? 1
+          team_size: tournament.team_size ?? 1,
+          card_badge: mapTournamentCardBadge(tournament),
         };
       });
 
@@ -140,6 +142,7 @@ const TournamentList = () => {
                 currentUserId={user?.id}
                 slug={tournament.slug || tournament.id}
                 currency={(tournament as any).currency}
+                card_badge={tournament.card_badge}
               />
             ))}
           </div>

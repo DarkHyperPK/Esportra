@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+import type { PlacementZone } from '@/pages/admin/tools/SponsorAdManager/types';
 
 export interface TournamentSponsorLink {
   id: string;
@@ -8,6 +9,10 @@ export interface TournamentSponsorLink {
   placement_zones: string[];
   media_overrides: Record<string, string> | null;
   priority: number;
+  slot_number: number;
+  headline: string | null;
+  cta_text: string | null;
+  cta_url: string | null;
   sponsor: {
     id: string;
     name: string;
@@ -16,9 +21,9 @@ export interface TournamentSponsorLink {
     banner_image_url: string | null;
     accent_color: string;
     tier: string;
-    cta_text: string;
-    website_url: string;
-    gallery_images: string[];
+    cta_text: string | null;
+    website_url: string | null;
+    gallery_images: string[] | null;
   };
 }
 
@@ -35,8 +40,8 @@ export function useTournamentSponsorDisplay(tournamentId?: string) {
 }
 
 /** Filter helpers */
-export function sponsorsByZone(links: TournamentSponsorLink[], zone: string) {
-  return links.filter((l) => l.placement_zones.includes(zone));
+export function sponsorsByZone(links: TournamentSponsorLink[], zone: PlacementZone) {
+  return links.filter((link) => link.placement_zones?.includes(zone)).sort((left, right) => left.slot_number - right.slot_number);
 }
 
 export function titleSponsor(links: TournamentSponsorLink[]) {

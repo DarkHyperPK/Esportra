@@ -6,7 +6,7 @@ import Footer from '@/components/Footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MapPin, Wifi, ChevronDown, X, Search, Flame, Clock, CheckCircle, Archive } from 'lucide-react';
-import { Tournament } from '@/types/tournament';
+import { Tournament, mapTournamentCardBadge } from '@/types/tournament';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { TournamentCard } from '@/components/TournamentCard';
@@ -361,6 +361,7 @@ const TournamentList = () => {
                   currentUserId={user?.id}
                   region={(tournament as any).region}
                   currency={(tournament as any).currency}
+                  card_badge={mapTournamentCardBadge(tournament)}
                 />
               </div>
             ))}

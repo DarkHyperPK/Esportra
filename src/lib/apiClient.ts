@@ -293,15 +293,17 @@ export const apiClient = {
       method: 'POST',
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
+    if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
     return res.json() as Promise<T>;
   },
 
-  /** PUT /api/{path} with JSON body → parsed JSON */
+  /** PUT /api/{path} with JSON body → parsed JSON (or void for 204) */
   async put<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetchWithAuth(path, {
       method: 'PUT',
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
+    if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
     return res.json() as Promise<T>;
   },
 

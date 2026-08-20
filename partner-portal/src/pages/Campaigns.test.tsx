@@ -3,10 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 const { refetch, useSponsorTournaments } = vi.hoisted(() => ({ refetch: vi.fn(), useSponsorTournaments: vi.fn() }));
 vi.mock('../hooks/useSponsorTournaments', () => ({ useSponsorTournaments }));
-vi.mock('../hooks/usePlacementAnalytics', () => ({
-  usePlacementAnalytics: () => ({ data: [], isLoading: false }),
-  useAnalyticsSummary: () => ({ data: null, isLoading: false }),
-}));
 vi.mock('../hooks/usePlacementHistory', () => ({
   usePlacementHistory: () => ({ data: [], isLoading: false }),
 }));

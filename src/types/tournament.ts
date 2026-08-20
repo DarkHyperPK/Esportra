@@ -11,7 +11,30 @@ export type RegistrationStatus =
     | 'winner';
 export type RegistrationType = 'solo' | 'team';
 
-export interface BaseTournament {
+export interface TournamentCardBadge {
+    placementId: string;
+    sponsorId: string;
+    sponsorName: string;
+    logoUrl: string;
+    headline: string | null;
+    ctaUrl: string | null;
+}
+
+export interface TournamentCardBadgeFields {
+    card_badge_placement_id?: string | null;
+    card_badge_sponsor_id?: string | null;
+    card_badge_sponsor_name?: string | null;
+    card_badge_logo_url?: string | null;
+    card_badge_headline?: string | null;
+    card_badge_cta_url?: string | null;
+}
+
+export function mapTournamentCardBadge(value: TournamentCardBadgeFields): TournamentCardBadge | null {
+    if (!value.card_badge_placement_id || !value.card_badge_sponsor_id || !value.card_badge_sponsor_name || !value.card_badge_logo_url) return null;
+    return { placementId: value.card_badge_placement_id, sponsorId: value.card_badge_sponsor_id, sponsorName: value.card_badge_sponsor_name, logoUrl: value.card_badge_logo_url, headline: value.card_badge_headline ?? null, ctaUrl: value.card_badge_cta_url ?? null };
+}
+
+export interface BaseTournament extends TournamentCardBadgeFields {
     id: string;
     name: string;
     game: string;

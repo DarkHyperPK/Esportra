@@ -9,7 +9,8 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRawgGame } from '@/hooks/useRawgGame';
 import { GameLogoImage } from '@/components/games/GameLogoImage';
-import { trackImpression } from '@/hooks/useSponsors';
+import { trackImpression, trackClick } from '@/hooks/useSponsors';
+import type { TournamentCardBadge } from '@/types/tournament';
 
 const REGION_LABELS: Record<string, string> = {
   'na-east': 'NA East', 'na-west': 'NA West', 'latam': 'LATAM',
@@ -41,8 +42,7 @@ interface TournamentCardProps {
   start_date?: string;
   end_date?: string;
   winner_name?: string;
-  title_sponsor_name?: string;
-  title_sponsor_id?: string;
+  card_badge?: TournamentCardBadge | null;
   region?: string;
   currency?: string;
 }
@@ -71,20 +71,24 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
   start_date: _start_date,
   end_date: _end_date,
   winner_name,
-  title_sponsor_name,
-  title_sponsor_id,
+  card_badge,
   region,
   currency,
 }) => {
   const navigate = useNavigate();
-  const badgeTracked = useRef(false);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (title_sponsor_id && !badgeTracked.current) {
-      trackImpression(title_sponsor_id, 'card_badge');
-      badgeTracked.current = true;
-    }
-  }, [title_sponsor_id]);
+    if (!card_badge || !cardRef.current) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        trackImpression(card_badge.sponsorId, 'card_badge', id);
+        observer.disconnect();
+      }
+    }, { threshold: 0.5 });
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [card_badge, id]);
   const { currentRole } = useRole();
   const admin = useAdmin();
   const ownerId = organizer_id || user_id;
@@ -147,6 +151,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
 
   return (
     <div
+      ref={cardRef}
       className="group relative h-[380px] w-full overflow-hidden bg-[#0a0a0c] border border-white/5 cursor-pointer transition-transform duration-300 hover:-translate-y-1"
       onClick={() => navigate(`/tournaments/${slug || id}`)}
     >
@@ -276,12 +281,22 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
             </div>
           )}
 
-          {/* Title Sponsor Badge */}
-          {title_sponsor_name && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full w-fit">
-              <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider">Powered by</span>
-              <span className="text-[10px] font-bold text-zinc-300">{title_sponsor_name}</span>
-            </div>
+          {card_badge && (
+            card_badge.ctaUrl ? (
+              <a
+                href={card_badge.ctaUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => { e.stopPropagation(); trackClick(card_badge.sponsorId, 'card_badge', id); }}
+                className="flex items-center px-2.5 py-1 bg-white/5 border border-white/10 rounded-full w-fit hover:bg-white/10 transition-colors"
+              >
+                <img src={card_badge.logoUrl} alt="" className="h-4 w-auto object-contain" />
+              </a>
+            ) : (
+              <div className="flex items-center px-2.5 py-1 bg-white/5 border border-white/10 rounded-full w-fit">
+                <img src={card_badge.logoUrl} alt="" className="h-4 w-auto object-contain" />
+              </div>
+            )
           )}
         </div>
 
