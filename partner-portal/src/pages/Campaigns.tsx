@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Loader2,
@@ -6,19 +5,10 @@ import {
   Calendar,
   ExternalLink,
   Zap,
-  TrendingUp,
-  TrendingDown,
-  BarChart3,
   History,
-  Layers,
-  Lock,
 } from 'lucide-react';
 import { useSponsorTournaments, type SponsorTournamentLink } from '@/hooks/useSponsorTournaments';
-import { usePlacementAnalytics, useAnalyticsSummary } from '@/hooks/usePlacementAnalytics';
 import { usePlacementHistory, type HistoryEntry } from '@/hooks/usePlacementHistory';
-import { useSlotAnalytics } from '@/hooks/useSlotAnalytics';
-import { usePartnerData } from '@/hooks/usePartnerData';
-import { normalizeTier } from '@/utils/permissions';
 
 const ZONE_LABELS: Record<string, string> = {
   homepage_ticker: 'Homepage Ticker',
@@ -39,23 +29,9 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   updated: { label: 'Updated', color: 'text-zinc-300' },
 };
 
-const DAY_OPTIONS = [7, 30, 90] as const;
-type Days = (typeof DAY_OPTIONS)[number];
-
-const fmt = (n: number) =>
-  n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}k` : String(n);
-
 const Campaigns = () => {
-  const [days, setDays] = useState<Days>(30);
   const { data: tournaments = [], isLoading, error, refetch } = useSponsorTournaments();
-  const { data: summary } = useAnalyticsSummary(days);
-  const { data: placementStats = [] } = usePlacementAnalytics(days);
-  const { data: slotStats } = useSlotAnalytics(days);
   const { data: history = [] } = usePlacementHistory();
-  const { data: partnerData } = usePartnerData();
-
-  const tier = normalizeTier(partnerData?.sponsor?.tier);
-  const isAscendantPlus = tier === 'ascendant' || tier === 'radiant';
 
   if (isLoading) {
     return (
@@ -94,38 +70,14 @@ const Campaigns = () => {
   return (
     <div className="space-y-10">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h2 className="text-3xl font-black tracking-tight">
-            CAMPAIGN<span className="text-rose-500">_PLACEMENTS</span>
-          </h2>
-          <p className="text-zinc-500 text-sm mt-2 font-mono tracking-wider">
-            SPONSOR_PLACEMENTS // {tournaments.length} linked
-          </p>
-        </div>
-        {/* Days selector */}
-        <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-1 self-center">
-          {DAY_OPTIONS.map(d => (
-            <button
-              key={d}
-              onClick={() => setDays(d)}
-              className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${days === d ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-            >
-              {d}d
-            </button>
-          ))}
-        </div>
+      <div>
+        <h2 className="text-3xl font-black tracking-tight">
+          CAMPAIGN<span className="text-rose-500">_PLACEMENTS</span>
+        </h2>
+        <p className="text-zinc-500 text-sm mt-2 font-mono tracking-wider">
+          SPONSOR_PLACEMENTS // {tournaments.length} linked
+        </p>
       </div>
-
-      {/* KPI Summary Cards */}
-      {summary && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <KpiCard label={`Impressions (${days}d)`} value={summary.impressions.toLocaleString()} trend={summary.impressionsTrend} />
-          <KpiCard label={`Clicks (${days}d)`} value={summary.clicks.toLocaleString()} trend={summary.clicksTrend} />
-          <KpiCard label="CTR" value={`${summary.ctr.toFixed(1)}%`} />
-        </div>
-      )}
-
 
       {/* Active Campaigns */}
       {active.length > 0 ? (
@@ -151,92 +103,6 @@ const Campaigns = () => {
           </p>
         </div>
       )}
-
-      {/* Per-Zone Analytics */}
-      {placementStats.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-blue-400" />
-            <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">
-              Performance by Zone ({days}d)
-            </h3>
-          </div>
-          <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-500">
-                <tr>
-                  <th className="px-4 py-3">Zone</th>
-                  <th className="px-4 py-3 text-right">Impressions</th>
-                  <th className="px-4 py-3 text-right">Clicks</th>
-                  <th className="px-4 py-3 text-right">CTR</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800">
-                {placementStats.map((stat) => (
-                  <tr key={stat.placement} className="text-zinc-300">
-                    <td className="px-4 py-3 font-medium text-white">{ZONE_LABELS[stat.placement] || stat.placement}</td>
-                    <td className="px-4 py-3 text-right font-mono">{stat.impressions.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-mono">{stat.clicks.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right font-mono">{stat.ctr.toFixed(1)}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      {/* Per-Slot Analytics (ascendant+) */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-violet-400" />
-          <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">
-            Per-Placement Breakdown ({days}d)
-          </h3>
-        </div>
-        {!isAscendantPlus ? (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-8 flex flex-col items-center gap-3 text-center">
-            <Lock className="w-6 h-6 text-zinc-600" />
-            <p className="text-sm font-bold text-zinc-400">Ascendant tier required</p>
-            <p className="text-xs text-zinc-600 max-w-sm">
-              Upgrade to Ascendant to unlock per-tournament impression and click attribution across all your placements.
-            </p>
-          </div>
-        ) : slotStats === null ? (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-8 text-center text-sm text-zinc-500">
-            Could not load slot data.
-          </div>
-        ) : slotStats && slotStats.length > 0 ? (
-          <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-500">
-                <tr>
-                  <th className="px-4 py-3">Tournament</th>
-                  <th className="px-4 py-3">Zone</th>
-                  <th className="px-4 py-3 text-right">Impressions</th>
-                  <th className="px-4 py-3 text-right">Clicks</th>
-                  <th className="px-4 py-3 text-right">CTR</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800">
-                {slotStats.map((s) => (
-                  <tr key={`${s.tournamentId}-${s.placementZone}`} className="text-zinc-300">
-                    <td className="px-4 py-3 font-medium text-white">{s.tournamentName || 'Unknown'}</td>
-                    <td className="px-4 py-3 text-zinc-400">{ZONE_LABELS[s.placementZone] || s.placementZone}</td>
-                    <td className="px-4 py-3 text-right font-mono">{fmt(s.impressions)}</td>
-                    <td className="px-4 py-3 text-right font-mono">{fmt(s.clicks)}</td>
-                    <td className="px-4 py-3 text-right font-mono">{s.ctr.toFixed(1)}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : isAscendantPlus && (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-8 text-center text-sm text-zinc-500">
-            No slot data for this period yet.
-          </div>
-        )}
-      </section>
 
       {/* Inactive / Past */}
       {inactive.length > 0 && (
@@ -271,21 +137,6 @@ const Campaigns = () => {
     </div>
   );
 };
-
-const KpiCard: React.FC<{ label: string; value: string; trend?: number }> = ({ label, value, trend }) => (
-  <div className="bg-[#0a0a0c] border border-white/5 rounded-xl p-5">
-    <p className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 mb-2">{label}</p>
-    <div className="flex items-end gap-2">
-      <span className="text-2xl font-black text-white">{value}</span>
-      {trend !== undefined && trend !== 0 && (
-        <span className={`flex items-center gap-0.5 text-xs font-mono ${trend > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-          {trend > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-          {Math.abs(trend).toFixed(0)}%
-        </span>
-      )}
-    </div>
-  </div>
-);
 
 const HistoryRow: React.FC<{ entry: HistoryEntry }> = ({ entry }) => {
   const actionMeta = ACTION_LABELS[entry.action] ?? { label: entry.action, color: 'text-zinc-400' };
