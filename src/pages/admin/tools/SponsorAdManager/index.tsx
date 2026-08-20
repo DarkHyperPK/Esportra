@@ -24,8 +24,9 @@ import { PlacementPreview } from './PlacementPreview';
 import { AuditLog } from './AuditLog';
 import { PlacementInventory } from './PlacementInventory';
 import { SponsorCrm } from './SponsorCrm';
+import { PartnersPageView } from './PartnersPageView';
 
-type ViewMode = 'crm' | 'tournament' | 'sponsor' | 'placements' | 'audit';
+type ViewMode = 'crm' | 'partners' | 'tournament' | 'sponsor' | 'placements' | 'audit';
 
 interface SponsorOption {
   id: string;
@@ -48,7 +49,7 @@ export default function SponsorAdManager() {
   const [crmSelectedSponsorId, setCrmSelectedSponsorId] = useState<string | undefined>();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Placement | null>(null);
-  const [modalLocks, setModalLocks] = useState<{ sponsorId?: string; zone?: PlacementZone; tournamentId?: string | null }>({});
+  const [modalLocks, setModalLocks] = useState<{ sponsorId?: string; zone?: PlacementZone; tournamentId?: string | null; slotNumber?: number }>({});
   const [previewTournamentId, setPreviewTournamentId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [replacing, setReplacing] = useState<Placement | null>(null);
@@ -83,6 +84,12 @@ export default function SponsorAdManager() {
   const openModalForSponsor = (sponsorId: string) => {
     setEditing(null);
     setModalLocks({ sponsorId });
+    setModalOpen(true);
+  };
+
+  const openPartnersSlotModal = (slotNumber: number) => {
+    setEditing(null);
+    setModalLocks({ zone: 'partner_showcase', slotNumber });
     setModalOpen(true);
   };
 
@@ -172,6 +179,12 @@ export default function SponsorAdManager() {
             Sponsors
           </button>
           <button
+            onClick={() => setView('partners')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'partners' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            Partners Page
+          </button>
+          <button
             onClick={() => setView('tournament')}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'tournament' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
           >
@@ -201,6 +214,15 @@ export default function SponsorAdManager() {
       {/* Active view */}
       {view === 'crm' ? (
         <SponsorCrm onSelectSponsor={id => { setCrmSelectedSponsorId(id); setView('sponsor'); }} />
+      ) : view === 'partners' ? (
+        <PartnersPageView
+          onAssignSlot={openPartnersSlotModal}
+          onEdit={openEditModal}
+          onDelete={handleDelete}
+          onReplace={handleReplace}
+          onRemove={handleRemove}
+          onUnassign={handleUnassign}
+        />
       ) : view === 'tournament' ? (
         <TournamentView
           tournaments={tournaments}
@@ -237,6 +259,7 @@ export default function SponsorAdManager() {
         lockedSponsorId={modalLocks.sponsorId}
         lockedZone={modalLocks.zone}
         lockedTournamentId={modalLocks.tournamentId}
+        lockedSlotNumber={modalLocks.slotNumber}
       />
 
       {/* Preview Modal */}
