@@ -31,6 +31,8 @@ export interface Placement {
   sponsorLogoUrl: string | null;
   sponsorWebsiteUrl: string | null;
   tournamentName: string | null;
+  totalImpressions: number;
+  totalClicks: number;
 }
 
 export interface CreatePlacementPayload {

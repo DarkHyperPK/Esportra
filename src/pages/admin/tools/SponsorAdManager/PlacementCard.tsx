@@ -2,6 +2,8 @@ import React from 'react';
 import { Pencil, Trash2, ExternalLink, RefreshCw, ImageMinus, UserX } from 'lucide-react';
 import { type Placement } from '@/hooks/useAdminPlacements';
 
+const fmt = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}k` : String(n);
+
 interface Props {
   placement: Placement;
   onEdit: (placement: Placement) => void;
@@ -36,8 +38,13 @@ export const PlacementCard: React.FC<Props> = ({ placement, onEdit, onDelete, on
             {placement.lifecycle}
           </span>
         </div>
-        {placement.headline && (
-          <p className="text-xs text-zinc-500 truncate">{placement.headline}</p>
+        {placement.totalImpressions > 0 && (
+          <p className="text-[10px] text-zinc-500 mt-0.5">
+            {fmt(placement.totalImpressions)} impr · {fmt(placement.totalClicks)} clicks
+            {placement.totalImpressions > 0 && (
+              <> · {((placement.totalClicks / placement.totalImpressions) * 100).toFixed(1)}% CTR</>
+            )}
+          </p>
         )}
         {placement.ctaUrl && (
           <a href={placement.ctaUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-zinc-600 hover:text-zinc-400 flex items-center gap-1 mt-1">
