@@ -10,6 +10,12 @@ vi.mock('@/hooks/usePlacementAnalytics', () => ({
 vi.mock('@/hooks/usePlacementHistory', () => ({
   usePlacementHistory: () => ({ data: [], isLoading: false }),
 }));
+vi.mock('@/hooks/useSlotAnalytics', () => ({
+  useSlotAnalytics: () => ({ data: [], isLoading: false }),
+}));
+vi.mock('@/hooks/usePartnerData', () => ({
+  usePartnerData: () => ({ data: null, isLoading: false }),
+}));
 import Campaigns from './Campaigns';
 
 const placement = {
