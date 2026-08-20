@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { SuccessButton } from '@/components/ui/app-buttons';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Layers, Trophy, Lock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, RefreshCw, Check } from 'lucide-react';
+import { Layers, Trophy, Lock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, RefreshCw, Check, Globe, CheckCircle2, Loader2 } from 'lucide-react';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { StageSetupWizard } from '@/components/organizer/wizard/StageSetupWizard';
@@ -41,6 +41,8 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const [newStageCapacity, setNewStageCapacity] = useState<number | ''>('');
     const [newStageAdvancement, setNewStageAdvancement] = useState<number | ''>('');
     const [hasBrackets, setHasBrackets] = useState<Record<string, boolean>>({});
+    const [bracketVersionInfo, setBracketVersionInfo] = useState<Record<string, { id: string; status: string }>>({});
+    const [publishingStageId, setPublishingStageId] = useState<string | null>(null);
     const [bracketsLoading, setBracketsLoading] = useState(true);
     const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
     const [deleteBracketDialogOpen, setDeleteBracketDialogOpen] = useState(false);
@@ -100,14 +102,20 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 const versions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
 
                 const status: Record<string, boolean> = {};
+                const versionInfo: Record<string, { id: string; status: string; version_number: number }> = {};
                 // Initialize all to false
                 stages.forEach(s => status[s.id] = false);
-                // Mark stages that have versions as true
+                // Mark stages that have versions as true and track the latest version per stage
                 versions?.forEach((v: any) => {
                     status[v.stage_id] = true;
+                    const current = versionInfo[v.stage_id];
+                    if (!current || (v.version_number || 0) >= (current.version_number || 0)) {
+                        versionInfo[v.stage_id] = { id: v.id, status: v.status || 'draft', version_number: v.version_number || 0 };
+                    }
                 });
 
                 setHasBrackets(status);
+                setBracketVersionInfo(versionInfo);
 
             } catch (err) {
                 console.error('[StageManagementTab] Error checking brackets:', err);
@@ -336,6 +344,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             // Clear hasBrackets state
             setHasBrackets({});
+            setBracketVersionInfo({});
 
             toast({ title: 'All stages reset', description: 'All brackets and team data have been cleared. Stages are ready to generate new brackets.' });
             invalidateMatchLifecycleQueries(queryClient, {});
@@ -488,10 +497,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             } else if (format === 'round_robin') {
                 if (stageConfig.group_count) {
                     bracketSize = Number(stageConfig.group_count);
-                } else if (stage.capacity) {
-                    bracketSize = Math.ceil(Number(stage.capacity) / 4);
-                } else {
-                    bracketSize = Math.ceil(teams.length / 4);
                 }
             }
 
@@ -611,6 +616,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
             // Update local state
             setHasBrackets(prev => ({ ...prev, [stageToDelete]: false }));
+            setBracketVersionInfo(prev => { const next = { ...prev }; delete next[stageToDelete]; return next; });
             toast({ title: 'Success', description: 'Bracket deleted successfully.' });
             setDeleteBracketDialogOpen(false);
             setStageToDelete(null);
@@ -626,6 +632,59 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const handleViewBracket = (stageId: string) => {
         // Navigate to the organizer bracket management page
         navigate(`/organizer/tournament/${slug}/manage-bracket/${stageId}`);
+    };
+
+    // Publish a stage bracket directly from the stages tab (same validations as the bracket page)
+    const handlePublishStageBracket = async (stageId: string) => {
+        const version = bracketVersionInfo[stageId];
+        if (!version || publishingStageId) return;
+
+        const stage = stages.find((s) => s.id === stageId);
+        const rawConfig = stage?.config;
+        const config: any = typeof rawConfig === 'string'
+            ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })()
+            : (rawConfig || null);
+        const selfPlayEnabled = Boolean(config?.self_play_enabled ?? config?.selfPlayEnabled);
+
+        setPublishingStageId(stageId);
+        try {
+            if (selfPlayEnabled) {
+                const schedulingConfig = await apiClient.get(`/api/stages/${stageId}/scheduling-config`).catch(() => null);
+                const deadlines = {
+                    ...((schedulingConfig as any)?.roundDeadlines ?? {}),
+                    ...((schedulingConfig as any)?.round_deadlines ?? {}),
+                };
+                if (Object.keys(deadlines).length === 0) {
+                    toast({
+                        title: 'Round Deadlines Required',
+                        description: 'Self-play mode is enabled. Configure round deadlines in the Round Scheduling tab before publishing.',
+                        variant: 'destructive',
+                    });
+                    return;
+                }
+            } else {
+                const matches = await apiClient.get<any[]>(`/api/stages/${stageId}/matches`).catch(() => []);
+                const firstRoundMatches = (matches || []).filter((m: any) => m.round_index === 0 && m.team1_id && m.team2_id);
+                const unscheduledCount = firstRoundMatches.filter((m: any) => !m.scheduled_time).length;
+                if (firstRoundMatches.length > 0 && unscheduledCount === firstRoundMatches.length) {
+                    toast({
+                        title: 'Match Scheduling Required',
+                        description: 'Schedule match times in the Round Scheduling tab before publishing.',
+                        variant: 'destructive',
+                    });
+                    return;
+                }
+            }
+
+            await apiClient.put(`/api/brackets/${version.id}`, { status: 'active', activated_at: new Date().toISOString() });
+            setBracketVersionInfo((prev) => ({ ...prev, [stageId]: { ...prev[stageId], status: 'active' } }));
+            toast({ title: 'Bracket Published!', description: 'The bracket is now visible to participants.' });
+            onUpdate();
+        } catch (error: any) {
+            toast({ title: 'Error', description: error.message || 'Failed to publish bracket', variant: 'destructive' });
+        } finally {
+            setPublishingStageId(null);
+        }
     };
 
     const [advancedStages, setAdvancedStages] = useState<Record<string, boolean>>({});
@@ -836,7 +895,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                         </div>
                                     )}
 
-                                    <div className="flex flex-wrap gap-3">
+                                    <div className="flex flex-wrap items-center gap-4">
                                         {/* Bracket Generation/Management Button */}
                                         {(() => {
                                             // Show loading state while checking brackets
@@ -867,7 +926,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                             const isBlocked = !stageBracketExists && !canGenerate && !stage.is_locked;
 
                                             return (
-                                                <div className="relative group">
+                                                <>
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
@@ -895,6 +954,35 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                         )}
                                                     </Button>
 
+                                                    {/* Publish Bracket Button - only when the bracket exists but is not active yet */}
+                                                    {stageBracketExists && bracketVersionInfo[stage.id]?.status !== 'active' && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="text-xs border-white bg-white text-black hover:bg-zinc-200 hover:text-black"
+                                                            onClick={() => void handlePublishStageBracket(stage.id)}
+                                                            disabled={publishingStageId === stage.id}
+                                                        >
+                                                            {publishingStageId === stage.id ? (
+                                                                <>
+                                                                    <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                                                                    Publishing...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Globe className="w-3.5 h-3.5 mr-2" />
+                                                                    Publish Bracket
+                                                                </>
+                                                            )}
+                                                        </Button>
+                                                    )}
+                                                    {/* Published badge - once the bracket is live */}
+                                                    {stageBracketExists && bracketVersionInfo[stage.id]?.status === 'active' && (
+                                                        <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                                                            <CheckCircle2 className="h-3.5 w-3.5" />
+                                                            Published
+                                                        </span>
+                                                    )}
                                                     {/* Delete Bracket Button - only show when bracket exists */}
                                                     {stageBracketExists && (
                                                         <Button
@@ -907,7 +995,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                             Delete Matches
                                                         </Button>
                                                     )}
-                                                </div>
+                                                </>
                                             );
                                         })()}
                                         {/* Winner Display - only on last completed stage */}

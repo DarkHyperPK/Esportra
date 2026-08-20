@@ -754,28 +754,18 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
                     {stage.format === 'round_robin' && (
                         <div className="space-y-2">
-                            <Label className="text-gray-300">Group Configuration</Label>
-                            {(() => {
-                                const cap = typeof stage.capacity === 'number' ? stage.capacity : (tournamentMaxParticipants || participantsCount || 0);
-                                const groupSize = 4; // Fixed group size
-                                const groupCount = cap > 0 ? Math.ceil(cap / groupSize) : 0;
-                                // Auto-update settings
-                                if (groupCount > 0 && stage.settings?.group_count !== groupCount) {
-                                    updateStageConfig(currentStageIndex, 'settings', { ...stage.settings, group_count: groupCount });
-                                }
-                                return (
-                                    <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
-                                        <p className="text-emerald-400 font-medium">
-                                            {groupCount} Groups × {groupSize} Teams each
-                                        </p>
-                                        {cap > 0 && cap % groupSize !== 0 && (
-                                            <p className="text-xs text-yellow-400 mt-1">
-                                                ⚠ {cap} teams isn't divisible by {groupSize}. Some groups may have {cap % groupSize} extra team(s).
-                                            </p>
-                                        )}
-                                    </div>
-                                );
-                            })()}
+                            <Label className="text-gray-300">Number of Groups</Label>
+                            <Input
+                                type="number"
+                                value={stage.settings?.group_count || ''}
+                                onChange={(e) => {
+                                    const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                    updateStageConfig(currentStageIndex, 'settings', { ...stage.settings, group_count: val });
+                                }}
+                                placeholder="1"
+                                className="bg-black/20 border-white/10 focus:border-emerald-500/50"
+                            />
+                            <p className="text-xs text-gray-500">Split teams into multiple round-robin groups.</p>
                         </div>
                     )}
 
@@ -1037,24 +1027,18 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
                             {manualFormState.format === 'round_robin' && (
                                 <div className="space-y-2">
-                                    <Label>Group Configuration</Label>
-                                    {(() => {
-                                        const cap = typeof manualFormState.capacity === 'number' ? manualFormState.capacity : (tournamentMaxParticipants || participantsCount || 0);
-                                        const groupSize = 4; // Fixed group size
-                                        const groupCount = cap > 0 ? Math.ceil(cap / groupSize) : 0;
-                                        return (
-                                            <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
-                                                <p className="text-emerald-400 font-medium">
-                                                    {groupCount > 0 ? `${groupCount} Groups × ${groupSize} Teams each` : 'Set capacity to calculate groups'}
-                                                </p>
-                                                {cap > 0 && cap % groupSize !== 0 && (
-                                                    <p className="text-xs text-yellow-400 mt-1">
-                                                        ⚠ {cap} teams isn't divisible by {groupSize}. Some groups may have {cap % groupSize} extra team(s).
-                                                    </p>
-                                                )}
-                                            </div>
-                                        );
-                                    })()}
+                                    <Label>Number of Groups</Label>
+                                    <Input
+                                        type="number"
+                                        value={manualFormState.settings?.group_count || ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value === '' ? undefined : Number(e.target.value);
+                                            const newSettings = { ...manualFormState.settings, group_count: val };
+                                            setManualFormState({ ...manualFormState, settings: newSettings });
+                                        }}
+                                        placeholder="1"
+                                    />
+                                    <p className="text-xs text-gray-500">Split teams into multiple round-robin groups.</p>
                                 </div>
                             )}
 
