@@ -19,7 +19,7 @@ export const ZONE_META: Record<PlacementZone, {
   mediaFields: MediaField[];
 }> = {
   homepage_ticker: { label: 'Homepage Ticker', maxSlots: 10, isGlobal: true, description: 'Logo scroll on landing page', mediaFields: ['logo'] },
-  partner_showcase: { label: 'Partner Showcase', maxSlots: 6, isGlobal: true, description: 'Full sections on /partners page', mediaFields: ['banner', 'logo'] },
+  partner_showcase: { label: 'Partner Showcase', maxSlots: 6, isGlobal: true, description: 'Full sections on /partners page', mediaFields: ['banner'] },
   sidebar_partner: { label: 'Sidebar Partner', maxSlots: 2, isGlobal: false, description: 'Tall vertical ads in tournament sidebar', mediaFields: ['tall_banner'] },
   wide_partner: { label: 'Wide Partner', maxSlots: 4, isGlobal: false, description: '2×2 grid cards in tournament content', mediaFields: ['banner'] },
   card_badge: { label: 'Card Badge', maxSlots: 1, isGlobal: false, description: '"Powered by" badge on this tournament card', mediaFields: ['logo'] },
