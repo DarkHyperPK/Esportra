@@ -7,8 +7,8 @@ import {
   Zap,
   History,
 } from 'lucide-react';
-import { useSponsorTournaments, type SponsorTournamentLink } from '@/hooks/useSponsorTournaments';
-import { usePlacementHistory, type HistoryEntry } from '@/hooks/usePlacementHistory';
+import { useSponsorTournaments, type SponsorTournamentLink } from '../hooks/useSponsorTournaments';
+import { usePlacementHistory, type HistoryEntry } from '../hooks/usePlacementHistory';
 
 const ZONE_LABELS: Record<string, string> = {
   homepage_ticker: 'Homepage Ticker',
