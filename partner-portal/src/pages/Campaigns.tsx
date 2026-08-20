@@ -1,15 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from 'recharts';
-import {
   Loader2,
   Trophy,
   Calendar,
@@ -23,7 +14,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { useSponsorTournaments, type SponsorTournamentLink } from '@/hooks/useSponsorTournaments';
-import { usePlacementAnalytics, useAnalyticsSummary, useAnalyticsPerformance } from '@/hooks/usePlacementAnalytics';
+import { usePlacementAnalytics, useAnalyticsSummary } from '@/hooks/usePlacementAnalytics';
 import { usePlacementHistory, type HistoryEntry } from '@/hooks/usePlacementHistory';
 import { useSlotAnalytics } from '@/hooks/useSlotAnalytics';
 import { usePartnerData } from '@/hooks/usePartnerData';
@@ -59,7 +50,6 @@ const Campaigns = () => {
   const { data: tournaments = [], isLoading, error, refetch } = useSponsorTournaments();
   const { data: summary } = useAnalyticsSummary(days);
   const { data: placementStats = [] } = usePlacementAnalytics(days);
-  const { data: performance = [] } = useAnalyticsPerformance(days);
   const { data: slotStats } = useSlotAnalytics(days);
   const { data: history = [] } = usePlacementHistory();
   const { data: partnerData } = usePartnerData();
@@ -101,12 +91,6 @@ const Campaigns = () => {
   const active = tournaments.filter((placement) => placement.lifecycle === 'live');
   const inactive = tournaments.filter((placement) => placement.lifecycle !== 'live');
 
-  const chartData = performance.map(p => ({
-    date: new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    impressions: p.impressions,
-    clicks: p.clicks,
-  }));
-
   return (
     <div className="space-y-10">
       {/* Header */}
@@ -142,41 +126,6 @@ const Campaigns = () => {
         </div>
       )}
 
-      {/* Daily Impressions Chart */}
-      {chartData.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-rose-400" />
-            <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Daily Performance ({days}d)</h3>
-          </div>
-          <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-6">
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
-                <defs>
-                  <linearGradient id="impGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="clkGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#71717a" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#71717a" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                <XAxis dataKey="date" tick={{ fill: '#52525b', fontSize: 10 }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fill: '#52525b', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={fmt} />
-                <Tooltip
-                  contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: '#a1a1aa' }}
-                  itemStyle={{ color: '#e4e4e7' }}
-                />
-                <Area type="monotone" dataKey="impressions" name="Impressions" stroke="#f43f5e" strokeWidth={2} fill="url(#impGrad)" dot={false} />
-                <Area type="monotone" dataKey="clicks" name="Clicks" stroke="#71717a" strokeWidth={1.5} fill="url(#clkGrad)" dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-      )}
 
       {/* Active Campaigns */}
       {active.length > 0 ? (
