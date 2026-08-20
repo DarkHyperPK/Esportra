@@ -1,6 +1,15 @@
 import { useState } from 'react';
-import { BarChart, MousePointerClick, Eye, TrendingUp, Loader2, Globe, Fingerprint } from 'lucide-react';
+import { BarChart as BarChartIcon, MousePointerClick, Eye, TrendingUp, Loader2, Globe, Fingerprint } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    Tooltip,
+    ResponsiveContainer,
+    CartesianGrid,
+} from 'recharts';
 import { usePartnerData } from '@/hooks/usePartnerData';
 import { useSponsorStats } from '@/hooks/useSponsors';
 import { useSponsorAudienceReport } from '@/hooks/useSponsorAudienceReport';
@@ -87,11 +96,6 @@ const Analytics = () => {
     };
 
     const chartData = getChartData();
-
-    // Auto-scale: use actual data max with a small minimum so bars are always visible
-    const maxImpressions = chartData.length > 0
-        ? Math.max(...chartData.map(d => d.impressions), 10)
-        : 10;
 
     // Harden tier mapping
     const normalizedTier = normalizeTier(sponsor?.tier);
@@ -209,7 +213,7 @@ const Analytics = () => {
             <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-8 relative overflow-hidden">
                 <div className="flex items-center justify-between mb-8">
                     <h3 className="font-bold flex items-center gap-2">
-                        <BarChart className="w-5 h-5 text-white" />
+                        <BarChartIcon className="w-5 h-5 text-white" />
                         Performance over time
                     </h3>
                     <div className="flex bg-black/50 rounded-lg p-1 gap-1">
@@ -241,61 +245,25 @@ const Analytics = () => {
 
                 {/* Chart Data Rendering */}
                 {chartData.length > 0 ? (
-                    <>
-                        {/* Legend */}
-                        <div className="flex items-center gap-6 mb-4">
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-sm bg-zinc-700" />
-                                <span className="text-[10px] font-mono text-zinc-500">GROSS</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-sm bg-cyan-500" />
-                                <span className="text-[10px] font-mono text-zinc-500">UNIQUE</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-sm bg-rose-500/40" />
-                                <span className="text-[10px] font-mono text-zinc-500">CLICKS</span>
-                            </div>
-                        </div>
-                        <div className="h-64 flex justify-between gap-3">
-                            {chartData.map((data, idx) => (
-                                <div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full">
-                                    <div className="w-full relative h-full flex items-end gap-[2px]">
-                                        {/* Tooltip */}
-                                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-zinc-800 text-white text-[10px] py-1.5 px-3 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none border border-white/10">
-                                            <div className="flex flex-col gap-0.5">
-                                                <span className="text-zinc-400">{data.impressions} Gross</span>
-                                                <span className="text-cyan-400">{data.uniqueImpressions} Unique</span>
-                                                <span className="text-rose-400">{data.clicks} Clicks</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Gross Impressions Bar */}
-                                        <div
-                                            className="flex-1 bg-zinc-800 rounded-t-sm relative group-hover:bg-zinc-700 transition-colors overflow-hidden"
-                                            style={{ height: `${Math.max((data.impressions / maxImpressions) * 100, 4)}%` }}
-                                        >
-                                            {/* Clicks overlay on gross bar */}
-                                            <div
-                                                className="absolute bottom-0 left-0 right-0 bg-rose-500/40"
-                                                style={{ height: `${data.impressions > 0 ? Math.min((data.clicks / data.impressions) * 100, 100) : 0}%` }}
-                                            />
-                                        </div>
-
-                                        {/* Unique Impressions Bar */}
-                                        <div
-                                            className="flex-1 bg-cyan-500/60 rounded-t-sm group-hover:bg-cyan-500/80 transition-colors"
-                                            style={{ height: `${Math.max((data.uniqueImpressions / maxImpressions) * 100, 2)}%` }}
-                                        />
-                                    </div>
-                                    <span className="text-[10px] font-mono text-zinc-600 whitespace-nowrap">{data.label}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </>
+                    <ResponsiveContainer width="100%" height={256}>
+                        <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }} barGap={2} barCategoryGap="30%">
+                            <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                            <XAxis dataKey="label" tick={{ fill: '#52525b', fontSize: 10 }} tickLine={false} axisLine={false} />
+                            <YAxis tick={{ fill: '#52525b', fontSize: 10 }} tickLine={false} axisLine={false} />
+                            <Tooltip
+                                contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 12 }}
+                                labelStyle={{ color: '#a1a1aa' }}
+                                itemStyle={{ color: '#e4e4e7' }}
+                                cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                            />
+                            <Bar dataKey="impressions" name="Gross" fill="#3f3f46" radius={[2, 2, 0, 0]} />
+                            <Bar dataKey="uniqueImpressions" name="Unique" fill="#22d3ee" opacity={0.7} radius={[2, 2, 0, 0]} />
+                            <Bar dataKey="clicks" name="Clicks" fill="#f43f5e" opacity={0.6} radius={[2, 2, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
                 ) : (
                     <div className="h-64 flex flex-col items-center justify-center text-zinc-600 border border-dashed border-white/10 rounded-xl">
-                        <BarChart className="w-8 h-8 mb-2 opacity-20" />
+                        <BarChartIcon className="w-8 h-8 mb-2 opacity-20" />
                         <p className="text-xs font-mono uppercase tracking-widest">No tracking data available yet</p>
                     </div>
                 )}

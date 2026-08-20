@@ -1,4 +1,14 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts';
 import {
   Loader2,
   Trophy,
@@ -9,10 +19,15 @@ import {
   TrendingDown,
   BarChart3,
   History,
+  Layers,
+  Lock,
 } from 'lucide-react';
 import { useSponsorTournaments, type SponsorTournamentLink } from '@/hooks/useSponsorTournaments';
-import { usePlacementAnalytics, useAnalyticsSummary } from '@/hooks/usePlacementAnalytics';
+import { usePlacementAnalytics, useAnalyticsSummary, useAnalyticsPerformance } from '@/hooks/usePlacementAnalytics';
 import { usePlacementHistory, type HistoryEntry } from '@/hooks/usePlacementHistory';
+import { useSlotAnalytics } from '@/hooks/useSlotAnalytics';
+import { usePartnerData } from '@/hooks/usePartnerData';
+import { normalizeTier } from '@/utils/permissions';
 
 const ZONE_LABELS: Record<string, string> = {
   homepage_ticker: 'Homepage Ticker',
@@ -33,11 +48,24 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   updated: { label: 'Updated', color: 'text-zinc-300' },
 };
 
+const DAY_OPTIONS = [7, 30, 90] as const;
+type Days = (typeof DAY_OPTIONS)[number];
+
+const fmt = (n: number) =>
+  n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${(n / 1_000).toFixed(1)}k` : String(n);
+
 const Campaigns = () => {
+  const [days, setDays] = useState<Days>(30);
   const { data: tournaments = [], isLoading, error, refetch } = useSponsorTournaments();
-  const { data: summary } = useAnalyticsSummary(30);
-  const { data: placementStats = [] } = usePlacementAnalytics(30);
+  const { data: summary } = useAnalyticsSummary(days);
+  const { data: placementStats = [] } = usePlacementAnalytics(days);
+  const { data: performance = [] } = useAnalyticsPerformance(days);
+  const { data: slotStats } = useSlotAnalytics(days);
   const { data: history = [] } = usePlacementHistory();
+  const { data: partnerData } = usePartnerData();
+
+  const tier = normalizeTier(partnerData?.sponsor?.tier);
+  const isAscendantPlus = tier === 'ascendant' || tier === 'radiant';
 
   if (isLoading) {
     return (
@@ -73,25 +101,81 @@ const Campaigns = () => {
   const active = tournaments.filter((placement) => placement.lifecycle === 'live');
   const inactive = tournaments.filter((placement) => placement.lifecycle !== 'live');
 
+  const chartData = performance.map(p => ({
+    date: new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    impressions: p.impressions,
+    clicks: p.clicks,
+  }));
+
   return (
     <div className="space-y-10">
       {/* Header */}
-      <div>
-        <h2 className="text-3xl font-black tracking-tight">
-          CAMPAIGN<span className="text-rose-500">_PLACEMENTS</span>
-        </h2>
-        <p className="text-zinc-500 text-sm mt-2 font-mono tracking-wider">
-          SPONSOR_PLACEMENTS // {tournaments.length} linked
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-3xl font-black tracking-tight">
+            CAMPAIGN<span className="text-rose-500">_PLACEMENTS</span>
+          </h2>
+          <p className="text-zinc-500 text-sm mt-2 font-mono tracking-wider">
+            SPONSOR_PLACEMENTS // {tournaments.length} linked
+          </p>
+        </div>
+        {/* Days selector */}
+        <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-1 self-center">
+          {DAY_OPTIONS.map(d => (
+            <button
+              key={d}
+              onClick={() => setDays(d)}
+              className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${days === d ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              {d}d
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* KPI Summary Cards */}
       {summary && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <KpiCard label="Impressions (30d)" value={summary.impressions.toLocaleString()} trend={summary.impressionsTrend} />
-          <KpiCard label="Clicks (30d)" value={summary.clicks.toLocaleString()} trend={summary.clicksTrend} />
+          <KpiCard label={`Impressions (${days}d)`} value={summary.impressions.toLocaleString()} trend={summary.impressionsTrend} />
+          <KpiCard label={`Clicks (${days}d)`} value={summary.clicks.toLocaleString()} trend={summary.clicksTrend} />
           <KpiCard label="CTR" value={`${summary.ctr.toFixed(1)}%`} />
         </div>
+      )}
+
+      {/* Daily Impressions Chart */}
+      {chartData.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-rose-400" />
+            <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Daily Performance ({days}d)</h3>
+          </div>
+          <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-6">
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                <defs>
+                  <linearGradient id="impGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="clkGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#71717a" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#71717a" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                <XAxis dataKey="date" tick={{ fill: '#52525b', fontSize: 10 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: '#52525b', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={fmt} />
+                <Tooltip
+                  contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: '#a1a1aa' }}
+                  itemStyle={{ color: '#e4e4e7' }}
+                />
+                <Area type="monotone" dataKey="impressions" name="Impressions" stroke="#f43f5e" strokeWidth={2} fill="url(#impGrad)" dot={false} />
+                <Area type="monotone" dataKey="clicks" name="Clicks" stroke="#71717a" strokeWidth={1.5} fill="url(#clkGrad)" dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
       )}
 
       {/* Active Campaigns */}
@@ -125,7 +209,7 @@ const Campaigns = () => {
           <div className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-blue-400" />
             <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">
-              Performance by Zone (30d)
+              Performance by Zone ({days}d)
             </h3>
           </div>
           <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
@@ -152,6 +236,58 @@ const Campaigns = () => {
           </div>
         </section>
       )}
+
+      {/* Per-Slot Analytics (ascendant+) */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Layers className="w-4 h-4 text-violet-400" />
+          <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">
+            Per-Placement Breakdown ({days}d)
+          </h3>
+        </div>
+        {!isAscendantPlus ? (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-8 flex flex-col items-center gap-3 text-center">
+            <Lock className="w-6 h-6 text-zinc-600" />
+            <p className="text-sm font-bold text-zinc-400">Ascendant tier required</p>
+            <p className="text-xs text-zinc-600 max-w-sm">
+              Upgrade to Ascendant to unlock per-tournament impression and click attribution across all your placements.
+            </p>
+          </div>
+        ) : slotStats === null ? (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-8 text-center text-sm text-zinc-500">
+            Could not load slot data.
+          </div>
+        ) : slotStats && slotStats.length > 0 ? (
+          <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-500">
+                <tr>
+                  <th className="px-4 py-3">Tournament</th>
+                  <th className="px-4 py-3">Zone</th>
+                  <th className="px-4 py-3 text-right">Impressions</th>
+                  <th className="px-4 py-3 text-right">Clicks</th>
+                  <th className="px-4 py-3 text-right">CTR</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800">
+                {slotStats.map((s) => (
+                  <tr key={`${s.tournamentId}-${s.placementZone}`} className="text-zinc-300">
+                    <td className="px-4 py-3 font-medium text-white">{s.tournamentName || 'Unknown'}</td>
+                    <td className="px-4 py-3 text-zinc-400">{ZONE_LABELS[s.placementZone] || s.placementZone}</td>
+                    <td className="px-4 py-3 text-right font-mono">{fmt(s.impressions)}</td>
+                    <td className="px-4 py-3 text-right font-mono">{fmt(s.clicks)}</td>
+                    <td className="px-4 py-3 text-right font-mono">{s.ctr.toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : isAscendantPlus && (
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-8 text-center text-sm text-zinc-500">
+            No slot data for this period yet.
+          </div>
+        )}
+      </section>
 
       {/* Inactive / Past */}
       {inactive.length > 0 && (
