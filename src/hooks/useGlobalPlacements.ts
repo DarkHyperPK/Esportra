@@ -24,6 +24,6 @@ export function useGlobalPlacements(zone: 'homepage_ticker' | 'partner_showcase'
   return useQuery({
     queryKey: ['global-placements', zone],
     queryFn: () => apiClient.get<GlobalPlacement[]>(`/api/placements/global?zone=${zone}`),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 }

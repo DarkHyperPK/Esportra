@@ -230,7 +230,7 @@ const Partners = () => {
                     <div className="flex flex-col">
                         {/* Showcase Section - Only for Radiant and Ascendant partners */}
                         {sponsors
-                            .filter(s => s.tier === 'radiant' || s.tier === 'ascendant')
+                            .filter(s => s.sponsorTier === 'radiant' || s.sponsorTier === 'ascendant')
                             .map((sponsor, idx) => (
                                 <PartnerSection key={sponsor.id} sponsor={sponsor} index={idx} />
                             ))}
