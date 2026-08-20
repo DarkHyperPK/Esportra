@@ -10,9 +10,9 @@ import {
   BarChart3,
   History,
 } from 'lucide-react';
-import { useSponsorTournaments, type SponsorTournamentLink } from '@/hooks/useSponsorTournaments';
-import { usePlacementAnalytics, useAnalyticsSummary } from '@/hooks/usePlacementAnalytics';
-import { usePlacementHistory, type HistoryEntry } from '@/hooks/usePlacementHistory';
+import { useSponsorTournaments, type SponsorTournamentLink } from '../hooks/useSponsorTournaments';
+import { usePlacementAnalytics, useAnalyticsSummary } from '../hooks/usePlacementAnalytics';
+import { usePlacementHistory, type HistoryEntry } from '../hooks/usePlacementHistory';
 
 const ZONE_LABELS: Record<string, string> = {
   homepage_ticker: 'Homepage Ticker',

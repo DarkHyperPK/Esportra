@@ -2,12 +2,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 const { refetch, useSponsorTournaments } = vi.hoisted(() => ({ refetch: vi.fn(), useSponsorTournaments: vi.fn() }));
-vi.mock('@/hooks/useSponsorTournaments', () => ({ useSponsorTournaments }));
-vi.mock('@/hooks/usePlacementAnalytics', () => ({
+vi.mock('../hooks/useSponsorTournaments', () => ({ useSponsorTournaments }));
+vi.mock('../hooks/usePlacementAnalytics', () => ({
   usePlacementAnalytics: () => ({ data: [], isLoading: false }),
   useAnalyticsSummary: () => ({ data: null, isLoading: false }),
 }));
-vi.mock('@/hooks/usePlacementHistory', () => ({
+vi.mock('../hooks/usePlacementHistory', () => ({
   usePlacementHistory: () => ({ data: [], isLoading: false }),
 }));
 import Campaigns from './Campaigns';
