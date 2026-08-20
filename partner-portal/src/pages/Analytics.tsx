@@ -150,11 +150,12 @@ const Analytics = () => {
     }
 
     // Default to 0 if no stats
+    const rawCtr = stats?.ctr ?? '0.0';
     const displayStats = {
         impressions: stats?.impressions || 0,
         uniqueImpressions: partnerData?.stats?.uniqueImpressions || 0,
         clicks: stats?.clicks || 0,
-        ctr: stats?.ctr || '0.0',
+        ctr: String(rawCtr).replace(/%$/, ''),
     };
 
     return (
