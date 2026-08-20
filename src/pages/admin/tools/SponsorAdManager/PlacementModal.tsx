@@ -159,7 +159,7 @@ export const PlacementModal: React.FC<Props> = ({
               <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1 block">Sponsor</label>
               <select
                 value={sponsorId}
-                onChange={e => { setSponsorId(e.target.value); setZone(''); }}
+                onChange={e => { setSponsorId(e.target.value); if (!lockedZone) setZone(''); }}
                 className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-white"
                 required
               >
@@ -279,7 +279,7 @@ export const PlacementModal: React.FC<Props> = ({
               <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
               <button
                 type="submit"
-                disabled={!editing && (!sponsorId || !zone || (!zoneMeta?.isGlobal && !tournamentId && !lockedTournamentId))}
+                disabled={!editing && (!sponsorId || !(zone || lockedZone) || (!zoneMeta?.isGlobal && !tournamentId && !lockedTournamentId))}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded transition-colors"
               >
                 {editing ? 'Save' : 'Assign'}
