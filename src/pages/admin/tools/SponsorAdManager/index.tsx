@@ -23,8 +23,9 @@ import { PlacementModal } from './PlacementModal';
 import { PlacementPreview } from './PlacementPreview';
 import { AuditLog } from './AuditLog';
 import { PlacementInventory } from './PlacementInventory';
+import { SponsorCrm } from './SponsorCrm';
 
-type ViewMode = 'tournament' | 'sponsor' | 'placements' | 'audit';
+type ViewMode = 'crm' | 'tournament' | 'sponsor' | 'placements' | 'audit';
 
 interface SponsorOption {
   id: string;
@@ -44,6 +45,7 @@ export default function SponsorAdManager() {
   useAdminAccess();
 
   const [view, setView] = useState<ViewMode>('tournament');
+  const [crmSelectedSponsorId, setCrmSelectedSponsorId] = useState<string | undefined>();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Placement | null>(null);
   const [modalLocks, setModalLocks] = useState<{ sponsorId?: string; zone?: PlacementZone; tournamentId?: string | null }>({});
@@ -164,6 +166,12 @@ export default function SponsorAdManager() {
       <div className="flex items-center mb-6">
         <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-1">
           <button
+            onClick={() => setView('crm')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'crm' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            Sponsors
+          </button>
+          <button
             onClick={() => setView('tournament')}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'tournament' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
           >
@@ -191,7 +199,9 @@ export default function SponsorAdManager() {
       </div>
 
       {/* Active view */}
-      {view === 'tournament' ? (
+      {view === 'crm' ? (
+        <SponsorCrm onSelectSponsor={id => { setCrmSelectedSponsorId(id); setView('sponsor'); }} />
+      ) : view === 'tournament' ? (
         <TournamentView
           tournaments={tournaments}
           sponsors={sponsors}
@@ -205,6 +215,7 @@ export default function SponsorAdManager() {
       ) : view === 'sponsor' ? (
         <SponsorView
           sponsors={sponsors}
+          initialSponsorId={crmSelectedSponsorId}
           onAssign={openModalForSponsor}
           onEdit={openEditModal}
           onDelete={handleDelete}

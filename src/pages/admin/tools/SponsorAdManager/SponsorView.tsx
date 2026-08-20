@@ -8,6 +8,7 @@ interface Sponsor { id: string; name: string; tier: string; logo_url?: string; }
 
 interface Props {
   sponsors: Sponsor[];
+  initialSponsorId?: string;
   onAssign: (sponsorId: string) => void;
   onEdit: (placement: Placement) => void;
   onDelete: (id: string) => void;
@@ -16,8 +17,12 @@ interface Props {
   onUnassign?: (placement: Placement) => void;
 }
 
-export const SponsorView: React.FC<Props> = ({ sponsors, onAssign, onEdit, onDelete, onReplace, onRemove, onUnassign }) => {
-  const [selectedId, setSelectedId] = useState('');
+export const SponsorView: React.FC<Props> = ({ sponsors, initialSponsorId, onAssign, onEdit, onDelete, onReplace, onRemove, onUnassign }) => {
+  const [selectedId, setSelectedId] = useState(initialSponsorId ?? '');
+
+  useEffect(() => {
+    if (initialSponsorId) setSelectedId(initialSponsorId);
+  }, [initialSponsorId]);
 
   useEffect(() => {
     if (!selectedId && sponsors.length > 0) setSelectedId(sponsors[0].id);
