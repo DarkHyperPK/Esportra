@@ -25,8 +25,9 @@ import { AuditLog } from './AuditLog';
 import { PlacementInventory } from './PlacementInventory';
 import { SponsorCrm } from './SponsorCrm';
 import { PartnersPageView } from './PartnersPageView';
+import { HomepageTickerView } from './HomepageTickerView';
 
-type ViewMode = 'crm' | 'partners' | 'tournament' | 'sponsor' | 'placements' | 'audit';
+type ViewMode = 'crm' | 'ticker' | 'partners' | 'tournament' | 'sponsor' | 'placements' | 'audit';
 
 interface SponsorOption {
   id: string;
@@ -90,6 +91,12 @@ export default function SponsorAdManager() {
   const openPartnersSlotModal = (slotNumber: number) => {
     setEditing(null);
     setModalLocks({ zone: 'partner_showcase', slotNumber });
+    setModalOpen(true);
+  };
+
+  const openTickerSlotModal = (slotNumber: number) => {
+    setEditing(null);
+    setModalLocks({ zone: 'homepage_ticker', slotNumber });
     setModalOpen(true);
   };
 
@@ -179,6 +186,12 @@ export default function SponsorAdManager() {
             Sponsors
           </button>
           <button
+            onClick={() => setView('ticker')}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'ticker' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            Ticker
+          </button>
+          <button
             onClick={() => setView('partners')}
             className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'partners' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
           >
@@ -214,6 +227,15 @@ export default function SponsorAdManager() {
       {/* Active view */}
       {view === 'crm' ? (
         <SponsorCrm onSelectSponsor={id => { setCrmSelectedSponsorId(id); setView('sponsor'); }} />
+      ) : view === 'ticker' ? (
+        <HomepageTickerView
+          onAssignSlot={openTickerSlotModal}
+          onEdit={openEditModal}
+          onDelete={handleDelete}
+          onReplace={handleReplace}
+          onRemove={handleRemove}
+          onUnassign={handleUnassign}
+        />
       ) : view === 'partners' ? (
         <PartnersPageView
           onAssignSlot={openPartnersSlotModal}

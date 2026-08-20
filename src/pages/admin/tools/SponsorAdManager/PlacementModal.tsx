@@ -121,7 +121,7 @@ export const PlacementModal: React.FC<Props> = ({
       onSubmit({
         sponsorId,
         tournamentId: isGlobal ? null : (tournamentId || null),
-        placementZone: zone,
+        placementZone: zone as PlacementZone,
         slotNumber,
         bannerUrl: bannerUrl || null,
         bannerAssetId,
