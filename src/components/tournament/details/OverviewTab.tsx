@@ -23,23 +23,11 @@ const decodeHtml = (html: string) => {
                .replace(/&#34;/g, '"');
 };
 
-interface Stage {
-    id: string;
-    name: string;
-    stage_order: number;
-    format?: string;
-    scheduling_config?: {
-        self_play_enabled?: boolean;
-        checkin_window_minutes?: number;
-    };
-}
-
 interface OverviewTabProps {
     tournament: any;
-    stages?: Stage[];
 }
 
-export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [] }) => {
+export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament }) => {
     const navigate = useNavigate();
 
     // Check if vertical ad is enabled for this tournament
