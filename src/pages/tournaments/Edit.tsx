@@ -144,6 +144,9 @@ const EditTournament = () => {
         entryFee: tournamentData.entry_fee?.toString() || 'Free',
         currency: tournamentData.currency || 'USD',
         paymentInstructions: tournamentData.payment_instructions || '',
+        payoutMethod: (tournamentData.payout_method as 'manual' | 'gateway') || 'manual',
+        manualPayoutNotes: tournamentData.manual_payout_notes || '',
+        prizeDistribution: tournamentData.prize_distribution ?? null,
         description: tournamentData.description || 'Tournament description goes here.',
         discordUrl: '', // Not in DB schema shown
         twitterUrl: '', // Not in DB schema shown

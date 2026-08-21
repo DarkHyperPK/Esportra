@@ -12,6 +12,8 @@ import { TeamsTab } from '@/components/tournament/details/TeamsTab';
 import { BracketsTab } from '@/components/tournament/details/BracketsTab';
 import { StagesTab } from '@/components/tournament/details/StagesTab';
 import { RulesTab } from '@/components/tournament/details/RulesTab';
+import PrizesTab from '@/components/tournament/details/PrizesTab';
+import StandingsTab from '@/components/tournament/details/StandingsTab';
 import ImageUploader from '@/components/tournament/wizard/ImageUploader';
 import { usePublicBracketData } from '@/hooks/usePublicBracketData';
 import { CancelButton, CtaButton, OutlineButton } from '@/components/ui/app-buttons';
@@ -691,8 +693,8 @@ const TournamentDetails = () => {
               <TabsList className="border-0 bg-transparent h-auto p-0 w-full flex justify-between">
                 {(() => {
                   const tabs = isBR
-                    ? ['Overview', terminology.competitorLabelPlural, 'Stages', 'Leaderboard', 'Game Schedule', 'Rules']
-                    : ['Overview', terminology.competitorLabelPlural, 'Brackets', 'Stages', 'Rules'];
+                    ? ['Overview', terminology.competitorLabelPlural, 'Stages', 'Leaderboard', 'Game Schedule', 'Prizes', 'Standings', 'Rules']
+                    : ['Overview', terminology.competitorLabelPlural, 'Brackets', 'Stages', 'Prizes', 'Standings', 'Rules'];
                   return tabs;
                 })().map((tab) => (
                   <TabsTrigger
@@ -900,6 +902,26 @@ const TournamentDetails = () => {
               </TabsContent>
             </>
           )}
+
+          <TabsContent value="prizes">
+            <div className="container mx-auto px-4">
+              <PrizesTab
+                tournamentId={tournament.id}
+                prizePool={tournament.prize_pool}
+                currency={(tournament as any).currency}
+                payoutMethod={tournament.payout_method}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="standings">
+            <div className="container mx-auto px-4">
+              <StandingsTab
+                tournamentId={tournament.id}
+                currency={(tournament as any).currency}
+              />
+            </div>
+          </TabsContent>
 
           <TabsContent value="rules">
             <div className="container mx-auto px-4">

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { DollarSign, FileText, Link as LinkIcon, MessageCircle, Twitter } from 'lucide-react';
+import { FileText, Link as LinkIcon, MessageCircle, Twitter } from 'lucide-react';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import ImageUploader from './ImageUploader';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
@@ -14,7 +14,6 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
     const { profile } = useAuth();
     const [bannerMode, setBannerMode] = useState<'upload' | 'artwork'>('upload');
 
-    // Sanitize names for storage path
     const sanitize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
     const organizerName = sanitize(profile?.username || profile?.full_name || 'unknown-organizer');
@@ -35,7 +34,6 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
             {/* Image Uploads */}
             <div className="w-full h-px bg-white/5 my-6" />
             <div className="max-w-2xl space-y-4">
-                {/* Mode toggle */}
                 <div className="flex gap-2">
                     <button
                         type="button"
@@ -87,129 +85,6 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                     />
                 )}
             </div>
-
-            {/* Currency & Prize Pool & Entry Fee */}
-            <div className="w-full h-px bg-white/5 my-6" />
-
-            {/* Currency Selector */}
-            <div className="space-y-2 mb-6">
-                <Label htmlFor="currency" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    <DollarSign className="w-4 h-4" />
-                    Currency
-                </Label>
-                <select
-                    id="currency"
-                    value={data.currency || 'USD'}
-                    onChange={(e) => updateData({ currency: e.target.value })}
-                    className="w-full md:w-48 h-10 rounded-md border border-white/10 bg-black/40 text-white px-3 text-sm focus:outline-none focus:border-indigo-500"
-                >
-                    {['USD', 'EUR', 'GBP', 'AED', 'SAR', 'PKR', 'INR', 'TRY', 'EGP', 'QAR', 'MYR', 'SGD', 'BRL', 'JPY'].map(c => (
-                        <option key={c} value={c}>{c}</option>
-                    ))}
-                </select>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2 md:border-r border-white/10 pr-6">
-                    <Label htmlFor="prizePool" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                        <DollarSign className="w-4 h-4" />
-                        Prize Pool ({data.currency || 'USD'}) *
-                    </Label>
-                    <Input
-                        id="prizePool"
-                        placeholder="e.g., 50000"
-                        value={data.prizePool}
-                        onChange={(e) => updateData({ prizePool: e.target.value })}
-                        className={cn("font-bold tracking-tight", errors.prizePool && 'border-red-500')}
-                    />
-                    {errors.prizePool && <p className="text-sm text-red-500">{errors.prizePool}</p>}
-                </div>
-                <div className="space-y-4">
-                    <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                        🏆 Prize Distribution
-                    </Label>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <Label htmlFor="winnerPrize" className="text-xs text-gray-400">Winner %</Label>
-                            <Input
-                                id="winnerPrize"
-                                placeholder="60%"
-                                value={(() => {
-                                    const match = (data.rewards || '').match(/1st:\s*(\d+)%/i);
-                                    return match ? match[1] : '';
-                                })()}
-                                onChange={(e) => {
-                                    const val = e.target.value.replace(/[^0-9]/g, '');
-                                    const currentRunnerUpMatch = (data.rewards || '').match(/2nd:\s*(\d+)%/i);
-                                    const runnerUpVal = currentRunnerUpMatch ? currentRunnerUpMatch[1] : '';
-
-                                    const newRewards = val || runnerUpVal
-                                        ? `1st: ${val || 0}% | 2nd: ${runnerUpVal || 0}%`
-                                        : '';
-                                    updateData({ rewards: newRewards });
-                                }}
-                                className="font-bold tracking-tight bg-black/20 border-gold-500/30 focus:border-gold-500"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="runnerUpPrize" className="text-xs text-gray-400">Runner-up %</Label>
-                            <Input
-                                id="runnerUpPrize"
-                                placeholder="30%"
-                                value={(() => {
-                                    const match = (data.rewards || '').match(/2nd:\s*(\d+)%/i);
-                                    return match ? match[1] : '';
-                                })()}
-                                onChange={(e) => {
-                                    const val = e.target.value.replace(/[^0-9]/g, '');
-                                    const currentWinnerMatch = (data.rewards || '').match(/1st:\s*(\d+)%/i);
-                                    const winnerVal = currentWinnerMatch ? currentWinnerMatch[1] : '';
-
-                                    const newRewards = winnerVal || val
-                                        ? `1st: ${winnerVal || 0}% | 2nd: ${val || 0}%`
-                                        : '';
-                                    updateData({ rewards: newRewards });
-                                }}
-                                className="font-bold tracking-tight bg-black/20 border-silver-500/30 focus:border-silver-500"
-                            />
-                        </div>
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="entryFee" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                        <DollarSign className="w-4 h-4" />
-                        Entry Fee ({data.currency || 'USD'})
-                    </Label>
-                    <Input
-                        id="entryFee"
-                        placeholder="Enter amount or 'Free'"
-                        value={data.entryFee}
-                        onChange={(e) => updateData({ entryFee: e.target.value })}
-                        className={cn("font-bold tracking-tight", errors.entryFee && 'border-red-500')}
-                    />
-                    {errors.entryFee && <p className="text-sm text-red-500">{errors.entryFee}</p>}
-                    <p className="text-xs text-gray-500">Type "Free" for no entry fee</p>
-                </div>
-            </div>
-
-            {/* Payment Instructions — only shown for paid tournaments */}
-            {data.entryFee && data.entryFee.toLowerCase() !== 'free' && data.entryFee !== '0' && (
-                <div className="space-y-2 mt-4">
-                    <Label htmlFor="paymentInstructions" className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                        <DollarSign className="w-4 h-4" />
-                        Payment Instructions
-                    </Label>
-                    <textarea
-                        id="paymentInstructions"
-                        rows={4}
-                        placeholder="How should participants pay? E.g.:\nBank: ABC Bank, Account# 1234567890, IBAN: PK00...\nJazzCash/EasyPaisa: 0300-1234567\nAfter payment, upload receipt screenshot during registration."
-                        value={data.paymentInstructions}
-                        onChange={(e) => updateData({ paymentInstructions: e.target.value })}
-                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-rose-500/50"
-                    />
-                    <p className="text-xs text-gray-500">Players will see these instructions when registering and be asked to upload a payment receipt</p>
-                </div>
-            )}
 
             {/* Description */}
             <div className="w-full h-px bg-white/5 my-6" />

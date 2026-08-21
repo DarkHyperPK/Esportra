@@ -78,6 +78,7 @@ import { useOrganizerDisputeUnread } from '@/hooks/useOrganizerDisputeUnread';
 import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnouncementPanel';
 // Staff management has moved to Organization Settings (OrganizationStaffManager)
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
+import { PrizeDistributionTab } from '@/components/organizer/PrizeDistributionTab';
 import { BRStageManagementTab } from '@/components/organizer/tabs/BRStageManagementTab';
 import { BRGamesTab } from '@/components/organizer/tabs/BRGamesTab';
 import { BRScheduleTab } from '@/components/organizer/tabs/BRScheduleTab';
@@ -332,7 +333,7 @@ const TournamentDashboard = () => {
     || { name: 'Default', placements: [10, 6, 5, 4, 3, 2, 1, 1], killPoints: 1, killCap: null };
 
   // Tab State & Direction
-  const TAB_ORDER = ['overview', 'participants', 'stages', 'brackets', 'schedule', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
+  const TAB_ORDER = ['overview', 'participants', 'stages', 'brackets', 'prizes', 'schedule', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
   // activeTab is declared below with location.state init
   const [direction, setDirection] = useState(0);
   const prevTabRef = React.useRef(0);
@@ -1632,8 +1633,8 @@ const TournamentDashboard = () => {
                       getPersistedTournamentFormat(tournament),
                     );
                     const mobileTabs = isBRMobile
-                      ? ['overview', 'participants', 'stages', 'schedule', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
-                      : ['overview', 'participants', 'stages', 'brackets', 'schedule', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
+                      ? ['overview', 'participants', 'stages', 'prizes', 'schedule', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                      : ['overview', 'participants', 'stages', 'brackets', 'prizes', 'schedule', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
                     return mobileTabs.map((tab) => {
                     // Filter tabs based on permissions
                     if (tab === 'bans' && !canManageTeams) return null;
@@ -1670,8 +1671,8 @@ const TournamentDashboard = () => {
     getPersistedTournamentFormat(tournament),
   );
                   const tabs = isBR
-                    ? ['overview', 'participants', 'stages', 'schedule', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
-                    : ['overview', 'participants', 'stages', 'brackets', 'schedule', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
+                    ? ['overview', 'participants', 'stages', 'prizes', 'schedule', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                    : ['overview', 'participants', 'stages', 'brackets', 'prizes', 'schedule', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
                   return tabs.map((tab) => {
                   if (tab === 'brackets') {
                     return (
@@ -1801,6 +1802,14 @@ const TournamentDashboard = () => {
                         checkInRequired={!!tournament.check_in_required}
                       />
                     )}
+                  </TabTransition>
+                </TabsContent>
+              )}
+
+              {activeTab === 'prizes' && canActAsOwner && (
+                <TabsContent value="prizes" forceMount key="prizes">
+                  <TabTransition direction={direction}>
+                    <PrizeDistributionTab tournament={tournament} />
                   </TabTransition>
                 </TabsContent>
               )}

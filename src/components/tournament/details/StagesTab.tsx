@@ -43,6 +43,8 @@ interface Stage {
     advancement_count: number | null;
     is_locked: boolean;
     best_of: number | null;
+    bo_mode?: 'per_stage' | 'per_round';
+    round_bo_overrides?: Record<string, number>;
     map_pool: string[] | null;
     config: any;
 }
@@ -360,10 +362,19 @@ export const StagesTab: React.FC<StagesTabProps> = ({
                                                 </div>
                                                 <div>
                                                     <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-0.5">Match Settings</p>
-                                                    <p className="text-sm text-zinc-300">
-                                                        Best of <span className="text-white font-semibold">{stage.best_of || 1}</span>
-                                                        {stage.config?.veto_enabled && <span className="text-zinc-500 text-xs ml-1">(Veto On)</span>}
-                                                    </p>
+                                                    {stage.bo_mode === 'per_round' && stage.round_bo_overrides && Object.keys(stage.round_bo_overrides).length > 0 ? (
+                                                        <div>
+                                                            <p className="text-sm text-zinc-300">Per-round series{stage.config?.veto_enabled && <span className="text-zinc-500 text-xs ml-1">(Veto On)</span>}</p>
+                                                            <p className="text-xs text-zinc-500 mt-0.5">
+                                                                {Object.entries(stage.round_bo_overrides).map(([round, bo]) => `${round}: BO${bo}`).join(' · ')}
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-sm text-zinc-300">
+                                                            Best of <span className="text-white font-semibold">{stage.best_of || 1}</span>
+                                                            {stage.config?.veto_enabled && <span className="text-zinc-500 text-xs ml-1">(Veto On)</span>}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
