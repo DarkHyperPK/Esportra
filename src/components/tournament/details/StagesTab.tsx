@@ -364,17 +364,22 @@ export const StagesTab: React.FC<StagesTabProps> = ({
                                                     <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-0.5">Match Settings</p>
                                                     {stage.bo_mode === 'per_round' && stage.round_bo_overrides && Object.keys(stage.round_bo_overrides).length > 0 ? (
                                                         <div>
-                                                            <p className="text-sm text-zinc-300">Per-round series{stage.config?.veto_enabled && <span className="text-zinc-500 text-xs ml-1">(Veto On)</span>}</p>
-                                                            <p className="text-xs text-zinc-500 mt-0.5">
+                                                            <p className="text-sm text-zinc-300 mb-1">Per-round series{stage.config?.veto_enabled && <span className="text-zinc-500 text-xs ml-1">(Veto On)</span>}</p>
+                                                            <ul className="space-y-0.5">
                                                                 {Object.entries(stage.round_bo_overrides).map(([round, bo]) => {
-                                                                        const label = round === 'grand_final' ? 'GF'
-                                                                            : round === 'final' ? 'Final'
-                                                                            : round === 'semifinal' ? 'Semi'
-                                                                            : /^round_(\d+)$/.test(round) ? `R${round.replace('round_', '')}`
-                                                                            : round;
-                                                                        return `${label}: BO${bo}`;
-                                                                    }).join(' · ')}
-                                                            </p>
+                                                                    const label = round === 'grand_final' ? 'Grand Final'
+                                                                        : round === 'final' ? 'Final'
+                                                                        : round === 'semifinal' ? 'Semifinal'
+                                                                        : /^round_(\d+)$/.test(round) ? `Round ${round.replace('round_', '')}`
+                                                                        : round;
+                                                                    return (
+                                                                        <li key={round} className="flex items-center justify-between text-xs">
+                                                                            <span className="text-zinc-500">{label}</span>
+                                                                            <span className="text-zinc-300 font-medium ml-4">BO{bo}</span>
+                                                                        </li>
+                                                                    );
+                                                                })}
+                                                            </ul>
                                                         </div>
                                                     ) : (
                                                         <p className="text-sm text-zinc-300">
