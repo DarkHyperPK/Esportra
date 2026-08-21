@@ -68,9 +68,9 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
     const hasPrizePool = prizePool > 0;
     const isGateway = payoutsData?.payment_method === 'gateway';
 
-    const handleResolve = async (force = false) => {
+    const handleResolve = async () => {
         try {
-            await resolvePlacements.mutateAsync({ tournamentId, force });
+            await resolvePlacements.mutateAsync({ tournamentId, force: true });
             toast({ title: 'Placements Updated', description: 'Tournament placements have been recalculated.' });
         } catch {
             toast({ title: 'Error', description: 'Could not resolve placements.', variant: 'destructive' });
@@ -163,7 +163,7 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                     <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleResolve(true)}
+                        onClick={handleResolve}
                         disabled={resolvePlacements.isPending}
                         className="text-xs"
                     >
@@ -218,13 +218,13 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                 <section className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Cash Payouts</h3>
 
-                    {!isGateway && payoutsData?.manual_payout_notes && (
+                    {!payoutsLoading && !isGateway && payoutsData?.manual_payout_notes && (
                         <div className="rounded-none border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-gray-300">
                             <span className="font-medium text-white">Payment Instructions: </span>
                             {payoutsData.manual_payout_notes}
                         </div>
                     )}
-                    {isGateway && (
+                    {!payoutsLoading && isGateway && (
                         <div className="rounded-none border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-gray-400">
                             Payouts for this tournament are managed by Esportra. Funds collected via payment gateway are in platform custody and will be disbursed after verification.
                         </div>
