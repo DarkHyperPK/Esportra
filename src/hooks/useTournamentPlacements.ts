@@ -5,7 +5,10 @@ import type { ResolvedPlacement } from '@/types/prizeDistribution';
 export function useTournamentPlacements(tournamentId?: string) {
     return useQuery({
         queryKey: ['tournament-placements', tournamentId],
-        queryFn: () => apiClient.get<ResolvedPlacement[]>(`/api/tournaments/${tournamentId}/placements`),
+        queryFn: async () => {
+            const res = await apiClient.get<{ placements: ResolvedPlacement[] }>(`/api/tournaments/${tournamentId}/placements`);
+            return res.placements ?? [];
+        },
         enabled: !!tournamentId,
         staleTime: 60_000,
     });

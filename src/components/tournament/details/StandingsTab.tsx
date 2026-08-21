@@ -24,7 +24,7 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
         return <div className="py-12 text-center text-gray-500 text-sm">Loading standings...</div>;
     }
 
-    if (!placements || placements.length === 0) {
+    if (!placements || !Array.isArray(placements) || placements.length === 0) {
         return (
             <div className="py-12 text-center">
                 <Trophy className="w-10 h-10 text-gray-600 mx-auto mb-3" />

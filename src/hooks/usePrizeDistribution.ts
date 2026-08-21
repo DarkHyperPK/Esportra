@@ -5,7 +5,10 @@ import type { PrizeDistributionConfig, PrizeDistributionTemplate } from '@/types
 export function usePrizeDistribution(tournamentId?: string) {
     return useQuery({
         queryKey: ['prize-distribution', tournamentId],
-        queryFn: () => apiClient.get<PrizeDistributionConfig>(`/api/tournaments/${tournamentId}/prize-distribution`),
+        queryFn: async () => {
+            const res = await apiClient.get<{ distribution: PrizeDistributionConfig | null }>(`/api/tournaments/${tournamentId}/prize-distribution`);
+            return res.distribution ?? null;
+        },
         enabled: !!tournamentId,
         staleTime: 60_000,
     });

@@ -21,7 +21,7 @@ const PrizesTab: React.FC<PrizesTabProps> = ({ tournamentId, prizePool, currency
         return <div className="py-12 text-center text-gray-500 text-sm">Loading prize information...</div>;
     }
 
-    if (!config || config.placements.length === 0) {
+    if (!config || !config.placements?.length) {
         return (
             <div className="py-12 text-center">
                 <Trophy className="w-10 h-10 text-gray-600 mx-auto mb-3" />
