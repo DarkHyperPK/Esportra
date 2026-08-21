@@ -77,6 +77,7 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
     const prizePool = parseFloat(tournament.prize_pool ?? '0') || 0;
     const currency = (tournament as any).currency ?? 'USD';
     const hasPrizePool = prizePool > 0;
+    const isGateway = payoutsData?.payment_method === 'gateway';
 
     const handleResolve = async (force = false) => {
         try {
@@ -114,17 +115,9 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
         <div className="space-y-8 py-4">
             {/* ── Section A: Prize Distribution Config ───────────────────── */}
             <section className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Trophy className="w-5 h-5 text-yellow-400" />
-                        <h3 className="text-lg font-semibold text-white">Prize Distribution</h3>
-                    </div>
-                    <a
-                        href={`/organizer/tournament/${tournament.slug ?? tournamentId}?tab=settings`}
-                        className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                    >
-                        Change payout method in Settings
-                    </a>
+                <div className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-yellow-400" />
+                    <h3 className="text-lg font-semibold text-white">Prize Distribution</h3>
                 </div>
 
                 {configLoading ? (
@@ -259,15 +252,15 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                 <section className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Cash Payouts</h3>
 
-                    {payoutsData?.payment_method === 'manual' && payoutsData?.manual_payout_notes && (
+                    {!isGateway && payoutsData?.manual_payout_notes && (
                         <div className="rounded-none border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-gray-300">
                             <span className="font-medium text-white">Payment Instructions: </span>
                             {payoutsData.manual_payout_notes}
                         </div>
                     )}
-                    {payoutsData?.payment_method === 'gateway' && (
-                        <div className="rounded-none border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-sm text-yellow-300">
-                            Gateway payouts are not yet available. Manually update statuses below until gateway integration is live.
+                    {isGateway && (
+                        <div className="rounded-none border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-gray-400">
+                            Payouts for this tournament are managed by Esportra. Funds collected via payment gateway are in platform custody and will be disbursed after verification.
                         </div>
                     )}
 
@@ -286,7 +279,7 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                                         <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Placement</th>
                                         <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Amount</th>
                                         <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
-                                        <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>
+                                        {!isGateway && <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Actions</th>}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
@@ -302,21 +295,23 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                                                 <td className="px-4 py-3">
                                                     <PayoutStatusBadge status={payout.status} />
                                                 </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-2">
-                                                        {nextStatuses.map(s => (
-                                                            <button
-                                                                key={s}
-                                                                type="button"
-                                                                disabled={updatePayout.isPending}
-                                                                onClick={() => handlePayoutStatus(payout, s)}
-                                                                className="text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 rounded px-2 py-1 transition-colors disabled:opacity-50"
-                                                            >
-                                                                Mark {s}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </td>
+                                                {!isGateway && (
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            {nextStatuses.map(s => (
+                                                                <button
+                                                                    key={s}
+                                                                    type="button"
+                                                                    disabled={updatePayout.isPending}
+                                                                    onClick={() => handlePayoutStatus(payout, s)}
+                                                                    className="text-xs text-gray-400 hover:text-white border border-white/10 hover:border-white/20 rounded px-2 py-1 transition-colors disabled:opacity-50"
+                                                                >
+                                                                    Mark {s}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                )}
                                             </tr>
                                         );
                                     })}
