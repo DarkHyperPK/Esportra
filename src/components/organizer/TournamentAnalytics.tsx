@@ -1,4 +1,5 @@
 import { BarChart3, Trophy, Users, Wallet } from "lucide-react";
+import { formatCurrency } from '@/utils/formatCurrency';
 import {
   CartesianGrid,
   Cell,
@@ -85,7 +86,7 @@ const TournamentAnalytics = () => {
       <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <CommandMetric label="Total Tournaments" value={analyticsData.totalTournaments} icon={<Trophy className="h-4 w-4" />} />
         <CommandMetric label="Participants" value={analyticsData.totalParticipants} icon={<Users className="h-4 w-4" />} />
-        <CommandMetric label="Prize Pool" value={`$${analyticsData.totalPrizePool.toLocaleString()}`} icon={<Wallet className="h-4 w-4" />} />
+        <CommandMetric label="Prize Pool" value={formatCurrency(analyticsData.totalPrizePool, 'USD')} icon={<Wallet className="h-4 w-4" />} />
         <CommandMetric label="Active Events" value={analyticsData.activeTournaments} icon={<BarChart3 className="h-4 w-4" />} />
       </div>
 

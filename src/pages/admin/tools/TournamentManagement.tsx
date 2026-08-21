@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatCurrency } from '@/utils/formatCurrency';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -579,7 +580,7 @@ const TournamentManagementTool = () => {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-sm text-emerald-400 font-mono">
-                      ${parseFloat(tournament.prize_pool?.toString() || '0').toLocaleString()}
+                      {formatCurrency(parseFloat(tournament.prize_pool?.toString() || '0'), tournament.currency)}
                     </td>
                     <td className="px-6 py-4 text-sm text-zinc-400">{tournament.max_teams || '-'}</td>
                     <td className="px-6 py-4 text-sm text-zinc-500">
@@ -764,7 +765,7 @@ const TournamentManagementTool = () => {
                 { label: 'Name', value: selectedTournament.name },
                 { label: 'Game', value: selectedTournament.game },
                 { label: 'Status', value: selectedTournament.status },
-                { label: 'Prize Pool', value: `$${parseFloat(selectedTournament.prize_pool?.toString() || '0').toLocaleString()}` },
+                { label: 'Prize Pool', value: formatCurrency(parseFloat(selectedTournament.prize_pool?.toString() || '0'), selectedTournament.currency) },
                 { label: 'Max Teams', value: selectedTournament.max_teams },
                 { label: 'Start Date', value: selectedTournament.start_date ? new Date(selectedTournament.start_date).toLocaleDateString() : 'N/A' },
               ].map((item) => (

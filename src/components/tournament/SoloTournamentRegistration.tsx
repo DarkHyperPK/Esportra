@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { evaluateRegistrationEligibility, getRegistrationOpensFromSettings } from '@/utils/tournamentLifecycle';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +36,7 @@ interface SoloTournamentRegistrationProps {
     status?: string;
     settings?: Record<string, unknown>;
     description?: string;
+    currency?: string;
   };
   onRegistrationComplete?: () => void;
   onCancel?: () => void;
@@ -236,13 +238,13 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
           {tournament.entry_fee && tournament.entry_fee > 0 && (
             <div className="flex items-center gap-2 text-white/80">
               <DollarSign className="w-4 h-4 text-white/50" />
-              <span>Entry Fee: ${tournament.entry_fee}</span>
+              <span>Entry Fee: {formatCurrency(tournament.entry_fee, tournament.currency)}</span>
             </div>
           )}
           {tournament.prize_pool && tournament.prize_pool > 0 && (
             <div className="flex items-center gap-2 text-white/80">
               <Trophy className="w-4 h-4 text-white/50" />
-              <span>Prize Pool: {new Intl.NumberFormat('en-US', { style: 'currency', currency: tournament.currency || 'USD', maximumFractionDigits: 0 }).format(tournament.prize_pool)}</span>
+              <span>Prize Pool: {formatCurrency(tournament.prize_pool, tournament.currency)}</span>
             </div>
           )}
         </div>

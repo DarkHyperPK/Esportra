@@ -57,6 +57,7 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { useAdmin } from '@/hooks/useAdmin';
 import { isSuperAdminUser } from '@/lib/adminAccess';
 import type { StaffPermission } from '@/types/staff';
@@ -1587,7 +1588,7 @@ const TournamentDashboard = () => {
             <div className="flex flex-col items-center lg:items-start lg:border-r border-white/5 px-4 gap-1">
               <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Prize Pool</span>
               <span className="text-2xl lg:text-3xl font-black text-white flex items-baseline gap-1">
-                <span className="text-amber-400 text-lg">$</span>{tournament.prize_pool || '0'}
+                {formatCurrency(parseFloat(tournament.prize_pool || '0'), tournament.currency)}
               </span>
             </div>
             {/* Stat 2 */}
@@ -1739,7 +1740,7 @@ const TournamentDashboard = () => {
                           </div>
                           <div className="flex flex-col lg:border-r border-white/10 px-4 gap-1">
                             <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Entry Fee</span>
-                            <span className="text-xl font-bold text-white">{tournament.entry_fee || 'Free'}</span>
+                            <span className="text-xl font-bold text-white">{tournament.entry_fee ? formatCurrency(parseFloat(tournament.entry_fee), tournament.currency) : 'Free'}</span>
                           </div>
                           <div className="flex flex-col px-4 gap-1">
                             <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Format</span>

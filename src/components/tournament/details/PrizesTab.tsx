@@ -1,16 +1,13 @@
 import React from 'react';
 import { Trophy, Info, AlertTriangle } from 'lucide-react';
 import { usePrizeDistribution } from '@/hooks/usePrizeDistribution';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 interface PrizesTabProps {
     tournamentId: string;
     prizePool?: string | number | null;
     currency?: string;
     payoutMethod?: 'manual' | 'gateway' | null;
-}
-
-function formatCurrency(amount: number, currency: string) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
 }
 
 const PrizesTab: React.FC<PrizesTabProps> = ({ tournamentId, prizePool, currency = 'USD', payoutMethod }) => {

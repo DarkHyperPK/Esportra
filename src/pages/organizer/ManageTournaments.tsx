@@ -621,6 +621,7 @@ const TournamentList = () => {
                     current_participants={tournament.current_participants}
                     prize_pool={tournament.prize_pool}
                     entry_fee={tournament.entry_fee || 'Free'}
+                    currency={tournament.currency}
                     is_online={tournament.is_online ?? false}
                     image_url={tournament.image_url || undefined}
                     start_date={tournament.start_date}

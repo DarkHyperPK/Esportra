@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { motion } from "framer-motion";
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
@@ -1644,7 +1645,7 @@ const TeamsPage = () => {
 
                   <div className="text-right relative z-10">
                     <div className="text-white font-mono text-2xl group-hover:text-indigo-400 transition-colors">
-                      ${registration.tournaments?.prize_pool}
+                      {formatCurrency(parseFloat(String(registration.tournaments?.prize_pool || '0')), registration.tournaments?.currency)}
                     </div>
                     <div className="text-white/20 text-[10px] uppercase tracking-[0.2em] mt-1">Total Prize</div>
                   </div>
@@ -1713,7 +1714,7 @@ const TeamsPage = () => {
                         </div>
                         <div className="text-right flex flex-col items-end gap-2">
                           <div className={`font-mono text-lg ${isChampion ? 'text-yellow-400' : 'text-white/60'}`}>
-                            ${registration.tournaments?.prize_pool}
+                            {formatCurrency(parseFloat(String(registration.tournaments?.prize_pool || '0')), registration.tournaments?.currency)}
                           </div>
                           {registration.tournaments?.slug && (
                             <Link
@@ -2490,7 +2491,7 @@ const TeamsPage = () => {
                         {new Date(selectedTournament.start_date).toLocaleDateString()}
                       </Badge>
                       <Badge variant="outline" className="border-white/10 text-white/40">
-                        PRIZE: ${selectedTournament.prize_pool}
+                        PRIZE: {formatCurrency(parseFloat(String(selectedTournament.prize_pool || '0')), selectedTournament.currency)}
                       </Badge>
                     </div>
                   </div>

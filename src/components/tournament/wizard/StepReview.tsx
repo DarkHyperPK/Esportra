@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { motion } from 'framer-motion';
 import {
     Check,
@@ -105,8 +106,8 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
             title: 'Branding & Details',
             icon: <Gamepad2 className="w-5 h-5" />,
             items: [
-                { label: 'Prize Pool', value: data.prizePool ? `${data.currency || 'USD'} ${data.prizePool}` : 'Not set' },
-                { label: 'Entry Fee', value: data.entryFee || 'Free' },
+                { label: 'Prize Pool', value: data.prizePool ? formatCurrency(parseFloat(data.prizePool), data.currency) : 'Not set' },
+                { label: 'Entry Fee', value: data.entryFee && data.entryFee !== 'Free' && data.entryFee !== '0' ? formatCurrency(parseFloat(data.entryFee), data.currency) : 'Free' },
                 { label: 'Banner', value: data.bannerUrl ? '✓ Uploaded' : '✗ Not uploaded' },
                 { label: 'Description', value: data.description ? `${data.description.substring(0, 50)}...` : 'Not set' },
             ]

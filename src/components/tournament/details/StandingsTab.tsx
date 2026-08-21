@@ -1,14 +1,11 @@
 import React from 'react';
 import { Trophy } from 'lucide-react';
 import { useTournamentPlacements } from '@/hooks/useTournamentPlacements';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 interface StandingsTabProps {
     tournamentId: string;
     currency?: string;
-}
-
-function formatCurrency(amount: number, currency: string) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
 }
 
 const PODIUM_CONFIG = [

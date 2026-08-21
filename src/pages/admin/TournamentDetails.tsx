@@ -4,6 +4,7 @@ import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { auditLog } from '@/lib/auditLog';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 function getTournamentStatus(tournament: any) {
   // Use the DB status directly
@@ -85,8 +86,8 @@ const TournamentDetails = () => {
       <div className="mb-2"><b>Description:</b> {tournament.description}</div>
       <div className="mb-2"><b>Game:</b> {tournament.game}</div>
       <div className="mb-2"><b>Venue:</b> {tournament.venue}</div>
-      <div className="mb-2"><b>Prize Pool:</b> {tournament.prize_pool}</div>
-      <div className="mb-2"><b>Entry Fee:</b> {tournament.entry_fee}</div>
+      <div className="mb-2"><b>Prize Pool:</b> {formatCurrency(parseFloat(tournament.prize_pool || '0'), tournament.currency)}</div>
+      <div className="mb-2"><b>Entry Fee:</b> {tournament.entry_fee ? formatCurrency(parseFloat(tournament.entry_fee), tournament.currency) : 'Free'}</div>
       <div className="mb-2"><b>Max Participants:</b> {tournament.max_participants}</div>
       <div className="mb-2"><b>Created At:</b> {tournament.created_at}</div>
       <div className="mb-2"><b>Updated At:</b> {tournament.updated_at}</div>

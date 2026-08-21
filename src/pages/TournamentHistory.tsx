@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { apiClient } from '@/lib/apiClient';
 import { Link } from 'react-router-dom';
 import Footer from '@/components/Footer';
@@ -76,7 +77,7 @@ const HistoryCard = ({ t }: HistoryCardProps) => {
                 {t.prize_pool && (
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0a0a0c] border border-white/10 text-emerald-400 font-medium text-sm">
                         <Trophy className="w-3.5 h-3.5" />
-                        <span>${t.prize_pool}</span>
+                        <span>{formatCurrency(parseFloat(String(t.prize_pool)), t.currency)}</span>
                     </div>
                 )}
             </div>

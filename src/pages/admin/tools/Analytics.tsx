@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatCurrency } from '@/utils/formatCurrency';
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import {
@@ -60,7 +61,7 @@ const AnalyticsTool = () => {
     },
     {
       title: 'Total Prize Pool',
-      value: `$${stats.totalPrizePool.toLocaleString()}`,
+      value: formatCurrency(stats.totalPrizePool, 'USD'),
       icon: DollarSign,
       color: 'violet',
       description: 'Prize money distributed',
@@ -234,7 +235,7 @@ const AnalyticsTool = () => {
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/50">
               <span className="text-zinc-400">Prize Pool Total</span>
-              <span className="text-violet-400 font-mono">${stats.totalPrizePool.toLocaleString()}</span>
+              <span className="text-violet-400 font-mono">{formatCurrency(stats.totalPrizePool, 'USD')}</span>
             </div>
           </div>
         </motion.div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import TeamTournamentRegistration from '@/components/tournament/TeamTournamentRegistration';
@@ -208,7 +209,7 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Payment Required</h3>
-            <p className="text-sm text-zinc-400">Entry Fee: {currency} {parsedFee}</p>
+            <p className="text-sm text-zinc-400">Entry Fee: {formatCurrency(parsedFee, currency)}</p>
           </div>
         </div>
 

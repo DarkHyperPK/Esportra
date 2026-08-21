@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
 import { evaluateRegistrationEligibility, getRegistrationOpensFromSettings } from '@/utils/tournamentLifecycle';
 import { useAuth } from '@/hooks/useAuth';
@@ -693,7 +694,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                 </div>
                 <div>
                   <span className="text-xs text-gray-500 block mb-1">Entry Fee</span>
-                  <span className="text-white font-medium text-sm">{tournament.currency || 'USD'} {tournament.entry_fee}</span>
+                  <span className="text-white font-medium text-sm">{formatCurrency(tournament.entry_fee || 0, tournament.currency)}</span>
                 </div>
               </div>
             )}
@@ -704,7 +705,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                 </div>
                 <div>
                   <span className="text-xs text-gray-500 block mb-1">Prize Pool</span>
-                  <span className="text-white font-medium text-sm">{tournament.currency || 'USD'} {tournament.prize_pool}</span>
+                  <span className="text-white font-medium text-sm">{formatCurrency(tournament.prize_pool || 0, tournament.currency)}</span>
                 </div>
               </div>
             )}

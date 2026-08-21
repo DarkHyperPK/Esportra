@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import type { PrizeDistributionEntry, PrizeReward } from '@/types/prizeDistribution';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'AED', 'SAR', 'PKR', 'INR', 'TRY', 'EGP', 'QAR', 'MYR', 'SGD', 'BRL', 'JPY'];
 
@@ -22,10 +23,6 @@ const DEFAULT_TEMPLATES: Array<{ name: string; placements: Array<{ label: string
     { name: 'Top 4 (50/25/15/10)', placements: [{ label: '1st Place', percentage: 50, shared_count: 1 }, { label: '2nd Place', percentage: 25, shared_count: 1 }, { label: '3rd Place', percentage: 15, shared_count: 1 }, { label: '4th Place', percentage: 10, shared_count: 1 }] },
     { name: 'Winner Takes All', placements: [{ label: '1st Place', percentage: 100, shared_count: 1 }] },
 ];
-
-function formatCurrency(amount: number, currency: string) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
-}
 
 function calcBandAmount(percentage: number, prizePool: number) {
     return (percentage / 100) * prizePool;

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, XCircle, Clock, Eye, DollarSign, AlertTriangle } from 'lucide-react';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { CancelButton, DangerButton, OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button-variants';
@@ -251,7 +252,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                       <div className="min-w-0">
                         <p className="text-white font-semibold text-sm truncate">{p.team_name || p.gamer_tag || p.user?.username || 'Unknown'}</p>
                         <p className="text-zinc-500 text-xs">
-                          {p.entry_fee_amount ? `$${p.entry_fee_amount}` : 'Paid'} · {new Date(p.registered_at).toLocaleDateString()}
+                          {p.entry_fee_amount ? formatCurrency(p.entry_fee_amount, p.currency || 'USD') : 'Paid'} · {new Date(p.registered_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>

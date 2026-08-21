@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { Button, SuccessButton } from '@/components/ui/button';
 import { JackButton } from '@/components/ui/JackButton';
 import { Badge } from '@/components/ui/badge';
@@ -267,7 +268,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
             )}
             <div className="flex items-center gap-1.5 text-esports-green font-medium">
               <Trophy className="w-4 h-4" />
-              <span>{prize_pool} {currency || 'USD'}</span>
+              <span>{formatCurrency(parseFloat(String(prize_pool || '0')), currency)}</span>
             </div>
           </div>
 

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { useQuery } from '@tanstack/react-query';
@@ -79,7 +80,7 @@ const PlayerHistory = () => {
                                 <h3 className="text-lg font-bold text-white group-hover:text-rose-500 transition-colors">{t.name}</h3>
                                 <div className="flex gap-4 mt-2 text-sm text-gray-400">
                                     <div className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {t.start_date ? new Date(t.start_date).toLocaleDateString() : 'TBD'}</div>
-                                    {t.prize_pool && <div className="flex items-center gap-1"><Trophy className="w-3 h-3 text-yellow-500" /> ${t.prize_pool}</div>}
+                                    {t.prize_pool && <div className="flex items-center gap-1"><Trophy className="w-3 h-3 text-yellow-500" /> {formatCurrency(parseFloat(String(t.prize_pool)), t.currency)}</div>}
                                 </div>
                             </div>
 

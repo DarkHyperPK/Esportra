@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatCurrency } from '@/utils/formatCurrency';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -555,7 +556,7 @@ const TeamManagementTool = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         {t.prize_pool && (
-                          <span className="text-xs text-emerald-400 font-mono">${t.prize_pool}</span>
+                          <span className="text-xs text-emerald-400 font-mono">{formatCurrency(parseFloat(t.prize_pool?.toString() || '0'), t.currency)}</span>
                         )}
                         <Badge variant="outline" className={cn(
                           "text-xs",

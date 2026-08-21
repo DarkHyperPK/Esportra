@@ -5,6 +5,7 @@ import { usePrizeDistribution } from '@/hooks/usePrizeDistribution';
 import { useTournamentPlacements, useResolvePlacements } from '@/hooks/useTournamentPlacements';
 import { useTournamentPayouts, useUpdatePayout, useRewardDistributions, useUpdateRewardDistribution } from '@/hooks/useTournamentPayouts';
 import { useToast } from '@/hooks/use-toast';
+import { formatCurrency } from '@/utils/formatCurrency';
 import type { CashPayout, RewardDistribution } from '@/types/prizeDistribution';
 import type { Tournament } from '@/types/tournament';
 
@@ -36,10 +37,6 @@ function PayoutStatusBadge({ status }: { status: string }) {
             {cfg.label}
         </span>
     );
-}
-
-function formatCurrency(amount: number, currency: string) {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount);
 }
 
 const NEXT_PAYOUT_STATUS: Record<string, string[]> = {

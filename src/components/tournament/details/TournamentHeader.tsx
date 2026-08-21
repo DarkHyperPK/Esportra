@@ -14,6 +14,7 @@ import {
   getRegistrationOpensFromSettings,
 } from '@/utils/tournamentLifecycle';
 import { isBattleRoyale } from '@/utils/gameFeatures';
+import { formatCurrency } from '@/utils/formatCurrency';
 import { useRawgGame } from '@/hooks/useRawgGame';
 
 interface TournamentHeaderProps {
@@ -179,7 +180,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                     <Trophy className="w-5 h-5 text-yellow-500 mb-2" />
                                     <span>Prize Pool</span>
                                     <span className="text-white text-lg font-bold font-sans">
-                                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: tournament.currency || 'USD', maximumFractionDigits: 0 }).format(parseFloat(tournament.prize_pool) || 0)}
+                                        {formatCurrency(parseFloat(tournament.prize_pool) || 0, tournament.currency)}
                                     </span>
                                 </div>
 

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/utils/formatCurrency';
 import {
   resolveOrganizerBannerSrc,
   useOrganizerCardGameAssets,
@@ -21,6 +22,7 @@ export type OrganizerTournamentCardProps = {
   current_participants: number;
   prize_pool?: string;
   entry_fee?: string;
+  currency?: string;
   is_online?: boolean;
   image_url?: string;
   start_date?: string;
@@ -67,6 +69,7 @@ export const OrganizerTournamentCard = React.memo(function OrganizerTournamentCa
   current_participants,
   prize_pool,
   entry_fee,
+  currency,
   is_online,
   image_url,
   start_date,
@@ -192,8 +195,8 @@ export const OrganizerTournamentCard = React.memo(function OrganizerTournamentCa
           </div>
           {(prize_pool && prize_pool !== '0') || (entry_fee && entry_fee !== 'Free' && entry_fee !== '0') ? (
             <p className="text-zinc-500">
-              {prize_pool && prize_pool !== '0' ? `Prize ${prize_pool}` : null}
-              {entry_fee && entry_fee !== 'Free' && entry_fee !== '0' ? ` · Entry ${entry_fee}` : null}
+              {prize_pool && prize_pool !== '0' ? `Prize ${formatCurrency(parseFloat(prize_pool), currency)}` : null}
+              {entry_fee && entry_fee !== 'Free' && entry_fee !== '0' ? ` · Entry ${formatCurrency(parseFloat(entry_fee), currency)}` : null}
             </p>
           ) : null}
         </div>
