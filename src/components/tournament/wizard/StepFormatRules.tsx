@@ -13,6 +13,7 @@ import { Trophy, Users, Plus, Trash2, Layers, FileText } from 'lucide-react';
 import { OutlineButton } from '@/components/ui/app-buttons';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import TournamentMapPoolSelector, { MapPoolSectionLabel } from './TournamentMapPoolSelector';
+import InlineStageEditor from './InlineStageEditor';
 
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
@@ -23,6 +24,7 @@ import { deriveDefaultLobbyUnits } from '@/utils/brGameContext';
 /* ──────────────────────────────────────────────────────────────
    Main Component
    ────────────────────────────────────────────────────────────── */
+
 
 const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode, tournamentId, participantsCount }) => {
     const { toast } = useToast();
@@ -516,7 +518,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                 <>
                     {/* ── Bracket Format (existing) ───────────────────────── */}
 
-                    {/* Stages Info */}
+                    {/* Stage Configuration */}
                     {tournamentId ? (
                         <div className="p-4 bg-white/[0.03] rounded-none border border-white/10">
                             <div className="flex items-center gap-3">
@@ -530,31 +532,18 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                             </div>
                         </div>
                     ) : (
-                        <div className="p-4 bg-rose-500/10 rounded-none border border-rose-500/30">
-                            <div className="flex items-center gap-3">
-                                <Layers className="w-5 h-5 text-rose-400" />
-                                <div>
-                                    <div className="font-medium text-white">Tournament Stages</div>
-                                    <div className="text-sm text-gray-400">
-                                        A default stage will be created. You can add more stages and configure advancement after creating the tournament via the "Manage Stages" option.
-                                    </div>
-                                </div>
-                            </div>
+                        <div className="space-y-3">
+                            <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                <Layers className="w-4 h-4" />
+                                Tournament Stages
+                            </Label>
+                            <InlineStageEditor
+                                stages={data.stages}
+                                maxTeams={data.maxTeams}
+                                onChange={(stages) => updateData({ stages })}
+                            />
                         </div>
                     )}
-
-                    {/* Tournament Format Info */}
-                    <div className="p-4 bg-white/[0.03] rounded-none border border-white/10">
-                        <div className="flex items-center gap-3">
-                            <Trophy className="w-5 h-5 text-rose-400" />
-                            <div>
-                                <div className="font-medium text-white">Tournament Format</div>
-                                <div className="text-sm text-gray-400">
-                                    Format (Single Elim, Double Elim, Swiss, etc.) will be configured when setting up stages after creating the tournament.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     {renderGameModeSelector()}
 
                     {/* Max Teams */}

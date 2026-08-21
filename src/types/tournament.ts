@@ -58,6 +58,9 @@ export interface BaseTournament extends TournamentCardBadgeFields {
     description: string;
     user_id: string; // Keep for legacy
     rewards?: string | null;
+    prize_distribution?: import('./prizeDistribution').PrizeDistributionConfig | null;
+    payout_method?: 'manual' | 'gateway';
+    manual_payout_notes?: string | null;
     created_at: string;
     image_url?: string | null;
     slug?: string;

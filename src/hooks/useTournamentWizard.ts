@@ -214,11 +214,11 @@ export const useTournamentWizard = (
             return;
         }
 
-        const allValid = validateStep(6, data);
+        const allValid = validateStep(7, data);
         if (!allValid.valid) {
             setErrors(allValid.errors);
             const errorStep = firstWizardErrorStep(allValid.errors);
-            if (errorStep < 6) setCurrentStep(errorStep);
+            if (errorStep < 7) setCurrentStep(errorStep);
             toast({
                 title: 'Fix these items before creating',
                 description: summarizeWizardErrors(allValid.errors),
@@ -284,12 +284,14 @@ export const useTournamentWizard = (
                     isPublic:             launchPayload.isPublic,
                     checkInRequired:      data.checkInRequired,
                     checkInDeadline:      data.checkInRequired ? startDateTime.toISOString() : undefined,
-                    rewards:              data.rewards,
                     streamUrl:            data.streamUrl || null,
                     rules:                data.rules || null,
                     paymentInstructions:  data.paymentInstructions || null,
                     region:               data.region || null,
                     currency:             data.currency || 'USD',
+                    payoutMethod:         data.payoutMethod || 'manual',
+                    manualPayoutNotes:    data.manualPayoutNotes || null,
+                    prizeDistribution:    data.prizeDistribution ?? null,
                     reservedInviteSlots:  data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
                     inviteExpiryDays:     data.inviteExpiryDays || 7,
                     settings:             {
@@ -380,12 +382,14 @@ export const useTournamentWizard = (
                     checkInRequired:      data.checkInRequired,
                     checkInDeadline:      data.checkInRequired ? startDateTime.toISOString() : undefined,
                     autoRemoveUnchecked:  data.autoRemoveUnchecked,
-                    rewards:              data.rewards,
                     streamUrl:            data.streamUrl || null,
                     rules:                data.rules || null,
                     paymentInstructions:  data.paymentInstructions || null,
                     region:               data.region || null,
                     currency:             data.currency || 'USD',
+                    payoutMethod:         data.payoutMethod || 'manual',
+                    manualPayoutNotes:    data.manualPayoutNotes || null,
+                    prizeDistribution:    data.prizeDistribution ?? null,
                     tournamentType:       data.tournamentType || 'bracket',
                     serverRegion:         data.serverRegion || null,
                     reservedInviteSlots:  data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
@@ -413,14 +417,21 @@ export const useTournamentWizard = (
                         if (data.tournamentType === 'battle_royale') {
                             return [];
                         }
-                        return data.stages.map((s, i) => ({
-                            name:             s.name,
-                            format:           s.format,
-                            stageOrder:       s.stage_order ?? i,
-                            bestOf:           (s as any).best_of ?? 1,
-                            capacity:         (s as any).capacity ?? null,
-                            advancementCount: (s as any).advancement_count ?? null,
-                        }));
+                        return data.stages.map((s, i) => {
+                            const stageAny = s as any;
+                            const hasOverrides = stageAny.bo_mode === 'per_round' && Object.keys(stageAny.round_bo_overrides ?? {}).length > 0;
+                            return {
+                                name:             s.name,
+                                format:           s.format,
+                                stageOrder:       s.stage_order ?? i + 1,
+                                bestOf:           stageAny.best_of ?? 1,
+                                boMode:           stageAny.bo_mode ?? 'per_stage',
+                                capacity:         stageAny.capacity ?? null,
+                                advancementCount: stageAny.advancement_count ?? null,
+                                ...(hasOverrides ? { roundBoOverrides: stageAny.round_bo_overrides } : {}),
+                                ...(stageAny.config ? { config: stageAny.config } : {}),
+                            };
+                        });
                     })(),
                     mapPoolIds: data.mapPoolIds ?? [],
                 });

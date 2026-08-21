@@ -631,7 +631,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
             <Dialog open={goLiveDialogOpen} onOpenChange={setGoLiveDialogOpen}>
                 <DialogContent className="max-w-md p-0 overflow-hidden border border-white/20 shadow-2xl bg-zinc-900">
                     <div className="text-center pt-6 pb-4">
-                        <h2 className="text-lg font-semibold text-white">Start Match</h2>
+                        <DialogTitle className="text-lg font-semibold text-white">Start Match</DialogTitle>
                     </div>
                     <div className="px-6 pb-6 space-y-5">
                         <input

@@ -1,6 +1,7 @@
 // Tournament wizard types
 
 import type { BRScoringPreset } from './battleRoyale';
+import type { PrizeDistributionConfig } from './prizeDistribution';
 
 export type BracketType = 'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin';
 export type TournamentType = 'bracket' | 'battle_royale';
@@ -63,15 +64,22 @@ export interface TournamentWizardData {
     // Step 3: Branding
     bannerUrl: string | null;
     logoUrl: string | null;
-    prizePool: string;
-    entryFee: string;
     description: string;
     discordUrl: string;
     twitterUrl: string;
     streamUrl: string;
-    rewards: string;
+    rewards: string; // legacy field — no longer written to
 
-    // Step 4: Registration
+    // Step 4: Prizes
+    currency: string;
+    prizePool: string;
+    entryFee: string;
+    paymentInstructions: string;
+    payoutMethod: 'manual' | 'gateway';
+    manualPayoutNotes: string;
+    prizeDistribution: PrizeDistributionConfig | null;
+
+    // Step 5: Registration
     registrationOpens: string;
     registrationCloses: string;
     checkInRequired: boolean;
@@ -109,10 +117,11 @@ export interface WizardStep {
 export const WIZARD_STEPS: Omit<WizardStep, 'isValid' | 'isComplete'>[] = [
     { id: 1, title: 'Basic Info', description: 'Name, game, and schedule' },
     { id: 2, title: 'Format & Rules', description: 'Bracket type and settings' },
-    { id: 3, title: 'Branding', description: 'Images and prize pool' },
-    { id: 4, title: 'Registration', description: 'Sign-up and check-in' },
-    { id: 5, title: 'Settings', description: 'Match and game settings' },
-    { id: 6, title: 'Review', description: 'Confirm and create' },
+    { id: 3, title: 'Branding', description: 'Images and description' },
+    { id: 4, title: 'Prizes', description: 'Prize pool, fees, and distribution' },
+    { id: 5, title: 'Registration', description: 'Sign-up and check-in' },
+    { id: 6, title: 'Settings', description: 'Match and game settings' },
+    { id: 7, title: 'Review', description: 'Confirm and create' },
 ];
 
 export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
@@ -151,8 +160,6 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     // Step 3
     bannerUrl: null,
     logoUrl: null,
-    prizePool: '',
-    entryFee: 'Free',
     description: '',
     discordUrl: '',
     twitterUrl: '',
@@ -160,6 +167,15 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     rewards: '',
 
     // Step 4
+    currency: 'USD',
+    prizePool: '',
+    entryFee: 'Free',
+    paymentInstructions: '',
+    payoutMethod: 'manual',
+    manualPayoutNotes: '',
+    prizeDistribution: null,
+
+    // Step 5
     registrationOpens: '',
     registrationCloses: '',
     checkInRequired: false,

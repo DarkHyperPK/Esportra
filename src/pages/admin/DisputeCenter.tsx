@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { MessageSquare, AlertCircle, CheckCircle, XCircle, Clock, Image as ImageIcon, RefreshCw, X, Search, Send, ZoomIn, Shield, Download, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
@@ -827,6 +827,7 @@ const DisputeCenter: React.FC = () => {
       {/* Image Viewer Modal */}
       <Dialog open={!!viewingImage} onOpenChange={(open) => !open && setViewingImage(null)}>
         <DialogContent className="bg-[#121214] border border-white/[0.06] max-w-5xl max-h-[90vh] p-0">
+          <DialogTitle className="sr-only">Image Preview</DialogTitle>
           <div className="relative w-full h-full flex items-center justify-center">
             <button
               onClick={() => setViewingImage(null)}

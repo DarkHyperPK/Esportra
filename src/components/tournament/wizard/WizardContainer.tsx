@@ -7,6 +7,7 @@ import WizardProgress from './WizardProgress';
 import StepBasicInfo from './StepBasicInfo';
 import StepFormatRules from './StepFormatRules';
 import StepBranding from './StepBranding';
+import StepPrizeDistribution from './StepPrizeDistribution';
 import StepRegistration from './StepRegistration';
 import StepSettings from './StepSettings';
 import StepReview from './StepReview';
@@ -52,6 +53,8 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
             case 3:
                 return <StepBranding data={data} updateData={updateData} errors={errors} />;
             case 4:
+                return <StepPrizeDistribution data={data} updateData={updateData} errors={errors} />;
+            case 5:
                 return (
                     <StepRegistration
                         data={data}
@@ -61,9 +64,9 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
                         activeInvitationCount={activeInvitationCount}
                     />
                 );
-            case 5:
-                return <StepSettings data={data} updateData={updateData} errors={errors} />;
             case 6:
+                return <StepSettings data={data} updateData={updateData} errors={errors} />;
+            case 7:
                 return <StepReview data={data} errors={errors} onEdit={goToStep} />;
             default:
                 return null;

@@ -51,12 +51,10 @@ export const formatRulesSchema = formatRulesBase.refine(
     { message: 'Power of 2 recommended for elimination brackets', path: ['maxTeams'] }
 );
 
-// Step 3: Branding Schema
+// Step 3: Branding Schema — visual identity only
 const brandingSchemaBase = z.object({
     bannerUrl: z.string().nullable().optional(),
     logoUrl: z.string().nullable().optional(),
-    prizePool: z.string().min(1, 'Prize pool is required'),
-    entryFee: z.string().min(1, 'Entry fee is required (use "Free" if no fee)'),
     description: z.string()
         .min(20, 'Description must be at least 20 characters')
         .max(5000, 'Description cannot exceed 5000 characters'),
@@ -66,24 +64,17 @@ const brandingSchemaBase = z.object({
     rewards: z.string().optional().nullable(),
 });
 
-export const brandingSchema = brandingSchemaBase.refine((data) => {
-    if (!data.rewards) return true;
+export const brandingSchema = brandingSchemaBase;
 
-    // Parse percentages
-    const firstMatch = data.rewards.match(/1st:\s*(\d+)%/i);
-    const secondMatch = data.rewards.match(/2nd:\s*(\d+)%/i);
-
-    const first = firstMatch ? parseInt(firstMatch[1], 10) : 0;
-    const second = secondMatch ? parseInt(secondMatch[1], 10) : 0;
-
-    const total = first + second;
-    return total <= 100;
-}, {
-    message: "Total prize distribution cannot exceed 100%",
-    path: ["rewards"]
+// Step 4: Prizes Schema — prize pool, entry fee, payout
+const prizesSchemaBase = z.object({
+    prizePool: z.string().min(1, 'Prize pool is required'),
+    entryFee: z.string().min(1, 'Entry fee is required (use "Free" if no fee)'),
 });
 
-// Step 4: Registration Schema (base for merging)
+export const prizesSchema = prizesSchemaBase;
+
+// Step 5: Registration Schema (base for merging)
 const registrationSchemaBase = z.object({
     registrationOpens: z.string().min(1, 'Registration open date is required'),
     registrationCloses: z.string().min(1, 'Registration close date is required'),
@@ -97,7 +88,7 @@ const registrationSchemaBase = z.object({
     inviteExpiryDays: z.number().min(1).max(365).optional().default(7),
 });
 
-// Step 4: Registration Schema (with conditional validation for step 4)
+// Step 5: Registration Schema (with conditional validation)
 export const registrationSchema = registrationSchemaBase
     .refine(
         (data) => {
@@ -126,6 +117,7 @@ export const registrationSchema = registrationSchemaBase
 export const fullTournamentSchema = basicInfoBase
     .merge(formatRulesBase)
     .merge(brandingSchemaBase)
+    .merge(prizesSchemaBase)
     .merge(registrationSchemaBase)
     .refine(
         (data) => data.isOnline || (data.venue && data.venue.length > 0),
@@ -140,22 +132,7 @@ export const fullTournamentSchema = basicInfoBase
             return true;
         },
         { message: 'Check-in window must be between 5 and 120 minutes', path: ['checkInWindowMinutes'] }
-    ).refine((data) => {
-        if (!data.rewards) return true;
-        // Parse percentages
-        const firstMatch = data.rewards.match(/1st:\s*(\d+)%/i);
-        const secondMatch = data.rewards.match(/2nd:\s*(\d+)%/i);
-
-        const first = firstMatch ? parseInt(firstMatch[1], 10) : 0;
-        const second = secondMatch ? parseInt(secondMatch[1], 10) : 0;
-
-        const total = first + second;
-        return total <= 100;
-    }, {
-        message: "Total prize distribution cannot exceed 100%",
-        path: ["rewards"]
-    })
-    .refine(
+    ).refine(
         (data) => !data.invitedTeamsEnabled || (data.reservedInviteSlots ?? 0) >= 1,
         { message: 'Reserve at least 1 slot for invited teams', path: ['reservedInviteSlots'] },
     )
@@ -174,9 +151,10 @@ export const validateStep = (step: number, data: any): { valid: boolean; errors:
         1: basicInfoSchema,
         2: formatRulesSchema,
         3: brandingSchema,
-        4: registrationSchema,
-        // 5: Settings — no validation needed (all booleans with defaults)
-        6: fullTournamentSchema, // Review validates everything
+        4: prizesSchema,
+        5: registrationSchema,
+        // 6: Settings — no validation needed (all booleans with defaults)
+        7: fullTournamentSchema, // Review validates everything
     };
 
     const schema = schemas[step];

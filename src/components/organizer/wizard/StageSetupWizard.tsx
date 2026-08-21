@@ -59,13 +59,19 @@ function getBestOfLabel(bestOf: number, gameData: { features?: { seriesFormats?:
 interface StageSetupWizardProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    tournamentId: string;
+    tournamentId?: string;
     game: string;
     existingStages?: any[]; // For edit mode
-    onComplete: () => void;
+    onComplete?: () => void;
+    /** When true, skips all API calls and returns stages via onDraftSaved */
+    draftMode?: boolean;
+    initialDraftStages?: StageConfig[];
+    onDraftSaved?: (stages: StageConfig[]) => void;
+    /** Max teams from wizard data — used as Stage 1 capacity in draft mode */
+    draftMaxTeams?: number;
 }
 
-interface StageConfig {
+export interface StageConfig {
     id?: string; // For editing existing stages
     name: string;
     format: string;
@@ -214,7 +220,11 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
     tournamentId,
     game,
     existingStages,
-    onComplete
+    onComplete,
+    draftMode = false,
+    initialDraftStages,
+    onDraftSaved,
+    draftMaxTeams,
 }) => {
     useGameCatalog();
     const { toast } = useToast();
@@ -245,6 +255,26 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             return;
         }
 
+        if (game) setGameData(getGameByName(game) || null);
+
+        if (draftMode) {
+            // Always reset on re-open to prevent stale state from a previous session
+            setStagesConfig([]);
+            setStep('mode-select');
+            setSelectedTemplateId(null);
+            setCurrentStageIndex(0);
+            setEditingStageIndex(null);
+
+            if (draftMaxTeams && draftMaxTeams > 0) {
+                setTournamentMaxParticipants(draftMaxTeams);
+            }
+            if (initialDraftStages && initialDraftStages.length > 0) {
+                setStagesConfig(initialDraftStages);
+                setStep('review');
+            }
+            return;
+        }
+
         const fetchParticipants = async () => {
             const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => []);
             if (participants) setParticipantsCount(participants.length);
@@ -260,10 +290,6 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
             const maxTeams = d.max_teams === 0 ? null : d.max_teams;
             setTournamentMaxParticipants(maxTeams);
 
-            if (game) {
-                setGameData(getGameByName(game) || null);
-            }
-
             if (!existingStages || existingStages.length === 0) {
                 setManualFormState(prev => ({
                     ...prev,
@@ -275,7 +301,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
 
         const isEditMode = Boolean(existingStages && existingStages.length > 0);
 
-        if (isEditMode) {
+        if (isEditMode && existingStages) {
             setStagesConfig(existingStages.map(s => {
                 const stageAny = s as any;
                 const bestOf = stageAny.best_of || 1;
@@ -321,7 +347,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
         setSelectedTemplateId(null);
         setCurrentStageIndex(0);
         setEditingStageIndex(null);
-    }, [open, tournamentId, game, existingStages]);
+    }, [open, tournamentId, game, existingStages, draftMode, draftMaxTeams, initialDraftStages]);
 
 
     const handleTemplateSelect = (templateId: string) => {
@@ -420,13 +446,28 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
         try {
             setLoading(true);
 
+            // Draft mode: skip API calls, return stages to parent
+            if (draftMode) {
+                for (const stage of stagesConfig) {
+                    const validation = validateStageConfig(stage, 0, null);
+                    if (!validation.valid) {
+                        toast({ title: `Invalid Stage: ${stage.name}`, description: validation.error, variant: 'destructive' });
+                        setLoading(false);
+                        return;
+                    }
+                }
+                onDraftSaved?.(stagesConfig);
+                onOpenChange(false);
+                return;
+            }
+
             if (stagesConfig.length === 0 && deletedStageIds.length > 0) {
                 await apiClient.post(`/api/tournaments/${tournamentId}/stages/delete`, { deleteIds: deletedStageIds });
                 toast({
                     title: 'Stages Removed',
                     description: 'All tournament stages have been deleted.',
                 });
-                onComplete();
+                onComplete?.();
                 onOpenChange(false);
                 return;
             }
@@ -473,7 +514,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                 title: 'Stages Saved',
                 description: 'Tournament stages have been successfully updated.',
             });
-            onComplete();
+            onComplete?.();
             onOpenChange(false);
         } catch (error: any) {
             console.error('Error saving stages:', error);
@@ -1132,7 +1173,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                                     <SelectValue placeholder={isLastStage && editingStageIndex !== null ? "N/A (Final Stage)" : "Select teams advancing"} />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {getAdvancementOptions(typeof manualFormState.capacity === 'number' ? manualFormState.capacity : participantsCount).map(opt => (
+                                                    {getAdvancementOptions(typeof manualFormState.capacity === 'number' && manualFormState.capacity > 0 ? manualFormState.capacity : (tournamentMaxParticipants ?? participantsCount)).map(opt => (
                                                         <SelectItem key={opt} value={String(opt)}>{opt} Teams</SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -1147,22 +1188,24 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
                                 })()}
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 gap-4">
-                            <div className="space-y-2">
-                                <Label>Series Format</Label>
-                                <Select
-                                    value={String(manualFormState.best_of)}
-                                    onValueChange={(val) => setManualFormState({ ...manualFormState, best_of: Number(val) })}
-                                >
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {getSeriesOptions(gameData).map(opt => (
-                                            <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                        {manualFormState.bo_mode !== 'per_round' && (
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Series Format (All Rounds)</Label>
+                                    <Select
+                                        value={String(manualFormState.best_of)}
+                                        onValueChange={(val) => setManualFormState({ ...manualFormState, best_of: Number(val) })}
+                                    >
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {getSeriesOptions(gameData).map(opt => (
+                                                <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Per-Round BO Configuration for elimination formats */}
                         <RoundBoConfigSection

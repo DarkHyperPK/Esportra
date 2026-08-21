@@ -819,6 +819,7 @@ const MyDisputes = () => {
           {/* Image viewer */}
           <Dialog open={!!viewingImage} onOpenChange={(open) => !open && setViewingImage(null)}>
             <DialogContent className="bg-[#0a0a0c] border border-white/[0.06] max-w-5xl max-h-[92vh] p-2">
+              <DialogTitle className="sr-only">Image Preview</DialogTitle>
               <div className="relative flex items-center justify-center">
                 <button
                   onClick={() => setViewingImage(null)}

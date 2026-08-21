@@ -7,7 +7,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { isSuperAdminUser } from '@/lib/adminAccess';
 import { apiClient } from '@/lib/apiClient';
-import { Button } from '@/components/ui/button';
+import { GhostButton, CtaButton, OutlineButton } from '@/components/ui/app-buttons';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, CheckCircle, Globe, Eye, Loader2 } from 'lucide-react';
 import BracketVisualization from '@/pages/tournaments/brackets/BracketVisualization';
@@ -96,6 +96,8 @@ const ManageBracketPage = () => {
             if (!silent) setLoading(false);
         }
     }, [slug, stageId, navigate, toast]);
+
+    const handleRefresh = useCallback(() => fetchData(true), [fetchData]);
 
     useEffect(() => {
         if (accessLoading || authLoading) return;
@@ -281,9 +283,9 @@ const ManageBracketPage = () => {
         return (
             <div className="min-h-screen bg-transparent flex flex-col items-center justify-center text-white">
                 <p className="text-gray-400 mb-4">Bracket not found</p>
-                <Button onClick={() => navigate(-1)} variant="outline">
+                <OutlineButton onClick={() => navigate(-1)}>
                     Go Back
-                </Button>
+                </OutlineButton>
             </div>
         );
     }
@@ -293,15 +295,13 @@ const ManageBracketPage = () => {
             <main className="relative flex min-h-[calc(100vh-5rem)] w-full flex-col px-2 py-6 md:px-3">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 px-2">
                     <div className="flex items-center gap-4">
-                        <Button
-                            variant="ghost"
+                        <GhostButton
                             size="sm"
                             onClick={() => navigate(`/organizer/tournament/${slug}`)}
-                            className="text-gray-400 hover:text-white hover:bg-white/5"
                         >
                             <ArrowLeft className="w-4 h-4 mr-2" />
                             Back to Tournament
-                        </Button>
+                        </GhostButton>
                         <div className="h-4 w-px bg-white/10 hidden md:block" />
                         <div>
                             <h1 className="text-xl font-bold text-white leading-none mb-1">
@@ -315,14 +315,13 @@ const ManageBracketPage = () => {
                         {isOrganizer && versionId && (
                             <div className="flex items-center gap-2">
                                 {versionStatus === 'draft' ? (
-                                    <Button
+                                    <CtaButton
                                         onClick={handlePublishBracket}
                                         disabled={isSubmitting}
-                                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold h-10 px-6 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.2)]"
                                     >
                                         {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Globe className="w-4 h-4 mr-2" />}
                                         Publish Bracket
-                                    </Button>
+                                    </CtaButton>
                                 ) : (
                                     <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 py-1.5 px-3 rounded-lg flex items-center gap-2 h-10">
                                         <CheckCircle className="w-4 h-4" />
@@ -331,14 +330,12 @@ const ManageBracketPage = () => {
                                 )}
                             </div>
                         )}
-                        <Button
-                            variant="outline"
+                        <OutlineButton
                             onClick={() => navigate(`/tournaments/${slug}/brackets`)}
-                            className="border-white/10 bg-white/5 hover:bg-white/10 text-white h-10 px-4 rounded-xl"
                         >
                             <Eye className="w-4 h-4 mr-2" />
                             Public View
-                        </Button>
+                        </OutlineButton>
                     </div>
                 </div>
 
@@ -349,7 +346,7 @@ const ManageBracketPage = () => {
                             tournamentId={tournament.id}
                             tournamentSlug={slug}
                             isOrganizer={isOrganizer}
-                            onRefresh={() => fetchData(true)}
+                            onRefresh={handleRefresh}
                             onByeAdvance={handleByeAdvance}
                             stage={stage}
                         />
@@ -364,7 +361,7 @@ const ManageBracketPage = () => {
                             tournamentId={tournament.id}
                             tournamentSlug={slug}
                             isOrganizer={isOrganizer}
-                            onRefresh={() => fetchData(true)}
+                            onRefresh={handleRefresh}
                             onByeAdvance={handleByeAdvance}
                             stage={stage}
                         />

@@ -242,7 +242,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
           {tournament.prize_pool && tournament.prize_pool > 0 && (
             <div className="flex items-center gap-2 text-white/80">
               <Trophy className="w-4 h-4 text-white/50" />
-              <span>Prize Pool: ${tournament.prize_pool}</span>
+              <span>Prize Pool: {new Intl.NumberFormat('en-US', { style: 'currency', currency: tournament.currency || 'USD', maximumFractionDigits: 0 }).format(tournament.prize_pool)}</span>
             </div>
           )}
         </div>
