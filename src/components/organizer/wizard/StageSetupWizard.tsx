@@ -347,7 +347,7 @@ export const StageSetupWizard: React.FC<StageSetupWizardProps> = ({
         setSelectedTemplateId(null);
         setCurrentStageIndex(0);
         setEditingStageIndex(null);
-    }, [open, tournamentId, game, existingStages]);
+    }, [open, tournamentId, game, existingStages, draftMode, draftMaxTeams, initialDraftStages]);
 
 
     const handleTemplateSelect = (templateId: string) => {
