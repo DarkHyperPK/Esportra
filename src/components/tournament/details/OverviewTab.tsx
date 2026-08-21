@@ -1,12 +1,11 @@
 import React from 'react';
-import { Users, ChevronRight, Clock, Zap, CheckCircle, MapPin, Globe, ExternalLink, MessageCircle } from 'lucide-react';
+import { Users, ChevronRight, Clock, MapPin, Globe, ExternalLink, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDateTime } from '@/utils/dateFormat';
 import { VerticalAdPlacement } from './VerticalAdPlacement';
 import { TournamentWidePartners } from '@/components/tournament/TournamentWidePartners';
 import { TournamentPartnerLogos } from '@/components/tournament/TournamentPartnerLogos';
 
-import { isBattleRoyale } from '@/utils/gameFeatures';
 
 // Simple HTML entity decoder
 const decodeHtml = (html: string) => {
@@ -42,11 +41,6 @@ interface OverviewTabProps {
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [] }) => {
     const navigate = useNavigate();
-
-    // Check if any stage has self-play enabled (not applicable for Battle Royale games)
-    const isBR = isBattleRoyale(tournament?.game || '');
-    const selfPlayStage = stages.find(s => s.scheduling_config?.self_play_enabled);
-    const isSelfPlayEnabled = !isBR && !!selfPlayStage;
 
     // Check if vertical ad is enabled for this tournament
 
@@ -236,42 +230,6 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                         </div>
                     </div>
 
-                    {/* 3. Self-Play Mode Info (Conditionally Rendered) */}
-                    {isSelfPlayEnabled && (
-                        <div className="p-8 bg-rose-500/5 border border-rose-500/20">
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className="p-3 bg-rose-500/10 border border-rose-500/20">
-                                    <Zap className="w-8 h-8 text-rose-400" />
-                                </div>
-                                <div>
-                                    <h3 className="text-2xl font-bold text-white tracking-tight">Self-Play Mode</h3>
-                                    <p className="text-sm text-purple-300/80">Teams coordinate and start matches themselves</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-                                {[
-                                    { step: '1', title: 'Round Deadline', desc: 'Organizer sets a deadline for each round' },
-                                    { step: '2', title: 'Coordinate', desc: 'Teams chat and propose match times within deadline' },
-                                    { step: '3', title: 'Check-In', desc: 'Both teams check in when ready to play' },
-                                    { step: '4', title: 'Start Match', desc: 'Team 1 generates party code to start the match' },
-                                ].map((item) => (
-                                    <div key={item.step} className="flex flex-col items-center text-center p-4 bg-white/[0.03] border border-white/5">
-                                        <div className="w-10 h-10 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 font-bold text-lg mb-3">
-                                            {item.step}
-                                        </div>
-                                        <h4 className="text-white font-semibold text-sm mb-1">{item.title}</h4>
-                                        <p className="text-gray-500 text-xs">{item.desc}</p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="mt-8 flex items-center gap-3 text-sm text-gray-400 border-t border-white/5 pt-6">
-                                <CheckCircle className="w-4 h-4 text-emerald-500" />
-                                <span>Match chat is always enabled for captains to coordinate</span>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </section>
         </div>

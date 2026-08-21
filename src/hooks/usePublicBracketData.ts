@@ -41,7 +41,14 @@ export const usePublicBracketData = (
         queryKey: ['tournament-stages', tournamentId],
         queryFn: async () => {
             const stagesData = await apiClient.get<Stage[]>(`/api/tournaments/${tournamentId}/stages`);
-            return (stagesData || []).sort((a, b) => a.stage_order - b.stage_order);
+            return (stagesData || [])
+                .map(s => ({
+                    ...s,
+                    scheduling_config: typeof s.scheduling_config === 'string'
+                        ? (() => { try { return JSON.parse(s.scheduling_config as unknown as string); } catch { return null; } })()
+                        : s.scheduling_config ?? null,
+                }))
+                .sort((a, b) => a.stage_order - b.stage_order);
         },
         enabled: canFetch,
         staleTime: 2 * 60 * 1000,

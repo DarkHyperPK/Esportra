@@ -13,7 +13,7 @@ import {
     DialogDescription
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trophy, Layers, Lock, ArrowDown, Shield, Swords, Map as MapIcon, ChevronRight, Users, Target } from 'lucide-react';
+import { Trophy, Layers, Lock, ArrowDown, Shield, Swords, Map as MapIcon, ChevronRight, Users, Target, Gamepad2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { getStageBRConfig } from '@/utils/brConfigResolve';
@@ -47,14 +47,24 @@ interface Stage {
     round_bo_overrides?: Record<string, number>;
     map_pool: string[] | null;
     config: any;
+    scheduling_config?: {
+        self_play_enabled?: boolean;
+        checkin_window_minutes?: number;
+    } | null;
 }
+
+const parseJsonField = <T,>(value: T | string | null | undefined): T | null => {
+    if (typeof value === 'string') {
+        try { return JSON.parse(value) as T; } catch { return null; }
+    }
+    return (value as T) ?? null;
+};
 
 const normalizeStages = (rawStages: Stage[] | undefined) =>
     (rawStages || []).map((stage) => ({
         ...stage,
-        config: typeof stage.config === 'string'
-            ? (() => { try { return JSON.parse(stage.config); } catch { return stage.config; } })()
-            : (stage.config || null),
+        config: parseJsonField(stage.config),
+        scheduling_config: parseJsonField(stage.scheduling_config),
     }));
 
 const isBattleRoyaleStage = (stage: Stage) =>
@@ -474,6 +484,25 @@ export const StagesTab: React.FC<StagesTabProps> = ({
                                                     <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-0.5">{capacityLabel}</p>
                                                     <p className="text-sm text-zinc-300">
                                                         {capacityValue ? `${capacityValue} ${unitsLabel.charAt(0).toUpperCase() + unitsLabel.slice(1)}` : 'Depends on Results'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Self-Play Mode */}
+                                        {stage.scheduling_config?.self_play_enabled && (
+                                            <div className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20 flex items-start gap-3 col-span-full">
+                                                <div className="p-1.5 rounded bg-violet-500/10 shrink-0">
+                                                    <Gamepad2 className="w-4 h-4 text-violet-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-0.5">Self-Play Mode</p>
+                                                    <p className="text-sm text-zinc-300">
+                                                        <span className="text-violet-400 font-semibold">Enabled</span>
+                                                        {' '}— Players schedule and play matches independently.
+                                                    </p>
+                                                    <p className="text-xs text-zinc-500 mt-1">
+                                                        When your match is ready, open your match room to find the party code. Share it with your opponent so they can join your private lobby — then play the match on your own schedule within the deadline.
                                                     </p>
                                                 </div>
                                             </div>
