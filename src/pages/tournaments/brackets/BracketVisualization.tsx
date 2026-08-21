@@ -958,7 +958,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
         >
           {/* Centered Title */}
           <div className="text-center pt-6 pb-4">
-            <h2 className="text-lg font-semibold text-white">Start Match</h2>
+            <DialogTitle className="text-lg font-semibold text-white">Start Match</DialogTitle>
           </div>
 
           <div className="px-6 pb-6 space-y-5">
