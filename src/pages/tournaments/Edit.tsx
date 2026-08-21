@@ -44,8 +44,14 @@ const EditTournament = () => {
         }
       }
 
-      // 2.2 Fetch Map Pool (kept as part of tournament data or separate call)
-      const mapPoolIds: string[] = tournamentData.map_pool_ids || [];
+      // 2.2 Fetch Map Pool from junction table
+      let mapPoolIds: string[] = [];
+      try {
+        const mapPoolResponse = await apiClient.get<Array<{ id: string }>>(`/api/tournaments/${tournamentData.id}/map-pool`);
+        mapPoolIds = (mapPoolResponse || []).map(m => m.id);
+      } catch (e) {
+        console.error('Error fetching map pool:', e);
+      }
 
       // 2.5 Participant count from wrapped response
       const participantCountVal = response.participants?.length || 0;
