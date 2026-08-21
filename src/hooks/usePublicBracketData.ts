@@ -6,6 +6,9 @@ export interface Stage {
     name: string;
     stage_order: number;
     format?: string;
+    best_of?: number | null;
+    bo_mode?: 'per_stage' | 'per_round';
+    round_bo_overrides?: Record<string, number>;
     scheduling_config?: {
         self_play_enabled?: boolean;
         checkin_window_minutes?: number;

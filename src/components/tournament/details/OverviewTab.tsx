@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, ChevronRight, Trophy, Clock, Zap, CheckCircle, MapPin, Globe, ExternalLink, MessageCircle } from 'lucide-react';
+import { Users, ChevronRight, Clock, Zap, CheckCircle, MapPin, Globe, ExternalLink, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatDateTime } from '@/utils/dateFormat';
 import { VerticalAdPlacement } from './VerticalAdPlacement';
@@ -151,32 +151,6 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament, stages = [
                                             <span>Check-In Window</span>
                                             <span className="text-white">30m Pre-Match</span>
                                         </li>
-                                    </ul>
-                                </div>
-
-                                <div>
-                                    <h4 className="text-sm font-bold text-white uppercase tracking-widest mb-4 flex items-center gap-3">
-                                        <Trophy className="w-4 h-4 text-yellow-500" /> Rewards
-                                    </h4>
-                                    <ul className="space-y-4">
-                                        {tournament.rewards ? (
-                                            tournament.rewards.split('|').map((reward: string, index: number) => {
-                                                const [label, value] = reward.split(':').map(s => s.trim());
-                                                return (
-                                                    <li key={index} className="flex justify-between text-sm text-gray-400 font-mono border-b border-white/5 pb-2">
-                                                        <span>{label}</span>
-                                                        <span className={index === 0 ? "text-yellow-500" : index === 1 ? "text-gray-300" : "text-white"}>
-                                                            {value}
-                                                        </span>
-                                                    </li>
-                                                );
-                                            })
-                                        ) : (
-                                            <li className="flex justify-between text-sm text-gray-400 font-mono border-b border-white/5 pb-2">
-                                                <span>Prize Distribution</span>
-                                                <span className="text-white">TBA</span>
-                                            </li>
-                                        )}
                                     </ul>
                                 </div>
 
