@@ -1,17 +1,6 @@
 import React from 'react';
 import { Trophy, RefreshCw, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { usePrizeDistribution } from '@/hooks/usePrizeDistribution';
 import { useTournamentPlacements, useResolvePlacements } from '@/hooks/useTournamentPlacements';
 import { useTournamentPayouts, useUpdatePayout, useRewardDistributions, useUpdateRewardDistribution } from '@/hooks/useTournamentPayouts';
@@ -82,7 +71,7 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
     const handleResolve = async (force = false) => {
         try {
             await resolvePlacements.mutateAsync({ tournamentId, force });
-            toast({ title: force ? 'Placements Re-resolved' : 'Placements Resolved', description: 'Tournament placements have been calculated.' });
+            toast({ title: 'Placements Updated', description: 'Tournament placements have been recalculated.' });
         } catch {
             toast({ title: 'Error', description: 'Could not resolve placements.', variant: 'destructive' });
         }
@@ -171,39 +160,16 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
             <section className="space-y-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-white">Placements</h3>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleResolve(false)}
-                            disabled={resolvePlacements.isPending}
-                            className="text-xs"
-                        >
-                            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${resolvePlacements.isPending ? 'animate-spin' : ''}`} />
-                            Resolve
-                        </Button>
-                        {(placements?.length ?? 0) > 0 && (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button size="sm" variant="outline" className="text-xs text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/10">
-                                        Force Re-resolve
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Re-resolve Placements?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This will delete existing placements and payout records, then recalculate from bracket data. This cannot be undone.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleResolve(true)}>Re-resolve</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        )}
-                    </div>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleResolve(true)}
+                        disabled={resolvePlacements.isPending}
+                        className="text-xs"
+                    >
+                        <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${resolvePlacements.isPending ? 'animate-spin' : ''}`} />
+                        Update
+                    </Button>
                 </div>
 
                 {placementsLoading ? (
@@ -211,7 +177,7 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                 ) : (placements?.length ?? 0) === 0 ? (
                     <div className="rounded-none border border-dashed border-white/10 py-8 text-center">
                         <p className="text-sm text-gray-500">No placements resolved yet</p>
-                        <p className="text-xs text-gray-600 mt-1">Placements are auto-resolved when the tournament completes, or use the Resolve button above.</p>
+                        <p className="text-xs text-gray-600 mt-1">Use the Update button above to calculate placements from current bracket data.</p>
                     </div>
                 ) : (
                     <div className="rounded-none border border-white/10 overflow-hidden">
