@@ -314,6 +314,7 @@ const TournamentDetails = () => {
         team_size: t.team_size ?? t.teamSize ?? parsedSettings?.teamSize ?? 1,
         game_mode: t.game_mode ?? t.gameMode ?? parsedSettings?.gameMode ?? null,
         prize_pool: t.prize_pool?.toString() || '0',
+        currency: t.currency || 'USD',
         entry_fee: t.entry_fee?.toString() || '0',
         description: t.description || '',
         user_id: t.organization_owner_id || t.organizer_id || '',

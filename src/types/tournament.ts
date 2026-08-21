@@ -52,6 +52,7 @@ export interface BaseTournament extends TournamentCardBadgeFields {
     team_size: number;
     game_mode?: string | null;
     prize_pool: string;
+    currency: string;
     entry_fee: string | null;
     start_date?: string;
     end_date?: string; // Added to support timeline display
