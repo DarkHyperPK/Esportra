@@ -711,7 +711,7 @@ const TournamentDetails = () => {
 
           <TabsContent value="overview">
             <div className="container mx-auto px-4">
-              <OverviewTab tournament={tournament} stages={stages} />
+              <OverviewTab tournament={tournament} />
             </div>
           </TabsContent>
 
