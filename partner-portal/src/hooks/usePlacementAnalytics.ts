@@ -8,26 +8,37 @@ interface PlacementStat {
   ctr: number;
 }
 
+interface AnalyticsSummaryTrend {
+  impressionsChangePercent: number;
+  clicksChangePercent: number;
+  ctrChangePercent: number;
+  previousPeriodImpressions: number;
+  previousPeriodClicks: number;
+}
+
 interface AnalyticsSummary {
-  impressions: number;
-  clicks: number;
+  schemaVersion: number;
+  window: { startsOn: string; endsOnExclusive: string; generatedAt: string };
+  totalImpressions: number;
+  totalClicks: number;
   ctr: number;
-  impressionsTrend: number;
-  clicksTrend: number;
+  uniqueAudience: number;
+  trend: AnalyticsSummaryTrend;
 }
 
 export function usePlacementAnalytics(days = 30) {
   return useQuery({
     queryKey: ['sponsor', 'analytics', 'placements', days],
-    queryFn: async () => {
-      try {
-        return await apiClient.get<PlacementStat[]>(`/api/sponsors/me/analytics/placements?days=${days}`);
-      } catch (err: unknown) {
-        if (err && typeof err === 'object' && 'status' in err && ((err as { status: number }).status === 404 || (err as { status: number }).status === 500)) return [];
-        throw err;
-      }
-    },
-    retry: false,
+      queryFn: async () => {
+        try {
+          const res = await apiClient.get<{ placements: PlacementStat[] }>(`/api/sponsors/me/analytics/placements?days=${days}`);
+          return res?.placements ?? [];
+        } catch (err: unknown) {
+          if (err && typeof err === 'object' && 'status' in err && ((err as { status: number }).status === 404 || (err as { status: number }).status === 500)) return [];
+          throw err;
+        }
+      },
+      retry: false,
   });
 }
 

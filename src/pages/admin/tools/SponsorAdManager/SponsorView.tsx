@@ -166,8 +166,8 @@ export const SponsorView: React.FC<Props> = ({ sponsors, initialSponsorId, onAss
               {summary && (
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { label: 'Impressions', value: fmt(summary.impressions), trend: summary.impressionsTrend },
-                    { label: 'Clicks', value: fmt(summary.clicks), trend: summary.clicksTrend },
+                    { label: 'Impressions', value: fmt(summary.totalImpressions), trend: summary.trend.impressionsChangePercent },
+                    { label: 'Clicks', value: fmt(summary.totalClicks), trend: summary.trend.clicksChangePercent },
                     { label: 'CTR', value: `${summary.ctr.toFixed(1)}%`, trend: undefined },
                   ].map(({ label, value, trend }) => (
                     <div key={label} className="bg-zinc-950 border border-zinc-800 rounded-lg p-4">

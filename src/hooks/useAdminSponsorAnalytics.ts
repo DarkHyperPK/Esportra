@@ -1,12 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 
+interface AnalyticsSummaryTrend {
+  impressionsChangePercent: number;
+  clicksChangePercent: number;
+  ctrChangePercent: number;
+  previousPeriodImpressions: number;
+  previousPeriodClicks: number;
+}
+
 interface AdminAnalyticsSummary {
-  impressions: number;
-  clicks: number;
+  schemaVersion: number;
+  window: { startsOn: string; endsOnExclusive: string; generatedAt: string };
+  totalImpressions: number;
+  totalClicks: number;
   ctr: number;
-  impressionsTrend: number;
-  clicksTrend: number;
+  uniqueAudience: number;
+  trend: AnalyticsSummaryTrend;
 }
 
 interface PlacementStat {
@@ -72,7 +82,8 @@ export function useAdminSponsorPlacements(sponsorId: string | undefined, days: n
   return useQuery({
     queryKey: ['admin', 'sponsor-analytics', 'placements', sponsorId, days],
     queryFn: () =>
-      apiClient.get<PlacementStat[]>(`/api/admin/sponsors/${sponsorId}/analytics/placements?days=${days}`)
+      apiClient.get<{ placements: PlacementStat[] }>(`/api/admin/sponsors/${sponsorId}/analytics/placements?days=${days}`)
+        .then(res => res?.placements ?? [])
         .catch(onNotFound([] as PlacementStat[])),
     enabled: enabled && !!sponsorId,
     staleTime: 60_000,
@@ -83,7 +94,8 @@ export function useAdminSponsorSlots(sponsorId: string | undefined, days: number
   return useQuery({
     queryKey: ['admin', 'sponsor-analytics', 'slots', sponsorId, days],
     queryFn: () =>
-      apiClient.get<SlotStat[]>(`/api/admin/sponsors/${sponsorId}/analytics/slots?days=${days}`)
+      apiClient.get<{ slots: SlotStat[] }>(`/api/admin/sponsors/${sponsorId}/analytics/slots?days=${days}`)
+        .then(res => res?.slots ?? [])
         .catch(onNotFound([] as SlotStat[])),
     enabled: enabled && !!sponsorId,
     staleTime: 60_000,

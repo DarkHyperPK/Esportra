@@ -247,8 +247,8 @@ const Analytics = () => {
             {/* Period KPI summary */}
             {summary && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <PeriodKpiCard label={`Impressions (${days}d)`} value={summary.impressions.toLocaleString()} trend={summary.impressionsTrend} />
-                    <PeriodKpiCard label={`Clicks (${days}d)`} value={summary.clicks.toLocaleString()} trend={summary.clicksTrend} />
+                    <PeriodKpiCard label={`Impressions (${days}d)`} value={summary.totalImpressions.toLocaleString()} trend={summary.trend.impressionsChangePercent} />
+                    <PeriodKpiCard label={`Clicks (${days}d)`} value={summary.totalClicks.toLocaleString()} trend={summary.trend.clicksChangePercent} />
                     <PeriodKpiCard label={`CTR (${days}d)`} value={`${summary.ctr.toFixed(1)}%`} />
                 </div>
             )}
