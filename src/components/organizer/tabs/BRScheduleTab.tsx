@@ -11,6 +11,7 @@ interface BRScheduleTabProps {
   stages: TournamentStage[];
   registeredUnitCount?: number;
   onUpdate: () => void;
+  locked?: boolean;
 }
 
 export const BRScheduleTab: React.FC<BRScheduleTabProps> = ({
@@ -20,6 +21,7 @@ export const BRScheduleTab: React.FC<BRScheduleTabProps> = ({
   stages,
   registeredUnitCount = 0,
   onUpdate,
+  locked = false,
 }) => {
   const sortedStages = [...stages].sort((a, b) => a.stage_order - b.stage_order);
 
@@ -43,6 +45,7 @@ export const BRScheduleTab: React.FC<BRScheduleTabProps> = ({
           allStages={sortedStages}
           registeredUnitCount={registeredUnitCount}
           onUpdate={onUpdate}
+          locked={locked}
         />
       ))}
     </div>

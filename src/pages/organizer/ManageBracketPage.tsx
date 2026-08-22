@@ -37,6 +37,8 @@ const ManageBracketPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isOrganizer, setIsOrganizer] = useState(false);
 
+    const isLocked = tournament?.status === 'completed';
+
     useStageRealtime({ tournamentId: tournament?.id });
 
 
@@ -112,6 +114,7 @@ const ManageBracketPage = () => {
 
     // Handle single BYE advancement
     const handleByeAdvance = async (matchId: string) => {
+        if (tournament?.status === 'completed') return;
         try {
             // Get the match
             const match = await apiClient.get<any>(`/api/brackets/matches/${matchId}`).catch(() => null);
@@ -317,7 +320,7 @@ const ManageBracketPage = () => {
                                 {versionStatus === 'draft' ? (
                                     <CtaButton
                                         onClick={handlePublishBracket}
-                                        disabled={isSubmitting}
+                                        disabled={isSubmitting || isLocked}
                                     >
                                         {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Globe className="w-4 h-4 mr-2" />}
                                         Publish Bracket

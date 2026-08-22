@@ -867,7 +867,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                     size="icon"
                                                     variant="ghost"
                                                     className="h-8 w-8 text-gray-400 hover:text-white"
-                                                    disabled={index === 0}
+                                                    disabled={locked || index === 0}
                                                     onClick={() => handleReorderStage(stage.id, 'up')}
                                                 >
                                                     <ArrowUp className="w-4 h-4" />
@@ -876,7 +876,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                     size="icon"
                                                     variant="ghost"
                                                     className="h-8 w-8 text-gray-400 hover:text-white"
-                                                    disabled={index === stages.length - 1}
+                                                    disabled={locked || index === stages.length - 1}
                                                     onClick={() => handleReorderStage(stage.id, 'down')}
                                                 >
                                                     <ArrowDown className="w-4 h-4" />

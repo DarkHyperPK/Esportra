@@ -1828,6 +1828,7 @@ const TournamentDashboard = () => {
                         stages={stages}
                         registeredUnitCount={brRegisteredUnitCount}
                         onUpdate={() => refetchDashboard()}
+                        locked={tournament.status === 'completed'}
                       />
                     ) : (
                       <div className="space-y-6">
