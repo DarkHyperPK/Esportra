@@ -51,7 +51,7 @@ type AdminNavGroup = {
   items: AdminNavItem[];
 };
 
-const adminNavGroups: AdminNavGroup[] = [
+export const adminNavGroups: AdminNavGroup[] = [
   {
     label: 'Dashboard',
     items: [

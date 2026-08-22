@@ -3,6 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useAdminSponsors, useAdminSponsorApplications } from '@/hooks/useAdminQueries';
+import {
+  CommandActionBar,
+  CommandButton,
+  CommandEmptyState,
+  CommandMetric,
+  CommandSection,
+  CommandSegmentedButton,
+  CommandToolbar,
+} from '@/components/management/CommandSurface';
 import { ArrowRight, ArrowUpDown, Eye, MousePointerClick, Search, TrendingUp, Users } from 'lucide-react';
 
 interface FleetItem {
@@ -19,11 +28,11 @@ interface FleetItem {
 const TIER_FILTERS = ['all', 'radiant', 'ascendant', 'diamond', 'partner', 'standard'] as const;
 
 const TIER_BADGE: Record<string, string> = {
-  radiant: 'bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/25',
-  ascendant: 'bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/25',
-  diamond: 'bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/25',
-  partner: 'bg-zinc-700/40 text-zinc-300 ring-1 ring-white/10',
-  standard: 'bg-zinc-700/40 text-zinc-300 ring-1 ring-white/10',
+  radiant: 'border-white/40 bg-white/[0.06] text-white',
+  ascendant: 'border-white/25 bg-white/[0.03] text-zinc-200',
+  diamond: 'border-white/15 bg-transparent text-zinc-300',
+  partner: 'border-white/10 bg-transparent text-zinc-400',
+  standard: 'border-white/10 bg-transparent text-zinc-500',
 };
 
 const fmt = (n: number) =>
@@ -81,79 +90,76 @@ const OverviewSection = () => {
       });
   }, [fleet, search, tierFilter, sort, dir]);
 
-  const kpis = [
-    { label: 'Active Partners', value: fmt(activePartners), icon: Users, tone: 'text-white' },
-    { label: 'Impressions · 30d', value: fmt(totals.impressions), icon: Eye, tone: 'text-white' },
-    { label: 'Clicks · 30d', value: fmt(totals.clicks), icon: MousePointerClick, tone: 'text-white' },
-    { label: 'Fleet CTR · 30d', value: `${fleetCtr.toFixed(2)}%`, icon: TrendingUp, tone: 'text-emerald-400' },
-  ];
-
   return (
-    <div className="space-y-6">
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        {kpis.map(kpi => (
-          <div key={kpi.label} className="rounded-2xl border border-white/10 bg-[#0a0a0c] p-5">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-[10px] font-mono uppercase tracking-[0.18em] text-zinc-500">{kpi.label}</p>
-              <kpi.icon className={`h-4 w-4 ${kpi.tone === 'text-emerald-400' ? 'text-emerald-400' : 'text-zinc-600'}`} />
-            </div>
-            <p className={`font-heading text-2xl font-black ${kpi.tone}`}>{fleetLoading ? '…' : kpi.value}</p>
-          </div>
-        ))}
-      </div>
+    <div className="space-y-5">
+      {/* Fleet metrics */}
+      <CommandSection>
+        <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.45em] text-rose-400">
+          Fleet · 30 days
+        </p>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <CommandMetric label="Active Partners" value={fleetLoading ? '…' : fmt(activePartners)} icon={<Users className="h-4 w-4" />} />
+          <CommandMetric label="Impressions" value={fleetLoading ? '…' : fmt(totals.impressions)} icon={<Eye className="h-4 w-4" />} />
+          <CommandMetric label="Clicks" value={fleetLoading ? '…' : fmt(totals.clicks)} icon={<MousePointerClick className="h-4 w-4" />} />
+          <CommandMetric label="Fleet CTR" value={fleetLoading ? '…' : `${fleetCtr.toFixed(2)}%`} icon={<TrendingUp className="h-4 w-4" />} />
+        </div>
+      </CommandSection>
 
-      {/* Pending pipeline banner */}
+      {/* Pending pipeline — inline meta, not a boxed banner */}
       {pendingApps > 0 && (
-        <button
-          onClick={() => navigate('/admin/partners/sponsors/pipeline')}
-          className="flex w-full items-center justify-between rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-5 py-3.5 text-left transition hover:border-rose-500/45"
-        >
-          <span className="text-sm text-zinc-200">
-            <strong className="text-white">{pendingApps}</strong> partner application{pendingApps === 1 ? '' : 's'} awaiting review
-          </span>
-          <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-rose-300">
-            Review <ArrowRight className="h-3.5 w-3.5" />
-          </span>
-        </button>
+        <CommandActionBar>
+          <p className="text-xs text-zinc-400">
+            <span className="mr-3 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-rose-400">Pipeline</span>
+            <span className="font-heading text-base font-black text-white">{pendingApps}</span>
+            <span> application{pendingApps === 1 ? '' : 's'} awaiting review</span>
+          </p>
+          <CommandButton variant="ghost" size="sm" asChild>
+            <a href="#pipeline" onClick={e => { e.preventDefault(); navigate('/admin/partners/sponsors/pipeline'); }}>
+              Review <ArrowRight className="h-4 w-4" />
+            </a>
+          </CommandButton>
+        </CommandActionBar>
       )}
 
       {/* Fleet table */}
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0a0a0c]">
-        <div className="flex flex-col gap-3 border-b border-white/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-sm font-semibold text-white">Sponsor Fleet</span>
+      <div className="border border-white/10 bg-[#0a0a0c]/92">
+        <CommandToolbar className="border-0 border-b border-white/10">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.45em] text-zinc-500">
+            Sponsor Fleet
+          </span>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
+            <div className="relative sm:w-52">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search sponsors…"
-                className="w-full rounded-lg border border-zinc-800 bg-black/40 py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-zinc-600 focus:border-rose-500/40 focus:outline-none sm:w-48"
+                className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
               />
             </div>
             <div className="flex gap-1 overflow-x-auto" data-lenis-prevent>
               {TIER_FILTERS.map(t => (
-                <button
+                <CommandSegmentedButton
                   key={t}
+                  active={tierFilter === t}
                   onClick={() => setTierFilter(t)}
-                  className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition ${
-                    tierFilter === t ? 'bg-zinc-800 text-white' : 'text-zinc-600 hover:text-zinc-300'
-                  }`}
                 >
                   {t}
-                </button>
+                </CommandSegmentedButton>
               ))}
             </div>
           </div>
-        </div>
+        </CommandToolbar>
 
         {fleetError ? (
-          <div className="py-16 text-center text-sm text-red-400">Could not load sponsor overview.</div>
+          <CommandEmptyState
+            title="Could not load sponsor overview"
+            description="The fleet report is unavailable right now. Retry in a moment."
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px] text-left text-xs">
-              <thead className="bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-500">
+              <thead className="bg-black/40 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                 <tr>
                   {([
                     ['name', 'Sponsor'],
@@ -166,7 +172,7 @@ const OverviewSection = () => {
                     <th
                       key={key}
                       onClick={() => toggleSort(key)}
-                      className={`cursor-pointer px-4 py-3 hover:text-zinc-300 ${key !== 'name' && key !== 'tier' ? 'tabular-nums' : ''}`}
+                      className={`cursor-pointer px-4 py-3 transition-colors hover:text-zinc-300 ${key !== 'name' && key !== 'tier' ? 'tabular-nums' : ''}`}
                     >
                       <span className="inline-flex items-center gap-1">{label}<ArrowUpDown className="h-3 w-3 opacity-40" />{arrow(key)}</span>
                     </th>
@@ -178,21 +184,21 @@ const OverviewSection = () => {
                   <tr
                     key={s.id}
                     onClick={() => navigate(`/admin/partners/sponsors/placements?sponsor=${s.id}`)}
-                    className="cursor-pointer text-zinc-300 transition hover:bg-white/[0.03]"
+                    className="group cursor-pointer text-zinc-300 transition-colors hover:bg-white/[0.03]"
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         {s.logoUrl ? (
-                          <img src={s.logoUrl} alt="" loading="lazy" className="h-7 w-7 rounded border border-zinc-800 object-contain" />
+                          <img src={s.logoUrl} alt="" loading="lazy" className="h-7 w-7 border border-white/10 object-contain" />
                         ) : (
-                          <div className="flex h-7 w-7 items-center justify-center rounded border border-zinc-800 bg-zinc-950 text-[9px] text-zinc-600">?</div>
+                          <div className="flex h-7 w-7 items-center justify-center border border-white/10 bg-black/40 text-[9px] text-zinc-600">?</div>
                         )}
-                        <span className="font-medium text-white">{s.name}</span>
+                        <span className="font-medium text-white group-hover:text-rose-300">{s.name}</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       {s.tier ? (
-                        <span className={`rounded px-1.5 py-0.5 text-[9px] font-mono uppercase ${TIER_BADGE[s.tier.toLowerCase()] ?? TIER_BADGE.standard}`}>
+                        <span className={`border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${TIER_BADGE[s.tier.toLowerCase()] ?? TIER_BADGE.standard}`}>
                           {s.tier}
                         </span>
                       ) : <span className="text-zinc-600">—</span>}
@@ -201,9 +207,14 @@ const OverviewSection = () => {
                     <td className="px-4 py-3 tabular-nums">{s.clicks30d > 0 ? fmt(s.clicks30d) : <span className="text-zinc-600">—</span>}</td>
                     <td className="px-4 py-3 tabular-nums">{s.impressions30d > 0 ? `${s.ctr30d.toFixed(1)}%` : <span className="text-zinc-600">—</span>}</td>
                     <td className="px-4 py-3">
-                      {s.activePlacements > 0
-                        ? <span className="text-emerald-400">{s.activePlacements} active</span>
-                        : <span className="text-zinc-600">0 active</span>}
+                      {s.activePlacements > 0 ? (
+                        <span className="flex items-center gap-1.5 text-white">
+                          <span className="h-1.5 w-1.5 bg-rose-500" />
+                          {s.activePlacements} active
+                        </span>
+                      ) : (
+                        <span className="text-zinc-600">0 active</span>
+                      )}
                     </td>
                   </tr>
                 ))}

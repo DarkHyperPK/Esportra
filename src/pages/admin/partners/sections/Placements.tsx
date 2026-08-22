@@ -4,6 +4,10 @@ import { useSearchParams } from 'react-router-dom';
 import { apiClient, ApiError } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import {
+  CommandButton,
+  CommandTabs,
+} from '@/components/management/CommandSurface';
+import {
   useCreatePlacement,
   useUpdatePlacement,
   useDeletePlacement,
@@ -199,19 +203,11 @@ const PlacementsSection = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 overflow-x-auto rounded-lg border border-white/10 bg-black/40 p-1" data-lenis-prevent>
-        {ZONE_TABS.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setZone(tab.key)}
-            className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
-              view === tab.key ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <CommandTabs
+        tabs={ZONE_TABS.map(t => ({ value: t.key, label: t.label }))}
+        active={view}
+        onChange={v => setZone(v as ZoneView)}
+      />
 
       {view === 'ticker' ? (
         <HomepageTickerView
@@ -287,12 +283,12 @@ const PlacementsSection = () => {
 
       {pendingAction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
-          <div className="w-full max-w-sm rounded-xl border border-zinc-700 bg-zinc-900 p-5">
+          <div className="w-full max-w-sm border border-white/10 bg-[#0a0a0c] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
             <h3 id="confirm-title" className="text-lg font-bold text-white">Confirm action</h3>
-            <p className="mt-2 text-sm text-zinc-400">{actionLabel}</p>
-            <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setPendingAction(null)} className="rounded px-4 py-2 text-sm text-zinc-400 transition-colors hover:text-white">Cancel</button>
-              <button onClick={confirmAction} className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500">Confirm</button>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-400">{actionLabel}</p>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <CommandButton variant="ghost" size="sm" onClick={() => setPendingAction(null)}>Cancel</CommandButton>
+              <CommandButton variant="danger" size="sm" onClick={confirmAction}>Confirm</CommandButton>
             </div>
           </div>
         </div>
@@ -300,7 +296,7 @@ const PlacementsSection = () => {
 
       {(uploadMutation.isPending || replaceMutation.isPending) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-6 py-4 text-sm text-white">
+          <div className="border border-white/10 bg-[#0a0a0c] px-6 py-4 font-mono text-xs font-bold uppercase tracking-wider text-white">
             {uploadMutation.isPending ? 'Uploading creative…' : 'Replacing…'}
           </div>
         </div>

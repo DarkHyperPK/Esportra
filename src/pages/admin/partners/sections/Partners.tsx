@@ -11,8 +11,13 @@ import { adminKeys, useAdminSponsors } from '@/hooks/useAdminQueries';
 import type { Sponsor } from '@/hooks/useSponsors';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { PartnerAudienceDialog } from '@/components/admin/partners/PartnerAudienceDialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  CommandButton,
+  CommandIconButton,
+  CommandSection,
+  CommandSegmentedButton,
+  CommandToolbar,
+} from '@/components/management/CommandSurface';
 import {
   Dialog,
   DialogContent,
@@ -34,19 +39,15 @@ import {
 } from 'lucide-react';
 
 type TierFilter = 'all' | 'radiant' | 'ascendant' | 'diamond' | 'partner' | 'standard';
+type StatusFilter = 'all' | 'active' | 'inactive';
 
 const TIER_BADGE: Record<string, string> = {
-  radiant: 'border-amber-500/30 bg-amber-500/5 text-amber-500',
-  ascendant: 'border-emerald-500/30 bg-emerald-500/5 text-emerald-500',
-  diamond: 'border-sky-500/30 bg-sky-500/5 text-sky-400',
-  partner: 'border-white/10 bg-white/5 text-zinc-400',
-  standard: 'border-white/10 bg-white/5 text-zinc-400',
+  radiant: 'border-white/40 bg-white/[0.06] text-white',
+  ascendant: 'border-white/25 bg-white/[0.03] text-zinc-200',
+  diamond: 'border-white/15 bg-transparent text-zinc-300',
+  partner: 'border-white/10 bg-transparent text-zinc-400',
+  standard: 'border-white/10 bg-transparent text-zinc-500',
 };
-
-interface InviteResultState {
-  open: boolean;
-  message: string;
-}
 
 const PartnersSection = () => {
   const { isSuperAdmin } = useAdminAccess();
@@ -55,10 +56,10 @@ const PartnersSection = () => {
 
   const [search, setSearch] = useState('');
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sponsorModal, setSponsorModal] = useState<{ open: boolean; sponsor: Partial<Sponsor> | null; isNew: boolean }>({ open: false, sponsor: null, isNew: true });
   const [inviteModal, setInviteModal] = useState<{ open: boolean; sponsor: Sponsor | null; email: string }>({ open: false, sponsor: null, email: '' });
-  const [inviteResult, setInviteResult] = useState<InviteResultState>({ open: false, message: '' });
+  const [inviteResult, setInviteResult] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
   const [audienceSponsor, setAudienceSponsor] = useState<Sponsor | null>(null);
   const [downloadingFor, setDownloadingFor] = useState<string | null>(null);
 
@@ -238,51 +239,37 @@ const PartnersSection = () => {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative sm:w-60">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
+    <div className="space-y-5">
+      <CommandToolbar>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative lg:w-56">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search partners…"
-              className="w-full rounded-lg border border-zinc-800 bg-black/40 py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-zinc-600 focus:border-rose-500/40 focus:outline-none"
+              className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
             />
           </div>
           <div className="flex gap-1 overflow-x-auto" data-lenis-prevent>
             {(['all', 'radiant', 'ascendant', 'diamond', 'partner', 'standard'] as TierFilter[]).map(t => (
-              <button
-                key={t}
-                onClick={() => setTierFilter(t)}
-                className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition ${
-                  tierFilter === t ? 'bg-zinc-800 text-white' : 'text-zinc-600 hover:text-zinc-300'
-                }`}
-              >
+              <CommandSegmentedButton key={t} active={tierFilter === t} onClick={() => setTierFilter(t)}>
                 {t}
-              </button>
+              </CommandSegmentedButton>
             ))}
           </div>
           <div className="flex gap-1">
-            {(['all', 'active', 'inactive'] as const).map(s => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider transition ${
-                  statusFilter === s ? 'bg-zinc-800 text-white' : 'text-zinc-600 hover:text-zinc-300'
-                }`}
-              >
+            {(['all', 'active', 'inactive'] as StatusFilter[]).map(s => (
+              <CommandSegmentedButton key={s} active={statusFilter === s} onClick={() => setStatusFilter(s)}>
                 {s}
-              </button>
+              </CommandSegmentedButton>
             ))}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
+          <CommandButton
+            variant="ghost"
             size="sm"
-            className="border-zinc-800 text-zinc-400 hover:text-white"
             onClick={() => {
               if (!rows.length) { toast({ title: 'Nothing to export', variant: 'destructive' }); return; }
               const csv = [
@@ -301,19 +288,18 @@ const PartnersSection = () => {
               toast({ title: 'Export complete', description: `${rows.length} partners exported` });
             }}
           >
-            Export CSV
-          </Button>
-          <Button size="sm" className="bg-rose-500 hover:bg-rose-600" onClick={() => setSponsorModal({ open: true, isNew: true, sponsor: {} })}>
-            <Plus className="mr-1.5 h-4 w-4" /> Add Partner
-          </Button>
+            <Download className="h-4 w-4" /> Export CSV
+          </CommandButton>
+          <CommandButton size="sm" onClick={() => setSponsorModal({ open: true, isNew: true, sponsor: {} })}>
+            <Plus className="h-4 w-4" /> Add Partner
+          </CommandButton>
         </div>
-      </div>
+      </CommandToolbar>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#0a0a0c]">
+      <CommandSection className="p-0">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[880px] text-left text-xs">
-            <thead className="bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-500">
+            <thead className="bg-black/40 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
               <tr>
                 <th className="px-4 py-3">Partner</th>
                 <th className="px-4 py-3">Tier</th>
@@ -325,38 +311,41 @@ const PartnersSection = () => {
             </thead>
             <tbody className="divide-y divide-white/5">
               {rows.map(s => (
-                <tr key={s.id} className={`text-zinc-300 transition hover:bg-white/[0.03] ${!s.is_active ? 'opacity-60' : ''}`}>
+                <tr key={s.id} className={`text-zinc-300 transition-colors hover:bg-white/[0.03] ${!s.is_active ? 'opacity-60' : ''}`}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       {s.logo_url ? (
-                        <img src={s.logo_url} alt="" loading="lazy" className="h-8 w-8 rounded border border-zinc-800 object-contain" />
+                        <img src={s.logo_url} alt="" loading="lazy" className="h-8 w-8 border border-white/10 object-contain" />
                       ) : (
-                        <div className="flex h-8 w-8 items-center justify-center rounded font-bold text-white" style={{ backgroundColor: s.accent_color }}>
+                        <div className="flex h-8 w-8 items-center justify-center border border-white/10 font-bold text-white" style={{ backgroundColor: s.accent_color }}>
                           {s.name[0]}
                         </div>
                       )}
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-medium text-white">{s.name}</p>
-                        <a href={s.website_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] text-zinc-600 hover:text-rose-400">
-                          <ExternalLink className="h-2.5 w-2.5" />
+                        <a href={s.website_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 font-mono text-[10px] text-zinc-600 transition-colors hover:text-rose-300">
+                          <ExternalLink className="h-2.5 w-2.5 shrink-0" />
                           {(() => { try { return new URL(s.website_url).hostname; } catch { return s.website_url || '—'; } })()}
                         </a>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase ${TIER_BADGE[(s.tier || 'standard')]}`}>
+                    <span className={`border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${TIER_BADGE[(s.tier || 'standard')]}`}>
                       {s.tier || 'standard'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => handleToggleActive(s)}
-                      className={`rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase transition hover:brightness-125 ${
-                        s.is_active ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400' : 'border-red-500/25 bg-red-500/10 text-red-400'
+                      className={`group flex items-center gap-1.5 border px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                        s.is_active
+                          ? 'border-white/25 text-white hover:border-rose-500/50'
+                          : 'border-white/10 text-zinc-500 hover:border-white/25'
                       }`}
                       title="Toggle activation"
                     >
+                      <span className={`h-1.5 w-1.5 ${s.is_active ? 'bg-rose-500' : 'bg-zinc-700 group-hover:bg-zinc-500'}`} />
                       {s.is_active ? 'Active' : 'Inactive'}
                     </button>
                   </td>
@@ -365,22 +354,22 @@ const PartnersSection = () => {
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1.5">
                       {isSuperAdmin && (
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-500 hover:text-cyan-400" title="Audience demographics" onClick={() => setAudienceSponsor(s)}>
+                        <CommandIconButton label="Audience demographics" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-white" onClick={() => setAudienceSponsor(s)}>
                           <Globe className="h-3.5 w-3.5" />
-                        </Button>
+                        </CommandIconButton>
                       )}
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-500 hover:text-white" title="Download campaign kit" disabled={downloadingFor === s.id} onClick={() => handleDownloadAssets(s)}>
+                      <CommandIconButton label="Download campaign kit" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-white" disabled={downloadingFor === s.id} onClick={() => handleDownloadAssets(s)}>
                         {downloadingFor === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-500 hover:text-white" title="Invite account owner" onClick={() => setInviteModal({ open: true, sponsor: s, email: '' })}>
+                      </CommandIconButton>
+                      <CommandIconButton label="Invite account owner" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-white" onClick={() => setInviteModal({ open: true, sponsor: s, email: '' })}>
                         <User className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-500 hover:text-white" title="Edit partner" onClick={() => setSponsorModal({ open: true, isNew: false, sponsor: s })}>
+                      </CommandIconButton>
+                      <CommandIconButton label="Edit partner" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-white" onClick={() => setSponsorModal({ open: true, isNew: false, sponsor: s })}>
                         <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-zinc-500 hover:text-red-500" title="Delete partner" onClick={() => handleDeleteSponsor(s)}>
+                      </CommandIconButton>
+                      <CommandIconButton label="Delete partner" variant="danger" className="h-8 w-8" onClick={() => handleDeleteSponsor(s)}>
                         <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      </CommandIconButton>
                     </div>
                   </td>
                 </tr>
@@ -391,7 +380,7 @@ const PartnersSection = () => {
             </tbody>
           </table>
         </div>
-      </div>
+      </CommandSection>
 
       {/* Audience */}
       {isSuperAdmin && (
@@ -404,27 +393,24 @@ const PartnersSection = () => {
 
       {/* Edit / create dialog */}
       <Dialog open={sponsorModal.open} onOpenChange={open => setSponsorModal({ ...sponsorModal, open })}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto overscroll-contain border-zinc-800 bg-[#0a0a0c]" data-lenis-prevent>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto overscroll-contain rounded-none border-white/10 bg-[#0a0a0c]" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle>{sponsorModal.isNew ? 'New Partner' : 'Edit Partner'}</DialogTitle>
           </DialogHeader>
           {sponsorModal.sponsor && (
             <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-xs uppercase text-zinc-500">Name</label>
-                  <Input value={sponsorModal.sponsor.name || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, name: e.target.value } })} className="bg-zinc-900" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs uppercase text-zinc-500">Website</label>
-                  <Input value={sponsorModal.sponsor.website_url || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, website_url: e.target.value } })} className="bg-zinc-900" />
-                </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field label="Name">
+                  <input value={sponsorModal.sponsor.name || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, name: e.target.value } })} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                </Field>
+                <Field label="Website">
+                  <input value={sponsorModal.sponsor.website_url || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, website_url: e.target.value } })} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                </Field>
               </div>
 
-              <div>
-                <label className="mb-1 block text-xs uppercase text-zinc-500">Tier</label>
+              <Field label="Tier">
                 <select
-                  className="w-full rounded-md border border-zinc-800 bg-zinc-900 p-2 text-sm text-white"
+                  className="w-full rounded-none border border-white/10 bg-black/60 p-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                   value={sponsorModal.sponsor.tier || 'standard'}
                   onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, tier: e.target.value as Sponsor['tier'] } })}
                 >
@@ -432,15 +418,14 @@ const PartnersSection = () => {
                   <option value="ascendant">Ascendant</option>
                   <option value="radiant">Radiant</option>
                 </select>
-              </div>
+              </Field>
 
               {!sponsorModal.isNew && (
                 <>
-                  <div>
-                    <label className="mb-2 block text-xs uppercase text-zinc-500">Ad Placements</label>
+                  <Field label="Ad Placements">
                     <div className="grid grid-cols-2 gap-2">
                       {['homepage_ticker', 'sidebar_partner', 'wide_partner', 'card_badge', 'partner_logo', 'partner_showcase'].map(placement => (
-                        <label key={placement} className="flex cursor-pointer items-center gap-2 rounded border border-zinc-800 bg-zinc-900 p-2 hover:border-zinc-700">
+                        <label key={placement} className="flex cursor-pointer items-center gap-2 border border-white/10 bg-black/40 p-2 transition-colors hover:border-white/25">
                           <input
                             type="checkbox"
                             checked={!!sponsorModal.sponsor?.placement?.includes(placement)}
@@ -449,100 +434,102 @@ const PartnersSection = () => {
                               const updated = e.target.checked ? [...current, placement] : current.filter(p => p !== placement);
                               setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, placement: updated } });
                             }}
-                            className="rounded border-zinc-700 bg-zinc-800 text-rose-500 focus:ring-rose-500"
+                            className="rounded-none border-white/20 bg-black accent-[#f43f5e]"
                           />
                           <span className="text-sm capitalize text-zinc-300">{placement.replace('_', ' ')}</span>
                         </label>
                       ))}
                     </div>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs uppercase text-zinc-500">Banner URL</label>
-                    <Input value={sponsorModal.sponsor.banner_image_url || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, banner_image_url: e.target.value } })} className="bg-zinc-900" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="mb-1 block text-xs uppercase text-zinc-500">Color</label>
+                  </Field>
+                  <Field label="Banner URL">
+                    <input value={sponsorModal.sponsor.banner_image_url || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, banner_image_url: e.target.value } })} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                  </Field>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Field label="Color">
                       <div className="flex gap-2">
-                        <input type="color" value={sponsorModal.sponsor.accent_color || '#000000'} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, accent_color: e.target.value } })} className="h-9 w-9 cursor-pointer border-0 bg-transparent" />
-                        <Input value={sponsorModal.sponsor.accent_color || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, accent_color: e.target.value } })} className="flex-1 bg-zinc-900" />
+                        <input type="color" value={sponsorModal.sponsor.accent_color || '#000000'} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, accent_color: e.target.value } })} className="h-9 w-9 cursor-pointer border border-white/10 bg-transparent" />
+                        <input value={sponsorModal.sponsor.accent_color || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, accent_color: e.target.value } })} className="w-full flex-1 rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
                       </div>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs uppercase text-zinc-500">Priority</label>
-                      <Input type="number" value={sponsorModal.sponsor.priority || 0} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, priority: parseInt(e.target.value) } })} className="bg-zinc-900" />
-                    </div>
+                    </Field>
+                    <Field label="Priority">
+                      <input type="number" value={sponsorModal.sponsor.priority || 0} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, priority: parseInt(e.target.value) } })} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                    </Field>
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs uppercase text-zinc-500">Tagline</label>
-                    <Input value={sponsorModal.sponsor.tagline || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, tagline: e.target.value } })} className="bg-zinc-900" />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs uppercase text-zinc-500">Description</label>
-                    <Input value={sponsorModal.sponsor.description || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, description: e.target.value } })} className="bg-zinc-900" />
-                  </div>
+                  <Field label="Tagline">
+                    <input value={sponsorModal.sponsor.tagline || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, tagline: e.target.value } })} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                  </Field>
+                  <Field label="Description">
+                    <input value={sponsorModal.sponsor.description || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, description: e.target.value } })} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                  </Field>
                 </>
               )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setSponsorModal({ open: false, sponsor: null, isNew: true })}>Cancel</Button>
-            <Button className="bg-rose-500 hover:bg-rose-600" onClick={handleSaveSponsor}>Save Partner</Button>
+            <CommandButton variant="ghost" size="sm" onClick={() => setSponsorModal({ open: false, sponsor: null, isNew: true })}>Cancel</CommandButton>
+            <CommandButton size="sm" onClick={handleSaveSponsor}>Save Partner</CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Invite dialog */}
       <Dialog open={inviteModal.open} onOpenChange={open => setInviteModal({ ...inviteModal, open })}>
-        <DialogContent className="max-w-md border-zinc-800 bg-[#0a0a0c]">
+        <DialogContent className="max-w-md rounded-none border-white/10 bg-[#0a0a0c]">
           <DialogHeader>
             <DialogTitle>Invite Account Owner</DialogTitle>
           </DialogHeader>
-          <p className="-mt-2 text-sm text-zinc-500">Grant access to <strong className="text-zinc-300">{inviteModal.sponsor?.name}</strong> dashboard.</p>
+          <p className="-mt-2 text-sm text-zinc-400">Grant access to <strong className="text-white">{inviteModal.sponsor?.name}</strong> dashboard.</p>
           <div className="py-2">
-            <label className="mb-1 block text-xs uppercase text-zinc-500">Email Address</label>
-            <Input
+            <p className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Email Address</p>
+            <input
               value={inviteModal.email}
               onChange={e => setInviteModal({ ...inviteModal, email: e.target.value })}
-              className="bg-zinc-900"
               placeholder="partner@company.com"
+              className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
             />
-            <p className="mt-2 text-xs text-zinc-500">
-              If they don't have an account they'll receive an invite email; if they do, access is granted immediately.
+            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+              NOTE — no account receives an invite email; an existing account gets access immediately.
             </p>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setInviteModal({ open: false, sponsor: null, email: '' })}>Cancel</Button>
-            <Button className="bg-rose-500 hover:bg-rose-600" onClick={handleInviteUser} disabled={inviteUserMutation.isPending}>
+            <CommandButton variant="ghost" size="sm" onClick={() => setInviteModal({ open: false, sponsor: null, email: '' })}>Cancel</CommandButton>
+            <CommandButton size="sm" disabled={inviteUserMutation.isPending} onClick={handleInviteUser}>
               {inviteUserMutation.isPending ? 'Sending…' : 'Send Invite'}
-            </Button>
+            </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Invite result dialog */}
       <Dialog open={inviteResult.open} onOpenChange={open => setInviteResult({ ...inviteResult, open })}>
-        <DialogContent className="max-w-md border-zinc-800 bg-[#0a0a0c]">
+        <DialogContent className="max-w-md rounded-none border-white/10 bg-[#0a0a0c]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-emerald-500" /> Invitation Sent
+              <ShieldCheck className="h-5 w-5 text-rose-400" /> Invitation Sent
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-zinc-300">{inviteResult.message}</p>
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-              <p className="text-xs font-medium leading-relaxed text-emerald-400">
-                Access will be granted only after the recipient accepts the email invitation.
-              </p>
-            </div>
+            <p className="border-l-2 border-rose-500 pl-3 font-mono text-xs uppercase tracking-wider text-zinc-400">
+              CAUTION — access activates only after the recipient accepts the invitation.
+            </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteResult({ ...inviteResult, open: false })}>Done</Button>
+            <CommandButton variant="ghost" size="sm" onClick={() => setInviteResult({ ...inviteResult, open: false })}>Done</CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
 };
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">{label}</p>
+      {children}
+    </div>
+  );
+}
 
 export default PartnersSection;

@@ -6,9 +6,14 @@ import { toast } from '@/components/ui/use-toast';
 import { adminKeys, useAdminSponsorApplications } from '@/hooks/useAdminQueries';
 import type { PartnerApplication } from '@/hooks/usePartnerApplication';
 import {
+  CommandButton,
+  CommandEmptyState,
+  CommandSection,
+  CommandTabs,
+} from '@/components/management/CommandSurface';
+import {
   Building2,
   CheckCircle,
-  FileText,
   Globe,
   Loader2,
   Mail,
@@ -16,8 +21,6 @@ import {
   Search,
   XCircle,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -36,13 +39,11 @@ interface Application extends PartnerApplication {
 
 type StatusFilter = 'pending' | 'reviewed' | 'approved' | 'rejected' | 'all';
 
-const STATUS_TABS: StatusFilter[] = ['pending', 'reviewed', 'approved', 'rejected', 'all'];
-
 const STATUS_BADGE: Record<string, string> = {
-  pending: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-  reviewed: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
-  approved: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-  rejected: 'bg-red-500/10 text-red-500 border-red-500/20',
+  pending: 'border-rose-500/30 text-rose-300',
+  reviewed: 'border-white/15 text-zinc-300',
+  approved: 'border-white/40 text-white',
+  rejected: 'border-red-500/30 text-red-300',
 };
 
 const PipelineSection = () => {
@@ -121,222 +122,164 @@ const PipelineSection = () => {
     }
   };
 
+  const tabs = [
+    { value: 'pending', label: `Pending ${counts.pending > 0 ? counts.pending : ''}` },
+    { value: 'reviewed', label: `Reviewed ${counts.reviewed > 0 ? counts.reviewed : ''}` },
+    { value: 'approved', label: `Approved ${counts.approved > 0 ? counts.approved : ''}` },
+    { value: 'rejected', label: `Rejected ${counts.rejected > 0 ? counts.rejected : ''}` },
+    { value: 'all', label: `All ${counts.all}` },
+  ];
+
   return (
-    <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-1 overflow-x-auto" data-lenis-prevent>
-          {STATUS_TABS.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setStatusFilter(tab)}
-              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition ${
-                statusFilter === tab ? 'bg-zinc-800 text-white ring-1 ring-white/10' : 'text-zinc-600 hover:text-zinc-300'
-              }`}
-            >
-              {tab}
-              {counts[tab] > 0 && (
-                <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[9px] ${tab === 'pending' && statusFilter !== 'pending' ? 'bg-rose-500 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
-                  {counts[tab]}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-        <div className="relative sm:w-60">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <CommandTabs
+          tabs={tabs}
+          active={statusFilter}
+          onChange={v => setStatusFilter(v as StatusFilter)}
+        />
+        <div className="relative lg:w-64">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search company or contact…"
-            className="w-full rounded-lg border border-zinc-800 bg-black/40 py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-zinc-600 focus:border-rose-500/40 focus:outline-none"
+            className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
           />
         </div>
       </div>
 
-      {/* Queue */}
       {isLoading ? (
-        <div className="py-16 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin text-zinc-600" /></div>
+        <CommandSection className="py-16 text-center">
+          <Loader2 className="mx-auto h-5 w-5 animate-spin text-zinc-600" />
+        </CommandSection>
       ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-white/5 bg-[#0a0a0c] py-20 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-zinc-900">
-            <FileText className="h-8 w-8 text-zinc-600" />
-          </div>
-          <h3 className="text-lg font-bold text-white">No applications here</h3>
-          <p className="text-sm text-zinc-500">New submissions from the Partners page will appear in this queue.</p>
-        </div>
+        <CommandEmptyState
+          title="No applications here"
+          description="New submissions from the Partners page will appear in this queue."
+          icon={<Search className="h-5 w-5" />}
+        />
       ) : (
         <div className="space-y-4">
           {rows.map(app => (
-            <div key={app.id} className="group rounded-xl border border-white/5 bg-[#0a0a0c] p-5 transition-colors hover:border-white/10">
+            <article key={app.id} className="group border border-white/10 bg-[#0a0a0c]/92 p-5 transition-colors hover:border-white/25">
               <div className="flex flex-col justify-between gap-6 lg:flex-row">
-                <div className="flex-1">
-                  <div className="mb-2 flex items-center gap-3">
-                    <h3 className="text-lg font-bold text-white">{app.company_name}</h3>
-                    <span className={`rounded border px-2 py-0.5 text-xs font-medium uppercase tracking-wider ${STATUS_BADGE[app.status || 'pending']}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <h3 className="text-base font-bold text-white">{app.company_name}</h3>
+                    <span className={`border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${STATUS_BADGE[app.status || 'pending']}`}>
                       {app.status || 'pending'}
                     </span>
-                    <span className="font-mono text-xs text-zinc-500">{new Date(app.created_at).toLocaleDateString()}</span>
+                    <span className="font-mono text-xs text-zinc-600">{new Date(app.created_at).toLocaleDateString()}</span>
                   </div>
-                  <div className="mb-4 flex items-center gap-6 text-sm text-zinc-400">
-                    <a href={app.company_website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 transition-colors hover:text-rose-400">
+                  <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm text-zinc-400">
+                    <a href={app.company_website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 transition-colors hover:text-rose-300">
                       <Globe className="h-4 w-4" /> {app.company_website}
                     </a>
                     <span className="flex items-center gap-1.5">
                       <Building2 className="h-4 w-4" /> {app.industry} ({app.company_size})
                     </span>
                   </div>
-                  <div className="rounded-lg border border-white/5 bg-zinc-900/50 p-3 text-sm font-light text-zinc-300">
-                    <span className="mb-1 block text-xs font-medium uppercase text-zinc-500">Message</span>
+                  <p className="border-l-2 border-white/10 pl-3 text-sm font-light leading-relaxed text-zinc-300">
                     "{app.message || 'No message provided.'}"
-                  </div>
+                  </p>
                 </div>
 
-                <div className="w-full space-y-3 border-white/5 lg:w-1/3 lg:border-l lg:pl-6">
+                <div className="w-full shrink-0 space-y-3 border-white/10 lg:w-72 lg:border-l lg:pl-6">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 font-bold text-zinc-400">
+                    <div className="flex h-9 w-9 items-center justify-center border border-white/10 bg-black/40 font-bold text-zinc-400">
                       {app.contact_name[0]}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-white">{app.contact_name}</p>
-                      <p className="text-xs text-zinc-500">{app.contact_title}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-white">{app.contact_name}</p>
+                      <p className="truncate text-xs text-zinc-500">{app.contact_title}</p>
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="flex items-center gap-2 text-xs text-zinc-400"><Mail className="h-3 w-3" /> {app.contact_email}</p>
-                    {app.contact_phone && <p className="flex items-center gap-2 text-xs text-zinc-400"><Phone className="h-3 w-3" /> {app.contact_phone}</p>}
+                    <p className="flex items-center gap-2 truncate text-xs text-zinc-400"><Mail className="h-3 w-3 shrink-0" /> {app.contact_email}</p>
+                    {app.contact_phone && <p className="flex items-center gap-2 text-xs text-zinc-400"><Phone className="h-3 w-3 shrink-0" /> {app.contact_phone}</p>}
                   </div>
-                  <div className="flex gap-2 border-t border-white/5 pt-3">
-                    <Badge variant="outline" className={`text-xs uppercase ${app.partnership_tier === 'radiant' ? 'border-amber-500/30 bg-amber-500/10 text-amber-500' : app.partnership_tier === 'ascendant' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500' : 'border-white/10 bg-zinc-500/10 text-zinc-400'}`}>
-                      {app.partnership_tier} Tier
-                    </Badge>
-                    {app.budget_range && (
-                      <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-400">{app.budget_range}</Badge>
-                    )}
-                  </div>
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+                    {app.partnership_tier} tier{app.budget_range ? ` — ${app.budget_range.replace(/_/g, ' ')}` : ''}
+                  </p>
 
-                  <div className="flex gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="border-zinc-800 text-zinc-300 hover:text-white" onClick={() => setDetail(app)}>
-                      Details
-                    </Button>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <ButtonDetails onClick={() => setDetail(app)} />
                     {app.status !== 'approved' && (
-                      <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={approveMutation.isPending} onClick={() => handleApprove(app)}>
+                      <CommandButton size="sm" disabled={approveMutation.isPending} onClick={() => handleApprove(app)}>
                         {approveMutation.isPending ? 'Approving…' : 'Approve'}
-                      </Button>
+                      </CommandButton>
                     )}
                     {app.status === 'pending' && (
                       <>
-                        <Button size="icon" variant="ghost" title="Mark Reviewed" onClick={() => handleSetStatus(app, 'reviewed')}>
-                          <CheckCircle className="h-4 w-4 text-zinc-500 transition-colors hover:text-sky-400" />
-                        </Button>
-                        <Button size="icon" variant="ghost" title="Reject" onClick={() => handleSetStatus(app, 'rejected')}>
-                          <XCircle className="h-4 w-4 text-zinc-500 transition-colors hover:text-red-500" />
-                        </Button>
+                        <CommandIconButtonReviewed onClick={() => handleSetStatus(app, 'reviewed')} />
+                        <CommandIconButtonReject onClick={() => handleSetStatus(app, 'rejected')} />
                       </>
                     )}
                   </div>
                 </div>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
 
       {/* Detail dialog */}
       <Dialog open={detail !== null} onOpenChange={open => { if (!open) setDetail(null); }}>
-        <DialogContent className="max-w-3xl border-zinc-800 bg-[#0a0a0c]">
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto rounded-none border-white/10 bg-[#0a0a0c]" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle>Application Details</DialogTitle>
             <DialogDescription>Submitted on {detail?.created_at && new Date(detail.created_at).toLocaleString()}</DialogDescription>
           </DialogHeader>
           {detail && (
-            <div className="grid grid-cols-2 gap-8 py-4">
-              <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-8 py-4 md:grid-cols-2">
+              <div className="space-y-6">
+                <DetailGroup title="Company Information" rows={[
+                  ['Name', detail.company_name],
+                  ['Website', detail.company_website],
+                  ['Industry', detail.industry],
+                  ['Size', detail.company_size],
+                ]} websiteHref={detail.company_website} />
                 <div>
-                  <h4 className="mb-2 text-sm font-bold uppercase tracking-wider text-white">Company Information</h4>
-                  <div className="space-y-2 text-sm">
-                    {([
-                      ['Name', detail.company_name],
-                      ['Industry', detail.industry],
-                      ['Size', detail.company_size],
-                    ] as [string, string][]).map(([label, value]) => (
-                      <div key={label} className="flex justify-between border-b border-white/5 pb-1">
-                        <span className="text-zinc-500">{label}</span>
-                        <span className="capitalize text-white">{value}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between border-b border-white/5 pb-1">
-                      <span className="text-zinc-500">Website</span>
-                      <a href={detail.company_website} target="_blank" rel="noopener noreferrer" className="text-rose-400 hover:underline">{detail.company_website}</a>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="mb-2 text-sm font-bold uppercase tracking-wider text-white">Proposal</h4>
-                  <div className="rounded-lg bg-zinc-900 p-3 text-sm italic text-zinc-300">"{detail.message}"</div>
+                  <h4 className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Proposal</h4>
+                  <p className="border-l-2 border-white/10 pl-3 text-sm italic leading-relaxed text-zinc-300">"{detail.message}"</p>
                 </div>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <h4 className="mb-2 text-sm font-bold uppercase tracking-wider text-white">Contact Point</h4>
-                  <div className="space-y-2 text-sm">
-                    {([
-                      ['Name', detail.contact_name],
-                      ['Title', detail.contact_title],
-                      ['Email', detail.contact_email],
-                      ['Phone', detail.contact_phone || 'N/A'],
-                    ] as [string, string][]).map(([label, value]) => (
-                      <div key={label} className="flex justify-between border-b border-white/5 pb-1">
-                        <span className="text-zinc-500">{label}</span>
-                        <span className="text-white">{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h4 className="mb-2 text-sm font-bold uppercase tracking-wider text-white">Metadata</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between border-b border-white/5 pb-1">
-                      <span className="text-zinc-500">Source</span><span className="text-white">{detail.how_heard}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/5 pb-1">
-                      <span className="text-zinc-500">Tier</span>
-                      <span className={`font-bold capitalize ${detail.partnership_tier === 'radiant' ? 'text-amber-500' : detail.partnership_tier === 'ascendant' ? 'text-emerald-500' : 'text-zinc-400'}`}>
-                        {detail.partnership_tier}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-b border-white/5 pb-1">
-                      <span className="text-zinc-500">Budget</span><span className="text-white">{detail.budget_range?.replace(/_/g, ' ') || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
+              <div className="space-y-6">
+                <DetailGroup title="Contact Point" rows={[
+                  ['Name', detail.contact_name],
+                  ['Title', detail.contact_title],
+                  ['Email', detail.contact_email],
+                  ['Phone', detail.contact_phone || 'N/A'],
+                ]} />
+                <DetailGroup title="Metadata" rows={[
+                  ['Source', detail.how_heard ?? 'N/A'],
+                  ['Tier', detail.partnership_tier],
+                  ['Budget', detail.budget_range?.replace(/_/g, ' ') || 'N/A'],
+                ]} />
                 {detail.partnership_goals?.length > 0 && (
                   <div>
-                    <h4 className="mb-2 text-sm font-bold uppercase tracking-wider text-white">Partnership Goals</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {detail.partnership_goals.map((goal: string) => (
-                        <Badge key={goal} variant="outline" className="border-rose-500/30 bg-rose-500/10 text-xs capitalize text-rose-400">
-                          {goal.replace(/_/g, ' ')}
-                        </Badge>
-                      ))}
-                    </div>
+                    <h4 className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Partnership Goals</h4>
+                    <p className="font-mono text-xs uppercase tracking-wider text-zinc-400">
+                      {detail.partnership_goals.map(g => g.replace(/_/g, ' ')).join(' / ')}
+                    </p>
                   </div>
                 )}
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDetail(null)}>Close</Button>
+            <CommandButton variant="ghost" size="sm" onClick={() => setDetail(null)}>Close</CommandButton>
             {detail?.status !== 'approved' && (
               <>
-                <Button variant="outline" className="border-red-800 text-red-400 hover:bg-red-900/20" onClick={() => detail && handleSetStatus(detail, 'rejected')}>
+                <CommandButton variant="danger" size="sm" onClick={() => detail && handleSetStatus(detail, 'rejected')}>
                   Reject
-                </Button>
-                <Button className="bg-emerald-600 hover:bg-emerald-700" disabled={approveMutation.isPending} onClick={() => detail && handleApprove(detail)}>
+                </CommandButton>
+                <CommandButton size="sm" disabled={approveMutation.isPending} onClick={() => detail && handleApprove(detail)}>
                   {approveMutation.isPending
-                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Approving…</>
-                    : <><CheckCircle className="mr-2 h-4 w-4" /> Approve & Onboard</>}
-                </Button>
+                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Approving…</>
+                    : <><CheckCircle className="h-4 w-4" /> Approve & Onboard</>}
+                </CommandButton>
               </>
             )}
           </DialogFooter>
@@ -345,5 +288,65 @@ const PipelineSection = () => {
     </div>
   );
 };
+
+function DetailGroup({ title, rows, websiteHref }: {
+  title: string;
+  rows: [string, string | undefined][];
+  websiteHref?: string;
+}) {
+  return (
+    <div>
+      <h4 className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">{title}</h4>
+      <div className="divide-y divide-white/5">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex justify-between gap-4 py-1.5 text-sm">
+            <span className="shrink-0 text-zinc-500">{label}</span>
+            {websiteHref && label === 'Website' ? (
+              <a href={websiteHref} target="_blank" rel="noopener noreferrer" className="truncate text-rose-300 hover:text-rose-200">{value}</a>
+            ) : (
+              <span className="truncate capitalize text-white">{value || 'N/A'}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ButtonDetails({ onClick }: { onClick: () => void }) {
+  return (
+    <CommandButton variant="ghost" size="sm" onClick={onClick}>
+      Details
+    </CommandButton>
+  );
+}
+
+function CommandIconButtonReviewed({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      title="Mark Reviewed"
+      aria-label="Mark Reviewed"
+      onClick={onClick}
+      className="flex h-9 w-9 items-center justify-center border border-white/10 bg-white/[0.03] text-zinc-500 transition-colors hover:border-white/25 hover:text-white"
+    >
+      <CheckCircle className="h-4 w-4" />
+    </button>
+  );
+}
+
+function CommandIconButtonReject({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      title="Reject"
+      aria-label="Reject"
+      onClick={onClick}
+      className="flex h-9 w-9 items-center justify-center border border-white/10 bg-white/[0.03] text-zinc-500 transition-colors hover:border-red-500/40 hover:text-red-300"
+    >
+      <XCircle className="h-4 w-4" />
+    </button>
+  );
+}
 
 export default PipelineSection;
