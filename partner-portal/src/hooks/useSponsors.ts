@@ -22,12 +22,6 @@ export interface Sponsor {
     created_at: string;
 }
 
-interface SponsorStats {
-    impressions: number;
-    clicks: number;
-    ctr: string;
-}
-
 export function useSponsors(placement?: string) {
     return useQuery<Sponsor[]>({
         queryKey: ['sponsors', placement],
@@ -46,12 +40,4 @@ export function useAllSponsors() {
     });
 }
 
-export function useSponsorStats(sponsorId: string) {
-    return useQuery<SponsorStats>({
-        queryKey: ['sponsor-stats', sponsorId],
-        queryFn: () => apiClient.get<SponsorStats>(`/api/sponsors/${sponsorId}/stats`),
-        enabled: !!sponsorId,
-        staleTime: 60 * 1000,
-    });
-}
 

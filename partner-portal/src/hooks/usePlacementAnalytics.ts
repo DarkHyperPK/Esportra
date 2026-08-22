@@ -68,3 +68,67 @@ export function useAnalyticsSummary(days = 30) {
     retry: false,
   });
 }
+
+export interface DeviceStat {
+  deviceClass: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+}
+
+export interface DeviceAnalytics {
+  devices: DeviceStat[];
+  dailyBreakdown: Array<{ date: string; deviceClass: string; impressions: number; clicks: number; ctr: number }>;
+}
+
+export function useDeviceAnalytics(days = 30, enabled = true) {
+  return useQuery({
+    queryKey: ['sponsor', 'analytics', 'devices', days],
+    queryFn: async () => {
+      try {
+        return await apiClient.get<DeviceAnalytics>(`/api/sponsors/me/analytics/devices?days=${days}`);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'status' in err && ((err as { status: number }).status === 403 || (err as { status: number }).status === 404)) return null;
+        throw err;
+      }
+    },
+    enabled,
+    retry: false,
+  });
+}
+
+export interface ContentStat {
+  tournamentId: string | null;
+  tournamentName: string | null;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+}
+
+export interface PageStat {
+  pagePath: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+}
+
+export interface ContentAnalytics {
+  tournaments: ContentStat[];
+  pages: PageStat[];
+}
+
+export function useContentAnalytics(days = 30, enabled = true) {
+  return useQuery({
+    queryKey: ['sponsor', 'analytics', 'content', days],
+    queryFn: async () => {
+      try {
+        return await apiClient.get<ContentAnalytics>(`/api/sponsors/me/analytics/content?days=${days}`);
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'status' in err && ((err as { status: number }).status === 403 || (err as { status: number }).status === 404)) return null;
+        throw err;
+      }
+    },
+    enabled,
+    retry: false,
+  });
+}
