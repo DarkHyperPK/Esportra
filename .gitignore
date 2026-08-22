@@ -109,3 +109,7 @@ supabase/storage/
 
 design docs kept local-only
 docs/UI_DESIGN_GUIDE.md
+
+tsconfig.tsbuildinfo
+.cursor/
+.freebuff/
