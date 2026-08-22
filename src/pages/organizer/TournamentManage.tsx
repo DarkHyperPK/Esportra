@@ -37,10 +37,10 @@ import {
   GamepadIcon,
   Globe,
   Copy,
+  Lock,
   Loader2,
   Mail,
   MapPin,
-  RefreshCw,
   ShieldCheck,
   Swords,
   Trophy,
@@ -71,6 +71,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { getEffectiveGameFeatures, getParticipantMode, isBattleRoyaleTournament, getBRConfig, getGameByName, getPersistedTournamentFormat } from '@/utils/gameFeatures';
 import BanManagement from '@/components/organizer/BanManagement';
@@ -697,25 +698,6 @@ const TournamentDashboard = () => {
 
 
   // Real-time subscriptions removed to eliminate dashboard lag as requested by user.
-
-  const handleStatusChange = async (newStatus: string) => {
-    try {
-      await apiClient.put(`/api/tournaments/${tournament.id}`, { status: newStatus });
-
-      refetchDashboard();
-      toast({
-        title: 'Status Updated',
-        description: `Tournament status changed to ${newStatus}`,
-      });
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast({
-        title: 'Error',
-        description: `Failed to update status: ${(error as any)?.message || JSON.stringify(error) || 'Unknown error'}`,
-        variant: 'destructive',
-      });
-    }
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -1524,26 +1506,44 @@ const TournamentDashboard = () => {
                 </AlertDialog>
 
                 {canActAsOwner && tournament.status !== 'completed' && tournament.status !== 'draft' && (
-                  <CommandButton
-                    onClick={handleCompleteTournament}
-                    variant="secondary"
-                    size="sm"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
-                    Mark as Finished
-                  </CommandButton>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <CommandButton
+                        variant="secondary"
+                        size="sm"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2 transition-transform group-hover:rotate-12" />
+                        Mark as Finished
+                      </CommandButton>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <Lock className="h-5 w-5 text-amber-400" />
+                          Finish Tournament
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-zinc-400">
+                          This will finalize results and lock bracket scores, placements, and stage settings. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel asChild>
+                          <CommandButton variant="secondary" size="sm">Cancel</CommandButton>
+                        </AlertDialogCancel>
+                        <AlertDialogAction asChild>
+                          <CommandButton
+                            variant="danger"
+                            size="sm"
+                            onClick={(e) => { e.preventDefault(); handleCompleteTournament(); }}
+                          >
+                            Finish Tournament
+                          </CommandButton>
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
 
-                {canActAsOwner && tournament.status === 'completed' && (
-                  <CommandButton
-                    onClick={() => handleStatusChange('published')}
-                    variant="warning"
-                    size="sm"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2 transition-transform group-hover:rotate-180" />
-                    Reopen Tournament
-                  </CommandButton>
-                )}
 
                 {canActAsOwner && (
                   <CommandButton
@@ -1792,6 +1792,7 @@ const TournamentDashboard = () => {
                         scoringPreset={brScoringPreset}
                         checkInRequired={!!tournament.check_in_required}
                         onUpdate={() => refetchDashboard()}
+                        locked={tournament.status === 'completed'}
                       />
                     ) : (
                       <StageManagementTab
@@ -1801,6 +1802,7 @@ const TournamentDashboard = () => {
                         game={tournament.game || ''}
                         isPublic={tournament.is_public}
                         checkInRequired={!!tournament.check_in_required}
+                        locked={tournament.status === 'completed'}
                       />
                     )}
                   </TabTransition>
@@ -1810,7 +1812,7 @@ const TournamentDashboard = () => {
               {activeTab === 'prizes' && canActAsOwner && (
                 <TabsContent value="prizes" forceMount key="prizes">
                   <TabTransition direction={direction}>
-                    <PrizeDistributionTab tournament={tournament} />
+                    <PrizeDistributionTab tournament={tournament} locked={tournament.status === 'completed'} />
                   </TabTransition>
                 </TabsContent>
               )}
@@ -1908,6 +1910,7 @@ const TournamentDashboard = () => {
                       participants={participants}
                       scoringPreset={brScoringPreset}
                       checkInRequired={!!tournament.check_in_required}
+                      locked={tournament.status === 'completed'}
                     />
                   </TabTransition>
                 </TabsContent>

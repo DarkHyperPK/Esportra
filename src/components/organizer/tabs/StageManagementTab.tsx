@@ -27,9 +27,10 @@ interface StageManagementTabProps {
     game: string;
     isPublic?: boolean;
     checkInRequired?: boolean;
+    locked?: boolean;
 }
 
-export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic = false, checkInRequired = false }) => {
+export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic = false, checkInRequired = false, locked = false }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
@@ -781,33 +782,42 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                         <CardTitle>Tournament Stages</CardTitle>
                         <p className="text-sm text-gray-400 mt-1">Manage the different phases of your tournament.</p>
                     </div>
-                    <div className="flex gap-2">
-                        {stages.length > 0 && (
-                            <Button
-                                onClick={() => setResetAllDialogOpen(true)}
-                                variant="outline"
-                                className="border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 flex items-center gap-2"
-                            >
-                                <RefreshCw className="w-4 h-4" />
-                                Reset All
-                            </Button>
+                    <div className="flex gap-2 items-center">
+                        {locked ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
+                                <Lock className="w-3.5 h-3.5" />
+                                Stages locked
+                            </span>
+                        ) : (
+                            <>
+                                {stages.length > 0 && (
+                                    <Button
+                                        onClick={() => setResetAllDialogOpen(true)}
+                                        variant="outline"
+                                        className="border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 flex items-center gap-2"
+                                    >
+                                        <RefreshCw className="w-4 h-4" />
+                                        Reset All
+                                    </Button>
+                                )}
+                                {stages.length > 0 && (
+                                    <Button
+                                        onClick={() => setDeleteAllDialogOpen(true)}
+                                        variant="outline"
+                                        className="border-red-500/30 text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        Delete All
+                                    </Button>
+                                )}
+                                <SuccessButton
+                                    onClick={() => setWizardOpen(true)}
+                                >
+                                    <Layers className="w-4 h-4" />
+                                    {stages.length > 0 ? 'Manage Stages' : 'Create Tournament Stages'}
+                                </SuccessButton>
+                            </>
                         )}
-                        {stages.length > 0 && (
-                            <Button
-                                onClick={() => setDeleteAllDialogOpen(true)}
-                                variant="outline"
-                                className="border-red-500/30 text-red-400 hover:bg-red-500/10 flex items-center gap-2"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                Delete All
-                            </Button>
-                        )}
-                        <SuccessButton
-                            onClick={() => setWizardOpen(true)}
-                        >
-                            <Layers className="w-4 h-4" />
-                            {stages.length > 0 ? 'Manage Stages' : 'Create Tournament Stages'}
-                        </SuccessButton>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -872,14 +882,16 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                     <ArrowDown className="w-4 h-4" />
                                                 </Button>
                                             </div>
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                className="h-9 w-9 text-red-400 hover:text-red-300 hover:bg-red-400/10"
-                                                onClick={() => handleDeleteStage(stage.id)}
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </Button>
+                                            {!locked && (
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-9 w-9 text-red-400 hover:text-red-300 hover:bg-red-400/10"
+                                                    onClick={() => handleDeleteStage(stage.id)}
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
 
@@ -937,7 +949,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                                 : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
                                                             }`}
                                                         onClick={() => stageBracketExists ? handleViewBracket(stage.id) : handleGenerateStageBracket(stage.id)}
-                                                        disabled={(!stageBracketExists && (stage.is_locked || isBlocked))}
+                                                        disabled={locked || (!stageBracketExists && (stage.is_locked || isBlocked))}
                                                     >
                                                         {stageBracketExists ? (
                                                             <>
@@ -955,7 +967,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                     </Button>
 
                                                     {/* Publish Bracket Button - only when the bracket exists but is not active yet */}
-                                                    {stageBracketExists && bracketVersionInfo[stage.id]?.status !== 'active' && (
+                                                    {stageBracketExists && bracketVersionInfo[stage.id]?.status !== 'active' && !locked && (
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
@@ -983,8 +995,8 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                             Published
                                                         </span>
                                                     )}
-                                                    {/* Delete Bracket Button - only show when bracket exists */}
-                                                    {stageBracketExists && (
+                                                    {/* Delete Bracket Button - only show when bracket exists and not locked */}
+                                                    {stageBracketExists && !locked && (
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
@@ -1018,7 +1030,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                     variant="outline"
                                                     className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 text-xs"
                                                     onClick={() => handleAdvanceTeams(stage.id)}
-                                                    disabled={advancingStages[stage.id]}
+                                                    disabled={locked || advancingStages[stage.id]}
                                                 >
                                                     {advancingStages[stage.id] ? (
                                                         <>

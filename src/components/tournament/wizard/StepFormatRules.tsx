@@ -489,8 +489,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 <Select
                                     value={String(data.maxTeams)}
                                     onValueChange={(value) => updateData({ maxTeams: parseInt(value) })}
+                                    disabled={isEditMode}
                                 >
-                                    <SelectTrigger className={cn('w-full font-bold tracking-tight', errors.maxTeams && 'border-red-500')}>
+                                    <SelectTrigger className={cn('w-full font-bold tracking-tight', errors.maxTeams && 'border-red-500')} disabled={isEditMode}>
                                         <SelectValue placeholder={`Select max ${unitPlural}`} />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -567,8 +568,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 }
                                 updateData({ maxTeams: newValue })
                             }}
+                            disabled={isEditMode}
                         >
-                            <SelectTrigger className="w-full font-bold tracking-tight">
+                            <SelectTrigger className="w-full font-bold tracking-tight" disabled={isEditMode}>
                                 <SelectValue placeholder="Select max teams" />
                             </SelectTrigger>
                             <SelectContent>

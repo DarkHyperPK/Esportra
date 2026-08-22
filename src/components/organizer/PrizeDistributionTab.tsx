@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, RefreshCw, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Trophy, RefreshCw, CheckCircle2, XCircle, Clock, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePrizeDistribution } from '@/hooks/usePrizeDistribution';
 import { useTournamentPlacements, useResolvePlacements } from '@/hooks/useTournamentPlacements';
@@ -11,6 +11,7 @@ import type { Tournament } from '@/types/tournament';
 
 interface PrizeDistributionTabProps {
     tournament: Tournament;
+    locked?: boolean;
 }
 
 const PAYOUT_STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; className: string }> = {
@@ -47,7 +48,7 @@ const NEXT_PAYOUT_STATUS: Record<string, string[]> = {
     failed:    ['requested'],
 };
 
-export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tournament }) => {
+export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tournament, locked }) => {
     const { toast } = useToast();
     const tournamentId = tournament.id;
 
@@ -157,16 +158,23 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
             <section className="space-y-4">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-white">Placements</h3>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleResolve}
-                        disabled={resolvePlacements.isPending}
-                        className="text-xs"
-                    >
-                        <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${resolvePlacements.isPending ? 'animate-spin' : ''}`} />
-                        Update
-                    </Button>
+                    {locked ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
+                            <Lock className="w-3.5 h-3.5" />
+                            Results locked
+                        </span>
+                    ) : (
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleResolve}
+                            disabled={resolvePlacements.isPending}
+                            className="text-xs"
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${resolvePlacements.isPending ? 'animate-spin' : ''}`} />
+                            Update
+                        </Button>
+                    )}
                 </div>
 
                 {placementsLoading ? (

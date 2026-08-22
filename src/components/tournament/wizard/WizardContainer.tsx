@@ -53,7 +53,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
             case 3:
                 return <StepBranding data={data} updateData={updateData} errors={errors} />;
             case 4:
-                return <StepPrizeDistribution data={data} updateData={updateData} errors={errors} />;
+                return <StepPrizeDistribution data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId} />;
             case 5:
                 return (
                     <StepRegistration

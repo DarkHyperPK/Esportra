@@ -690,18 +690,18 @@ const TournamentDetails = () => {
       <div className="relative z-30 -mt-20">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="container mx-auto px-4">
-            <div className="sticky top-4 z-40 bg-[#0a0a0c] border border-white/10 p-2 mb-12 mx-auto max-w-3xl backdrop-blur-md">
-              <TabsList className="border-0 bg-transparent h-auto p-0 w-full flex justify-between">
+            <div className="sticky top-4 z-40 bg-[#0a0a0c] border border-white/10 p-2 mb-12 mx-auto max-w-3xl backdrop-blur-md overflow-x-auto">
+              <TabsList className="border-0 bg-transparent h-auto p-0 w-full flex">
                 {(() => {
                   const tabs = isBR
-                    ? ['Overview', terminology.competitorLabelPlural, 'Stages', 'Leaderboard', 'Game Schedule', 'Prizes', 'Standings', 'Rules']
+                    ? ['Overview', terminology.competitorLabelPlural, 'Stages', 'Leaderboard', 'Schedule', 'Prizes', 'Standings', 'Rules']
                     : ['Overview', terminology.competitorLabelPlural, 'Brackets', 'Stages', 'Prizes', 'Standings', 'Rules'];
                   return tabs;
                 })().map((tab) => (
                   <TabsTrigger
                     key={tab}
-                    value={tab.toLowerCase()}
-                    className="data-[state=active]:bg-white/10 data-[state=active]:text-white flex-1 py-4 text-gray-500 font-mono tracking-widest text-xs md:text-sm uppercase transition-all duration-300 hover:text-white"
+                    value={tab.toLowerCase() === 'schedule' ? 'game schedule' : tab.toLowerCase()}
+                    className="data-[state=active]:bg-white/10 data-[state=active]:text-white flex-1 py-4 text-gray-500 font-mono tracking-widest text-xs md:text-sm uppercase transition-all duration-300 hover:text-white whitespace-nowrap"
                   >
                     {tab}
                   </TabsTrigger>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { CtaButton, DangerButton, GhostButton, OutlineButton, SuccessButton } from '@/components/ui/app-buttons';
+import { Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,6 +79,7 @@ interface BRStageManagementTabProps {
   scoringPreset: unknown;
     checkInRequired?: boolean;
     onUpdate: () => void;
+    locked?: boolean;
 }
 
 export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
@@ -93,6 +95,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
   tournamentSettings,
   checkInRequired = false,
   onUpdate,
+  locked = false,
 }) => {
     const stages = useMemo(() => stagesProp ?? [], [stagesProp]);
     const { toast } = useToast();
@@ -340,18 +343,27 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                     </div>
                     {sortedStages.length > 0 && (
                         <div className="flex items-center gap-2">
-                            <DangerButton
-                                size="sm"
-                                onClick={() => setResetConfirmOpen(true)}
-                            >
-                Reset all
-                            </DangerButton>
-                            <SuccessButton
-                size="sm"
-                onClick={() => openWizard('add')}
-              >
-                Add stage
-                            </SuccessButton>
+                            {locked ? (
+                                <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
+                                    <Lock className="w-3.5 h-3.5" />
+                                    Stages locked
+                                </span>
+                            ) : (
+                                <>
+                                    <DangerButton
+                                        size="sm"
+                                        onClick={() => setResetConfirmOpen(true)}
+                                    >
+                                        Reset all
+                                    </DangerButton>
+                                    <SuccessButton
+                                        size="sm"
+                                        onClick={() => openWizard('add')}
+                                    >
+                                        Add stage
+                                    </SuccessButton>
+                                </>
+                            )}
                         </div>
                     )}
                 </CardHeader>
@@ -365,6 +377,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
               </p>
               <CtaButton
                 onClick={() => openWizard('initial')}
+                disabled={locked}
               >
                 Set up stages
               </CtaButton>

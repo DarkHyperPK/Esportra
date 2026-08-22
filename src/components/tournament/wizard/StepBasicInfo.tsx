@@ -250,6 +250,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                     value={data.isOnline ? 'online' : 'lan'}
                     onValueChange={(value) => updateData({ isOnline: value === 'online' })}
                     className="grid grid-cols-2 gap-4"
+                    disabled={isEditMode}
                 >
                     <label
                         className={cn(
@@ -302,6 +303,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                             placeholder="Enter venue name or address"
                             value={data.venue}
                             onChange={(e) => updateData({ venue: e.target.value })}
+                            disabled={isEditMode}
                             className={cn(errors.venue && 'border-red-500')}
                         />
                         {errors.venue && <p className="text-sm text-red-500">{errors.venue}</p>}
@@ -315,8 +317,8 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
             <div className="space-y-2">
                 <Label htmlFor="region" className="text-xs font-bold text-gray-500 uppercase tracking-widest">Region *</Label>
                 <p className="text-xs text-gray-500 mb-2">The server region or geographical area for this tournament.</p>
-                <Select value={data.region} onValueChange={(v) => updateData({ region: v })}>
-                    <SelectTrigger id="region" className={cn(errors.region && 'border-red-500')}>
+                <Select value={data.region} onValueChange={(v) => updateData({ region: v })} disabled={isEditMode}>
+                    <SelectTrigger id="region" className={cn(errors.region && 'border-red-500')} disabled={isEditMode}>
                         <SelectValue placeholder="Select region" />
                     </SelectTrigger>
                     <SelectContent>

@@ -1,10 +1,18 @@
 import React from 'react';
-import { Users, ChevronRight, Clock, MapPin, Globe, ExternalLink, MessageCircle } from 'lucide-react';
+import { Users, ChevronRight, Clock, MapPin, Globe, ExternalLink, MessageCircle, Map } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { formatDateTime } from '@/utils/dateFormat';
+import { apiClient } from '@/lib/apiClient';
 import { VerticalAdPlacement } from './VerticalAdPlacement';
 import { TournamentWidePartners } from '@/components/tournament/TournamentWidePartners';
 import { TournamentPartnerLogos } from '@/components/tournament/TournamentPartnerLogos';
+
+interface MapPoolMap {
+    id: string;
+    map_name: string;
+    map_image_url?: string | null;
+}
 
 
 // Simple HTML entity decoder
@@ -29,6 +37,21 @@ interface OverviewTabProps {
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament }) => {
     const navigate = useNavigate();
+
+    const { data: mapPool } = useQuery({
+        queryKey: ['tournament-map-pool', tournament.id],
+        queryFn: async () => {
+            const res = await apiClient.get<any[]>(`/api/tournaments/${tournament.id}/map-pool`);
+            return (res || []).map((item: any) => {
+                if (item.game_maps) {
+                    return { id: item.game_maps.id, map_name: item.game_maps.map_name, map_image_url: item.game_maps.map_image_url };
+                }
+                return { id: item.id, map_name: item.map_name, map_image_url: item.map_image_url };
+            }) as MapPoolMap[];
+        },
+        enabled: !!tournament.id,
+        staleTime: 60_000,
+    });
 
     // Check if vertical ad is enabled for this tournament
 
@@ -205,6 +228,36 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament }) => {
                                                 <ExternalLink className="w-3 h-3 opacity-50" />
                                             </a>
                                         )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Map Pool */}
+                            {mapPool && mapPool.length > 0 && (
+                                <div className="space-y-6 pt-8 border-t border-white/5">
+                                    <div className="flex items-center gap-3">
+                                        <Map className="w-5 h-5 text-rose-400" />
+                                        <h3 className="text-sm font-mono tracking-[0.2em] text-gray-400 uppercase">Map Pool</h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                        {mapPool.map((map) => (
+                                            <div key={map.id} className="relative group overflow-hidden border border-white/10 bg-black/40">
+                                                {map.map_image_url ? (
+                                                    <img
+                                                        src={map.map_image_url}
+                                                        alt={map.map_name}
+                                                        className="w-full h-24 object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-24 bg-white/5 flex items-center justify-center">
+                                                        <Map className="w-6 h-6 text-gray-600" />
+                                                    </div>
+                                                )}
+                                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-2">
+                                                    <span className="text-xs font-bold text-white tracking-wide">{map.map_name}</span>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}

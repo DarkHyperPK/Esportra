@@ -43,6 +43,7 @@ interface BRGamesTabProps {
     checkInRequired?: boolean;
     /** @deprecated use resolved stage config instead */
     scoringPreset?: ScoringPreset;
+    locked?: boolean;
 }
 
 export const BRGamesTab: React.FC<BRGamesTabProps> = ({
@@ -57,6 +58,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
     participants,
     checkInRequired = false,
     scoringPreset: legacyScoringPreset,
+    locked = false,
 }) => {
     const stages = useMemo(() => stagesProp ?? [], [stagesProp]);
     const sortedStages = useMemo(
@@ -268,7 +270,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => bootstrapLobby.mutate()}
-                                    disabled={bootstrapLobby.isPending}
+                                    disabled={locked || bootstrapLobby.isPending}
                                     className={cn(
                                         buttonVariants({ variant: 'success', size: 'sm' }),
                                         'h-8 w-[180px] shrink-0 justify-center text-[11px]',
@@ -280,7 +282,7 @@ export const BRGamesTab: React.FC<BRGamesTabProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => generateLobbies.mutate()}
-                                    disabled={generateLobbies.isPending}
+                                    disabled={locked || generateLobbies.isPending}
                                     className={cn(
                                         buttonVariants({ variant: 'success', size: 'sm' }),
                                         'h-8 w-[180px] shrink-0 justify-center text-[11px]',

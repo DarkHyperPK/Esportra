@@ -28,7 +28,7 @@ function calcBandAmount(percentage: number, prizePool: number) {
     return (percentage / 100) * prizePool;
 }
 
-const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, errors }) => {
+const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, errors, isEditMode }) => {
     const config = data.prizeDistribution;
     const prizePool = parseFloat(data.prizePool) || 0;
     const currency = data.currency || 'USD';
@@ -115,7 +115,8 @@ const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, er
                     id="currency"
                     value={data.currency || 'USD'}
                     onChange={(e) => updateData({ currency: e.target.value })}
-                    className="w-full md:w-48 h-10 rounded-md border border-white/10 bg-black/40 text-white px-3 text-sm focus:outline-none focus:border-indigo-500"
+                    disabled={isEditMode}
+                    className="w-full md:w-48 h-10 rounded-md border border-white/10 bg-black/40 text-white px-3 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {CURRENCIES.map(c => (
                         <option key={c} value={c}>{c}</option>
@@ -134,6 +135,7 @@ const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, er
                         placeholder="e.g., 50000"
                         value={data.prizePool}
                         onChange={(e) => updateData({ prizePool: e.target.value })}
+                        disabled={isEditMode}
                         className={cn("font-bold tracking-tight", errors.prizePool && 'border-red-500')}
                     />
                     {errors.prizePool && <p className="text-sm text-red-500">{errors.prizePool}</p>}
@@ -148,6 +150,7 @@ const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, er
                         placeholder="Enter amount or 'Free'"
                         value={data.entryFee}
                         onChange={(e) => updateData({ entryFee: e.target.value })}
+                        disabled={isEditMode}
                         className={cn("font-bold tracking-tight", errors.entryFee && 'border-red-500')}
                     />
                     {errors.entryFee && <p className="text-sm text-red-500">{errors.entryFee}</p>}
@@ -183,12 +186,14 @@ const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, er
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <button
                         type="button"
-                        onClick={() => updateData({ payoutMethod: 'manual' })}
+                        onClick={() => !isEditMode && updateData({ payoutMethod: 'manual' })}
+                        disabled={isEditMode}
                         className={cn(
                             'flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors',
                             data.payoutMethod === 'manual' || !data.payoutMethod
                                 ? 'border-indigo-500/60 bg-indigo-500/10 text-white'
-                                : 'border-white/10 bg-black/20 text-gray-400 hover:border-white/20'
+                                : 'border-white/10 bg-black/20 text-gray-400 hover:border-white/20',
+                            isEditMode && 'opacity-50 cursor-not-allowed'
                         )}
                     >
                         <span className="text-sm font-semibold">Manual Payment</span>
@@ -225,8 +230,36 @@ const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, er
             <div className="w-full h-px bg-white/5 my-6" />
             <div className="space-y-1 mb-4">
                 <h3 className="text-sm font-bold text-white uppercase tracking-widest">Prize Distribution</h3>
-                <p className="text-xs text-gray-500">Configure how the prize pool is split across placements. This is optional — you can set it up after creating the tournament.</p>
+                {isEditMode ? (
+                    <p className="text-xs text-zinc-500">Prize distribution is locked after tournament creation.</p>
+                ) : (
+                    <p className="text-xs text-gray-500">Configure how the prize pool is split across placements. This is optional — you can set it up after creating the tournament.</p>
+                )}
             </div>
+
+            {isEditMode ? (
+                <div className="rounded-none border border-white/10 bg-white/[0.02] p-4">
+                    {placements.length > 0 ? (
+                        <div className="space-y-2">
+                            {placements.map((p) => (
+                                <div key={p.position} className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-300">{p.label || `Position ${p.position}`}</span>
+                                    <span className="text-white font-medium">
+                                        {typeof p.percentage === 'number' && !isNaN(p.percentage) ? `${p.percentage}%` : '—'}
+                                        {prizePool > 0 && typeof p.percentage === 'number' && !isNaN(p.percentage) && ` · ${formatCurrency(calcBandAmount(p.percentage, prizePool), currency)}`}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-gray-500">No prize distribution configured.</p>
+                    )}
+                </div>
+            ) : (
+                <></>
+            )}
+
+            {!isEditMode && (<>
 
             {prizePool > 0 && (
                 <div className="flex items-center gap-3 rounded-none border border-yellow-500/20 bg-yellow-500/5 px-4 py-3">
@@ -398,6 +431,7 @@ const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, er
             )}
 
             <p className="text-xs text-gray-600">You can also configure or update prize distribution from the "Prizes" tab after creating the tournament.</p>
+            </>)}
         </motion.div>
     );
 };
