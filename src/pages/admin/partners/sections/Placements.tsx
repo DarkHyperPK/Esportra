@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { apiClient, ApiError } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
-import { useAdminAccess } from '@/hooks/useAdminAccess';
 import {
   useCreatePlacement,
   useUpdatePlacement,
@@ -16,18 +16,14 @@ import {
   type CreatePlacementPayload,
   type UpdatePlacementPayload,
 } from '@/hooks/useAdminPlacements';
-import { type PlacementZone, requiredAssetRole } from './types';
-import { TournamentView } from './TournamentView';
-import { SponsorView } from './SponsorView';
-import { PlacementModal } from './PlacementModal';
-import { PlacementPreview } from './PlacementPreview';
-import { AuditLog } from './AuditLog';
-import { PlacementInventory } from './PlacementInventory';
-import { SponsorCrm } from './SponsorCrm';
-import { PartnersPageView } from './PartnersPageView';
-import { HomepageTickerView } from './HomepageTickerView';
-
-type ViewMode = 'crm' | 'ticker' | 'partners' | 'tournament' | 'sponsor' | 'placements' | 'audit';
+import { type PlacementZone, requiredAssetRole } from '../../tools/SponsorAdManager/types';
+import { TournamentView } from '../../tools/SponsorAdManager/TournamentView';
+import { SponsorView } from '../../tools/SponsorAdManager/SponsorView';
+import { PlacementModal } from '../../tools/SponsorAdManager/PlacementModal';
+import { PlacementPreview } from '../../tools/SponsorAdManager/PlacementPreview';
+import { PlacementInventory } from '../../tools/SponsorAdManager/PlacementInventory';
+import { HomepageTickerView } from '../../tools/SponsorAdManager/HomepageTickerView';
+import { PartnersPageView } from '../../tools/SponsorAdManager/PartnersPageView';
 
 interface SponsorOption {
   id: string;
@@ -41,13 +37,28 @@ interface TournamentOption {
   name: string;
 }
 
-type PendingAction = { type: 'delete'; id: string } | { type: 'remove'; placement: Placement } | { type: 'unassign'; placement: Placement };
+type PendingAction =
+  | { type: 'delete'; id: string }
+  | { type: 'remove'; placement: Placement }
+  | { type: 'unassign'; placement: Placement };
 
-export default function SponsorAdManager() {
-  useAdminAccess();
+type ZoneView = 'ticker' | 'partners' | 'tournament' | 'sponsor' | 'placements';
 
-  const [view, setView] = useState<ViewMode>('tournament');
-  const [crmSelectedSponsorId, setCrmSelectedSponsorId] = useState<string | undefined>();
+const ZONE_TABS: { key: ZoneView; label: string }[] = [
+  { key: 'tournament', label: 'By Tournament' },
+  { key: 'sponsor', label: 'By Sponsor' },
+  { key: 'ticker', label: 'Homepage Ticker' },
+  { key: 'partners', label: 'Partners Page' },
+  { key: 'placements', label: 'Active Inventory' },
+];
+
+const PlacementsSection = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paramView = searchParams.get('view') as ZoneView | null;
+  const paramSponsor = searchParams.get('sponsor') ?? undefined;
+
+  const [view, setView] = useState<ZoneView>(paramSponsor ? 'sponsor' : (paramView ?? 'tournament'));
+  const [selectedSponsorId, setSelectedSponsorId] = useState<string | undefined>(paramSponsor);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Placement | null>(null);
   const [modalLocks, setModalLocks] = useState<{ sponsorId?: string; zone?: PlacementZone; tournamentId?: string | null; slotNumber?: number }>({});
@@ -55,6 +66,19 @@ export default function SponsorAdManager() {
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const [replacing, setReplacing] = useState<Placement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (paramSponsor) setSelectedSponsorId(paramSponsor);
+    if (paramView && ZONE_TABS.some(t => t.key === paramView)) setView(paramView);
+  }, [paramSponsor, paramView]);
+
+  const setZone = (next: ZoneView) => {
+    setView(next);
+    const params = new URLSearchParams(searchParams);
+    params.set('view', next);
+    params.delete('sponsor');
+    setSearchParams(params, { replace: true });
+  };
 
   const { data: sponsors = [] } = useQuery({
     queryKey: ['admin', 'sponsors-list'],
@@ -81,6 +105,9 @@ export default function SponsorAdManager() {
   const replaceMutation = useReplaceCreative();
   const removeMutation = useRemoveCreative();
   const unassignMutation = useUnassignPlacement();
+
+  const { toast } = useToast();
+  const qc = useQueryClient();
 
   const openModalForSponsor = (sponsorId: string) => {
     setEditing(null);
@@ -138,9 +165,6 @@ export default function SponsorAdManager() {
     setPendingAction(null);
   };
 
-  const { toast } = useToast();
-  const qc = useQueryClient();
-
   const handleModalSubmit = (payload: CreatePlacementPayload | (UpdatePlacementPayload & { id: string })) => {
     if ('id' in payload && payload.id) {
       updateMutation.mutate(payload as UpdatePlacementPayload & { id: string }, { onSuccess: () => setModalOpen(false) });
@@ -167,67 +191,29 @@ export default function SponsorAdManager() {
   };
 
   const previewTournament = tournaments.find(t => t.id === previewTournamentId);
-  const actionLabel = pendingAction?.type === 'delete' ? 'Delete this placement permanently?' : pendingAction?.type === 'remove' ? 'Remove the creative? The slot will be kept as a draft.' : 'Unassign this placement and free the slot?';
+  const actionLabel = pendingAction?.type === 'delete'
+    ? 'Delete this placement permanently?'
+    : pendingAction?.type === 'remove'
+      ? 'Remove the creative? The slot will be kept as a draft.'
+      : 'Unassign this placement and free the slot?';
 
   return (
-    <div className="min-h-screen bg-transparent text-white p-6 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Sponsor Ad Manager</h1>
-        <p className="text-sm text-zinc-500 mt-1">Assign sponsors to placement zones across tournaments and global pages.</p>
+    <div className="space-y-4">
+      <div className="flex gap-1 overflow-x-auto rounded-lg border border-white/10 bg-black/40 p-1" data-lenis-prevent>
+        {ZONE_TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setZone(tab.key)}
+            className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
+              view === tab.key ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* View switcher */}
-      <div className="flex items-center mb-6">
-        <div className="flex bg-zinc-900 border border-zinc-800 rounded-lg p-1">
-          <button
-            onClick={() => setView('crm')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'crm' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Sponsors
-          </button>
-          <button
-            onClick={() => setView('ticker')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'ticker' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Ticker
-          </button>
-          <button
-            onClick={() => setView('partners')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'partners' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Partners Page
-          </button>
-          <button
-            onClick={() => setView('tournament')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'tournament' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            By Tournament
-          </button>
-          <button
-            onClick={() => setView('sponsor')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'sponsor' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            By Sponsor
-          </button>
-          <button
-            onClick={() => setView('placements')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'placements' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Active Placements
-          </button>
-          <button
-            onClick={() => setView('audit')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${view === 'audit' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Audit Log
-          </button>
-        </div>
-      </div>
-
-      {/* Active view */}
-      {view === 'crm' ? (
-        <SponsorCrm onSelectSponsor={id => { setCrmSelectedSponsorId(id); setView('sponsor'); }} />
-      ) : view === 'ticker' ? (
+      {view === 'ticker' ? (
         <HomepageTickerView
           onAssignSlot={openTickerSlotModal}
           onEdit={openEditModal}
@@ -259,7 +245,7 @@ export default function SponsorAdManager() {
       ) : view === 'sponsor' ? (
         <SponsorView
           sponsors={sponsors}
-          initialSponsorId={crmSelectedSponsorId}
+          initialSponsorId={selectedSponsorId}
           onAssign={openModalForSponsor}
           onEdit={openEditModal}
           onDelete={handleDelete}
@@ -267,10 +253,10 @@ export default function SponsorAdManager() {
           onRemove={handleRemove}
           onUnassign={handleUnassign}
         />
-      ) : view === 'placements' ? <PlacementInventory onEdit={openEditModal} onDelete={handleDelete} onReplace={handleReplace} onRemove={handleRemove} onUnassign={handleUnassign} />
-      : <AuditLog />}
+      ) : (
+        <PlacementInventory onEdit={openEditModal} onDelete={handleDelete} onReplace={handleReplace} onRemove={handleRemove} onUnassign={handleUnassign} />
+      )}
 
-      {/* Modal (used for By Sponsor flow + editing) */}
       <PlacementModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -284,7 +270,6 @@ export default function SponsorAdManager() {
         lockedSlotNumber={modalLocks.slotNumber}
       />
 
-      {/* Preview Modal */}
       <PlacementPreview
         open={!!previewTournamentId}
         onClose={() => setPreviewTournamentId(null)}
@@ -292,7 +277,6 @@ export default function SponsorAdManager() {
         tournamentName={previewTournament?.name ?? 'Tournament'}
       />
 
-      {/* Hidden file input for replace creative */}
       <input
         ref={fileInputRef}
         type="file"
@@ -301,28 +285,28 @@ export default function SponsorAdManager() {
         onChange={handleFileSelected}
       />
 
-      {/* Confirmation dialog */}
       {pendingAction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
           <div className="w-full max-w-sm rounded-xl border border-zinc-700 bg-zinc-900 p-5">
             <h3 id="confirm-title" className="text-lg font-bold text-white">Confirm action</h3>
             <p className="mt-2 text-sm text-zinc-400">{actionLabel}</p>
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setPendingAction(null)} className="rounded px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Cancel</button>
-              <button onClick={confirmAction} className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 transition-colors">Confirm</button>
+              <button onClick={() => setPendingAction(null)} className="rounded px-4 py-2 text-sm text-zinc-400 transition-colors hover:text-white">Cancel</button>
+              <button onClick={confirmAction} className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500">Confirm</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Replace loading indicator */}
       {(uploadMutation.isPending || replaceMutation.isPending) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="rounded-lg bg-zinc-900 border border-zinc-700 px-6 py-4 text-sm text-white">
+          <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-6 py-4 text-sm text-white">
             {uploadMutation.isPending ? 'Uploading creative…' : 'Replacing…'}
           </div>
         </div>
       )}
     </div>
   );
-}
+};
+
+export default PlacementsSection;
