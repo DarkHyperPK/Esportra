@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   BarChart3,
+  BookOpen,
   Building2,
   Calendar,
   ChevronRight,
@@ -234,6 +235,10 @@ const OrganizerDashboard = () => {
                 <CommandButton slide onClick={() => navigate("/tournaments/create")}>
                   <Plus className="h-4 w-4" />
                   Create Tournament
+                </CommandButton>
+                <CommandButton variant="ghost" onClick={() => navigate("/help?entry=organizer-guide")}>
+                  <BookOpen className="h-4 w-4" />
+                  Organizer Guide
                 </CommandButton>
               </>
             )

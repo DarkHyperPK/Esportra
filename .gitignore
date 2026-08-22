@@ -106,3 +106,6 @@ Thumbs.db
 # Local dev sync (production dumps and storage files)
 supabase/dumps/
 supabase/storage/
+
+design docs kept local-only
+docs/UI_DESIGN_GUIDE.md

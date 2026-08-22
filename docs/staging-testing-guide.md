@@ -224,16 +224,16 @@ No login required. Verify pages load, links work, and protected actions redirect
 | 16 | Leaderboards | `/leaderboards` | Rankings load |
 | 17 | Partners | `/partners`, `/be-a-partner` | Content and CTAs work |
 | 18 | Help & legal | `/help`, `/privacy`, `/terms`, `/refund-policy`, `/about/faq` | Content renders |
-| 19 | Organizer guide | `/guides/organizer` | Public organizer documentation loads |
+| 19 | Help Center handbooks | `/help`, `/help?entry=organizer-guide` | Inline handbooks render, sidebar switches entries |
 | 20 | Tournament history | `/tournament-history` | Public tournament archive loads |
 
 ### Auth entry (do not complete unless testing auth)
 
 | # | Test | Route | Pass criteria |
 |---|------|-------|---------------|
-| 21 | Sign in page | `/auth/signin` | Email/password form; Google and Discord OAuth visible |
-| 22 | Sign up page | `/auth/signup` | Registration form loads |
-| 23 | Forgot password | `/auth/forgot-password` | Form submits without error |
+| 22 | Sign in page | `/auth/signin` | Email/password form; Google and Discord OAuth visible |
+| 23 | Sign up page | `/auth/signup` | Registration form loads |
+| 24 | Forgot password | `/auth/forgot-password` | Form submits without error |
 
 ### Guest access control
 

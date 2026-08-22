@@ -1,10 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock, Mail } from 'lucide-react';
+import { Trophy, Calendar, Users, ChevronRight, Swords, Edit, Clock, Mail, BookOpen } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button-variants';
 import { SuccessButton } from '@/components/ui/app-buttons';
 import { JackButton } from '@/components/ui/JackButton';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Countdown } from '@/components/ui/Countdown';
 import {
@@ -277,6 +277,13 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                 </div>
                                             </div>
                                         )}
+                                        <Link
+                                            to="/help"
+                                            className="self-center ml-6 inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-zinc-500 hover:text-rose-400 transition-colors"
+                                        >
+                                            <BookOpen className="h-4 w-4" />
+                                            Player Guide
+                                        </Link>
                                     </>
                                 )}
                             </div>

@@ -159,6 +159,7 @@ const DesktopNav = ({
               <JackItem to="/about/company">About Us</JackItem>
               <JackItem to="/about/contact">Contact</JackItem>
               <JackItem to="/about/faq">FAQ</JackItem>
+              <JackItem to="/help">Help Center</JackItem>
             </div>
           </FramerDropdownContent>
         </FramerDropdownRoot>

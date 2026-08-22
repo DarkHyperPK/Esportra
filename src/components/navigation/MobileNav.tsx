@@ -216,6 +216,7 @@ const MobileNav = ({
                         <JackSubItem to="/about/company">About Us</JackSubItem>
                         <JackSubItem to="/about/contact">Contact</JackSubItem>
                         <JackSubItem to="/about/faq">FAQ</JackSubItem>
+                        <JackSubItem to="/help">Help Center</JackSubItem>
                       </div>
                     </motion.div>
                   )}

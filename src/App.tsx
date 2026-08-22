@@ -158,7 +158,6 @@ const RefundPolicyPage = lazyWithRetry(() => import("./pages/RefundPolicy"));
 
 // Guides
 const HelpCenter = lazyWithRetry(() => import("./pages/guides/HelpCenter"));
-const OrganizerGuide = lazyWithRetry(() => import("./pages/guides/OrganizerGuide"));
 
 // Notifications
 const NotificationsPage = lazyWithRetry(() => import("./pages/notifications/Notifications"));
@@ -548,7 +547,8 @@ const AppContent = React.memo(() => {
                 <Route path="/about/company" element={<AboutPage />} />
                 <Route path="/about/contact" element={<ContactPage />} />
                 <Route path="/about/faq" element={<FAQPage />} />
-                <Route path="/guides/organizer" element={<OrganizerGuide />} />
+                <Route path="/guides/organizer" element={<Navigate to="/help?entry=organizer-guide" replace />} />
+                <Route path="/guides/player" element={<Navigate to="/help" replace />} />
                 <Route path="/help" element={<HelpCenter />} />
                 <Route path="/contact" element={<ContactStandalone />} />
                 <Route path="/partners" element={<Partners />} />
