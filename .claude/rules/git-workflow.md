@@ -43,6 +43,10 @@ The rule bans **direct commits to main**, not **promoting staging to main**. Sta
 ## Frontend repo note (frag-and-book-main)
 
 The local `staging` branch tracks `origin/deploy/staging` (CI trigger), not `origin/staging`.
-`git push origin staging` pushes to `origin/staging` (wrong — not CI-connected).
+`push.default=simple` refuses a plain `git push` because the local/remote names differ.
 
-Always use `git push` (no refspec) or `git push origin HEAD` — these follow the tracking config and reach the correct CI branch. Never spell out `deploy/staging` or `deploy/main` directly; the tracking config handles the mapping.
+**Correct push commands for this repo:**
+- Staging: `git push origin HEAD:deploy/staging`
+- Production: `git push origin HEAD:main`
+
+Never use `git push origin staging` (pushes to wrong branch) or `git push` alone (rejected).
