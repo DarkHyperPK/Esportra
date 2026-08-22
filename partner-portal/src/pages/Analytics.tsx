@@ -43,9 +43,16 @@ const ZONE_LABELS: Record<string, string> = {
 
 const DEVICE_LABELS: Record<string, string> = {
     'mobile-web': 'Mobile',
-    'desktop-web': 'Desktop',
+    'desktop-web': 'Desktop (other)',
     'tablet-web': 'Tablet',
     'unknown-web': 'Unknown',
+    'iphone': 'iPhone',
+    'ipad': 'iPad',
+    'android-phone': 'Android Phone',
+    'android-tablet': 'Android Tablet',
+    'windows-pc': 'Windows PC',
+    'mac': 'Mac',
+    'linux-pc': 'Linux PC',
 };
 
 const DAY_OPTIONS = [7, 30, 90] as const;
