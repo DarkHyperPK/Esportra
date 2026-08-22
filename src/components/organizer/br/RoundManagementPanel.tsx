@@ -74,6 +74,7 @@ interface RoundManagementPanelProps {
   gamesModelActive?: boolean;
   realtimeConnected?: boolean;
   teamSize?: number;
+  locked?: boolean;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -97,6 +98,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
   gamesModelActive = false,
   realtimeConnected = false,
   teamSize = 1,
+  locked = false,
 }) => {
   const [expandedRoundId, setExpandedRoundId] = useState<string | null>(null);
   const { lobbies: rounds, isLoading, error, refetch, createLobby, updateLobby, resetLobby } = useBRLobbies(
@@ -213,7 +215,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
         {canCreateAdditionalLobby && (
           <OutlineButton
             onClick={handleCreateRound}
-            disabled={createLobby.isPending}
+            disabled={locked || createLobby.isPending}
             size="sm"
             className="h-7 text-xs"
           >
@@ -301,6 +303,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
               teamSize={teamSize}
               tournamentStartDate={tournamentStartDate}
               tournamentEndDate={tournamentEndDate}
+              locked={locked}
             />
           ))}
         </div>
@@ -378,6 +381,7 @@ export interface RoundRowProps {
   gamesPerLobby?: number;
   gamesModelActive?: boolean;
   teamSize?: number;
+  locked?: boolean;
 }
 
 export const RoundRow: React.FC<RoundRowProps> = ({
@@ -399,6 +403,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
   gamesPerLobby = 6,
   gamesModelActive = false,
   teamSize = 1,
+  locked = false,
 }) => {
   const { toast } = useToast();
   const perGameLobbyUi = usesPerGameLobbyUi(gamesModelActive, gamesPerLobby);
@@ -746,7 +751,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                   <SettingsButton
                     size="sm"
                     onClick={handleSettingsSave}
-                    disabled={!settingsDirty || isUpdating}
+                    disabled={locked || !settingsDirty || isUpdating}
                     className="h-9 text-xs"
                   >
                     Save settings
@@ -755,7 +760,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                     <CtaButton
                       size="sm"
                       onClick={() => onStatusAction('start', getRoundSettings())}
-                      disabled={isUpdating}
+                      disabled={locked || isUpdating}
                       className="h-9 text-xs"
                     >
                       <Play className="w-3 h-3 mr-1" />
@@ -766,7 +771,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                     <CtaButton
                       size="sm"
                       onClick={() => onStatusAction('complete')}
-                      disabled={isUpdating || hasPendingEvidenceReview || !canCompleteLobby}
+                      disabled={locked || isUpdating || hasPendingEvidenceReview || !canCompleteLobby}
                       className="h-9 text-xs"
                     >
                       <CheckCircle className="w-3 h-3 mr-1" /> Complete
@@ -776,7 +781,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                     <OutlineButton
                       size="sm"
                       onClick={() => onStatusAction('reopen')}
-                      disabled={isUpdating}
+                      disabled={locked || isUpdating}
                       className="h-9 text-xs"
                     >
                       <Undo2 className="w-3 h-3 mr-1" /> Re-open
@@ -785,7 +790,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
                   <DangerButton
                     size="sm"
                     onClick={() => onStatusAction('reset')}
-                    disabled={!hasRoundState || isUpdating}
+                    disabled={locked || !hasRoundState || isUpdating}
                     className="h-9 text-xs"
                   >
                     <RotateCcw className="w-3 h-3 mr-1" /> Reset
@@ -802,6 +807,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
               stageId={stageId}
               groupId={groupId}
               realtimeConnected={realtimeConnected}
+              locked={locked}
             />
           )}
 
@@ -816,6 +822,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
             mapConfig={mapConfig}
             mapCatalogItems={mapCatalogItems}
             realtimeConnected={realtimeConnected}
+            locked={locked}
           />
         </div>
       )}

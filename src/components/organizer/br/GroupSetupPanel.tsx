@@ -30,6 +30,7 @@ interface GroupSetupPanelProps {
   isCreating: boolean;
   isAssigning: boolean;
   hasRounds: boolean;
+  locked?: boolean;
 }
 
 export const GroupSetupPanel: React.FC<GroupSetupPanelProps> = ({
@@ -41,6 +42,7 @@ export const GroupSetupPanel: React.FC<GroupSetupPanelProps> = ({
   isCreating,
   isAssigning,
   hasRounds,
+  locked = false,
 }) => {
   const lobbySize = stageCapacity ?? registeredTeamCount;
   const autoGroupCount = lobbySize > 0 ? Math.max(1, Math.ceil(registeredTeamCount / lobbySize)) : 1;
@@ -102,7 +104,7 @@ export const GroupSetupPanel: React.FC<GroupSetupPanelProps> = ({
 
         <button type="button"
           onClick={() => hasRounds ? setConfirmRecreate(true) : handleCreate()}
-          disabled={isCreating}
+          disabled={locked || isCreating}
           className="w-full bg-emerald-600 text-white hover:bg-emerald-500 hover:text-white border-emerald-500/40 font-mono text-xs font-bold uppercase tracking-wider"
         >
           {isCreating ? 'Creating...' : hasExistingGroups ? 'Recreate Groups' : 'Create Groups'}
@@ -135,7 +137,7 @@ export const GroupSetupPanel: React.FC<GroupSetupPanelProps> = ({
 
         <button type="button"
           onClick={() => totalAssigned > 0 ? setConfirmDistribute(true) : handleDistribute()}
-          disabled={isAssigning || groups.length === 0 || registeredTeamCount === 0}
+          disabled={locked || isAssigning || groups.length === 0 || registeredTeamCount === 0}
           className="w-full bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500"
         >
           {isAssigning ? 'Distributing...' : totalAssigned > 0 ? 'Redistribute Teams' : 'Distribute Teams'}

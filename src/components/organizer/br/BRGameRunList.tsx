@@ -38,6 +38,7 @@ interface BRGameRunListProps {
   mapConfig: BRMapConfig;
   mapCatalogItems?: BRMapCatalogItem[];
   realtimeConnected?: boolean;
+  locked?: boolean;
 }
 
 export const BRGameRunList: React.FC<BRGameRunListProps> = ({
@@ -51,6 +52,7 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
   mapConfig,
   mapCatalogItems = [],
   realtimeConnected = false,
+  locked = false,
 }) => {
   const { toast } = useToast();
   const { data: games = [], isLoading } = useBRGames(lobbyId);
@@ -165,6 +167,7 @@ export const BRGameRunList: React.FC<BRGameRunListProps> = ({
           onQueueSave={(queueTimerMinutes) => updateGame.mutateAsync({ gameId: game.id, queueTimerMinutes })}
           isUpdating={updateGame.isPending}
           realtimeConnected={realtimeConnected}
+          locked={locked}
         />
       ))}
     </div>
@@ -207,6 +210,7 @@ const BRGameRunRow: React.FC<{
   onQueueSave: (queueTimerMinutes: number | null) => Promise<unknown>;
   isUpdating: boolean;
   realtimeConnected?: boolean;
+  locked?: boolean;
 }> = ({
   game,
   lobbyId,
@@ -227,6 +231,7 @@ const BRGameRunRow: React.FC<{
   onQueueSave,
   isUpdating,
   realtimeConnected = false,
+  locked = false,
 }) => {
   const { results, isLoading: resultsLoading, submitResults } = useBRLobbyResults(
     isExpanded ? lobbyId : null,
@@ -313,7 +318,7 @@ const BRGameRunRow: React.FC<{
               <Select
                 value={mapInput || undefined}
                 onValueChange={(value) => { void handleMapChange(value); }}
-                disabled={game.status === 'completed'}
+                disabled={locked || game.status === 'completed'}
               >
                 <SelectTrigger className="h-9 text-sm max-w-xs bg-white/5 border-white/10 text-white">
                   <SelectValue placeholder="Select map" />
@@ -370,7 +375,7 @@ const BRGameRunRow: React.FC<{
             {game.status === 'pending' && (
               <button
                 type="button"
-                disabled={isUpdating || !canStartGame}
+                disabled={locked || isUpdating || !canStartGame}
                 onClick={() => void onStartGame(mapInput || null, parseQueueTimerMinutes())}
                 className="inline-flex h-8 items-center justify-center gap-2 rounded-none border border-amber-500/30 bg-transparent px-3 font-mono text-xs font-bold uppercase tracking-wider text-amber-300 transition-colors hover:border-amber-500/50 hover:bg-amber-500/10 disabled:pointer-events-none disabled:opacity-50"
               >
@@ -380,7 +385,7 @@ const BRGameRunRow: React.FC<{
             {game.status === 'active' && (
               <SuccessButton
                 size="sm"
-                disabled={isUpdating}
+                disabled={locked || isUpdating}
                 onClick={() => onCompleteGame(mapInput || null)}
               >
                 <CheckCircle className="w-3.5 h-3.5 mr-1" /> Complete game
@@ -389,7 +394,7 @@ const BRGameRunRow: React.FC<{
             {game.status === 'completed' && (
               <OutlineButton
                 size="sm"
-                disabled={isUpdating}
+                disabled={locked || isUpdating}
                 onClick={() => { void onReopenGame(); }}
               >
                 <Undo2 className="w-3.5 h-3.5 mr-1" /> Re-open game
@@ -412,7 +417,7 @@ const BRGameRunRow: React.FC<{
                 });
               }}
               isSaving={submitResults.isPending}
-              isLocked={game.status === 'completed'}
+              isLocked={locked || game.status === 'completed'}
             />
           )}
           <RoundEvidencePanel
@@ -424,6 +429,7 @@ const BRGameRunRow: React.FC<{
             gameStatus={game.status}
             lobbyStatus={lobbyStatus}
             realtimeConnected={realtimeConnected}
+            locked={locked}
           />
         </div>
       )}

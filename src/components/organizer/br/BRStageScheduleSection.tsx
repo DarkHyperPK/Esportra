@@ -48,6 +48,7 @@ interface BRStageScheduleSectionProps {
   allStages: TournamentStage[];
   registeredUnitCount?: number;
   onUpdate: () => void;
+  locked?: boolean;
 }
 
 export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
@@ -57,6 +58,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
   allStages,
   registeredUnitCount = 0,
   onUpdate,
+  locked = false,
 }) => {
   const { toast } = useToast();
   const brConfig = getStageBRConfig(stage);
@@ -437,7 +439,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
           {hasGamesModel ? (
             <CtaButton
               size="sm"
-              disabled={savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
+              disabled={locked || savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
               onClick={() => handleSaveGameTimes([lobby.id])}
             >
               <Save className="w-3.5 h-3.5 mr-1.5" />
@@ -447,7 +449,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
             <>
               <CtaButton
                 size="sm"
-                disabled={savingLobbies || lobbyScheduleErrors.length > 0 || !lobbySchedulesDirty}
+                disabled={locked || savingLobbies || lobbyScheduleErrors.length > 0 || !lobbySchedulesDirty}
                 onClick={() => handleSaveLobbyTimes([lobby.id])}
               >
                 <Save className="w-3.5 h-3.5 mr-1.5" />
@@ -456,7 +458,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
               <OutlineButton
                 type="button"
                 size="sm"
-                disabled={savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
+                disabled={locked || savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
                 onClick={() => handleSaveGameTimes([lobby.id])}
               >
                 <Save className="w-3.5 h-3.5 mr-1.5" />
@@ -529,7 +531,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                   </div>
                   <button
                     type="button"
-                    disabled={commitSchedule.isPending}
+                    disabled={locked || commitSchedule.isPending}
                     onClick={handleCreateMatches}
                     className={cn(buttonVariants({ variant: 'success', size: 'sm' }))}
                   >
@@ -546,7 +548,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     type="button"
-                    disabled={generateLobbies.isPending || !seedingComplete}
+                    disabled={locked || generateLobbies.isPending || !seedingComplete}
                     onClick={() => generateLobbies.mutate(undefined, { onSuccess: () => onUpdate() })}
                     className={cn(buttonVariants({ variant: 'success', size: 'sm' }))}
                   >
@@ -621,7 +623,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                     {hasGamesModel ? (
                       <CtaButton
                         size="sm"
-                        disabled={savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
+                        disabled={locked || savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
                         onClick={() => handleSaveGameTimes(lobbies.map((l) => l.id))}
                       >
                         <Save className="w-3.5 h-3.5 mr-1.5" />
@@ -631,7 +633,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                       <>
                         <CtaButton
                           size="sm"
-                          disabled={savingLobbies || lobbyScheduleErrors.length > 0 || !lobbySchedulesDirty}
+                          disabled={locked || savingLobbies || lobbyScheduleErrors.length > 0 || !lobbySchedulesDirty}
                           onClick={() => handleSaveLobbyTimes(lobbies.map((l) => l.id))}
                         >
                           <Save className="w-3.5 h-3.5 mr-1.5" />
@@ -640,7 +642,7 @@ export const BRStageScheduleSection: React.FC<BRStageScheduleSectionProps> = ({
                         <OutlineButton
                           type="button"
                           size="sm"
-                          disabled={savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
+                          disabled={locked || savingGames || gameScheduleErrors.length > 0 || !gameSchedulesDirty}
                           onClick={() => handleSaveGameTimes(lobbies.map((l) => l.id))}
                         >
                           <Save className="w-3.5 h-3.5 mr-1.5" />

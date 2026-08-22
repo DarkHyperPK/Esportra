@@ -24,12 +24,14 @@ interface AdvanceTeamsPanelProps {
   stageId: string;
   advancement: BRAdvancementConfig | null;
   onAdvanced: () => void;
+  locked?: boolean;
 }
 
 const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
   stageId,
   advancement,
   onAdvanced,
+  locked = false,
 }) => {
   const { preview, execute } = useBRAdvancement(stageId);
   const defaultPerGroup = advancement?.perGroup ?? 4;
@@ -155,7 +157,7 @@ const AdvanceTeamsPanel: React.FC<AdvanceTeamsPanelProps> = ({
               <button type="button"
                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
                 onClick={() => setShowConfirm(true)}
-                disabled={execute.isPending}
+                disabled={locked || execute.isPending}
               >
                 {execute.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />

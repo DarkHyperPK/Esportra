@@ -49,6 +49,7 @@ interface BRWaveLobbyPanelProps {
   tournamentEndDate?: string | null;
   realtimeConnected?: boolean;
   teamSize?: number;
+  locked?: boolean;
 }
 
 const groupIdsForMatchup = (matchupLabel: string, groups: BRGroup[]): string[] => {
@@ -78,6 +79,7 @@ const RotationLobbyRow: React.FC<{
   isUpdating: boolean;
   realtimeConnected?: boolean;
   teamSize?: number;
+  locked?: boolean;
 }> = ({
   lobby,
   stageId,
@@ -98,6 +100,7 @@ const RotationLobbyRow: React.FC<{
   isUpdating,
   realtimeConnected = false,
   teamSize = 1,
+  locked = false,
 }) => {
   const matchupLabel = resolveMatchupLabelFromLobby(
     lobby,
@@ -137,6 +140,7 @@ const RotationLobbyRow: React.FC<{
       groupLobbyMode
       gamesPerLobby={gamesPerMatch}
       gamesModelActive={gamesModelActive}
+      locked={locked}
     />
   );
 };
@@ -154,6 +158,7 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
   tournamentEndDate,
   realtimeConnected = false,
   teamSize = 1,
+  locked = false,
 }) => {
   const { toast } = useToast();
   const [expandedLobbyId, setExpandedLobbyId] = useState<string | null>(null);
@@ -348,6 +353,7 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
                 isUpdating={isMutating}
                 realtimeConnected={realtimeConnected}
                 teamSize={teamSize}
+                locked={locked}
               />
             ))}
           </div>

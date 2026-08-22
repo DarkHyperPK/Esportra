@@ -28,6 +28,7 @@ interface BRStageGroupSectionProps {
   hasNextStage: boolean;
   advancementCount: number | null;
   onUpdate: () => void;
+  locked?: boolean;
 }
 
 const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
@@ -35,6 +36,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
   stageConfig,
   registeredTeamCount,
   onUpdate,
+  locked = false,
 }) => {
   const brConfig = getStageBRConfig({ config: stageConfig });
   const isRotation = brConfig?.format === 'group_rotation';
@@ -119,7 +121,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
             {needsMatchGeneration && (
               <button
                 type="button"
-                disabled={generateLobbies.isPending}
+                disabled={locked || generateLobbies.isPending}
                 onClick={() => generateLobbies.mutate(undefined, { onSuccess: () => onUpdate() })}
                 className={cn(
                   buttonVariants({ variant: 'success', size: 'sm' }),
@@ -186,7 +188,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
               <CtaButton
                 size="sm"
                 onClick={() => totalAssigned > 0 ? setConfirmDistribute(true) : handleDistribute()}
-                disabled={assignTeams.isPending || registeredTeamCount === 0 || rosterLocked}
+                disabled={locked || assignTeams.isPending || registeredTeamCount === 0 || rosterLocked}
                 className="h-7 border"
               >
                 <Shuffle className="w-3 h-3 mr-1" />
@@ -214,7 +216,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
                 showTeams={selectedGroupId === group.id}
                 onDelete={() => deleteGroup.mutate(group.id)}
                 isDeleting={deleteGroup.isPending}
-                isLocked={hasRounds}
+                isLocked={locked || hasRounds}
                 isSelected={selectedGroupId === group.id}
                 onSelect={() => setSelectedGroupId(selectedGroupId === group.id ? null : group.id)}
                 displayName={isSingleLobby ? 'Main Lobby' : undefined}
@@ -235,7 +237,7 @@ const BRStageGroupSection: React.FC<BRStageGroupSectionProps> = ({
           <button
             type="button"
             onClick={() => bootstrapLobby.mutate()}
-            disabled={bootstrapLobby.isPending}
+            disabled={locked || bootstrapLobby.isPending}
             className={cn(buttonVariants({ variant: 'success', size: 'sm' }), 'mt-4')}
           >
             {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Groups'}

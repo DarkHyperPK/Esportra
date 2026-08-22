@@ -30,6 +30,7 @@ interface BRStageSeedingPanelProps {
   checkInRequired?: boolean;
   pendingCheckInCount?: number;
   onUpdate: () => void;
+  locked?: boolean;
 }
 
 const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
@@ -39,6 +40,7 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
   checkInRequired = false,
   pendingCheckInCount = 0,
   onUpdate,
+  locked = false,
 }) => {
   const brConfig = getStageBRConfig({ config: stageConfig });
   const isRotation = brConfig?.format === 'group_rotation';
@@ -127,7 +129,7 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
             {needsMatchGeneration && (
               <button
                 type="button"
-                disabled={generateLobbies.isPending}
+                disabled={locked || generateLobbies.isPending}
                 onClick={() => generateLobbies.mutate(undefined, { onSuccess: () => onUpdate() })}
                 className={cn(
                   buttonVariants({ variant: 'success', size: 'sm' }),
@@ -201,7 +203,7 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
               <CtaButton
                 size="sm"
                 onClick={() => totalAssigned > 0 ? setConfirmDistribute(true) : handleDistribute()}
-                disabled={assignTeams.isPending || registeredTeamCount === 0 || rosterLocked}
+                disabled={locked || assignTeams.isPending || registeredTeamCount === 0 || rosterLocked}
                 title={registeredTeamCount === 0 && awaitingCheckIn ? 'Waiting for players to check in' : undefined}
                 className="h-7 border"
               >
@@ -231,7 +233,7 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
                 showTeams={selectedGroupId === group.id}
                 onDelete={() => deleteGroup.mutate(group.id)}
                 isDeleting={deleteGroup.isPending}
-                isLocked={hasLobbies}
+                isLocked={locked || hasLobbies}
                 isSelected={selectedGroupId === group.id}
                 onSelect={() => setSelectedGroupId(selectedGroupId === group.id ? null : group.id)}
                 displayName={isSingleLobby ? 'Main Lobby' : undefined}
@@ -251,7 +253,7 @@ const BRStageSeedingPanel: React.FC<BRStageSeedingPanelProps> = ({
           <button
             type="button"
             onClick={() => bootstrapLobby.mutate()}
-            disabled={bootstrapLobby.isPending}
+            disabled={locked || bootstrapLobby.isPending}
             className={cn(buttonVariants({ variant: 'success', size: 'sm' }), 'mt-4')}
           >
             {bootstrapLobby.isPending ? 'Initializing...' : 'Initialize Groups'}

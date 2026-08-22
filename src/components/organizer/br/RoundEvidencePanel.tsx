@@ -18,6 +18,7 @@ interface RoundEvidencePanelProps {
   gameStatus?: 'pending' | 'active' | 'completed';
   lobbyStatus?: string;
   realtimeConnected?: boolean;
+  locked?: boolean;
 }
 
 export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
@@ -29,6 +30,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
   gameStatus,
   lobbyStatus,
   realtimeConnected = false,
+  locked = false,
 }) => {
   const {
     evidence,
@@ -182,7 +184,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                             entityId: entry.teamId,
                             gameNumber: resolvedGameNumber,
                           })}
-                          disabled={isUpdating || !approvable || gameBlocksApproval || lobbyBlocksApproval}
+                          disabled={locked || isUpdating || !approvable || gameBlocksApproval || lobbyBlocksApproval}
                         >
                           <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
                           Approve result
@@ -197,7 +199,7 @@ export const RoundEvidencePanel: React.FC<RoundEvidencePanelProps> = ({
                             entityId: entry.teamId,
                             gameNumber: resolvedGameNumber,
                           })}
-                          disabled={isUpdating}
+                          disabled={locked || isUpdating}
                         >
                           <Undo2 className="mr-1.5 h-3.5 w-3.5" />
                           Reopen

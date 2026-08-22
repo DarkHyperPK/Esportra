@@ -22,6 +22,7 @@ interface BRScheduleDialogProps {
   tournamentId: string;
   allStages: TournamentStage[];
   onUpdate: () => void;
+  locked?: boolean;
 }
 
 const toLocalInput = (iso: string | null | undefined): string => {
@@ -43,6 +44,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
   tournamentId,
   allStages,
   onUpdate,
+  locked = false,
 }) => {
   const { toast } = useToast();
   const brConfig = getStageBRConfig(stage);
@@ -364,7 +366,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
               {hasRoundsConfigured && (
                 <OutlineButton type="button"
                   onClick={handleSaveAndContinue}
-                  disabled={savingStage || !startsAt || !endsAt}
+                  disabled={locked || savingStage || !startsAt || !endsAt}
                 >
                   <ChevronRight className="w-3.5 h-3.5 mr-1.5" />
                   {savingStage ? 'Saving...' : 'Save & Continue'}
@@ -373,7 +375,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
               <CtaButton
                 className="flex-1"
                 onClick={handleSaveStageSchedule}
-                disabled={savingStage || !startsAt || !endsAt}
+                disabled={locked || savingStage || !startsAt || !endsAt}
               >
                 <Save className="w-3.5 h-3.5 mr-1.5" />
                 {savingStage ? 'Saving...' : 'Save Stage Dates'}
@@ -387,7 +389,7 @@ export const BRScheduleDialog: React.FC<BRScheduleDialogProps> = ({
               <CtaButton
                 className="flex-1"
                 onClick={handleSaveRoundSchedules}
-                disabled={savingRounds || rounds.length === 0}
+                disabled={locked || savingRounds || rounds.length === 0}
               >
                 <Save className="w-3.5 h-3.5 mr-1.5" />
                 {savingRounds ? 'Saving...' : 'Save Round Schedule'}
