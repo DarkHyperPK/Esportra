@@ -257,7 +257,8 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 <button
                                     key={key}
                                     type="button"
-                                    onClick={() => updateData({
+                                    disabled={isEditMode}
+                                    onClick={() => !isEditMode && updateData({
                                         brScoringPreset: key,
                                         brKillCap: preset.killCap,
                                         brCustomScoring: null,
@@ -266,7 +267,8 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                         "p-4 rounded-none border text-left transition-all",
                                         data.brScoringPreset === key
                                             ? "border-rose-500 bg-rose-500/10"
-                                            : "border-white/10 hover:border-white/20 bg-white/[0.02]"
+                                            : "border-white/10 hover:border-white/20 bg-white/[0.02]",
+                                        isEditMode && "opacity-50 cursor-not-allowed"
                                     )}
                                 >
                                     <div className="font-semibold text-white text-sm">{preset.name}</div>
@@ -278,7 +280,8 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                             ))}
                             <button
                                 type="button"
-                                onClick={() => updateData({
+                                disabled={isEditMode}
+                                onClick={() => !isEditMode && updateData({
                                     brScoringPreset: 'custom',
                                     brCustomScoring: data.brCustomScoring || {
                                         name: 'Custom',
@@ -291,7 +294,8 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                     "p-4 rounded-none border text-left transition-all",
                                     data.brScoringPreset === 'custom'
                                         ? "border-rose-500 bg-rose-500/10"
-                                        : "border-white/10 hover:border-white/20 bg-white/[0.02]"
+                                        : "border-white/10 hover:border-white/20 bg-white/[0.02]",
+                                    isEditMode && "opacity-50 cursor-not-allowed"
                                 )}
                             >
                                 <div className="font-semibold text-white text-sm">Custom</div>
@@ -343,6 +347,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                             min={0}
                                             max={100}
                                             value={pts}
+                                            disabled={isEditMode}
                                             onChange={(e) => {
                                                 const newPlacements = [...data.brCustomScoring!.placements];
                                                 newPlacements[i] = parseInt(e.target.value) || 0;
@@ -355,6 +360,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                     </div>
                                 ))}
                             </div>
+                            {!isEditMode && (
                             <div className="flex items-center gap-2">
                                 <OutlineButton
                                     type="button"
@@ -383,6 +389,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                     </OutlineButton>
                                 )}
                             </div>
+                            )}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <Label className="text-xs text-gray-500">Points per Kill</Label>
@@ -391,6 +398,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                         min={0}
                                         max={10}
                                         value={data.brCustomScoring.killPoints}
+                                        disabled={isEditMode}
                                         onChange={(e) => updateData({
                                             brCustomScoring: { ...data.brCustomScoring!, killPoints: parseInt(e.target.value) || 0 }
                                         })}
@@ -404,6 +412,7 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                         min={0}
                                         max={50}
                                         value={data.brKillCap ?? 0}
+                                        disabled={isEditMode}
                                         onChange={(e) => {
                                             const val = parseInt(e.target.value) || 0;
                                             updateData({
@@ -428,8 +437,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                                 const val = parseInt(v);
                                 updateData({ brKillCap: val === 0 ? null : val });
                             }}
+                            disabled={isEditMode}
                         >
-                            <SelectTrigger className="w-full font-bold tracking-tight">
+                            <SelectTrigger className="w-full font-bold tracking-tight" disabled={isEditMode}>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -451,8 +461,9 @@ const StepFormatRules: React.FC<WizardStepProps> = ({ data, updateData, errors, 
                         <Select
                             value={data.brTiebreaker}
                             onValueChange={(v) => updateData({ brTiebreaker: v as typeof data.brTiebreaker })}
+                            disabled={isEditMode}
                         >
-                            <SelectTrigger className="w-full font-bold tracking-tight">
+                            <SelectTrigger className="w-full font-bold tracking-tight" disabled={isEditMode}>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>

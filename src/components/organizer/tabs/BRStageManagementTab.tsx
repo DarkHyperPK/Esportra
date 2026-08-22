@@ -452,12 +452,14 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                                                                 <button
                             type="button"
                             className="text-left mt-1"
+                            disabled={locked}
                             onClick={() => {
+                              if (locked) return;
                               setEditingNameId(stage.id);
                               setEditNameValue(stage.name);
                             }}
                           >
-                            <h4 className="font-bold text-white text-base hover:text-rose-300 transition-colors">
+                            <h4 className={cn("font-bold text-white text-base transition-colors", !locked && "hover:text-rose-300")}>
                                                                         {stage.name}
                                                                     </h4>
                                                                 </button>
@@ -526,7 +528,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                                                     >
                           {isExpanded ? 'Hide lobbies' : 'Manage lobbies'}
                                                     </OutlineButton>
-                        {canAdvance && (
+                        {canAdvance && !locked && (
                                                     <SuccessButton
                                                         size="sm"
                             onClick={() => setAdvanceConfirmStageId(stage.id)}
@@ -534,6 +536,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                             Advance {UnitsLabel}
                           </SuccessButton>
                         )}
+                        {!locked && (
                         <button
                           type="button"
                           className={cn(
@@ -544,6 +547,7 @@ export const BRStageManagementTab: React.FC<BRStageManagementTabProps> = ({
                         >
                           Delete
                                                     </button>
+                        )}
                                                 </div>
                                             </div>
 
