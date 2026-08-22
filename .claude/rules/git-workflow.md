@@ -31,9 +31,18 @@ The rule bans **direct commits to main**, not **promoting staging to main**. Sta
 - Force-pushing to `main`
 - Bypassing staging entirely for new changes
 - Fast-forward merges to `main` (`git merge staging` without `--no-ff`) — always use `--no-ff`
+- Pushing to any branch other than `staging` or `main` — only these two trigger CI
 
 ## Branch Hygiene
 
 - Default working branch: `staging`
 - Commit to `staging`, push to `staging`
 - Production release: merge `staging` → `main` → push `main`
+- **Never push to feature branches, worktree branches, or arbitrary remote refs** — only `staging` and `main` are CI-connected
+
+## Frontend repo note (frag-and-book-main)
+
+The local `staging` branch tracks `origin/deploy/staging` (CI trigger), not `origin/staging`.
+`git push origin staging` pushes to `origin/staging` (wrong — not CI-connected).
+
+Always use `git push` (no refspec) or `git push origin HEAD` — these follow the tracking config and reach the correct CI branch. Never spell out `deploy/staging` or `deploy/main` directly; the tracking config handles the mapping.
