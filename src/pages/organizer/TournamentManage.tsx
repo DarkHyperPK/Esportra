@@ -1792,7 +1792,7 @@ const TournamentDashboard = () => {
                         scoringPreset={brScoringPreset}
                         checkInRequired={!!tournament.check_in_required}
                         onUpdate={() => refetchDashboard()}
-                        locked={tournament.status === 'completed'}
+                        locked={tournament.status === 'completed' && !isSuperAdmin}
                       />
                     ) : (
                       <StageManagementTab
@@ -1802,7 +1802,7 @@ const TournamentDashboard = () => {
                         game={tournament.game || ''}
                         isPublic={tournament.is_public}
                         checkInRequired={!!tournament.check_in_required}
-                        locked={tournament.status === 'completed'}
+                        locked={tournament.status === 'completed' && !isSuperAdmin}
                       />
                     )}
                   </TabTransition>
@@ -1812,7 +1812,7 @@ const TournamentDashboard = () => {
               {activeTab === 'prizes' && canActAsOwner && (
                 <TabsContent value="prizes" forceMount key="prizes">
                   <TabTransition direction={direction}>
-                    <PrizeDistributionTab tournament={tournament} locked={tournament.status === 'completed'} />
+                    <PrizeDistributionTab tournament={tournament} locked={tournament.status === 'completed' && !isSuperAdmin} />
                   </TabTransition>
                 </TabsContent>
               )}
@@ -1828,7 +1828,7 @@ const TournamentDashboard = () => {
                         stages={stages}
                         registeredUnitCount={brRegisteredUnitCount}
                         onUpdate={() => refetchDashboard()}
-                        locked={tournament.status === 'completed'}
+                        locked={tournament.status === 'completed' && !isSuperAdmin}
                       />
                     ) : (
                       <div className="space-y-6">
@@ -1911,7 +1911,7 @@ const TournamentDashboard = () => {
                       participants={participants}
                       scoringPreset={brScoringPreset}
                       checkInRequired={!!tournament.check_in_required}
-                      locked={tournament.status === 'completed'}
+                      locked={tournament.status === 'completed' && !isSuperAdmin}
                     />
                   </TabTransition>
                 </TabsContent>
