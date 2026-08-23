@@ -35,7 +35,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { BRGroupTeam } from '@/types/brGroups';
-import type { BRRound, BRResultInput } from '@/types/brRounds';
+import type { BRRound } from '@/types/brRounds';
 import type { BRMapConfig, BRMapCatalogItem } from '@/types/battleRoyale';
 import { resolveMapFromConfig } from '@/hooks/useBRStageConfig';
 import { BRMapBadge } from '@/components/organizer/br/BRMapOptionList';
@@ -167,7 +167,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
 
   const handleLobbyCodeUpdate = async (
     roundId: string,
-    lobbyCode: string,
+    lobbyCode: string | null,
     scheduledAt: string | null,
     queueTimerMinutes: number | null,
     map?: string | null,
@@ -367,7 +367,7 @@ export interface RoundRowProps {
   isExpanded: boolean;
   onToggle: () => void;
   onStatusAction: (action: RoundAction, settings?: RoundActionSettings) => void;
-  onRoundSettingsSave: (settings: { lobbyCode: string; scheduledAt: string | null; queueTimerMinutes: number | null; map?: string | null }) => Promise<void>;
+  onRoundSettingsSave: (settings: { lobbyCode: string | null; scheduledAt: string | null; queueTimerMinutes: number | null; map?: string | null }) => Promise<void>;
   isUpdating: boolean;
   realtimeConnected?: boolean;
   mapConfig: BRMapConfig;
@@ -421,7 +421,7 @@ export const RoundRow: React.FC<RoundRowProps> = ({
     ? expandedTotalAssigned
     : (round.total_assigned ?? 0);
   const showReadiness = round.status === 'active' && (totalAssigned > 0 || readyCount > 0);
-  const { results, isLoading: _resultsLoading, submitResults } = useBRLobbyResults(
+  const { results, isLoading: _resultsLoading, submitResults: _submitResults } = useBRLobbyResults(
     isExpanded && !perGameLobbyUi ? round.id : null,
     stageId,
     groupId
@@ -526,10 +526,6 @@ export const RoundRow: React.FC<RoundRowProps> = ({
     }, 700);
     return () => window.clearTimeout(timer);
   }, [lobbyCode, round.status, round.lobby_code, onRoundSettingsSave, toast, usesPerGameQueue]);
-
-  const _handleResultSave = async (resultInputs: BRResultInput[]) => {
-    await submitResults.mutateAsync({ lobbyId: round.id, results: resultInputs });
-  };
 
   return (
     <div className="bg-[#0a0a0c] border border-white/5 rounded-xl overflow-hidden">

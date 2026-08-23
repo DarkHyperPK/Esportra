@@ -1,8 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
   Shield,
   Plus,
   Pencil,
@@ -18,8 +16,6 @@ import {
   ChevronRight,
   Search,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,6 +28,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { AdminPage } from "@/components/admin/AdminPage";
+import {
+  CommandButton,
+  CommandIconButton,
+  CommandSection,
+  CommandToolbar,
+} from "@/components/management/CommandSurface";
 import { useAdmin } from "@/hooks/useAdmin";
 import {
   useAdminRoles,
@@ -74,6 +77,9 @@ const RESOURCE_ORDER = [
   "content",
 ];
 
+const LABEL_CLASS =
+  "font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500";
+
 // ── Helper ────────────────────────────────────────────────────────────────────
 
 function generateKey(name: string): string {
@@ -96,10 +102,10 @@ function formatDate(iso: string): string {
 
 function RoleCardSkeleton() {
   return (
-    <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5 space-y-3">
+    <div className="border border-white/10 bg-[#0a0a0c]/92 p-5 space-y-3">
       <div className="flex items-center justify-between">
         <Skeleton className="h-5 w-32 bg-zinc-800" />
-        <Skeleton className="h-5 w-16 bg-zinc-800 rounded-full" />
+        <Skeleton className="h-5 w-16 bg-zinc-800" />
       </div>
       <Skeleton className="h-4 w-48 bg-zinc-800" />
       <div className="flex gap-4">
@@ -205,31 +211,23 @@ function PermissionMatrix({
     <div className="space-y-4">
       {/* Header with count + master toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-zinc-400">
-            <span className="text-white font-semibold">{selectedIds.size}</span>{" "}
-            of {totalCount} permissions selected
-          </span>
-        </div>
-        <div className="flex items-center gap-3">
+        <span className={LABEL_CLASS}>
+          <span className="text-white">{selectedIds.size}</span> of{" "}
+          {totalCount} permissions selected
+        </span>
+        <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
             <Input
               placeholder="Filter permissions…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 h-8 w-48 bg-zinc-900 border-zinc-800 text-sm text-white placeholder:text-zinc-600"
+              className="h-8 w-48 rounded-none border-white/10 bg-black/60 pl-8 text-xs text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500"
             />
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={toggleAll}
-            className="border-zinc-700 text-zinc-300 hover:text-white hover:border-white/25 text-xs h-8"
-          >
+          <CommandButton variant="ghost" size="sm" onClick={toggleAll}>
             {allSelected ? "Deselect All" : "Select All"}
-          </Button>
+          </CommandButton>
         </div>
       </div>
 
@@ -248,37 +246,36 @@ function PermissionMatrix({
           return (
             <div
               key={group.resource}
-              className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden"
+              className="overflow-hidden border border-white/10 bg-white/[0.025]"
             >
               {/* Resource header */}
               <button
                 type="button"
                 onClick={() => toggleExpand(group.resource)}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-zinc-800/50 transition-colors"
+                className="flex w-full items-center gap-3 border-b border-white/5 px-4 py-3 transition-colors hover:bg-white/[0.03]"
               >
                 <Checkbox
                   checked={allChecked ? true : someChecked ? "indeterminate" : false}
                   onCheckedChange={() => toggleResource(group.resource)}
                   onClick={(e) => e.stopPropagation()}
-                  className="border-zinc-600 data-[state=checked]:bg-rose-500 data-[state=checked]:border-rose-500 data-[state=indeterminate]:bg-rose-500/50 data-[state=indeterminate]:border-rose-500/50"
+                  className="rounded-none border-zinc-600 accent-[#f43f5e] data-[state=checked]:bg-rose-500 data-[state=checked]:border-rose-500 data-[state=indeterminate]:bg-rose-500/50 data-[state=indeterminate]:border-rose-500/50"
                 />
-                <span className="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex-1 text-left">
+                <span className={`${LABEL_CLASS} flex-1 text-left !tracking-widest`}>
                   {RESOURCE_LABELS[group.resource] || group.resource}
                 </span>
-                <Badge
-                  variant="outline"
-                  className={`text-xs ${
-                    checkedCount === groupIds.length
+                <span
+                  className={`border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tabular-nums tracking-wider ${
+                    allChecked
                       ? "border-rose-500/50 text-rose-400"
-                      : "border-zinc-700 text-zinc-500"
+                      : "border-white/15 text-zinc-500"
                   }`}
                 >
                   {checkedCount}/{groupIds.length}
-                </Badge>
+                </span>
                 {isExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-zinc-500" />
+                  <ChevronDown className="h-4 w-4 text-zinc-500" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-zinc-500" />
+                  <ChevronRight className="h-4 w-4 text-zinc-500" />
                 )}
               </button>
 
@@ -292,36 +289,33 @@ function PermissionMatrix({
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="border-t border-zinc-800 px-4 py-2 space-y-1">
+                    <div className="divide-y divide-white/5">
                       {group.permissions.map((perm) => {
                         const isChecked = selectedIds.has(perm.id);
                         return (
                           <label
                             key={perm.id}
-                            className={`flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+                            className={`flex cursor-pointer items-start gap-3 border-l-2 px-4 py-2.5 transition-colors ${
                               isChecked
-                                ? "bg-rose-500/5 border border-rose-500/20"
-                                : "hover:bg-zinc-800/50 border border-transparent"
+                                ? "border-l-rose-500 bg-rose-500/[0.06]"
+                                : "border-l-transparent hover:bg-white/[0.03]"
                             }`}
                           >
                             <Checkbox
                               checked={isChecked}
                               onCheckedChange={() => togglePermission(perm.id)}
-                              className="mt-0.5 border-zinc-600 data-[state=checked]:bg-rose-500 data-[state=checked]:border-rose-500"
+                              className="mt-0.5 rounded-none border-zinc-600 accent-[#f43f5e] data-[state=checked]:bg-rose-500 data-[state=checked]:border-rose-500"
                             />
-                            <div className="flex-1 min-w-0">
+                            <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-medium text-white">
                                   {perm.name}
                                 </span>
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] border-zinc-700 text-zinc-500 font-mono"
-                                >
+                                <span className="border border-white/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-zinc-500">
                                   {perm.action}
-                                </Badge>
+                                </span>
                               </div>
-                              <p className="text-xs text-zinc-500 mt-0.5">
+                              <p className="mt-0.5 text-xs text-zinc-500">
                                 {perm.description}
                               </p>
                             </div>
@@ -337,7 +331,7 @@ function PermissionMatrix({
         })}
 
         {filteredGroups.length === 0 && searchTerm && (
-          <div className="text-center py-8 text-zinc-500 text-sm">
+          <div className="py-8 text-center text-sm text-zinc-500">
             No permissions matching "{searchTerm}"
           </div>
         )}
@@ -377,47 +371,50 @@ function RoleCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
-      className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all group"
+      className="group border border-white/10 bg-[#0a0a0c]/92 p-5 transition-colors hover:border-white/25"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           {/* Name + badges */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-white font-semibold text-base truncate">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-base font-semibold text-white">
               {role.name}
             </h3>
-            <Badge
-              variant="outline"
-              className="text-[10px] font-mono border-zinc-700 text-zinc-500"
-            >
+            <span className="border border-white/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-zinc-500">
               {role.key}
-            </Badge>
+            </span>
             {isProtected ? (
-              <Badge className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/15">
-                <Lock className="w-2.5 h-2.5 mr-1" />
+              <span
+                className={`inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
+                  role.key === "super_admin"
+                    ? "border-white bg-white/[0.08] text-white"
+                    : "border-white/15 text-zinc-400"
+                }`}
+              >
+                <Lock className="h-2.5 w-2.5" />
                 Built-in
-              </Badge>
+              </span>
             ) : (
-              <Badge className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/15">
+              <span className="border border-white/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-zinc-500">
                 Custom
-              </Badge>
+              </span>
             )}
           </div>
 
           {/* Description */}
-          <p className="text-sm text-zinc-500 mt-1.5 line-clamp-2">
+          <p className="mt-1.5 line-clamp-2 text-sm text-zinc-500">
             {role.description || "No description"}
           </p>
 
           {/* Meta */}
-          <div className="flex items-center gap-4 mt-3">
+          <div className="mt-3 flex items-center gap-4">
             <span className="flex items-center gap-1.5 text-xs text-zinc-400">
-              <Key className="w-3 h-3 text-rose-400" />
+              <Key className="h-3 w-3 text-rose-400" />
               {role.permission_count} permission
               {role.permission_count !== 1 ? "s" : ""}
             </span>
             <span className="flex items-center gap-1.5 text-xs text-zinc-400">
-              <Users className="w-3 h-3 text-blue-400" />
+              <Users className="h-3 w-3 text-zinc-500" />
               {role.user_count} user{role.user_count !== 1 ? "s" : ""}
             </span>
             <span className="text-xs text-zinc-600">
@@ -428,25 +425,23 @@ function RoleCard({
 
         {/* Actions — super_admin can edit and delete all roles */}
         {isSuperAdmin && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
+          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <CommandIconButton
+              label={`Edit role ${role.name}`}
               variant="ghost"
-              size="sm"
               onClick={onEdit}
-              className="h-8 w-8 p-0 text-zinc-400 hover:text-white hover:bg-zinc-800"
-              aria-label={`Edit role ${role.name}`}
+              className="h-8 w-8 text-zinc-500 hover:text-white"
             >
-              <Pencil className="w-3.5 h-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
+              <Pencil className="h-3.5 w-3.5" />
+            </CommandIconButton>
+            <CommandIconButton
+              label={`Delete role ${role.name}`}
+              variant="danger"
               onClick={onDelete}
-              className="h-8 w-8 p-0 text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
-              aria-label={`Delete role ${role.name}`}
+              className="h-8 w-8"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
+              <Trash2 className="h-3.5 w-3.5" />
+            </CommandIconButton>
           </div>
         )}
       </div>
@@ -560,10 +555,13 @@ function RoleFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#121214] border-zinc-800 text-white max-w-3xl max-h-[90vh] overflow-y-auto overscroll-contain sm:rounded-2xl" data-lenis-prevent>
+      <DialogContent
+        className="max-h-[90vh] max-w-3xl overflow-y-auto overscroll-contain rounded-none border-white/10 bg-[#0a0a0c]"
+        data-lenis-prevent
+      >
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-            <Shield className="w-5 h-5 text-rose-500" />
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold text-white">
+            <Shield className="h-4 w-4 text-rose-500" />
             {isEditing ? "Edit Role" : "Create New Role"}
           </DialogTitle>
           <DialogDescription className="text-zinc-400">
@@ -575,29 +573,31 @@ function RoleFormDialog({
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 text-rose-500 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin text-rose-500" />
           </div>
         ) : (
           <div className="space-y-6 py-2">
             {/* Name & Key */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">
+                <label htmlFor="rb-role-name" className={LABEL_CLASS}>
                   Role Name <span className="text-rose-500">*</span>
                 </label>
                 <Input
+                  id="rb-role-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Content Manager"
-                  className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-rose-500/50 focus:ring-rose-500/20"
+                  className="rounded-none border-white/10 bg-black/60 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500"
                   maxLength={50}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">
+                <label htmlFor="rb-role-key" className={LABEL_CLASS}>
                   Role Key <span className="text-rose-500">*</span>
                 </label>
                 <Input
+                  id="rb-role-key"
                   value={key}
                   onChange={(e) => {
                     setKeyTouched(true);
@@ -605,11 +605,11 @@ function RoleFormDialog({
                   }}
                   placeholder="e.g. content_manager"
                   disabled={isEditing}
-                  className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-600 font-mono text-sm disabled:opacity-50 disabled:cursor-not-allowed focus:border-rose-500/50 focus:ring-rose-500/20"
+                  className="rounded-none border-white/10 bg-black/60 font-mono text-sm text-white placeholder:text-zinc-600 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-rose-500 focus-visible:ring-rose-500"
                   maxLength={50}
                 />
                 {!isEditing && (
-                  <p className="text-[11px] text-zinc-600">
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-zinc-600">
                     Auto-generated from name. Cannot be changed after creation.
                   </p>
                 )}
@@ -618,23 +618,24 @@ function RoleFormDialog({
 
             {/* Description */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">
+              <label htmlFor="rb-role-description" className={LABEL_CLASS}>
                 Description
               </label>
               <Textarea
+                id="rb-role-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe what this role is for…"
-                className="bg-zinc-900 border-zinc-800 text-white placeholder:text-zinc-600 resize-none h-20 focus:border-rose-500/50 focus:ring-rose-500/20"
+                className="h-20 resize-none rounded-none border-white/10 bg-black/60 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500"
                 maxLength={200}
               />
             </div>
 
             {/* Permissions Matrix */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">
+              <p className={LABEL_CLASS}>
                 Permissions <span className="text-rose-500">*</span>
-              </label>
+              </p>
               <PermissionMatrix
                 groups={permissionGroups}
                 selectedIds={selectedPermissionIds}
@@ -646,30 +647,22 @@ function RoleFormDialog({
         )}
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800"
-          >
+          <CommandButton variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white disabled:opacity-40 disabled:cursor-not-allowed"
-          >
+          </CommandButton>
+          <CommandButton size="sm" onClick={handleSubmit} disabled={!canSubmit}>
             {isSaving ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 {isEditing ? "Saving…" : "Creating…"}
               </>
             ) : (
               <>
-                <Check className="w-4 h-4 mr-2" />
+                <Check className="h-4 w-4" />
                 {isEditing ? "Save Changes" : "Create Role"}
               </>
             )}
-          </Button>
+          </CommandButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -697,10 +690,10 @@ function DeleteRoleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#121214] border-zinc-800 text-white sm:max-w-md sm:rounded-2xl">
+      <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-500" />
+          <DialogTitle className="flex items-center gap-2 text-lg font-bold text-white">
+            <AlertTriangle className="h-4 w-4 text-red-300" />
             Delete Role
           </DialogTitle>
           <DialogDescription className="text-zinc-400">
@@ -716,8 +709,8 @@ function DeleteRoleDialog({
             </p>
 
             {hasUsers && (
-              <div className="flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
-                <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+              <div className="flex items-start gap-3 border border-red-500/30 bg-red-950/20 p-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
                 <p className="text-sm text-red-300">
                   This role is assigned to{" "}
                   <span className="font-semibold text-red-200">
@@ -731,30 +724,27 @@ function DeleteRoleDialog({
         )}
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-800"
-          >
+          <CommandButton variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
             Cancel
-          </Button>
-          <Button
+          </CommandButton>
+          <CommandButton
+            variant="danger"
+            size="sm"
             onClick={handleDelete}
             disabled={hasUsers || deleteRole.isPending}
-            className="bg-red-600 hover:bg-red-500 text-white disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {deleteRole.isPending ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Deleting…
               </>
             ) : (
               <>
-                <Trash2 className="w-4 h-4 mr-2" />
+                <Trash2 className="h-4 w-4" />
                 Delete Role
               </>
             )}
-          </Button>
+          </CommandButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -820,85 +810,46 @@ const RoleBuilder = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 lg:p-8 max-w-[1400px] mx-auto">
-      {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-zinc-500 mb-4">
-          <Link
-            to="/admin"
-            className="hover:text-white transition-colors flex items-center gap-1"
+    <AdminPage
+      eyebrow="Security"
+      title="Role Builder"
+      description="Create and manage custom admin roles with granular permissions"
+      actions={
+        <>
+          <CommandIconButton
+            label="Refresh roles"
+            variant="ghost"
+            onClick={() => refetch()}
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Admin
-          </Link>
-          <span>/</span>
-          <span className="text-zinc-300">Role Builder</span>
-        </div>
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-white flex items-center gap-3">
-              <div className="p-2 bg-rose-500/10 rounded-xl border border-rose-500/20">
-                <Shield className="w-6 h-6 text-rose-500" />
-              </div>
-              Role Builder
-            </h1>
-            <p className="text-zinc-400 mt-1.5 text-sm">
-              Create and manage custom admin roles with granular permissions
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              className="border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-800"
-              aria-label="Refresh roles"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-            {canManageRoles && (
-              <Button
-                onClick={handleCreate}
-                className="bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white shadow-lg shadow-rose-500/20"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Role
-              </Button>
-            )}
-          </div>
-        </div>
-      </motion.header>
-
+            <RefreshCw className="h-4 w-4" />
+          </CommandIconButton>
+          {canManageRoles && (
+            <CommandButton onClick={handleCreate}>
+              <Plus className="h-4 w-4" />
+              Create Role
+            </CommandButton>
+          )}
+        </>
+      }
+    >
       {/* Search */}
       {!isLoading && !error && roles && roles.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="mb-6"
-        >
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+        <CommandToolbar>
+          <div className="relative w-full max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
             <Input
               placeholder="Search roles…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-[#0a0a0c] border-zinc-800 text-white placeholder:text-zinc-600 focus:border-rose-500/50 focus:ring-rose-500/20"
+              className="rounded-none border-white/10 bg-black/60 pl-9 text-xs text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500"
             />
           </div>
-        </motion.div>
+        </CommandToolbar>
       )}
 
       {/* Loading */}
       {isLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <RoleCardSkeleton key={i} />
           ))}
@@ -907,44 +858,32 @@ const RoleBuilder = () => {
 
       {/* Error */}
       {error && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center"
-        >
-          <AlertTriangle className="w-8 h-8 text-red-400 mx-auto mb-3" />
-          <h3 className="text-white font-semibold mb-1">
+        <CommandSection className="border-red-500/30 bg-red-950/20 text-center">
+          <AlertTriangle className="mx-auto mb-3 h-6 w-6 text-red-300" />
+          <h3 className="mb-1 font-semibold text-white">
             Failed to load roles
           </h3>
-          <p className="text-sm text-zinc-400 mb-4">
+          <p className="mx-auto mb-4 max-w-md text-sm leading-relaxed text-zinc-400">
             {(error as Error)?.message || "An unexpected error occurred."}
           </p>
-          <Button
-            variant="outline"
-            onClick={() => refetch()}
-            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
+          <CommandButton variant="ghost" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4" />
             Retry
-          </Button>
-        </motion.div>
+          </CommandButton>
+        </CommandSection>
       )}
 
       {/* Role Lists */}
       {!isLoading && !error && roles && (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* Built-in Roles */}
           {builtInRoles.length > 0 && (
-            <motion.section
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.1 }}
-            >
-              <h2 className="text-sm font-mono text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Lock className="w-3.5 h-3.5" />
+            <section>
+              <h2 className={`${LABEL_CLASS} mb-3 flex items-center gap-2`}>
+                <Lock className="h-3 w-3" />
                 Built-in Roles ({builtInRoles.length})
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <AnimatePresence mode="popLayout">
                   {builtInRoles.map((role) => (
                     <RoleCard
@@ -958,45 +897,35 @@ const RoleBuilder = () => {
                   ))}
                 </AnimatePresence>
               </div>
-            </motion.section>
+            </section>
           )}
 
           {/* Custom Roles */}
-          <motion.section
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <h2 className="text-sm font-mono text-zinc-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Key className="w-3.5 h-3.5" />
+          <section>
+            <h2 className={`${LABEL_CLASS} mb-3 flex items-center gap-2`}>
+              <Key className="h-3 w-3" />
               Custom Roles ({customRoles.length})
             </h2>
 
             {customRoles.length === 0 ? (
-              <div className="bg-[#0a0a0c] border border-white/5 border-dashed rounded-2xl p-8 text-center">
-                <div className="mx-auto w-12 h-12 bg-zinc-800 rounded-xl flex items-center justify-center mb-3">
-                  <Shield className="w-6 h-6 text-zinc-600" />
-                </div>
-                <h3 className="text-white font-medium mb-1">
+              <div className="border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
+                <Shield className="mx-auto mb-3 h-5 w-5 text-zinc-600" />
+                <h3 className="mb-1 font-medium text-white">
                   No custom roles yet
                 </h3>
-                <p className="text-sm text-zinc-500 mb-4">
+                <p className="mb-4 text-sm text-zinc-500">
                   Create a custom role to define granular access for your admin
                   team.
                 </p>
                 {canManageRoles && (
-                  <Button
-                    onClick={handleCreate}
-                    variant="outline"
-                    className="border-white/15 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
+                  <CommandButton variant="ghost" size="sm" onClick={handleCreate}>
+                    <Plus className="h-4 w-4" />
                     Create First Role
-                  </Button>
+                  </CommandButton>
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <AnimatePresence mode="popLayout">
                   {customRoles.map((role) => (
                     <RoleCard
@@ -1011,13 +940,13 @@ const RoleBuilder = () => {
                 </AnimatePresence>
               </div>
             )}
-          </motion.section>
+          </section>
 
           {/* No results from search */}
           {filteredRoles.length === 0 && searchTerm && (
-            <div className="text-center py-12">
-              <Search className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
-              <p className="text-zinc-400">
+            <div className="py-12 text-center">
+              <Search className="mx-auto mb-3 h-6 w-6 text-zinc-600" />
+              <p className="text-sm text-zinc-400">
                 No roles matching "{searchTerm}"
               </p>
             </div>
@@ -1037,7 +966,7 @@ const RoleBuilder = () => {
         onOpenChange={setDeleteDialogOpen}
         role={deleteTarget}
       />
-    </div>
+    </AdminPage>
   );
 };
 

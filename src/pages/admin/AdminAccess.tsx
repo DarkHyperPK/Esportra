@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { auditLog } from '@/lib/auditLog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Shield, UserPlus, UserMinus, Crown, Users, ArrowLeft } from 'lucide-react';
-
-import { motion } from 'framer-motion';
+import { AdminPage } from '@/components/admin/AdminPage';
+import {
+  CommandButton,
+  CommandPanel,
+  CommandSection,
+} from '@/components/management/CommandSurface';
 import { Link } from 'react-router-dom';
 
 type Role = {
@@ -20,6 +21,9 @@ type Role = {
   roleKey?: string;
   roleId?: string | number;
 };
+
+const ADMIN_ACCESS_INPUT_CLASS =
+  'w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20';
 
 const AdminAccess: React.FC = () => {
   const { toast } = useToast();
@@ -215,187 +219,148 @@ const AdminAccess: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-4 mb-8"
-      >
-        <Link
-          to="/admin/dashboard"
-          className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-zinc-400" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
-              <Shield className="w-5 h-5 text-rose-500" />
-            </div>
-            Admin Access Control
-          </h1>
-          <p className="text-zinc-500 text-sm mt-1">Assign and revoke user & admin roles</p>
-        </div>
-      </motion.div>
-
-      <div className="max-w-4xl mx-auto space-y-6">
+    <AdminPage
+      eyebrow="Security"
+      title="Admin Access"
+      description="Assign and revoke user & admin roles"
+      actions={
+        <CommandButton variant="ghost" size="sm" asChild>
+          <Link to="/admin/dashboard">
+            <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+          </Link>
+        </CommandButton>
+      }
+    >
+      <div className="space-y-5">
         {/* Role Assignment Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
-        >
-          <div className="px-6 py-5 border-b border-zinc-800/50">
-            <h2 className="text-lg font-semibold text-white">Assign or Revoke Role</h2>
-            <p className="text-sm text-zinc-500 mt-1">Enter the user's email and select a role to assign or revoke.</p>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">User Email</label>
-                <Input
-                  placeholder="user@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="bg-zinc-900/50 border-zinc-700/50 text-white placeholder:text-zinc-600 focus:border-rose-500/50 focus:ring-rose-500/20 rounded-xl"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Role</label>
-                <Select value={selectedRole} onValueChange={setSelectedRole}>
-                  <SelectTrigger className="bg-zinc-900/50 border-zinc-700/50 text-white rounded-xl">
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#0a0a0c] border-zinc-800 text-white max-h-[300px]">
-                    {roles.filter(r => !r.isAdmin).length > 0 && (
-                      <>
-                        <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">User Roles</div>
-                        {roles.filter(r => !r.isAdmin).map(r => (
-                          <SelectItem key={r.id} value={r.id} className="text-white hover:bg-white/5 rounded-lg capitalize">
-                            {r.name.replace(/_/g, ' ')}
-                          </SelectItem>
-                        ))}
-                      </>
-                    )}
-                    {roles.filter(r => r.isAdmin && (r as any).roleKey !== 'super_admin').length > 0 && (
-                      <>
-                        <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mt-2 border-t border-zinc-800 pt-3">Admin Roles</div>
-                        {roles.filter(r => r.isAdmin && (r as any).roleKey !== 'super_admin').map(r => (
-                          <SelectItem key={r.id} value={r.id} className="text-white hover:bg-white/5 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <span className="capitalize">{r.name.replace(/_/g, ' ')}</span>
-                              <Badge className="bg-rose-500/10 text-rose-400 border-rose-500/20 text-[10px]">Admin</Badge>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Action</label>
-                <div className="flex gap-2">
-                  <Button
-                    disabled={loading || !email}
-                    onClick={assign}
-                    className="flex-1 bg-rose-500 hover:bg-rose-600 text-white rounded-xl shadow-lg shadow-rose-500/10 transition-all hover:-translate-y-0.5"
-                  >
-                    <UserPlus className="w-4 h-4 mr-2" /> Assign
-                  </Button>
-                  <Button
-                    disabled={loading || !email}
-                    onClick={revoke}
-                    variant="outline"
-                    className="flex-1 border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-xl transition-all hover:-translate-y-0.5"
-                  >
-                    <UserMinus className="w-4 h-4 mr-2" /> Revoke
-                  </Button>
-                </div>
+        <CommandSection>
+          <p className="mb-4 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Assign or Revoke Role</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">User Email</label>
+              <input
+                placeholder="user@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={ADMIN_ACCESS_INPUT_CLASS}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Role</label>
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger className="rounded-none border-white/10 bg-black/60 text-white focus:ring-rose-500/20">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px] rounded-none border-white/10 bg-[#0a0a0c] text-white">
+                  {roles.filter(r => !r.isAdmin).length > 0 && (
+                    <>
+                      <div className="px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">User Roles</div>
+                      {roles.filter(r => !r.isAdmin).map(r => (
+                        <SelectItem key={r.id} value={r.id} className="rounded-none capitalize text-white hover:bg-white/5">
+                          {r.name.replace(/_/g, ' ')}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                  {roles.filter(r => r.isAdmin && (r as any).roleKey !== 'super_admin').length > 0 && (
+                    <>
+                      <div className="mt-2 border-t border-white/10 px-3 pb-1 pt-3 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">Admin Roles</div>
+                      {roles.filter(r => r.isAdmin && (r as any).roleKey !== 'super_admin').map(r => (
+                        <SelectItem key={r.id} value={r.id} className="rounded-none hover:bg-white/5">
+                          <div className="flex items-center gap-2">
+                            <span className="capitalize">{r.name.replace(/_/g, ' ')}</span>
+                            <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-rose-400">admin</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Action</label>
+              <div className="flex gap-2">
+                <CommandButton
+                  disabled={loading || !email}
+                  onClick={assign}
+                  className="flex-1"
+                >
+                  <UserPlus className="h-4 w-4" /> Assign
+                </CommandButton>
+                <CommandButton
+                  disabled={loading || !email}
+                  onClick={revoke}
+                  variant="danger"
+                  className="flex-1"
+                >
+                  <UserMinus className="h-4 w-4" /> Revoke
+                </CommandButton>
               </div>
             </div>
           </div>
-        </motion.div>
+        </CommandSection>
 
         {/* Role Hierarchy Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
-        >
-          <div className="px-6 py-5 border-b border-zinc-800/50">
-            <h2 className="text-lg font-semibold text-white">Role Hierarchy</h2>
+        <CommandSection>
+          <p className="mb-4 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Role Hierarchy</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Super Admin */}
+            <CommandPanel>
+              <div className="mb-2 flex items-center gap-2">
+                <Crown className="h-4 w-4 text-rose-400" />
+                <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-rose-400">Super Admin</span>
+              </div>
+              <p className="text-xs leading-relaxed text-zinc-500">
+                Cannot have roles assigned. Has all permissions by default.
+              </p>
+            </CommandPanel>
+            {/* Admin Roles */}
+            <CommandPanel>
+              <div className="mb-2 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-rose-300" />
+                <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-rose-300">Admin Roles</span>
+              </div>
+              <p className="text-xs leading-relaxed text-zinc-500">
+                Can be assigned to regular users. Grants admin panel access.
+              </p>
+            </CommandPanel>
+            {/* User Roles */}
+            <CommandPanel>
+              <div className="mb-2 flex items-center gap-2">
+                <Users className="h-4 w-4 text-zinc-300" />
+                <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-200">User Roles</span>
+              </div>
+              <p className="text-xs leading-relaxed text-zinc-500">
+                Regular user roles: organizer, venue owner, casual player.
+              </p>
+            </CommandPanel>
           </div>
-          <div className="p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Super Admin */}
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Crown className="w-4 h-4 text-amber-400" />
-                  <span className="text-sm font-semibold text-amber-400">Super Admin</span>
-                </div>
-                <p className="text-xs text-zinc-500 leading-relaxed">
-                  Cannot have roles assigned. Has all permissions by default.
-                </p>
-              </div>
-              {/* Admin Roles */}
-              <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield className="w-4 h-4 text-rose-400" />
-                  <span className="text-sm font-semibold text-rose-400">Admin Roles</span>
-                </div>
-                <p className="text-xs text-zinc-500 leading-relaxed">
-                  Can be assigned to regular users. Grants admin panel access.
-                </p>
-              </div>
-              {/* User Roles */}
-              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Users className="w-4 h-4 text-emerald-400" />
-                  <span className="text-sm font-semibold text-emerald-400">User Roles</span>
-                </div>
-                <p className="text-xs text-zinc-500 leading-relaxed">
-                  Regular user roles: organizer, venue owner, casual player.
-                </p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+        </CommandSection>
 
         {/* Available Roles */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
-        >
-          <div className="px-6 py-5 border-b border-zinc-800/50">
-            <h2 className="text-lg font-semibold text-white">Available Roles</h2>
+        <CommandSection>
+          <p className="mb-4 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Available Roles</p>
+          <div className="flex flex-wrap gap-2">
+            {roles.filter(r => !r.isAdmin || (r as any).roleKey !== 'super_admin').map(r => (
+              <span
+                key={r.id}
+                className={`border px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider ${
+                  r.isAdmin
+                    ? 'border-rose-500/30 text-rose-400'
+                    : 'border-white/15 text-zinc-300'
+                }`}
+              >
+                {r.name.replace(/_/g, ' ')}
+                {r.isAdmin && (
+                  <span className="ml-1.5 opacity-60">admin</span>
+                )}
+              </span>
+            ))}
           </div>
-          <div className="p-6">
-            <div className="flex flex-wrap gap-2">
-              {roles.filter(r => !r.isAdmin || (r as any).roleKey !== 'super_admin').map(r => (
-                <Badge
-                  key={r.id}
-                  className={`${r.isAdmin
-                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                    : 'bg-zinc-800 text-zinc-300 border-zinc-700'
-                    } px-3 py-1.5 text-xs font-medium rounded-lg capitalize`}
-                >
-                  {r.name.replace(/_/g, ' ')}
-                  {r.isAdmin && (
-                    <span className="ml-1.5 text-[10px] opacity-60">admin</span>
-                  )}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </motion.div>
+        </CommandSection>
       </div>
-    </div>
+    </AdminPage>
   );
 };
 
