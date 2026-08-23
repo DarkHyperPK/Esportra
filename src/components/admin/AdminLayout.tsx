@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { getWebsiteAssetUrl } from '@/lib/storage';
 import { Home, Loader2, Shield } from 'lucide-react';
 import { adminNavGroups } from './adminNav';
+import { NAV_FEATURES } from './featureGates';
+import { usePlatformFeatures } from '@/hooks/usePlatformFeatures';
 
 interface AdminLayoutProps {
   children?: React.ReactNode;
@@ -19,6 +21,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     loading,
     can,
   } = useAdminAccess();
+  const { isEnabled: isFeatureEnabled } = usePlatformFeatures();
 
   if (loading) {
     return (
@@ -51,6 +54,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       ...group,
       items: group.items.filter((item) => {
         if (item.superOnly && !isSuperAdmin) return false;
+        const feature = NAV_FEATURES[item.href];
+        if (feature && !isFeatureEnabled(feature)) return false;
         return !item.permission || can(item.permission);
       }),
     }))
