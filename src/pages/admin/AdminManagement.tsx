@@ -319,8 +319,8 @@ const AdminManagement = () => {
     { label: 'Tournament Management', href: '/admin/tools/tournament-management', icon: Trophy, permission: 'tournaments:view' },
     { label: 'Team Management', href: '/admin/tools/team-management', icon: UsersRound, permission: 'users:view' },
     { label: 'Venue Management', href: '/admin/tools/venue-management', icon: MapPin, badge: stats.pendingVenues, permission: 'venues:view' },
-    { label: 'Sponsor Pipeline', href: '/admin/partners/sponsors/pipeline', icon: Megaphone, permission: 'sponsors:view' },
-    { label: 'Ad Placements', href: '/admin/partners/sponsors/placements', icon: Megaphone, permission: 'sponsors:edit' },
+    { label: 'Sponsor CRM', href: '/admin/tools/sponsor-management', icon: Megaphone, permission: 'system:settings' },
+    { label: 'Ad Placements', href: '/admin/tools/sponsor-ad-manager', icon: Megaphone, permission: 'sponsors:edit' },
     { label: 'Games', href: '/admin/tools/game-catalog', icon: Trophy, permission: 'games:manage' },
 
     { label: 'Verification System', href: '/admin/tools/verification-system', icon: Shield, badge: stats.pendingVerifications, permission: 'users:edit' },

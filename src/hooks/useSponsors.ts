@@ -58,20 +58,13 @@ export function useAllSponsors() {
 
 export function useSponsorStats(sponsorId: string) {
     return useQuery({
-        queryKey: ['admin', 'sponsor-stats', sponsorId],
+        queryKey: ['sponsor-stats', sponsorId],
         queryFn: async () => {
-            try {
-                const res = await apiClient.get<{
-                    impressions: number;
-                    clicks: number;
-                    ctr: number;
-                }>(`/api/admin/sponsors/${sponsorId}/analytics/summary?days=30`);
-                return { impressions: res.impressions, clicks: res.clicks, ctr: `${res.ctr.toFixed(1)}%` };
-            } catch (err: unknown) {
-                if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 403)
-                    return { impressions: 0, clicks: 0, ctr: '0%' };
-                throw err;
-            }
+            return await apiClient.get<{
+                impressions: number;
+                clicks: number;
+                ctr: string;
+            }>(`/api/sponsors/${sponsorId}/stats`);
         },
         enabled: !!sponsorId,
         staleTime: 60 * 1000,

@@ -11,8 +11,6 @@ import {
     BarChart3,
     Layers,
     Lock,
-    Monitor,
-    Newspaper,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -27,7 +25,7 @@ import {
 import { usePartnerData } from '@/hooks/usePartnerData';
 import { useSponsorAudienceReport } from '@/hooks/useSponsorAudienceReport';
 import { AudienceReport } from '@/components/analytics/AudienceReport';
-import { usePlacementAnalytics, useAnalyticsSummary, useDeviceAnalytics, useContentAnalytics } from '@/hooks/usePlacementAnalytics';
+import { usePlacementAnalytics, useAnalyticsSummary } from '@/hooks/usePlacementAnalytics';
 import { useSlotAnalytics } from '@/hooks/useSlotAnalytics';
 import type { SponsorAnalyticsPeriod } from '@/types/sponsorAnalytics';
 import { normalizeTier } from '@/utils/permissions';
@@ -39,20 +37,6 @@ const ZONE_LABELS: Record<string, string> = {
     card_badge: 'Card Badge',
     partner_logo: 'Partner Logo',
     partner_showcase: 'Showcase',
-};
-
-const DEVICE_LABELS: Record<string, string> = {
-    'mobile-web': 'Mobile',
-    'desktop-web': 'Desktop (other)',
-    'tablet-web': 'Tablet',
-    'unknown-web': 'Unknown',
-    'iphone': 'iPhone',
-    'ipad': 'iPad',
-    'android-phone': 'Android Phone',
-    'android-tablet': 'Android Tablet',
-    'windows-pc': 'Windows PC',
-    'mac': 'Mac',
-    'linux-pc': 'Linux PC',
 };
 
 const DAY_OPTIONS = [7, 30, 90] as const;
@@ -93,8 +77,6 @@ const Analytics = () => {
     const { data: summary } = useAnalyticsSummary(days);
     const { data: placementStats = [] } = usePlacementAnalytics(days);
     const { data: slotStats } = useSlotAnalytics(days);
-    const { data: deviceData } = useDeviceAnalytics(days, isRadiant);
-    const { data: contentData } = useContentAnalytics(days, isRadiant);
     const audienceReport = useSponsorAudienceReport(audiencePeriod, isRadiant && !!sponsor);
 
     const historyData = partnerData?.history || [];
@@ -254,8 +236,8 @@ const Analytics = () => {
             {/* Period KPI summary */}
             {summary && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <PeriodKpiCard label={`Impressions (${days}d)`} value={summary.totalImpressions.toLocaleString()} trend={summary.trend.impressionsChangePercent} />
-                    <PeriodKpiCard label={`Clicks (${days}d)`} value={summary.totalClicks.toLocaleString()} trend={summary.trend.clicksChangePercent} />
+                    <PeriodKpiCard label={`Impressions (${days}d)`} value={summary.impressions.toLocaleString()} trend={summary.impressionsTrend} />
+                    <PeriodKpiCard label={`Clicks (${days}d)`} value={summary.clicks.toLocaleString()} trend={summary.clicksTrend} />
                     <PeriodKpiCard label={`CTR (${days}d)`} value={`${summary.ctr.toFixed(1)}%`} />
                 </div>
             )}
@@ -364,136 +346,6 @@ const Analytics = () => {
                             <p className="text-sm font-bold text-white uppercase italic tracking-tighter">DEMOGRAPHICS_LOCKED</p>
                             <p className="text-[10px] text-zinc-500 font-mono mt-1">
                                 Country and age‑group breakdowns are available to <span className="text-amber-500 font-bold">RADIANT</span> partners only.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Device Breakdown (radiant) */}
-            {isRadiant && deviceData && deviceData.devices.length > 0 && (
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Monitor className="w-4 h-4 text-teal-400" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Device Breakdown ({days}d)</h3>
-                    </div>
-                    <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
-                        <table className="w-full text-left text-xs">
-                            <thead className="bg-zinc-950 text-[10px] uppercase tracking-wider text-zinc-500">
-                                <tr>
-                                    <th className="px-4 py-3">Device</th>
-                                    <th className="px-4 py-3 text-right">Impressions</th>
-                                    <th className="px-4 py-3 text-right">Clicks</th>
-                                    <th className="px-4 py-3 text-right">CTR</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-800">
-                                {deviceData.devices.map((d) => (
-                                    <tr key={d.deviceClass} className="text-zinc-300">
-                                        <td className="px-4 py-3 font-medium text-white">{DEVICE_LABELS[d.deviceClass] || d.deviceClass}</td>
-                                        <td className="px-4 py-3 text-right font-mono">{d.impressions.toLocaleString()}</td>
-                                        <td className="px-4 py-3 text-right font-mono">{d.clicks.toLocaleString()}</td>
-                                        <td className="px-4 py-3 text-right font-mono">{d.ctr.toFixed(1)}%</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            )}
-
-            {/* Device locked (ascendant) */}
-            {isAscendant && (
-                <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-8">
-                    <div className="flex flex-col items-center justify-center text-center space-y-4 py-6">
-                        <div className="p-4 rounded-full bg-zinc-900 border border-white/5">
-                            <Monitor className="w-8 h-8 text-zinc-700" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-bold text-white uppercase italic tracking-tighter">DEVICES_LOCKED</p>
-                            <p className="text-[10px] text-zinc-500 font-mono mt-1">
-                                Device breakdowns are available to <span className="text-amber-500 font-bold">RADIANT</span> partners only.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Content Performance (radiant) */}
-            {isRadiant && contentData && (contentData.tournaments.length > 0 || contentData.pages.length > 0) && (
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Newspaper className="w-4 h-4 text-orange-400" />
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-zinc-400">Content Performance ({days}d)</h3>
-                    </div>
-                    {contentData.tournaments.length > 0 && (
-                        <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
-                            <div className="px-4 py-2.5 bg-zinc-950 border-b border-zinc-800">
-                                <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">By Tournament</p>
-                            </div>
-                            <table className="w-full text-left text-xs">
-                                <thead className="bg-zinc-950/50 text-[10px] uppercase tracking-wider text-zinc-500">
-                                    <tr>
-                                        <th className="px-4 py-2">Tournament</th>
-                                        <th className="px-4 py-2 text-right">Impressions</th>
-                                        <th className="px-4 py-2 text-right">Clicks</th>
-                                        <th className="px-4 py-2 text-right">CTR</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-zinc-800">
-                                    {contentData.tournaments.map((t, i) => (
-                                        <tr key={t.tournamentId ?? i} className="text-zinc-300">
-                                            <td className="px-4 py-3 font-medium text-white">{t.tournamentName || 'Unknown'}</td>
-                                            <td className="px-4 py-3 text-right font-mono">{t.impressions.toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-right font-mono">{t.clicks.toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-right font-mono">{t.ctr.toFixed(1)}%</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                    {contentData.pages.length > 0 && (
-                        <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
-                            <div className="px-4 py-2.5 bg-zinc-950 border-b border-zinc-800">
-                                <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">By Page</p>
-                            </div>
-                            <table className="w-full text-left text-xs">
-                                <thead className="bg-zinc-950/50 text-[10px] uppercase tracking-wider text-zinc-500">
-                                    <tr>
-                                        <th className="px-4 py-2">Page</th>
-                                        <th className="px-4 py-2 text-right">Impressions</th>
-                                        <th className="px-4 py-2 text-right">Clicks</th>
-                                        <th className="px-4 py-2 text-right">CTR</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-zinc-800">
-                                    {contentData.pages.map((p) => (
-                                        <tr key={p.pagePath} className="text-zinc-300">
-                                            <td className="px-4 py-3 font-mono text-zinc-400 text-[11px]">{p.pagePath}</td>
-                                            <td className="px-4 py-3 text-right font-mono">{p.impressions.toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-right font-mono">{p.clicks.toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-right font-mono">{p.ctr.toFixed(1)}%</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </section>
-            )}
-
-            {/* Content locked (ascendant) */}
-            {isAscendant && (
-                <div className="bg-[#0a0a0c] border border-white/5 rounded-2xl p-8">
-                    <div className="flex flex-col items-center justify-center text-center space-y-4 py-6">
-                        <div className="p-4 rounded-full bg-zinc-900 border border-white/5">
-                            <Newspaper className="w-8 h-8 text-zinc-700" />
-                        </div>
-                        <div>
-                            <p className="text-sm font-bold text-white uppercase italic tracking-tighter">CONTENT_LOCKED</p>
-                            <p className="text-[10px] text-zinc-500 font-mono mt-1">
-                                Tournament and page performance is available to <span className="text-amber-500 font-bold">RADIANT</span> partners only.
                             </p>
                         </div>
                     </div>

@@ -37,8 +37,6 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
-import { usePlatformFeatures, FEATURES } from '@/hooks/usePlatformFeatures';
-import { FeatureUnavailable } from '@/components/admin/FeatureUnavailable';
 
 interface Broadcast {
   id: string;
@@ -114,7 +112,6 @@ interface UserSearchResult {
 }
 
 export default function Broadcasts() {
-  const { isEnabled: broadcastsEnabled, isLoading: featuresLoading } = usePlatformFeatures();
   const [activeTab, setActiveTab] = useState('all');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingBroadcast, setEditingBroadcast] = useState<Broadcast | null>(null);
@@ -287,10 +284,6 @@ export default function Broadcasts() {
   };
 
   const broadcasts = data?.items ?? [];
-
-  if (!featuresLoading && !broadcastsEnabled(FEATURES.broadcasts)) {
-    return <FeatureUnavailable featureName="Broadcasts" backTo="/admin/dashboard" backLabel="Command Centre" />;
-  }
 
   return (
     <div className="p-6 space-y-6">

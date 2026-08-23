@@ -1491,18 +1491,6 @@ const TeamsPage = () => {
                               }}
                               isOwner={member.user_id === currentTeam?.owner_id}
                               isCurrentUser={member.user_id === user?.id}
-                              onRemove={
-                                isCaptain && member.user_id !== currentTeam?.owner_id
-                                  ? () => {
-                                      setMemberToRemove({
-                                        id: member.user_id,
-                                        user_id: member.user_id,
-                                        username: member.username || 'Unknown User',
-                                      } as TeamMember);
-                                      setShowRemoveMember(true);
-                                    }
-                                  : undefined
-                              }
                               className="transition-all duration-500 hover:scale-[1.05] hover:z-10"
                             />
                             {member.user_id !== currentTeam?.owner_id && (

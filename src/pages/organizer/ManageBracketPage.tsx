@@ -37,8 +37,7 @@ const ManageBracketPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isOrganizer, setIsOrganizer] = useState(false);
 
-    const isSuperAdmin = isSuperAdminUser(admin, profile);
-    const isLocked = tournament?.status === 'completed' && !isSuperAdmin;
+    const isLocked = tournament?.status === 'completed';
 
     useStageRealtime({ tournamentId: tournament?.id });
 
@@ -104,17 +103,18 @@ const ManageBracketPage = () => {
 
     useEffect(() => {
         if (accessLoading || authLoading) return;
+        const isSuperAdmin = isSuperAdminUser(admin, profile);
         const inOrganizerSession = currentRole === 'organizer' || isSuperAdmin;
         const canManageBracket =
             Boolean(access?.isOrganizer && inOrganizerSession)
             || can('bracket:edit')
             || Boolean(access?.isPlatformAdmin);
         setIsOrganizer(canManageBracket);
-    }, [access, accessLoading, authLoading, currentRole, isSuperAdmin, can]);
+    }, [access, accessLoading, authLoading, currentRole, admin, profile, can]);
 
     // Handle single BYE advancement
     const handleByeAdvance = async (matchId: string) => {
-        if (isLocked) return;
+        if (tournament?.status === 'completed') return;
         try {
             // Get the match
             const match = await apiClient.get<any>(`/api/brackets/matches/${matchId}`).catch(() => null);

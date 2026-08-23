@@ -1,5 +1,5 @@
 import React from 'react';
-import { Crown, Camera, ClipboardList, X } from 'lucide-react';
+import { Crown, Camera, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
@@ -23,11 +23,10 @@ interface PlayerCardProps {
     isCurrentUser?: boolean;
     onEdit?: () => void;
     onUploadImage?: () => void;
-    onRemove?: () => void;
     className?: string;
 }
 
-const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser: _isCurrentUser, onEdit, onUploadImage, onRemove, className }) => {
+const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser: _isCurrentUser, onEdit, onUploadImage, className }) => {
     const hasStats = member.stats && (member.stats.rating || member.stats.kd || member.stats.winRate || member.stats.hs);
 
     return (
@@ -106,24 +105,6 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser:
                             </div>
                         )}
                     </div>
-
-                    {/* REMOVE BUTTON */}
-                    {onRemove && (
-                        <div className={`absolute z-50 ${onUploadImage ? 'top-12' : 'top-3'} right-3`}>
-                            <Button
-                                size="icon"
-                                variant="ghost"
-                                title="Remove from team"
-                                className="h-7 w-7 rounded-sm bg-black/50 hover:bg-rose-500/20 border border-white/10 backdrop-blur-md text-white/60 hover:text-rose-400 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onRemove();
-                                }}
-                            >
-                                <X className="w-3 h-3" />
-                            </Button>
-                        </div>
-                    )}
 
                     {/* UPLOAD BUTTON */}
                     {onUploadImage && (

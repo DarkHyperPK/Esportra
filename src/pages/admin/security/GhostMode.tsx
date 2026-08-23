@@ -29,9 +29,7 @@ import { useGhostMode } from '@/hooks/useGhostMode';
 import { writeGhostModeSession, type GhostModeSession } from '@/lib/ghostModeSession';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
-import { useAdminAccess } from '@/hooks/useAdminAccess'
-import { usePlatformFeatures, FEATURES } from '@/hooks/usePlatformFeatures';
-import { FeatureUnavailable } from '@/components/admin/FeatureUnavailable';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 interface GhostApproval {
   id: string;
@@ -86,7 +84,6 @@ interface ApprovedRequest {
 
 
 export default function GhostMode() {
-  const { isEnabled: ghostEnabled, isLoading: featuresLoading } = usePlatformFeatures();
   const [activeTab, setActiveTab] = useState('sessions');
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [targetUserId, setTargetUserId] = useState('');
@@ -196,10 +193,6 @@ export default function GhostMode() {
 
   const activeSessions = sessions?.filter((s) => !s.ended_at && new Date(s.expires_at) > new Date()) ?? [];
   const pastSessions = sessions?.filter((s) => s.ended_at || new Date(s.expires_at) <= new Date()) ?? [];
-
-  if (!featuresLoading && !ghostEnabled(FEATURES.ghostMode)) {
-    return <FeatureUnavailable featureName="Ghost Mode" backTo="/admin/dashboard" backLabel="Command Centre" />;
-  }
 
   return (
     <div className="p-6 space-y-6">
