@@ -1,11 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { adminNavGroups } from '@/components/admin/adminNav';
-import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useAdminSponsorApplications } from '@/hooks/useAdminQueries';
 import {
   CommandHeader,
-  CommandPageGrid,
-  CommandRail,
   CommandShell,
 } from '@/components/management/CommandSurface';
 import {
@@ -16,7 +12,7 @@ import {
   ScrollText,
 } from 'lucide-react';
 
-const railItems = [
+const sections = [
   { to: 'overview', label: 'Overview', icon: LayoutDashboard },
   { to: 'pipeline', label: 'Pipeline', icon: FileText },
   { to: 'partners', label: 'Partners', icon: Flag },
@@ -25,78 +21,50 @@ const railItems = [
 ] as const;
 
 const SponsorsHub = () => {
-  const { can } = useAdminAccess();
   const { data: applications = [] } = useAdminSponsorApplications();
   const pendingApps = applications.filter(a => a.status === 'pending').length;
-  const crossLinks = adminNavGroups
-    .flatMap(g => g.items)
-    .filter(item => !item.href.startsWith('/admin/partners/sponsors'))
-    .filter(item => !item.permission || can(item.permission))
-    .slice(0, 6);
 
   return (
     <CommandShell>
-      <CommandPageGrid
-        rail={
-          <CommandRail className="lg:sticky lg:top-5">
-            <p className="mb-3 px-2 font-mono text-[10px] font-bold uppercase tracking-[0.45em] text-zinc-600">
-              Sections
-            </p>
-            <nav className="space-y-0.5">
-              {railItems.map((item, i) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `group relative flex items-center gap-3 border-l-2 py-2 pl-3 pr-2 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                      isActive
-                        ? 'border-rose-500 text-white'
-                        : 'border-transparent text-zinc-500 hover:text-white'
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      <span className={isActive ? 'text-rose-400' : 'text-zinc-700 group-hover:text-zinc-500'}>
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{item.label}</span>
-                      {item.to === 'pipeline' && pendingApps > 0 && (
-                        <span className="ml-auto font-mono text-[10px] text-rose-400">{pendingApps}</span>
-                      )}
-                    </>
-                  )}
-                </NavLink>
-              ))}
-            </nav>
-
-            {/* Cross-links into the wider admin tree */}
-            <div className="mt-5 border-t border-white/5 pt-4">
-              <p className="mb-2 px-3 font-mono text-[10px] font-bold uppercase tracking-[0.45em] text-zinc-600">
-                Admin
-              </p>
-              {crossLinks.map(item => (
-                <NavLink
-                  key={item.href}
-                  to={item.href}
-                  className="flex items-center gap-3 border-l-2 border-transparent px-3 py-1.5 text-xs text-zinc-600 transition-colors hover:text-white"
-                >
-                  <item.icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </NavLink>
-              ))}
-            </div>
-          </CommandRail>
-        }
-      >
+      <div className="esportra-ambient-content mx-auto w-full max-w-[1800px] space-y-5 p-4 md:p-6">
         <CommandHeader
           eyebrow="Partners"
           title="Sponsors"
           description="Pipeline, partnerships, placements and performance — one command surface."
         />
+
+        {/* Section tabs — the admin sidebar owns global navigation; these switch within Sponsors */}
+        <nav className="flex gap-2 overflow-x-auto border border-white/10 bg-[#0a0a0c]/92 p-2" data-lenis-prevent>
+          {sections.map((section, i) => (
+            <NavLink
+              key={section.to}
+              to={section.to}
+              className={({ isActive }) =>
+                `group relative flex shrink-0 items-center gap-2.5 overflow-hidden border px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                  isActive
+                    ? 'border-transparent bg-rose-500 text-white'
+                    : 'border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/25 hover:text-white'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span className={isActive ? 'text-white/80' : 'text-zinc-600 group-hover:text-zinc-400'}>
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <section.icon className="h-4 w-4 shrink-0" />
+                  <span>{section.label}</span>
+                  {section.to === 'pipeline' && pendingApps > 0 && (
+                    <span className={`ml-1 ${isActive ? 'text-white' : 'text-rose-400'}`}>{pendingApps}</span>
+                  )}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+
         <Outlet />
-      </CommandPageGrid>
+      </div>
     </CommandShell>
   );
 };
