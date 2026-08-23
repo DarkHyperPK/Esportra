@@ -34,7 +34,6 @@ import PlayerCard from '@/components/player/PlayerCard';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { sendEmail } from '@/hooks/useEmail';
 import { fetchGameData } from '@/hooks/useRawgGame';
 
 // Sortable wrapper for PlayerCard (drag-and-drop reorder)
@@ -730,18 +729,6 @@ const TeamsPage = () => {
       const result = await apiClient.post<{ sent: number }>(`/api/teams/${currentTeam.id}/rosters/${manageRoster.id}/invite-batch`, {
         invitees: selectedInvitees.map(p => ({ userId: p.id, email: p.email }))
       });
-
-      // Send emails for each invitee
-      for (const prof of selectedInvitees) {
-        sendEmail({
-          type: 'TeamInvite',
-          email: prof.email,
-          data: {
-            teamName: currentTeam.name,
-            invitedBy: user?.user_metadata?.username || 'A player',
-          }
-        }).catch(() => {});
-      }
 
       setSelectedInvitees([]);
       if (result.sent > 0) toast({ title: `Sent ${result.sent} invite${result.sent > 1 ? 's' : ''}` });
