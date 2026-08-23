@@ -26,12 +26,9 @@ import {
   Play,
 } from 'lucide-react';
 import { useGhostMode } from '@/hooks/useGhostMode';
-import { writeGhostModeSession, type GhostModeSession } from '@/lib/ghostModeSession';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
-import { useAdminAccess } from '@/hooks/useAdminAccess'
-import { usePlatformFeatures, FEATURES } from '@/hooks/usePlatformFeatures';
-import { FeatureUnavailable } from '@/components/admin/FeatureUnavailable';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 interface GhostApproval {
   id: string;
@@ -86,7 +83,6 @@ interface ApprovedRequest {
 
 
 export default function GhostMode() {
-  const { isEnabled: ghostEnabled, isLoading: featuresLoading } = usePlatformFeatures();
   const [activeTab, setActiveTab] = useState('sessions');
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const [targetUserId, setTargetUserId] = useState('');
@@ -95,7 +91,7 @@ export default function GhostMode() {
   const [startingSessionFor, setStartingSessionFor] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { isSuperAdmin } = useAdminAccess();
-  const { isActive: ghostIsActive } = useGhostMode();
+  const { isActive: ghostIsActive, start: startGhostSession } = useGhostMode();
 
   const { data: pendingApprovals } = useQuery({
     queryKey: ['admin', 'ghost-approvals', 'pending'],
@@ -164,28 +160,12 @@ export default function GhostMode() {
 
   const enterGhostMode = useMutation({
     mutationFn: ({ targetUserId, reason }: { targetUserId: string; reason: string }) =>
-      apiClient.post<{
-        session_id: string;
-        ghost_token: string;
-        expires_at: string;
-        target_user: { id: string; username: string };
-      }>(`/api/admin/ghost/${targetUserId}`, { reason }),
-    onSuccess: (data) => {
-      if (data) {
-        const sessionData: GhostModeSession = {
-          token: data.ghost_token,
-          sessionId: data.session_id,
-          adminId: '',
-          targetUserId: data.target_user.id,
-          targetLabel: data.target_user.username,
-          scopes: ['view'],
-          expiresAt: data.expires_at,
-        };
-        writeGhostModeSession(sessionData);
-        queryClient.invalidateQueries({ queryKey: ['admin', 'ghost-sessions'] });
-        queryClient.invalidateQueries({ queryKey: ['admin', 'ghost-approvals', 'mine'] });
-        toast.success(`Ghost mode started for ${data.target_user.username}`);
-      }
+      startGhostSession({ targetUserId, reason, scopes: ['view'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'ghost-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'ghost-approvals', 'mine'] });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      toast.success('Ghost session started');
       setStartingSessionFor(null);
     },
     onError: () => {
@@ -196,10 +176,6 @@ export default function GhostMode() {
 
   const activeSessions = sessions?.filter((s) => !s.ended_at && new Date(s.expires_at) > new Date()) ?? [];
   const pastSessions = sessions?.filter((s) => s.ended_at || new Date(s.expires_at) <= new Date()) ?? [];
-
-  if (!featuresLoading && !ghostEnabled(FEATURES.ghostMode)) {
-    return <FeatureUnavailable featureName="Ghost Mode" backTo="/admin/dashboard" backLabel="Command Centre" />;
-  }
 
   return (
     <div className="p-6 space-y-6">
