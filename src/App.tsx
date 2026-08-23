@@ -77,8 +77,12 @@ const UserManagementTool = lazyWithRetry(() => import("./pages/admin/tools/UserM
 const TournamentManagementTool = lazyWithRetry(() => import("./pages/admin/tools/TournamentManagement"));
 const VenueManagementTool = lazyWithRetry(() => import("./pages/admin/tools/VenueManagement"));
 const AnalyticsTool = lazyWithRetry(() => import("./pages/admin/tools/Analytics"));
-const SponsorManagementTool = lazyWithRetry(() => import("./pages/admin/tools/SponsorManagement"));
-const SponsorAdManagerTool = lazyWithRetry(() => import("./pages/admin/tools/SponsorAdManager"));
+const SponsorsHub = lazyWithRetry(() => import("./pages/admin/partners/SponsorsHub"));
+const SponsorsOverviewSection = lazyWithRetry(() => import("./pages/admin/partners/sections/Overview"));
+const SponsorsPipelineSection = lazyWithRetry(() => import("./pages/admin/partners/sections/Pipeline"));
+const SponsorsPartnersSection = lazyWithRetry(() => import("./pages/admin/partners/sections/Partners"));
+const SponsorsPlacementsSection = lazyWithRetry(() => import("./pages/admin/partners/sections/Placements"));
+const SponsorsAuditSection = lazyWithRetry(() => import("./pages/admin/partners/sections/Audit"));
 const LicenseManagementTool = lazyWithRetry(() => import("./pages/admin/tools/LicenseManagement"));
 const TeamManagementTool = lazyWithRetry(() => import("./pages/admin/tools/TeamManagement"));
 const AlertsManagementTool = lazyWithRetry(() => import("./pages/admin/tools/AlertsManagement"));
@@ -353,8 +357,20 @@ const AppContent = React.memo(() => {
                   <Route path="tools/verification-system" element={<AdminRouteGuard requiredPermission="verification:view" requiredRoles={ADMIN_ROLE_SETS.verification}><VerificationSystemTool /></AdminRouteGuard>} />
                   <Route path="tools/audit-logs" element={<AdminRouteGuard requiredPermission="audit:view" requiredRoles={ADMIN_ROLE_SETS.auditAccess}><AuditLogsTool /></AdminRouteGuard>} />
                   <Route path="tools/analytics" element={<AdminRouteGuard requiredPermission="analytics:view" requiredRoles={ADMIN_ROLE_SETS.analytics}><AnalyticsTool /></AdminRouteGuard>} />
-                  <Route path="tools/sponsor-management" element={<AdminRouteGuard requiredPermission="sponsors:view" requiredRoles={ADMIN_ROLE_SETS.systemSettings}><SponsorManagementTool /></AdminRouteGuard>} />
-                  <Route path="tools/sponsor-ad-manager" element={<AdminRouteGuard requiredPermission="sponsors:edit" requiredRoles={ADMIN_ROLE_SETS.systemSettings}><SponsorAdManagerTool /></AdminRouteGuard>} />
+                  <Route path="partners/sponsors" element={<AdminRouteGuard requiredPermission="sponsors:view" requiredRoles={ADMIN_ROLE_SETS.systemSettings}><SponsorsHub /></AdminRouteGuard>}>
+                    <Route index element={<Navigate to="/admin/partners/sponsors/overview" replace />} />
+                    <Route path="overview" element={<SponsorsOverviewSection />} />
+                    <Route path="pipeline" element={<SponsorsPipelineSection />} />
+                    <Route path="partners" element={<SponsorsPartnersSection />} />
+                    <Route path="placements" element={
+                      <AdminRouteGuard requiredPermission="sponsors:edit" requiredRoles={ADMIN_ROLE_SETS.systemSettings}>
+                        <SponsorsPlacementsSection />
+                      </AdminRouteGuard>
+                    } />
+                    <Route path="audit" element={<SponsorsAuditSection />} />
+                  </Route>
+                  <Route path="tools/sponsor-management" element={<Navigate to="/admin/partners/sponsors/overview" replace />} />
+                  <Route path="tools/sponsor-ad-manager" element={<Navigate to="/admin/partners/sponsors/placements" replace />} />
                   <Route path="tools/game-catalog" element={<AdminRouteGuard requiredPermission="games:manage" requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}><GameCatalogManagement /></AdminRouteGuard>} />
                   <Route path="tools/map-management" element={<AdminRouteGuard requiredPermission="games:manage" requiredRoles={ADMIN_ROLE_SETS.gamesCatalog}><MapManagement /></AdminRouteGuard>} />
                   <Route path="tools/license-management" element={<AdminRouteGuard requiredPermission="licenses:view" requiredRoles={ADMIN_ROLE_SETS.anyAdmin}><LicenseManagementTool /></AdminRouteGuard>} />
@@ -395,7 +411,7 @@ const AppContent = React.memo(() => {
                   <Route path="content/venues" element={<Navigate to="/admin/tools/venue-management" replace />} />
                   <Route path="content/games" element={<Navigate to="/admin/tools/game-catalog" replace />} />
                   <Route path="content/moderation" element={<Navigate to="/admin/tools/moderation" replace />} />
-                  <Route path="partners/sponsors" element={<Navigate to="/admin/tools/sponsor-management" replace />} />
+                  <Route path="partners/sponsors" element={<Navigate to="/admin/partners/sponsors/overview" replace />} />
                   <Route path="operations/disputes" element={<Navigate to="/admin/disputes" replace />} />
                   <Route path="operations/alerts" element={<Navigate to="/admin/tools/alerts" replace />} />
                   <Route path="operations/reports" element={<Navigate to="/admin/tools/scheduled-reports" replace />} />
