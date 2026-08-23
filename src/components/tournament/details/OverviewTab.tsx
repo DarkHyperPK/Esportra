@@ -3,6 +3,7 @@ import { Users, ChevronRight, Clock, MapPin, Globe, ExternalLink, MessageCircle,
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { formatDateTime } from '@/utils/dateFormat';
+import { getCheckInWindowMinutes } from '@/utils/tournamentLifecycle';
 import { apiClient } from '@/lib/apiClient';
 import { VerticalAdPlacement } from './VerticalAdPlacement';
 import { TournamentWidePartners } from '@/components/tournament/TournamentWidePartners';
@@ -154,7 +155,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament }) => {
                                         </li>
                                         <li className="flex justify-between text-sm text-gray-400 font-mono border-b border-white/5 pb-2">
                                             <span>Check-In Window</span>
-                                            <span className="text-white">30m Pre-Match</span>
+                                            <span className="text-white">{getCheckInWindowMinutes(tournament.settings)}m Pre-Tournament</span>
                                         </li>
                                     </ul>
                                 </div>
