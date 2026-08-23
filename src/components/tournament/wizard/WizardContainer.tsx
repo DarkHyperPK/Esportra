@@ -3,6 +3,9 @@ import { AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Loader2, Trash2 } from 'lucide-react';
 import { useTournamentWizard } from '@/hooks/useTournamentWizard';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
+import { useAdmin } from '@/hooks/useAdmin';
+import { useAuth } from '@/hooks/useAuth';
+import { isSuperAdminUser } from '@/lib/adminAccess';
 import WizardProgress from './WizardProgress';
 import StepBasicInfo from './StepBasicInfo';
 import StepFormatRules from './StepFormatRules';
@@ -30,6 +33,9 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
     activeInvitationCount,
 }) => {
     useGameCatalog();
+    const admin = useAdmin();
+    const { profile } = useAuth();
+    const isSuperAdmin = isSuperAdminUser(admin, profile);
     const {
         currentStep,
         data,
@@ -47,20 +53,20 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
     const renderStep = () => {
         switch (currentStep) {
             case 1:
-                return <StepBasicInfo data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId} />;
+                return <StepBasicInfo data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId && !isSuperAdmin} />;
             case 2:
-                return <StepFormatRules data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId} tournamentId={tournamentId} participantsCount={participantsCount} />;
+                return <StepFormatRules data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId && !isSuperAdmin} tournamentId={tournamentId} participantsCount={participantsCount} />;
             case 3:
                 return <StepBranding data={data} updateData={updateData} errors={errors} />;
             case 4:
-                return <StepPrizeDistribution data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId} />;
+                return <StepPrizeDistribution data={data} updateData={updateData} errors={errors} isEditMode={!!tournamentId && !isSuperAdmin} />;
             case 5:
                 return (
                     <StepRegistration
                         data={data}
                         updateData={updateData}
                         errors={errors}
-                        isEditMode={!!tournamentId}
+                        isEditMode={!!tournamentId && !isSuperAdmin}
                         activeInvitationCount={activeInvitationCount}
                     />
                 );
