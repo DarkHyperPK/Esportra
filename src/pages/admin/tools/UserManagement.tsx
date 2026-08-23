@@ -84,7 +84,7 @@ interface UserDetail {
         social_links: Record<string, string> | null;
         card_image_url: string | null;
         banner_url: string | null;
-        is_verified: boolean;
+        verification_status?: 'verified_organizer' | 'verified_venue_owner' | 'email_verified' | 'unverified';
         is_admin: boolean;
         admin_roles: string[] | null;
         is_suspended: boolean;
@@ -726,17 +726,17 @@ const UserManagementTool = () => {
                                 </select>
                             </div>
 
-                            {/* Verified Filter */}
+                            {/* Licensed Filter — "verified" means holds an approved license (organizer / venue owner / …) */}
                             <div>
-                                <label className="text-xs text-zinc-500 mb-1 block">Verification</label>
+                                <label className="text-xs text-zinc-500 mb-1 block">Licensed</label>
                                 <select
                                     value={verifiedFilter}
                                     onChange={(e) => { setVerifiedFilter(e.target.value); setPage(0); }}
                                     className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
                                 >
                                     <option value="all">All</option>
-                                    <option value="true">Verified</option>
-                                    <option value="false">Not Verified</option>
+                                    <option value="true">Licensed</option>
+                                    <option value="false">Unlicensed</option>
                                 </select>
                             </div>
 
@@ -1221,10 +1221,20 @@ const UserManagementTool = () => {
                                         </div>
                                     ))}
                                     <div className="p-3 rounded-xl bg-zinc-900/50">
-                                        <p className="text-xs text-zinc-500 uppercase">Verified</p>
-                                        <div className="mt-1">{p.is_verified
-                                            ? <Badge className="bg-green-500/10 text-green-400 border-green-500/20 border">Verified</Badge>
-                                            : <Badge className="bg-zinc-500/10 text-zinc-400 border-zinc-500/20 border">Unverified</Badge>}
+                                        <p className="text-xs text-zinc-500 uppercase">License Status</p>
+                                        <div className="mt-1">
+                                            {p.verification_status === 'verified_organizer' && (
+                                                <Badge className="bg-white/10 text-white border border-white/25 font-mono uppercase tracking-wider">Licensed Organizer</Badge>
+                                            )}
+                                            {p.verification_status === 'verified_venue_owner' && (
+                                                <Badge className="bg-white/10 text-white border border-white/25 font-mono uppercase tracking-wider">Licensed Venue Owner</Badge>
+                                            )}
+                                            {p.verification_status === 'email_verified' && (
+                                                <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">Email confirmed · unlicensed</span>
+                                            )}
+                                            {(p.verification_status === 'unverified' || !p.verification_status) && (
+                                                <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-600">Unlicensed</span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

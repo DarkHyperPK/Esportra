@@ -16,7 +16,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useAdminHub } from '@/hooks/useAdminHub';
-import { adminNavGroups } from '@/components/admin/AdminLayout';
+import { adminNavGroups } from '@/components/admin/adminNav';
 import {
   CommandButton,
   CommandHeader,

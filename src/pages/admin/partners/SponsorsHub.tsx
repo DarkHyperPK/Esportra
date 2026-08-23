@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { adminNavGroups } from '@/components/admin/AdminLayout';
+import { adminNavGroups } from '@/components/admin/adminNav';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useAdminSponsorApplications } from '@/hooks/useAdminQueries';
 import {
