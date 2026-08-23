@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { clearRecoverySession, hasRecoverySession, initializeRecoverySession, markRecoverySession } from '@/lib/authRecovery';
 import { apiClient } from '@/lib/apiClient';
 import { resetClientSessionForAuthChange } from '@/lib/resetClientSession';
 
@@ -24,89 +22,58 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
+function getTokenFromUrl(): { tokenHash: string; type: string } | null {
+  const search = new URLSearchParams(window.location.search);
+  const tokenHash = search.get('token_hash');
+  const type = search.get('type');
+  if (!tokenHash || type !== 'recovery') return null;
+  return { tokenHash, type };
+}
+
 export function usePasswordRecovery() {
   const queryClient = useQueryClient();
   const [state, setState] = useState<PasswordRecoveryState>({
     status: 'checking-session',
     message: null,
   });
+  const [token, setToken] = useState<{ tokenHash: string; type: string } | null>(null);
 
   useEffect(() => {
-    let isActive = true;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        markRecoverySession();
-      }
-    });
-
-    const initialize = async () => {
-      try {
-        initializeRecoverySession();
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (!isActive) return;
-        if (error) throw error;
-        if (!session || !hasRecoverySession()) {
-          setState((current) => ({
-            ...current,
-            status: 'invalid-link',
-            message: INVALID_LINK_MESSAGE,
-          }));
-          return;
-        }
-        setState((current) => ({ ...current, status: 'ready', message: null }));
-      } catch (error) {
-        if (!isActive) return;
-        setState((current) => ({
-          ...current,
-          status: 'error',
-          message: getErrorMessage(error, 'Could not verify this recovery session.'),
-        }));
-      }
-    };
-
-    void initialize();
-    return () => {
-      isActive = false;
-      subscription.unsubscribe();
-    };
+    const parsed = getTokenFromUrl();
+    if (!parsed) {
+      setState({ status: 'invalid-link', message: INVALID_LINK_MESSAGE });
+      return;
+    }
+    setToken(parsed);
+    setState({ status: 'ready', message: null });
+    window.history.replaceState({}, '', window.location.pathname);
   }, []);
 
   const updatePassword = useCallback(async (password: string): Promise<boolean> => {
-    if (state.status !== 'ready') return false;
+    if (state.status !== 'ready' || !token) return false;
 
-    let hasUpdatedPassword = false;
     setState((current) => ({ ...current, status: 'updating-password', message: null }));
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session || !hasRecoverySession()) throw new Error(INVALID_LINK_MESSAGE);
-
-      const { error: updateError } = await supabase.auth.updateUser({ password });
-      if (updateError) throw updateError;
-      hasUpdatedPassword = true;
-
-      await apiClient.postWithToken('/api/auth/password-reset-completed', session.access_token);
-      setState((current) => ({ ...current, status: 'completed', message: null }));
+      await apiClient.post('/api/auth/set-password', {
+        password,
+        tokenHash: token.tokenHash,
+        type: token.type,
+      });
+      setState({ status: 'completed', message: null });
+      resetClientSessionForAuthChange(queryClient);
       return true;
     } catch (error) {
-      setState((current) => ({
-        ...current,
-        status: 'ready',
-        message: getErrorMessage(error, 'Could not update your password.'),
-      }));
+      const message = getErrorMessage(error, 'Could not update your password.');
+      const isExpired = message.toLowerCase().includes('expired') || message.toLowerCase().includes('invalid');
+      setState({
+        status: isExpired ? 'invalid-link' : 'ready',
+        message: isExpired ? INVALID_LINK_MESSAGE : message,
+      });
       return false;
-    } finally {
-      if (hasUpdatedPassword) {
-        await supabase.auth.signOut({ scope: 'local' });
-        clearRecoverySession();
-        resetClientSessionForAuthChange(queryClient);
-      }
     }
-  }, [queryClient, state.status]);
+  }, [queryClient, state.status, token]);
 
   const cancelRecovery = useCallback(async () => {
-    await supabase.auth.signOut({ scope: 'local' });
-    clearRecoverySession();
     resetClientSessionForAuthChange(queryClient);
   }, [queryClient]);
 

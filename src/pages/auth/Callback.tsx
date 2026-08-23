@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
-import { markRecoverySession } from '@/lib/authRecovery';
 import { useToast } from '@/hooks/use-toast';
 
 const Callback = () => {
@@ -11,9 +10,6 @@ const Callback = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Capture hash immediately before any async processing clears it
-    const initialHash = window.location.hash;
-
     const handleSession = async (session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) => {
       if (!session) {
         navigate('/auth/signin');
@@ -59,23 +55,8 @@ const Callback = () => {
       navigate('/');
     };
 
-    // PASSWORD_RECOVERY fires reliably before getSession() resolves — use it as primary handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        markRecoverySession();
-        toast({ title: "Link verified", description: "Please set your new password." });
-        navigate('/auth/reset-password');
-        return;
-      }
-
       if (event === 'SIGNED_IN') {
-        // Fallback: check captured hash for recovery in case event fires as SIGNED_IN
-        if (initialHash.includes('type=recovery')) {
-          markRecoverySession();
-          toast({ title: "Link verified", description: "Please set your new password." });
-          navigate('/auth/reset-password');
-          return;
-        }
         handleSession(session);
       }
     });
@@ -86,12 +67,6 @@ const Callback = () => {
       if (error) {
         toast({ title: "Authentication Error", description: error.message, variant: "destructive" });
         navigate('/auth/signin');
-        return;
-      }
-      if (initialHash.includes('type=recovery') && session) {
-        markRecoverySession();
-        toast({ title: "Link verified", description: "Please set your new password." });
-        navigate('/auth/reset-password');
         return;
       }
       if (session) handleSession(session);
