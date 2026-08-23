@@ -4,23 +4,15 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { usePasswordRecovery } from './usePasswordRecovery';
 
-const auth = vi.hoisted(() => ({
-  getSession: vi.fn(),
-  onAuthStateChange: vi.fn(),
-  updateUser: vi.fn(),
-  signOut: vi.fn(),
-}));
-const postWithToken = vi.hoisted(() => vi.fn());
-
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: { auth },
-}));
+const post = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/apiClient', () => ({
-  apiClient: { postWithToken },
+  apiClient: { post },
 }));
 
-const session = { access_token: 'recovery-token', user: { id: 'user-1' } };
+vi.mock('@/lib/resetClientSession', () => ({
+  resetClientSessionForAuthChange: vi.fn(),
+}));
 
 function createWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -32,18 +24,11 @@ function createWrapper() {
 describe('usePasswordRecovery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionStorage.clear();
-    window.history.replaceState({}, '', '/auth/recovery#type=recovery');
-    auth.getSession.mockResolvedValue({ data: { session }, error: null });
-    auth.onAuthStateChange.mockReturnValue({
-      data: { subscription: { unsubscribe: vi.fn() } },
-    });
-    auth.updateUser.mockResolvedValue({ data: {}, error: null });
-    auth.signOut.mockResolvedValue({ error: null });
-    postWithToken.mockResolvedValue({ completed: true });
+    window.history.replaceState({}, '', '/auth/recovery?token_hash=abc123&type=recovery');
+    post.mockResolvedValue({ success: true });
   });
 
-  it('updates the password, completes server revocation, and signs out locally', async () => {
+  it('updates the password via server-side endpoint', async () => {
     const { result } = renderHook(() => usePasswordRecovery(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
@@ -52,16 +37,15 @@ describe('usePasswordRecovery', () => {
       expect(await result.current.updatePassword('StrongPass1')).toBe(true);
     });
 
-    expect(auth.updateUser).toHaveBeenCalledWith({ password: 'StrongPass1' });
-    expect(postWithToken).toHaveBeenCalledWith(
-      '/api/auth/password-reset-completed',
-      'recovery-token',
-    );
-    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(post).toHaveBeenCalledWith('/api/auth/set-password', {
+      password: 'StrongPass1',
+      tokenHash: 'abc123',
+      type: 'recovery',
+    });
     expect(result.current.status).toBe('completed');
   });
 
-  it('rejects a normal session without recovery provenance', async () => {
+  it('rejects when token_hash is missing from URL', async () => {
     window.history.replaceState({}, '', '/auth/recovery');
     const { result } = renderHook(() => usePasswordRecovery(), { wrapper: createWrapper() });
 
@@ -70,11 +54,11 @@ describe('usePasswordRecovery', () => {
     await act(async () => {
       expect(await result.current.updatePassword('StrongPass1')).toBe(false);
     });
-    expect(auth.updateUser).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
   });
 
-  it('keeps the recovery session available when updating the password fails', async () => {
-    auth.updateUser.mockResolvedValue({ data: {}, error: new Error('Update failed') });
+  it('stays ready when the API call fails with a non-expiry error', async () => {
+    post.mockRejectedValue(new Error('Network error'));
     const { result } = renderHook(() => usePasswordRecovery(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.status).toBe('ready'));
@@ -83,7 +67,20 @@ describe('usePasswordRecovery', () => {
       expect(await result.current.updatePassword('StrongPass1')).toBe(false);
     });
 
-    expect(auth.signOut).not.toHaveBeenCalled();
     expect(result.current.status).toBe('ready');
+    expect(result.current.message).toBe('Network error');
+  });
+
+  it('shows invalid-link when the API returns an expired token error', async () => {
+    post.mockRejectedValue(new Error('Invalid or expired recovery token.'));
+    const { result } = renderHook(() => usePasswordRecovery(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+
+    await act(async () => {
+      expect(await result.current.updatePassword('StrongPass1')).toBe(false);
+    });
+
+    expect(result.current.status).toBe('invalid-link');
   });
 });
