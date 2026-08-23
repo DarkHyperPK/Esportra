@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield,
   Plus,
@@ -15,12 +14,16 @@ import {
   ChevronLeft,
   User,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AdminPage } from "@/components/admin/AdminPage";
+import {
+  CommandButton,
+  CommandIconButton,
+  CommandEmptyState,
+  CommandSection,
+  CommandToolbar,
+} from "@/components/management/CommandSurface";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +57,18 @@ import { Link } from "react-router-dom";
 
 const IP_REGEX = /^(?:(?:\d{1,3}\.){3}\d{1,3}|[a-fA-F0-9:]+)$/;
 
+const STATUS_CHIP: Record<"active" | "inactive" | "expired", string> = {
+  active: "border-rose-500/30 text-rose-300",
+  expired: "border-amber-500/30 text-amber-300",
+  inactive: "border-white/15 text-zinc-400",
+};
+
+const FIELD_CLASS =
+  "w-full rounded-none border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20";
+
+const LABEL_CLASS =
+  "block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500";
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr: string | null): string {
@@ -62,17 +77,6 @@ function formatDate(dateStr: string | null): string {
     year: "numeric",
     month: "short",
     day: "numeric",
-  });
-}
-
-function _formatDateTime(dateStr: string | null): string {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 
@@ -88,30 +92,13 @@ function getEntryStatus(entry: IpAllowlistEntry): "active" | "inactive" | "expir
 
 // ── Skeleton Components ─────────────────────────────────────────────────────
 
-function HeaderSkeleton() {
-  return (
-    <div className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-xl" />
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-40" />
-            <Skeleton className="h-4 w-56" />
-          </div>
-        </div>
-        <Skeleton className="h-9 w-28" />
-      </div>
-    </div>
-  );
-}
-
 function StatsSkeleton() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-5">
-          <Skeleton className="h-4 w-20 mb-3" />
-          <Skeleton className="h-8 w-12" />
+        <div key={i} className="border border-white/10 bg-white/[0.025] p-5">
+          <Skeleton className="h-3 w-24 rounded-none" />
+          <Skeleton className="mt-3 h-7 w-12 rounded-none" />
         </div>
       ))}
     </div>
@@ -120,54 +107,60 @@ function StatsSkeleton() {
 
 function TableSkeleton() {
   return (
-    <div className="space-y-3">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-4 flex items-center gap-4"
-        >
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-5 w-36" />
-            <Skeleton className="h-3 w-48" />
+    <CommandSection className="p-0">
+      <div className="divide-y divide-white/5">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4 p-4">
+            <Skeleton className="h-5 w-36 rounded-none" />
+            <Skeleton className="h-3 w-48 rounded-none" />
+            <Skeleton className="ml-auto h-5 w-16 rounded-none" />
+            <Skeleton className="h-8 w-28 rounded-none" />
           </div>
-          <Skeleton className="h-6 w-16" />
-          <Skeleton className="h-8 w-24" />
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </CommandSection>
   );
 }
 
 // ── Status Badge ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: "active" | "inactive" | "expired" }) {
-  if (status === "active") {
-    return (
-      <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 gap-1.5 font-medium">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-        Active
-      </Badge>
-    );
-  }
-  if (status === "expired") {
-    return (
-      <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 gap-1.5 font-medium">
-        <Clock className="h-3 w-3" />
-        Expired
-      </Badge>
-    );
-  }
   return (
-    <Badge className="bg-zinc-500/10 text-zinc-400 border-zinc-500/20 gap-1.5 font-medium">
-      <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
-      Inactive
-    </Badge>
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${STATUS_CHIP[status]}`}
+    >
+      {status === "expired" ? <Clock className="h-3 w-3" /> : null}
+      {status}
+    </span>
   );
 }
 
-// ── Entry Card ──────────────────────────────────────────────────────────────
+// ── Entry Meta / Actions ────────────────────────────────────────────────────
 
-function IpEntryCard({
+function EntryMeta({ entry }: { entry: IpAllowlistEntry }) {
+  const expired = entry.expiresAt ? isExpired(entry.expiresAt) : false;
+  return (
+    <>
+      {entry.createdByUsername && (
+        <span className="flex items-center gap-1">
+          <User className="h-3 w-3" />
+          {entry.createdByUsername}
+        </span>
+      )}
+      <span className="flex items-center gap-1 font-mono tabular-nums">
+        <Clock className="h-3 w-3" />
+        {formatDate(entry.createdAt)}
+      </span>
+      {entry.expiresAt && (
+        <span className={`font-mono tabular-nums ${expired ? "text-amber-300" : ""}`}>
+          {expired ? "Expired" : "Expires"}: {formatDate(entry.expiresAt)}
+        </span>
+      )}
+    </>
+  );
+}
+
+function EntryActions({
   entry,
   onEdit,
   onToggle,
@@ -178,150 +171,30 @@ function IpEntryCard({
   onToggle: (entry: IpAllowlistEntry) => void;
   onDelete: (entry: IpAllowlistEntry) => void;
 }) {
-  const status = getEntryStatus(entry);
-  const dimmed = status === "expired" || status === "inactive";
-
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.2 }}
-      className={`rounded-2xl border bg-[#0a0a0c] p-4 sm:p-5 transition-colors ${
-        dimmed ? "border-white/[0.03] opacity-60" : "border-white/5 hover:border-white/10"
-      }`}
-    >
-      {/* Mobile layout */}
-      <div className="flex flex-col gap-3 sm:hidden">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="font-mono text-sm text-white font-medium truncate">{entry.ipAddress}</p>
-            {entry.label && (
-              <p className="text-xs text-zinc-400 mt-0.5 truncate">{entry.label}</p>
-            )}
-          </div>
-          <StatusBadge status={status} />
-        </div>
-
-        <div className="flex items-center gap-3 text-xs text-zinc-500">
-          {entry.createdByUsername && (
-            <span className="flex items-center gap-1">
-              <User className="h-3 w-3" />
-              {entry.createdByUsername}
-            </span>
-          )}
-          <span className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            {formatDate(entry.createdAt)}
-          </span>
-        </div>
-
-        {entry.expiresAt && (
-          <p className={`text-xs ${isExpired(entry.expiresAt) ? "text-amber-400" : "text-zinc-500"}`}>
-            {isExpired(entry.expiresAt) ? "Expired" : "Expires"}: {formatDate(entry.expiresAt)}
-          </p>
-        )}
-
-        <div className="flex items-center gap-2 pt-1 border-t border-white/5">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 flex-1 text-zinc-400 hover:text-white hover:bg-white/5"
-            onClick={() => onEdit(entry)}
-            aria-label={`Edit IP ${entry.ipAddress}`}
-          >
-            <Pencil className="h-3.5 w-3.5 mr-1.5" />
-            Edit
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className={`h-8 flex-1 ${
-              entry.isActive
-                ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
-                : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-            }`}
-            onClick={() => onToggle(entry)}
-            aria-label={entry.isActive ? `Deactivate IP ${entry.ipAddress}` : `Activate IP ${entry.ipAddress}`}
-          >
-            {entry.isActive ? <XCircle className="h-3.5 w-3.5 mr-1.5" /> : <CheckCircle className="h-3.5 w-3.5 mr-1.5" />}
-            {entry.isActive ? "Deactivate" : "Activate"}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2"
-            onClick={() => onDelete(entry)}
-            aria-label={`Delete IP ${entry.ipAddress}`}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Desktop layout */}
-      <div className="hidden sm:flex sm:items-center gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3">
-            <p className="font-mono text-sm text-white font-medium">{entry.ipAddress}</p>
-            <StatusBadge status={status} />
-          </div>
-          <div className="flex items-center gap-4 mt-1.5 text-xs text-zinc-500">
-            {entry.label && <span className="text-zinc-400">{entry.label}</span>}
-            {entry.createdByUsername && (
-              <span className="flex items-center gap-1">
-                <User className="h-3 w-3" />
-                {entry.createdByUsername}
-              </span>
-            )}
-            <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {formatDate(entry.createdAt)}
-            </span>
-            {entry.expiresAt && (
-              <span className={isExpired(entry.expiresAt) ? "text-amber-400" : ""}>
-                {isExpired(entry.expiresAt) ? "Expired" : "Expires"}: {formatDate(entry.expiresAt)}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0 text-zinc-400 hover:text-white hover:bg-white/5"
-            onClick={() => onEdit(entry)}
-            aria-label={`Edit IP ${entry.ipAddress}`}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className={`h-8 w-8 p-0 ${
-              entry.isActive
-                ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
-                : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-            }`}
-            onClick={() => onToggle(entry)}
-            aria-label={entry.isActive ? `Deactivate IP ${entry.ipAddress}` : `Activate IP ${entry.ipAddress}`}
-          >
-            {entry.isActive ? <XCircle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10"
-            onClick={() => onDelete(entry)}
-            aria-label={`Delete IP ${entry.ipAddress}`}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-    </motion.div>
+    <>
+      <CommandIconButton
+        label={`Edit IP ${entry.ipAddress}`}
+        variant="ghost"
+        onClick={() => onEdit(entry)}
+      >
+        <Pencil />
+      </CommandIconButton>
+      <CommandIconButton
+        label={entry.isActive ? `Deactivate IP ${entry.ipAddress}` : `Activate IP ${entry.ipAddress}`}
+        variant={entry.isActive ? "danger" : "ghost"}
+        onClick={() => onToggle(entry)}
+      >
+        {entry.isActive ? <XCircle /> : <CheckCircle />}
+      </CommandIconButton>
+      <CommandIconButton
+        label={`Delete IP ${entry.ipAddress}`}
+        variant="danger"
+        onClick={() => onDelete(entry)}
+      >
+        <Trash2 />
+      </CommandIconButton>
+    </>
   );
 }
 
@@ -387,9 +260,9 @@ function IpFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md bg-[#121214] border-white/10">
+      <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-white font-poppins flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-white">
             {isEdit ? <Pencil className="h-4 w-4 text-rose-400" /> : <Plus className="h-4 w-4 text-rose-400" />}
             {isEdit ? "Edit IP Entry" : "Add IP Address"}
           </DialogTitle>
@@ -402,16 +275,16 @@ function IpFormDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
           <div className="space-y-2">
-            <Label htmlFor="ip-address" className="text-zinc-300 text-sm">
+            <label htmlFor="ip-address" className={LABEL_CLASS}>
               IP Address
-            </Label>
+            </label>
             {isEdit ? (
-              <p className="font-mono text-sm text-zinc-400 bg-zinc-800/50 rounded-lg px-3 py-2 border border-white/5">
+              <p className="rounded-none border border-white/10 bg-black/40 px-3 py-2 font-mono text-sm tabular-nums text-zinc-400">
                 {entry.ipAddress}
               </p>
             ) : (
               <>
-                <Input
+                <input
                   id="ip-address"
                   placeholder="e.g. 192.168.1.1"
                   value={ipAddress}
@@ -420,11 +293,11 @@ function IpFormDialog({
                     if (ipError) setIpError("");
                   }}
                   onBlur={validate}
-                  className="font-mono bg-[#0a0a0c] border-white/10 text-white placeholder:text-zinc-600 focus:border-rose-500/50"
+                  className={`${FIELD_CLASS} font-mono`}
                   autoFocus
                 />
                 {ipError && (
-                  <p className="text-xs text-red-400 flex items-center gap-1">
+                  <p className="flex items-center gap-1 text-xs text-red-300">
                     <AlertTriangle className="h-3 w-3" />
                     {ipError}
                   </p>
@@ -434,56 +307,46 @@ function IpFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ip-label" className="text-zinc-300 text-sm">
-              Label <span className="text-zinc-600">(optional)</span>
-            </Label>
-            <Input
+            <label htmlFor="ip-label" className={LABEL_CLASS}>
+              Label <span className="font-mono normal-case tracking-normal">(optional)</span>
+            </label>
+            <input
               id="ip-label"
               placeholder="e.g. Office VPN, Home Network"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              className="bg-[#0a0a0c] border-white/10 text-white placeholder:text-zinc-600 focus:border-rose-500/50"
+              className={FIELD_CLASS}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="ip-expiry" className="text-zinc-300 text-sm">
-              Expires At <span className="text-zinc-600">(optional)</span>
-            </Label>
-            <Input
+            <label htmlFor="ip-expiry" className={LABEL_CLASS}>
+              Expires At <span className="font-mono normal-case tracking-normal">(optional)</span>
+            </label>
+            <input
               id="ip-expiry"
               type="datetime-local"
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
-              className="bg-[#0a0a0c] border-white/10 text-white focus:border-rose-500/50 [color-scheme:dark]"
+              className={`${FIELD_CLASS} font-mono tabular-nums [color-scheme:dark]`}
             />
             <p className="text-xs text-zinc-500">Leave empty for no expiry.</p>
           </div>
 
           <DialogFooter className="gap-2 pt-2">
-            <Button
+            <CommandButton
               type="button"
               variant="ghost"
+              size="sm"
               onClick={() => handleOpenChange(false)}
-              className="text-zinc-400 hover:text-white hover:bg-white/5"
               disabled={isPending}
             >
               Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isPending}
-              className="bg-rose-500 hover:bg-rose-400 text-white"
-            >
-              {isPending ? (
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              ) : isEdit ? (
-                <CheckCircle className="h-4 w-4 mr-2" />
-              ) : (
-                <Plus className="h-4 w-4 mr-2" />
-              )}
+            </CommandButton>
+            <CommandButton type="submit" size="sm" disabled={isPending}>
+              {isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : isEdit ? <CheckCircle className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               {isEdit ? "Save Changes" : "Add IP"}
-            </Button>
+            </CommandButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -508,13 +371,13 @@ function ToggleConfirmDialog({
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="bg-[#121214] border-white/10">
+      <AlertDialogContent className="rounded-none border-white/10 bg-[#0a0a0c]">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-white font-poppins flex items-center gap-2">
+          <AlertDialogTitle className="flex items-center gap-2 text-white">
             {enabling ? (
-              <AlertTriangle className="h-5 w-5 text-amber-400" />
+              <AlertTriangle className="h-4 w-4 text-amber-300" />
             ) : (
-              <Globe className="h-5 w-5 text-blue-400" />
+              <Globe className="h-4 w-4 text-zinc-400" />
             )}
             {enabling ? "Enable IP Allowlist?" : "Disable IP Allowlist?"}
           </AlertDialogTitle>
@@ -525,20 +388,18 @@ function ToggleConfirmDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="bg-transparent border-white/10 text-zinc-400 hover:text-white hover:bg-white/5">
-            Cancel
+          <AlertDialogCancel asChild>
+            <CommandButton variant="ghost" size="sm">Cancel</CommandButton>
           </AlertDialogCancel>
           <AlertDialogAction
+            asChild
             onClick={onConfirm}
             disabled={isPending}
-            className={
-              enabling
-                ? "bg-amber-500 hover:bg-amber-400 text-black"
-                : "bg-blue-500 hover:bg-blue-400 text-white"
-            }
           >
-            {isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-            {enabling ? "Enable Allowlist" : "Disable Allowlist"}
+            <CommandButton variant={enabling ? "primary" : "secondary"} size="sm">
+              {isPending && <RefreshCw className="h-4 w-4 animate-spin" />}
+              {enabling ? "Enable Allowlist" : "Disable Allowlist"}
+            </CommandButton>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -567,21 +428,21 @@ function DeleteConfirmDialog({
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="bg-[#121214] border-white/10">
+      <AlertDialogContent className="rounded-none border-white/10 bg-[#0a0a0c]">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-white font-poppins flex items-center gap-2">
-            <Trash2 className="h-5 w-5 text-red-400" />
+          <AlertDialogTitle className="flex items-center gap-2 text-white">
+            <Trash2 className="h-4 w-4 text-red-300" />
             Delete IP Entry
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-zinc-400 space-y-2">
+          <AlertDialogDescription className="space-y-2 text-zinc-400">
             <span className="block">
               Are you sure you want to remove{" "}
-              <span className="font-mono text-white">{entry?.ipAddress}</span>
+              <span className="font-mono tabular-nums text-white">{entry?.ipAddress}</span>
               {entry?.label ? ` (${entry.label})` : ""} from the allowlist?
             </span>
             {isLastActive && allowlistEnabled && (
-              <span className="flex items-start gap-2 bg-red-500/10 text-red-400 rounded-lg p-3 text-xs border border-red-500/20">
-                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span className="flex items-start gap-2 rounded-none border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   This is the last active IP entry. Deleting it while the allowlist is enabled
                   may lock you out of the admin panel.
@@ -591,16 +452,14 @@ function DeleteConfirmDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="bg-transparent border-white/10 text-zinc-400 hover:text-white hover:bg-white/5">
-            Cancel
+          <AlertDialogCancel asChild>
+            <CommandButton variant="ghost" size="sm">Cancel</CommandButton>
           </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-            disabled={isPending}
-            className="bg-red-500 hover:bg-red-400 text-white"
-          >
-            {isPending && <RefreshCw className="h-4 w-4 mr-2 animate-spin" />}
-            Delete IP
+          <AlertDialogAction asChild onClick={onConfirm} disabled={isPending}>
+            <CommandButton variant="danger" size="sm">
+              {isPending && <RefreshCw className="h-4 w-4 animate-spin" />}
+              Delete IP
+            </CommandButton>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -608,45 +467,18 @@ function DeleteConfirmDialog({
   );
 }
 
-// ── Empty State ─────────────────────────────────────────────────────────────
-
-function EmptyState({ onAdd }: { onAdd: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-dashed border-white/10 bg-[#0a0a0c]/50 p-12 text-center"
-    >
-      <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-rose-500/10 mb-4">
-        <Globe className="h-7 w-7 text-rose-400" />
-      </div>
-      <h3 className="text-white font-poppins font-semibold text-lg mb-2">No IP addresses yet</h3>
-      <p className="text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
-        Add IP addresses to restrict admin panel access to trusted networks only.
-      </p>
-      <Button
-        onClick={onAdd}
-        className="bg-rose-500 hover:bg-rose-400 text-white"
-      >
-        <Plus className="h-4 w-4 mr-2" />
-        Add First IP
-      </Button>
-    </motion.div>
-  );
-}
-
 // ── Error State ─────────────────────────────────────────────────────────────
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-8 text-center">
-      <AlertTriangle className="h-8 w-8 text-red-400 mx-auto mb-3" />
-      <h3 className="text-white font-poppins font-semibold mb-2">Failed to load</h3>
-      <p className="text-zinc-400 text-sm mb-4">{message}</p>
-      <Button variant="ghost" onClick={onRetry} className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
-        <RefreshCw className="h-4 w-4 mr-2" />
+    <div className="border border-red-500/20 bg-red-500/5 p-8 text-center">
+      <AlertTriangle className="mx-auto mb-3 h-6 w-6 text-red-300" />
+      <h3 className="mb-2 font-semibold text-white">Failed to load</h3>
+      <p className="mb-4 text-sm text-zinc-400">{message}</p>
+      <CommandButton variant="danger" size="sm" onClick={onRetry}>
+        <RefreshCw className="h-4 w-4" />
         Try Again
-      </Button>
+      </CommandButton>
     </div>
   );
 }
@@ -748,195 +580,224 @@ export default function IpAllowlist() {
     deleteEntry != null && activeCount <= 1 && getEntryStatus(deleteEntry) === "active";
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm" aria-label="Breadcrumb">
-          <Link
-            to="/admin"
-            className="text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1"
+    <AdminPage
+      eyebrow="Security"
+      title="IP Allowlist"
+      description="Restrict admin panel access to trusted IP addresses"
+      actions={
+        <div className="flex items-center gap-3">
+          <label htmlFor="allowlist-toggle" className="sr-only">
+            Toggle IP Allowlist
+          </label>
+          <span
+            className={`border px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider ${
+              allowlistEnabled ? "border-rose-500/30 text-rose-300" : "border-white/15 text-zinc-500"
+            }`}
           >
-            <ChevronLeft className="h-3.5 w-3.5" />
-            Admin
-          </Link>
-          <span className="text-zinc-600">/</span>
-          <span className="text-zinc-300">IP Allowlist</span>
-        </nav>
-
-        {/* Header Card */}
-        {isLoading ? (
-          <HeaderSkeleton />
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-5 sm:p-6"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
-                  <Shield className="h-5 w-5 text-emerald-400" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-poppins font-bold text-white flex items-center gap-2">
-                    IP Allowlist
-                    {allowlistEnabled ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 bg-emerald-500/10 rounded-full px-2 py-0.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Enabled
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-zinc-500 bg-zinc-500/10 rounded-full px-2 py-0.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-zinc-500" />
-                        Disabled
-                      </span>
-                    )}
-                  </h1>
-                  <p className="text-sm text-zinc-400 mt-0.5">
-                    Restrict admin panel access to trusted IP addresses
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Label htmlFor="allowlist-toggle" className="text-sm text-zinc-400 sr-only">
-                  Toggle IP Allowlist
-                </Label>
-                <Switch
-                  id="allowlist-toggle"
-                  checked={allowlistEnabled}
-                  onCheckedChange={() => setToggleConfirmOpen(true)}
-                  aria-label={allowlistEnabled ? "Disable IP allowlist" : "Enable IP allowlist"}
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Stats */}
-        {isLoading ? (
-          <StatsSkeleton />
-        ) : hasError ? null : (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 }}
-            className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4"
-          >
-            <div className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-4 sm:p-5">
-              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Status</p>
-              <p className={`text-lg font-bold font-poppins ${allowlistEnabled ? "text-emerald-400" : "text-zinc-400"}`}>
-                {allowlistEnabled ? "Active" : "Inactive"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-4 sm:p-5">
-              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Total IPs</p>
-              <p className="text-lg font-bold font-poppins text-white">{status?.totalEntries ?? 0}</p>
-            </div>
-            <div className="col-span-2 sm:col-span-1 rounded-2xl border border-white/5 bg-[#0a0a0c] p-4 sm:p-5">
-              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">Active IPs</p>
-              <p className="text-lg font-bold font-poppins text-emerald-400">{status?.activeEntries ?? 0}</p>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Toolbar */}
-        {!isLoading && !hasError && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
-          >
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 pointer-events-none" />
-              <Input
-                placeholder="Search by IP, label, or user..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-[#0a0a0c] border-white/10 text-white placeholder:text-zinc-600 focus:border-rose-500/50"
-                aria-label="Search IP entries"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  refetchList();
-                  refetchStatus();
-                }}
-                className="text-zinc-400 hover:text-white hover:bg-white/5 h-9"
-                aria-label="Refresh list"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-              <Button
-                onClick={() => setAddDialogOpen(true)}
-                className="bg-rose-500 hover:bg-rose-400 text-white h-9"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add IP
-              </Button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Content */}
-        {isLoading ? (
-          <TableSkeleton />
-        ) : hasError ? (
-          <ErrorState
-            message="Could not load IP allowlist data."
-            onRetry={() => {
-              refetchList();
-              refetchStatus();
-            }}
+            {allowlistEnabled ? "Enabled" : "Disabled"}
+          </span>
+          <Switch
+            id="allowlist-toggle"
+            checked={allowlistEnabled}
+            onCheckedChange={() => setToggleConfirmOpen(true)}
+            aria-label={allowlistEnabled ? "Disable IP allowlist" : "Enable IP allowlist"}
           />
-        ) : ipList.length === 0 ? (
-          <EmptyState onAdd={() => setAddDialogOpen(true)} />
-        ) : sorted.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-8 text-center"
-          >
-            <Search className="h-8 w-8 text-zinc-600 mx-auto mb-3" />
-            <p className="text-zinc-400 text-sm">
-              No IPs matching "<span className="text-white">{search}</span>"
-            </p>
-          </motion.div>
-        ) : (
-          <AnimatePresence mode="popLayout">
-            <div className="space-y-3" role="list" aria-label="IP allowlist entries">
-              {sorted.map((entry) => (
-                <IpEntryCard
-                  key={entry.id}
-                  entry={entry}
-                  onEdit={setEditEntry}
-                  onToggle={handleToggleEntry}
-                  onDelete={setDeleteEntry}
-                />
-              ))}
-            </div>
-          </AnimatePresence>
-        )}
+        </div>
+      }
+    >
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-2 font-mono text-[11px]" aria-label="Breadcrumb">
+        <Link
+          to="/admin"
+          className="flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-300"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+          Admin
+        </Link>
+        <span className="text-zinc-600">/</span>
+        <span className="text-zinc-300">IP Allowlist</span>
+      </nav>
 
-        {/* Info bar when enabled */}
-        {!isLoading && !hasError && allowlistEnabled && ipList.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.15 }}
-            className="rounded-xl bg-emerald-500/5 border border-emerald-500/10 p-4 flex items-start gap-3"
-          >
-            <Shield className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
-            <p className="text-xs text-emerald-300/80">
-              IP allowlist is active. Only the {activeCount} active IP{activeCount !== 1 ? "s" : ""} listed above can access the admin panel.
+      {/* Stats */}
+      {isLoading ? (
+        <StatsSkeleton />
+      ) : hasError ? null : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+            <p className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Status</p>
+            <p className={`text-lg font-black ${allowlistEnabled ? "text-rose-300" : "text-zinc-400"}`}>
+              {allowlistEnabled ? "Active" : "Inactive"}
             </p>
-          </motion.div>
-        )}
-      </div>
+          </div>
+          <div className="border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+            <p className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Total IPs</p>
+            <p className="text-lg font-black tabular-nums text-white">{status?.totalEntries ?? 0}</p>
+          </div>
+          <div className="col-span-2 border border-white/10 bg-white/[0.025] p-4 sm:col-span-1 sm:p-5">
+            <p className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Active IPs</p>
+            <p className="text-lg font-black tabular-nums text-white">{status?.activeEntries ?? 0}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Toolbar */}
+      {!isLoading && !hasError && (
+        <CommandToolbar>
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
+            <input
+              placeholder="Search by IP, label, or user..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Search IP entries"
+              className="w-full rounded-none border border-white/10 bg-black/40 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <CommandIconButton
+              label="Refresh list"
+              variant="ghost"
+              onClick={() => {
+                refetchList();
+                refetchStatus();
+              }}
+            >
+              <RefreshCw />
+            </CommandIconButton>
+            <CommandButton size="sm" onClick={() => setAddDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add IP
+            </CommandButton>
+          </div>
+        </CommandToolbar>
+      )}
+
+      {/* Content */}
+      {isLoading ? (
+        <TableSkeleton />
+      ) : hasError ? (
+        <ErrorState
+          message="Could not load IP allowlist data."
+          onRetry={() => {
+            refetchList();
+            refetchStatus();
+          }}
+        />
+      ) : ipList.length === 0 ? (
+        <CommandEmptyState
+          title="No IP addresses yet"
+          description="Add IP addresses to restrict admin panel access to trusted networks only."
+          icon={<Globe className="h-5 w-5" />}
+          action={
+            <CommandButton size="sm" onClick={() => setAddDialogOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add First IP
+            </CommandButton>
+          }
+        />
+      ) : sorted.length === 0 ? (
+        <CommandSection className="py-10 text-center">
+          <Search className="mx-auto mb-3 h-6 w-6 text-zinc-600" />
+          <p className="text-sm text-zinc-400">
+            No IPs matching "<span className="text-white">{search}</span>"
+          </p>
+        </CommandSection>
+      ) : (
+        <CommandSection className="overflow-hidden p-0">
+          {/* Desktop table */}
+          <table className="hidden w-full text-left text-sm sm:table">
+            <thead className="bg-black/40">
+              <tr className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                <th className="px-4 py-3">IP Address</th>
+                <th className="px-4 py-3">Details</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Created</th>
+                <th className="px-4 py-3">Expiry</th>
+                <th className="px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {sorted.map((entry) => {
+                const entryStatus = getEntryStatus(entry);
+                const dimmed = entryStatus === "expired" || entryStatus === "inactive";
+                const expired = entry.expiresAt ? isExpired(entry.expiresAt) : false;
+                return (
+                  <tr key={entry.id} className={`transition-colors hover:bg-white/[0.02] ${dimmed ? "opacity-60" : ""}`}>
+                    <td className="px-4 py-3 font-mono text-sm tabular-nums text-white">{entry.ipAddress}</td>
+                    <td className="max-w-[220px] px-4 py-3">
+                      {entry.label && <p className="truncate text-zinc-300">{entry.label}</p>}
+                      {entry.createdByUsername && (
+                        <p className="flex items-center gap-1 truncate text-xs text-zinc-500">
+                          <User className="h-3 w-3" />
+                          {entry.createdByUsername}
+                        </p>
+                      )}
+                      {!entry.label && !entry.createdByUsername && <span className="text-zinc-600">—</span>}
+                    </td>
+                    <td className="px-4 py-3"><StatusBadge status={entryStatus} /></td>
+                    <td className="px-4 py-3 font-mono text-xs tabular-nums text-zinc-500">{formatDate(entry.createdAt)}</td>
+                    <td className={`px-4 py-3 font-mono text-xs tabular-nums ${expired ? "text-amber-300" : entry.expiresAt ? "text-zinc-400" : "text-zinc-600"}`}>
+                      {entry.expiresAt ? formatDate(entry.expiresAt) : "Never"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <EntryActions
+                          entry={entry}
+                          onEdit={setEditEntry}
+                          onToggle={handleToggleEntry}
+                          onDelete={setDeleteEntry}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {/* Mobile stacked rows */}
+          <div className="divide-y divide-white/5 sm:hidden">
+            {sorted.map((entry) => {
+              const entryStatus = getEntryStatus(entry);
+              const dimmed = entryStatus === "expired" || entryStatus === "inactive";
+              return (
+                <div key={entry.id} className={`space-y-3 p-4 ${dimmed ? "opacity-60" : ""}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-mono text-sm tabular-nums text-white">{entry.ipAddress}</p>
+                      {entry.label && <p className="mt-0.5 truncate text-xs text-zinc-400">{entry.label}</p>}
+                    </div>
+                    <StatusBadge status={entryStatus} />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
+                    <EntryMeta entry={entry} />
+                  </div>
+
+                  <div className="flex items-center gap-2 border-t border-white/5 pt-3">
+                    <EntryActions
+                      entry={entry}
+                      onEdit={setEditEntry}
+                      onToggle={handleToggleEntry}
+                      onDelete={setDeleteEntry}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CommandSection>
+      )}
+
+      {/* Info bar when enabled */}
+      {!isLoading && !hasError && allowlistEnabled && ipList.length > 0 && (
+        <div className="flex items-start gap-3 border border-white/10 bg-white/[0.025] p-4">
+          <Shield className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" />
+          <p className="text-xs text-zinc-300">
+            IP allowlist is active. Only the {activeCount} active IP{activeCount !== 1 ? "s" : ""} listed above can access the admin panel.
+          </p>
+        </div>
+      )}
 
       {/* Add Dialog */}
       <IpFormDialog
@@ -979,6 +840,6 @@ export default function IpAllowlist() {
         onConfirm={handleToggleAllowlist}
         isPending={toggleMutation.isPending}
       />
-    </div>
+    </AdminPage>
   );
 }

@@ -1,11 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/apiClient';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import {
+  CommandButton,
+  CommandIconButton,
+  CommandPanel,
+  CommandSection,
+  CommandTabs,
+} from '@/components/management/CommandSurface';
+import { AdminPage } from '@/components/admin/AdminPage';
 import { MessageSquare, AlertCircle, CheckCircle, XCircle, Clock, Image as ImageIcon, RefreshCw, X, Search, Send, ZoomIn, Shield, Download, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
@@ -46,13 +51,13 @@ const DISPUTE_REASON_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
-const defaultMeta = { label: 'Unknown', className: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/40', icon: Clock };
+const defaultMeta = { label: 'Unknown', className: 'border-white/10 text-zinc-400', icon: Clock };
 const statusMeta: Record<string, { label: string; className: string; icon: React.ElementType }> = {
-  open: { label: 'Open', className: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/40', icon: Clock },
-  in_review: { label: 'In Review', className: 'bg-blue-500/15 text-blue-300 border-blue-500/40', icon: Clock },
-  resolved: { label: 'Closed', className: 'bg-green-500/15 text-green-300 border-green-500/40', icon: CheckCircle },
-  rejected: { label: 'Closed', className: 'bg-red-500/15 text-red-300 border-red-500/40', icon: XCircle },
-  closed: { label: 'Closed', className: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/40', icon: CheckCircle },
+  open: { label: 'Open', className: 'border-rose-500/30 text-rose-300', icon: Clock },
+  in_review: { label: 'In Review', className: 'border-amber-500/30 text-amber-300', icon: Clock },
+  resolved: { label: 'Closed', className: 'border-white/25 text-white', icon: CheckCircle },
+  rejected: { label: 'Closed', className: 'border-white/10 text-zinc-400', icon: XCircle },
+  closed: { label: 'Closed', className: 'border-white/10 text-zinc-400', icon: CheckCircle },
 };
 
 const DisputeCenter: React.FC = () => {
@@ -369,10 +374,7 @@ const DisputeCenter: React.FC = () => {
   const closedCount = disputes.filter(d => d.status !== 'open').length;
 
   const leftBorderColor = (status: string) =>
-    status === 'open' ? 'border-l-yellow-500' : status === 'resolved' ? 'border-l-green-500' : status === 'rejected' ? 'border-l-red-500' : 'border-l-zinc-500';
-
-  const statusDotColor = (status: string) =>
-    status === 'open' ? 'bg-yellow-500' : status === 'resolved' ? 'bg-green-500' : status === 'rejected' ? 'bg-red-500' : 'bg-zinc-500';
+    status === 'open' ? 'border-l-rose-500' : status === 'in_review' ? 'border-l-amber-500' : status === 'resolved' ? 'border-l-zinc-300' : status === 'rejected' ? 'border-l-red-500' : 'border-l-zinc-500';
 
   const handleExport = async () => {
     if (isExporting) return;
@@ -390,97 +392,78 @@ const DisputeCenter: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-transparent py-8 px-6">
-      <div className="max-w-[1800px] mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-rose-500/10">
-              <MessageSquare className="h-6 w-6 text-rose-500" />
-            </div>
-            <h1 className="text-white text-2xl font-bold tracking-tight">Dispute Center</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExport}
-              disabled={isExporting}
-              className="border-zinc-800 text-zinc-400 hover:text-white"
-            >
-              {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-              {isExporting ? 'Exporting…' : 'Export CSV'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => load()}
-              className="text-zinc-400 hover:text-white hover:bg-white/[0.06] gap-1.5"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
-        </div>
-
+    <AdminPage
+      eyebrow="Operations"
+      title="Disputes"
+      description="Review evidence, follow conversations, and resolve or reject tournament and general support disputes."
+      actions={
+        <>
+          <CommandButton variant="ghost" size="sm" onClick={handleExport} disabled={isExporting}>
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {isExporting ? 'Exporting…' : 'Export CSV'}
+          </CommandButton>
+          <CommandButton variant="ghost" size="sm" onClick={() => load()}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </CommandButton>
+        </>
+      }
+    >
         {/* Stats row */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20">
-            <span className="w-2 h-2 rounded-full bg-yellow-500" />
-            <span className="text-yellow-300 text-xs font-medium">{openCount} Open</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 border border-rose-500/30 bg-white/[0.025] px-3 py-1.5">
+            <span className="h-1.5 w-1.5 bg-rose-500" />
+            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-rose-300">{openCount} Open</span>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-            <span className="w-2 h-2 rounded-full bg-green-500" />
-            <span className="text-green-300 text-xs font-medium">{closedCount} Closed</span>
+          <div className="flex items-center gap-2 border border-white/10 bg-white/[0.025] px-3 py-1.5">
+            <span className="h-1.5 w-1.5 bg-zinc-400" />
+            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-300">{closedCount} Closed</span>
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.06]">
-            <span className="text-zinc-400 text-xs font-medium">{disputes.length} Total</span>
+          <div className="flex items-center gap-2 border border-white/10 bg-white/[0.025] px-3 py-1.5">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-500">{disputes.length} Total</span>
           </div>
         </div>
 
         {/* 3-Panel Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_380px] gap-5 h-[calc(100vh-160px)]">
+        <div className="grid h-[calc(100vh-220px)] grid-cols-1 gap-5 lg:grid-cols-[320px_1fr_380px]">
 
           {/* ── Panel 1: Dispute List ─────────────────────────────────── */}
-          <div className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col overflow-hidden">
-            <div className="p-3 border-b border-white/[0.06] space-y-2.5">
+          <CommandSection className="flex flex-col overflow-hidden p-0">
+            <div className="space-y-2.5 border-b border-white/10 p-3">
               {/* Search */}
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search disputes..."
-                  className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-rose-500/40 transition"
+                  className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                 />
               </div>
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'tournament' | 'general')} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-white/[0.04] h-8 rounded-lg">
-                  <TabsTrigger value="all" className="text-zinc-400 text-xs data-[state=active]:bg-rose-600 data-[state=active]:text-white rounded-md">
-                    All ({disputes.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="tournament" className="text-zinc-400 text-xs data-[state=active]:bg-rose-600 data-[state=active]:text-white rounded-md">
-                    Tournament ({disputes.filter(d => d.tournament_id !== null).length})
-                  </TabsTrigger>
-                  <TabsTrigger value="general" className="text-zinc-400 text-xs data-[state=active]:bg-rose-600 data-[state=active]:text-white rounded-md">
-                    General ({disputes.filter(d => d.tournament_id === null).length})
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <CommandTabs
+                className="w-full border-none bg-transparent p-0"
+                active={activeTab}
+                onChange={(v) => setActiveTab(v as 'all' | 'tournament' | 'general')}
+                tabs={[
+                  { value: 'all', label: `All ${disputes.length}` },
+                  { value: 'tournament', label: `Tournament ${disputes.filter(d => d.tournament_id !== null).length}` },
+                  { value: 'general', label: `General ${disputes.filter(d => d.tournament_id === null).length}` },
+                ]}
+              />
             </div>
 
-            <div className="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1.5" data-lenis-prevent>
+            <div className="flex-1 space-y-1.5 overflow-y-auto overscroll-contain p-2" data-lenis-prevent>
               {loading ? (
-                <div className="text-zinc-400 text-center py-12">
-                  <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-rose-500" />
+                <div className="py-12 text-center text-zinc-400">
+                  <RefreshCw className="mx-auto mb-2 h-4 w-4 animate-spin text-zinc-500" />
                   <span className="text-sm">Loading disputes...</span>
                 </div>
               ) : filteredDisputes.length === 0 ? (
-                <div className="text-zinc-500 text-center py-12">
-                  <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                <div className="py-12 text-center text-zinc-500">
+                  <AlertCircle className="mx-auto mb-2 h-6 w-6 opacity-30" />
                   <p className="text-sm">No disputes found</p>
-                  {searchQuery && <p className="text-xs text-zinc-600 mt-1">Try a different search term</p>}
+                  {searchQuery && <p className="mt-1 text-xs text-zinc-600">Try a different search term</p>}
                 </div>
               ) : (
                 filteredDisputes.map((d) => {
@@ -495,28 +478,27 @@ const DisputeCenter: React.FC = () => {
                         setResolutionStatus(d.status === 'rejected' ? 'rejected' : 'resolved');
                         fetchComments(d.id);
                       }}
-                      className={`w-full text-left p-3 rounded-xl border-l-[3px] border border-white/[0.04] transition-all duration-150 ${
+                      className={`w-full border border-white/10 border-l-[3px] p-3 text-left transition-colors duration-150 ${
                         isSelected
-                          ? 'border-l-rose-500 bg-rose-500/[0.12] border-rose-500/20'
-                          : `${leftBorderColor(d.status)} bg-white/[0.02] hover:bg-white/[0.05] hover:-translate-y-0.5`
+                          ? 'border-l-rose-500 border-rose-500/40 bg-rose-500/10'
+                          : `${leftBorderColor(d.status)} bg-white/[0.02] hover:border-white/25 hover:bg-white/[0.05]`
                       }`}
                     >
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="mb-1 flex items-center gap-2">
                         {d.reference_number && (
-                          <span className="text-rose-400/70 font-mono text-[11px] shrink-0">{d.reference_number}</span>
+                          <span className="shrink-0 font-mono text-[11px] text-rose-300">{d.reference_number}</span>
                         )}
-                        <h3 className="text-white text-sm font-medium truncate flex-1">{d.title}</h3>
-                        <Badge className={`${meta.className} text-[10px] px-1.5 py-0 gap-1`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor(d.status)} inline-block`} />
+                        <h3 className="flex-1 truncate text-sm font-medium text-white">{d.title}</h3>
+                        <span className={`shrink-0 border px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${meta.className}`}>
                           {meta.label}
-                        </Badge>
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+                      <div className="flex items-center gap-1.5 font-mono text-[11px] text-zinc-400">
                         <span>{d.raised_by_name}</span>
                         <span className="text-zinc-600">•</span>
                         <span className="truncate">{d.tournament_name}</span>
                       </div>
-                      <div className="text-[11px] text-zinc-600 mt-0.5">
+                      <div className="mt-0.5 font-mono text-[11px] text-zinc-600">
                         {formatDistanceToNow(new Date(d.created_at), { addSuffix: true })}
                       </div>
                     </button>
@@ -524,10 +506,10 @@ const DisputeCenter: React.FC = () => {
                 })
               )}
             </div>
-          </div>
+          </CommandSection>
 
           {/* ── Panel 2: Evidence & Info ──────────────────────────────── */}
-          <div className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col overflow-hidden">
+          <CommandSection className="flex flex-col overflow-hidden p-0">
             <AnimatePresence mode="wait">
             {selectedDispute ? (
               <motion.div
@@ -536,59 +518,59 @@ const DisputeCenter: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
-                className="flex flex-col h-full"
+                className="flex h-full flex-col"
               >
-                <div className="p-4 border-b border-white/[0.06]">
-                  <div className="flex items-center gap-2 mb-1">
+                <div className="border-b border-white/10 p-4">
+                  <div className="mb-1 flex items-center gap-2">
                     {selectedDispute.reference_number && (
-                      <span className="text-rose-400/70 font-mono text-sm shrink-0">{selectedDispute.reference_number}</span>
+                      <span className="shrink-0 font-mono text-sm text-rose-300">{selectedDispute.reference_number}</span>
                     )}
-                    <h2 className="text-white text-lg font-semibold flex-1">{selectedDispute.title}</h2>
-                    <Badge className={(statusMeta[selectedDispute.status] || defaultMeta).className}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor(selectedDispute.status)} inline-block mr-1`} />
+                    <h2 className="flex-1 text-lg font-semibold text-white">{selectedDispute.title}</h2>
+                    <span className={`shrink-0 border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${(statusMeta[selectedDispute.status] || defaultMeta).className}`}>
                       {(statusMeta[selectedDispute.status] || defaultMeta).label}
-                    </Badge>
+                    </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
-                    <span>By: <strong className="text-zinc-300">{selectedDispute.raised_by_name}</strong></span>
+                    <span>By: <strong className="font-mono text-zinc-300">{selectedDispute.raised_by_name}</strong></span>
                     <span className="text-zinc-700">•</span>
                     <span>{selectedDispute.tournament_name}</span>
                     {selectedDispute.dispute_reason && (
                       <>
                         <span className="text-zinc-700">•</span>
-                        <span className="text-rose-400">{DISPUTE_REASON_LABELS[selectedDispute.dispute_reason] || selectedDispute.dispute_reason}</span>
+                        <span className="text-rose-300">{DISPUTE_REASON_LABELS[selectedDispute.dispute_reason] || selectedDispute.dispute_reason}</span>
                       </>
                     )}
                     <span className="text-zinc-700">•</span>
-                    <span className="text-zinc-600">{formatDistanceToNow(new Date(selectedDispute.created_at), { addSuffix: true })}</span>
+                    <span className="font-mono text-zinc-600">{formatDistanceToNow(new Date(selectedDispute.created_at), { addSuffix: true })}</span>
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4" data-lenis-prevent>
+                <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain p-4" data-lenis-prevent>
                   {/* Description */}
                   <div>
-                    <label className="text-zinc-500 text-xs uppercase tracking-wider mb-1.5 block font-medium">Description</label>
-                    <p className="text-white/90 text-sm bg-[#121214] p-3 rounded-xl border border-white/[0.06] leading-relaxed">
-                      {selectedDispute.description || 'No description provided'}
-                    </p>
+                    <label className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Description</label>
+                    <CommandPanel>
+                      <p className="text-sm leading-relaxed text-white/90">
+                        {selectedDispute.description || 'No description provided'}
+                      </p>
+                    </CommandPanel>
                   </div>
 
                   {/* Evidence */}
                   {selectedDispute.evidence_url && (
                     <div>
-                      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mb-4" />
-                      <label className="text-zinc-500 text-xs uppercase tracking-wider mb-1.5 flex items-center gap-1.5 font-medium">
+                      <label className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
                         <ImageIcon className="h-3.5 w-3.5" />
                         Evidence
                       </label>
                       <div
-                        className="relative group cursor-pointer inline-block"
+                        className="group relative inline-block cursor-pointer"
                         onClick={() => setViewingImage(selectedDispute.evidence_url || null)}
                       >
                         <img
                           src={selectedDispute.evidence_url}
                           alt="Dispute evidence"
-                          className="max-w-full max-h-80 rounded-xl border border-white/[0.08] transition-all group-hover:brightness-75"
+                          className="max-h-80 max-w-full border border-white/10 transition-all group-hover:brightness-75"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = 'none';
@@ -598,10 +580,8 @@ const DisputeCenter: React.FC = () => {
                             }
                           }}
                         />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="p-2.5 rounded-full bg-black/60 backdrop-blur-sm">
-                            <ZoomIn className="h-5 w-5 text-white" />
-                          </div>
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                          <ZoomIn className="h-5 w-5 text-white" />
                         </div>
                       </div>
                     </div>
@@ -610,42 +590,43 @@ const DisputeCenter: React.FC = () => {
                   {/* Resolution Section */}
                   {canHandleDisputes && selectedDispute.status === 'open' && (
                     <div>
-                      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mb-4" />
-                      <label className="text-zinc-500 text-xs uppercase tracking-wider mb-2 block font-medium">Resolution</label>
+                      <label className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Resolution</label>
 
                       {/* Lift Ban action for ban appeals */}
                       {selectedDispute.dispute_reason === 'ban_appeal' && selectedDispute.tournament_id && (
-                        <Button
+                        <CommandButton
+                          variant="warning"
                           onClick={liftBan}
                           disabled={liftingBan}
-                          className="w-full mb-3 bg-amber-600 hover:bg-amber-500 text-white transition-colors"
+                          className="mb-3 w-full"
                         >
-                          <Shield className="h-4 w-4 mr-1.5" />
+                          <Shield className="h-4 w-4" />
                           {liftingBan ? 'Lifting Ban...' : 'Lift Ban & Restore Participant'}
-                        </Button>
+                        </CommandButton>
                       )}
 
                       <Textarea
                         value={resolutionNotes}
                         onChange={(e) => setResolutionNotes(e.target.value)}
                         placeholder="Enter resolution notes..."
-                        className="bg-[#121214] border-white/[0.06] text-white placeholder:text-zinc-600 min-h-[100px] rounded-xl mb-3 focus:border-rose-500/40"
+                        className="mb-3 min-h-[100px] rounded-none border-white/10 bg-white/[0.025] text-white placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-500"
                       />
                       <div className="flex gap-2">
-                        <Button
+                        <CommandButton
                           onClick={() => { setResolutionStatus('resolved'); resolve(); }}
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white flex-1 transition-colors"
+                          className="flex-1"
                         >
-                          <CheckCircle className="h-4 w-4 mr-1.5" />
+                          <CheckCircle className="h-4 w-4" />
                           Resolve
-                        </Button>
-                        <Button
+                        </CommandButton>
+                        <CommandButton
+                          variant="danger"
                           onClick={() => { setResolutionStatus('rejected'); resolve(); }}
-                          className="bg-rose-600 hover:bg-rose-500 text-white flex-1 transition-colors"
+                          className="flex-1"
                         >
-                          <XCircle className="h-4 w-4 mr-1.5" />
+                          <XCircle className="h-4 w-4" />
                           Reject
-                        </Button>
+                        </CommandButton>
                       </div>
                     </div>
                   )}
@@ -653,11 +634,12 @@ const DisputeCenter: React.FC = () => {
                   {/* Closed dispute notice */}
                   {(selectedDispute.status === 'resolved' || selectedDispute.status === 'rejected') && selectedDispute.resolution_notes && (
                     <div>
-                      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mb-4" />
-                      <label className="text-zinc-500 text-xs uppercase tracking-wider mb-1.5 block font-medium">Resolution Notes</label>
-                      <p className="text-zinc-300 text-sm bg-[#121214] p-3 rounded-xl border border-white/[0.06]">
-                        {selectedDispute.resolution_notes}
-                      </p>
+                      <label className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Resolution Notes</label>
+                      <CommandPanel>
+                        <p className="text-sm text-zinc-300">
+                          {selectedDispute.resolution_notes}
+                        </p>
+                      </CommandPanel>
                     </div>
                   )}
                 </div>
@@ -667,26 +649,26 @@ const DisputeCenter: React.FC = () => {
                 key="empty-details"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex-1 flex items-center justify-center"
+                className="flex flex-1 items-center justify-center"
               >
-                <div className="text-center border-2 border-dashed border-white/[0.06] rounded-2xl px-12 py-10">
-                  <MessageSquare className="h-10 w-10 mx-auto mb-3 text-zinc-700 opacity-40" />
-                  <p className="text-zinc-500 text-sm font-medium">Select a dispute to view details</p>
-                  <p className="text-zinc-600 text-xs mt-1">Evidence, info, and resolution controls will appear here</p>
+                <div className="border border-dashed border-white/10 px-12 py-10 text-center">
+                  <MessageSquare className="mx-auto mb-3 h-6 w-6 text-zinc-700 opacity-50" />
+                  <p className="text-sm font-medium text-zinc-500">Select a dispute to view details</p>
+                  <p className="mt-1 text-xs text-zinc-600">Evidence, info, and resolution controls will appear here</p>
                 </div>
               </motion.div>
             )}
             </AnimatePresence>
-          </div>
+          </CommandSection>
 
           {/* ── Panel 3: Conversation ─────────────────────────────────── */}
-          <div className="bg-[#0a0a0c]/80 backdrop-blur-xl border border-white/[0.06] rounded-2xl flex flex-col overflow-hidden">
-            <div className="p-3 border-b border-white/[0.06]">
-              <h3 className="text-white text-sm font-semibold flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-zinc-500" />
+          <CommandSection className="flex flex-col overflow-hidden p-0">
+            <div className="border-b border-white/10 p-3">
+              <h3 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                <MessageSquare className="h-4 w-4" />
                 Conversation
                 {comments.length > 0 && (
-                  <span className="text-[11px] text-zinc-400 bg-white/[0.06] px-2 py-0.5 rounded-full font-medium">{comments.length}</span>
+                  <span className="border border-white/10 px-2 py-0.5 font-mono text-[10px] text-zinc-400">{comments.length}</span>
                 )}
               </h3>
             </div>
@@ -694,17 +676,17 @@ const DisputeCenter: React.FC = () => {
             {selectedDispute ? (
               <>
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-3" data-lenis-prevent>
+                <div className="flex-1 space-y-3 overflow-y-auto overscroll-contain p-3" data-lenis-prevent>
                   {loadingComments ? (
-                    <div className="text-center text-zinc-500 text-sm py-12">
-                      <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-2 text-rose-500" />
+                    <div className="py-12 text-center text-sm text-zinc-500">
+                      <RefreshCw className="mx-auto mb-2 h-4 w-4 animate-spin text-zinc-500" />
                       Loading messages...
                     </div>
                   ) : comments.length === 0 ? (
-                    <div className="text-center py-12">
-                      <MessageSquare className="h-8 w-8 mx-auto mb-2 text-zinc-700 opacity-20" />
-                      <p className="text-zinc-600 text-sm">No messages yet</p>
-                      <p className="text-zinc-700 text-xs mt-1">Start the conversation</p>
+                    <div className="py-12 text-center">
+                      <MessageSquare className="mx-auto mb-2 h-6 w-6 text-zinc-700 opacity-30" />
+                      <p className="text-sm text-zinc-600">No messages yet</p>
+                      <p className="mt-1 text-xs text-zinc-700">Start the conversation</p>
                     </div>
                   ) : (
                     comments.map((comment) => {
@@ -715,28 +697,28 @@ const DisputeCenter: React.FC = () => {
                           className={`flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
                         >
                           <div
-                            className={`max-w-[85%] p-3 ${
+                            className={`max-w-[85%] border p-3 ${
                               isAdmin
-                                ? 'bg-rose-500/[0.15] rounded-2xl rounded-br-sm'
-                                : 'bg-white/[0.06] rounded-2xl rounded-bl-sm'
+                                ? 'border-rose-500/30 bg-rose-500/10'
+                                : 'border-white/10 bg-white/[0.04]'
                             }`}
                           >
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`text-[11px] font-medium ${isAdmin ? 'text-rose-400' : 'text-zinc-400'}`}>
+                            <div className="mb-1 flex items-center gap-2">
+                              <span className={`font-mono text-[11px] ${isAdmin ? 'text-rose-300' : 'text-zinc-400'}`}>
                                 {comment.user_name}
                               </span>
-                              <span className="text-[10px] text-zinc-600">
+                              <span className="font-mono text-[10px] text-zinc-600">
                                 {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                               </span>
                             </div>
                             {comment.comment?.trim() && (
-                              <p className="text-sm text-white/90 whitespace-pre-wrap">{comment.comment}</p>
+                              <p className="whitespace-pre-wrap text-sm text-white/90">{comment.comment}</p>
                             )}
                             {comment.attachment_url && (
                               <img
                                 src={comment.attachment_url}
                                 alt="Attachment"
-                                className="max-w-full max-h-40 rounded-lg border border-white/[0.06] mt-1.5 cursor-pointer hover:brightness-75 transition"
+                                className="mt-1.5 max-h-40 max-w-full cursor-pointer border border-white/10 transition hover:brightness-75"
                                 onClick={() => setViewingImage(comment.attachment_url || null)}
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
@@ -754,27 +736,27 @@ const DisputeCenter: React.FC = () => {
                 {/* Input Area */}
                 {selectedDispute.status === 'open' ? (
                   canHandleDisputes ? (
-                    <div className="p-3 border-t border-white/[0.06] space-y-2">
+                    <div className="space-y-2 border-t border-white/10 p-3">
                       <div className="flex items-end gap-2">
-                        <div className="flex-1 bg-[#121214] rounded-xl border border-white/[0.06] focus-within:border-rose-500/30 transition">
+                        <div className="flex-1 border border-white/10 bg-white/[0.025] transition-colors focus-within:border-rose-500/40">
                           <Textarea
                             value={commentText}
                             onChange={(e) => setCommentText(e.target.value)}
                             placeholder="Type a message..."
-                            className="bg-transparent border-0 text-white placeholder:text-zinc-600 min-h-[44px] max-h-[120px] rounded-xl text-sm resize-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                            className="min-h-[44px] max-h-[120px] resize-none rounded-none border-0 bg-transparent text-sm text-white placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0"
                           />
                           {commentAttachment && (
-                            <div className="flex items-center gap-1 px-3 pb-2 text-[11px] text-zinc-400">
+                            <div className="flex items-center gap-1 px-3 pb-2 font-mono text-[11px] text-zinc-400">
                               <ImageIcon className="h-3 w-3 shrink-0" />
-                              <span className="truncate max-w-[140px]">{commentAttachment.name}</span>
-                              <button onClick={() => setCommentAttachment(null)} className="text-red-400 hover:text-red-300 shrink-0">
+                              <span className="max-w-[140px] truncate">{commentAttachment.name}</span>
+                              <button onClick={() => setCommentAttachment(null)} className="shrink-0 text-red-400 hover:text-red-300">
                                 <X className="h-3 w-3" />
                               </button>
                             </div>
                           )}
                         </div>
                         <div className="flex flex-col gap-1.5 pb-0.5">
-                          <label className="cursor-pointer p-2 rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04] transition">
+                          <label className="cursor-pointer border border-white/10 bg-white/[0.03] p-2 text-zinc-500 transition-colors hover:border-white/25 hover:text-white">
                             <ImageIcon className="h-4 w-4" />
                             <input
                               type="file"
@@ -792,55 +774,54 @@ const DisputeCenter: React.FC = () => {
                               }}
                             />
                           </label>
-                          <Button
-                            size="icon"
+                          <CommandIconButton
+                            label="Send message"
                             onClick={() => handleAddComment(selectedDispute.id)}
                             disabled={submittingComment || uploadingAttachment || (!commentText.trim() && !commentAttachment)}
-                            className="bg-rose-600 hover:bg-rose-500 text-white h-9 w-9 rounded-full shrink-0 transition-colors"
                           >
                             {submittingComment ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                          </Button>
+                          </CommandIconButton>
                         </div>
                       </div>
                     </div>
                   ) : null
                 ) : (
-                  <div className="p-3 border-t border-white/[0.06]">
-                    <p className="text-zinc-600 text-xs text-center">
+                  <div className="border-t border-white/10 p-3">
+                    <p className="text-center font-mono text-[10px] uppercase tracking-wider text-zinc-600">
                       Dispute {selectedDispute.status === 'resolved' ? 'resolved' : 'rejected'} — closed
                     </p>
                   </div>
                 )}
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center border-2 border-dashed border-white/[0.06] rounded-2xl px-8 py-8">
-                  <MessageSquare className="h-8 w-8 mx-auto mb-2 text-zinc-700 opacity-20" />
-                  <p className="text-zinc-600 text-sm">No dispute selected</p>
+              <div className="flex flex-1 items-center justify-center">
+                <div className="border border-dashed border-white/10 px-8 py-8 text-center">
+                  <MessageSquare className="mx-auto mb-2 h-5 w-5 text-zinc-700 opacity-30" />
+                  <p className="text-sm text-zinc-600">No dispute selected</p>
                 </div>
               </div>
             )}
-          </div>
+          </CommandSection>
         </div>
-      </div>
 
       {/* Image Viewer Modal */}
       <Dialog open={!!viewingImage} onOpenChange={(open) => !open && setViewingImage(null)}>
-        <DialogContent className="bg-[#121214] border border-white/[0.06] max-w-5xl max-h-[90vh] p-0">
+        <DialogContent className="max-h-[90vh] max-w-5xl rounded-none border border-white/10 bg-[#0a0a0c] p-0">
           <DialogTitle className="sr-only">Image Preview</DialogTitle>
-          <div className="relative w-full h-full flex items-center justify-center">
-            <button
+          <div className="relative flex h-full w-full items-center justify-center">
+            <CommandIconButton
+              label="Close image viewer"
+              variant="ghost"
               onClick={() => setViewingImage(null)}
-              className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
-              aria-label="Close image viewer"
+              className="absolute right-4 top-4 z-10 border-black/50 bg-black/50 hover:border-white/25"
             >
-              <X className="w-6 h-6" />
-            </button>
+              <X className="h-4 w-4" />
+            </CommandIconButton>
             {viewingImage && (
               <img
                 src={viewingImage}
                 alt="Full size image"
-                className="max-w-full max-h-[90vh] object-contain"
+                className="max-h-[90vh] max-w-full object-contain"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
@@ -854,7 +835,7 @@ const DisputeCenter: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPage>
   );
 };
 

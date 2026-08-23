@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import {
   Search, Award, Shield, ChevronLeft, ChevronRight, RefreshCw,
@@ -15,6 +14,13 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  CommandButton,
+  CommandIconButton,
+  CommandPanel,
+  CommandSection,
+  CommandToolbar,
+} from '@/components/management/CommandSurface';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -66,12 +72,28 @@ const LICENSE_TYPE_LABEL: Record<string, string> = {
   organizer: 'Organizer',
 };
 
+// Monochrome by status: red = destructive, amber = warning, zinc = neutral.
 const STATUS_STYLE: Record<string, string> = {
-  active: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  revoked: 'bg-red-500/10 text-red-400 border-red-500/20',
-  suspended: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  expired: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+  active: 'border-white/40 text-white',
+  revoked: 'border-red-500/35 text-red-300',
+  suspended: 'border-amber-500/35 text-amber-300',
+  expired: 'border-white/10 text-zinc-400',
 };
+
+const TYPE_STYLE: Record<string, string> = {
+  organizer: 'border-white/40 text-white',
+  venue_owner: 'border-white/15 text-zinc-300',
+};
+
+function statusClass(status: string): string {
+  return `border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${STATUS_STYLE[status] ?? 'border-white/10 text-zinc-400'}`;
+}
+
+const FIELD_LABEL =
+  'font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500';
+
+const INPUT_CLASS =
+  'rounded-none border border-white/10 bg-black/60 text-white placeholder:text-zinc-600 outline-none transition-colors focus-visible:border-rose-500 focus-visible:ring-rose-500/20';
 
 function CopyBadge({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -81,9 +103,9 @@ function CopyBadge({ text }: { text: string }) {
     setTimeout(() => setCopied(false), 1500);
   };
   return (
-    <button onClick={copy} className="inline-flex items-center gap-1.5 font-mono text-xs bg-white/5 px-2 py-1 rounded-md hover:bg-white/10 transition-colors">
+    <button onClick={copy} className="inline-flex items-center gap-1.5 rounded-none border border-white/10 bg-white/[0.03] px-2 py-1 font-mono text-xs transition-colors hover:border-white/25">
       {text}
-      {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-zinc-500" />}
+      {copied ? <Check className="h-3 w-3 text-white" /> : <Copy className="h-3 w-3 text-zinc-500" />}
     </button>
   );
 }
@@ -220,33 +242,31 @@ export default function LicenseManagement() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Award className="w-5 h-5 text-rose-400" /> License Management
-          </h2>
-          <p className="text-sm text-zinc-400 mt-1">{total} license{total !== 1 ? 's' : ''} total</p>
-        </div>
+    <div className="space-y-5">
+      {/* Toolbar */}
+      <CommandToolbar>
+        <p className={`tabular-nums ${FIELD_LABEL}`}>
+          {total} license{total !== 1 ? 's' : ''} total
+        </p>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchLicenses} className="border-zinc-700 text-zinc-300 hover:bg-zinc-800">
-            <RefreshCw className="w-4 h-4 mr-1" /> Refresh
-          </Button>
-<Button size="sm" onClick={() => setAssignOpen(true)} className="bg-rose-600 hover:bg-rose-700 text-white">
-            <UserPlus className="w-4 h-4 mr-1" /> Assign License
-          </Button>
+          <CommandButton variant="ghost" size="sm" onClick={fetchLicenses}>
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </CommandButton>
+          <CommandButton size="sm" onClick={() => setAssignOpen(true)}>
+            <UserPlus className="h-4 w-4" /> Assign License
+          </CommandButton>
         </div>
-      </div>
+      </CommandToolbar>
 
       {/* License Perks Reference */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Trophy className="w-4 h-4 text-purple-400" />
-            <span className="text-sm font-semibold text-purple-300">Organizer (ESP-OR)</span>
+        <CommandPanel>
+          <div className="mb-2 flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-white" />
+            <span className="text-sm font-semibold text-white">Organizer (ESP-OR)</span>
+            <span className={`${FIELD_LABEL} ml-auto`}>Tier I</span>
           </div>
-          <ul className="text-xs text-zinc-400 space-y-1">
+          <ul className="space-y-1 text-xs text-zinc-400">
             <li>• Create &amp; manage tournaments</li>
             <li>• Set entry fees &amp; prize pools</li>
             <li>• Access bracket &amp; match management</li>
@@ -254,13 +274,14 @@ export default function LicenseManagement() {
             <li>• Organizer analytics dashboard</li>
             <li>• Custom organizer profile page</li>
           </ul>
-        </div>
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Building className="w-4 h-4 text-emerald-400" />
-            <span className="text-sm font-semibold text-emerald-300">Venue Owner (ESP-VO)</span>
+        </CommandPanel>
+        <CommandPanel>
+          <div className="mb-2 flex items-center gap-2">
+            <Building className="h-4 w-4 text-zinc-300" />
+            <span className="text-sm font-semibold text-zinc-200">Venue Owner (ESP-VO)</span>
+            <span className={`${FIELD_LABEL} ml-auto`}>Tier II</span>
           </div>
-          <ul className="text-xs text-zinc-400 space-y-1">
+          <ul className="space-y-1 text-xs text-zinc-400">
             <li>• List &amp; manage gaming venues</li>
             <li>• Booking management system</li>
             <li>• Station &amp; availability control</li>
@@ -268,25 +289,25 @@ export default function LicenseManagement() {
             <li>• Desktop pairing for live status</li>
             <li>• Appear in "Near Me" search</li>
           </ul>
-        </div>
+        </CommandPanel>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-          <Input
+      <CommandToolbar>
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
+          <input
             placeholder="Search by name, email, or license ID..."
             value={query}
             onChange={(e) => { setQuery(e.target.value); setPage(0); }}
-            className="pl-9 bg-zinc-900/50 border-zinc-700 text-white"
+            className={`w-full py-1.5 pl-9 pr-3 text-xs ${INPUT_CLASS}`}
           />
         </div>
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
-          <SelectTrigger className="w-[140px] bg-zinc-900/50 border-zinc-700 text-zinc-300">
+          <SelectTrigger className="w-[140px] rounded-none border-white/10 bg-black/60 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-zinc-300">
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="revoked">Revoked</SelectItem>
@@ -294,60 +315,60 @@ export default function LicenseManagement() {
           </SelectContent>
         </Select>
         <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(0); }}>
-          <SelectTrigger className="w-[160px] bg-zinc-900/50 border-zinc-700 text-zinc-300">
+          <SelectTrigger className="w-[160px] rounded-none border-white/10 bg-black/60 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-zinc-300">
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="organizer">Organizer</SelectItem>
             <SelectItem value="venue_owner">Venue Owner</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </CommandToolbar>
 
       {/* Table */}
-      <div className="rounded-xl border border-white/5 bg-[#0a0a0c] overflow-hidden">
+      <CommandSection className="p-0">
         {loading ? (
-          <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-rose-400" /></div>
+          <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-zinc-600" /></div>
         ) : licenses.length === 0 ? (
-          <div className="text-center py-16 text-zinc-500">
-            <Award className="w-10 h-10 mx-auto mb-3 opacity-40" />
-            <p>No licenses found.</p>
+          <div className="py-16 text-center text-zinc-500">
+            <Award className="mx-auto mb-3 h-10 w-10 opacity-40" />
+            <p className={FIELD_LABEL}>No licenses found.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5 text-zinc-400 text-left">
-                  <th className="px-4 py-3 font-medium">User</th>
-                  <th className="px-4 py-3 font-medium">License ID</th>
-                  <th className="px-4 py-3 font-medium">Type</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Issued</th>
-                  <th className="px-4 py-3 font-medium">Expires</th>
-                  <th className="px-4 py-3 font-medium text-right">Actions</th>
+            <table className="w-full text-left text-sm">
+              <thead className="bg-black/40 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                <tr>
+                  <th className="px-4 py-3">User</th>
+                  <th className="px-4 py-3">License ID</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Issued</th>
+                  <th className="px-4 py-3">Expires</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {licenses.map((lic) => (
                   <motion.tr
                     key={lic.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
+                    className="transition-colors hover:bg-white/[0.03]"
                   >
                     <td className="px-4 py-3">
-                      <button onClick={() => openDetail(lic.user_id)} className="flex items-center gap-2 hover:text-rose-400 transition-colors text-left">
+                      <button onClick={() => openDetail(lic.user_id)} className="flex items-center gap-2 text-left transition-colors hover:text-rose-300">
                         {lic.avatar_url ? (
-                          <img src={lic.avatar_url} className="w-7 h-7 rounded-full object-cover" alt="" />
+                          <img src={lic.avatar_url} className="h-7 w-7 rounded-full object-cover" alt="" />
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center text-xs text-zinc-400">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-none border border-white/10 bg-black/40 font-mono text-xs text-zinc-400">
                             {(lic.username?.[0] || '?').toUpperCase()}
                           </div>
                         )}
                         <div>
-                          <div className="text-white font-medium text-xs">{lic.username || 'Unknown'}</div>
-                          <div className="text-zinc-500 text-[11px]">{lic.email}</div>
+                          <div className="text-xs font-medium text-white">{lic.username || 'Unknown'}</div>
+                          <div className="font-mono text-[11px] text-zinc-500">{lic.email}</div>
                         </div>
                       </button>
                     </td>
@@ -355,38 +376,38 @@ export default function LicenseManagement() {
                       <CopyBadge text={lic.license_id} />
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                      <span className={TYPE_STYLE[lic.license_type] ? `border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${TYPE_STYLE[lic.license_type]}` : ''}>
                         {LICENSE_TYPE_LABEL[lic.license_type] ?? lic.license_type}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs border ${STATUS_STYLE[lic.status] ?? 'bg-zinc-800 text-zinc-300 border-zinc-700'}`}>
+                      <span className={statusClass(lic.status)}>
                         {lic.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-zinc-400 text-xs">
+                    <td className="px-4 py-3 font-mono text-xs tabular-nums text-zinc-400">
                       {lic.issued_at ? new Date(lic.issued_at).toLocaleDateString() : '—'}
                     </td>
-                    <td className="px-4 py-3 text-zinc-400 text-xs">
+                    <td className="px-4 py-3 font-mono text-xs tabular-nums text-zinc-400">
                       {lic.expires_at ? new Date(lic.expires_at).toLocaleDateString() : '—'}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openDetail(lic.user_id)} className="p-1.5 rounded-md hover:bg-white/5 text-zinc-400 hover:text-white transition-colors" title="View Details">
-                          <Eye className="w-4 h-4" />
-                        </button>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <CommandIconButton label="View details" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-white" onClick={() => openDetail(lic.user_id)}>
+                          <Eye className="h-3.5 w-3.5" />
+                        </CommandIconButton>
                         {lic.status === 'active' ? (
-                          <button onClick={() => revokeLicense(lic.user_id, lic.license_type)} className="p-1.5 rounded-md hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors" title="Revoke">
-                            <Ban className="w-4 h-4" />
-                          </button>
+                          <CommandIconButton label="Revoke license" variant="danger" className="h-8 w-8" onClick={() => revokeLicense(lic.user_id, lic.license_type)}>
+                            <Ban className="h-3.5 w-3.5" />
+                          </CommandIconButton>
                         ) : (
-                          <button onClick={() => reinstateLicense(lic.user_id, lic.license_type)} className="p-1.5 rounded-md hover:bg-emerald-500/10 text-zinc-400 hover:text-emerald-400 transition-colors" title="Reinstate">
-                            <RotateCcw className="w-4 h-4" />
-                          </button>
+                          <CommandIconButton label="Reinstate license" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-white" onClick={() => reinstateLicense(lic.user_id, lic.license_type)}>
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </CommandIconButton>
                         )}
-                        <button onClick={() => deleteLicense(lic.id)} className="p-1.5 rounded-md hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition-colors" title="Delete">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <CommandIconButton label="Delete license" variant="danger" className="h-8 w-8" onClick={() => deleteLicense(lic.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </CommandIconButton>
                       </div>
                     </td>
                   </motion.tr>
@@ -398,45 +419,45 @@ export default function LicenseManagement() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-white/5 text-xs text-zinc-400">
-            <span>Page {page + 1} of {totalPages}</span>
+          <div className="flex items-center justify-between border-t border-white/10 px-4 py-3 text-xs text-zinc-400">
+            <span className={`tabular-nums ${FIELD_LABEL}`}>Page {page + 1} of {totalPages}</span>
             <div className="flex gap-1">
-              <Button variant="ghost" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)} className="h-7 w-7 p-0">
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} className="h-7 w-7 p-0">
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+              <CommandIconButton label="Previous page" variant="ghost" disabled={page === 0} onClick={() => setPage(p => p - 1)} className="h-8 w-8">
+                <ChevronLeft className="h-4 w-4" />
+              </CommandIconButton>
+              <CommandIconButton label="Next page" variant="ghost" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} className="h-8 w-8">
+                <ChevronRight className="h-4 w-4" />
+              </CommandIconButton>
             </div>
           </div>
         )}
-      </div>
+      </CommandSection>
 
       {/* ── Assign License Dialog ──────────────────────────────────────────── */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-        <DialogContent className="bg-[#121214] border-zinc-800 text-white max-w-md">
+        <DialogContent className="max-w-md rounded-none border border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-rose-400" /> Assign License
+              <UserPlus className="h-4 w-4 text-rose-400" /> Assign License
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-xs text-zinc-400 mb-1 block">User Email</label>
+              <label className={`mb-1 block ${FIELD_LABEL}`}>User Email</label>
               <Input
                 placeholder="user@example.com"
                 value={assignEmail}
                 onChange={(e) => setAssignEmail(e.target.value)}
-                className="bg-zinc-900/50 border-zinc-700 text-white"
+                className={INPUT_CLASS}
               />
             </div>
             <div>
-              <label className="text-xs text-zinc-400 mb-1 block">License Type</label>
+              <label className={`mb-1 block ${FIELD_LABEL}`}>License Type</label>
               <Select value={assignType} onValueChange={setAssignType}>
-                <SelectTrigger className="bg-zinc-900/50 border-zinc-700 text-zinc-300">
+                <SelectTrigger className="w-full rounded-none border-white/10 bg-black/60 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-zinc-300">
                   <SelectItem value="organizer">Organizer (ESP-OR)</SelectItem>
                   <SelectItem value="venue_owner">Venue Owner (ESP-VO)</SelectItem>
                 </SelectContent>
@@ -444,71 +465,71 @@ export default function LicenseManagement() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setAssignOpen(false)} className="text-zinc-400">Cancel</Button>
-            <Button onClick={handleAssign} disabled={!assignEmail || assignLoading} className="bg-rose-600 hover:bg-rose-700">
-              {assignLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <UserPlus className="w-4 h-4 mr-1" />}
+            <CommandButton variant="ghost" size="sm" onClick={() => setAssignOpen(false)}>Cancel</CommandButton>
+            <CommandButton size="sm" onClick={handleAssign} disabled={!assignEmail || assignLoading}>
+              {assignLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
               Assign
-            </Button>
+            </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* ── User Detail Dialog ─────────────────────────────────────────────── */}
       <Dialog open={!!detailUser || detailLoading} onOpenChange={(open) => { if (!open) setDetailUser(null); }}>
-        <DialogContent className="bg-[#121214] border-zinc-800 text-white max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto overscroll-contain rounded-none border border-white/10 bg-[#0a0a0c] text-white" data-lenis-prevent>
           <DialogHeader className="sr-only">
             <DialogTitle>User details</DialogTitle>
           </DialogHeader>
           {detailLoading && !detailUser ? (
-            <div className="flex justify-center py-16"><Loader2 className="w-8 h-8 animate-spin text-rose-400" /></div>
+            <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-zinc-600" /></div>
           ) : detailUser ? (
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3">
                   {detailUser.profile.avatar_url ? (
-                    <img src={detailUser.profile.avatar_url} className="w-10 h-10 rounded-full object-cover" alt="" />
+                    <img src={detailUser.profile.avatar_url} className="h-10 w-10 rounded-full object-cover" alt="" />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-lg text-zinc-400">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-none border border-white/10 bg-black/40 font-mono text-lg text-zinc-400">
                       {(detailUser.profile.username?.[0] || '?').toUpperCase()}
                     </div>
                   )}
                   <div>
                     <div className="text-lg font-semibold">{detailUser.profile.full_name || detailUser.profile.username}</div>
-                    <div className="text-xs text-zinc-400 font-normal">@{detailUser.profile.username} · {detailUser.profile.email}</div>
+                    <div className="font-mono text-xs font-normal text-zinc-400">@{detailUser.profile.username} · {detailUser.profile.email}</div>
                   </div>
                 </DialogTitle>
               </DialogHeader>
 
-              <div className="space-y-5 mt-4">
+              <div className="mt-4 space-y-5">
                 {/* Profile Meta */}
                 <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="px-2 py-1 rounded-md bg-zinc-800 text-zinc-300">Joined {new Date(detailUser.profile.created_at).toLocaleDateString()}</span>
+                  <span className="rounded-none border border-white/10 bg-white/[0.03] px-2 py-1 font-mono text-zinc-300">Joined {new Date(detailUser.profile.created_at).toLocaleDateString()}</span>
                   {detailUser.profile.is_admin && (
-                    <span className="px-2 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">Admin</span>
+                    <span className="rounded-none border border-amber-500/35 px-2 py-1 font-mono text-amber-300">Admin</span>
                   )}
                   {detailUser.profile.admin_roles?.map(r => (
-                    <span key={r} className="px-2 py-1 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20">{r}</span>
+                    <span key={r} className="rounded-none border border-rose-500/30 px-2 py-1 font-mono text-rose-300">{r}</span>
                   ))}
                 </div>
 
                 {/* Licenses */}
-                <Section icon={<Award className="w-4 h-4 text-purple-400" />} title="Licenses" count={detailUser.licenses.length}>
+                <Section icon={<Award className="h-4 w-4 text-zinc-400" />} title="Licenses" count={detailUser.licenses.length}>
                   {detailUser.licenses.length === 0 ? (
-                    <p className="text-zinc-500 text-xs">No licenses assigned.</p>
+                    <p className={`text-xs ${FIELD_LABEL}`}>No licenses assigned.</p>
                   ) : (
                     <div className="space-y-2">
                       {detailUser.licenses.map(lic => (
-                        <div key={lic.id} className="flex items-center justify-between rounded-lg bg-zinc-900/50 border border-zinc-800 px-3 py-2">
+                        <div key={lic.id} className="flex items-center justify-between rounded-none border border-white/10 bg-white/[0.025] px-3 py-2">
                           <div className="flex items-center gap-3">
                             <CopyBadge text={lic.license_id} />
-                            <span className="text-xs text-purple-400">{LICENSE_TYPE_LABEL[lic.license_type] ?? lic.license_type}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${STATUS_STYLE[lic.status] ?? ''}`}>{lic.status}</span>
+                            <span className="font-mono text-xs uppercase tracking-wider text-zinc-300">{LICENSE_TYPE_LABEL[lic.license_type] ?? lic.license_type}</span>
+                            <span className={statusClass(lic.status)}>{lic.status}</span>
                           </div>
                           <div className="flex gap-1">
                             {lic.status === 'active' ? (
-                              <button onClick={() => revokeLicense(detailUser.profile.id, lic.license_type)} className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded hover:bg-red-500/10">Revoke</button>
+                              <CommandButton variant="danger" size="sm" onClick={() => revokeLicense(detailUser.profile.id, lic.license_type)}>Revoke</CommandButton>
                             ) : (
-                              <button onClick={() => reinstateLicense(detailUser.profile.id, lic.license_type)} className="text-xs text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded hover:bg-emerald-500/10">Reinstate</button>
+                              <CommandButton variant="ghost" size="sm" onClick={() => reinstateLicense(detailUser.profile.id, lic.license_type)}>Reinstate</CommandButton>
                             )}
                           </div>
                         </div>
@@ -518,13 +539,13 @@ export default function LicenseManagement() {
                 </Section>
 
                 {/* Roles */}
-                <Section icon={<Shield className="w-4 h-4 text-blue-400" />} title="User Roles" count={detailUser.user_roles.length}>
+                <Section icon={<Shield className="h-4 w-4 text-zinc-400" />} title="User Roles" count={detailUser.user_roles.length}>
                   {detailUser.user_roles.length === 0 ? (
-                    <p className="text-zinc-500 text-xs">No roles.</p>
+                    <p className={`text-xs ${FIELD_LABEL}`}>No roles.</p>
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {detailUser.user_roles.map(r => (
-                        <span key={r.role} className={`text-xs px-2 py-1 rounded-md border ${r.is_active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-zinc-800 text-zinc-500 border-zinc-700 line-through'}`}>
+                        <span key={r.role} className={`rounded-none border px-2 py-1 font-mono text-xs ${r.is_active ? 'border-white/25 text-white' : 'border-white/10 text-zinc-500 line-through'}`}>
                           {r.role} {!r.is_active && '(inactive)'}
                         </span>
                       ))}
@@ -533,16 +554,18 @@ export default function LicenseManagement() {
                 </Section>
 
                 {/* Verified Roles */}
-                <Section icon={<FileText className="w-4 h-4 text-cyan-400" />} title="Verified Roles" count={detailUser.verified_roles.length}>
+                <Section icon={<FileText className="h-4 w-4 text-zinc-400" />} title="Verified Roles" count={detailUser.verified_roles.length}>
                   {detailUser.verified_roles.length === 0 ? (
-                    <p className="text-zinc-500 text-xs">No verification records.</p>
+                    <p className={`text-xs ${FIELD_LABEL}`}>No verification records.</p>
                   ) : (
-                    <div className="space-y-1">
+                    <div className="divide-y divide-white/5 border border-white/10 bg-white/[0.025] px-3">
                       {detailUser.verified_roles.map(v => (
-                        <div key={v.role} className="flex items-center gap-3 text-xs py-1">
-                          <span className="text-white font-medium">{v.role}</span>
-                          <span className={`px-1.5 py-0.5 rounded-full border text-[10px] ${STATUS_STYLE[v.status] ?? 'bg-zinc-800 text-zinc-400 border-zinc-700'}`}>{v.status}</span>
-                          {v.verified_at && <span className="text-zinc-500">verified {new Date(v.verified_at).toLocaleDateString()}</span>}
+                        <div key={v.role} className="flex flex-wrap items-center gap-3 py-2 text-xs">
+                          <span className={`border px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${TYPE_STYLE[v.role] ?? 'border-white/15 text-zinc-300'}`}>
+                            {LICENSE_TYPE_LABEL[v.role] ?? v.role}
+                          </span>
+                          <span className={statusClass(v.status)}>{v.status}</span>
+                          {v.verified_at && <span className="font-mono text-zinc-500">verified {new Date(v.verified_at).toLocaleDateString()}</span>}
                         </div>
                       ))}
                     </div>
@@ -551,13 +574,13 @@ export default function LicenseManagement() {
 
                 {/* Organizations */}
                 {detailUser.organizations.length > 0 && (
-                  <Section icon={<Building className="w-4 h-4 text-orange-400" />} title="Organizations" count={detailUser.organizations.length}>
-                    <div className="space-y-1">
+                  <Section icon={<Building className="h-4 w-4 text-zinc-400" />} title="Organizations" count={detailUser.organizations.length}>
+                    <div className="divide-y divide-white/5 border border-white/10 bg-white/[0.025] px-3">
                       {detailUser.organizations.map(o => (
-                        <div key={o.id} className="flex items-center gap-2 text-xs py-1">
-                          {o.logo_url && <img src={o.logo_url} className="w-5 h-5 rounded" alt="" />}
-                          <span className="text-white font-medium">{o.name}</span>
-                          <span className="text-zinc-500">/{o.slug}</span>
+                        <div key={o.id} className="flex items-center gap-2 py-2 text-xs">
+                          {o.logo_url && <img src={o.logo_url} className="h-5 w-5 rounded-none border border-white/10" alt="" />}
+                          <span className="font-medium text-white">{o.name}</span>
+                          <span className="font-mono text-zinc-500">/{o.slug}</span>
                         </div>
                       ))}
                     </div>
@@ -566,13 +589,13 @@ export default function LicenseManagement() {
 
                 {/* Venues */}
                 {detailUser.venues.length > 0 && (
-                  <Section icon={<MapPin className="w-4 h-4 text-emerald-400" />} title="Venues" count={detailUser.venues.length}>
-                    <div className="space-y-1">
+                  <Section icon={<MapPin className="h-4 w-4 text-zinc-400" />} title="Venues" count={detailUser.venues.length}>
+                    <div className="divide-y divide-white/5 border border-white/10 bg-white/[0.025] px-3">
                       {detailUser.venues.map(v => (
-                        <div key={v.id} className="flex items-center gap-2 text-xs py-1">
-                          <span className="text-white font-medium">{v.name}</span>
+                        <div key={v.id} className="flex flex-wrap items-center gap-2 py-2 text-xs">
+                          <span className="font-medium text-white">{v.name}</span>
                           {v.city && <span className="text-zinc-500">{v.city}, {v.country}</span>}
-                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${v.status === 'published' ? 'text-emerald-400' : 'text-zinc-500'}`}>{v.status}</span>
+                          <span className={`px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${v.status === 'published' ? 'text-white' : 'text-zinc-500'}`}>{v.status}</span>
                         </div>
                       ))}
                     </div>
@@ -581,13 +604,13 @@ export default function LicenseManagement() {
 
                 {/* Tournaments */}
                 {detailUser.tournaments.length > 0 && (
-                  <Section icon={<Trophy className="w-4 h-4 text-amber-400" />} title="Tournaments" count={detailUser.tournaments.length}>
-                    <div className="space-y-1">
+                  <Section icon={<Trophy className="h-4 w-4 text-zinc-400" />} title="Tournaments" count={detailUser.tournaments.length}>
+                    <div className="divide-y divide-white/5 border border-white/10 bg-white/[0.025] px-3">
                       {detailUser.tournaments.map(t => (
-                        <div key={t.id} className="flex items-center gap-2 text-xs py-1">
-                          <span className="text-white font-medium">{t.name}</span>
-                          <span className="text-zinc-500">{t.game}</span>
-                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${t.status === 'published' ? 'text-emerald-400' : t.status === 'completed' ? 'text-blue-400' : 'text-zinc-500'}`}>{t.status}</span>
+                        <div key={t.id} className="flex flex-wrap items-center gap-2 py-2 text-xs">
+                          <span className="font-medium text-white">{t.name}</span>
+                          <span className="font-mono text-zinc-500">{t.game}</span>
+                          <span className={`px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${t.status === 'published' ? 'text-white' : t.status === 'completed' ? 'text-zinc-300' : 'text-zinc-500'}`}>{t.status}</span>
                         </div>
                       ))}
                     </div>
@@ -607,10 +630,10 @@ export default function LicenseManagement() {
 function Section({ icon, title, count, children }: { icon: React.ReactNode; title: string; count: number; children: React.ReactNode }) {
   return (
     <div>
-      <div className="flex items-center gap-2 mb-2">
+      <div className="mb-2 flex items-center gap-2">
         {icon}
-        <span className="text-sm font-medium text-white">{title}</span>
-        <span className="text-[10px] text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded-full">{count}</span>
+        <span className={FIELD_LABEL}>{title}</span>
+        <span className="rounded-none border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-zinc-500">{count}</span>
       </div>
       {children}
     </div>
