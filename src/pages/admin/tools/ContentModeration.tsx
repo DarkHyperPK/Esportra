@@ -17,8 +17,6 @@ import {
   ImageIcon,
   Zap,
 } from "lucide-react";
-import { Button, DangerButton, SuccessButton } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -53,6 +51,15 @@ import {
   useDismissModeration,
 } from "@/hooks/useAdminQueries";
 import type { ModerationItem } from "@/hooks/useAdminQueries";
+import { AdminPage } from "@/components/admin/AdminPage";
+import {
+  CommandButton,
+  CommandEmptyState,
+  CommandIconButton,
+  CommandMetric,
+  CommandSection,
+  CommandToolbar,
+} from "@/components/management/CommandSurface";
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -73,17 +80,13 @@ const CONTENT_TYPE_OPTIONS = [
   { value: "match_evidence", label: "Match Evidence" },
 ] as const;
 
-const CONTENT_TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  tournament: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/30" },
-  team: { bg: "bg-purple-500/10", text: "text-purple-400", border: "border-purple-500/30" },
-  profile: { bg: "bg-green-500/10", text: "text-green-400", border: "border-green-500/30" },
-  match_evidence: { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/30" },
-};
+const CONTENT_TYPE_BADGE =
+  "border-white/15 text-zinc-400";
 
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  pending: { bg: "bg-amber-500/10", text: "text-amber-400" },
-  approved: { bg: "bg-green-500/10", text: "text-green-400" },
-  rejected: { bg: "bg-red-500/10", text: "text-red-400" },
+const STATUS_BADGE: Record<string, string> = {
+  pending: "border-amber-500/30 text-amber-300",
+  approved: "border-white/25 text-white",
+  rejected: "border-red-500/30 text-red-300",
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -118,47 +121,35 @@ function StatsBar() {
   const { data: stats, isLoading } = useModerationStats();
 
   const statItems = [
-    { label: "Pending", value: stats?.pending ?? 0, color: "amber", icon: Clock },
-    { label: "Approved", value: stats?.approved ?? 0, color: "green", icon: CheckCircle },
-    { label: "Rejected", value: stats?.rejected ?? 0, color: "red", icon: XCircle },
-    { label: "Total", value: stats?.total ?? 0, color: "zinc", icon: Shield },
+    { label: "Pending", value: stats?.pending ?? 0, tone: "warning" as const, icon: <Clock className="h-4 w-4" /> },
+    { label: "Approved", value: stats?.approved ?? 0, tone: "neutral" as const, icon: <CheckCircle className="h-4 w-4" /> },
+    { label: "Rejected", value: stats?.rejected ?? 0, tone: "danger" as const, icon: <XCircle className="h-4 w-4" /> },
+    { label: "Total", value: stats?.total ?? 0, tone: "neutral" as const, icon: <Shield className="h-4 w-4" /> },
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {statItems.map((stat, idx) => {
-        const colorMap: Record<string, string> = {
-          amber: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-          green: "bg-green-500/10 text-green-400 border-green-500/20",
-          red: "bg-red-500/10 text-red-400 border-red-500/20",
-          zinc: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
-        };
-        const classes = colorMap[stat.color] || colorMap.zinc;
-
-        return (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05 }}
-            className={`relative overflow-hidden rounded-2xl border p-4 ${classes}`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wider opacity-70">
-                  {stat.label}
-                </p>
-                {isLoading ? (
-                  <Skeleton className="h-8 w-16 mt-1" />
-                ) : (
-                  <p className="text-2xl font-bold mt-1">{stat.value.toLocaleString()}</p>
-                )}
-              </div>
-              <stat.icon className="w-8 h-8 opacity-20" />
+      {statItems.map((stat, idx) => (
+        <motion.div
+          key={stat.label}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: idx * 0.05 }}
+        >
+          {isLoading ? (
+            <div className="border border-white/10 bg-white/[0.025] p-3">
+              <Skeleton className="h-16 w-full rounded-none" />
             </div>
-          </motion.div>
-        );
-      })}
+          ) : (
+            <CommandMetric
+              label={stat.label}
+              value={stat.value.toLocaleString()}
+              icon={stat.icon}
+              tone={stat.tone}
+            />
+          )}
+        </motion.div>
+      ))}
     </div>
   );
 }
@@ -169,43 +160,24 @@ function ModerationSkeleton() {
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-5 space-y-4"
+          className="border border-white/10 bg-[#0a0a0c]/92 p-5 space-y-4"
         >
           <div className="flex items-center gap-3">
-            <Skeleton className="h-6 w-20 rounded-full" />
-            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-6 w-20 rounded-none" />
+            <Skeleton className="h-4 w-24 rounded-none" />
           </div>
-          <Skeleton className="h-16 w-full rounded-lg" />
+          <Skeleton className="h-16 w-full rounded-none" />
           <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-8 w-8 rounded-none" />
+            <Skeleton className="h-4 w-32 rounded-none" />
           </div>
           <div className="flex gap-2">
-            <Skeleton className="h-9 w-24 rounded-lg" />
-            <Skeleton className="h-9 w-24 rounded-lg" />
+            <Skeleton className="h-9 w-24 rounded-none" />
+            <Skeleton className="h-9 w-24 rounded-none" />
           </div>
         </div>
       ))}
     </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col items-center justify-center py-20 text-center"
-    >
-      <div className="w-20 h-20 rounded-3xl bg-zinc-800/50 flex items-center justify-center mb-6">
-        <Shield className="w-10 h-10 text-zinc-600" />
-      </div>
-      <h3 className="text-lg font-semibold text-white mb-2">No items in moderation queue</h3>
-      <p className="text-sm text-zinc-500 max-w-md">
-        All content looks good! Items that need review will appear here when reported by users or
-        flagged by automated systems.
-      </p>
-    </motion.div>
   );
 }
 
@@ -218,8 +190,7 @@ interface ModerationCardProps {
 
 function ModerationCard({ item, onApprove, onReject, onDismiss }: ModerationCardProps) {
   const isPending = item.status === "pending";
-  const typeColors = CONTENT_TYPE_COLORS[item.content_type] || CONTENT_TYPE_COLORS.profile;
-  const statusColors = STATUS_COLORS[item.status] || STATUS_COLORS.pending;
+  const statusBadge = STATUS_BADGE[item.status] || STATUS_BADGE.pending;
 
   return (
     <motion.div
@@ -229,53 +200,51 @@ function ModerationCard({ item, onApprove, onReject, onDismiss }: ModerationCard
       exit={{ opacity: 0, scale: 0.95 }}
       whileHover={{ y: -4 }}
       transition={{ duration: 0.2 }}
-      className={`group relative rounded-2xl border bg-[#0a0a0c] p-5 transition-all duration-200 ${
+      className={`group relative border bg-[#0a0a0c]/92 p-5 transition-colors ${
         isPending
-          ? "border-white/5 hover:border-rose-500/20"
-          : "border-white/[0.03] opacity-70 hover:opacity-90"
+          ? "border-white/10 hover:border-white/25"
+          : "border-white/[0.06] opacity-70 hover:opacity-100"
       }`}
     >
       {/* Dismiss button */}
-      <button
+      <CommandIconButton
+        label="Dismiss item"
+        variant="danger"
         onClick={() => onDismiss(item.id)}
-        className="absolute top-3 right-3 p-1.5 rounded-lg text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
-        aria-label="Dismiss item"
+        className="absolute top-3 right-3 opacity-0 transition-opacity group-hover:opacity-100"
       >
         <Trash2 className="w-4 h-4" />
-      </button>
+      </CommandIconButton>
 
       {/* Header: type badge + status + auto-flagged */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <Badge
-          variant="outline"
-          className={`${typeColors.bg} ${typeColors.text} ${typeColors.border} border text-xs font-medium`}
+      <div className="flex items-center gap-2 mb-3 flex-wrap pr-10">
+        <span
+          className={`border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${CONTENT_TYPE_BADGE}`}
         >
           {formatContentType(item.content_type)}
-        </Badge>
-        <Badge
-          variant="outline"
-          className={`${statusColors.bg} ${statusColors.text} border-transparent text-xs`}
+        </span>
+        <span
+          className={`border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${statusBadge}`}
         >
           {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-        </Badge>
+        </span>
         {item.auto_flagged && (
-          <Badge
-            variant="outline"
-            className="bg-orange-500/10 text-orange-400 border-orange-500/30 text-xs"
-          >
-            <Zap className="w-3 h-3 mr-1" />
+          <span className="border border-rose-500/30 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-rose-300">
+            <Zap className="mr-1 inline w-3 h-3" />
             Auto-flagged
-          </Badge>
+          </span>
         )}
       </div>
 
       {/* Field name */}
-      <p className="text-xs text-zinc-500 mb-2 font-mono">{item.field_name}</p>
+      <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+        {item.field_name}
+      </p>
 
       {/* Content preview */}
       <div className="mb-4">
         {item.content_url && isImageUrl(item.content_url) ? (
-          <div className="relative rounded-xl overflow-hidden border border-white/5 bg-zinc-900/50">
+          <div className="relative overflow-hidden border border-white/10 bg-black/40">
             <img
               src={item.content_url}
               alt="Reported content"
@@ -283,7 +252,7 @@ function ModerationCard({ item, onApprove, onReject, onDismiss }: ModerationCard
               loading="lazy"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-            <div className="absolute bottom-2 left-2 flex items-center gap-1 text-xs text-white/70">
+            <div className="absolute bottom-2 left-2 flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-white/70">
               <ImageIcon className="w-3 h-3" />
               Image
             </div>
@@ -293,27 +262,27 @@ function ModerationCard({ item, onApprove, onReject, onDismiss }: ModerationCard
             href={item.content_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="block p-3 rounded-xl bg-zinc-900/50 border border-white/5 text-sm text-blue-400 hover:text-blue-300 truncate transition-colors"
+            className="block truncate border border-white/10 bg-black/40 p-3 text-sm text-rose-300 transition-colors hover:text-rose-200"
           >
-            <Eye className="w-3.5 h-3.5 inline mr-1.5" />
+            <Eye className="mr-1.5 inline w-3.5 h-3.5" />
             {item.content_url}
           </a>
         ) : item.content_text ? (
-          <div className="p-3 rounded-xl bg-zinc-900/50 border border-white/5">
+          <div className="border border-white/10 bg-black/40 p-3">
             <p className="text-sm text-zinc-300 line-clamp-3 whitespace-pre-wrap">
               {item.content_text}
             </p>
           </div>
         ) : (
-          <div className="p-3 rounded-xl bg-zinc-900/30 border border-white/5">
-            <p className="text-sm text-zinc-600 italic">No content preview available</p>
+          <div className="border border-white/10 bg-white/[0.02] p-3">
+            <p className="text-sm italic text-zinc-600">No content preview available</p>
           </div>
         )}
       </div>
 
       {/* Reported reason */}
-      <div className="flex items-start gap-2 mb-4 p-2.5 rounded-lg bg-red-500/5 border border-red-500/10">
-        <Flag className="w-3.5 h-3.5 text-red-400 mt-0.5 shrink-0" />
+      <div className="flex items-start gap-2 mb-4 border border-red-500/10 bg-red-500/5 p-2.5">
+        <Flag className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-300" />
         <p className="text-xs text-red-300/80 line-clamp-2">{item.reported_reason}</p>
       </div>
 
@@ -327,14 +296,12 @@ function ModerationCard({ item, onApprove, onReject, onDismiss }: ModerationCard
             loading="lazy"
           />
         ) : (
-          <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center">
-            <User className="w-3 h-3 text-zinc-500" />
-          </div>
+          <User className="w-4 h-4 text-zinc-500" />
         )}
         <span className="text-xs text-zinc-400">
           {item.reporter_username || "System"}
         </span>
-        <span className="text-xs text-zinc-600 ml-auto flex items-center gap-1">
+        <span className="ml-auto flex items-center gap-1 font-mono text-xs text-zinc-600">
           <Clock className="w-3 h-3" />
           {formatTimeAgo(item.created_at)}
         </span>
@@ -342,14 +309,14 @@ function ModerationCard({ item, onApprove, onReject, onDismiss }: ModerationCard
 
       {/* Review info (for already-reviewed items) */}
       {!isPending && item.reviewed_at && (
-        <div className="mb-4 p-3 rounded-lg bg-zinc-900/50 border border-white/5 space-y-1">
-          <div className="flex items-center gap-2 text-xs text-zinc-400">
+        <div className="mb-4 space-y-1 border border-white/10 bg-black/40 p-3">
+          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-zinc-400">
             <Eye className="w-3 h-3" />
             Reviewed {formatTimeAgo(item.reviewed_at)}
           </div>
           {item.review_notes && (
             <div className="flex items-start gap-2 text-xs text-zinc-500">
-              <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" />
+              <MessageSquare className="mt-0.5 h-3 w-3 shrink-0" />
               <span className="line-clamp-2">{item.review_notes}</span>
             </div>
           )}
@@ -359,22 +326,23 @@ function ModerationCard({ item, onApprove, onReject, onDismiss }: ModerationCard
       {/* Action buttons */}
       {isPending && (
         <div className="flex gap-2">
-          <SuccessButton
+          <CommandButton
             size="sm"
             onClick={() => onApprove(item)}
-            className="flex-1 h-9"
+            className="flex-1"
           >
             <CheckCircle className="w-4 h-4 mr-1.5" />
             Approve
-          </SuccessButton>
-          <Button
+          </CommandButton>
+          <CommandButton
+            variant="danger"
             size="sm"
             onClick={() => onReject(item)}
-            className="flex-1 bg-red-600 hover:bg-red-500 text-white border-0 h-9"
+            className="flex-1"
           >
             <XCircle className="w-4 h-4 mr-1.5" />
             Reject
-          </Button>
+          </CommandButton>
         </div>
       )}
     </motion.div>
@@ -407,13 +375,13 @@ function ReviewDialog({ open, onOpenChange, item, action, onConfirm, isSubmittin
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="bg-[#0a0a0c] border-white/10 sm:max-w-md">
+      <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-white flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 text-white">
             {isReject ? (
-              <XCircle className="w-5 h-5 text-red-400" />
+              <XCircle className="w-5 h-5 text-red-300" />
             ) : (
-              <CheckCircle className="w-5 h-5 text-green-400" />
+              <CheckCircle className="w-5 h-5 text-white" />
             )}
             {isReject ? "Reject Content" : "Approve Content"}
           </DialogTitle>
@@ -425,17 +393,17 @@ function ReviewDialog({ open, onOpenChange, item, action, onConfirm, isSubmittin
         </DialogHeader>
 
         {item && (
-          <div className="p-3 rounded-lg bg-zinc-900/50 border border-white/5 text-sm text-zinc-400 space-y-1">
+          <div className="space-y-1 border border-white/10 bg-black/40 p-3 text-sm text-zinc-400">
             <p>
-              <span className="text-zinc-500">Type:</span>{" "}
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Type:</span>{" "}
               <span className="text-zinc-300">{formatContentType(item.content_type)}</span>
             </p>
             <p>
-              <span className="text-zinc-500">Field:</span>{" "}
-              <span className="text-zinc-300 font-mono text-xs">{item.field_name}</span>
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Field:</span>{" "}
+              <span className="font-mono text-xs text-zinc-300">{item.field_name}</span>
             </p>
             {item.content_text && (
-              <p className="text-zinc-300 line-clamp-2 mt-2">{item.content_text}</p>
+              <p className="mt-2 line-clamp-2 text-zinc-300">{item.content_text}</p>
             )}
           </div>
         )}
@@ -444,34 +412,37 @@ function ReviewDialog({ open, onOpenChange, item, action, onConfirm, isSubmittin
           placeholder={isReject ? "Reason for rejection (required)..." : "Notes (optional)..."}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="bg-zinc-900/50 border-white/10 text-white placeholder:text-zinc-600 min-h-[100px] resize-none"
+          className="min-h-[100px] resize-none rounded-none border-white/10 bg-black/40 text-white placeholder:text-zinc-600"
         />
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            variant="outline"
+          <CommandButton
+            variant="ghost"
+            size="sm"
             onClick={() => handleOpenChange(false)}
-            className="border-zinc-800 text-zinc-400 hover:text-white"
             disabled={isSubmitting}
           >
             Cancel
-          </Button>
+          </CommandButton>
           {isReject ? (
-            <DangerButton
+            <CommandButton
+              variant="danger"
+              size="sm"
               onClick={handleSubmit}
               disabled={!canSubmit || isSubmitting}
             >
               {isSubmitting && <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" />}
               Reject
-            </DangerButton>
+            </CommandButton>
           ) : (
-            <SuccessButton
+            <CommandButton
+              size="sm"
               onClick={handleSubmit}
               disabled={!canSubmit || isSubmitting}
             >
               {isSubmitting && <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" />}
               Approve
-            </SuccessButton>
+            </CommandButton>
           )}
         </DialogFooter>
       </DialogContent>
@@ -557,137 +528,105 @@ const ContentModeration = () => {
   }, []);
 
   return (
-    <div className="min-h-screen p-4 lg:p-8 max-w-[1400px] mx-auto">
-      {/* Page Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8"
-      >
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center">
-            <Shield className="w-6 h-6 text-rose-500" />
-          </div>
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight text-white font-[Poppins]">
-              Content Moderation
-            </h1>
-            <p className="text-zinc-500 text-sm">Review reported and flagged content</p>
-          </div>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          className="border-zinc-800 text-zinc-400 hover:text-white hover:border-white/25 self-start sm:self-auto"
-        >
+    <AdminPage
+      eyebrow="Content"
+      title="Moderation"
+      description="Review reported and flagged content"
+      actions={
+        <CommandButton variant="secondary" size="sm" onClick={() => refetch()}>
           <RefreshCw className="w-4 h-4 mr-2" />
           Refresh
-        </Button>
-      </motion.header>
-
+        </CommandButton>
+      }
+    >
       {/* Stats Bar */}
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05 }}
-        className="mb-8"
-      >
-        <StatsBar />
-      </motion.section>
+      <StatsBar />
 
       {/* Filter Controls */}
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex flex-col sm:flex-row gap-3 mb-6"
-      >
-        <div className="w-full sm:w-48">
-          <Select value={statusFilter} onValueChange={handleStatusChange}>
-            <SelectTrigger className="bg-[#0a0a0c] border-white/10 text-white h-10">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent className="bg-[#121214] border-white/10">
-              {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value} className="text-zinc-300">
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <CommandToolbar className="mt-5">
+        <div className="flex w-full flex-col gap-3 lg:flex-row">
+          <div className="w-full lg:w-48">
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
+              <SelectTrigger className="h-10 rounded-none border-white/10 bg-[#0a0a0c]/92 text-white">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+                {STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-zinc-300">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="w-full lg:w-48">
+            <Select value={typeFilter} onValueChange={handleTypeChange}>
+              <SelectTrigger className="h-10 rounded-none border-white/10 bg-[#0a0a0c]/92 text-white">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+                {CONTENT_TYPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-zinc-300">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="hidden flex-1 lg:block" />
+
+          <p className="self-center font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500 hidden lg:block">
+            {total} item{total !== 1 ? "s" : ""} found
+          </p>
         </div>
-
-        <div className="w-full sm:w-48">
-          <Select value={typeFilter} onValueChange={handleTypeChange}>
-            <SelectTrigger className="bg-[#0a0a0c] border-white/10 text-white h-10">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent className="bg-[#121214] border-white/10">
-              {CONTENT_TYPE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value} className="text-zinc-300">
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex-1" />
-
-        <p className="text-xs text-zinc-500 self-center hidden sm:block">
-          {total} item{total !== 1 ? "s" : ""} found
-        </p>
-      </motion.section>
+      </CommandToolbar>
 
       {/* Content Grid */}
-      {isLoading ? (
-        <ModerationSkeleton />
-      ) : error ? (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center justify-center py-20 text-center"
-        >
-          <AlertTriangle className="w-12 h-12 text-rose-500 mb-4" />
-          <h3 className="text-lg font-semibold text-white mb-2">Failed to load moderation queue</h3>
-          <p className="text-sm text-zinc-500 mb-6 max-w-md">
-            {(error as Error)?.message || "An unexpected error occurred while fetching the moderation queue."}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            className="border-zinc-800 text-zinc-400 hover:text-white hover:border-white/25"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Retry
-          </Button>
-        </motion.div>
-      ) : items.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <AnimatePresence mode="popLayout">
-          <motion.div
-            key={`${statusFilter}-${typeFilter}-${page}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
-          >
-            {items.map((item) => (
-              <ModerationCard
-                key={item.id}
-                item={item}
-                onApprove={handleApprove}
-                onReject={handleReject}
-                onDismiss={handleDismiss}
-              />
-            ))}
-          </motion.div>
-        </AnimatePresence>
-      )}
+      <div className="mt-5">
+        {isLoading ? (
+          <ModerationSkeleton />
+        ) : error ? (
+          <CommandSection className="py-16 text-center">
+            <AlertTriangle className="mx-auto mb-4 h-8 w-8 text-rose-400" />
+            <h3 className="mb-2 text-lg font-semibold text-white">Failed to load moderation queue</h3>
+            <p className="mx-auto mb-6 max-w-md text-sm text-zinc-500">
+              {(error as Error)?.message || "An unexpected error occurred while fetching the moderation queue."}
+            </p>
+            <CommandButton variant="ghost" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </CommandButton>
+          </CommandSection>
+        ) : items.length === 0 ? (
+          <CommandEmptyState
+            title="No items in moderation queue"
+            description="All content looks good! Items that need review will appear here when reported by users or flagged by automated systems."
+            icon={<Shield className="h-5 w-5" />}
+          />
+        ) : (
+          <AnimatePresence mode="popLayout">
+            <motion.div
+              key={`${statusFilter}-${typeFilter}-${page}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+            >
+              {items.map((item) => (
+                <ModerationCard
+                  key={item.id}
+                  item={item}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  onDismiss={handleDismiss}
+                />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        )}
+      </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -695,18 +634,16 @@ const ContentModeration = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="flex items-center justify-center gap-2 mt-8"
+          className="mt-8 flex items-center justify-center gap-2"
         >
-          <Button
-            variant="outline"
-            size="sm"
+          <CommandIconButton
+            label="Previous page"
+            variant="ghost"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30"
-            aria-label="Previous page"
           >
             <ChevronLeft className="w-4 h-4" />
-          </Button>
+          </CommandIconButton>
 
           <div className="flex items-center gap-1">
             {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
@@ -722,33 +659,31 @@ const ContentModeration = () => {
               }
 
               return (
-                <Button
+                <button
                   key={pageNum}
-                  variant="outline"
-                  size="sm"
+                  type="button"
                   onClick={() => setPage(pageNum)}
-                  className={`w-9 h-9 border-zinc-800 ${
+                  aria-label={`Page ${pageNum}`}
+                  className={`h-8 w-8 border px-0 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
                     page === pageNum
-                      ? "bg-rose-500/20 border-rose-500/30 text-rose-400"
-                      : "text-zinc-400 hover:text-white"
+                      ? "border-transparent bg-rose-500 text-white"
+                      : "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/25 hover:text-white"
                   }`}
                 >
                   {pageNum}
-                </Button>
+                </button>
               );
             })}
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
+          <CommandIconButton
+            label="Next page"
+            variant="ghost"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30"
-            aria-label="Next page"
           >
             <ChevronRight className="w-4 h-4" />
-          </Button>
+          </CommandIconButton>
         </motion.div>
       )}
 
@@ -764,7 +699,7 @@ const ContentModeration = () => {
 
       {/* Dismiss Confirmation Dialog */}
       <AlertDialog open={dismissTarget !== null} onOpenChange={(open) => { if (!open) setDismissTarget(null); }}>
-        <AlertDialogContent className="bg-[#121214] border-white/10">
+        <AlertDialogContent className="rounded-none border-white/10 bg-[#0a0a0c]">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Dismiss moderation item?</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
@@ -773,14 +708,14 @@ const ContentModeration = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              className="border-zinc-800 text-zinc-400 hover:text-white"
+              className="rounded-none border-white/10 bg-transparent text-zinc-400 hover:bg-white/[0.03] hover:text-white"
               disabled={dismissMutation.isPending}
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDismiss}
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              className="rounded-none border border-red-500/35 bg-red-950/20 text-red-100 hover:bg-rose-600 hover:text-white"
               disabled={dismissMutation.isPending}
             >
               {dismissMutation.isPending ? "Dismissing…" : "Confirm"}
@@ -788,7 +723,7 @@ const ContentModeration = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </AdminPage>
   );
 };
 

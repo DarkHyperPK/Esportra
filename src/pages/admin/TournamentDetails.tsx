@@ -1,10 +1,15 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, type ReactNode } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '@/lib/apiClient';
-import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { auditLog } from '@/lib/auditLog';
 import { formatCurrency } from '@/utils/formatCurrency';
+import { AdminPage } from '@/components/admin/AdminPage';
+import {
+  CommandButton,
+  CommandPanel,
+  CommandSection,
+} from '@/components/management/CommandSurface';
 
 function getTournamentStatus(tournament: any) {
   // Use the DB status directly
@@ -72,35 +77,94 @@ const TournamentDetails = () => {
     }
   };
 
-  if (loading) return <div className="p-8 text-white">Loading...</div>;
-  if (!tournament) return <div className="p-8 text-white">Tournament not found.</div>;
+  if (loading) {
+    return (
+      <AdminPage eyebrow="Content" title="Tournament Details">
+        <CommandSection className="font-mono text-xs uppercase tracking-widest text-zinc-500">
+          Loading...
+        </CommandSection>
+      </AdminPage>
+    );
+  }
+
+  if (!tournament) {
+    return (
+      <AdminPage eyebrow="Content" title="Tournament Details">
+        <CommandSection className="text-sm text-zinc-400">Tournament not found.</CommandSection>
+      </AdminPage>
+    );
+  }
+
+  const rows: [string, ReactNode][] = [
+    ['Name', tournament.name],
+    ['Date', tournament.date],
+    ['Time', tournament.time],
+    [
+      'Status',
+      <span key="status" className="border border-white/25 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-white">
+        {getTournamentStatus(tournament)}
+      </span>,
+    ],
+    ['ID', <span key="id" className="font-mono text-xs">{tournament.id}</span>],
+    ['Description', tournament.description],
+    ['Game', tournament.game],
+    ['Venue', tournament.venue],
+    ['Prize Pool', formatCurrency(parseFloat(tournament.prize_pool || '0'), tournament.currency)],
+    [
+      'Entry Fee',
+      tournament.entry_fee ? formatCurrency(parseFloat(tournament.entry_fee), tournament.currency) : 'Free',
+    ],
+    ['Max Participants', String(tournament.max_participants ?? '')],
+    ['Created At', <span key="created" className="font-mono text-xs">{tournament.created_at}</span>],
+    ['Updated At', <span key="updated" className="font-mono text-xs">{tournament.updated_at}</span>],
+  ];
 
   return (
-    <div className="min-h-screen bg-[#18181b] text-white p-8">
-      <h1 className="text-3xl font-bold mb-4">Tournament Details</h1>
-      <div className="mb-2"><b>Name:</b> {tournament.name}</div>
-      <div className="mb-2"><b>Date:</b> {tournament.date}</div>
-      <div className="mb-2"><b>Time:</b> {tournament.time}</div>
-      <div className="mb-2"><b>Status:</b> {getTournamentStatus(tournament)}</div>
-      <div className="mb-2"><b>ID:</b> {tournament.id}</div>
-      <div className="mb-2"><b>Description:</b> {tournament.description}</div>
-      <div className="mb-2"><b>Game:</b> {tournament.game}</div>
-      <div className="mb-2"><b>Venue:</b> {tournament.venue}</div>
-      <div className="mb-2"><b>Prize Pool:</b> {formatCurrency(parseFloat(tournament.prize_pool || '0'), tournament.currency)}</div>
-      <div className="mb-2"><b>Entry Fee:</b> {tournament.entry_fee ? formatCurrency(parseFloat(tournament.entry_fee), tournament.currency) : 'Free'}</div>
-      <div className="mb-2"><b>Max Participants:</b> {tournament.max_participants}</div>
-      <div className="mb-2"><b>Created At:</b> {tournament.created_at}</div>
-      <div className="mb-2"><b>Updated At:</b> {tournament.updated_at}</div>
-      {!tournament.finished && (
-        <Button className="mt-4 mr-2" variant="destructive" onClick={handleMarkFinished}>
-          Mark as Finished
-        </Button>
-      )}
-      <Button className="mt-4" variant="destructive" onClick={handleDelete}>
-        Delete Tournament
-      </Button>
-    </div>
+    <AdminPage
+      eyebrow="Content"
+      title="Tournament Details"
+      description={tournament.name}
+      actions={
+        !tournament.finished ? (
+          <CommandButton variant="warning" size="sm" onClick={handleMarkFinished}>
+            Mark as Finished
+          </CommandButton>
+        ) : undefined
+      }
+    >
+      <CommandSection>
+        <h2 className="mb-4 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+          Tournament Information
+        </h2>
+        <div className="divide-y divide-white/5">
+          {rows.map(([label, value]) => (
+            <div key={label} className="flex justify-between gap-6 py-2.5 text-sm">
+              <span className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500 pt-0.5">
+                {label}
+              </span>
+              <span className="truncate text-right capitalize text-white">{value || '—'}</span>
+            </div>
+          ))}
+        </div>
+      </CommandSection>
+
+      <CommandPanel className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+          Danger Zone
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          {!tournament.finished && (
+            <CommandButton variant="warning" size="sm" onClick={handleMarkFinished}>
+              Mark as Finished
+            </CommandButton>
+          )}
+          <CommandButton variant="danger" size="sm" onClick={handleDelete}>
+            Delete Tournament
+          </CommandButton>
+        </div>
+      </CommandPanel>
+    </AdminPage>
   );
 };
 
-export default TournamentDetails; 
+export default TournamentDetails;

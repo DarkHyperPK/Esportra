@@ -1,10 +1,5 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
 import {
-  ArrowLeft,
   MapPin,
   Search,
   Eye,
@@ -22,9 +17,17 @@ import {
   Cpu,
   Coffee,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { useAdminVenues, useAdminVenueUpdate } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
+import { AdminPage } from '@/components/admin/AdminPage';
+import {
+  CommandButton,
+  CommandEmptyState,
+  CommandMetric,
+  CommandSection,
+  CommandSegmentedButton,
+  CommandToolbar,
+} from '@/components/management/CommandSurface';
 import {
   Dialog,
   DialogContent,
@@ -75,6 +78,29 @@ interface Venue {
   owner_name?: string;
   owner_email?: string;
   slug?: string;
+}
+
+function VenueStatusChip({ status }: { status: string }) {
+  if (status === 'published') {
+    return (
+      <span className="inline-flex items-center gap-1.5 border border-white/40 bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-white">
+        <span className="h-1.5 w-1.5 bg-rose-500" />
+        Verified
+      </span>
+    );
+  }
+  if (status === 'pending_review') {
+    return (
+      <span className="border border-amber-500/35 bg-amber-950/20 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-300">
+        Pending Review
+      </span>
+    );
+  }
+  return (
+    <span className="border border-white/10 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+      {status?.replace('_', ' ') || 'Pending'}
+    </span>
+  );
 }
 
 const VenueManagementTool = () => {
@@ -140,226 +166,161 @@ const VenueManagementTool = () => {
   };
 
   return (
-    <div className="relative min-h-screen p-4 lg:p-8">
-      {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8"
-      >
-        <div className="flex items-center gap-4">
-          <Link to="/admin/dashboard">
-            <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-emerald-500" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Venue Management</h1>
-              <p className="text-zinc-500 text-sm">Manage and verify gaming venues</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="border-zinc-800 text-zinc-400 hover:text-white"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button
-            size="sm"
-            onClick={exportCSV}
-            className="bg-rose-500 hover:bg-rose-600 text-white"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-        </div>
-      </motion.header>
-
+    <AdminPage
+      eyebrow="Content"
+      title="Venues"
+      description="Manage and verify gaming venues"
+      actions={
+        <>
+          <CommandButton variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
+          </CommandButton>
+          <CommandButton variant="ghost" size="sm" onClick={exportCSV}>
+            <Download className="h-4 w-4" /> Export
+          </CommandButton>
+        </>
+      }
+    >
       {/* Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"
-      >
-        {[
-          { label: 'Total Venues', value: stats.total, icon: Building, color: 'emerald' },
-          { label: 'Verified', value: stats.verified, icon: CheckCircle, color: 'emerald' },
-          { label: 'Pending', value: stats.pending, icon: Clock, color: 'amber' },
-          { label: 'Total Capacity', value: stats.totalCapacity, icon: Star, color: 'violet' },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="p-4 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <stat.icon className={`w-5 h-5 text-${stat.color}-500`} />
-            </div>
-            <p className="text-2xl font-bold text-white">{stat.value.toLocaleString()}</p>
-            <p className="text-xs text-zinc-500">{stat.label}</p>
-          </div>
-        ))}
-      </motion.div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <CommandMetric label="Total Venues" value={stats.total.toLocaleString()} icon={<Building className="h-4 w-4" />} />
+        <CommandMetric label="Verified" value={stats.verified.toLocaleString()} icon={<CheckCircle className="h-4 w-4" />} />
+        <CommandMetric label="Pending" value={stats.pending.toLocaleString()} tone="warning" icon={<Clock className="h-4 w-4" />} />
+        <CommandMetric label="Total Capacity" value={stats.totalCapacity.toLocaleString()} icon={<Star className="h-4 w-4" />} />
+      </div>
 
       {/* Filters */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="flex flex-col md:flex-row gap-3 mb-6"
-      >
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-          <Input
-            placeholder="Search venues..."
+      <CommandToolbar>
+        <div className="relative flex-1 lg:max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
+          <input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
+            placeholder="Search venues..."
+            className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
           />
         </div>
-        <div className="flex gap-2">
-          {['all', 'verified', 'unverified'].map((status) => (
-            <Button
+        <div className="flex gap-1">
+          {(['all', 'verified', 'unverified'] as const).map((status) => (
+            <CommandSegmentedButton
               key={status}
-              variant="outline"
-              size="sm"
+              active={statusFilter === status}
               onClick={() => setStatusFilter(status)}
-              className={`border-zinc-800 capitalize ${statusFilter === status ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 'text-zinc-400'}`}
             >
               {status === 'all' ? 'All' : status}
-            </Button>
+            </CommandSegmentedButton>
           ))}
         </div>
-      </motion.div>
+      </CommandToolbar>
 
       {/* Venues Table */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-zinc-900/50">
-                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Venue</th>
-                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Capacity</th>
-                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Created</th>
-                <th className="px-6 py-3 text-right text-xs font-mono text-zinc-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/50">
-              {loading ? (
+      {!loading && filteredVenues.length === 0 ? (
+        <CommandEmptyState
+          title="No venues found"
+          description="Venue submissions will appear here for review."
+          icon={<MapPin className="h-5 w-5" />}
+        />
+      ) : (
+        <CommandSection className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-xs">
+              <thead className="bg-black/40 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
                 <tr>
-                  <td colSpan={6} className="text-center py-12">
-                    <div className="flex items-center justify-center gap-2 text-zinc-500">
-                      <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
-                      Loading venues...
-                    </div>
-                  </td>
+                  <th className="px-4 py-3">Venue</th>
+                  <th className="px-4 py-3">Location</th>
+                  <th className="px-4 py-3">Capacity</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Created</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
-              ) : filteredVenues.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-12 text-zinc-500">
-                    No venues found
-                  </td>
-                </tr>
-              ) : (
-                filteredVenues.slice(0, 100).map((venue, idx) => (
-                  <motion.tr
-                    key={venue.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: idx * 0.01 }}
-                    className="hover:bg-zinc-900/30 transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                          <MapPin className="w-5 h-5 text-emerald-500" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-white">{venue.name || 'Unnamed'}</p>
-                          <p className="text-xs text-zinc-500 font-mono">{venue.id.slice(0, 8)}...</p>
-                        </div>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center">
+                      <div className="flex items-center justify-center gap-2 text-zinc-500">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-rose-500 border-t-transparent" />
+                        Loading venues...
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-zinc-400">
-                      {venue.city || venue.location || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-zinc-400">{venue.capacity || '-'}</td>
-                    <td className="px-6 py-4">
-                      <Badge className={`${venue.status === 'published' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'} border text-xs`}>
-                        {venue.status === 'published' ? 'Verified' : venue.status?.replace('_', ' ') || 'Pending'}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-zinc-500">
-                      {new Date(venue.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-[#0a0a0c] border-zinc-800">
-                          <DropdownMenuItem
-                            className="text-zinc-300 focus:text-white focus:bg-zinc-800"
-                            onClick={() => setSelectedVenue(venue)}
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Details
-                          </DropdownMenuItem>
-                          {venue.status !== 'published' ? (
-                            <DropdownMenuItem
-                              className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10"
-                              onClick={() => handleVerify(venue.id, true)}
-                            >
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              Verify Venue
-                            </DropdownMenuItem>
+                  </tr>
+                ) : (
+                  filteredVenues.slice(0, 100).map((venue) => (
+                    <tr key={venue.id} className="text-zinc-300 transition-colors hover:bg-white/[0.03]">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          {venue.card_image ? (
+                            <img src={venue.card_image} alt="" loading="lazy" className="h-8 w-8 border border-white/10 object-contain" />
                           ) : (
-                            <DropdownMenuItem
-                              className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
-                              onClick={() => handleVerify(venue.id, false)}
-                            >
-                              <XCircle className="w-4 h-4 mr-2" />
-                              Remove Verification
-                            </DropdownMenuItem>
+                            <MapPin className="h-4 w-4 shrink-0 text-zinc-500" />
                           )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </motion.tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </motion.div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-white">{venue.name || 'Unnamed'}</p>
+                            <p className="font-mono text-[10px] text-zinc-600">{venue.id.slice(0, 8)}...</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-zinc-400">{venue.city || venue.location || 'N/A'}</td>
+                      <td className="px-4 py-3 font-mono tabular-nums text-zinc-400">{venue.capacity || '-'}</td>
+                      <td className="px-4 py-3"><VenueStatusChip status={venue.status} /></td>
+                      <td className="px-4 py-3 font-mono text-[11px] tabular-nums text-zinc-500">
+                        {new Date(venue.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label="Venue actions"
+                              title="Venue actions"
+                              className="flex h-8 w-8 items-center justify-center border border-white/10 bg-white/[0.03] text-zinc-500 transition-colors hover:border-white/25 hover:text-white"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="border-white/10 bg-[#0a0a0c]">
+                            <DropdownMenuItem
+                              className="text-zinc-300 focus:bg-white/[0.06] focus:text-white"
+                              onClick={() => setSelectedVenue(venue)}
+                            >
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            {venue.status !== 'published' ? (
+                              <DropdownMenuItem
+                                className="text-white focus:bg-rose-500/15 focus:text-white"
+                                onClick={() => handleVerify(venue.id, true)}
+                              >
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Verify Venue
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                className="text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                                onClick={() => handleVerify(venue.id, false)}
+                              >
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Remove Verification
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CommandSection>
+      )}
 
       {/* Venue Detail Modal */}
       <Dialog open={!!selectedVenue} onOpenChange={() => setSelectedVenue(null)}>
-        <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-3xl max-h-[85vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto overscroll-contain rounded-none border-white/10 bg-[#0a0a0c]" data-lenis-prevent>
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-emerald-500" />
+            <DialogTitle className="flex items-center gap-2 text-white">
+              <MapPin className="h-5 w-5 text-rose-400" />
               Venue Review
             </DialogTitle>
             <DialogDescription className="sr-only">Complete venue details for admin review</DialogDescription>
@@ -369,15 +330,15 @@ const VenueManagementTool = () => {
 
               {/* Card Banner Preview */}
               {selectedVenue.card_image && (
-                <div className="rounded-xl overflow-hidden border border-white/5 cursor-pointer" onClick={() => setLightboxImage(selectedVenue.card_image!)}>
-                  <img src={selectedVenue.card_image} alt="Card banner" className="w-full h-48 object-cover hover:scale-105 transition-transform duration-300" />
+                <div className="cursor-pointer overflow-hidden border border-white/10" onClick={() => setLightboxImage(selectedVenue.card_image!)}>
+                  <img src={selectedVenue.card_image} alt="Card banner" loading="lazy" className="h-48 w-full object-cover transition-transform duration-300 hover:scale-105" />
                 </div>
               )}
 
               {/* Basic Info */}
               <div>
-                <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <Building className="w-3 h-3" /> Basic Info
+                <h4 className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                  <Building className="h-3 w-3" /> Basic Info
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   {[
@@ -388,9 +349,9 @@ const VenueManagementTool = () => {
                     { label: 'Created', value: new Date(selectedVenue.created_at).toLocaleDateString() },
                     { label: 'Submitted', value: selectedVenue.submitted_at ? new Date(selectedVenue.submitted_at).toLocaleDateString() : 'Not submitted' },
                   ].map((item) => (
-                    <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50 border border-white/5">
-                      <p className="text-[10px] text-zinc-500 uppercase font-mono">{item.label}</p>
-                      <p className="text-white text-sm mt-1">{item.value || 'N/A'}</p>
+                    <div key={item.label} className="border border-white/10 bg-white/[0.025] p-3">
+                      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">{item.label}</p>
+                      <p className="mt-1 text-sm text-white">{item.value || 'N/A'}</p>
                     </div>
                   ))}
                 </div>
@@ -398,16 +359,16 @@ const VenueManagementTool = () => {
 
               {/* Description */}
               {selectedVenue.description && (
-                <div className="p-4 rounded-xl bg-zinc-900/50 border border-white/5">
-                  <p className="text-[10px] text-zinc-500 uppercase font-mono mb-2">Description</p>
-                  <p className="text-zinc-300 text-sm leading-relaxed">{selectedVenue.description}</p>
+                <div className="border border-white/10 bg-white/[0.025] p-4">
+                  <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Description</p>
+                  <p className="text-sm leading-relaxed text-zinc-300">{selectedVenue.description}</p>
                 </div>
               )}
 
               {/* Location */}
               <div>
-                <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <MapPin className="w-3 h-3" /> Location
+                <h4 className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                  <MapPin className="h-3 w-3" /> Location
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   {[
@@ -418,9 +379,9 @@ const VenueManagementTool = () => {
                     { label: 'Postal Code', value: selectedVenue.postal_code },
                     { label: 'Location', value: selectedVenue.location },
                   ].filter(item => item.value).map((item) => (
-                    <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50 border border-white/5">
-                      <p className="text-[10px] text-zinc-500 uppercase font-mono">{item.label}</p>
-                      <p className="text-white text-sm mt-1">{item.value}</p>
+                    <div key={item.label} className="border border-white/10 bg-white/[0.025] p-3">
+                      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">{item.label}</p>
+                      <p className="mt-1 text-sm text-white">{item.value}</p>
                     </div>
                   ))}
                 </div>
@@ -428,8 +389,8 @@ const VenueManagementTool = () => {
 
               {/* Specs & Gaming */}
               <div>
-                <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <Gamepad2 className="w-3 h-3" /> Specs & Gaming
+                <h4 className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                  <Gamepad2 className="h-3 w-3" /> Specs & Gaming
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   {[
@@ -438,9 +399,9 @@ const VenueManagementTool = () => {
                     { label: 'Games', value: selectedVenue.games },
                     { label: 'Capacity', value: selectedVenue.capacity },
                   ].filter(item => item.value).map((item) => (
-                    <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50 border border-white/5">
-                      <p className="text-[10px] text-zinc-500 uppercase font-mono">{item.label}</p>
-                      <p className="text-white text-sm mt-1">{item.value}</p>
+                    <div key={item.label} className="border border-white/10 bg-white/[0.025] p-3">
+                      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">{item.label}</p>
+                      <p className="mt-1 font-mono text-sm tabular-nums text-white">{item.value}</p>
                     </div>
                   ))}
                 </div>
@@ -458,14 +419,14 @@ const VenueManagementTool = () => {
                   ].filter(item => item.value);
                   if (entries.length === 0) return null;
                   return (
-                    <div className="mt-3 p-4 rounded-xl bg-zinc-900/50 border border-white/5">
-                      <p className="text-[10px] text-zinc-500 uppercase font-mono mb-3 flex items-center gap-1.5">
-                        <Cpu className="w-3 h-3" /> PC Specifications
+                    <div className="mt-3 border border-white/10 bg-white/[0.025] p-4">
+                      <p className="mb-3 flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                        <Cpu className="h-3 w-3" /> PC Specifications
                       </p>
                       <div className="grid grid-cols-2 gap-2">
                         {entries.map((item) => (
                           <div key={item.label} className="flex items-center gap-2">
-                            <span className="text-[10px] text-zinc-500 font-mono w-16 shrink-0">{item.label}</span>
+                            <span className="w-16 shrink-0 font-mono text-[10px] uppercase tracking-wider text-zinc-500">{item.label}</span>
                             <span className="text-sm text-white">{item.value}</span>
                           </div>
                         ))}
@@ -478,12 +439,12 @@ const VenueManagementTool = () => {
               {/* Amenities */}
               {selectedVenue.amenities && selectedVenue.amenities.length > 0 && (
                 <div>
-                  <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <Coffee className="w-3 h-3" /> Amenities
+                  <h4 className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                    <Coffee className="h-3 w-3" /> Amenities
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {selectedVenue.amenities.map((amenity) => (
-                      <span key={amenity} className="px-3 py-1.5 text-xs font-medium bg-zinc-900 border border-white/5 rounded-lg text-zinc-300 capitalize">
+                      <span key={amenity} className="border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-[11px] capitalize text-zinc-300">
                         {amenity.replace('_', ' ')}
                       </span>
                     ))}
@@ -493,8 +454,8 @@ const VenueManagementTool = () => {
 
               {/* Contact & Pricing */}
               <div>
-                <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <Phone className="w-3 h-3" /> Contact & Pricing
+                <h4 className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                  <Phone className="h-3 w-3" /> Contact & Pricing
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   {[
@@ -502,9 +463,9 @@ const VenueManagementTool = () => {
                     { label: 'Phone', value: selectedVenue.contact_phone },
                     { label: 'Price / Hour', value: selectedVenue.price_per_hour != null ? `${selectedVenue.currency || 'USD'} ${selectedVenue.price_per_hour}` : undefined },
                   ].filter(item => item.value).map((item) => (
-                    <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50 border border-white/5">
-                      <p className="text-[10px] text-zinc-500 uppercase font-mono">{item.label}</p>
-                      <p className="text-white text-sm mt-1">{item.value}</p>
+                    <div key={item.label} className="border border-white/10 bg-white/[0.025] p-3">
+                      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">{item.label}</p>
+                      <p className="mt-1 font-mono text-sm tabular-nums text-white">{item.value}</p>
                     </div>
                   ))}
                 </div>
@@ -513,13 +474,13 @@ const VenueManagementTool = () => {
               {/* Gallery */}
               {selectedVenue.images && selectedVenue.images.length > 0 && (
                 <div>
-                  <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <ImageIcon className="w-3 h-3" /> Gallery ({selectedVenue.images.length} images)
+                  <h4 className="mb-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                    <ImageIcon className="h-3 w-3" /> Gallery ({selectedVenue.images.length} images)
                   </h4>
                   <div className="grid grid-cols-3 gap-3">
                     {selectedVenue.images.map((url, idx) => (
-                      <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border border-white/5 cursor-pointer hover:border-emerald-500/30 transition-colors" onClick={() => setLightboxImage(url)}>
-                        <img src={url} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                      <div key={idx} className="relative aspect-video cursor-pointer overflow-hidden border border-white/10 transition-colors hover:border-white/30" onClick={() => setLightboxImage(url)}>
+                        <img src={url} alt={`Gallery ${idx + 1}`} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 hover:scale-105" />
                       </div>
                     ))}
                   </div>
@@ -533,13 +494,13 @@ const VenueManagementTool = () => {
 
       {/* Image Lightbox */}
       <Dialog open={!!lightboxImage} onOpenChange={() => setLightboxImage(null)}>
-        <DialogContent className="bg-transparent border-none shadow-none max-w-4xl p-0" aria-describedby={undefined}>
+        <DialogContent className="max-w-4xl border-none bg-transparent p-0 shadow-none" aria-describedby={undefined}>
           {lightboxImage && (
-            <img src={lightboxImage} alt="Preview" className="w-full h-auto max-h-[80vh] object-contain rounded-xl" />
+            <img src={lightboxImage} alt="Preview" loading="lazy" className="max-h-[80vh] w-full rounded-none border border-white/10 object-contain" />
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPage>
   );
 };
 
