@@ -60,7 +60,7 @@ interface FeatureFlag {
   name: string;
   description: string | null;
   flag_type: string;
-  default_value: Record<string, unknown>;
+  default_value: Record<string, unknown> | boolean | string | number | null;
   is_enabled: boolean;
   created_at: string;
   rule_count: number;
@@ -618,10 +618,10 @@ export default function FeatureFlags() {
                             <Users className="w-3 h-3" />
                             {flag.override_count} overrides
                           </button>
-                          {flag.default_value && 'percentage' in flag.default_value && (
+                          {flag.default_value && typeof flag.default_value === 'object' && 'percentage' in flag.default_value && (
                             <span className="flex items-center gap-1">
                               <Percent className="w-3 h-3" />
-                              {String(flag.default_value.percentage)}% rollout
+                              {String((flag.default_value as Record<string, unknown>).percentage)}% rollout
                             </span>
                           )}
                         </div>
