@@ -85,6 +85,7 @@ interface UserDetail {
         country_code: string | null;
         date_of_birth: string | null;
         riot_tag: string | null;
+        steam_tag: string | null;
         social_links: Record<string, string> | null;
         card_image_url: string | null;
         banner_url: string | null;
@@ -114,6 +115,30 @@ const USERS_PER_PAGE = 25;
 const FIELD_LABEL_CLASS = "mb-1 block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500";
 const CONTROL_CLASS = "w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500";
 const CHIP_NEUTRAL_CLASS = "border border-white/10 bg-transparent px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-500";
+
+// Social platforms store bare handles (the profile form uses "@username" inputs).
+// Resolve platform + handle -> canonical URL. Full URLs pass through untouched.
+const SOCIAL_URL_BUILDERS: Record<string, (v: string) => string> = {
+    twitter: (v) => `https://x.com/${v.replace(/^@/, '')}`,
+    x: (v) => `https://x.com/${v.replace(/^@/, '')}`,
+    twitch: (v) => `https://twitch.tv/${v.replace(/^@/, '')}`,
+    youtube: (v) => `https://youtube.com/@${v.replace(/^@/, '')}`,
+    instagram: (v) => `https://instagram.com/${v.replace(/^@/, '')}`,
+    facebook: (v) => `https://facebook.com/${v.replace(/^@/, '')}`,
+    tiktok: (v) => `https://tiktok.com/@${v.replace(/^@/, '')}`,
+};
+
+function resolveSocialUrl(platform: string, value: string): string | null {
+    if (!value) return null;
+    if (/^https?:\/\//i.test(value)) return value;
+    const builder = SOCIAL_URL_BUILDERS[platform.toLowerCase()];
+    return builder ? builder(value) : null;
+}
+
+function steamProfileUrl(tag: string): string {
+    const v = tag.trim();
+    return /^\d{17}$/.test(v) ? `https://steamcommunity.com/profiles/${v}` : `https://steamcommunity.com/id/${v}`;
+}
 
 const UserManagementTool = () => {
     const navigate = useNavigate();
@@ -1189,19 +1214,30 @@ const UserManagementTool = () => {
                                     <div className="border border-white/10 bg-white/[0.025] p-3">
                                         <p className={`${FIELD_LABEL_CLASS} mb-2`}>Connected Accounts</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {userDetail.connected_accounts.map((acc) => (
-                                                <span key={acc.provider} className="inline-flex items-center gap-1 border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
-                                                    <Globe className="h-3 w-3" />
-                                                    {acc.provider}
-                                                    <span className="text-zinc-500 tabular-nums">({acc.provider_id})</span>
-                                                </span>
-                                            ))}
+                                            {userDetail.connected_accounts.map((acc) => {
+                                                const profileUrl = acc.provider.toLowerCase() === 'discord' && /^\d+$/.test(acc.provider_id)
+                                                    ? `https://discord.com/users/${acc.provider_id}`
+                                                    : null;
+                                                return (
+                                                    <a key={acc.provider}
+                                                       href={profileUrl ?? '#'}
+                                                       target={profileUrl ? '_blank' : undefined}
+                                                       rel="noopener noreferrer"
+                                                       onClick={profileUrl ? undefined : (e) => e.preventDefault()}
+                                                       title={profileUrl ? `Open ${acc.provider} profile` : `Provider ID: ${acc.provider_id} (no public profile)`}
+                                                       className="inline-flex items-center gap-1 border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-zinc-300 transition-colors hover:border-rose-500/40 hover:text-rose-200">
+                                                        <Globe className="h-3 w-3" />
+                                                        {acc.provider}
+                                                        <span className="text-zinc-500 tabular-nums normal-case">({acc.provider_id})</span>
+                                                    </a>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Gaming Tags */}
-                                {p.riot_tag && (
+                                {(p.riot_tag || p.steam_tag) && (
                                     <div className="border border-white/10 bg-white/[0.025] p-3">
                                         <p className={`${FIELD_LABEL_CLASS} mb-2`}>Gaming Tags</p>
                                         <div className="flex flex-wrap gap-3">
@@ -1209,6 +1245,12 @@ const UserManagementTool = () => {
                                                 <span className="flex items-center gap-1 font-mono text-xs uppercase tracking-wider text-zinc-200">
                                                     <Gamepad2 className="h-3.5 w-3.5 text-red-400" /> Riot: {p.riot_tag}
                                                 </span>
+                                            )}
+                                            {p.steam_tag && (
+                                                <a href={steamProfileUrl(p.steam_tag)} target="_blank" rel="noopener noreferrer"
+                                                   className="flex items-center gap-1 font-mono text-xs uppercase tracking-wider text-zinc-200 transition-colors hover:text-rose-300">
+                                                    <Gamepad2 className="h-3.5 w-3.5 text-zinc-400" /> Steam: {p.steam_tag}
+                                                </a>
                                             )}
                                         </div>
                                     </div>
@@ -1219,12 +1261,20 @@ const UserManagementTool = () => {
                                     <div className="border border-white/10 bg-white/[0.025] p-3">
                                         <p className={`${FIELD_LABEL_CLASS} mb-2`}>Social Links</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {Object.entries(p.social_links).map(([platform, url]) => (
-                                                <a key={platform} href={url as string} target="_blank" rel="noopener noreferrer"
-                                                   className="flex items-center gap-1 border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-rose-300 transition-colors hover:border-white/25 hover:text-rose-200">
-                                                    <Link2 className="h-3 w-3" /> {platform}
-                                                </a>
-                                            ))}
+                                            {Object.entries(p.social_links).filter(([, v]) => v).map(([platform, url]) => {
+                                                const resolved = resolveSocialUrl(platform, url as string);
+                                                return resolved ? (
+                                                    <a key={platform} href={resolved} target="_blank" rel="noopener noreferrer"
+                                                       className="flex items-center gap-1 border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-rose-300 transition-colors hover:border-white/25 hover:text-rose-200">
+                                                        <Link2 className="h-3 w-3" /> {platform}
+                                                    </a>
+                                                ) : (
+                                                    <span key={platform} title={`Handle: ${url}`}
+                                                          className="flex items-center gap-1 border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-zinc-400">
+                                                        <Link2 className="h-3 w-3" /> {platform}: {url as string}
+                                                    </span>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}

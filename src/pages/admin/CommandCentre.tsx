@@ -13,7 +13,19 @@ import {
   TrendingUp,
   WifiOff,
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  type TooltipProps,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useAdminHub } from '@/hooks/useAdminHub';
 import { adminNavGroups } from '@/components/admin/adminNav';
@@ -83,6 +95,13 @@ interface PendingVerification {
   avatar_url: string | null;
 }
 
+interface CommandCentreCharts {
+  signups_14d: { day: string; count: number }[];
+  tournaments_14d: { day: string; count: number }[];
+  disputes_14d: { day: string; count: number }[];
+  sponsor_daily_14d: { day: string; impressions: number; clicks: number }[];
+}
+
 interface CommandCentreData {
   pending_counts: PendingCounts;
   stats: Stats;
@@ -92,6 +111,7 @@ interface CommandCentreData {
   signups_7d: { day: string; count: number }[];
   recent_activity: ActivityItem[];
   oldest_pending: PendingVerification[];
+  charts?: CommandCentreCharts;
 }
 
 const actionTypeLabels: Record<string, string> = {
@@ -113,6 +133,47 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.45em] text-zinc-500">
       {children}
     </p>
+  );
+}
+
+const chartTick = {
+  fill: '#52525b',
+  fontSize: 10,
+  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+};
+
+const formatDayTick = (day: string) => format(new Date(`${day}T00:00:00`), 'MMM d');
+
+function mergeDailyCounts(
+  primary: { day: string; count: number }[],
+  secondary: { day: string; count: number }[],
+) {
+  const byDay = new Map<string, { day: string; signups: number; tournaments: number }>();
+  primary.forEach(p => byDay.set(p.day, { day: p.day, signups: p.count, tournaments: 0 }));
+  secondary.forEach(p => {
+    const row = byDay.get(p.day) ?? { day: p.day, signups: 0, tournaments: 0 };
+    row.tournaments = p.count;
+    byDay.set(p.day, row);
+  });
+  return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
+}
+
+function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  if (!active || !payload?.length) return null;
+
+  return (
+    <div className="border border-[#3f3f46] bg-[#18181b] px-3 py-2 font-mono text-xs text-zinc-200">
+      {label ? <p className="mb-1 uppercase tracking-wider text-zinc-500">{formatDayTick(String(label))}</p> : null}
+      <div className="space-y-0.5">
+        {payload.map(entry => (
+          <p key={String(entry.dataKey)} className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5" style={{ background: entry.color ?? '#f43f5e' }} />
+            <span className="uppercase tracking-wider">{entry.name}</span>
+            <span className="ml-auto pl-4 font-bold text-white">{Number(entry.value).toLocaleString()}</span>
+          </p>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -158,6 +219,8 @@ export default function CommandCentre() {
   }
 
   const { pending_counts, stats, sponsor_kpis, system_health, payments_available, recent_activity, oldest_pending } = data;
+  const charts = data.charts;
+  const activitySeries = charts ? mergeDailyCounts(charts.signups_14d, charts.tournaments_14d) : [];
 
   const attentionItems = [
     { title: 'Verifications', count: pending_counts.verifications, staleCount: pending_counts.verifications_stale, staleLabel: 'stale (3+ days)', icon: Shield, href: '/admin/users/verifications', permission: 'verification:view' },
@@ -383,6 +446,89 @@ export default function CommandCentre() {
           </div>
         </CommandSection>
       </div>
+
+      {/* 14-day analytics */}
+      {charts && (
+        <>
+          <CommandSection>
+            <SectionLabel>Activity · 14 Days</SectionLabel>
+            <div className="mb-3 flex items-center gap-4">
+              <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-zinc-500">
+                <span className="h-1.5 w-1.5 bg-rose-500" /> Signups
+              </span>
+              <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-zinc-500">
+                <span className="h-1.5 w-1.5 bg-zinc-400" /> Tournament creations
+              </span>
+            </div>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={activitySeries} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="ccSignupsFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="#f43f5e" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="day" tickFormatter={formatDayTick} tick={chartTick} axisLine={false} tickLine={false} minTickGap={24} />
+                  <YAxis allowDecimals={false} tick={chartTick} axisLine={false} tickLine={false} width={32} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ stroke: '#3f3f46', strokeDasharray: '3 3' }} />
+                  <Area type="monotone" dataKey="signups" name="Signups" stroke="#f43f5e" strokeWidth={2} fill="url(#ccSignupsFill)" animationDuration={300} />
+                  <Area type="monotone" dataKey="tournaments" name="Tournament Creations" stroke="#a1a1aa" strokeWidth={2} fill="transparent" animationDuration={300} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CommandSection>
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <CommandSection className="lg:col-span-2">
+              <SectionLabel>Disputes · 14 Days</SectionLabel>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={charts.disputes_14d} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="#27272a" strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="day" tickFormatter={formatDayTick} tick={chartTick} axisLine={false} tickLine={false} minTickGap={24} />
+                    <YAxis allowDecimals={false} tick={chartTick} axisLine={false} tickLine={false} width={32} />
+                    <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(63, 63, 70, 0.15)' }} />
+                    <Bar dataKey="count" name="Disputes" fill="#f43f5e" fillOpacity={0.6} barSize={10} animationDuration={300} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CommandSection>
+          </div>
+
+          <CommandSection>
+            <SectionLabel>Sponsor Performance · 14 Days</SectionLabel>
+            <div className="mb-3 flex items-center gap-4">
+              <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-zinc-500">
+                <span className="h-1.5 w-1.5 bg-rose-500" /> Impressions
+              </span>
+              <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-zinc-500">
+                <span className="h-1.5 w-1.5 bg-zinc-400" /> Clicks
+              </span>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={charts.sponsor_daily_14d} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="ccImpressionsFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="#f43f5e" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="day" tickFormatter={formatDayTick} tick={chartTick} axisLine={false} tickLine={false} minTickGap={24} />
+                  <YAxis yAxisId="impressions" hide allowDecimals={false} />
+                  <YAxis yAxisId="clicks" orientation="right" hide allowDecimals={false} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ stroke: '#3f3f46', strokeDasharray: '3 3' }} />
+                  <Area yAxisId="impressions" type="monotone" dataKey="impressions" name="Impressions" stroke="#f43f5e" strokeWidth={2} fill="url(#ccImpressionsFill)" animationDuration={300} />
+                  <Area yAxisId="clicks" type="monotone" dataKey="clicks" name="Clicks" stroke="#a1a1aa" strokeWidth={2} fill="transparent" animationDuration={300} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CommandSection>
+        </>
+      )}
 
       {/* Bottom row */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
