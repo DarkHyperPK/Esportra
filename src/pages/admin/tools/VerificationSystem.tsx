@@ -266,7 +266,7 @@ const VerificationSystemTool = () => {
 
         {/* Fullscreen Preview Dialog */}
         <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="flex h-[90vh] max-w-5xl flex-col rounded-none border-white/10 bg-[#0a0a0c] p-2">
+          <DialogContent className="flex h-[90vh] max-w-5xl flex-col -none border-white/10 bg-[#0a0a0c] p-2">
             <DialogHeader className="absolute left-4 top-4 z-10">
               <DialogTitle className="border border-white/10 bg-black/70 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-white">{label}</DialogTitle>
             </DialogHeader>
@@ -326,7 +326,7 @@ const VerificationSystemTool = () => {
             placeholder="Search by name, role, or business..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+            className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
           />
         </div>
         <div className="flex gap-1 overflow-x-auto" data-lenis-prevent>
@@ -419,7 +419,7 @@ const VerificationSystemTool = () => {
                             <MoreVertical className="h-4 w-4" />
                           </CommandIconButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-none border-white/10 bg-[#0a0a0c]">
+                        <DropdownMenuContent align="end" className="-none border-white/10 bg-[#0a0a0c]">
                           <DropdownMenuItem
                             className="cursor-pointer text-zinc-300 focus:bg-white/5 focus:text-white"
                             onClick={() => setSelectedRequest(request)}
@@ -479,7 +479,7 @@ const VerificationSystemTool = () => {
 
       {/* Action Confirmation Dialog */}
       <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
-        <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+        <DialogContent className="-none border-white/10 bg-[#0a0a0c]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-white">
               {actionType === 'approve' ? (
@@ -513,7 +513,7 @@ const VerificationSystemTool = () => {
 
       {/* Detail Modal */}
       <Dialog open={!!selectedRequest && !actionDialogOpen} onOpenChange={() => setSelectedRequest(null)}>
-        <DialogContent className="max-h-[90vh] max-w-4xl gap-0 overflow-y-auto overscroll-contain rounded-none border-white/10 bg-[#0a0a0c] p-0" data-lenis-prevent>
+        <DialogContent className="max-h-[90vh] max-w-4xl gap-0 overflow-y-auto overscroll-contain -none border-white/10 bg-[#0a0a0c] p-0" data-lenis-prevent>
           {selectedRequest && (
             <>
               {/* Header Strip */}
@@ -536,10 +536,10 @@ const VerificationSystemTool = () => {
 
               <div className="p-6 md:p-8">
                 <Tabs defaultValue="details" className="w-full">
-                  <TabsList className="mb-6 rounded-none border border-white/10 bg-black/40">
-                    <TabsTrigger value="details" className="rounded-none font-mono text-[11px] font-bold uppercase tracking-wider data-[state=active]:bg-white/[0.06] data-[state=active]:text-white">Details</TabsTrigger>
-                    <TabsTrigger value="experience" className="rounded-none font-mono text-[11px] font-bold uppercase tracking-wider data-[state=active]:bg-white/[0.06] data-[state=active]:text-white">Experience</TabsTrigger>
-                    <TabsTrigger value="documents" className="rounded-none font-mono text-[11px] font-bold uppercase tracking-wider data-[state=active]:bg-white/[0.06] data-[state=active]:text-white">Documents & Photos</TabsTrigger>
+                  <TabsList className="mb-6 -none border border-white/10 bg-black/40">
+                    <TabsTrigger value="details" className="-none font-mono text-[11px] font-bold uppercase tracking-wider data-[state=active]:bg-white/[0.06] data-[state=active]:text-white">Details</TabsTrigger>
+                    <TabsTrigger value="experience" className="-none font-mono text-[11px] font-bold uppercase tracking-wider data-[state=active]:bg-white/[0.06] data-[state=active]:text-white">Experience</TabsTrigger>
+                    <TabsTrigger value="documents" className="-none font-mono text-[11px] font-bold uppercase tracking-wider data-[state=active]:bg-white/[0.06] data-[state=active]:text-white">Documents & Photos</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="details" className="space-y-6">

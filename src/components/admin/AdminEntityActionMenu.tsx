@@ -28,7 +28,7 @@ type AdminEntityActionMenuProps = {
 const variantClasses: Record<NonNullable<AdminEntityAction['variant']>, string> = {
   default: 'text-zinc-300 focus:text-white focus:bg-zinc-800',
   destructive: 'text-red-400 focus:text-red-300 focus:bg-red-500/10',
-  success: 'text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10',
+  success: 'text-emerald-300 focus:text-emerald-300 focus:bg-emerald-500/10',
 };
 
 export function AdminEntityActionMenu({ actions, align = 'end' }: AdminEntityActionMenuProps) {

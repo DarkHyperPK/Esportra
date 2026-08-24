@@ -77,7 +77,7 @@ function AlertDropdownPanel({ onClose }: { onClose: () => void }) {
   const severityIcon = (s: string) => {
     if (s === 'critical') return <AlertTriangle className="w-4 h-4 text-red-500" />;
     if (s === 'warning') return <AlertTriangle className="w-4 h-4 text-amber-500" />;
-    return <Activity className="w-4 h-4 text-blue-400" />;
+    return <Activity className="w-4 h-4 text-zinc-400" />;
   };
 
   const timeAgo = (date: string) => {
@@ -96,7 +96,7 @@ function AlertDropdownPanel({ onClose }: { onClose: () => void }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.95 }}
       transition={{ duration: 0.15 }}
-      className="absolute right-0 top-full mt-2 w-[380px] bg-[#0a0a0c] border border-zinc-800 rounded-md shadow-2xl z-50 overflow-hidden"
+      className="absolute right-0 top-full mt-2 w-[380px] bg-[#0a0a0c] border border-zinc-800 shadow-2xl z-50 overflow-hidden"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
         <h3 className="text-sm font-semibold text-white">Admin Alerts</h3>
@@ -140,7 +140,7 @@ function AlertDropdownPanel({ onClose }: { onClose: () => void }) {
                   onClick={() => acknowledge.mutate(alert.id, {
                     onError: () => toast({ title: 'Failed to acknowledge', variant: 'destructive' }),
                   })}
-                  className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-green-400 h-7 px-2 transition-opacity"
+                  className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-emerald-300 h-7 px-2 transition-opacity"
                   title="Acknowledge"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
@@ -299,9 +299,9 @@ const AdminManagement = () => {
 
   const getActionColor = (action: string) => {
     if (!action) return 'text-zinc-400 bg-zinc-500/10';
-    if (action.includes('create') || action.includes('add')) return 'text-emerald-400 bg-emerald-500/10';
+    if (action.includes('create') || action.includes('add')) return 'text-emerald-300 bg-emerald-500/10';
     if (action.includes('delete') || action.includes('remove')) return 'text-red-400 bg-red-500/10';
-    if (action.includes('update') || action.includes('edit')) return 'text-blue-400 bg-blue-500/10';
+    if (action.includes('update') || action.includes('edit')) return 'text-zinc-400 bg-zinc-500/10';
     return 'text-zinc-400 bg-zinc-500/10';
   };
 
@@ -351,7 +351,7 @@ const AdminManagement = () => {
         className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8"
       >
         <div className="flex items-center gap-3">
-          <div className="w-1 h-10 rounded-sm bg-rose-500" />
+          <div className="w-1 h-10 -sm bg-rose-500" />
           <div>
             <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white uppercase">
               Admin Dashboard
@@ -413,7 +413,7 @@ const AdminManagement = () => {
               <p className="text-xs text-zinc-500">Signed in as</p>
               <p className="text-sm font-medium text-white">{profile?.full_name || profile?.username}</p>
             </div>
-            <div className="w-8 h-8 rounded-md bg-zinc-800 flex items-center justify-center">
+            <div className="w-8 h-8 bg-zinc-800 flex items-center justify-center">
               <Users className="w-4 h-4 text-zinc-400" />
             </div>
             <Button
@@ -442,7 +442,7 @@ const AdminManagement = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 * idx }}
-              className="p-4 rounded-md bg-[#0a0a0c] border border-zinc-800/50 hover:bg-zinc-900/80 transition-colors"
+              className="p-4 bg-[#0a0a0c] border border-zinc-800/50 hover:bg-zinc-900/80 transition-colors"
             >
               <div className="flex items-center justify-between mb-3">
                 <stat.icon className="w-4 h-4 text-zinc-500" />
@@ -468,7 +468,7 @@ const AdminManagement = () => {
           {quickNavLinks.map((link) => {
             return (
               <Link key={link.href} to={link.href}>
-                <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-md border border-zinc-800/50 bg-[#0a0a0c] text-zinc-300 hover:bg-zinc-900 hover:border-zinc-700 transition-colors cursor-pointer group">
+                <div className="flex items-center gap-2.5 px-3 py-2.5 border border-zinc-800/50 bg-[#0a0a0c] text-zinc-300 hover:bg-zinc-900 hover:border-zinc-700 transition-colors cursor-pointer group">
                   <link.icon className="w-4 h-4 text-zinc-500 group-hover:text-zinc-400 transition-colors shrink-0" />
                   <span className="text-sm truncate">{link.label}</span>
                   {link.badge ? (
@@ -488,7 +488,7 @@ const AdminManagement = () => {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
-          className="lg:col-span-1 rounded-md bg-[#0a0a0c] border border-zinc-800/50 p-5"
+          className="lg:col-span-1 bg-[#0a0a0c] border border-zinc-800/50 p-5"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-white font-semibold flex items-center gap-2">
@@ -509,7 +509,7 @@ const AdminManagement = () => {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="flex items-start gap-3 px-3 py-2.5 rounded-md hover:bg-zinc-900/60 transition-colors"
+                    className="flex items-start gap-3 px-3 py-2.5 hover:bg-zinc-900/60 transition-colors"
                   >
                     <activity.icon className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -529,7 +529,7 @@ const AdminManagement = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="lg:col-span-2 rounded-md bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
+          className="lg:col-span-2 bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
         >
           <div className="p-5 border-b border-zinc-800/50">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -579,7 +579,7 @@ const AdminManagement = () => {
                       <p className="text-xs text-zinc-500">{new Date(log.created_at).toLocaleDateString()}</p>
                       <p className="text-xs text-zinc-600">{new Date(log.created_at).toLocaleTimeString()}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded-md text-xs font-medium uppercase ${getActionColor(log.action_type)}`}>
+                    <span className={`px-2 py-1 text-xs font-medium uppercase ${getActionColor(log.action_type)}`}>
                       {log.action_type?.replace('_', ' ')}
                     </span>
                     <div className="flex-1 min-w-0">
@@ -613,21 +613,21 @@ const AdminManagement = () => {
           {selectedLog && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 rounded-md bg-zinc-900/50">
+                <div className="p-3 bg-zinc-900/50">
                   <p className="text-xs text-zinc-500 uppercase">Action</p>
                   <p className={`text-sm font-medium mt-1 ${getActionColor(selectedLog.action_type).split(' ')[0]}`}>
                     {selectedLog.action_type?.replace('_', ' ')}
                   </p>
                 </div>
-                <div className="p-3 rounded-md bg-zinc-900/50">
+                <div className="p-3 bg-zinc-900/50">
                   <p className="text-xs text-zinc-500 uppercase">Timestamp</p>
                   <p className="text-white text-sm mt-1">{new Date(selectedLog.created_at).toLocaleString()}</p>
                 </div>
-                <div className="p-3 rounded-md bg-zinc-900/50">
+                <div className="p-3 bg-zinc-900/50">
                   <p className="text-xs text-zinc-500 uppercase">Admin</p>
                   <p className="text-white text-sm mt-1">{selectedLog.admin_name || 'System'}</p>
                 </div>
-                <div className="p-3 rounded-md bg-zinc-900/50">
+                <div className="p-3 bg-zinc-900/50">
                   <p className="text-xs text-zinc-500 uppercase">Target</p>
                   <p className="text-white text-sm mt-1">{selectedLog.target_type} / {selectedLog.target_name || selectedLog.target_id?.slice(0, 12)}</p>
                 </div>

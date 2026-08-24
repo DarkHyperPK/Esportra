@@ -23,7 +23,7 @@ type Role = {
 };
 
 const ADMIN_ACCESS_INPUT_CLASS =
-  'w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20';
+  'w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20';
 
 const AdminAccess: React.FC = () => {
   const { toast } = useToast();
@@ -248,15 +248,15 @@ const AdminAccess: React.FC = () => {
             <div className="space-y-2">
               <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Role</label>
               <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger className="rounded-none border-white/10 bg-black/60 text-white focus:ring-rose-500/20">
+                <SelectTrigger className="-none border-white/10 bg-black/60 text-white focus:ring-rose-500/20">
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
-                <SelectContent className="max-h-[300px] rounded-none border-white/10 bg-[#0a0a0c] text-white">
+                <SelectContent className="max-h-[300px] -none border-white/10 bg-[#0a0a0c] text-white">
                   {roles.filter(r => !r.isAdmin).length > 0 && (
                     <>
                       <div className="px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">User Roles</div>
                       {roles.filter(r => !r.isAdmin).map(r => (
-                        <SelectItem key={r.id} value={r.id} className="rounded-none capitalize text-white hover:bg-white/5">
+                        <SelectItem key={r.id} value={r.id} className="-none capitalize text-white hover:bg-white/5">
                           {r.name.replace(/_/g, ' ')}
                         </SelectItem>
                       ))}
@@ -266,7 +266,7 @@ const AdminAccess: React.FC = () => {
                     <>
                       <div className="mt-2 border-t border-white/10 px-3 pb-1 pt-3 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">Admin Roles</div>
                       {roles.filter(r => r.isAdmin && (r as any).roleKey !== 'super_admin').map(r => (
-                        <SelectItem key={r.id} value={r.id} className="rounded-none hover:bg-white/5">
+                        <SelectItem key={r.id} value={r.id} className="-none hover:bg-white/5">
                           <div className="flex items-center gap-2">
                             <span className="capitalize">{r.name.replace(/_/g, ' ')}</span>
                             <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-rose-400">admin</span>

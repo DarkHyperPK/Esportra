@@ -222,7 +222,7 @@ function PermissionMatrix({
               placeholder="Filter permissions…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-8 w-48 rounded-none border-white/10 bg-black/60 pl-8 text-xs text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500"
+              className="h-8 w-48 -none border-white/10 bg-black/60 pl-8 text-xs text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500"
             />
           </div>
           <CommandButton variant="ghost" size="sm" onClick={toggleAll}>
@@ -258,7 +258,7 @@ function PermissionMatrix({
                   checked={allChecked ? true : someChecked ? "indeterminate" : false}
                   onCheckedChange={() => toggleResource(group.resource)}
                   onClick={(e) => e.stopPropagation()}
-                  className="rounded-none border-zinc-600 accent-[#f43f5e] data-[state=checked]:bg-rose-500 data-[state=checked]:border-rose-500 data-[state=indeterminate]:bg-rose-500/50 data-[state=indeterminate]:border-rose-500/50"
+                  className="-none border-zinc-600 accent-[#f43f5e] data-[state=checked]:bg-rose-500 data-[state=checked]:border-rose-500 data-[state=indeterminate]:bg-rose-500/50 data-[state=indeterminate]:border-rose-500/50"
                 />
                 <span className={`${LABEL_CLASS} flex-1 text-left !tracking-widest`}>
                   {RESOURCE_LABELS[group.resource] || group.resource}
@@ -304,7 +304,7 @@ function PermissionMatrix({
                             <Checkbox
                               checked={isChecked}
                               onCheckedChange={() => togglePermission(perm.id)}
-                              className="mt-0.5 rounded-none border-zinc-600 accent-[#f43f5e] data-[state=checked]:bg-rose-500 data-[state=checked]:border-rose-500"
+                              className="mt-0.5 -none border-zinc-600 accent-[#f43f5e] data-[state=checked]:bg-rose-500 data-[state=checked]:border-rose-500"
                             />
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
@@ -556,7 +556,7 @@ function RoleFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[90vh] max-w-3xl overflow-y-auto overscroll-contain rounded-none border-white/10 bg-[#0a0a0c]"
+        className="max-h-[90vh] max-w-3xl overflow-y-auto overscroll-contain -none border-white/10 bg-[#0a0a0c]"
         data-lenis-prevent
       >
         <DialogHeader>
@@ -588,7 +588,7 @@ function RoleFormDialog({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Content Manager"
-                  className="rounded-none border-white/10 bg-black/60 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500"
+                  className="-none border-white/10 bg-black/60 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500"
                   maxLength={50}
                 />
               </div>
@@ -605,7 +605,7 @@ function RoleFormDialog({
                   }}
                   placeholder="e.g. content_manager"
                   disabled={isEditing}
-                  className="rounded-none border-white/10 bg-black/60 font-mono text-sm text-white placeholder:text-zinc-600 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-rose-500 focus-visible:ring-rose-500"
+                  className="-none border-white/10 bg-black/60 font-mono text-sm text-white placeholder:text-zinc-600 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-rose-500 focus-visible:ring-rose-500"
                   maxLength={50}
                 />
                 {!isEditing && (
@@ -626,7 +626,7 @@ function RoleFormDialog({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe what this role is for…"
-                className="h-20 resize-none rounded-none border-white/10 bg-black/60 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500"
+                className="h-20 resize-none -none border-white/10 bg-black/60 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500"
                 maxLength={200}
               />
             </div>
@@ -690,7 +690,7 @@ function DeleteRoleDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] sm:max-w-md">
+      <DialogContent className="-none border-white/10 bg-[#0a0a0c] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg font-bold text-white">
             <AlertTriangle className="h-4 w-4 text-red-300" />
@@ -841,7 +841,7 @@ const RoleBuilder = () => {
               placeholder="Search roles…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="rounded-none border-white/10 bg-black/60 pl-9 text-xs text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500"
+              className="-none border-white/10 bg-black/60 pl-9 text-xs text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500"
             />
           </div>
         </CommandToolbar>

@@ -64,7 +64,7 @@ const STATUS_CHIP: Record<"active" | "inactive" | "expired", string> = {
 };
 
 const FIELD_CLASS =
-  "w-full rounded-none border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20";
+  "w-full -none border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20";
 
 const LABEL_CLASS =
   "block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500";
@@ -97,8 +97,8 @@ function StatsSkeleton() {
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       {[1, 2, 3].map((i) => (
         <div key={i} className="border border-white/10 bg-white/[0.025] p-5">
-          <Skeleton className="h-3 w-24 rounded-none" />
-          <Skeleton className="mt-3 h-7 w-12 rounded-none" />
+          <Skeleton className="h-3 w-24 -none" />
+          <Skeleton className="mt-3 h-7 w-12 -none" />
         </div>
       ))}
     </div>
@@ -111,10 +111,10 @@ function TableSkeleton() {
       <div className="divide-y divide-white/5">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 p-4">
-            <Skeleton className="h-5 w-36 rounded-none" />
-            <Skeleton className="h-3 w-48 rounded-none" />
-            <Skeleton className="ml-auto h-5 w-16 rounded-none" />
-            <Skeleton className="h-8 w-28 rounded-none" />
+            <Skeleton className="h-5 w-36 -none" />
+            <Skeleton className="h-3 w-48 -none" />
+            <Skeleton className="ml-auto h-5 w-16 -none" />
+            <Skeleton className="h-8 w-28 -none" />
           </div>
         ))}
       </div>
@@ -260,7 +260,7 @@ function IpFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] sm:max-w-md">
+      <DialogContent className="-none border-white/10 bg-[#0a0a0c] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             {isEdit ? <Pencil className="h-4 w-4 text-rose-400" /> : <Plus className="h-4 w-4 text-rose-400" />}
@@ -279,7 +279,7 @@ function IpFormDialog({
               IP Address
             </label>
             {isEdit ? (
-              <p className="rounded-none border border-white/10 bg-black/40 px-3 py-2 font-mono text-sm tabular-nums text-zinc-400">
+              <p className="-none border border-white/10 bg-black/40 px-3 py-2 font-mono text-sm tabular-nums text-zinc-400">
                 {entry.ipAddress}
               </p>
             ) : (
@@ -371,7 +371,7 @@ function ToggleConfirmDialog({
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+      <AlertDialogContent className="-none border-white/10 bg-[#0a0a0c]">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-white">
             {enabling ? (
@@ -428,7 +428,7 @@ function DeleteConfirmDialog({
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+      <AlertDialogContent className="-none border-white/10 bg-[#0a0a0c]">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2 text-white">
             <Trash2 className="h-4 w-4 text-red-300" />
@@ -441,7 +441,7 @@ function DeleteConfirmDialog({
               {entry?.label ? ` (${entry.label})` : ""} from the allowlist?
             </span>
             {isLastActive && allowlistEnabled && (
-              <span className="flex items-start gap-2 rounded-none border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300">
+              <span className="flex items-start gap-2 -none border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-300">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   This is the last active IP entry. Deleting it while the allowlist is enabled
@@ -650,7 +650,7 @@ export default function IpAllowlist() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Search IP entries"
-              className="w-full rounded-none border border-white/10 bg-black/40 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+              className="w-full -none border border-white/10 bg-black/40 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
             />
           </div>
           <div className="flex items-center gap-2">

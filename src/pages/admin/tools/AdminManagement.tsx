@@ -415,15 +415,15 @@ const AdminRoleManagement: React.FC = () => {
                 placeholder="Search admins by email, username, or name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
               />
             </div>
             <Select value={filterRole} onValueChange={setFilterRole}>
-              <SelectTrigger className="w-full rounded-none border-white/10 bg-[#0a0a0c]/90 text-xs text-white focus:ring-rose-500/20 md:w-48">
+              <SelectTrigger className="w-full -none border-white/10 bg-[#0a0a0c]/90 text-xs text-white focus:ring-rose-500/20 md:w-48">
                 <Filter className="mr-2 h-3.5 w-3.5" />
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
-              <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+              <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="super_admin">Super Admin</SelectItem>
                 {roles.filter(r => r.isAdmin && (r as any).roleKey !== 'super_admin').map(r => (
@@ -541,7 +541,7 @@ const AdminRoleManagement: React.FC = () => {
 
         {/* Assign Role Dialog */}
         <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-          <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+          <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
             <DialogHeader>
               <DialogTitle>Assign Role to {selectedAdmin?.email}</DialogTitle>
               <DialogDescription className="text-zinc-500">
@@ -551,12 +551,12 @@ const AdminRoleManagement: React.FC = () => {
             <div className="space-y-2">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Role</p>
               <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger className="rounded-none border-white/10 bg-black/60 text-white focus:ring-rose-500/20">
+                <SelectTrigger className="-none border-white/10 bg-black/60 text-white focus:ring-rose-500/20">
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
-                <SelectContent className="max-h-[300px] rounded-none border-white/10 bg-[#0a0a0c] text-white">
+                <SelectContent className="max-h-[300px] -none border-white/10 bg-[#0a0a0c] text-white">
                   {roles.filter(r => !r.isAdmin || (r as any).roleKey !== 'super_admin').map(r => (
-                    <SelectItem key={r.id} value={r.id} className="rounded-none hover:bg-white/5">
+                    <SelectItem key={r.id} value={r.id} className="-none hover:bg-white/5">
                       {r.name} {r.isAdmin && '(Admin)'}
                     </SelectItem>
                   ))}
@@ -578,7 +578,7 @@ const AdminRoleManagement: React.FC = () => {
 
         {/* Revoke Role Dialog */}
         <Dialog open={showRevokeDialog} onOpenChange={setShowRevokeDialog}>
-          <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+          <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
             <DialogHeader>
               <DialogTitle>Revoke Role from {selectedAdmin?.email}</DialogTitle>
               <DialogDescription className="text-zinc-500">
@@ -588,15 +588,15 @@ const AdminRoleManagement: React.FC = () => {
             <div className="space-y-2">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Role</p>
               <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger className="rounded-none border-white/10 bg-black/60 text-white focus:ring-rose-500/20">
+                <SelectTrigger className="-none border-white/10 bg-black/60 text-white focus:ring-rose-500/20">
                   <SelectValue placeholder="Select role to revoke" />
                 </SelectTrigger>
-                <SelectContent className="max-h-[300px] rounded-none border-white/10 bg-[#0a0a0c] text-white">
+                <SelectContent className="max-h-[300px] -none border-white/10 bg-[#0a0a0c] text-white">
                   {selectedAdmin?.assigned_roles.map((role, idx) => {
                     const roleKey = role.role_name.toLowerCase().replace(/\s+/g, '_');
                     const roleData = roles.find(r => (r as any).roleKey === roleKey || r.name.toLowerCase().replace(/\s+/g, '_') === roleKey);
                     return (
-                      <SelectItem key={idx} value={roleData?.id || role.role_name} className="rounded-none hover:bg-white/5">
+                      <SelectItem key={idx} value={roleData?.id || role.role_name} className="-none hover:bg-white/5">
                         {role.role_name}
                       </SelectItem>
                     );

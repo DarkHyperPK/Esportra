@@ -121,7 +121,7 @@ export default function KillSwitchConfig() {
                         value={reason}
                         onChange={(event) => updateReason(item.key, event.target.value)}
                         placeholder="Required: explain why this emergency control is changing"
-                        className="mb-3 resize-none rounded-none border-white/10 bg-black/40 text-white placeholder:text-zinc-600"
+                        className="mb-3 resize-none -none border-white/10 bg-black/40 text-white placeholder:text-zinc-600"
                         rows={3}
                       />
                       <CommandButton

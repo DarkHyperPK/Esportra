@@ -69,9 +69,9 @@ interface BroadcastStats {
 
 const statusColors: Record<string, string> = {
   draft: 'bg-zinc-500',
-  scheduled: 'bg-blue-500',
-  sending: 'bg-yellow-500',
-  sent: 'bg-green-500',
+  scheduled: 'bg-zinc-500',
+  sending: 'bg-amber-500',
+  sent: 'bg-emerald-400',
   cancelled: 'bg-red-500',
 };
 
@@ -325,7 +325,7 @@ export default function Broadcasts() {
               {broadcasts.map((broadcast) => (
                 <div
                   key={broadcast.id}
-                  className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg"
+                  className="p-4 bg-zinc-900/50 border border-zinc-800"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -344,7 +344,7 @@ export default function Broadcasts() {
                               broadcast.priority === 'urgent'
                                 ? 'border-red-500 text-red-400'
                                 : broadcast.priority === 'high'
-                                  ? 'border-yellow-500 text-yellow-400'
+                                  ? 'border-amber-500 text-amber-300'
                                   : 'text-zinc-400'
                             }
                           >
@@ -569,7 +569,7 @@ export default function Broadcasts() {
             </div>
 
             {formTargetType === 'segment' && (
-              <div className="p-4 bg-zinc-800/50 rounded-lg space-y-4">
+              <div className="p-4 bg-zinc-800/50 space-y-4">
                 <p className="text-sm text-zinc-400">Segment Criteria</p>
 
                 <div className="flex items-center space-x-2">
@@ -623,7 +623,7 @@ export default function Broadcasts() {
             )}
 
             {formTargetType === 'users' && (
-              <div className="p-4 bg-zinc-800/50 rounded-lg space-y-3">
+              <div className="p-4 bg-zinc-800/50 space-y-3">
                 <p className="text-sm text-zinc-400">Select Users</p>
 
                 <div className="relative">
@@ -637,7 +637,7 @@ export default function Broadcasts() {
                 </div>
 
                 {userSearchResults && userSearchResults.length > 0 && (
-                  <div className="border border-zinc-700 rounded-lg overflow-hidden">
+                  <div className="border border-zinc-700 overflow-hidden">
                     {userSearchResults.map((user) => (
                       <button
                         key={user.id}
@@ -662,7 +662,7 @@ export default function Broadcasts() {
                     {selectedUsers.map((user) => (
                       <span
                         key={user.id}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-zinc-700 rounded text-sm text-white"
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-zinc-700  text-sm text-white"
                       >
                         {user.username}
                         <button
@@ -778,30 +778,30 @@ export default function Broadcasts() {
             </div>
           ) : stats ? (
             <div className="grid grid-cols-2 gap-4 mt-4">
-              <div className="p-4 bg-zinc-800 rounded-lg">
+              <div className="p-4 bg-zinc-800">
                 <p className="text-2xl font-bold text-white">{stats.total_recipients}</p>
                 <p className="text-xs text-zinc-500">Total Recipients</p>
               </div>
-              <div className="p-4 bg-zinc-800 rounded-lg">
-                <p className="text-2xl font-bold text-emerald-400">{stats.delivered_count}</p>
+              <div className="p-4 bg-zinc-800">
+                <p className="text-2xl font-bold text-emerald-300">{stats.delivered_count}</p>
                 <p className="text-xs text-zinc-500">Delivered</p>
               </div>
-              <div className="p-4 bg-zinc-800 rounded-lg">
-                <p className="text-2xl font-bold text-blue-400">{stats.read_count}</p>
+              <div className="p-4 bg-zinc-800">
+                <p className="text-2xl font-bold text-zinc-400">{stats.read_count}</p>
                 <p className="text-xs text-zinc-500">Read</p>
               </div>
-              <div className="p-4 bg-zinc-800 rounded-lg">
+              <div className="p-4 bg-zinc-800">
                 <p className="text-2xl font-bold text-rose-400">{stats.failed_count}</p>
                 <p className="text-xs text-zinc-500">Failed</p>
               </div>
-              <div className="col-span-2 p-4 bg-zinc-800 rounded-lg">
+              <div className="col-span-2 p-4 bg-zinc-800">
                 <div className="flex items-center justify-between">
                   <p className="text-zinc-400">Read Rate</p>
                   <p className="text-2xl font-bold text-white">{stats.read_rate}%</p>
                 </div>
                 <div className="mt-2 h-2 bg-zinc-700 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-emerald-500 rounded-full"
+                    className="h-full bg-emerald-400 rounded-full"
                     style={{ width: `${stats.read_rate}%` }}
                   />
                 </div>

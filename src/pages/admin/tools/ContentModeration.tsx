@@ -138,7 +138,7 @@ function StatsBar() {
         >
           {isLoading ? (
             <div className="border border-white/10 bg-white/[0.025] p-3">
-              <Skeleton className="h-16 w-full rounded-none" />
+              <Skeleton className="h-16 w-full -none" />
             </div>
           ) : (
             <CommandMetric
@@ -163,17 +163,17 @@ function ModerationSkeleton() {
           className="border border-white/10 bg-[#0a0a0c]/92 p-5 space-y-4"
         >
           <div className="flex items-center gap-3">
-            <Skeleton className="h-6 w-20 rounded-none" />
-            <Skeleton className="h-4 w-24 rounded-none" />
+            <Skeleton className="h-6 w-20 -none" />
+            <Skeleton className="h-4 w-24 -none" />
           </div>
-          <Skeleton className="h-16 w-full rounded-none" />
+          <Skeleton className="h-16 w-full -none" />
           <div className="flex items-center gap-2">
-            <Skeleton className="h-8 w-8 rounded-none" />
-            <Skeleton className="h-4 w-32 rounded-none" />
+            <Skeleton className="h-8 w-8 -none" />
+            <Skeleton className="h-4 w-32 -none" />
           </div>
           <div className="flex gap-2">
-            <Skeleton className="h-9 w-24 rounded-none" />
-            <Skeleton className="h-9 w-24 rounded-none" />
+            <Skeleton className="h-9 w-24 -none" />
+            <Skeleton className="h-9 w-24 -none" />
           </div>
         </div>
       ))}
@@ -375,7 +375,7 @@ function ReviewDialog({ open, onOpenChange, item, action, onConfirm, isSubmittin
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] sm:max-w-md">
+      <DialogContent className="-none border-white/10 bg-[#0a0a0c] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             {isReject ? (
@@ -412,7 +412,7 @@ function ReviewDialog({ open, onOpenChange, item, action, onConfirm, isSubmittin
           placeholder={isReject ? "Reason for rejection (required)..." : "Notes (optional)..."}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="min-h-[100px] resize-none rounded-none border-white/10 bg-black/40 text-white placeholder:text-zinc-600"
+          className="min-h-[100px] resize-none -none border-white/10 bg-black/40 text-white placeholder:text-zinc-600"
         />
 
         <DialogFooter className="gap-2 sm:gap-0">
@@ -547,10 +547,10 @@ const ContentModeration = () => {
         <div className="flex w-full flex-col gap-3 lg:flex-row">
           <div className="w-full lg:w-48">
             <Select value={statusFilter} onValueChange={handleStatusChange}>
-              <SelectTrigger className="h-10 rounded-none border-white/10 bg-[#0a0a0c]/92 text-white">
+              <SelectTrigger className="h-10 -none border-white/10 bg-[#0a0a0c]/92 text-white">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
-              <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+              <SelectContent className="-none border-white/10 bg-[#0a0a0c]">
                 {STATUS_OPTIONS.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value} className="text-zinc-300">
                     {opt.label}
@@ -562,10 +562,10 @@ const ContentModeration = () => {
 
           <div className="w-full lg:w-48">
             <Select value={typeFilter} onValueChange={handleTypeChange}>
-              <SelectTrigger className="h-10 rounded-none border-white/10 bg-[#0a0a0c]/92 text-white">
+              <SelectTrigger className="h-10 -none border-white/10 bg-[#0a0a0c]/92 text-white">
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
-              <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+              <SelectContent className="-none border-white/10 bg-[#0a0a0c]">
                 {CONTENT_TYPE_OPTIONS.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value} className="text-zinc-300">
                     {opt.label}
@@ -699,7 +699,7 @@ const ContentModeration = () => {
 
       {/* Dismiss Confirmation Dialog */}
       <AlertDialog open={dismissTarget !== null} onOpenChange={(open) => { if (!open) setDismissTarget(null); }}>
-        <AlertDialogContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+        <AlertDialogContent className="-none border-white/10 bg-[#0a0a0c]">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Dismiss moderation item?</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
@@ -708,14 +708,14 @@ const ContentModeration = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              className="rounded-none border-white/10 bg-transparent text-zinc-400 hover:bg-white/[0.03] hover:text-white"
+              className="-none border-white/10 bg-transparent text-zinc-400 hover:bg-white/[0.03] hover:text-white"
               disabled={dismissMutation.isPending}
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDismiss}
-              className="rounded-none border border-red-500/35 bg-red-950/20 text-red-100 hover:bg-rose-600 hover:text-white"
+              className="-none border border-red-500/35 bg-red-950/20 text-red-100 hover:bg-rose-600 hover:text-white"
               disabled={dismissMutation.isPending}
             >
               {dismissMutation.isPending ? "Dismissing…" : "Confirm"}

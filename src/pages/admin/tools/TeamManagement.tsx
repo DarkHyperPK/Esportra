@@ -331,14 +331,14 @@ const TeamManagementTool = () => {
               value={searchTerm}
               onChange={e => { setSearchTerm(e.target.value); setPage(0); }}
               placeholder="Search teams by name or tag..."
-              className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+              className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
             />
           </div>
           <input
             value={gameFilter}
             onChange={e => { setGameFilter(e.target.value); setPage(0); }}
             placeholder="Filter by game..."
-            className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 px-3 py-1.5 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 lg:w-48"
+            className="w-full -none border border-white/10 bg-[#0a0a0c]/90 px-3 py-1.5 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 lg:w-48"
           />
         </div>
         <p className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
@@ -467,7 +467,7 @@ const TeamManagementTool = () => {
 
       {/* ── Team Detail Dialog ── */}
       <Dialog open={!!selectedTeamId} onOpenChange={open => { if (!open) setSelectedTeamId(null); }}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto overscroll-contain rounded-none border-white/10 bg-[#0a0a0c] text-white" data-lenis-prevent>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto overscroll-contain -none border-white/10 bg-[#0a0a0c] text-white" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UsersRound className="h-5 w-5 text-zinc-400" />
@@ -487,7 +487,7 @@ const TeamManagementTool = () => {
                     key={tab.value}
                     type="button"
                     onClick={() => setDetailTab(tab.value)}
-                    className={`group relative overflow-hidden rounded-none border px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+                    className={`group relative overflow-hidden -none border px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
                       detailTab === tab.value
                         ? 'border-transparent bg-rose-500 text-white'
                         : 'border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/25 hover:text-white'
@@ -613,7 +613,7 @@ const TeamManagementTool = () => {
 
       {/* ── Disband Confirm Dialog ── */}
       <Dialog open={!!disbandTeam} onOpenChange={open => { if (!open) setDisbandTeam(null); }}>
-        <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+        <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle className="text-red-400">Disband Team</DialogTitle>
             <DialogDescription className="text-zinc-400">
@@ -637,7 +637,7 @@ const TeamManagementTool = () => {
 
       {/* ── Remove Member Confirm Dialog ── */}
       <Dialog open={!!removeMember} onOpenChange={open => { if (!open) setRemoveMember(null); }}>
-        <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+        <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle>Remove Member</DialogTitle>
             <DialogDescription className="text-zinc-400">
@@ -660,7 +660,7 @@ const TeamManagementTool = () => {
 
       {/* ── Transfer Captain Confirm Dialog ── */}
       <Dialog open={!!transferTarget} onOpenChange={open => { if (!open) setTransferTarget(null); }}>
-        <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+        <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle>Transfer Captain</DialogTitle>
             <DialogDescription className="text-zinc-400">
@@ -690,7 +690,7 @@ const TeamManagementTool = () => {
           setRemoveLogo(false);
         }
       }}>
-        <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+        <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle>Edit Team</DialogTitle>
           </DialogHeader>
@@ -742,15 +742,15 @@ const TeamManagementTool = () => {
             </div>
             <div className="space-y-2">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Name</p>
-              <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+              <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
             </div>
             <div className="space-y-2">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Tag</p>
-              <input value={editForm.tag} onChange={e => setEditForm(f => ({ ...f, tag: e.target.value }))} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+              <input value={editForm.tag} onChange={e => setEditForm(f => ({ ...f, tag: e.target.value }))} className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
             </div>
             <div className="space-y-2">
               <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Game</p>
-              <input value={editForm.game} onChange={e => setEditForm(f => ({ ...f, game: e.target.value }))} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+              <input value={editForm.game} onChange={e => setEditForm(f => ({ ...f, game: e.target.value }))} className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
             </div>
           </div>
           <DialogFooter className="gap-2">

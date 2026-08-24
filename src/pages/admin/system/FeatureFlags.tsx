@@ -551,7 +551,7 @@ export default function FeatureFlags() {
                 placeholder="Search flags..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="rounded-none border-white/10 bg-white/[0.03] pl-10 focus-visible:ring-rose-500"
+                className="-none border-white/10 bg-white/[0.03] pl-10 focus-visible:ring-rose-500"
               />
             </div>
 
@@ -583,13 +583,13 @@ export default function FeatureFlags() {
                             variant="outline"
                             className={
                               flag.is_enabled
-                                ? 'rounded-none border-white/25 text-white'
-                                : 'rounded-none border-zinc-700 text-zinc-500'
+                                ? '-none border-white/25 text-white'
+                                : '-none border-zinc-700 text-zinc-500'
                             }
                           >
                             {flag.is_enabled ? 'Enabled' : 'Disabled'}
                           </Badge>
-                          <Badge variant="outline" className="rounded-none text-xs">
+                          <Badge variant="outline" className="-none text-xs">
                             {flag.flag_type}
                           </Badge>
                         </div>
@@ -678,7 +678,7 @@ export default function FeatureFlags() {
             }
           }}
         >
-          <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+          <DialogContent className="-none border-white/10 bg-[#0a0a0c]">
             <DialogHeader>
               <DialogTitle>{editingFlag ? 'Edit Flag' : 'Create Feature Flag'}</DialogTitle>
             </DialogHeader>
@@ -689,7 +689,7 @@ export default function FeatureFlags() {
                   placeholder="feature_new_dashboard"
                   value={formKey}
                   onChange={(e) => setFormKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
-                  className="rounded-none border-white/10 bg-white/[0.03] font-mono focus-visible:ring-rose-500"
+                  className="-none border-white/10 bg-white/[0.03] font-mono focus-visible:ring-rose-500"
                   disabled={!!editingFlag}
                 />
                 <p className="text-xs text-zinc-500 mt-1">Lowercase with underscores only</p>
@@ -701,7 +701,7 @@ export default function FeatureFlags() {
                   placeholder="New Dashboard"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="rounded-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
+                  className="-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
                 />
               </div>
 
@@ -711,7 +711,7 @@ export default function FeatureFlags() {
                   placeholder="What this flag controls..."
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  className="rounded-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
+                  className="-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
                   rows={2}
                 />
               </div>
@@ -719,10 +719,10 @@ export default function FeatureFlags() {
               <div>
                 <label className="text-sm text-zinc-400 mb-2 block">Type</label>
                 <Select value={formType} onValueChange={setFormType} disabled={!!editingFlag}>
-                  <SelectTrigger className="rounded-none border-white/10 bg-white/[0.03]">
+                  <SelectTrigger className="-none border-white/10 bg-white/[0.03]">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+                  <SelectContent className="-none border-white/10 bg-[#0a0a0c]">
                     {flagTypes.map((t) => (
                       <SelectItem key={t.value} value={t.value}>
                         {t.label}
@@ -736,10 +736,10 @@ export default function FeatureFlags() {
                 <label className="text-sm text-zinc-400 mb-2 block">Default Value</label>
                 {formType === 'boolean' ? (
                   <Select value={formDefaultValue} onValueChange={setFormDefaultValue}>
-                    <SelectTrigger className="rounded-none border-white/10 bg-white/[0.03]">
+                    <SelectTrigger className="-none border-white/10 bg-white/[0.03]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+                    <SelectContent className="-none border-white/10 bg-[#0a0a0c]">
                       <SelectItem value="true">Enabled (true)</SelectItem>
                       <SelectItem value="false">Disabled (false)</SelectItem>
                     </SelectContent>
@@ -752,7 +752,7 @@ export default function FeatureFlags() {
                       max={100}
                       value={formDefaultValue}
                       onChange={(e) => setFormDefaultValue(e.target.value)}
-                      className="rounded-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
+                      className="-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
                     />
                     <span className="text-zinc-400">%</span>
                   </div>
@@ -760,7 +760,7 @@ export default function FeatureFlags() {
                   <Textarea
                     value={formDefaultValue}
                     onChange={(e) => setFormDefaultValue(e.target.value)}
-                    className="rounded-none border-white/10 bg-white/[0.03] font-mono text-xs focus-visible:ring-rose-500"
+                    className="-none border-white/10 bg-white/[0.03] font-mono text-xs focus-visible:ring-rose-500"
                     rows={4}
                     placeholder='{"key": "value"}'
                   />
@@ -768,7 +768,7 @@ export default function FeatureFlags() {
                   <Input
                     value={formDefaultValue}
                     onChange={(e) => setFormDefaultValue(e.target.value)}
-                    className="rounded-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
+                    className="-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
                   />
                 )}
               </div>
@@ -811,7 +811,7 @@ export default function FeatureFlags() {
 
         {/* Rules Dialog */}
         <Dialog open={rulesDialogOpen} onOpenChange={setRulesDialogOpen}>
-          <DialogContent className="max-w-2xl rounded-none border-white/10 bg-[#0a0a0c]">
+          <DialogContent className="max-w-2xl -none border-white/10 bg-[#0a0a0c]">
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <DialogTitle>
@@ -833,11 +833,11 @@ export default function FeatureFlags() {
                 <div key={rule.id} className="border border-white/10 bg-white/[0.025] p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="rounded-none text-xs">
+                      <Badge variant="outline" className="-none text-xs">
                         Priority {rule.priority}
                       </Badge>
                       {rule.percentage !== null && (
-                        <Badge variant="secondary" className="rounded-none text-xs">
+                        <Badge variant="secondary" className="-none text-xs">
                           {rule.percentage}% rollout
                         </Badge>
                       )}
@@ -886,7 +886,7 @@ export default function FeatureFlags() {
             resetRuleForm();
           }
         }}>
-          <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+          <DialogContent className="-none border-white/10 bg-[#0a0a0c]">
             <DialogHeader>
               <DialogTitle>{editingRule ? 'Edit Rule' : 'Create Rule'}</DialogTitle>
             </DialogHeader>
@@ -897,7 +897,7 @@ export default function FeatureFlags() {
                   type="number"
                   value={rulePriority}
                   onChange={(e) => setRulePriority(e.target.value)}
-                  className="rounded-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
+                  className="-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
                 />
                 <p className="text-xs text-zinc-500 mt-1">Higher priority rules are evaluated first</p>
               </div>
@@ -908,10 +908,10 @@ export default function FeatureFlags() {
                   setRuleConditionType(v);
                   setRuleConditionValue('');
                 }}>
-                  <SelectTrigger className="rounded-none border-white/10 bg-white/[0.03]">
+                  <SelectTrigger className="-none border-white/10 bg-white/[0.03]">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+                  <SelectContent className="-none border-white/10 bg-[#0a0a0c]">
                     {conditionTypes.map((t) => (
                       <SelectItem key={t.value} value={t.value}>
                         {t.label}
@@ -925,10 +925,10 @@ export default function FeatureFlags() {
                 <label className="text-sm text-zinc-400 mb-2 block">Condition Value</label>
                 {ruleConditionType === 'role' ? (
                   <Select value={ruleConditionValue} onValueChange={setRuleConditionValue}>
-                    <SelectTrigger className="rounded-none border-white/10 bg-white/[0.03]">
+                    <SelectTrigger className="-none border-white/10 bg-white/[0.03]">
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+                    <SelectContent className="-none border-white/10 bg-[#0a0a0c]">
                       {roleOptions.map((role) => (
                         <SelectItem key={role} value={role}>
                           {role}
@@ -938,10 +938,10 @@ export default function FeatureFlags() {
                   </Select>
                 ) : (
                   <Select value={ruleConditionValue} onValueChange={setRuleConditionValue}>
-                    <SelectTrigger className="rounded-none border-white/10 bg-white/[0.03]">
+                    <SelectTrigger className="-none border-white/10 bg-white/[0.03]">
                       <SelectValue placeholder="Select value" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+                    <SelectContent className="-none border-white/10 bg-[#0a0a0c]">
                       <SelectItem value="true">True</SelectItem>
                       <SelectItem value="false">False</SelectItem>
                     </SelectContent>
@@ -955,10 +955,10 @@ export default function FeatureFlags() {
                 </label>
                 {selectedFlag?.flag_type === 'boolean' ? (
                   <Select value={ruleValue} onValueChange={setRuleValue}>
-                    <SelectTrigger className="rounded-none border-white/10 bg-white/[0.03]">
+                    <SelectTrigger className="-none border-white/10 bg-white/[0.03]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+                    <SelectContent className="-none border-white/10 bg-[#0a0a0c]">
                       <SelectItem value="true">Enabled (true)</SelectItem>
                       <SelectItem value="false">Disabled (false)</SelectItem>
                     </SelectContent>
@@ -971,7 +971,7 @@ export default function FeatureFlags() {
                       max={100}
                       value={ruleValue}
                       onChange={(e) => setRuleValue(e.target.value)}
-                      className="rounded-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
+                      className="-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
                     />
                     <span className="text-zinc-400">%</span>
                   </div>
@@ -979,7 +979,7 @@ export default function FeatureFlags() {
                   <Textarea
                     value={ruleValue}
                     onChange={(e) => setRuleValue(e.target.value)}
-                    className="rounded-none border-white/10 bg-white/[0.03] font-mono text-xs focus-visible:ring-rose-500"
+                    className="-none border-white/10 bg-white/[0.03] font-mono text-xs focus-visible:ring-rose-500"
                     rows={4}
                     placeholder='{"key": "value"}'
                   />
@@ -987,7 +987,7 @@ export default function FeatureFlags() {
                   <Input
                     value={ruleValue}
                     onChange={(e) => setRuleValue(e.target.value)}
-                    className="rounded-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
+                    className="-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
                   />
                 )}
               </div>
@@ -1003,7 +1003,7 @@ export default function FeatureFlags() {
                     max={100}
                     value={rulePercentage}
                     onChange={(e) => setRulePercentage(e.target.value)}
-                    className="rounded-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
+                    className="-none border-white/10 bg-white/[0.03] focus-visible:ring-rose-500"
                     placeholder="Leave empty for 100%"
                   />
                   <span className="text-zinc-400">%</span>
@@ -1047,7 +1047,7 @@ export default function FeatureFlags() {
 
         {/* Overrides Dialog */}
         <Dialog open={overridesDialogOpen} onOpenChange={setOverridesDialogOpen}>
-          <DialogContent className="max-w-2xl rounded-none border-white/10 bg-[#0a0a0c]">
+          <DialogContent className="max-w-2xl -none border-white/10 bg-[#0a0a0c]">
             <DialogHeader>
               <DialogTitle>
                 Overrides for <code className="text-rose-400">{selectedFlag?.key}</code>

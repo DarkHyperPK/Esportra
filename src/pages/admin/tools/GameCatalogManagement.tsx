@@ -183,7 +183,7 @@ function CatalogTab() {
         placeholder="Publish notes (optional)"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        className="max-w-md rounded-none border-white/10 bg-[#0a0a0c]"
+        className="max-w-md -none border-white/10 bg-[#0a0a0c]"
       />
 
       <div className="space-y-3">

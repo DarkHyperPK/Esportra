@@ -112,7 +112,7 @@ interface UserDetail {
 const USERS_PER_PAGE = 25;
 
 const FIELD_LABEL_CLASS = "mb-1 block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500";
-const CONTROL_CLASS = "w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500";
+const CONTROL_CLASS = "w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500";
 const CHIP_NEUTRAL_CLASS = "border border-white/10 bg-transparent px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-500";
 
 const UserManagementTool = () => {
@@ -645,7 +645,7 @@ const UserManagementTool = () => {
                             placeholder="Search users by name, username, or email..."
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
-                            className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                            className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                         />
                     </div>
                     <div className="flex flex-wrap gap-1">
@@ -954,7 +954,7 @@ const UserManagementTool = () => {
 
             {/* Bulk Suspend Confirmation Dialog */}
             <Dialog open={!!bulkConfirm} onOpenChange={(open) => { if (!open) { setBulkConfirm(null); setBulkSuspendReason(''); } }}>
-                <DialogContent className="max-w-md rounded-none border border-white/10 bg-[#0a0a0c] text-white">
+                <DialogContent className="max-w-md -none border border-white/10 bg-[#0a0a0c] text-white">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-white">
                             <AlertTriangle className="h-5 w-5 text-red-400" />
@@ -1021,7 +1021,7 @@ const UserManagementTool = () => {
 
             {/* Suspend Dialog */}
             <Dialog open={suspendDialogOpen} onOpenChange={setSuspendDialogOpen}>
-                <DialogContent className="rounded-none border border-white/10 bg-[#0a0a0c]">
+                <DialogContent className="-none border border-white/10 bg-[#0a0a0c]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-white">
                             <Ban className="h-5 w-5 text-red-400" />
@@ -1076,7 +1076,7 @@ const UserManagementTool = () => {
                                 value={suspensionReason}
                                 onChange={(e) => setSuspensionReason(e.target.value)}
                                 placeholder="Explain the violation for the user and audit log..."
-                                className="h-24 w-full resize-none rounded-none border border-white/10 bg-black/60 p-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none transition-colors focus:border-red-500"
+                                className="h-24 w-full resize-none -none border border-white/10 bg-black/60 p-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none transition-colors focus:border-red-500"
                             />
                         </div>
                     </div>
@@ -1101,7 +1101,7 @@ const UserManagementTool = () => {
 
             {/* User Detail Modal */}
             <Dialog open={!!selectedUser && !suspendDialogOpen} onOpenChange={() => setSelectedUser(null)}>
-                <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col overflow-hidden rounded-none border border-white/10 bg-[#0a0a0c] p-0">
+                <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col overflow-hidden -none border border-white/10 bg-[#0a0a0c] p-0">
                     <div className="sticky top-0 z-10 shrink-0 border-b border-white/10 bg-[#0a0a0c] px-6 py-4">
                         <div className="flex items-start justify-between gap-4">
                             <DialogHeader className="space-y-1 text-left">
@@ -1384,7 +1384,7 @@ const UserManagementTool = () => {
 
             {/* Revoke Session Dialog */}
             <Dialog open={!!revokeTarget} onOpenChange={(open) => { if (!open) { setRevokeTarget(null); setRevokeReason(''); } }}>
-                <DialogContent className="max-w-md rounded-none border border-white/10 bg-[#0a0a0c]">
+                <DialogContent className="max-w-md -none border border-white/10 bg-[#0a0a0c]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-white">
                             <LogOut className="h-5 w-5 text-red-400" />
@@ -1405,7 +1405,7 @@ const UserManagementTool = () => {
                             value={revokeReason}
                             onChange={(e) => setRevokeReason(e.target.value)}
                             placeholder="Why are you revoking this session?"
-                            className="resize-none rounded-none border-white/10 bg-black/60 text-white focus:border-red-500"
+                            className="resize-none -none border-white/10 bg-black/60 text-white focus:border-red-500"
                             rows={3}
                         />
                     </div>
@@ -1427,7 +1427,7 @@ const UserManagementTool = () => {
 
             {/* Ghost Mode Dialog */}
             <Dialog open={!!ghostTarget} onOpenChange={(open) => { if (!open) { setGhostTarget(null); setGhostReason(''); } }}>
-                <DialogContent className="max-w-md rounded-none border border-red-500/30 bg-[#0a0a0c]">
+                <DialogContent className="max-w-md -none border border-red-500/30 bg-[#0a0a0c]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-white">
                             <Ghost className="h-5 w-5 text-red-400" />
@@ -1448,7 +1448,7 @@ const UserManagementTool = () => {
                             value={ghostReason}
                             onChange={(e) => setGhostReason(e.target.value)}
                             placeholder="Required: describe the support/security reason"
-                            className="resize-none rounded-none border-white/10 bg-black/60 text-white focus:border-red-500"
+                            className="resize-none -none border-white/10 bg-black/60 text-white focus:border-red-500"
                             rows={4}
                         />
                     </div>

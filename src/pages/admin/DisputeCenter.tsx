@@ -438,7 +438,7 @@ const DisputeCenter: React.FC = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search disputes..."
-                  className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                  className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                 />
               </div>
               <CommandTabs
@@ -609,7 +609,7 @@ const DisputeCenter: React.FC = () => {
                         value={resolutionNotes}
                         onChange={(e) => setResolutionNotes(e.target.value)}
                         placeholder="Enter resolution notes..."
-                        className="mb-3 min-h-[100px] rounded-none border-white/10 bg-white/[0.025] text-white placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-500"
+                        className="mb-3 min-h-[100px] -none border-white/10 bg-white/[0.025] text-white placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0 focus:border-rose-500"
                       />
                       <div className="flex gap-2">
                         <CommandButton
@@ -743,7 +743,7 @@ const DisputeCenter: React.FC = () => {
                             value={commentText}
                             onChange={(e) => setCommentText(e.target.value)}
                             placeholder="Type a message..."
-                            className="min-h-[44px] max-h-[120px] resize-none rounded-none border-0 bg-transparent text-sm text-white placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0"
+                            className="min-h-[44px] max-h-[120px] resize-none -none border-0 bg-transparent text-sm text-white placeholder:text-zinc-600 focus-visible:ring-0 focus-visible:ring-offset-0"
                           />
                           {commentAttachment && (
                             <div className="flex items-center gap-1 px-3 pb-2 font-mono text-[11px] text-zinc-400">
@@ -806,7 +806,7 @@ const DisputeCenter: React.FC = () => {
 
       {/* Image Viewer Modal */}
       <Dialog open={!!viewingImage} onOpenChange={(open) => !open && setViewingImage(null)}>
-        <DialogContent className="max-h-[90vh] max-w-5xl rounded-none border border-white/10 bg-[#0a0a0c] p-0">
+        <DialogContent className="max-h-[90vh] max-w-5xl -none border border-white/10 bg-[#0a0a0c] p-0">
           <DialogTitle className="sr-only">Image Preview</DialogTitle>
           <div className="relative flex h-full w-full items-center justify-center">
             <CommandIconButton

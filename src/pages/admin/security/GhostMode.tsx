@@ -210,7 +210,7 @@ export default function GhostMode() {
                   />
                 </div>
                 {searchResults && searchResults.length > 0 && (
-                  <div className="mt-2 border border-zinc-700 rounded-lg overflow-hidden">
+                  <div className="mt-2 border border-zinc-700 overflow-hidden">
                     {searchResults.map((user) => (
                       <button
                         key={user.id}
@@ -243,9 +243,9 @@ export default function GhostMode() {
                 />
               </div>
 
-              <div className="flex items-start gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5" />
-                <div className="text-sm text-yellow-200/80">
+              <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20">
+                <AlertTriangle className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-200/80">
                   {isSuperAdmin
                     ? 'Ghost mode access is logged and auditable. All viewed pages and unmasked fields are recorded.'
                     : 'Your request will be reviewed by a super admin. Ghost mode access is logged and auditable.'}
@@ -278,16 +278,16 @@ export default function GhostMode() {
       </div>
 
       {isSuperAdmin && pendingApprovals && pendingApprovals.length > 0 && (
-        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+        <div className="p-4 bg-amber-500/10 border border-amber-500/20">
           <h3 className="text-white font-medium flex items-center gap-2 mb-3">
-            <Clock className="w-4 h-4 text-yellow-500" />
+            <Clock className="w-4 h-4 text-amber-300" />
             Pending Approvals ({pendingApprovals.length})
           </h3>
           <div className="space-y-2">
             {pendingApprovals.map((approval) => (
               <div
                 key={approval.id}
-                className="flex items-center justify-between p-3 bg-zinc-900/50 rounded-lg"
+                className="flex items-center justify-between p-3 bg-zinc-900/50"
               >
                 <div>
                   <div className="text-sm text-white">
@@ -320,16 +320,16 @@ export default function GhostMode() {
       )}
 
       {!isSuperAdmin && !ghostIsActive && myApprovedRequests && myApprovedRequests.length > 0 && (
-        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20">
           <h3 className="text-white font-medium flex items-center gap-2 mb-3">
-            <CheckCircle className="w-4 h-4 text-emerald-500" />
+            <CheckCircle className="w-4 h-4 text-emerald-300" />
             Approved Requests ({myApprovedRequests.length})
           </h3>
           <div className="space-y-2">
             {myApprovedRequests.map((approval) => (
               <div
                 key={approval.id}
-                className="flex items-center justify-between p-3 bg-zinc-900/50 rounded-lg"
+                className="flex items-center justify-between p-3 bg-zinc-900/50"
               >
                 <div>
                   <div className="text-sm text-white">
@@ -387,11 +387,11 @@ export default function GhostMode() {
                     {activeSessions.map((session) => (
                       <div
                         key={session.id}
-                        className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg"
+                        className="p-4 bg-emerald-400/10 border border-amber-500/20"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                             <div>
                               <span className="text-white font-medium">
                                 {session.admin_name}
@@ -432,7 +432,7 @@ export default function GhostMode() {
                     {pastSessions.map((session) => (
                       <div
                         key={session.id}
-                        className="p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg"
+                        className="p-4 bg-zinc-900/50 border border-zinc-800"
                       >
                         <div className="flex items-center justify-between">
                           <div>
@@ -482,7 +482,7 @@ export default function GhostMode() {
                 {auditLogs?.map((log) => (
                   <div
                     key={log.id}
-                    className="p-3 bg-zinc-900/50 border border-zinc-800 rounded-lg"
+                    className="p-3 bg-zinc-900/50 border border-zinc-800"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">

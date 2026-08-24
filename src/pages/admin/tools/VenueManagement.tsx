@@ -197,7 +197,7 @@ const VenueManagementTool = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search venues..."
-            className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+            className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
           />
         </div>
         <div className="flex gap-1">
@@ -317,7 +317,7 @@ const VenueManagementTool = () => {
 
       {/* Venue Detail Modal */}
       <Dialog open={!!selectedVenue} onOpenChange={() => setSelectedVenue(null)}>
-        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto overscroll-contain rounded-none border-white/10 bg-[#0a0a0c]" data-lenis-prevent>
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto overscroll-contain -none border-white/10 bg-[#0a0a0c]" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-white">
               <MapPin className="h-5 w-5 text-rose-400" />
@@ -496,7 +496,7 @@ const VenueManagementTool = () => {
       <Dialog open={!!lightboxImage} onOpenChange={() => setLightboxImage(null)}>
         <DialogContent className="max-w-4xl border-none bg-transparent p-0 shadow-none" aria-describedby={undefined}>
           {lightboxImage && (
-            <img src={lightboxImage} alt="Preview" loading="lazy" className="max-h-[80vh] w-full rounded-none border border-white/10 object-contain" />
+            <img src={lightboxImage} alt="Preview" loading="lazy" className="max-h-[80vh] w-full -none border border-white/10 object-contain" />
           )}
         </DialogContent>
       </Dialog>

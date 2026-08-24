@@ -257,24 +257,24 @@ function PageSkeleton() {
         <div key={i} className="space-y-4 border border-white/10 bg-[#0a0a0c]/92 p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Skeleton className="h-9 w-9 rounded-none" />
+              <Skeleton className="h-9 w-9 -none" />
               <div className="space-y-2">
-                <Skeleton className="h-5 w-40 rounded-none" />
-                <Skeleton className="h-4 w-52 rounded-none" />
+                <Skeleton className="h-5 w-40 -none" />
+                <Skeleton className="h-4 w-52 -none" />
               </div>
             </div>
-            <Skeleton className="h-6 w-16 rounded-none" />
+            <Skeleton className="h-6 w-16 -none" />
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Skeleton className="h-7 w-24 rounded-none" />
-            <Skeleton className="h-7 w-32 rounded-none" />
-            <Skeleton className="h-7 w-20 rounded-none" />
+            <Skeleton className="h-7 w-24 -none" />
+            <Skeleton className="h-7 w-32 -none" />
+            <Skeleton className="h-7 w-20 -none" />
           </div>
           <div className="flex items-center gap-2 pt-1">
-            <Skeleton className="h-8 w-20 rounded-none" />
-            <Skeleton className="h-8 w-20 rounded-none" />
-            <Skeleton className="h-8 w-16 rounded-none" />
-            <Skeleton className="h-8 w-16 rounded-none" />
+            <Skeleton className="h-8 w-20 -none" />
+            <Skeleton className="h-8 w-20 -none" />
+            <Skeleton className="h-8 w-16 -none" />
+            <Skeleton className="h-8 w-16 -none" />
           </div>
         </div>
       ))}
@@ -287,16 +287,16 @@ function HistorySkeleton() {
     <div className="space-y-3">
       {[1, 2, 3, 4].map((i) => (
         <div key={i} className="flex items-start gap-3 border border-white/10 bg-white/[0.02] p-3">
-          <Skeleton className="h-7 w-7 shrink-0 rounded-none" />
+          <Skeleton className="h-7 w-7 shrink-0 -none" />
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex items-center gap-2">
-              <Skeleton className="h-5 w-20 rounded-none" />
-              <Skeleton className="h-4 w-28 rounded-none" />
+              <Skeleton className="h-5 w-20 -none" />
+              <Skeleton className="h-4 w-28 -none" />
             </div>
             <div className="flex gap-3">
-              <Skeleton className="h-4 w-16 rounded-none" />
-              <Skeleton className="h-4 w-16 rounded-none" />
-              <Skeleton className="h-4 w-16 rounded-none" />
+              <Skeleton className="h-4 w-16 -none" />
+              <Skeleton className="h-4 w-16 -none" />
+              <Skeleton className="h-4 w-16 -none" />
             </div>
           </div>
         </div>
@@ -683,11 +683,11 @@ function ScheduleDialog({ open, onOpenChange, editing }: ScheduleDialogProps) {
   const isEditMode = !!editing;
 
   const inputClasses =
-    "rounded-none border-white/10 bg-black/60 text-white placeholder:text-zinc-600 focus-visible:ring-rose-500/20 focus:border-rose-500";
+    "-none border-white/10 bg-black/60 text-white placeholder:text-zinc-600 focus-visible:ring-rose-500/20 focus:border-rose-500";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-none border-white/10 bg-[#0a0a0c] text-white" data-lenis-prevent>
+      <DialogContent className="max-h-[85vh] w-full max-w-lg overflow-y-auto -none border-white/10 bg-[#0a0a0c] text-white" data-lenis-prevent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-white">
             <CalendarClock className="h-4 w-4 text-zinc-400" />
@@ -722,7 +722,7 @@ function ScheduleDialog({ open, onOpenChange, editing }: ScheduleDialogProps) {
                 <SelectTrigger id="sr-type" className={`${inputClasses} disabled:opacity-60`}>
                   <SelectValue placeholder="Select type…" />
                 </SelectTrigger>
-                <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+                <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
                   {REPORT_TYPES.map((r) => (
                     <SelectItem key={r.value} value={r.value} className="focus:bg-white/10 focus:text-white">
                       {r.label}
@@ -740,7 +740,7 @@ function ScheduleDialog({ open, onOpenChange, editing }: ScheduleDialogProps) {
                   <SelectTrigger id="sr-freq" className={inputClasses}>
                     <SelectValue placeholder="Select…" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+                  <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
                     {FREQUENCIES.map((f) => (
                       <SelectItem key={f.value} value={f.value} className="focus:bg-white/10 focus:text-white">
                         {f.label}
@@ -761,7 +761,7 @@ function ScheduleDialog({ open, onOpenChange, editing }: ScheduleDialogProps) {
                 <SelectTrigger id="sr-dow" className={inputClasses}>
                   <SelectValue placeholder="Select day…" />
                 </SelectTrigger>
-                <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+                <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
                   {DAYS_OF_WEEK.map((d) => (
                     <SelectItem key={d.value} value={d.value} className="focus:bg-white/10 focus:text-white">
                       {d.label}
@@ -825,7 +825,7 @@ function ScheduleDialog({ open, onOpenChange, editing }: ScheduleDialogProps) {
               <SelectTrigger id="sr-format" className={inputClasses}>
                 <SelectValue placeholder="Select format…" />
               </SelectTrigger>
-              <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+              <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
                 <SelectItem value="csv" className="focus:bg-white/10 focus:text-white">CSV</SelectItem>
                 <SelectItem value="json" className="focus:bg-white/10 focus:text-white">JSON</SelectItem>
               </SelectContent>
@@ -997,7 +997,7 @@ export default function ScheduledReports() {
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
-        <AlertDialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+        <AlertDialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete schedule?</AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
@@ -1006,13 +1006,13 @@ export default function ScheduledReports() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-none border-white/10 bg-transparent text-zinc-400 hover:bg-white/5 hover:text-white">
+            <AlertDialogCancel className="-none border-white/10 bg-transparent text-zinc-400 hover:bg-white/5 hover:text-white">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
-              className="gap-2 rounded-none border border-red-500/35 bg-red-950/20 font-mono text-[11px] font-bold uppercase tracking-wider text-red-100 hover:bg-rose-600 hover:text-white"
+              className="gap-2 -none border border-red-500/35 bg-red-950/20 font-mono text-[11px] font-bold uppercase tracking-wider text-red-100 hover:bg-rose-600 hover:text-white"
             >
               {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               Delete Schedule

@@ -335,7 +335,7 @@ function ActiveSessionsTab() {
           placeholder="Search by email or username…"
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
-          className="rounded-none border-white/10 bg-[#0a0a0c]/90 pl-10 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500/20"
+          className="-none border-white/10 bg-[#0a0a0c]/90 pl-10 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500/20"
           aria-label="Search sessions"
         />
       </div>
@@ -364,7 +364,7 @@ function ActiveSessionsTab() {
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Avatar className="h-10 w-10 shrink-0">
                       <AvatarImage src={session.avatarUrl ?? undefined} alt="" />
-                      <AvatarFallback className="rounded-none border border-white/10 bg-black/40 text-zinc-400 font-mono text-xs font-bold">
+                      <AvatarFallback className="-none border border-white/10 bg-black/40 text-zinc-400 font-mono text-xs font-bold">
                         {getInitials(session.fullName, session.email)}
                       </AvatarFallback>
                     </Avatar>
@@ -374,7 +374,7 @@ function ActiveSessionsTab() {
                           {session.username ?? session.email}
                         </p>
                         {isOwnSession && (
-                          <Badge className="rounded-none border border-white/25 bg-transparent text-zinc-300 font-mono text-[10px] font-bold uppercase tracking-wider px-1.5 py-0">
+                          <Badge className="-none border border-white/25 bg-transparent text-zinc-300 font-mono text-[10px] font-bold uppercase tracking-wider px-1.5 py-0">
                             You
                           </Badge>
                         )}
@@ -388,7 +388,7 @@ function ActiveSessionsTab() {
                     {session.roles.map((role) => (
                       <Badge
                         key={role}
-                        className="rounded-none border border-white/15 bg-transparent text-zinc-300 font-mono text-[10px] font-bold uppercase tracking-wider px-1.5 py-0"
+                        className="-none border border-white/15 bg-transparent text-zinc-300 font-mono text-[10px] font-bold uppercase tracking-wider px-1.5 py-0"
                       >
                         <Shield className="mr-1 h-3 w-3" />
                         {role.replace(/_/g, " ")}
@@ -444,7 +444,7 @@ function ActiveSessionsTab() {
           }
         }}
       >
-        <AlertDialogContent className="max-w-md rounded-none border border-white/10 bg-[#0a0a0c]">
+        <AlertDialogContent className="max-w-md -none border border-white/10 bg-[#0a0a0c]">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-white">
               <LogOut className="h-4 w-4 text-red-400" />
@@ -471,19 +471,19 @@ function ActiveSessionsTab() {
               value={revokeReason}
               onChange={(e) => setRevokeReason(e.target.value)}
               placeholder="Why are you revoking this session?"
-              className="resize-none rounded-none border border-white/10 bg-black/60 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500/20"
+              className="resize-none -none border border-white/10 bg-black/60 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500/20"
               rows={3}
             />
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-none border border-white/15 bg-transparent font-mono text-xs font-bold uppercase tracking-wider text-zinc-300 hover:bg-white/[0.03] hover:text-white">
+            <AlertDialogCancel className="-none border border-white/15 bg-transparent font-mono text-xs font-bold uppercase tracking-wider text-zinc-300 hover:bg-white/[0.03] hover:text-white">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRevoke}
               disabled={revokeMutation.isPending}
-              className="rounded-none border border-red-500/35 bg-red-950/20 font-mono text-xs font-bold uppercase tracking-wider text-red-100 hover:bg-red-950/50 hover:text-red-50"
+              className="-none border border-red-500/35 bg-red-950/20 font-mono text-xs font-bold uppercase tracking-wider text-red-100 hover:bg-red-950/50 hover:text-red-50"
             >
               {revokeMutation.isPending ? (
                 <>
@@ -529,7 +529,7 @@ function SessionAuditTab() {
     const lower = actionType.toLowerCase();
     if (lower.includes("login") || lower.includes("sign_in") || lower.includes("signin")) {
       return (
-        <Badge className="rounded-none border border-white/40 bg-transparent text-white font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
+        <Badge className="-none border border-white/40 bg-transparent text-white font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
           <LogOut className="mr-1 h-3 w-3 rotate-180" />
           Login
         </Badge>
@@ -537,14 +537,14 @@ function SessionAuditTab() {
     }
     if (lower.includes("logout") || lower.includes("sign_out") || lower.includes("signout") || lower.includes("revoke")) {
       return (
-        <Badge className="rounded-none border border-amber-500/35 bg-transparent text-amber-300 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
+        <Badge className="-none border border-amber-500/35 bg-transparent text-amber-300 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
           <LogOut className="mr-1 h-3 w-3" />
           Logout
         </Badge>
       );
     }
     return (
-      <Badge className="rounded-none border border-white/10 bg-transparent text-zinc-400 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
+      <Badge className="-none border border-white/10 bg-transparent text-zinc-400 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
         <Activity className="mr-1 h-3 w-3" />
         {actionType}
       </Badge>
@@ -560,7 +560,7 @@ function SessionAuditTab() {
           placeholder="Filter by user ID…"
           value={userIdFilter}
           onChange={(e) => handleFilterChange(e.target.value)}
-          className="rounded-none border-white/10 bg-[#0a0a0c]/90 pl-10 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500/20"
+          className="-none border-white/10 bg-[#0a0a0c]/90 pl-10 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500/20"
           aria-label="Filter audit by user ID"
         />
       </div>
@@ -651,17 +651,17 @@ export default function SessionManagement() {
 
       {/* Tabs */}
       <Tabs defaultValue="active" className="space-y-6">
-        <TabsList className="rounded-none border border-white/10 bg-[#0a0a0c]/92 p-1">
+        <TabsList className="-none border border-white/10 bg-[#0a0a0c]/92 p-1">
           <TabsTrigger
             value="active"
-            className="rounded-none px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white"
+            className="-none px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white"
           >
             <Users className="mr-2 h-4 w-4" />
             Active Sessions
           </TabsTrigger>
           <TabsTrigger
             value="audit"
-            className="rounded-none px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white"
+            className="-none px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white"
           >
             <Activity className="mr-2 h-4 w-4" />
             Session Audit

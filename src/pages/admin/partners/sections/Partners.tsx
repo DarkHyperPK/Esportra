@@ -248,7 +248,7 @@ const PartnersSection = () => {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search partners…"
-              className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+              className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
             />
           </div>
           <div className="flex gap-1 overflow-x-auto" data-lenis-prevent>
@@ -393,7 +393,7 @@ const PartnersSection = () => {
 
       {/* Edit / create dialog */}
       <Dialog open={sponsorModal.open} onOpenChange={open => setSponsorModal({ ...sponsorModal, open })}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto overscroll-contain rounded-none border-white/10 bg-[#0a0a0c]" data-lenis-prevent>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto overscroll-contain -none border-white/10 bg-[#0a0a0c]" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle>{sponsorModal.isNew ? 'New Partner' : 'Edit Partner'}</DialogTitle>
           </DialogHeader>
@@ -401,16 +401,16 @@ const PartnersSection = () => {
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Name">
-                  <input value={sponsorModal.sponsor.name || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, name: e.target.value } })} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                  <input value={sponsorModal.sponsor.name || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, name: e.target.value } })} className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
                 </Field>
                 <Field label="Website">
-                  <input value={sponsorModal.sponsor.website_url || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, website_url: e.target.value } })} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                  <input value={sponsorModal.sponsor.website_url || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, website_url: e.target.value } })} className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
                 </Field>
               </div>
 
               <Field label="Tier">
                 <select
-                  className="w-full rounded-none border border-white/10 bg-black/60 p-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                  className="w-full -none border border-white/10 bg-black/60 p-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                   value={sponsorModal.sponsor.tier || 'standard'}
                   onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, tier: e.target.value as Sponsor['tier'] } })}
                 >
@@ -434,7 +434,7 @@ const PartnersSection = () => {
                               const updated = e.target.checked ? [...current, placement] : current.filter(p => p !== placement);
                               setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, placement: updated } });
                             }}
-                            className="rounded-none border-white/20 bg-black accent-[#f43f5e]"
+                            className="-none border-white/20 bg-black accent-[#f43f5e]"
                           />
                           <span className="text-sm capitalize text-zinc-300">{placement.replace('_', ' ')}</span>
                         </label>
@@ -442,24 +442,24 @@ const PartnersSection = () => {
                     </div>
                   </Field>
                   <Field label="Banner URL">
-                    <input value={sponsorModal.sponsor.banner_image_url || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, banner_image_url: e.target.value } })} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                    <input value={sponsorModal.sponsor.banner_image_url || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, banner_image_url: e.target.value } })} className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
                   </Field>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <Field label="Color">
                       <div className="flex gap-2">
                         <input type="color" value={sponsorModal.sponsor.accent_color || '#000000'} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, accent_color: e.target.value } })} className="h-9 w-9 cursor-pointer border border-white/10 bg-transparent" />
-                        <input value={sponsorModal.sponsor.accent_color || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, accent_color: e.target.value } })} className="w-full flex-1 rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                        <input value={sponsorModal.sponsor.accent_color || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, accent_color: e.target.value } })} className="w-full flex-1 -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
                       </div>
                     </Field>
                     <Field label="Priority">
-                      <input type="number" value={sponsorModal.sponsor.priority || 0} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, priority: parseInt(e.target.value) } })} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                      <input type="number" value={sponsorModal.sponsor.priority || 0} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, priority: parseInt(e.target.value) } })} className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
                     </Field>
                   </div>
                   <Field label="Tagline">
-                    <input value={sponsorModal.sponsor.tagline || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, tagline: e.target.value } })} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                    <input value={sponsorModal.sponsor.tagline || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, tagline: e.target.value } })} className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
                   </Field>
                   <Field label="Description">
-                    <input value={sponsorModal.sponsor.description || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, description: e.target.value } })} className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
+                    <input value={sponsorModal.sponsor.description || ''} onChange={e => setSponsorModal({ ...sponsorModal, sponsor: { ...sponsorModal.sponsor!, description: e.target.value } })} className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
                   </Field>
                 </>
               )}
@@ -474,7 +474,7 @@ const PartnersSection = () => {
 
       {/* Invite dialog */}
       <Dialog open={inviteModal.open} onOpenChange={open => setInviteModal({ ...inviteModal, open })}>
-        <DialogContent className="max-w-md rounded-none border-white/10 bg-[#0a0a0c]">
+        <DialogContent className="max-w-md -none border-white/10 bg-[#0a0a0c]">
           <DialogHeader>
             <DialogTitle>Invite Account Owner</DialogTitle>
           </DialogHeader>
@@ -485,7 +485,7 @@ const PartnersSection = () => {
               value={inviteModal.email}
               onChange={e => setInviteModal({ ...inviteModal, email: e.target.value })}
               placeholder="partner@company.com"
-              className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+              className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
             />
             <p className="mt-2 text-xs leading-relaxed text-zinc-500">
               NOTE — no account receives an invite email; an existing account gets access immediately.
@@ -502,7 +502,7 @@ const PartnersSection = () => {
 
       {/* Invite result dialog */}
       <Dialog open={inviteResult.open} onOpenChange={open => setInviteResult({ ...inviteResult, open })}>
-        <DialogContent className="max-w-md rounded-none border-white/10 bg-[#0a0a0c]">
+        <DialogContent className="max-w-md -none border-white/10 bg-[#0a0a0c]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-rose-400" /> Invitation Sent

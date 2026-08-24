@@ -294,14 +294,14 @@ export default function MapManagement({ embedded = false }: MapManagementProps) 
             placeholder="Search maps..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="rounded-none border-white/10 bg-[#0a0a0c] pl-10"
+            className="-none border-white/10 bg-[#0a0a0c] pl-10"
           />
         </div>
         <Select value={filterGame} onValueChange={setFilterGame}>
-          <SelectTrigger className="w-[200px] rounded-none border-white/10 bg-[#0a0a0c]">
+          <SelectTrigger className="w-[200px] -none border-white/10 bg-[#0a0a0c]">
             <SelectValue placeholder="Filter by game" />
           </SelectTrigger>
-          <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+          <SelectContent className="-none border-white/10 bg-[#0a0a0c]">
             <SelectItem value="all">All Games</SelectItem>
             {SUPPORTED_GAMES.map((game) => (
               <SelectItem key={game} value={game}>{game}</SelectItem>
@@ -347,7 +347,7 @@ export default function MapManagement({ embedded = false }: MapManagementProps) 
 
       {/* Create Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="rounded-none border border-white/10 bg-[#0a0a0c] text-white">
+        <DialogContent className="-none border border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle>Add New Map</DialogTitle>
           </DialogHeader>
@@ -355,10 +355,10 @@ export default function MapManagement({ embedded = false }: MapManagementProps) 
             <div className="space-y-2">
               <Label className={FIELD_LABEL}>Game</Label>
               <Select value={formGame} onValueChange={(v) => setFormGame(v as SupportedGame)}>
-                <SelectTrigger className="rounded-none border-white/10 bg-[#0a0a0c]">
+                <SelectTrigger className="-none border-white/10 bg-[#0a0a0c]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c]">
+                <SelectContent className="-none border-white/10 bg-[#0a0a0c]">
                   {SUPPORTED_GAMES.map((game) => (
                     <SelectItem key={game} value={game}>{game}</SelectItem>
                   ))}
@@ -371,7 +371,7 @@ export default function MapManagement({ embedded = false }: MapManagementProps) 
                 placeholder="e.g., Dust 2, Ascent, Bank"
                 value={formMapName}
                 onChange={(e) => setFormMapName(e.target.value)}
-                className="rounded-none border-white/10 bg-[#0a0a0c]"
+                className="-none border-white/10 bg-[#0a0a0c]"
               />
             </div>
             <div className="flex items-center justify-between">
@@ -393,7 +393,7 @@ export default function MapManagement({ embedded = false }: MapManagementProps) 
 
       {/* Edit Dialog */}
       <Dialog open={!!editingMap} onOpenChange={(open) => { if (!open) { setEditingMap(null); resetForm(); } }}>
-        <DialogContent className="rounded-none border border-white/10 bg-[#0a0a0c] text-white">
+        <DialogContent className="-none border border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle>Edit Map: {editingMap?.map_name}</DialogTitle>
           </DialogHeader>
@@ -403,7 +403,7 @@ export default function MapManagement({ embedded = false }: MapManagementProps) 
               <Input
                 value={formMapName}
                 onChange={(e) => setFormMapName(e.target.value)}
-                className="rounded-none border-white/10 bg-[#0a0a0c]"
+                className="-none border-white/10 bg-[#0a0a0c]"
               />
             </div>
             <div className="flex items-center justify-between">

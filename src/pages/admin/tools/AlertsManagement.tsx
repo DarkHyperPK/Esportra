@@ -153,7 +153,7 @@ const AlertsManagement = () => {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-            className="rounded-none border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-zinc-300 outline-none transition-colors focus:border-rose-500"
+            className="-none border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-zinc-300 outline-none transition-colors focus:border-rose-500"
           >
             <option value="">All Status</option>
             <option value="active">Active</option>
@@ -164,7 +164,7 @@ const AlertsManagement = () => {
           <select
             value={severityFilter}
             onChange={(e) => { setSeverityFilter(e.target.value); setPage(1); }}
-            className="rounded-none border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-zinc-300 outline-none transition-colors focus:border-rose-500"
+            className="-none border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-zinc-300 outline-none transition-colors focus:border-rose-500"
           >
             <option value="">All Severity</option>
             <option value="critical">Critical</option>
@@ -175,7 +175,7 @@ const AlertsManagement = () => {
           <select
             value={typeFilter}
             onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
-            className="rounded-none border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-zinc-300 outline-none transition-colors focus:border-rose-500"
+            className="-none border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-zinc-300 outline-none transition-colors focus:border-rose-500"
           >
             <option value="">All Types</option>
             <option value="dispute_filed">Dispute Filed</option>
@@ -188,7 +188,7 @@ const AlertsManagement = () => {
           <select
             value={limit}
             onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-            className="rounded-none border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-zinc-300 outline-none transition-colors focus:border-rose-500"
+            className="-none border border-white/10 bg-black/60 px-3 py-1.5 text-xs text-zinc-300 outline-none transition-colors focus:border-rose-500"
           >
             <option value={10}>10 per page</option>
             <option value={25}>25 per page</option>

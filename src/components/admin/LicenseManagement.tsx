@@ -93,7 +93,7 @@ const FIELD_LABEL =
   'font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500';
 
 const INPUT_CLASS =
-  'rounded-none border border-white/10 bg-black/60 text-white placeholder:text-zinc-600 outline-none transition-colors focus-visible:border-rose-500 focus-visible:ring-rose-500/20';
+  '-none border border-white/10 bg-black/60 text-white placeholder:text-zinc-600 outline-none transition-colors focus-visible:border-rose-500 focus-visible:ring-rose-500/20';
 
 function CopyBadge({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -103,7 +103,7 @@ function CopyBadge({ text }: { text: string }) {
     setTimeout(() => setCopied(false), 1500);
   };
   return (
-    <button onClick={copy} className="inline-flex items-center gap-1.5 rounded-none border border-white/10 bg-white/[0.03] px-2 py-1 font-mono text-xs transition-colors hover:border-white/25">
+    <button onClick={copy} className="inline-flex items-center gap-1.5 -none border border-white/10 bg-white/[0.03] px-2 py-1 font-mono text-xs transition-colors hover:border-white/25">
       {text}
       {copied ? <Check className="h-3 w-3 text-white" /> : <Copy className="h-3 w-3 text-zinc-500" />}
     </button>
@@ -304,10 +304,10 @@ export default function LicenseManagement() {
           />
         </div>
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
-          <SelectTrigger className="w-[140px] rounded-none border-white/10 bg-black/60 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
+          <SelectTrigger className="w-[140px] -none border-white/10 bg-black/60 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
-          <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-zinc-300">
+          <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-zinc-300">
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="revoked">Revoked</SelectItem>
@@ -315,10 +315,10 @@ export default function LicenseManagement() {
           </SelectContent>
         </Select>
         <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(0); }}>
-          <SelectTrigger className="w-[160px] rounded-none border-white/10 bg-black/60 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
+          <SelectTrigger className="w-[160px] -none border-white/10 bg-black/60 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
-          <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-zinc-300">
+          <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-zinc-300">
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="organizer">Organizer</SelectItem>
             <SelectItem value="venue_owner">Venue Owner</SelectItem>
@@ -362,7 +362,7 @@ export default function LicenseManagement() {
                         {lic.avatar_url ? (
                           <img src={lic.avatar_url} className="h-7 w-7 rounded-full object-cover" alt="" />
                         ) : (
-                          <div className="flex h-7 w-7 items-center justify-center rounded-none border border-white/10 bg-black/40 font-mono text-xs text-zinc-400">
+                          <div className="flex h-7 w-7 items-center justify-center -none border border-white/10 bg-black/40 font-mono text-xs text-zinc-400">
                             {(lic.username?.[0] || '?').toUpperCase()}
                           </div>
                         )}
@@ -435,7 +435,7 @@ export default function LicenseManagement() {
 
       {/* ── Assign License Dialog ──────────────────────────────────────────── */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
-        <DialogContent className="max-w-md rounded-none border border-white/10 bg-[#0a0a0c] text-white">
+        <DialogContent className="max-w-md -none border border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-4 w-4 text-rose-400" /> Assign License
@@ -454,10 +454,10 @@ export default function LicenseManagement() {
             <div>
               <label className={`mb-1 block ${FIELD_LABEL}`}>License Type</label>
               <Select value={assignType} onValueChange={setAssignType}>
-                <SelectTrigger className="w-full rounded-none border-white/10 bg-black/60 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
+                <SelectTrigger className="w-full -none border-white/10 bg-black/60 font-mono text-[11px] uppercase tracking-wider text-zinc-300">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-zinc-300">
+                <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-zinc-300">
                   <SelectItem value="organizer">Organizer (ESP-OR)</SelectItem>
                   <SelectItem value="venue_owner">Venue Owner (ESP-VO)</SelectItem>
                 </SelectContent>
@@ -476,7 +476,7 @@ export default function LicenseManagement() {
 
       {/* ── User Detail Dialog ─────────────────────────────────────────────── */}
       <Dialog open={!!detailUser || detailLoading} onOpenChange={(open) => { if (!open) setDetailUser(null); }}>
-        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto overscroll-contain rounded-none border border-white/10 bg-[#0a0a0c] text-white" data-lenis-prevent>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto overscroll-contain -none border border-white/10 bg-[#0a0a0c] text-white" data-lenis-prevent>
           <DialogHeader className="sr-only">
             <DialogTitle>User details</DialogTitle>
           </DialogHeader>
@@ -489,7 +489,7 @@ export default function LicenseManagement() {
                   {detailUser.profile.avatar_url ? (
                     <img src={detailUser.profile.avatar_url} className="h-10 w-10 rounded-full object-cover" alt="" />
                   ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-none border border-white/10 bg-black/40 font-mono text-lg text-zinc-400">
+                    <div className="flex h-10 w-10 items-center justify-center -none border border-white/10 bg-black/40 font-mono text-lg text-zinc-400">
                       {(detailUser.profile.username?.[0] || '?').toUpperCase()}
                     </div>
                   )}
@@ -503,12 +503,12 @@ export default function LicenseManagement() {
               <div className="mt-4 space-y-5">
                 {/* Profile Meta */}
                 <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-none border border-white/10 bg-white/[0.03] px-2 py-1 font-mono text-zinc-300">Joined {new Date(detailUser.profile.created_at).toLocaleDateString()}</span>
+                  <span className="-none border border-white/10 bg-white/[0.03] px-2 py-1 font-mono text-zinc-300">Joined {new Date(detailUser.profile.created_at).toLocaleDateString()}</span>
                   {detailUser.profile.is_admin && (
-                    <span className="rounded-none border border-amber-500/35 px-2 py-1 font-mono text-amber-300">Admin</span>
+                    <span className="-none border border-amber-500/35 px-2 py-1 font-mono text-amber-300">Admin</span>
                   )}
                   {detailUser.profile.admin_roles?.map(r => (
-                    <span key={r} className="rounded-none border border-rose-500/30 px-2 py-1 font-mono text-rose-300">{r}</span>
+                    <span key={r} className="-none border border-rose-500/30 px-2 py-1 font-mono text-rose-300">{r}</span>
                   ))}
                 </div>
 
@@ -519,7 +519,7 @@ export default function LicenseManagement() {
                   ) : (
                     <div className="space-y-2">
                       {detailUser.licenses.map(lic => (
-                        <div key={lic.id} className="flex items-center justify-between rounded-none border border-white/10 bg-white/[0.025] px-3 py-2">
+                        <div key={lic.id} className="flex items-center justify-between -none border border-white/10 bg-white/[0.025] px-3 py-2">
                           <div className="flex items-center gap-3">
                             <CopyBadge text={lic.license_id} />
                             <span className="font-mono text-xs uppercase tracking-wider text-zinc-300">{LICENSE_TYPE_LABEL[lic.license_type] ?? lic.license_type}</span>
@@ -545,7 +545,7 @@ export default function LicenseManagement() {
                   ) : (
                     <div className="flex flex-wrap gap-2">
                       {detailUser.user_roles.map(r => (
-                        <span key={r.role} className={`rounded-none border px-2 py-1 font-mono text-xs ${r.is_active ? 'border-white/25 text-white' : 'border-white/10 text-zinc-500 line-through'}`}>
+                        <span key={r.role} className={`-none border px-2 py-1 font-mono text-xs ${r.is_active ? 'border-white/25 text-white' : 'border-white/10 text-zinc-500 line-through'}`}>
                           {r.role} {!r.is_active && '(inactive)'}
                         </span>
                       ))}
@@ -578,7 +578,7 @@ export default function LicenseManagement() {
                     <div className="divide-y divide-white/5 border border-white/10 bg-white/[0.025] px-3">
                       {detailUser.organizations.map(o => (
                         <div key={o.id} className="flex items-center gap-2 py-2 text-xs">
-                          {o.logo_url && <img src={o.logo_url} className="h-5 w-5 rounded-none border border-white/10" alt="" />}
+                          {o.logo_url && <img src={o.logo_url} className="h-5 w-5 -none border border-white/10" alt="" />}
                           <span className="font-medium text-white">{o.name}</span>
                           <span className="font-mono text-zinc-500">/{o.slug}</span>
                         </div>
@@ -633,7 +633,7 @@ function Section({ icon, title, count, children }: { icon: React.ReactNode; titl
       <div className="mb-2 flex items-center gap-2">
         {icon}
         <span className={FIELD_LABEL}>{title}</span>
-        <span className="rounded-none border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-zinc-500">{count}</span>
+        <span className="-none border border-white/10 bg-black/40 px-1.5 py-0.5 font-mono text-[10px] tabular-nums text-zinc-500">{count}</span>
       </div>
       {children}
     </div>

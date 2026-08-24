@@ -51,9 +51,9 @@ const SettingsSkeleton = () => (
         key={i}
         className="space-y-3 border border-white/10 bg-[#0a0a0c]/92 p-5"
       >
-        <Skeleton className="h-4 w-40 rounded-none bg-zinc-800" />
-        <Skeleton className="h-3 w-64 rounded-none bg-zinc-800/60" />
-        <Skeleton className="h-10 w-full rounded-none bg-zinc-800/40" />
+        <Skeleton className="h-4 w-40 -none bg-zinc-800" />
+        <Skeleton className="h-3 w-64 -none bg-zinc-800/60" />
+        <Skeleton className="h-10 w-full -none bg-zinc-800/40" />
       </div>
     ))}
   </div>
@@ -106,7 +106,7 @@ const SensitiveField = ({
         type={revealed ? 'text' : 'password'}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-none border-white/10 bg-black/40 pr-12 font-mono text-sm text-white"
+        className="-none border-white/10 bg-black/40 pr-12 font-mono text-sm text-white"
         autoComplete="off"
       />
       <button
@@ -171,7 +171,7 @@ const SettingCard = ({
             type="number"
             value={localValue}
             onChange={(e) => onValueChange(setting.key, e.target.value)}
-            className="max-w-xs rounded-none border-white/10 bg-black/40 text-white tabular-nums"
+            className="max-w-xs -none border-white/10 bg-black/40 text-white tabular-nums"
             min={0}
           />
         );
@@ -183,7 +183,7 @@ const SettingCard = ({
             value={localValue}
             onChange={(e) => onValueChange(setting.key, e.target.value)}
             placeholder="email@example.com"
-            className="rounded-none border-white/10 bg-black/40 text-white"
+            className="-none border-white/10 bg-black/40 text-white"
           />
         );
 
@@ -194,7 +194,7 @@ const SettingCard = ({
             value={localValue}
             onChange={(e) => onValueChange(setting.key, e.target.value)}
             placeholder="https://"
-            className="rounded-none border-white/10 bg-black/40 text-white"
+            className="-none border-white/10 bg-black/40 text-white"
           />
         );
 
@@ -204,7 +204,7 @@ const SettingCard = ({
             type="text"
             value={localValue}
             onChange={(e) => onValueChange(setting.key, e.target.value)}
-            className="rounded-none border-white/10 bg-black/40 text-white"
+            className="-none border-white/10 bg-black/40 text-white"
           />
         );
     }

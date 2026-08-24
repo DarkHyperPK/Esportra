@@ -326,7 +326,7 @@ const TournamentManagementTool = () => {
                   placeholder="Search tournaments…"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  className="w-full rounded-none border border-white/10 bg-black/60 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                  className="w-full -none border border-white/10 bg-black/60 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                 />
               </div>
               <div className="flex flex-wrap gap-1">
@@ -367,7 +367,7 @@ const TournamentManagementTool = () => {
                     placeholder="e.g. Valorant, CS2"
                     value={gameInput}
                     onChange={(e) => setGameInput(e.target.value)}
-                    className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                   />
                 </div>
                 <div>
@@ -375,7 +375,7 @@ const TournamentManagementTool = () => {
                   <select
                     value={formatFilter}
                     onChange={(e) => { setFormatFilter(e.target.value); setPage(1); }}
-                    className="w-full rounded-none border border-white/10 bg-black/60 p-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full -none border border-white/10 bg-black/60 p-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                   >
                     <option value="">All Formats</option>
                     <option value="single_elimination">Single Elimination</option>
@@ -391,7 +391,7 @@ const TournamentManagementTool = () => {
                     placeholder="0"
                     value={prizeMin}
                     onChange={(e) => { setPrizeMin(e.target.value); setPage(1); }}
-                    className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                   />
                 </div>
                 <div>
@@ -401,7 +401,7 @@ const TournamentManagementTool = () => {
                     placeholder="Any"
                     value={prizeMax}
                     onChange={(e) => { setPrizeMax(e.target.value); setPage(1); }}
-                    className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                   />
                 </div>
               </div>
@@ -412,7 +412,7 @@ const TournamentManagementTool = () => {
                     type="date"
                     value={dateFrom}
                     onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
-                    className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                   />
                 </div>
                 <div>
@@ -421,7 +421,7 @@ const TournamentManagementTool = () => {
                     type="date"
                     value={dateTo}
                     onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
-                    className="w-full rounded-none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                   />
                 </div>
                 <div>
@@ -429,7 +429,7 @@ const TournamentManagementTool = () => {
                   <select
                     value={sortBy}
                     onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
-                    className="w-full rounded-none border border-white/10 bg-black/60 p-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                    className="w-full -none border border-white/10 bg-black/60 p-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                   >
                     <option value="created_at">Created Date</option>
                     <option value="start_date">Start Date</option>
@@ -442,7 +442,7 @@ const TournamentManagementTool = () => {
                   <button
                     type="button"
                     onClick={() => { setSortDir(sortDir === 'desc' ? 'asc' : 'desc'); setPage(1); }}
-                    className="flex h-[38px] w-full items-center justify-center gap-2 rounded-none border border-white/10 bg-white/[0.02] font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-400 transition-colors hover:border-white/25 hover:text-white"
+                    className="flex h-[38px] w-full items-center justify-center gap-2 -none border border-white/10 bg-white/[0.02] font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-400 transition-colors hover:border-white/25 hover:text-white"
                   >
                     {sortDir === 'desc' ? <SortDesc className="h-4 w-4" /> : <SortAsc className="h-4 w-4" />}
                     {sortDir === 'desc' ? 'Newest First' : 'Oldest First'}
@@ -489,7 +489,7 @@ const TournamentManagementTool = () => {
                       <Checkbox
                         checked={selectedTournamentIds.size === filteredTournaments.length ? true : selectedTournamentIds.size > 0 ? "indeterminate" : false}
                         onCheckedChange={toggleSelectAllTournaments}
-                        className="rounded-none border-white/20"
+                        className="-none border-white/20"
                       />
                     </th>
                     <th className="px-6 py-3 text-left">Tournament</th>
@@ -530,7 +530,7 @@ const TournamentManagementTool = () => {
                           <Checkbox
                             checked={selectedTournamentIds.has(tournament.id)}
                             onCheckedChange={() => toggleSelectTournament(tournament.id)}
-                            className="rounded-none border-white/20"
+                            className="-none border-white/20"
                           />
                         </td>
                         <td className="px-6 py-4">
@@ -565,36 +565,36 @@ const TournamentManagementTool = () => {
                                 <MoreVertical className="h-3.5 w-3.5" />
                               </CommandIconButton>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="rounded-none border-white/10 bg-[#0a0a0c]">
+                            <DropdownMenuContent align="end" className="-none border-white/10 bg-[#0a0a0c]">
                               <DropdownMenuItem
-                                className="rounded-none text-zinc-300 focus:bg-white/[0.06] focus:text-white"
+                                className="-none text-zinc-300 focus:bg-white/[0.06] focus:text-white"
                                 onClick={() => setSelectedTournament(tournament)}
                               >
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem asChild className="rounded-none text-zinc-300 focus:bg-white/[0.06] focus:text-white">
+                              <DropdownMenuItem asChild className="-none text-zinc-300 focus:bg-white/[0.06] focus:text-white">
                                 <Link to={`/organizer/tournament/${tournament.slug}`}>
                                   <Settings className="mr-2 h-4 w-4" />
                                   Manage Tournament
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                className="rounded-none text-zinc-300 focus:bg-rose-500/10 focus:text-white"
+                                className="-none text-zinc-300 focus:bg-rose-500/10 focus:text-white"
                                 onClick={() => handleStatusChange(tournament.id, 'ongoing')}
                               >
                                 <Play className="mr-2 h-4 w-4" />
                                 Start Tournament
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                className="rounded-none text-amber-300 focus:bg-amber-500/10 focus:text-amber-200"
+                                className="-none text-amber-300 focus:bg-amber-500/10 focus:text-amber-200"
                                 onClick={() => setConfirmAction({ id: tournament.id, status: 'completed', name: tournament.name })}
                               >
                                 <CheckCircle className="mr-2 h-4 w-4" />
                                 Mark Completed
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                className="rounded-none text-red-300 focus:bg-red-500/10 focus:text-red-200"
+                                className="-none text-red-300 focus:bg-red-500/10 focus:text-red-200"
                                 onClick={() => setConfirmAction({ id: tournament.id, status: 'cancelled', name: tournament.name })}
                               >
                                 <Ban className="mr-2 h-4 w-4" />
@@ -667,7 +667,7 @@ const TournamentManagementTool = () => {
 
       {/* Tournament Detail Modal */}
       <Dialog open={!!selectedTournament} onOpenChange={() => { setSelectedTournament(null); setModalTab('details'); }}>
-        <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto overscroll-contain rounded-none border-white/10 bg-[#0a0a0c]" data-lenis-prevent>
+        <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto overscroll-contain -none border-white/10 bg-[#0a0a0c]" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-white">
               <Trophy className="h-4 w-4 text-zinc-400" />
@@ -725,7 +725,7 @@ const TournamentManagementTool = () => {
 
       {/* Confirmation Dialog */}
       <Dialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
-        <DialogContent className="max-w-md rounded-none border-white/10 bg-[#0a0a0c] text-white">
+        <DialogContent className="max-w-md -none border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle className="text-white">Confirm Action</DialogTitle>
           </DialogHeader>
@@ -754,7 +754,7 @@ const TournamentManagementTool = () => {
 
       {/* Bulk Cancel Confirmation Dialog */}
       <Dialog open={!!bulkConfirm} onOpenChange={(open) => { if (!open) setBulkConfirm(null); }}>
-        <DialogContent className="max-w-md rounded-none border-white/10 bg-[#0a0a0c] text-white">
+        <DialogContent className="max-w-md -none border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-white">
               <AlertTriangle className="h-5 w-5 text-red-400" />

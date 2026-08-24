@@ -135,12 +135,12 @@ export default function CommandCentre() {
   if (isLoading) {
     return (
       <div className="p-6">
-        <Skeleton className="mb-6 h-24 w-full rounded-none" />
+        <Skeleton className="mb-6 h-24 w-full -none" />
         <div className="space-y-5">
-          <Skeleton className="h-32 w-full rounded-none" />
+          <Skeleton className="h-32 w-full -none" />
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-            <Skeleton className="h-56 rounded-none lg:col-span-2" />
-            <Skeleton className="h-56 rounded-none" />
+            <Skeleton className="h-56 -none lg:col-span-2" />
+            <Skeleton className="h-56 -none" />
           </div>
         </div>
       </div>
@@ -310,7 +310,7 @@ export default function CommandCentre() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm text-white">{item.username}</p>
                       <div className="mt-0.5 flex items-center gap-2">
-                        <Badge variant="outline" className="rounded-none border-white/15 px-1.5 py-0 font-mono text-[9px] uppercase tracking-wider text-zinc-400">
+                        <Badge variant="outline" className="-none border-white/15 px-1.5 py-0 font-mono text-[9px] uppercase tracking-wider text-zinc-400">
                           {item.requested_role}
                         </Badge>
                         <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-600">

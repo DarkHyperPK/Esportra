@@ -15,32 +15,33 @@ interface Props {
 }
 
 const actionConfig: Record<string, { icon: LucideIcon; color: string; label: string }> = {
-  create: { icon: CheckCircle, color: 'text-green-500', label: 'Created' },
-  update: { icon: Pencil, color: 'text-blue-400', label: 'Updated' },
+  create: { icon: CheckCircle, color: 'text-emerald-300', label: 'Created' },
+  update: { icon: Pencil, color: 'text-zinc-400', label: 'Updated' },
   delete: { icon: Trash2, color: 'text-red-500', label: 'Deleted' },
-  approve: { icon: CheckCircle, color: 'text-green-500', label: 'Approved' },
+  approve: { icon: CheckCircle, color: 'text-emerald-300', label: 'Approved' },
   reject: { icon: XCircle, color: 'text-red-500', label: 'Rejected' },
   cancel: { icon: XCircle, color: 'text-amber-500', label: 'Cancelled' },
   suspend: { icon: Ban, color: 'text-red-500', label: 'Suspended' },
-  unsuspend: { icon: UserCheck, color: 'text-green-500', label: 'Unsuspended' },
+  unsuspend: { icon: UserCheck, color: 'text-emerald-300', label: 'Unsuspended' },
   ban: { icon: Ban, color: 'text-red-600', label: 'Banned' },
-  unban: { icon: UserCheck, color: 'text-green-500', label: 'Unbanned' },
-  verify: { icon: Shield, color: 'text-blue-500', label: 'Verified' },
+  unban: { icon: UserCheck, color: 'text-emerald-300', label: 'Unbanned' },
+  verify: { icon: Shield, color: 'text-zinc-400', label: 'Verified' },
   unverify: { icon: Shield, color: 'text-zinc-500', label: 'Unverified' },
-  resolve: { icon: CheckCircle, color: 'text-green-500', label: 'Resolved' },
+  resolve: { icon: CheckCircle, color: 'text-emerald-300', label: 'Resolved' },
   escalate: { icon: AlertTriangle, color: 'text-amber-500', label: 'Escalated' },
   feature: { icon: Star, color: 'text-amber-400', label: 'Featured' },
   unfeature: { icon: Star, color: 'text-zinc-500', label: 'Unfeatured' },
-  rolechange: { icon: Shield, color: 'text-purple-400', label: 'Role Changed' },
+  rolechange: { icon: Shield, color: 'text-rose-300', label: 'Role Changed' },
 };
 
 export default function EntityHistoryTimeline({ targetType, targetId }: Props) {
   const [page, setPage] = useState(1);
   const { data, isLoading, error, refetch } = useEntityHistory(targetType, targetId, page);
 
-  const entries = data?.data ?? [];
-  const total = data?.total ?? 0;
-  const pageSize = data?.limit ?? 15;
+  const paged = Array.isArray(data) ? undefined : data;
+  const entries = paged?.data ?? [];
+  const total = paged?.total ?? 0;
+  const pageSize = paged?.limit ?? 15;
   const totalPages = Math.ceil(total / pageSize);
 
   const formatDate = (d: string) => {
@@ -119,7 +120,7 @@ export default function EntityHistoryTimeline({ targetType, targetId }: Props) {
 
                 {/* Details */}
                 {details && Object.keys(details).length > 0 && (
-                  <div className="mt-2 p-2 bg-[#0a0a0c] border border-zinc-800/50 rounded-lg">
+                  <div className="mt-2 p-2 bg-[#0a0a0c] border border-zinc-800/50">
                     {Object.entries(details).map(([key, value]) => (
                       <div key={key} className="flex items-start gap-2 text-xs py-0.5">
                         <span className="text-zinc-600 font-mono min-w-[80px]">{key}:</span>

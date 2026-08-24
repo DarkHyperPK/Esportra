@@ -134,7 +134,7 @@ const OverviewSection = () => {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search sponsors…"
-                className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
               />
             </div>
             <div className="flex gap-1 overflow-x-auto" data-lenis-prevent>

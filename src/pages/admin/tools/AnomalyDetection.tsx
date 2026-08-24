@@ -116,7 +116,7 @@ const timeAgo = (iso: string): string => {
 const EventCardSkeleton = () => (
   <div className="space-y-3">
     {Array.from({ length: 4 }).map((_, i) => (
-      <Skeleton key={i} className="h-32 rounded-none bg-white/5" />
+      <Skeleton key={i} className="h-32 -none bg-white/5" />
     ))}
   </div>
 );
@@ -124,7 +124,7 @@ const EventCardSkeleton = () => (
 const RuleCardSkeleton = () => (
   <div className="space-y-3">
     {Array.from({ length: 5 }).map((_, i) => (
-      <Skeleton key={i} className="h-24 rounded-none bg-white/5" />
+      <Skeleton key={i} className="h-24 -none bg-white/5" />
     ))}
   </div>
 );
@@ -184,7 +184,7 @@ const ResolveDialog = ({ event, onClose }: ResolveDialogProps) => {
 
   return (
     <Dialog open={!!event} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white max-w-md">
+      <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-zinc-300" />
@@ -214,7 +214,7 @@ const ResolveDialog = ({ event, onClose }: ResolveDialogProps) => {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Describe why this is a false positive or what action was taken…"
                 rows={3}
-                className="rounded-none resize-none border-white/10 bg-white/[0.03] text-white placeholder:text-zinc-600"
+                className="-none resize-none border-white/10 bg-white/[0.03] text-white placeholder:text-zinc-600"
               />
             </div>
           </div>
@@ -380,7 +380,7 @@ const EditRuleDialog = ({ rule, onClose }: EditRuleDialogProps) => {
 
   return (
     <Dialog open={!!rule} onOpenChange={handleOpenChange}>
-      <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white max-w-md">
+      <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-4 w-4 text-zinc-300" />
@@ -405,7 +405,7 @@ const EditRuleDialog = ({ rule, onClose }: EditRuleDialogProps) => {
                   min={1}
                   value={threshold}
                   onChange={(e) => setThreshold(e.target.value)}
-                  className="h-9 rounded-none border-white/10 bg-white/[0.03] text-white"
+                  className="h-9 -none border-white/10 bg-white/[0.03] text-white"
                 />
               </div>
               <div>
@@ -415,7 +415,7 @@ const EditRuleDialog = ({ rule, onClose }: EditRuleDialogProps) => {
                   min={1}
                   value={window}
                   onChange={(e) => setWindow(e.target.value)}
-                  className="h-9 rounded-none border-white/10 bg-white/[0.03] text-white"
+                  className="h-9 -none border-white/10 bg-white/[0.03] text-white"
                 />
               </div>
               <div>
@@ -425,7 +425,7 @@ const EditRuleDialog = ({ rule, onClose }: EditRuleDialogProps) => {
                   min={0}
                   value={cooldown}
                   onChange={(e) => setCooldown(e.target.value)}
-                  className="h-9 rounded-none border-white/10 bg-white/[0.03] text-white"
+                  className="h-9 -none border-white/10 bg-white/[0.03] text-white"
                 />
               </div>
               <div>
@@ -433,7 +433,7 @@ const EditRuleDialog = ({ rule, onClose }: EditRuleDialogProps) => {
                 <select
                   value={severity}
                   onChange={(e) => setSeverity(e.target.value)}
-                  className="h-9 w-full rounded-none border border-white/10 bg-white/[0.03] px-3 font-mono text-xs uppercase tracking-wider text-white focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+                  className="h-9 w-full -none border border-white/10 bg-white/[0.03] px-3 font-mono text-xs uppercase tracking-wider text-white focus:outline-none focus:ring-2 focus:ring-rose-500/40"
                 >
                   <option value="low" className="bg-[#121214]">Low</option>
                   <option value="medium" className="bg-[#121214]">Medium</option>

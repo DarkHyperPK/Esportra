@@ -144,7 +144,7 @@ const PipelineSection = () => {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search company or contact…"
-            className="w-full rounded-none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+            className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
           />
         </div>
       </div>
@@ -226,7 +226,7 @@ const PipelineSection = () => {
 
       {/* Detail dialog */}
       <Dialog open={detail !== null} onOpenChange={open => { if (!open) setDetail(null); }}>
-        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto rounded-none border-white/10 bg-[#0a0a0c]" data-lenis-prevent>
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto -none border-white/10 bg-[#0a0a0c]" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle>Application Details</DialogTitle>
             <DialogDescription>Submitted on {detail?.created_at && new Date(detail.created_at).toLocaleString()}</DialogDescription>

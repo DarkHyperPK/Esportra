@@ -36,7 +36,7 @@ const LABEL_CLASS = 'block font-mono text-[10px] font-bold uppercase tracking-[0
 const StatsSkeleton = () => (
   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
     {Array.from({ length: 5 }).map((_, i) => (
-      <Skeleton key={i} className="h-20 rounded-none bg-white/[0.025]" />
+      <Skeleton key={i} className="h-20 -none bg-white/[0.025]" />
     ))}
   </div>
 );
@@ -44,7 +44,7 @@ const StatsSkeleton = () => (
 const RequestCardSkeleton = () => (
   <div className="space-y-3">
     {Array.from({ length: 4 }).map((_, i) => (
-      <Skeleton key={i} className="h-24 rounded-none bg-white/[0.025]" />
+      <Skeleton key={i} className="h-24 -none bg-white/[0.025]" />
     ))}
   </div>
 );
@@ -52,7 +52,7 @@ const RequestCardSkeleton = () => (
 const TableSkeleton = () => (
   <div className="space-y-2">
     {Array.from({ length: 6 }).map((_, i) => (
-      <Skeleton key={i} className="h-12 rounded-none bg-white/[0.025]" />
+      <Skeleton key={i} className="h-12 -none bg-white/[0.025]" />
     ))}
   </div>
 );
@@ -147,7 +147,7 @@ const ProcessDialog = ({ request, action, onClose }: ProcessDialogProps) => {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="max-w-md rounded-none border-white/10 bg-[#0a0a0c] text-white">
+      <DialogContent className="max-w-md -none border-white/10 bg-[#0a0a0c] text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-semibold text-white">
             {action === 'approve' ? (
@@ -178,7 +178,7 @@ const ProcessDialog = ({ request, action, onClose }: ProcessDialogProps) => {
 
           {/* Deletion warning */}
           {action === 'approve' && isDeletion && (
-            <div className="flex gap-3 rounded-none border border-red-500/20 bg-red-500/10 p-3">
+            <div className="flex gap-3 -none border border-red-500/20 bg-red-500/10 p-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
               <p className="text-sm leading-relaxed text-red-300">
                 <strong className="text-red-300">Irreversible action.</strong> This will permanently anonymize
@@ -197,7 +197,7 @@ const ProcessDialog = ({ request, action, onClose }: ProcessDialogProps) => {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={action === 'reject' ? 'Reason for rejection (required)…' : 'Additional notes…'}
-              className="h-24 resize-none rounded-none border-white/10 bg-black/40 text-white placeholder:text-zinc-600 focus:border-rose-500 focus-visible:ring-rose-500/20"
+              className="h-24 resize-none -none border-white/10 bg-black/40 text-white placeholder:text-zinc-600 focus:border-rose-500 focus-visible:ring-rose-500/20"
             />
             {action === 'reject' && !notes.trim() && (
               <p className="text-xs text-rose-400">A reason is required when rejecting a request.</p>
@@ -391,10 +391,10 @@ const DataRequestsTab = () => {
       {/* Filters */}
       <CommandSection className="flex flex-wrap gap-3">
         <Select value={statusFilter || '__all__'} onValueChange={(v) => { setStatusFilter(v === '__all__' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="w-44 rounded-none border-white/10 bg-black/40 text-zinc-300 focus:border-rose-500">
+          <SelectTrigger className="w-44 -none border-white/10 bg-black/40 text-zinc-300 focus:border-rose-500">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
-          <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+          <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
             <SelectItem value="__all__">All Statuses</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="processing">Processing</SelectItem>
@@ -405,10 +405,10 @@ const DataRequestsTab = () => {
         </Select>
 
         <Select value={typeFilter || '__all__'} onValueChange={(v) => { setTypeFilter(v === '__all__' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="w-44 rounded-none border-white/10 bg-black/40 text-zinc-300 focus:border-rose-500">
+          <SelectTrigger className="w-44 -none border-white/10 bg-black/40 text-zinc-300 focus:border-rose-500">
             <SelectValue placeholder="All Types" />
           </SelectTrigger>
-          <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+          <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
             <SelectItem value="__all__">All Types</SelectItem>
             <SelectItem value="export">Export</SelectItem>
             <SelectItem value="deletion">Deletion</SelectItem>
@@ -475,10 +475,10 @@ const ConsentRecordsTab = () => {
       {/* Filters */}
       <CommandSection className="flex flex-wrap gap-3">
         <Select value={typeFilter || '__all__'} onValueChange={(v) => { setTypeFilter(v === '__all__' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="w-52 rounded-none border-white/10 bg-black/40 text-zinc-300 focus:border-rose-500">
+          <SelectTrigger className="w-52 -none border-white/10 bg-black/40 text-zinc-300 focus:border-rose-500">
             <SelectValue placeholder="All Consent Types" />
           </SelectTrigger>
-          <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+          <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
             <SelectItem value="__all__">All Types</SelectItem>
             {CONSENT_TYPES.map((t) => (
               <SelectItem key={t} value={t}>{formatConsentType(t)}</SelectItem>
@@ -487,10 +487,10 @@ const ConsentRecordsTab = () => {
         </Select>
 
         <Select value={grantedFilter || '__all__'} onValueChange={(v) => { setGrantedFilter(v === '__all__' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="w-40 rounded-none border-white/10 bg-black/40 text-zinc-300 focus:border-rose-500">
+          <SelectTrigger className="w-40 -none border-white/10 bg-black/40 text-zinc-300 focus:border-rose-500">
             <SelectValue placeholder="All Consents" />
           </SelectTrigger>
-          <SelectContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+          <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
             <SelectItem value="__all__">All</SelectItem>
             <SelectItem value="true">Granted</SelectItem>
             <SelectItem value="false">Denied</SelectItem>

@@ -19,7 +19,7 @@ export function GhostModeBanner() {
       <div className="fixed inset-x-0 top-0 z-[998] border-b border-red-500/30 bg-gradient-to-r from-red-950/98 via-red-900/95 to-red-950/98 text-white backdrop-blur-sm">
         <div className="mx-auto flex max-w-[1800px] items-center justify-between gap-4 px-4 py-2.5">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/20 border border-red-500/30">
+            <div className="relative flex h-8 w-8 items-center justify-center bg-red-500/20 border border-red-500/30">
               <Ghost className="h-4 w-4 text-red-300" />
               <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
