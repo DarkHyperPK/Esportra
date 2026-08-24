@@ -1,11 +1,8 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -39,6 +36,15 @@ import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
 import { usePlatformFeatures, FEATURES } from '@/hooks/usePlatformFeatures';
 import { FeatureUnavailable } from '@/components/admin/FeatureUnavailable';
+import { AdminPage } from '@/components/admin/AdminPage';
+import {
+  CommandButton,
+  CommandIconButton,
+  CommandEmptyState,
+  CommandPanel,
+  CommandSection,
+  CommandTabs,
+} from '@/components/management/CommandSurface';
 
 interface Broadcast {
   id: string;
@@ -67,13 +73,22 @@ interface BroadcastStats {
   read_rate: number;
 }
 
-const statusColors: Record<string, string> = {
-  draft: 'bg-zinc-500',
-  scheduled: 'bg-zinc-500',
-  sending: 'bg-amber-500',
-  sent: 'bg-emerald-400',
-  cancelled: 'bg-red-500',
+const STATUS_CHIP: Record<string, { dot: string; chip: string }> = {
+  draft: { dot: 'bg-zinc-600', chip: 'border-white/10 text-zinc-400' },
+  scheduled: { dot: 'bg-amber-300', chip: 'border-amber-500/30 text-amber-300' },
+  sending: { dot: 'bg-amber-300', chip: 'border-amber-500/30 text-amber-300' },
+  sent: { dot: 'bg-rose-500', chip: 'border-white/25 text-white' },
+  cancelled: { dot: 'bg-red-400', chip: 'border-red-500/30 text-red-300' },
 };
+
+const TYPE_CHIP = 'border border-white/10 text-zinc-400';
+
+const priorityChipClass = (priority: string) =>
+  priority === 'urgent'
+    ? 'border border-red-500/40 text-red-300'
+    : priority === 'high'
+      ? 'border border-amber-500/30 text-amber-300'
+      : TYPE_CHIP;
 
 const broadcastTypes = [
   { value: 'announcement', label: 'Announcement' },
@@ -293,72 +308,71 @@ export default function Broadcasts() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Broadcasts</h1>
-          <p className="text-zinc-400 mt-1">
-            Send announcements and notifications to users
-          </p>
-        </div>
-        <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
+    <AdminPage
+      eyebrow="Operations"
+      title="Broadcasts"
+      description="Send announcements and notifications to users"
+      actions={
+        <CommandButton onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="h-4 w-4" />
           New Broadcast
-        </Button>
-      </div>
+        </CommandButton>
+      }
+    >
+      <CommandTabs
+        tabs={[
+          { value: 'all', label: 'All' },
+          { value: 'draft', label: 'Drafts' },
+          { value: 'scheduled', label: 'Scheduled' },
+          { value: 'sent', label: 'Sent' },
+        ]}
+        active={activeTab}
+        onChange={setActiveTab}
+      />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-zinc-900/50 border border-zinc-800">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="draft">Drafts</TabsTrigger>
-          <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
-          <TabsTrigger value="sent">Sent</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value={activeTab} className="mt-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {broadcasts.map((broadcast) => (
-                <div
-                  key={broadcast.id}
-                  className="p-4 bg-zinc-900/50 border border-zinc-800"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <h3 className="text-white font-medium">{broadcast.title}</h3>
-                        <Badge className={statusColors[broadcast.status]}>
-                          {broadcast.status}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
+      {isLoading ? (
+        <CommandSection className="py-16 text-center">
+          <Loader2 className="mx-auto h-5 w-5 animate-spin text-zinc-600" />
+        </CommandSection>
+      ) : broadcasts.length === 0 ? (
+        <CommandEmptyState
+          title="No broadcasts found"
+          description="Create a broadcast to announce updates across the platform."
+          icon={<Send className="h-5 w-5" />}
+        />
+      ) : (
+        <CommandSection className="p-0">
+          <div className="divide-y divide-white/5">
+            {broadcasts.map((broadcast) => {
+              const statusChip = STATUS_CHIP[broadcast.status];
+              return (
+                <div key={broadcast.id} className="p-5 transition-colors hover:bg-white/[0.02]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <h3 className="text-base font-bold text-white">{broadcast.title}</h3>
+                        {statusChip && (
+                          <span className={`inline-flex items-center gap-1.5 border px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${statusChip.chip}`}>
+                            <span className={`h-1.5 w-1.5 ${statusChip.dot}`} />
+                            {broadcast.status}
+                          </span>
+                        )}
+                        <span className={`px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${TYPE_CHIP}`}>
                           {broadcast.broadcast_type}
-                        </Badge>
+                        </span>
                         {broadcast.priority !== 'normal' && (
-                          <Badge
-                            variant="outline"
-                            className={
-                              broadcast.priority === 'urgent'
-                                ? 'border-red-500 text-red-400'
-                                : broadcast.priority === 'high'
-                                  ? 'border-amber-500 text-amber-300'
-                                  : 'text-zinc-400'
-                            }
-                          >
+                          <span className={`px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${priorityChipClass(broadcast.priority)}`}>
                             {broadcast.priority}
-                          </Badge>
+                          </span>
                         )}
                       </div>
-                      <p className="text-sm text-zinc-400 mt-1 line-clamp-2">
+                      <p className="mt-1 line-clamp-2 text-sm text-zinc-400">
                         {broadcast.content}
                       </p>
 
-                      <div className="flex items-center gap-4 mt-3 text-xs text-zinc-500">
+                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
                         <span className="flex items-center gap-1">
-                          <Users className="w-3 h-3" />
+                          <Users className="h-3 w-3" />
                           {broadcast.target_type === 'all'
                             ? 'All users'
                             : broadcast.target_type === 'segment'
@@ -368,7 +382,7 @@ export default function Broadcasts() {
 
                         {broadcast.status === 'scheduled' && broadcast.scheduled_at && (
                           <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
+                            <Clock className="h-3 w-3" />
                             {formatDistanceToNow(new Date(broadcast.scheduled_at), {
                               addSuffix: true,
                             })}
@@ -378,34 +392,37 @@ export default function Broadcasts() {
                         {broadcast.status === 'sent' && (
                           <>
                             <span className="flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" />
-                              {broadcast.delivered_count} delivered
+                              <CheckCircle className="h-3 w-3" />
+                              <span className="font-mono tabular-nums">{broadcast.delivered_count}</span> delivered
                             </span>
                             <span className="flex items-center gap-1">
-                              <Eye className="w-3 h-3" />
-                              {broadcast.read_count} read
+                              <Eye className="h-3 w-3" />
+                              <span className="font-mono tabular-nums">{broadcast.read_count}</span> read
                             </span>
                             {broadcast.total_recipients > 0 && (
                               <span className="flex items-center gap-1">
-                                <BarChart3 className="w-3 h-3" />
-                                {Math.round(
-                                  (broadcast.read_count / broadcast.total_recipients) * 100
-                                )}
-                                % read rate
+                                <BarChart3 className="h-3 w-3" />
+                                <span className="font-mono tabular-nums">
+                                  {Math.round(
+                                    (broadcast.read_count / broadcast.total_recipients) * 100
+                                  )}
+                                  %
+                                </span>{' '}
+                                read rate
                               </span>
                             )}
                           </>
                         )}
 
-                        <span className="text-zinc-600">
+                        <span className="font-mono tabular-nums text-zinc-600">
                           Created {format(new Date(broadcast.created_at), 'MMM d, yyyy')}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-1.5">
                       {broadcast.status === 'sent' && (
-                        <Button
+                        <CommandButton
                           variant="ghost"
                           size="sm"
                           onClick={() => {
@@ -413,66 +430,65 @@ export default function Broadcasts() {
                             setStatsDialogOpen(true);
                           }}
                         >
-                          <BarChart3 className="w-4 h-4 mr-1" />
+                          <BarChart3 className="h-4 w-4" />
                           Stats
-                        </Button>
+                        </CommandButton>
                       )}
 
                       {(broadcast.status === 'draft' || broadcast.status === 'scheduled') && (
                         <>
-                          <Button variant="ghost" size="sm" onClick={() => openEdit(broadcast)}>
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
+                          <CommandIconButton
+                            label="Edit broadcast"
+                            variant="ghost"
+                            className="h-8 w-8 text-zinc-500 hover:text-white"
+                            onClick={() => openEdit(broadcast)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </CommandIconButton>
+                          <CommandButton
                             size="sm"
                             onClick={() => sendBroadcast.mutate(broadcast.id)}
                             disabled={sendBroadcast.isPending}
                           >
-                            <Send className="w-4 h-4 mr-1" />
+                            <Send className="h-4 w-4" />
                             Send
-                          </Button>
+                          </CommandButton>
                         </>
                       )}
 
                       {broadcast.status === 'scheduled' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-400 hover:text-red-300"
+                        <CommandIconButton
+                          label="Cancel scheduled broadcast"
+                          variant="danger"
+                          className="h-8 w-8"
                           onClick={() => cancelBroadcast.mutate(broadcast.id)}
                         >
-                          <X className="w-4 h-4" />
-                        </Button>
+                          <X className="h-4 w-4" />
+                        </CommandIconButton>
                       )}
 
                       {broadcast.status === 'draft' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-400 hover:text-red-300"
+                        <CommandIconButton
+                          label="Delete draft"
+                          variant="danger"
+                          className="h-8 w-8"
                           onClick={() => {
                             if (confirm('Delete this broadcast?')) {
                               deleteBroadcast.mutate(broadcast.id);
                             }
                           }}
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                          <Trash2 className="h-4 w-4" />
+                        </CommandIconButton>
                       )}
                     </div>
                   </div>
                 </div>
-              ))}
-
-              {broadcasts.length === 0 && (
-                <div className="text-center py-12 text-zinc-500">
-                  No broadcasts found
-                </div>
-              )}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+              );
+            })}
+          </div>
+        </CommandSection>
+      )}
 
       {/* Create / Edit Dialog */}
       <Dialog
@@ -485,42 +501,37 @@ export default function Broadcasts() {
           }
         }}
       >
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+        <DialogContent className="max-w-lg border-white/10 bg-[#0a0a0c]">
           <DialogHeader>
             <DialogTitle>
               {editingBroadcast ? 'Edit Broadcast' : 'Create Broadcast'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
-            <div>
-              <label className="text-sm text-zinc-400 mb-2 block">Title</label>
+            <Field label="Title">
               <Input
                 placeholder="Broadcast title"
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
-                className="bg-zinc-800 border-zinc-700"
               />
-            </div>
+            </Field>
 
-            <div>
-              <label className="text-sm text-zinc-400 mb-2 block">Content</label>
+            <Field label="Content">
               <Textarea
                 placeholder="Broadcast message..."
                 value={formContent}
                 onChange={(e) => setFormContent(e.target.value)}
-                className="bg-zinc-800 border-zinc-700"
                 rows={4}
               />
-            </div>
+            </Field>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm text-zinc-400 mb-2 block">Type</label>
+              <Field label="Type">
                 <Select value={formType} onValueChange={setFormType}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-800 border-zinc-700">
+                  <SelectContent>
                     {broadcastTypes.map((t) => (
                       <SelectItem key={t.value} value={t.value}>
                         {t.label}
@@ -528,15 +539,14 @@ export default function Broadcasts() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
 
-              <div>
-                <label className="text-sm text-zinc-400 mb-2 block">Priority</label>
+              <Field label="Priority">
                 <Select value={formPriority} onValueChange={setFormPriority}>
-                  <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-zinc-800 border-zinc-700">
+                  <SelectContent>
                     {priorities.map((p) => (
                       <SelectItem key={p.value} value={p.value}>
                         {p.label}
@@ -544,21 +554,20 @@ export default function Broadcasts() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
             </div>
 
-            <div>
-              <label className="text-sm text-zinc-400 mb-2 block">Target Audience</label>
+            <Field label="Target Audience">
               <Select value={formTargetType} onValueChange={(v) => {
                 setFormTargetType(v);
                 setFormSegment({});
                 setFormTargetUserIds([]);
                 setSelectedUsers([]);
               }}>
-                <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-800 border-zinc-700">
+                <SelectContent>
                   {targetTypes.map((t) => (
                     <SelectItem key={t.value} value={t.value}>
                       {t.label}
@@ -566,11 +575,11 @@ export default function Broadcasts() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
 
             {formTargetType === 'segment' && (
-              <div className="p-4 bg-zinc-800/50 space-y-4">
-                <p className="text-sm text-zinc-400">Segment Criteria</p>
+              <CommandPanel className="space-y-4">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Segment Criteria</p>
 
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -580,23 +589,22 @@ export default function Broadcasts() {
                       setFormSegment({ ...formSegment, is_verified: checked === true ? true : undefined })
                     }
                   />
-                  <label htmlFor="verified-only" className="text-sm text-white cursor-pointer">
+                  <label htmlFor="verified-only" className="cursor-pointer text-sm text-white">
                     Verified users only
                   </label>
                 </div>
 
-                <div>
-                  <label className="text-sm text-zinc-400 mb-2 block">Role</label>
+                <Field label="Role">
                   <Select
                     value={formSegment.role ?? '_any'}
                     onValueChange={(v) =>
                       setFormSegment({ ...formSegment, role: v === '_any' ? undefined : v })
                     }
                   >
-                    <SelectTrigger className="bg-zinc-800 border-zinc-700">
+                    <SelectTrigger>
                       <SelectValue placeholder="Any role" />
                     </SelectTrigger>
-                    <SelectContent className="bg-zinc-800 border-zinc-700">
+                    <SelectContent>
                       <SelectItem value="_any">Any role</SelectItem>
                       {roles.map((r) => (
                         <SelectItem key={r.value} value={r.value}>
@@ -605,72 +613,70 @@ export default function Broadcasts() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </Field>
 
-                <div>
-                  <label className="text-sm text-zinc-400 mb-2 block">Country Code</label>
+                <Field label="Country Code">
                   <Input
                     placeholder="e.g., US, GB, DE"
                     value={formSegment.country ?? ''}
                     onChange={(e) =>
                       setFormSegment({ ...formSegment, country: e.target.value || undefined })
                     }
-                    className="bg-zinc-800 border-zinc-700"
                     maxLength={2}
                   />
-                </div>
-              </div>
+                </Field>
+              </CommandPanel>
             )}
 
             {formTargetType === 'users' && (
-              <div className="p-4 bg-zinc-800/50 space-y-3">
-                <p className="text-sm text-zinc-400">Select Users</p>
+              <CommandPanel className="space-y-3">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Select Users</p>
 
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
                   <Input
                     placeholder="Search by username or email..."
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
-                    className="pl-10 bg-zinc-800 border-zinc-700"
+                    className="pl-10"
                   />
                 </div>
 
                 {userSearchResults && userSearchResults.length > 0 && (
-                  <div className="border border-zinc-700 overflow-hidden">
+                  <div className="divide-y divide-white/5 border border-white/10 overflow-hidden">
                     {userSearchResults.map((user) => (
                       <button
                         key={user.id}
                         type="button"
                         onClick={() => addUser(user)}
                         disabled={formTargetUserIds.includes(user.id)}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-zinc-700 ${
+                        className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-white/[0.05] ${
                           formTargetUserIds.includes(user.id)
-                            ? 'bg-zinc-700/50 text-zinc-500'
+                            ? 'bg-white/[0.04] text-zinc-500'
                             : ''
                         }`}
                       >
                         <span className="text-white">{user.username}</span>
-                        <span className="text-zinc-500 ml-2">{user.email}</span>
+                        <span className="ml-2 text-zinc-500">{user.email}</span>
                       </button>
                     ))}
                   </div>
                 )}
 
                 {selectedUsers.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
                     {selectedUsers.map((user) => (
                       <span
                         key={user.id}
-                        className="inline-flex items-center gap-1 px-2 py-1 bg-zinc-700  text-sm text-white"
+                        className="inline-flex items-center gap-1 border border-white/15 bg-white/[0.05] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white"
                       >
                         {user.username}
                         <button
                           type="button"
                           onClick={() => removeUser(user.id)}
-                          className="text-zinc-400 hover:text-white"
+                          className="text-zinc-400 transition-colors hover:text-white"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="h-3 w-3" />
                         </button>
                       </span>
                     ))}
@@ -678,26 +684,25 @@ export default function Broadcasts() {
                 )}
 
                 {formTargetUserIds.length > 0 && selectedUsers.length === 0 && editingBroadcast && (
-                  <p className="text-xs text-amber-400">
+                  <p className="text-xs text-amber-300">
                     {formTargetUserIds.length} previously selected user{formTargetUserIds.length !== 1 ? 's' : ''} (search to add more)
                   </p>
                 )}
 
                 {formTargetUserIds.length > 0 && selectedUsers.length > 0 && (
-                  <p className="text-xs text-zinc-500">
+                  <p className="font-mono text-xs uppercase tracking-wider text-zinc-500">
                     {formTargetUserIds.length} user{formTargetUserIds.length !== 1 ? 's' : ''} selected
                   </p>
                 )}
-              </div>
+              </CommandPanel>
             )}
 
             {/* Delivery Channels */}
-            <div>
-              <label className="text-sm text-zinc-400 mb-2 block">Delivery Channels</label>
+            <Field label="Delivery Channels">
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Checkbox id="channel-inapp" checked disabled />
-                  <label htmlFor="channel-inapp" className="text-sm text-zinc-300 cursor-default">
+                  <label htmlFor="channel-inapp" className="cursor-default text-sm text-zinc-300">
                     In-App Notification
                   </label>
                   <span className="text-xs text-zinc-600">(always enabled)</span>
@@ -708,32 +713,29 @@ export default function Broadcasts() {
                     checked={formSendEmail}
                     onCheckedChange={(checked) => setFormSendEmail(checked === true)}
                   />
-                  <label htmlFor="channel-email" className="text-sm text-white cursor-pointer">
+                  <label htmlFor="channel-email" className="cursor-pointer text-sm text-white">
                     Email
                   </label>
                   <span className="text-xs text-zinc-500">(via Resend)</span>
                 </div>
               </div>
-            </div>
+            </Field>
 
-            <div>
-              <label className="text-sm text-zinc-400 mb-2 block">
-                Schedule (optional)
-              </label>
+            <Field label="Schedule (optional)">
               <Input
                 type="datetime-local"
                 value={formScheduledAt}
                 onChange={(e) => setFormScheduledAt(e.target.value)}
-                className="bg-zinc-800 border-zinc-700"
               />
-              <p className="text-xs text-zinc-500 mt-1">
+              <p className="mt-1 text-xs text-zinc-500">
                 Leave empty to save as draft
               </p>
-            </div>
+            </Field>
           </div>
           <DialogFooter className="mt-6">
-            <Button
-              variant="outline"
+            <CommandButton
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 setCreateDialogOpen(false);
                 setEditingBroadcast(null);
@@ -741,8 +743,9 @@ export default function Broadcasts() {
               }}
             >
               Cancel
-            </Button>
-            <Button
+            </CommandButton>
+            <CommandButton
+              size="sm"
               onClick={() => {
                 if (editingBroadcast) {
                   updateBroadcast.mutate();
@@ -758,65 +761,74 @@ export default function Broadcasts() {
               }
             >
               {createBroadcast.isPending || updateBroadcast.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : null}
               {editingBroadcast ? 'Save Changes' : 'Create'}
-            </Button>
+            </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Stats Dialog */}
       <Dialog open={statsDialogOpen} onOpenChange={setStatsDialogOpen}>
-        <DialogContent className="bg-zinc-900 border-zinc-800">
+        <DialogContent className="border-white/10 bg-[#0a0a0c]">
           <DialogHeader>
             <DialogTitle>Broadcast Statistics</DialogTitle>
           </DialogHeader>
           {loadingStats ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-zinc-500" />
+              <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
             </div>
           ) : stats ? (
             <div className="grid grid-cols-2 gap-4 mt-4">
-              <div className="p-4 bg-zinc-800">
-                <p className="text-2xl font-bold text-white">{stats.total_recipients}</p>
-                <p className="text-xs text-zinc-500">Total Recipients</p>
+              <div className="border border-white/10 bg-white/[0.025] p-4">
+                <p className="font-mono text-2xl font-black tabular-nums text-white">{stats.total_recipients}</p>
+                <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Total Recipients</p>
               </div>
-              <div className="p-4 bg-zinc-800">
-                <p className="text-2xl font-bold text-emerald-300">{stats.delivered_count}</p>
-                <p className="text-xs text-zinc-500">Delivered</p>
+              <div className="border border-white/10 bg-white/[0.025] p-4">
+                <p className="font-mono text-2xl font-black tabular-nums text-white">{stats.delivered_count}</p>
+                <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Delivered</p>
               </div>
-              <div className="p-4 bg-zinc-800">
-                <p className="text-2xl font-bold text-zinc-400">{stats.read_count}</p>
-                <p className="text-xs text-zinc-500">Read</p>
+              <div className="border border-white/10 bg-white/[0.025] p-4">
+                <p className="font-mono text-2xl font-black tabular-nums text-zinc-400">{stats.read_count}</p>
+                <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Read</p>
               </div>
-              <div className="p-4 bg-zinc-800">
-                <p className="text-2xl font-bold text-rose-400">{stats.failed_count}</p>
-                <p className="text-xs text-zinc-500">Failed</p>
+              <div className="border border-white/10 bg-white/[0.025] p-4">
+                <p className="font-mono text-2xl font-black tabular-nums text-red-300">{stats.failed_count}</p>
+                <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Failed</p>
               </div>
-              <div className="col-span-2 p-4 bg-zinc-800">
+              <div className="col-span-2 border border-white/10 bg-white/[0.025] p-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-zinc-400">Read Rate</p>
-                  <p className="text-2xl font-bold text-white">{stats.read_rate}%</p>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Read Rate</p>
+                  <p className="font-mono text-2xl font-black tabular-nums text-white">{stats.read_rate}%</p>
                 </div>
-                <div className="mt-2 h-2 bg-zinc-700 rounded-full overflow-hidden">
+                <div className="mt-2 h-2 overflow-hidden bg-white/10">
                   <div
-                    className="h-full bg-emerald-400 rounded-full"
+                    className="h-full bg-rose-500"
                     style={{ width: `${stats.read_rate}%` }}
                   />
                 </div>
               </div>
             </div>
           ) : (
-            <p className="text-center text-zinc-500 py-8">No statistics available</p>
+            <p className="py-8 text-center text-zinc-500">No statistics available</p>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setStatsDialogOpen(false)}>
+            <CommandButton variant="ghost" size="sm" onClick={() => setStatsDialogOpen(false)}>
               Close
-            </Button>
+            </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </AdminPage>
+  );
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div>
+      <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">{label}</p>
+      {children}
     </div>
   );
 }

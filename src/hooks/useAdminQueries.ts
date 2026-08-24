@@ -5,7 +5,6 @@ import { useToast } from '@/hooks/use-toast';
 // ── Query Keys ──────────────────────────────────────────────────────────────
 export const adminKeys = {
   all: ['admin'] as const,
-  stats: () => [...adminKeys.all, 'stats'] as const,
   analytics: () => [...adminKeys.all, 'analytics'] as const,
 
   users: (params?: Record<string, any>) =>
@@ -61,14 +60,7 @@ export const adminKeys = {
   operationsSystemConfig: (category?: string) => ['admin', 'operations-system-config', category ?? 'all'] as const,
 };
 
-// ── Stats ───────────────────────────────────────────────────────────────────
-export const useAdminStats = () =>
-  useQuery({
-    queryKey: adminKeys.stats(),
-    queryFn: () => apiClient.get<any>('/api/admin/stats'),
-    staleTime: 1000 * 60, // 1 minute
-  });
-
+// ── Analytics ───────────────────────────────────────────────────────────────
 export const useAdminAnalytics = () =>
   useQuery({
     queryKey: adminKeys.analytics(),
@@ -169,7 +161,7 @@ export const useAdminTournaments = (params: AdminTournamentsParams = {}) =>
       if (params.date_to) qs.set('date_to', params.date_to);
       if (params.sort_by) qs.set('sort_by', params.sort_by);
       if (params.sort_dir) qs.set('sort_dir', params.sort_dir);
-      return apiClient.get<{ data: any[]; total: number }>(`/api/admin/tournaments?${qs}`);
+      return apiClient.get<{ data: any[]; total: number; statusCounts?: Record<string, number> }>(`/api/admin/tournaments?${qs}`);
     },
     staleTime: 1000 * 30,
   });
@@ -242,7 +234,7 @@ export const useAdminTournamentUpdate = () => {
       apiClient.put(`/api/admin/tournaments/${id}`, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.tournaments() });
-      queryClient.invalidateQueries({ queryKey: adminKeys.stats() });
+      
     },
     onError: (error: Error) => {
       toast({ title: 'Update failed', description: error.message, variant: 'destructive' });
@@ -259,7 +251,7 @@ export const useAdminVenueUpdate = () => {
       apiClient.put(`/api/admin/venues/${id}`, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.venues() });
-      queryClient.invalidateQueries({ queryKey: adminKeys.stats() });
+      
     },
     onError: (error: Error) => {
       toast({ title: 'Update failed', description: error.message, variant: 'destructive' });
@@ -313,7 +305,7 @@ export const useAdminVerificationAction = () => {
       apiClient.put(`/api/admin/verification-requests/${requestId}`, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.verificationRequests() });
-      queryClient.invalidateQueries({ queryKey: adminKeys.stats() });
+      
     },
   });
 };
