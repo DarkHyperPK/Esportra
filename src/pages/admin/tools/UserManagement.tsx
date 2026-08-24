@@ -86,7 +86,7 @@ interface UserDetail {
         date_of_birth: string | null;
         riot_tag: string | null;
         steam_tag: string | null;
-        social_links: Record<string, string> | null;
+        social_links: Record<string, string> | string | null;
         card_image_url: string | null;
         banner_url: string | null;
         verification_status?: 'verified_organizer' | 'verified_venue_owner' | 'email_verified' | 'unverified';
@@ -1257,27 +1257,38 @@ const UserManagementTool = () => {
                                 )}
 
                                 {/* Social Links */}
-                                {p.social_links && Object.keys(p.social_links).length > 0 && (
-                                    <div className="border border-white/10 bg-white/[0.025] p-3">
-                                        <p className={`${FIELD_LABEL_CLASS} mb-2`}>Social Links</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {Object.entries(p.social_links).filter(([, v]) => v).map(([platform, url]) => {
-                                                const resolved = resolveSocialUrl(platform, url as string);
-                                                return resolved ? (
-                                                    <a key={platform} href={resolved} target="_blank" rel="noopener noreferrer"
-                                                       className="flex items-center gap-1 border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-rose-300 transition-colors hover:border-white/25 hover:text-rose-200">
-                                                        <Link2 className="h-3 w-3" /> {platform}
-                                                    </a>
-                                                ) : (
-                                                    <span key={platform} title={`Handle: ${url}`}
-                                                          className="flex items-center gap-1 border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-zinc-400">
-                                                        <Link2 className="h-3 w-3" /> {platform}: {url as string}
-                                                    </span>
-                                                );
-                                            })}
+                                {(() => {
+                                    // Backend may return jsonb as a raw string — normalize before iterating.
+                                    let socials: Record<string, string> = {};
+                                    if (typeof p.social_links === 'string') {
+                                        try { socials = JSON.parse(p.social_links); } catch { socials = {}; }
+                                    } else if (p.social_links && typeof p.social_links === 'object') {
+                                        socials = p.social_links;
+                                    }
+                                    const entries = Object.entries(socials).filter(([, v]) => v);
+                                    if (entries.length === 0) return null;
+                                    return (
+                                        <div className="border border-white/10 bg-white/[0.025] p-3">
+                                            <p className={`${FIELD_LABEL_CLASS} mb-2`}>Social Links</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {entries.map(([platform, value]) => {
+                                                    const resolved = resolveSocialUrl(platform, value);
+                                                    return resolved ? (
+                                                        <a key={platform} href={resolved} target="_blank" rel="noopener noreferrer"
+                                                           className="flex items-center gap-1 border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-rose-300 transition-colors hover:border-white/25 hover:text-rose-200">
+                                                            <Link2 className="h-3 w-3" /> {platform}
+                                                        </a>
+                                                    ) : (
+                                                        <span key={platform} title={`Handle: ${value}`}
+                                                              className="flex items-center gap-1 border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-zinc-400">
+                                                            <Link2 className="h-3 w-3" /> {platform}: {value}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
 
                                 {/* Teams */}
                                 {userDetail.teams.length > 0 && (
