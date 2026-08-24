@@ -23,11 +23,17 @@ const AnalyticsTool = () => {
   const { data, isLoading: loading, refetch } = useAdminAnalytics();
   const [refreshing, setRefreshing] = useState(false);
 
+  interface PrizePoolByCurrency {
+    currency: string;
+    total: number;
+    tournament_count: number;
+  }
+
   const stats = {
     totalUsers: data?.total_users || 0,
     totalTournaments: data?.total_tournaments || 0,
     totalVenues: data?.total_venues || 0,
-    totalPrizePool: parseFloat(data?.total_prize_pool) || 0,
+    prizePoolsByCurrency: (data?.prize_pools_by_currency ?? []) as PrizePoolByCurrency[],
     newUsersThisWeek: data?.new_users_this_week || 0,
     newTournamentsThisWeek: data?.new_tournaments_this_week || 0,
     totalBookings: data?.total_bookings || 0,
@@ -44,7 +50,7 @@ const AnalyticsTool = () => {
     { label: 'Total Users', value: loading ? '…' : stats.totalUsers.toLocaleString(), icon: <Users className="h-4 w-4" /> },
     { label: 'Tournaments', value: loading ? '…' : stats.totalTournaments.toLocaleString(), icon: <Trophy className="h-4 w-4" /> },
     { label: 'Venues', value: loading ? '…' : stats.totalVenues.toLocaleString(), icon: <MapPin className="h-4 w-4" /> },
-    { label: 'Prize Pool', value: loading ? '…' : formatCurrency(stats.totalPrizePool, 'USD'), icon: <DollarSign className="h-4 w-4" /> },
+    { label: 'Prize Currencies', value: loading ? '…' : String(stats.prizePoolsByCurrency.length), icon: <DollarSign className="h-4 w-4" /> },
     { label: 'New Users · 7d', value: loading ? '…' : `+${stats.newUsersThisWeek.toLocaleString()}`, icon: <TrendingUp className="h-4 w-4" /> },
     { label: 'New Tournaments · 7d', value: loading ? '…' : `+${stats.newTournamentsThisWeek.toLocaleString()}`, icon: <Calendar className="h-4 w-4" /> },
     { label: 'Venue Bookings', value: loading ? '…' : stats.totalBookings.toLocaleString(), icon: <MapPin className="h-4 w-4" /> },
@@ -95,7 +101,17 @@ const AnalyticsTool = () => {
           <SectionHeading icon={<BarChart3 className="h-4 w-4" />} text="Tournament Overview" />
           <StatLine label="Total created" value={stats.totalTournaments.toLocaleString()} />
           <StatLine label="Completed" value={stats.completedTournaments.toLocaleString()} />
-          <StatLine label="Prize pool total" value={formatCurrency(stats.totalPrizePool, 'USD')} accent />
+          {stats.prizePoolsByCurrency.map((row) => (
+            <StatLine
+              key={row.currency}
+              label={`Prize pool · ${row.currency === 'unspecified' ? 'currency unspecified' : row.currency} (${row.tournament_count})`}
+              value={row.currency === 'unspecified' ? row.total.toLocaleString() : formatCurrency(row.total, row.currency)}
+              accent
+            />
+          ))}
+          {stats.prizePoolsByCurrency.length === 0 && (
+            <StatLine label="Prize pools" value="No funded tournaments yet" />
+          )}
         </CommandSection>
       </div>
 
