@@ -254,8 +254,8 @@ const Analytics = () => {
             {/* Period KPI summary */}
             {summary && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <PeriodKpiCard label={`Impressions (${days}d)`} value={summary.totalImpressions.toLocaleString()} trend={summary.trend.impressionsChangePercent} />
-                    <PeriodKpiCard label={`Clicks (${days}d)`} value={summary.totalClicks.toLocaleString()} trend={summary.trend.clicksChangePercent} />
+                    <PeriodKpiCard label={`Impressions (${days}d)`} value={(summary.totalImpressions ?? 0).toLocaleString()} trend={summary.trend.impressionsChangePercent} />
+                    <PeriodKpiCard label={`Clicks (${days}d)`} value={(summary.totalClicks ?? 0).toLocaleString()} trend={summary.trend.clicksChangePercent} />
                     <PeriodKpiCard label={`CTR (${days}d)`} value={`${summary.ctr.toFixed(1)}%`} />
                 </div>
             )}
@@ -281,8 +281,8 @@ const Analytics = () => {
                                 {placementStats.map((stat) => (
                                     <tr key={stat.placement} className="text-zinc-300">
                                         <td className="px-4 py-3 font-medium text-white">{ZONE_LABELS[stat.placement] || stat.placement}</td>
-                                        <td className="px-4 py-3 text-right font-mono">{stat.impressions.toLocaleString()}</td>
-                                        <td className="px-4 py-3 text-right font-mono">{stat.clicks.toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-right font-mono">{(stat.impressions ?? 0).toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-right font-mono">{(stat.clicks ?? 0).toLocaleString()}</td>
                                         <td className="px-4 py-3 text-right font-mono">{stat.ctr.toFixed(1)}%</td>
                                     </tr>
                                 ))}
@@ -391,8 +391,8 @@ const Analytics = () => {
                                 {deviceData.devices.map((d) => (
                                     <tr key={d.deviceClass} className="text-zinc-300">
                                         <td className="px-4 py-3 font-medium text-white">{DEVICE_LABELS[d.deviceClass] || d.deviceClass}</td>
-                                        <td className="px-4 py-3 text-right font-mono">{d.impressions.toLocaleString()}</td>
-                                        <td className="px-4 py-3 text-right font-mono">{d.clicks.toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-right font-mono">{(d.impressions ?? 0).toLocaleString()}</td>
+                                        <td className="px-4 py-3 text-right font-mono">{(d.clicks ?? 0).toLocaleString()}</td>
                                         <td className="px-4 py-3 text-right font-mono">{d.ctr.toFixed(1)}%</td>
                                     </tr>
                                 ))}
@@ -444,8 +444,8 @@ const Analytics = () => {
                                     {contentData.tournaments.map((t, i) => (
                                         <tr key={t.tournamentId ?? i} className="text-zinc-300">
                                             <td className="px-4 py-3 font-medium text-white">{t.tournamentName || 'Unknown'}</td>
-                                            <td className="px-4 py-3 text-right font-mono">{t.impressions.toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-right font-mono">{t.clicks.toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right font-mono">{(t.impressions ?? 0).toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right font-mono">{(t.clicks ?? 0).toLocaleString()}</td>
                                             <td className="px-4 py-3 text-right font-mono">{t.ctr.toFixed(1)}%</td>
                                         </tr>
                                     ))}
@@ -471,8 +471,8 @@ const Analytics = () => {
                                     {contentData.pages.map((p) => (
                                         <tr key={p.pagePath} className="text-zinc-300">
                                             <td className="px-4 py-3 font-mono text-zinc-400 text-[11px]">{p.pagePath}</td>
-                                            <td className="px-4 py-3 text-right font-mono">{p.impressions.toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-right font-mono">{p.clicks.toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right font-mono">{(p.impressions ?? 0).toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right font-mono">{(p.clicks ?? 0).toLocaleString()}</td>
                                             <td className="px-4 py-3 text-right font-mono">{p.ctr.toFixed(1)}%</td>
                                         </tr>
                                     ))}

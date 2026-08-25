@@ -105,7 +105,7 @@ function Distribution({ title, dimension, age = false }: { title: string; dimens
                     <div className="h-full bg-cyan-500/70" style={{ width: `${segment.percentageOfKnown}%` }} />
                   </div>
                 </div>
-                <span className="text-right tabular-nums text-zinc-300">{segment.audience.toLocaleString()}</span>
+                <span className="text-right tabular-nums text-zinc-300">{(segment.audience ?? 0).toLocaleString()}</span>
                 <span className="text-right tabular-nums text-zinc-500">{segment.percentageOfKnown}%</span>
               </div>
             ))}
