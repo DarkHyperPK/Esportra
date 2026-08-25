@@ -15,14 +15,13 @@ concurrency:
 permissions:
   contents: read
 
-defaults:
-  run:
-    working-directory: partner-portal
-
 jobs:
   build-and-lint:
     name: Build & Lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: partner-portal
     steps:
       - uses: actions/checkout@v4
 
@@ -43,9 +42,32 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: npm run build
 
+  gate:
+    name: All checks passed
+    needs: [build-and-lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gate passed
+        run: echo "All pre-deploy checks passed - build, lint, tests."
+
+  promote:
+    name: Promote to deploy/partner-portal
+    needs: [gate]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/promote-deploy-branch
+        with:
+          deploy_branch: deploy/partner-portal
+
   notify-failure:
     name: Report failure
-    needs: [build-and-lint]
+    needs: [build-and-lint, gate, promote]
     if: failure() && !cancelled()
     runs-on: ubuntu-latest
     permissions:

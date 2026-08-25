@@ -3,7 +3,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { GhostButton, SuccessButton, DangerButton, SettingsButton } from '@/components/ui/app-buttons';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Bell, CheckCheck, Users, ShieldAlert, Info, Shield, Check, X, Loader2, FileText, CheckCircle2, AlertTriangle, XCircle, Swords, Map, Trophy, Ticket, Calendar } from 'lucide-react';
+import { Bell, CheckCheck, Users, ShieldAlert, Info, Shield, Check, X, Loader2, FileText, CheckCircle2, AlertTriangle, XCircle, Swords, Map, Trophy, Ticket, Calendar, UserMinus, Crown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -171,6 +171,9 @@ export const NotificationSidebar = () => {
             case 'team_invite': return 'bg-blue-500/15 border-blue-500/30';
             case 'team_invite_response': return 'bg-emerald-500/15 border-emerald-500/30';
             case 'team_announcement': return 'bg-amber-500/15 border-amber-500/30';
+            case 'team_member_removed': return 'bg-red-500/15 border-red-500/30';
+            case 'team_roster_updated': return 'bg-blue-500/15 border-blue-500/30';
+            case 'team_captain_changed': return 'bg-amber-500/15 border-amber-500/30';
             case 'staff_invite': return 'bg-cyan-500/15 border-cyan-500/30';
             case 'result_reported': return 'bg-amber-500/15 border-amber-500/30';
             case 'result_disputed': return 'bg-red-500/15 border-red-500/30';
@@ -201,6 +204,12 @@ export const NotificationSidebar = () => {
                 return <Users className="h-4 w-4 text-emerald-400" />;
             case 'team_announcement':
                 return <Bell className="h-4 w-4 text-amber-400" />;
+            case 'team_member_removed':
+                return <UserMinus className="h-4 w-4 text-red-400" />;
+            case 'team_roster_updated':
+                return <Users className="h-4 w-4 text-blue-400" />;
+            case 'team_captain_changed':
+                return <Crown className="h-4 w-4 text-amber-400" />;
             case 'staff_invite':
                 return <Shield className="h-4 w-4 text-cyan-400" />;
             case 'result_reported':

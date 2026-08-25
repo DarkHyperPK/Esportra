@@ -1,4 +1,4 @@
-import React, { useEffect, useState, ReactNode, useCallback, useRef } from 'react';
+import { useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 import { HubConnectionState } from '@microsoft/signalr';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -78,8 +78,26 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       setNotifications(prev => [stub, ...prev]);
       setUnreadCount(prev => prev + 1);
 
-      if (stub.type === 'tournament_invite') {
+      if (
+        stub.type === 'tournament_invite' ||
+        stub.type === 'team_member_removed' ||
+        stub.type === 'team_roster_updated' ||
+        stub.type === 'team_captain_changed'
+      ) {
+        queryClient.invalidateQueries({ queryKey: ['my-teams'] });
+        // Reconcile the optimistic stub against the persisted notification row
+        // so mark-as-read targets a real id.
         void fetchNotifications();
+      }
+
+      // Being removed is high-signal — surface it immediately, not just as a badge
+      if (stub.type === 'team_member_removed') {
+        toast({
+          title: stub.title,
+          description: stub.message || undefined,
+          variant: 'destructive',
+          duration: 8000,
+        });
       }
     };
 
