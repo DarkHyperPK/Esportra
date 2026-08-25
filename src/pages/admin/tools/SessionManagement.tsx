@@ -575,7 +575,17 @@ function SessionAuditTab() {
       ) : (
         <>
           <div className="space-y-3">
-            {data.items.map((entry, idx) => (
+            {data.items.map((raw, idx) => {
+              // Defense-in-depth: jsonb details can arrive as object OR string —
+              // normalize at the data boundary so no sink can ever render an object.
+              const entry = {
+                ...raw,
+                details:
+                  typeof raw.details === 'object' && raw.details !== null
+                    ? JSON.stringify(raw.details)
+                    : raw.details ?? null,
+              };
+              return (
               <motion.div
                 key={entry.id}
                 initial={{ opacity: 0, y: 8 }}
@@ -617,12 +627,15 @@ function SessionAuditTab() {
                   )}
                   {entry.details && (
                     <div className="truncate italic text-zinc-400">
-                      {entry.details}
+                      {typeof entry.details === 'object' && entry.details !== null
+                        ? JSON.stringify(entry.details)
+                        : String(entry.details)}
                     </div>
                   )}
-                </div>
-              </motion.div>
-            ))}
+                 </div>
+               </motion.div>
+              );
+            })}
           </div>
 
           <Pagination
