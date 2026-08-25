@@ -15,14 +15,13 @@ concurrency:
 permissions:
   contents: read
 
-defaults:
-  run:
-    working-directory: partner-portal
-
 jobs:
   build-and-lint:
     name: Build & Lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: partner-portal
     steps:
       - uses: actions/checkout@v4
 
