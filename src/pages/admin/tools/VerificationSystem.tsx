@@ -1,11 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { motion } from "framer-motion";
 import {
-  ArrowLeft,
-  Shield,
   Search,
   Eye,
   MoreVertical,
@@ -21,7 +15,6 @@ import {
   Globe,
   ImageIcon
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { auditLog } from "@/lib/auditLog";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +23,14 @@ import {
   useAdminVerificationAction,
   useAdminVerificationDelete,
 } from "@/hooks/useAdminQueries";
+import { AdminPage } from "@/components/admin/AdminPage";
+import {
+  CommandButton,
+  CommandIconButton,
+  CommandSection,
+  CommandSegmentedButton,
+  CommandToolbar,
+} from "@/components/management/CommandSurface";
 import {
   Dialog,
   DialogContent,
@@ -80,6 +81,13 @@ interface VerificationRequest {
     email: string | null;
   };
 }
+
+const STATUS_BADGE: Record<string, string> = {
+  'pending': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+  'approved': 'border-white/25 bg-white/[0.05] text-white',
+  'rejected': 'border-red-500/30 bg-red-500/10 text-red-300',
+  'stale': 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+};
 
 const VerificationSystemTool = () => {
   const { toast } = useToast();
@@ -183,12 +191,7 @@ const VerificationSystemTool = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const styles: Record<string, string> = {
-      'pending': 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-      'approved': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-      'rejected': 'bg-red-500/10 text-red-400 border-red-500/30',
-    };
-    return styles[status] || 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30';
+    return STATUS_BADGE[status] || 'border-amber-500/30 bg-amber-500/10 text-amber-300';
   };
 
   // Helper to render image or placeholder
@@ -229,46 +232,46 @@ const VerificationSystemTool = () => {
     }, [path]);
 
     if (!path) return (
-      <div className="bg-zinc-900 rounded-lg p-4 flex flex-col items-center justify-center text-zinc-500 h-32 border border-zinc-800">
-        <ImageIcon className="w-6 h-6 mb-2 opacity-50" />
-        <span className="text-xs">No {label}</span>
+      <div className="flex h-32 flex-col items-center justify-center gap-1 border border-white/10 bg-white/[0.02] p-4 text-xs text-zinc-500">
+        <ImageIcon className="h-5 w-5 opacity-50" />
+        <span>No {label}</span>
       </div>
     );
 
     if (error) return (
-      <div className="bg-red-900/10 rounded-lg p-4 flex flex-col items-center justify-center text-red-500 h-32 border border-red-900/30">
-        <XCircle className="w-6 h-6 mb-2 opacity-50" />
-        <span className="text-xs">Failed to load</span>
+      <div className="flex h-32 flex-col items-center justify-center gap-1 border border-red-500/30 bg-red-950/10 p-4 text-xs text-red-300">
+        <XCircle className="h-5 w-5 opacity-50" />
+        <span>Failed to load</span>
       </div>
     );
 
     if (loading || !signedUrl) return (
-      <div className="bg-zinc-900 rounded-lg p-4 flex flex-col items-center justify-center text-zinc-500 h-32 border border-zinc-800 animate-pulse">
-        <RefreshCw className="w-6 h-6 mb-2 opacity-50 animate-spin" />
-        <span className="text-xs">Loading...</span>
+      <div className="flex h-32 animate-pulse flex-col items-center justify-center gap-1 border border-white/10 bg-white/[0.02] p-4 text-xs text-zinc-500">
+        <RefreshCw className="h-5 w-5 animate-spin opacity-50" />
+        <span>Loading...</span>
       </div>
     );
 
     return (
       <div className="space-y-2">
-        <p className="text-xs text-zinc-400 font-medium">{label}</p>
-        <div className="relative group rounded-lg overflow-hidden border border-zinc-700 bg-zinc-900">
-          <img src={signedUrl} loading="lazy" alt={label} className="w-full h-48 object-cover" />
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer" onClick={() => setPreviewOpen(true)}>
-            <div className="text-white bg-black/50 p-2 rounded-full hover:bg-white/20">
-              <Eye className="w-5 h-5" />
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">{label}</p>
+        <div className="group relative overflow-hidden border border-white/10 bg-black/40">
+          <img src={signedUrl} loading="lazy" alt={label} className="h-48 w-full object-contain" />
+          <div className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100" onClick={() => setPreviewOpen(true)}>
+            <div className="border border-white/20 bg-black/60 p-2 text-white hover:bg-white/10">
+              <Eye className="h-4 w-4" />
             </div>
           </div>
         </div>
 
         {/* Fullscreen Preview Dialog */}
         <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="bg-zinc-950/95 border-zinc-800 max-w-5xl h-[90vh] flex flex-col p-2">
-            <DialogHeader className="absolute top-4 left-4 z-10">
-              <DialogTitle className="text-white drop-shadow-md bg-black/50 px-3 py-1 rounded-full text-sm">{label}</DialogTitle>
+          <DialogContent className="flex h-[90vh] max-w-5xl flex-col -none border-white/10 bg-[#0a0a0c] p-2">
+            <DialogHeader className="absolute left-4 top-4 z-10">
+              <DialogTitle className="border border-white/10 bg-black/70 px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-white">{label}</DialogTitle>
             </DialogHeader>
-            <div className="flex-1 flex items-center justify-center overflow-hidden rounded-lg bg-black/50">
-              <img src={signedUrl} loading="lazy" alt={label} className="max-w-full max-h-full object-contain" />
+            <div className="flex flex-1 items-center justify-center overflow-hidden border border-white/10 bg-black/50">
+              <img src={signedUrl} loading="lazy" alt={label} className="max-h-full max-w-full object-contain" />
             </div>
           </DialogContent>
         </Dialog>
@@ -277,379 +280,329 @@ const VerificationSystemTool = () => {
   };
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
-      {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8"
-      >
-        <div className="flex items-center gap-4">
-          <Link to="/admin/dashboard">
-            <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-red-500" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Verification Requests</h1>
-              <p className="text-zinc-500 text-sm">Review incoming organizer and venue applications</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="border-zinc-800 text-zinc-400 hover:text-white"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+    <AdminPage
+      eyebrow="Users & Access"
+      title="Verifications"
+      description="Review incoming organizer and venue applications"
+      actions={
+        <>
+          <CommandButton variant="secondary" size="sm" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
-          </Button>
-          <Button
-            size="sm"
-            onClick={exportCSV}
-            className="bg-rose-500 hover:bg-rose-600 text-white"
-          >
-            <Download className="w-4 h-4 mr-2" />
+          </CommandButton>
+          <CommandButton variant="ghost" size="sm" onClick={exportCSV}>
+            <Download className="h-4 w-4" />
             Export
-          </Button>
-        </div>
-      </motion.header>
-
+          </CommandButton>
+        </>
+      }
+    >
       {/* Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"
-      >
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
-          { label: 'Total Requests', value: stats.total, icon: FileText, color: 'zinc' },
-          { label: 'Pending', value: stats.pending, icon: Clock, color: 'amber' },
-          { label: 'Approved', value: stats.approved, icon: CheckCircle, color: 'emerald' },
-          { label: 'Rejected', value: stats.rejected, icon: XCircle, color: 'red' },
+          { label: 'Total Requests', value: stats.total, icon: FileText, tone: 'text-zinc-400' },
+          { label: 'Pending', value: stats.pending, icon: Clock, tone: 'text-amber-300' },
+          { label: 'Approved', value: stats.approved, icon: CheckCircle, tone: 'text-white' },
+          { label: 'Rejected', value: stats.rejected, icon: XCircle, tone: 'text-red-300' },
         ].map((stat) => (
           <div
             key={stat.label}
-            className="p-4 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50"
+            className="border border-white/10 bg-white/[0.025] p-4"
           >
-            <div className="flex items-center justify-between mb-2">
-              <stat.icon className={`w-5 h-5 text-${stat.color}-500`} />
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">{stat.label}</p>
+              <stat.icon className={`h-4 w-4 ${stat.tone}`} />
             </div>
-            <p className="text-2xl font-bold text-white">{stat.value}</p>
-            <p className="text-xs text-zinc-500">{stat.label}</p>
+            <p className="mt-3 text-2xl font-black tabular-nums text-white">{stat.value}</p>
           </div>
         ))}
-      </motion.div>
+      </div>
 
       {/* Filters */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="flex flex-col md:flex-row gap-3 mb-6"
-      >
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-          <Input
+      <CommandToolbar>
+        <div className="relative w-full md:max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
+          <input
             placeholder="Search by name, role, or business..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
+            className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1 overflow-x-auto" data-lenis-prevent>
           {['all', 'pending', 'approved', 'rejected'].map((status) => (
-            <Button
+            <CommandSegmentedButton
               key={status}
-              variant="outline"
-              size="sm"
+              active={statusFilter === status}
               onClick={() => setStatusFilter(status)}
-              className={`border-zinc-800 capitalize ${statusFilter === status ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 'text-zinc-400'}`}
+              className="capitalize"
             >
               {status === 'all' ? 'All' : status}
-            </Button>
+            </CommandSegmentedButton>
           ))}
         </div>
-      </motion.div>
+      </CommandToolbar>
 
       {/* Requests Table */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
-      >
+      <CommandSection className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-zinc-900/50">
-                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Applicant</th>
-                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Business</th>
-                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Submitted</th>
-                <th className="px-6 py-3 text-right text-xs font-mono text-zinc-500 uppercase">Actions</th>
+          <table className="w-full min-w-[880px] text-left text-xs">
+            <thead className="bg-black/40 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+              <tr>
+                <th className="px-4 py-3">Applicant</th>
+                <th className="px-4 py-3">Role</th>
+                <th className="px-4 py-3">Business</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Submitted</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/50">
+            <tbody className="divide-y divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12">
+                  <td colSpan={6} className="py-12 text-center">
                     <div className="flex items-center justify-center gap-2 text-zinc-500">
-                      <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                      <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-transparent" />
                       Loading...
                     </div>
                   </td>
                 </tr>
               ) : filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-zinc-500">
+                  <td colSpan={6} className="py-12 text-center text-zinc-500">
                     No requests found matching your filters.
                   </td>
                 </tr>
               ) : (
                 filteredRequests.map((request, idx) => (
-                  <motion.tr
+                  <tr
                     key={request.id || `${request.user_id}-${request.requested_role || idx}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: idx * 0.01 }}
-                    className="hover:bg-zinc-900/30 transition-colors"
+                    className="text-zinc-300 transition-colors hover:bg-white/[0.03]"
+                    style={{ animationDelay: `${idx * 0.01}s` }}
                   >
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center border border-zinc-700">
-                          <User className="w-5 h-5 text-zinc-400" />
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-white/10 text-zinc-400">
+                          <User className="h-4 w-4" />
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-white">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-white">
                             {request.first_name} {request.last_name}
                           </p>
-                          <p className="text-xs text-zinc-500">@{request.profiles?.username || 'user'}</p>
+                          <p className="truncate font-mono text-[10px] text-zinc-500">@{request.profiles?.username || 'user'}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <Badge variant="outline" className="bg-zinc-500/10 text-zinc-300 border-zinc-700 capitalize">
+                    <td className="px-4 py-3">
+                      <span className="border border-white/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-zinc-300">
                         {request.requested_role?.replace('_', ' ') || 'Unknown'}
-                      </Badge>
+                      </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="text-sm text-gray-200">{request.business_name}</span>
-                        <span className="text-xs text-gray-500 capitalize">{request.business_type}</span>
+                        <span className="text-sm text-zinc-200">{request.business_name}</span>
+                        <span className="text-xs capitalize text-zinc-500">{request.business_type}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <Badge className={`${getStatusBadge(request.status)} border text-xs capitalize`}>
+                    <td className="px-4 py-3">
+                      <span className={`border px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(request.status)}`}>
                         {request.status}
-                      </Badge>
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-zinc-500">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono tabular-nums text-zinc-500">
                       {new Date(request.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-3 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-400 hover:text-white">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
+                          <CommandIconButton label="Request actions" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-white">
+                            <MoreVertical className="h-4 w-4" />
+                          </CommandIconButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-[#0a0a0c] border-zinc-800">
+                        <DropdownMenuContent align="end" className="-none border-white/10 bg-[#0a0a0c]">
                           <DropdownMenuItem
-                            className="text-zinc-300 focus:text-white focus:bg-zinc-800 cursor-pointer"
+                            className="cursor-pointer text-zinc-300 focus:bg-white/5 focus:text-white"
                             onClick={() => setSelectedRequest(request)}
                           >
-                            <Eye className="w-4 h-4 mr-2" />
+                            <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
                           {request.status === 'pending' && (
                             <DropdownMenuItem
-                              className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-500/10 cursor-pointer"
+                              className="cursor-pointer text-white focus:bg-white/10 focus:text-white"
                               onClick={() => {
                                 setSelectedRequest(request);
                                 setActionType('approve');
                                 setActionDialogOpen(true);
                               }}
                             >
-                              <CheckCircle className="w-4 h-4 mr-2" />
+                              <CheckCircle className="mr-2 h-4 w-4" />
                               Approve
                             </DropdownMenuItem>
                           )}
 
                           {request.status === 'pending' && (
                             <DropdownMenuItem
-                              className="text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer"
+                              className="cursor-pointer text-red-300 focus:bg-red-500/10 focus:text-red-200"
                               onClick={() => {
                                 setSelectedRequest(request);
                                 setActionType('reject');
                                 setActionDialogOpen(true);
                               }}
                             >
-                              <XCircle className="w-4 h-4 mr-2" />
+                              <XCircle className="mr-2 h-4 w-4" />
                               Reject
                             </DropdownMenuItem>
                           )}
 
                           <DropdownMenuItem
-                            className="text-red-500 focus:text-red-400 focus:bg-red-500/10 cursor-pointer"
+                            className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-300"
                             onClick={() => {
                               if (confirm('Delete this verification request permanently?')) {
                                 verificationDelete.mutate(request.id);
                               }
                             }}
                           >
-                            <XCircle className="w-4 h-4 mr-2" />
+                            <XCircle className="mr-2 h-4 w-4" />
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
-                  </motion.tr>
+                  </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
-      </motion.div>
+      </CommandSection>
 
       {/* Action Confirmation Dialog */}
       <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
-        <DialogContent className="bg-[#0a0a0c] border-zinc-800">
+        <DialogContent className="-none border-white/10 bg-[#0a0a0c]">
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-white">
               {actionType === 'approve' ? (
-                <CheckCircle className="w-5 h-5 text-emerald-500" />
+                <CheckCircle className="h-4 w-4 text-white" />
               ) : (
-                <XCircle className="w-5 h-5 text-red-500" />
+                <XCircle className="h-4 w-4 text-red-300" />
               )}
               {actionType === 'approve' ? 'Approve Request' : 'Reject Request'}
             </DialogTitle>
           </DialogHeader>
           <p className="text-zinc-400">
             Are you sure you want to {actionType} this verification request from{' '}
-            <span className="text-white font-medium">
+            <span className="font-medium text-white">
               {selectedRequest?.first_name} {selectedRequest?.last_name}
             </span>?
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialogOpen(false)} className="border-zinc-800">
+            <CommandButton variant="ghost" size="sm" onClick={() => setActionDialogOpen(false)}>
               Cancel
-            </Button>
-            <Button
-              className={actionType === 'approve' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600'}
+            </CommandButton>
+            <CommandButton
+              variant={actionType === 'approve' ? 'primary' : 'danger'}
+              size="sm"
               onClick={() => selectedRequest && handleAction(selectedRequest.id, actionType)}
             >
               {actionType === 'approve' ? 'Approve' : 'Reject'}
-            </Button>
+            </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Detail Modal */}
       <Dialog open={!!selectedRequest && !actionDialogOpen} onOpenChange={() => setSelectedRequest(null)}>
-        <DialogContent className="bg-[#111] border-zinc-800 max-w-4xl max-h-[90vh] overflow-y-auto overscroll-contain p-0 gap-0" data-lenis-prevent>
+        <DialogContent className="max-h-[90vh] max-w-4xl gap-0 overflow-y-auto overscroll-contain -none border-white/10 bg-[#0a0a0c] p-0" data-lenis-prevent>
           {selectedRequest && (
             <>
-              {/* Header Image/Banner */}
-              <div className="h-32 bg-gradient-to-r from-zinc-900 to-zinc-800 border-b border-zinc-800 flex items-center px-8 relative overflow-hidden">
-                <div className="absolute inset-0 opacity-10 bg-[url('/grid.svg')] bg-center"></div>
-                <div className="flex items-center gap-4 z-10">
-                  <div className="w-16 h-16 rounded-full bg-zinc-950 border-4 border-[#111] flex items-center justify-center shadow-xl">
-                    <User className="w-8 h-8 text-zinc-400" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-white">{selectedRequest.first_name} {selectedRequest.last_name}</h2>
-                    <div className="flex items-center gap-2 text-zinc-400 text-sm">
-                      <Badge variant="outline" className="bg-white/5 border-zinc-700 capitalize">{selectedRequest.requested_role?.replace('_', ' ')}</Badge>
-                      <span>•</span>
-                      <span>{selectedRequest.contact_email}</span>
-                    </div>
+              {/* Header Strip */}
+              <div className="flex flex-wrap items-center gap-4 border-b border-white/10 bg-black/40 px-6 py-5">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-white/10 text-zinc-400">
+                  <User className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-xl font-black uppercase tracking-tight text-white">{selectedRequest.first_name} {selectedRequest.last_name}</h2>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-xs text-zinc-400">
+                    <span className="border border-white/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-zinc-300">{selectedRequest.requested_role?.replace('_', ' ')}</span>
+                    <span>•</span>
+                    <span>{selectedRequest.contact_email}</span>
                   </div>
                 </div>
-                <div className="ml-auto z-10">
-                  <Badge className={`${getStatusBadge(selectedRequest.status)} px-3 py-1 capitalize`}>{selectedRequest.status}</Badge>
+                <div className="ml-auto">
+                  <span className={`border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${getStatusBadge(selectedRequest.status)}`}>{selectedRequest.status}</span>
                 </div>
               </div>
 
               <div className="p-6 md:p-8">
                 <Tabs defaultValue="details" className="w-full">
-                  <TabsList className="bg-zinc-900 border border-zinc-800 mb-6">
-                    <TabsTrigger value="details">Details</TabsTrigger>
-                    <TabsTrigger value="experience">Experience</TabsTrigger>
-                    <TabsTrigger value="documents">Documents & Photos</TabsTrigger>
+                  <TabsList className="mb-6 -none border border-white/10 bg-black/40">
+                    <TabsTrigger value="details" className="-none font-mono text-[11px] font-bold uppercase tracking-wider data-[state=active]:bg-white/[0.06] data-[state=active]:text-white">Details</TabsTrigger>
+                    <TabsTrigger value="experience" className="-none font-mono text-[11px] font-bold uppercase tracking-wider data-[state=active]:bg-white/[0.06] data-[state=active]:text-white">Experience</TabsTrigger>
+                    <TabsTrigger value="documents" className="-none font-mono text-[11px] font-bold uppercase tracking-wider data-[state=active]:bg-white/[0.06] data-[state=active]:text-white">Documents & Photos</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="details" className="space-y-6">
                     {/* Business Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                       <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                          <Building className="w-4 h-4 text-rose-500" />
+                        <h3 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                          <Building className="h-4 w-4" />
                           Business Details
                         </h3>
-                        <div className="space-y-3 bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50">
+                        <div className="space-y-3 border border-white/10 bg-white/[0.025] p-4">
                           <div>
-                            <label className="text-xs text-zinc-500 uppercase">Name</label>
+                            <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Name</label>
                             <p className="text-white">{selectedRequest.business_name}</p>
                           </div>
                           <div>
-                            <label className="text-xs text-zinc-500 uppercase">Type</label>
-                            <p className="text-white capitalize">{selectedRequest.business_type}</p>
+                            <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Type</label>
+                            <p className="capitalize text-white">{selectedRequest.business_type}</p>
                           </div>
                           <div>
-                            <label className="text-xs text-zinc-500 uppercase">Description</label>
-                            <p className="text-zinc-300 text-sm mt-1">{selectedRequest.business_description}</p>
+                            <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Description</label>
+                            <p className="mt-1 text-sm text-zinc-300">{selectedRequest.business_description}</p>
                           </div>
                           {selectedRequest.venue_data?.business_address && (
                             <div>
-                              <label className="text-xs text-zinc-500 uppercase flex items-center gap-1"><MapPin className="w-3 h-3" /> Address</label>
-                              <p className="text-white text-sm">{selectedRequest.venue_data.business_address}</p>
+                              <label className="flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500"><MapPin className="h-3 w-3" /> Address</label>
+                              <p className="text-sm text-white">{selectedRequest.venue_data.business_address}</p>
                             </div>
                           )}
                         </div>
                       </div>
 
                       <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-emerald-500" />
+                        <h3 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                          <Globe className="h-4 w-4" />
                           Contact & Stats
                         </h3>
-                        <div className="space-y-3 bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50">
+                        <div className="space-y-3 border border-white/10 bg-white/[0.025] p-4">
                           {selectedRequest.organizer_data?.website || selectedRequest.venue_data?.website ? (
                             <div>
-                              <label className="text-xs text-zinc-500 uppercase">Website</label>
-                              <a href={selectedRequest.organizer_data?.website || selectedRequest.venue_data?.website} target="_blank" className="text-blue-400 block text-sm hover:underline">{selectedRequest.organizer_data?.website || selectedRequest.venue_data?.website}</a>
+                              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Website</label>
+                              <a href={selectedRequest.organizer_data?.website || selectedRequest.venue_data?.website} target="_blank" rel="noopener noreferrer" className="block break-all text-sm text-rose-300 transition-colors hover:text-rose-200 hover:underline">{selectedRequest.organizer_data?.website || selectedRequest.venue_data?.website}</a>
                             </div>
                           ) : null}
 
                           <div>
-                            <label className="text-xs text-zinc-500 uppercase">Phone</label>
-                            <p className="text-white text-sm">{selectedRequest.organizer_data?.contact_phone || selectedRequest.venue_data?.contact_phone || 'N/A'}</p>
+                            <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Phone</label>
+                            <p className="text-sm text-white">{selectedRequest.organizer_data?.contact_phone || selectedRequest.venue_data?.contact_phone || 'N/A'}</p>
                           </div>
 
                           {selectedRequest.requested_role === 'organizer' && (
                             <>
                               <div>
-                                <label className="text-xs text-zinc-500 uppercase">Experience</label>
-                                <p className="text-white text-sm">{selectedRequest.organizer_data?.years_experience || 0} Years</p>
+                                <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Experience</label>
+                                <p className="text-sm tabular-nums text-white">{selectedRequest.organizer_data?.years_experience || 0} Years</p>
                               </div>
                               <div>
-                                <label className="text-xs text-zinc-500 uppercase">Socials</label>
-                                <div className="flex gap-2 mt-1">
+                                <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Socials</label>
+                                <div className="mt-1 flex flex-wrap gap-2">
                                   {['twitter', 'discord', 'instagram'].map(social => {
                                     const link = selectedRequest.organizer_data?.social_media_links?.[social];
                                     if (!link) return null;
-                                    return <Badge key={social} variant="secondary" className="capitalize">{social}: {link}</Badge>
+                                    return <span key={social} className="border border-white/10 bg-white/[0.03] px-2 py-0.5 font-mono text-[10px] capitalize text-zinc-300">{social}: {link}</span>
                                   })}
                                 </div>
                               </div>
@@ -660,17 +613,17 @@ const VerificationSystemTool = () => {
                             <>
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className="text-xs text-zinc-500 uppercase">Total PCs</label>
-                                  <p className="text-white text-sm">{selectedRequest.venue_data?.total_pcs || 0}</p>
+                                  <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Total PCs</label>
+                                  <p className="text-sm tabular-nums text-white">{selectedRequest.venue_data?.total_pcs || 0}</p>
                                 </div>
                                 <div>
-                                  <label className="text-xs text-zinc-500 uppercase">Hourly Rate</label>
-                                  <p className="text-white text-sm">PKR {selectedRequest.venue_data?.hourly_rate || 0}</p>
+                                  <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Hourly Rate</label>
+                                  <p className="text-sm tabular-nums text-white">PKR {selectedRequest.venue_data?.hourly_rate || 0}</p>
                                 </div>
                               </div>
                               <div>
-                                <label className="text-xs text-zinc-500 uppercase">PC Specs</label>
-                                <p className="text-zinc-300 text-xs mt-1 border-l-2 border-white/10 pl-2">{selectedRequest.venue_data?.pc_specs || 'N/A'}</p>
+                                <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">PC Specs</label>
+                                <p className="mt-1 border-l-2 border-white/10 pl-2 text-xs text-zinc-300">{selectedRequest.venue_data?.pc_specs || 'N/A'}</p>
                               </div>
                             </>
                           )}
@@ -680,30 +633,30 @@ const VerificationSystemTool = () => {
                   </TabsContent>
 
                   <TabsContent value="experience" className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                       {/* Personal Info */}
                       <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                          <User className="w-4 h-4 text-blue-500" />
+                        <h3 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                          <User className="h-4 w-4" />
                           Personal Information
                         </h3>
-                        <div className="space-y-3 bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50">
+                        <div className="space-y-3 border border-white/10 bg-white/[0.025] p-4">
                           {selectedRequest.date_of_birth && (
                             <div>
-                              <label className="text-xs text-zinc-500 uppercase">Date of Birth</label>
-                              <p className="text-white text-sm">{new Date(selectedRequest.date_of_birth).toLocaleDateString()}</p>
+                              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Date of Birth</label>
+                              <p className="font-mono text-sm tabular-nums text-white">{new Date(selectedRequest.date_of_birth).toLocaleDateString()}</p>
                             </div>
                           )}
                           {selectedRequest.phone && (
                             <div>
-                              <label className="text-xs text-zinc-500 uppercase">Phone</label>
-                              <p className="text-white text-sm">{selectedRequest.phone}</p>
+                              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Phone</label>
+                              <p className="font-mono text-sm tabular-nums text-white">{selectedRequest.phone}</p>
                             </div>
                           )}
                           {selectedRequest.website_url && (
                             <div>
-                              <label className="text-xs text-zinc-500 uppercase">Website</label>
-                              <a href={selectedRequest.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 block text-sm hover:underline">{selectedRequest.website_url}</a>
+                              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Website</label>
+                              <a href={selectedRequest.website_url} target="_blank" rel="noopener noreferrer" className="block break-all text-sm text-rose-300 transition-colors hover:text-rose-200 hover:underline">{selectedRequest.website_url}</a>
                             </div>
                           )}
                         </div>
@@ -711,27 +664,27 @@ const VerificationSystemTool = () => {
 
                       {/* Experience Details */}
                       <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-emerald-500" />
+                        <h3 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                          <FileText className="h-4 w-4" />
                           Experience
                         </h3>
-                        <div className="space-y-3 bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50">
+                        <div className="space-y-3 border border-white/10 bg-white/[0.025] p-4">
                           {selectedRequest.organizer_data?.years_experience != null && (
                             <div>
-                              <label className="text-xs text-zinc-500 uppercase">Years of Experience</label>
-                              <p className="text-white text-sm">{selectedRequest.organizer_data.years_experience} years</p>
+                              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Years of Experience</label>
+                              <p className="text-sm tabular-nums text-white">{selectedRequest.organizer_data.years_experience} years</p>
                             </div>
                           )}
                           {selectedRequest.organizer_data?.staff_count != null && (
                             <div>
-                              <label className="text-xs text-zinc-500 uppercase">Staff Count</label>
-                              <p className="text-white text-sm">{selectedRequest.organizer_data.staff_count} people</p>
+                              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Staff Count</label>
+                              <p className="text-sm tabular-nums text-white">{selectedRequest.organizer_data.staff_count} people</p>
                             </div>
                           )}
                           {selectedRequest.organizer_data?.equipment_list && (
                             <div>
-                              <label className="text-xs text-zinc-500 uppercase">Equipment</label>
-                              <p className="text-zinc-300 text-sm mt-1 whitespace-pre-wrap">{selectedRequest.organizer_data.equipment_list}</p>
+                              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Equipment</label>
+                              <p className="mt-1 whitespace-pre-wrap text-sm text-zinc-300">{selectedRequest.organizer_data.equipment_list}</p>
                             </div>
                           )}
                         </div>
@@ -741,12 +694,12 @@ const VerificationSystemTool = () => {
                     {/* Experience Description - Full Width */}
                     {selectedRequest.experience_description && (
                       <div className="space-y-3">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-rose-500" />
+                        <h3 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                          <FileText className="h-4 w-4" />
                           Experience Description
                         </h3>
-                        <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50">
-                          <p className="text-zinc-300 text-sm whitespace-pre-wrap">{selectedRequest.experience_description}</p>
+                        <div className="border border-white/10 bg-white/[0.025] p-4">
+                          <p className="whitespace-pre-wrap text-sm text-zinc-300">{selectedRequest.experience_description}</p>
                         </div>
                       </div>
                     )}
@@ -754,20 +707,20 @@ const VerificationSystemTool = () => {
                     {/* Organizer Socials */}
                     {selectedRequest.requested_role === 'organizer' && selectedRequest.organizer_data?.social_media_links && (
                       <div className="space-y-3">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-purple-500" />
+                        <h3 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                          <Globe className="h-4 w-4" />
                           Social Media
                         </h3>
-                        <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50">
+                        <div className="border border-white/10 bg-white/[0.025] p-4">
                           <div className="flex flex-wrap gap-2">
-                            {Object.entries(selectedRequest.organizer_data.social_media_links).map(([platform, url]) => (
+                            {Object.entries(selectedRequest.organizer_data.social_media_links as Record<string, string | null | undefined>).map(([platform, url]) => (
                               url && (
                                 <a
                                   key={platform}
                                   href={url as string}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-zinc-800 rounded-lg text-xs text-zinc-300 hover:text-white hover:bg-zinc-700 transition capitalize"
+                                  className="inline-flex items-center gap-1 border border-white/10 bg-white/[0.03] px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-300 transition-colors hover:border-white/25 hover:text-white"
                                 >
                                   {platform}
                                 </a>
@@ -781,34 +734,34 @@ const VerificationSystemTool = () => {
                     {/* Venue Specific */}
                     {selectedRequest.requested_role === 'venue_owner' && selectedRequest.venue_data && (
                       <div className="space-y-3">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-amber-500" />
+                        <h3 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                          <MapPin className="h-4 w-4" />
                           Venue Specifications
                         </h3>
-                        <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 gap-4 border border-white/10 bg-white/[0.025] p-4 md:grid-cols-4">
                           {selectedRequest.venue_data.total_pcs != null && (
                             <div>
-                              <label className="text-xs text-zinc-500 uppercase">Total PCs</label>
-                              <p className="text-white text-lg font-bold">{selectedRequest.venue_data.total_pcs}</p>
+                              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Total PCs</label>
+                              <p className="text-lg font-black tabular-nums text-white">{selectedRequest.venue_data.total_pcs}</p>
                             </div>
                           )}
                           {selectedRequest.venue_data.hourly_rate != null && (
                             <div>
-                              <label className="text-xs text-zinc-500 uppercase">Hourly Rate</label>
-                              <p className="text-white text-lg font-bold">PKR {selectedRequest.venue_data.hourly_rate}</p>
+                              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Hourly Rate</label>
+                              <p className="text-lg font-black tabular-nums text-white">PKR {selectedRequest.venue_data.hourly_rate}</p>
                             </div>
                           )}
                           {selectedRequest.venue_data.operating_hours && (
                             <div className="col-span-2">
-                              <label className="text-xs text-zinc-500 uppercase">Operating Hours</label>
-                              <p className="text-white text-sm">{selectedRequest.venue_data.operating_hours}</p>
+                              <label className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Operating Hours</label>
+                              <p className="text-sm text-white">{selectedRequest.venue_data.operating_hours}</p>
                             </div>
                           )}
                         </div>
                         {selectedRequest.venue_data.pc_specs && (
-                          <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50 mt-3">
-                            <label className="text-xs text-zinc-500 uppercase mb-2 block">PC Specifications</label>
-                            <p className="text-zinc-300 text-sm whitespace-pre-wrap font-mono">{selectedRequest.venue_data.pc_specs}</p>
+                          <div className="mt-3 border border-white/10 bg-white/[0.025] p-4">
+                            <label className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">PC Specifications</label>
+                            <p className="whitespace-pre-wrap font-mono text-sm text-zinc-300">{selectedRequest.venue_data.pc_specs}</p>
                           </div>
                         )}
                       </div>
@@ -817,12 +770,12 @@ const VerificationSystemTool = () => {
 
                   <TabsContent value="documents">
                     <div className="space-y-6">
-                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-blue-500" />
+                      <h3 className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                        <FileText className="h-4 w-4" />
                         Review Documents
                       </h3>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                         {/* CNIC - Standard for all */}
                         <RenderImage
                           path={selectedRequest.organizer_data?.cnic_front_path || selectedRequest.venue_data?.cnic_front_path || selectedRequest.cnic_front_url}
@@ -847,18 +800,18 @@ const VerificationSystemTool = () => {
                 </Tabs>
               </div>
 
-              <div className="bg-zinc-900/50 p-6 border-t border-zinc-800 flex justify-end gap-3 sticky bottom-0">
-                <Button variant="ghost" onClick={() => setSelectedRequest(null)} className="text-zinc-400 hover:text-white">
+              <div className="sticky bottom-0 flex justify-end gap-3 border-t border-white/10 bg-black/60 p-6 backdrop-blur-sm">
+                <CommandButton variant="ghost" size="sm" onClick={() => setSelectedRequest(null)}>
                   Close
-                </Button>
+                </CommandButton>
                 {selectedRequest.status === 'pending' && (
                   <>
-                    <Button onClick={() => { setActionType('reject'); setActionDialogOpen(true); }} className="bg-red-500/10 text-red-400 hover:bg-red-500/20 border-red-500/50 border">
+                    <CommandButton variant="danger" size="sm" onClick={() => { setActionType('reject'); setActionDialogOpen(true); }}>
                       Reject
-                    </Button>
-                    <Button onClick={() => { setActionType('approve'); setActionDialogOpen(true); }} className="bg-emerald-500 hover:bg-emerald-600 text-white">
+                    </CommandButton>
+                    <CommandButton size="sm" onClick={() => { setActionType('approve'); setActionDialogOpen(true); }}>
                       Approve Request
-                    </Button>
+                    </CommandButton>
                   </>
                 )}
               </div>
@@ -866,7 +819,7 @@ const VerificationSystemTool = () => {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPage>
   );
 };
 

@@ -16,7 +16,7 @@ export const PlacementCard: React.FC<Props> = ({ placement, onEdit, onDelete, on
   const hasCreative = !!(placement.bannerUrl || placement.logoUrl);
 
   return (
-    <div className="relative group bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden hover:border-zinc-700 transition-colors">
+    <div className="relative group bg-zinc-900 border border-zinc-800 overflow-hidden hover:border-zinc-700 transition-colors">
       <div className="aspect-video bg-zinc-950 flex items-center justify-center overflow-hidden">
         {displayImage ? (
           <img
@@ -32,7 +32,7 @@ export const PlacementCard: React.FC<Props> = ({ placement, onEdit, onDelete, on
       <div className="p-3 border-t border-zinc-800">
         <div className="flex items-center justify-between mb-1">
           <span className="text-sm font-medium text-white truncate">{placement.sponsorName}</span>
-          <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${placement.lifecycle === 'live' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-800 text-zinc-500'}`}>
+          <span className={`text-[9px] font-mono px-1.5 py-0.5  ${placement.lifecycle === 'live' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-zinc-800 text-zinc-500'}`}>
             {placement.lifecycle}
           </span>
         </div>
@@ -48,7 +48,7 @@ export const PlacementCard: React.FC<Props> = ({ placement, onEdit, onDelete, on
           <button
             onClick={() => onReplace(placement)}
             title={hasCreative ? "Replace creative" : "Upload creative"}
-            className="p-1.5 bg-zinc-800/90 border border-zinc-700 rounded hover:bg-zinc-700 transition-colors"
+            className="p-1.5 bg-zinc-800/90 border border-zinc-700  hover:bg-zinc-700 transition-colors"
           >
             <RefreshCw className="w-3 h-3 text-zinc-300" />
           </button>
@@ -57,7 +57,7 @@ export const PlacementCard: React.FC<Props> = ({ placement, onEdit, onDelete, on
           <button
             onClick={() => onRemove(placement)}
             title="Remove creative"
-            className="p-1.5 bg-zinc-800/90 border border-zinc-700 rounded hover:bg-zinc-700 transition-colors"
+            className="p-1.5 bg-zinc-800/90 border border-zinc-700  hover:bg-zinc-700 transition-colors"
           >
             <ImageMinus className="w-3 h-3 text-zinc-300" />
           </button>
@@ -65,7 +65,7 @@ export const PlacementCard: React.FC<Props> = ({ placement, onEdit, onDelete, on
         <button
           onClick={() => onEdit(placement)}
           title="Edit metadata"
-          className="p-1.5 bg-zinc-800/90 border border-zinc-700 rounded hover:bg-zinc-700 transition-colors"
+          className="p-1.5 bg-zinc-800/90 border border-zinc-700  hover:bg-zinc-700 transition-colors"
         >
           <Pencil className="w-3 h-3 text-zinc-300" />
         </button>
@@ -73,7 +73,7 @@ export const PlacementCard: React.FC<Props> = ({ placement, onEdit, onDelete, on
           <button
             onClick={() => onUnassign(placement)}
             title="Unassign placement"
-            className="p-1.5 bg-zinc-800/90 border border-zinc-700 rounded hover:bg-zinc-700 transition-colors"
+            className="p-1.5 bg-zinc-800/90 border border-zinc-700  hover:bg-zinc-700 transition-colors"
           >
             <UserX className="w-3 h-3 text-amber-400" />
           </button>
@@ -81,7 +81,7 @@ export const PlacementCard: React.FC<Props> = ({ placement, onEdit, onDelete, on
         <button
           onClick={() => onDelete(placement.id)}
           title="Delete placement"
-          className="p-1.5 bg-zinc-800/90 border border-red-900/50 rounded hover:bg-red-900/30 transition-colors"
+          className="p-1.5 bg-zinc-800/90 border border-red-900/50  hover:bg-red-900/30 transition-colors"
         >
           <Trash2 className="w-3 h-3 text-red-400" />
         </button>

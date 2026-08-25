@@ -2,22 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useAdminRoleDefinitions, useAdminUserRoleAssignments, adminKeys } from '@/hooks/useAdminQueries';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { 
-  Search, 
+import {
+  Search,
   Filter,
   Shield,
   UserPlus,
@@ -28,6 +16,12 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdmin } from '@/hooks/useAdmin';
+import { AdminPage } from '@/components/admin/AdminPage';
+import {
+  CommandButton,
+  CommandSection,
+  CommandToolbar,
+} from '@/components/management/CommandSurface';
 
 interface AdminUser {
   id: string;
@@ -45,10 +39,10 @@ interface AdminUser {
   }>;
 }
 
-type Role = { 
-  id: string; 
-  name: string; 
-  description: string; 
+type Role = {
+  id: string;
+  name: string;
+  description: string;
   isAdmin?: boolean;
   roleKey?: string;
   roleId?: string | number;
@@ -294,7 +288,7 @@ const AdminRoleManagement: React.FC = () => {
           remainingAdminRoles = [];
         }
 
-        await apiClient.put(`/api/admin/users/${user.id}`, { 
+        await apiClient.put(`/api/admin/users/${user.id}`, {
           isAdmin: remainingAdminRoles && remainingAdminRoles.length > 0,
           adminRoles: updatedAdminRoles
         });
@@ -383,62 +377,53 @@ const AdminRoleManagement: React.FC = () => {
   };
 
   const filteredAdmins = admins.filter(admin => {
-    const matchesSearch = 
+    const matchesSearch =
       admin.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       admin.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       admin.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesRole = filterRole === 'all' || 
+
+    const matchesRole = filterRole === 'all' ||
       admin.admin_roles?.includes(filterRole) ||
       admin.assigned_roles.some(r => r.role_name.toLowerCase().replace(/\s+/g, '_') === filterRole);
-    
+
     return matchesSearch && matchesRole;
   });
 
   if (!canManageAdmins) {
     return (
-      <Card className="bg-gray-800 border-gray-700">
-        <CardContent className="p-6 text-center">
-          <AlertTriangle className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">Access Denied</h3>
-          <p className="text-gray-400">Only Super Admins can access this page.</p>
-        </CardContent>
-      </Card>
+      <AdminPage eyebrow="Security" title="Admin Roles" description="Manage admin roles and permissions">
+        <CommandSection>
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <AlertTriangle className="h-4 w-4 text-red-300" />
+            <h3 className="mt-3 text-lg font-semibold text-white">Access Denied</h3>
+            <p className="mt-1 text-sm text-zinc-500">Only Super Admins can access this page.</p>
+          </div>
+        </CommandSection>
+      </AdminPage>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Crown className="w-6 h-6 text-yellow-400" />
-            Admin Management
-          </h2>
-          <p className="text-gray-400 mt-1">Manage admin roles and permissions</p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <Card className="bg-gray-800 border-gray-700">
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
+    <AdminPage eyebrow="Security" title="Admin Roles" description="Manage admin roles and permissions">
+      <div className="space-y-5">
+        {/* Filters */}
+        <CommandToolbar>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <div className="relative md:w-80">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
+              <input
                 placeholder="Search admins by email, username, or name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-gray-700 border-gray-600 text-white"
+                className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
               />
             </div>
             <Select value={filterRole} onValueChange={setFilterRole}>
-              <SelectTrigger className="w-full md:w-48 bg-gray-700 border-gray-600 text-white">
-                <Filter className="w-4 h-4 mr-2" />
+              <SelectTrigger className="w-full -none border-white/10 bg-[#0a0a0c]/90 text-xs text-white focus:ring-rose-500/20 md:w-48">
+                <Filter className="mr-2 h-3.5 w-3.5" />
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-800 border-gray-700 text-white">
+              <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="super_admin">Super Admin</SelectItem>
                 {roles.filter(r => r.isAdmin && (r as any).roleKey !== 'super_admin').map(r => (
@@ -449,197 +434,192 @@ const AdminRoleManagement: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-        </CardContent>
-      </Card>
+        </CommandToolbar>
 
-      {/* Admins Table */}
-      <Card className="bg-gray-800 border-gray-700">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Shield className="w-5 h-5 text-blue-400" />
-            Admin Users ({filteredAdmins.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+        {/* Admins Table */}
+        <CommandSection className="p-0">
+          <div className="flex items-center gap-2 border-b border-white/5 px-5 py-4">
+            <Shield className="h-4 w-4 text-rose-400" />
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Admin Users ({filteredAdmins.length})</span>
+          </div>
           {isLoading ? (
-            <div className="text-center py-8 text-gray-400">Loading admins...</div>
+            <div className="py-8 text-center text-sm text-zinc-500">Loading admins...</div>
           ) : filteredAdmins.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">No admins found</div>
+            <div className="py-8 text-center text-sm text-zinc-500">No admins found</div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-gray-700">
-                    <TableHead className="text-gray-300">Admin</TableHead>
-                    <TableHead className="text-gray-300">Roles</TableHead>
-                    <TableHead className="text-gray-300">Permissions</TableHead>
-                    <TableHead className="text-gray-300">Joined</TableHead>
-                    <TableHead className="text-gray-300">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+            <div className="overflow-x-auto pb-2">
+              <table className="w-full min-w-[880px] text-left text-xs">
+                <thead className="bg-black/40 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                  <tr>
+                    <th className="px-4 py-3">Admin</th>
+                    <th className="px-4 py-3">Roles</th>
+                    <th className="px-4 py-3">Permissions</th>
+                    <th className="px-4 py-3">Joined</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
                   {filteredAdmins.map((admin) => {
                     const isSuperAdminUser = admin.admin_roles?.includes('super_admin');
-                    const displayRoles = admin.assigned_roles.length > 0 
+                    const displayRoles = admin.assigned_roles.length > 0
                       ? admin.assigned_roles.map(r => r.role_name)
                       : (admin.admin_roles || []);
-                    
+
                     return (
-                      <TableRow key={admin.id} className="border-gray-700">
-                        <TableCell>
+                      <tr key={admin.id} className="text-zinc-300 transition-colors hover:bg-white/[0.03]">
+                        <td className="px-4 py-3">
                           <div>
                             <div className="font-medium text-white">{admin.full_name || admin.username}</div>
-                            <div className="text-sm text-gray-400">{admin.email}</div>
+                            <div className="text-xs text-zinc-500">{admin.email}</div>
                           </div>
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
                             {isSuperAdminUser ? (
-                              <Badge className="bg-yellow-600 text-white">
-                                <Crown className="w-3 h-3 mr-1" />
+                              <span className="flex items-center gap-1 border border-rose-500/30 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-rose-400">
+                                <Crown className="h-3 w-3" />
                                 Super Admin
-                              </Badge>
+                              </span>
                             ) : (
                               displayRoles.map((role, idx) => (
-                                <Badge key={idx} className="bg-blue-600 text-white">
+                                <span key={idx} className="border border-white/15 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-zinc-200">
                                   {role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                </Badge>
+                                </span>
                               ))
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        <td className="px-4 py-3">
                           {isSuperAdminUser ? (
-                            <Badge variant="outline" className="border-yellow-400 text-yellow-400">
+                            <span className="border border-rose-500/30 px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-rose-400">
                               All Permissions
-                            </Badge>
+                            </span>
                           ) : (
-                            <span className="text-sm text-gray-400">
+                            <span className="text-xs tabular-nums text-zinc-500">
                               {admin.assigned_roles.length} role(s)
                             </span>
                           )}
-                        </TableCell>
-                        <TableCell className="text-gray-400 text-sm">
+                        </td>
+                        <td className="px-4 py-3 font-mono tabular-nums text-zinc-400">
                           {new Date(admin.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
+                        </td>
+                        <td className="px-4 py-3">
                           {!isSuperAdminUser && (
-                            <div className="flex gap-2">
-                              <Button
+                            <div className="flex justify-end gap-1.5">
+                              <CommandButton
                                 size="sm"
-                                variant="outline"
-                                className="border-blue-600 text-blue-400 hover:bg-blue-600/10"
                                 onClick={() => {
                                   setSelectedAdmin(admin);
                                   setShowAssignDialog(true);
                                 }}
                               >
-                                <UserPlus className="w-3 h-3 mr-1" />
+                                <UserPlus className="h-3.5 w-3.5" />
                                 Assign
-                              </Button>
-                              <Button
+                              </CommandButton>
+                              <CommandButton
                                 size="sm"
-                                variant="outline"
-                                className="border-red-600 text-red-400 hover:bg-red-600/10"
+                                variant="danger"
                                 onClick={() => {
                                   setSelectedAdmin(admin);
                                   setShowRevokeDialog(true);
                                 }}
                               >
-                                <UserMinus className="w-3 h-3 mr-1" />
+                                <UserMinus className="h-3.5 w-3.5" />
                                 Revoke
-                              </Button>
+                              </CommandButton>
                             </div>
                           )}
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     );
                   })}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </CommandSection>
 
-      {/* Assign Role Dialog */}
-      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-        <DialogContent className="bg-gray-800 border-gray-700 text-white">
-          <DialogHeader>
-            <DialogTitle>Assign Role to {selectedAdmin?.email}</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Select a role to assign to this admin user.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                {roles.filter(r => !r.isAdmin || (r as any).roleKey !== 'super_admin').map(r => (
-                  <SelectItem key={r.id} value={r.id}>
-                    {r.name} {r.isAdmin && '(Admin)'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAssignDialog(false)}>Cancel</Button>
-            <Button 
-              onClick={handleAssignRole} 
-              disabled={!selectedRole || actionLoading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Assign Role
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Revoke Role Dialog */}
-      <Dialog open={showRevokeDialog} onOpenChange={setShowRevokeDialog}>
-        <DialogContent className="bg-gray-800 border-gray-700 text-white">
-          <DialogHeader>
-            <DialogTitle>Revoke Role from {selectedAdmin?.email}</DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Select a role to revoke from this admin user.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                <SelectValue placeholder="Select role to revoke" />
-              </SelectTrigger>
-              <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                {selectedAdmin?.assigned_roles.map((role, idx) => {
-                  const roleKey = role.role_name.toLowerCase().replace(/\s+/g, '_');
-                  const roleData = roles.find(r => (r as any).roleKey === roleKey || r.name.toLowerCase().replace(/\s+/g, '_') === roleKey);
-                  return (
-                    <SelectItem key={idx} value={roleData?.id || role.role_name}>
-                      {role.role_name}
+        {/* Assign Role Dialog */}
+        <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+          <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
+            <DialogHeader>
+              <DialogTitle>Assign Role to {selectedAdmin?.email}</DialogTitle>
+              <DialogDescription className="text-zinc-500">
+                Select a role to assign to this admin user.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Role</p>
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger className="-none border-white/10 bg-black/60 text-white focus:ring-rose-500/20">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px] -none border-white/10 bg-[#0a0a0c] text-white">
+                  {roles.filter(r => !r.isAdmin || (r as any).roleKey !== 'super_admin').map(r => (
+                    <SelectItem key={r.id} value={r.id} className="-none hover:bg-white/5">
+                      {r.name} {r.isAdmin && '(Admin)'}
                     </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRevokeDialog(false)}>Cancel</Button>
-            <Button 
-              onClick={handleRevokeRole} 
-              disabled={!selectedRole || actionLoading}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Revoke Role
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <CommandButton variant="ghost" size="sm" onClick={() => setShowAssignDialog(false)}>Cancel</CommandButton>
+              <CommandButton
+                size="sm"
+                onClick={handleAssignRole}
+                disabled={!selectedRole || actionLoading}
+              >
+                Assign Role
+              </CommandButton>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Revoke Role Dialog */}
+        <Dialog open={showRevokeDialog} onOpenChange={setShowRevokeDialog}>
+          <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
+            <DialogHeader>
+              <DialogTitle>Revoke Role from {selectedAdmin?.email}</DialogTitle>
+              <DialogDescription className="text-zinc-500">
+                Select a role to revoke from this admin user.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Role</p>
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger className="-none border-white/10 bg-black/60 text-white focus:ring-rose-500/20">
+                  <SelectValue placeholder="Select role to revoke" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px] -none border-white/10 bg-[#0a0a0c] text-white">
+                  {selectedAdmin?.assigned_roles.map((role, idx) => {
+                    const roleKey = role.role_name.toLowerCase().replace(/\s+/g, '_');
+                    const roleData = roles.find(r => (r as any).roleKey === roleKey || r.name.toLowerCase().replace(/\s+/g, '_') === roleKey);
+                    return (
+                      <SelectItem key={idx} value={roleData?.id || role.role_name} className="-none hover:bg-white/5">
+                        {role.role_name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <CommandButton variant="ghost" size="sm" onClick={() => setShowRevokeDialog(false)}>Cancel</CommandButton>
+              <CommandButton
+                size="sm"
+                variant="danger"
+                onClick={handleRevokeRole}
+                disabled={!selectedRole || actionLoading}
+              >
+                Revoke Role
+              </CommandButton>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </AdminPage>
   );
 };
 
 export default AdminRoleManagement;
-

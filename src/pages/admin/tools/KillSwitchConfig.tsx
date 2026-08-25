@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { AlertTriangle, Lock, RefreshCw, ShieldAlert, ToggleLeft, ToggleRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { AlertTriangle, Lock, RefreshCw, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { AdminPage } from '@/components/admin/AdminPage';
+import {
+  CommandButton,
+  CommandPanel,
+  CommandSection,
+} from '@/components/management/CommandSurface';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import {
   useOperationsSystemConfig,
@@ -40,61 +43,42 @@ export default function KillSwitchConfig() {
   };
 
   return (
-    <div className="min-h-screen p-4 lg:p-8">
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-500/10">
-            <ShieldAlert className="h-6 w-6 text-red-400" />
-          </div>
-          <div>
-            <h1 className="font-[Poppins] text-2xl font-black tracking-tight text-white lg:text-3xl">
-              Kill Switch & Global Config
-            </h1>
-            <p className="text-sm text-zinc-500">
-              Emergency platform controls backed by immutable operations audit.
-            </p>
-          </div>
-        </div>
-
-        <Button
-          variant="outline"
-          onClick={() => refetch()}
-          className="border-zinc-800 text-zinc-400 hover:text-white"
-        >
-          <RefreshCw className="mr-2 h-4 w-4" />
+    <AdminPage
+      eyebrow="System"
+      title="Kill Switches"
+      description="Emergency platform controls backed by immutable operations audit."
+      actions={
+        <CommandButton variant="ghost" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="h-4 w-4" />
           Refresh
-        </Button>
-      </motion.header>
-
+        </CommandButton>
+      }
+    >
       {!canToggleKillSwitch && (
-        <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
-          <div className="flex items-start gap-3">
-            <Lock className="mt-0.5 h-5 w-5 text-amber-400" />
-            <div>
-              <p className="text-sm font-semibold text-amber-200">Limited Operations View</p>
-              <p className="mt-1 text-xs text-zinc-400">
-                You can inspect non-sensitive config if permitted, but emergency kill-switch action nodes are not rendered for your role.
-              </p>
-            </div>
+        <div className="flex items-start gap-3 border border-amber-500/20 bg-amber-500/[0.04] p-4">
+          <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+          <div>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-amber-300">
+              Limited Operations View
+            </p>
+            <p className="mt-1 text-sm text-zinc-400">
+              You can inspect non-sensitive config if permitted, but emergency kill-switch action nodes are not rendered for your role.
+            </p>
           </div>
         </div>
       )}
 
       {isLoading ? (
-        <div className="rounded-2xl border border-zinc-800 bg-[#0a0a0c] p-8 text-center text-zinc-500">
+        <CommandSection className="py-16 text-center text-sm text-zinc-500">
           Loading operations config…
-        </div>
+        </CommandSection>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {canToggleKillSwitch && (
-            <section>
-              <div className="mb-3 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-red-400" />
-                <h2 className="text-xs font-bold uppercase tracking-[0.22em] text-zinc-500">
+            <CommandSection>
+              <div className="mb-4 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-300" />
+                <h2 className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
                   Emergency Kill Switches
                 </h2>
               </div>
@@ -104,71 +88,80 @@ export default function KillSwitchConfig() {
                   const reason = reasonByKey[item.key] ?? '';
                   const reasonValid = reason.trim().length >= 10;
                   return (
-                    <motion.div
+                    <div
                       key={item.key}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`rounded-2xl border p-5 ${
+                      className={
                         enabled
-                          ? 'border-red-500/30 bg-red-500/10'
-                          : 'border-zinc-800/60 bg-[#0a0a0c]'
-                      }`}
+                          ? 'border border-rose-500/30 bg-rose-500/[0.03] p-4'
+                          : 'border border-white/10 bg-white/[0.025] p-4'
+                      }
                     >
                       <div className="mb-4 flex items-start justify-between gap-4">
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="font-semibold text-white">{item.label}</h3>
-                            <Badge className={enabled ? 'bg-red-500/20 text-red-200' : 'bg-zinc-800 text-zinc-400'}>
+                            <span
+                              className={`border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${
+                                enabled ? 'border-rose-500/30 text-rose-300' : 'border-white/15 text-zinc-400'
+                              }`}
+                            >
                               {enabled ? 'Active' : 'Inactive'}
-                            </Badge>
+                            </span>
                           </div>
                           <p className="mt-1 text-sm text-zinc-500">{item.description}</p>
                           <p className="mt-2 font-mono text-[11px] text-zinc-600">{item.key}</p>
                         </div>
-                        {enabled ? <ToggleRight className="h-6 w-6 text-red-300" /> : <ToggleLeft className="h-6 w-6 text-zinc-600" />}
+                        {enabled ? (
+                          <ToggleRight className="h-5 w-5 shrink-0 text-rose-400" />
+                        ) : (
+                          <ToggleLeft className="h-5 w-5 shrink-0 text-zinc-600" />
+                        )}
                       </div>
                       <Textarea
                         value={reason}
                         onChange={(event) => updateReason(item.key, event.target.value)}
                         placeholder="Required: explain why this emergency control is changing"
-                        className="mb-3 resize-none border-zinc-800 bg-zinc-950 text-white"
+                        className="mb-3 resize-none -none border-white/10 bg-black/40 text-white placeholder:text-zinc-600"
                         rows={3}
                       />
-                      <Button
+                      <CommandButton
+                        variant={enabled ? 'secondary' : 'danger'}
+                        size="sm"
                         onClick={() => toggle(item)}
                         disabled={!reasonValid || updateConfig.isPending}
-                        className={enabled ? 'bg-zinc-100 text-zinc-950 hover:bg-white' : 'bg-red-600 text-white hover:bg-red-700'}
                       >
                         {enabled ? 'Deactivate Kill Switch' : 'Activate Kill Switch'}
-                      </Button>
-                    </motion.div>
+                      </CommandButton>
+                    </div>
                   );
                 })}
               </div>
-            </section>
+            </CommandSection>
           )}
 
-          <section>
-            <h2 className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-zinc-500">
+          <CommandSection>
+            <h2 className="mb-4 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
               Global Config
             </h2>
             <div className="grid gap-3 lg:grid-cols-2">
               {standardConfig.map((item) => (
-                <div key={item.key} className="rounded-2xl border border-zinc-800/60 bg-[#0a0a0c] p-4">
+                <CommandPanel key={item.key}>
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <h3 className="text-sm font-semibold text-white">{item.label}</h3>
                       <p className="mt-1 text-xs text-zinc-500">{item.description}</p>
                       <p className="mt-2 font-mono text-[11px] text-zinc-600">{item.key}</p>
                     </div>
-                    <Badge className="bg-zinc-800 text-zinc-400">{String(item.value)}</Badge>
+                    <span className="shrink-0 border border-white/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                      {String(item.value)}
+                    </span>
                   </div>
-                </div>
+                </CommandPanel>
               ))}
             </div>
-          </section>
+          </CommandSection>
         </div>
       )}
-    </div>
+    </AdminPage>
   );
 }

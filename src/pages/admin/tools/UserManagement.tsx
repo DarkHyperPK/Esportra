@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { motion, AnimatePresence } from "framer-motion";
+import { AdminPage } from "@/components/admin/AdminPage";
+import {
+    CommandButton,
+    CommandSegmentedButton,
+    CommandSection,
+    CommandToolbar,
+} from "@/components/management/CommandSurface";
 import {
     Users,
     Search,
@@ -30,6 +33,7 @@ import {
     Ghost,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import { useAdminUsersList, useAdminRoleDefinitions, useAdminUserRoleAssignments, useAdminUserSuspend, useAdminUserUnsuspend, useAdminBulkUserAction, useRevokeSession } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
@@ -81,10 +85,11 @@ interface UserDetail {
         country_code: string | null;
         date_of_birth: string | null;
         riot_tag: string | null;
-        social_links: Record<string, string> | null;
+        steam_tag: string | null;
+        social_links: Record<string, string> | string | null;
         card_image_url: string | null;
         banner_url: string | null;
-        is_verified: boolean;
+        verification_status?: 'verified_organizer' | 'verified_venue_owner' | 'email_verified' | 'unverified';
         is_admin: boolean;
         admin_roles: string[] | null;
         is_suspended: boolean;
@@ -106,6 +111,34 @@ interface UserDetail {
 }
 
 const USERS_PER_PAGE = 25;
+
+const FIELD_LABEL_CLASS = "mb-1 block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500";
+const CONTROL_CLASS = "w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500";
+const CHIP_NEUTRAL_CLASS = "border border-white/10 bg-transparent px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-500";
+
+// Social platforms store bare handles (the profile form uses "@username" inputs).
+// Resolve platform + handle -> canonical URL. Full URLs pass through untouched.
+const SOCIAL_URL_BUILDERS: Record<string, (v: string) => string> = {
+    twitter: (v) => `https://x.com/${v.replace(/^@/, '')}`,
+    x: (v) => `https://x.com/${v.replace(/^@/, '')}`,
+    twitch: (v) => `https://twitch.tv/${v.replace(/^@/, '')}`,
+    youtube: (v) => `https://youtube.com/@${v.replace(/^@/, '')}`,
+    instagram: (v) => `https://instagram.com/${v.replace(/^@/, '')}`,
+    facebook: (v) => `https://facebook.com/${v.replace(/^@/, '')}`,
+    tiktok: (v) => `https://tiktok.com/@${v.replace(/^@/, '')}`,
+};
+
+function resolveSocialUrl(platform: string, value: string): string | null {
+    if (!value) return null;
+    if (/^https?:\/\//i.test(value)) return value;
+    const builder = SOCIAL_URL_BUILDERS[platform.toLowerCase()];
+    return builder ? builder(value) : null;
+}
+
+function steamProfileUrl(tag: string): string {
+    const v = tag.trim();
+    return /^\d{17}$/.test(v) ? `https://steamcommunity.com/profiles/${v}` : `https://steamcommunity.com/id/${v}`;
+}
 
 const UserManagementTool = () => {
     const navigate = useNavigate();
@@ -432,13 +465,13 @@ const UserManagementTool = () => {
 
     const getRoleBadge = (role: string, isAdmin = false) => {
         if (isAdmin) {
-            return 'bg-violet-500/10 text-violet-400 border-violet-500/30';
+            return 'border-rose-500/30 bg-rose-500/10 text-rose-300';
         }
         const styles: Record<string, string> = {
-            'admin': 'bg-red-500/10 text-red-400 border-red-500/30',
-            'organizer': 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-            'venue_owner': 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-            'casual': 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30',
+            'admin': 'border-red-500/30 bg-red-950/20 text-red-300',
+            'organizer': 'border-white/25 bg-white/[0.04] text-zinc-200',
+            'venue_owner': 'border-white/15 bg-transparent text-zinc-400',
+            'casual': 'border-white/10 bg-transparent text-zinc-500',
         };
         return styles[role] || styles.casual;
     };
@@ -588,337 +621,273 @@ const UserManagementTool = () => {
     };
 
     return (
-        <div className={`min-h-screen p-4 lg:p-8 ${selectedUserIds.size > 0 ? 'pb-24' : ''}`}>
-            {/* Header */}
-            <motion.header
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8"
-            >
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center">
-                        <Users className="w-5 h-5 text-rose-500" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-white">User Management</h1>
-                        <p className="text-zinc-500 text-sm">Search, inspect, and act on platform users</p>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleRefresh}
-                        disabled={refreshing}
-                        className="border-zinc-800 text-zinc-400 hover:text-white"
-                    >
-                        <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+        <AdminPage
+            eyebrow="Users & Access"
+            title="Users"
+            description="Search, inspect, and act on platform users"
+            actions={
+                <>
+                    <CommandButton variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing}>
+                        <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
                         Refresh
-                    </Button>
+                    </CommandButton>
                     {can('users:export') && (
-                        <Button
-                            size="sm"
-                            onClick={handleExport}
-                            disabled={isExporting}
-                            className="bg-rose-500 hover:bg-rose-600 text-white"
-                        >
-                            {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                        <CommandButton size="sm" onClick={handleExport} disabled={isExporting}>
+                            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                             {isExporting ? 'Exporting…' : 'Export'}
-                        </Button>
+                        </CommandButton>
                     )}
-                </div>
-            </motion.header>
-
+                </>
+            }
+        >
+        <div className={`space-y-5 ${selectedUserIds.size > 0 ? 'pb-24' : ''}`}>
             {/* Stats */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6"
-            >
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
                 {[
-                    { label: 'Total Users', value: stats.total, icon: Users, color: 'rose' },
-                    { label: 'Admins', value: stats.admins, icon: Shield, color: 'violet' },
-                    { label: 'Organizers', value: stats.organizers, icon: UserCheck, color: 'amber' },
-                    { label: 'Venue Owners', value: stats.venueOwners, icon: CheckCircle, color: 'emerald' },
-                    { label: 'Casual', value: stats.casual, icon: Users, color: 'zinc' },
+                    { label: 'Total Users', value: stats.total, icon: Users },
+                    { label: 'Admins', value: stats.admins, icon: Shield },
+                    { label: 'Organizers', value: stats.organizers, icon: UserCheck },
+                    { label: 'Venue Owners', value: stats.venueOwners, icon: CheckCircle },
+                    { label: 'Casual', value: stats.casual, icon: Users },
                 ].map((stat) => (
                     <div
                         key={stat.label}
-                        className="p-4 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50"
+                        className="border border-white/10 bg-white/[0.025] p-4"
                     >
-                        <div className="flex items-center justify-between mb-2">
-                            <stat.icon className={`w-5 h-5 text-${stat.color}-500`} />
-                        </div>
-                        <p className="text-2xl font-bold text-white">{stat.value}</p>
-                        <p className="text-xs text-zinc-500">{stat.label}</p>
+                        <stat.icon className="mb-2 h-4 w-4 text-zinc-500" />
+                        <p className="text-xl font-black tabular-nums text-white">{stat.value}</p>
+                        <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">{stat.label}</p>
                     </div>
                 ))}
-            </motion.div>
+            </div>
 
             {/* Filters */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="flex flex-col md:flex-row gap-3 mb-6"
-            >
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                    <Input
-                        placeholder="Search users by name, username, or email..."
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                        className="pl-9 bg-zinc-900/50 border-zinc-800 focus:border-rose-500"
-                    />
+            <CommandToolbar>
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                    <div className="relative lg:w-72">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-600" />
+                        <input
+                            placeholder="Search users by name, username, or email..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                        />
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                        {['all', 'admin', ...availableAdminRoles, 'organizer', 'venue_owner', 'casual'].filter((v, i, a) => a.indexOf(v) === i).map((role) => (
+                            <CommandSegmentedButton
+                                key={role}
+                                active={roleFilter === role}
+                                onClick={() => { setRoleFilter(role); setPage(0); }}
+                            >
+                                {role === 'all' ? 'All Roles' : role === 'venue_owner' ? 'Venue Owner' : role.replace('_', ' ')}
+                            </CommandSegmentedButton>
+                        ))}
+                    </div>
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                    {['all', 'admin', ...availableAdminRoles, 'organizer', 'venue_owner', 'casual'].filter((v, i, a) => a.indexOf(v) === i).map((role) => (
-                        <Button
-                            key={role}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => { setRoleFilter(role); setPage(0); }}
-                            className={`border-zinc-800 capitalize ${roleFilter === role ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : 'text-zinc-400'}`}
-                        >
-                            {role === 'all' ? 'All Roles' : role === 'venue_owner' ? 'Venue Owner' : role.replace('_', ' ')}
-                        </Button>
-                    ))}
+                <div className="flex items-center gap-2">
+                    <CommandButton variant="ghost" size="sm" onClick={() => setShowFilters(!showFilters)}>
+                        <Filter className="h-4 w-4" />
+                        Advanced Filters
+                        {activeFilterCount > 0 && (
+                            <span className="border border-rose-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold text-rose-300">{activeFilterCount}</span>
+                        )}
+                        {showFilters ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </CommandButton>
                 </div>
-            </motion.div>
+            </CommandToolbar>
 
             {/* Advanced Filters */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.25 }}
-                className="mb-6"
-            >
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="border-zinc-800 text-zinc-400 hover:text-white mb-3"
-                >
-                    <Filter className="w-4 h-4 mr-2" />
-                    Advanced Filters
-                    {activeFilterCount > 0 && (
-                        <Badge className="ml-2 bg-rose-500/20 text-rose-400 text-xs">{activeFilterCount}</Badge>
-                    )}
-                    {showFilters ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
-                </Button>
-
-                {showFilters && (
-                    <div className="p-4 rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {/* Status Filter */}
-                            <div>
-                                <label className="text-xs text-zinc-500 mb-1 block">Status</label>
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-                                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
-                                >
-                                    <option value="all">All Status</option>
-                                    <option value="active">Active</option>
-                                    <option value="suspended">Suspended</option>
-                                </select>
-                            </div>
-
-                            {/* Verified Filter */}
-                            <div>
-                                <label className="text-xs text-zinc-500 mb-1 block">Verification</label>
-                                <select
-                                    value={verifiedFilter}
-                                    onChange={(e) => { setVerifiedFilter(e.target.value); setPage(0); }}
-                                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
-                                >
-                                    <option value="all">All</option>
-                                    <option value="true">Verified</option>
-                                    <option value="false">Not Verified</option>
-                                </select>
-                            </div>
-
-                            {/* Has Team Filter */}
-                            <div>
-                                <label className="text-xs text-zinc-500 mb-1 block">Team Status</label>
-                                <select
-                                    value={hasTeamFilter}
-                                    onChange={(e) => { setHasTeamFilter(e.target.value); setPage(0); }}
-                                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
-                                >
-                                    <option value="all">All</option>
-                                    <option value="true">Has Team</option>
-                                    <option value="false">No Team</option>
-                                </select>
-                            </div>
-
-                            {/* Country Filter */}
-                            <div>
-                                <label className="text-xs text-zinc-500 mb-1 block">Country Code</label>
-                                <Input
-                                    placeholder="e.g. AE, US, GB"
-                                    value={countryFilter}
-                                    onChange={(e) => { setCountryFilter(e.target.value.toUpperCase()); setPage(0); }}
-                                    maxLength={2}
-                                    className="bg-zinc-900 border-zinc-800 focus:border-rose-500 text-sm"
-                                />
-                            </div>
+            {showFilters && (
+                <CommandSection className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {/* Status Filter */}
+                        <div>
+                            <label className={FIELD_LABEL_CLASS}>Status</label>
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+                                className={CONTROL_CLASS}
+                            >
+                                <option value="all">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="suspended">Suspended</option>
+                            </select>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {/* Joined From */}
-                            <div>
-                                <label className="text-xs text-zinc-500 mb-1 block">Joined From</label>
-                                <Input
-                                    type="date"
-                                    value={joinedFrom}
-                                    onChange={(e) => { setJoinedFrom(e.target.value); setPage(0); }}
-                                    className="bg-zinc-900 border-zinc-800 focus:border-rose-500 text-sm"
-                                />
-                            </div>
-
-                            {/* Joined To */}
-                            <div>
-                                <label className="text-xs text-zinc-500 mb-1 block">Joined To</label>
-                                <Input
-                                    type="date"
-                                    value={joinedTo}
-                                    onChange={(e) => { setJoinedTo(e.target.value); setPage(0); }}
-                                    className="bg-zinc-900 border-zinc-800 focus:border-rose-500 text-sm"
-                                />
-                            </div>
-
-                            {/* Sort By */}
-                            <div>
-                                <label className="text-xs text-zinc-500 mb-1 block">Sort By</label>
-                                <select
-                                    value={sortBy}
-                                    onChange={(e) => { setSortBy(e.target.value); setPage(0); }}
-                                    className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white text-sm focus:border-rose-500 outline-none"
-                                >
-                                    <option value="created_at">Join Date</option>
-                                    <option value="username">Username</option>
-                                    <option value="updated_at">Last Active</option>
-                                </select>
-                            </div>
-
-                            {/* Sort Direction */}
-                            <div>
-                                <label className="text-xs text-zinc-500 mb-1 block">Order</label>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => { setSortDir(sortDir === 'desc' ? 'asc' : 'desc'); setPage(0); }}
-                                    className="w-full border-zinc-800 text-zinc-400 hover:text-white"
-                                >
-                                    {sortDir === 'desc' ? <SortDesc className="w-4 h-4 mr-2" /> : <SortAsc className="w-4 h-4 mr-2" />}
-                                    {sortDir === 'desc' ? 'Newest First' : 'Oldest First'}
-                                </Button>
-                            </div>
+                        {/* Licensed Filter — "verified" means holds an approved license (organizer / venue owner / …) */}
+                        <div>
+                            <label className={FIELD_LABEL_CLASS}>Licensed</label>
+                            <select
+                                value={verifiedFilter}
+                                onChange={(e) => { setVerifiedFilter(e.target.value); setPage(0); }}
+                                className={CONTROL_CLASS}
+                            >
+                                <option value="all">All</option>
+                                <option value="true">Licensed</option>
+                                <option value="false">Unlicensed</option>
+                            </select>
                         </div>
 
-                        {/* Reset Button */}
-                        {activeFilterCount > 0 && (
-                            <div className="flex justify-end">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={resetFilters}
-                                    className="text-zinc-400 hover:text-white"
-                                >
-                                    <XCircle className="w-4 h-4 mr-2" />
-                                    Reset All Filters ({activeFilterCount})
-                                </Button>
-                            </div>
-                        )}
+                        {/* Has Team Filter */}
+                        <div>
+                            <label className={FIELD_LABEL_CLASS}>Team Status</label>
+                            <select
+                                value={hasTeamFilter}
+                                onChange={(e) => { setHasTeamFilter(e.target.value); setPage(0); }}
+                                className={CONTROL_CLASS}
+                            >
+                                <option value="all">All</option>
+                                <option value="true">Has Team</option>
+                                <option value="false">No Team</option>
+                            </select>
+                        </div>
+
+                        {/* Country Filter */}
+                        <div>
+                            <label className={FIELD_LABEL_CLASS}>Country Code</label>
+                            <input
+                                placeholder="e.g. AE, US, GB"
+                                value={countryFilter}
+                                onChange={(e) => { setCountryFilter(e.target.value.toUpperCase()); setPage(0); }}
+                                maxLength={2}
+                                className={CONTROL_CLASS}
+                            />
+                        </div>
                     </div>
-                )}
-            </motion.div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {/* Joined From */}
+                        <div>
+                            <label className={FIELD_LABEL_CLASS}>Joined From</label>
+                            <input
+                                type="date"
+                                value={joinedFrom}
+                                onChange={(e) => { setJoinedFrom(e.target.value); setPage(0); }}
+                                className={`${CONTROL_CLASS} font-mono tabular-nums`}
+                            />
+                        </div>
+
+                        {/* Joined To */}
+                        <div>
+                            <label className={FIELD_LABEL_CLASS}>Joined To</label>
+                            <input
+                                type="date"
+                                value={joinedTo}
+                                onChange={(e) => { setJoinedTo(e.target.value); setPage(0); }}
+                                className={`${CONTROL_CLASS} font-mono tabular-nums`}
+                            />
+                        </div>
+
+                        {/* Sort By */}
+                        <div>
+                            <label className={FIELD_LABEL_CLASS}>Sort By</label>
+                            <select
+                                value={sortBy}
+                                onChange={(e) => { setSortBy(e.target.value); setPage(0); }}
+                                className={CONTROL_CLASS}
+                            >
+                                <option value="created_at">Join Date</option>
+                                <option value="username">Username</option>
+                                <option value="updated_at">Last Active</option>
+                            </select>
+                        </div>
+
+                        {/* Sort Direction */}
+                        <div>
+                            <label className={FIELD_LABEL_CLASS}>Order</label>
+                            <CommandButton
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => { setSortDir(sortDir === 'desc' ? 'asc' : 'desc'); setPage(0); }}
+                                className="w-full"
+                            >
+                                {sortDir === 'desc' ? <SortDesc className="h-4 w-4" /> : <SortAsc className="h-4 w-4" />}
+                                {sortDir === 'desc' ? 'Newest First' : 'Oldest First'}
+                            </CommandButton>
+                        </div>
+                    </div>
+
+                    {/* Reset Button */}
+                    {activeFilterCount > 0 && (
+                        <div className="flex justify-end">
+                            <CommandButton variant="ghost" size="sm" onClick={resetFilters}>
+                                <XCircle className="h-4 w-4" />
+                                Reset All Filters ({activeFilterCount})
+                            </CommandButton>
+                        </div>
+                    )}
+                </CommandSection>
+            )}
 
             {usersQuery.error && (
-                <motion.div
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                    className="mb-6 p-6 rounded-2xl bg-red-500/5 border border-red-500/20 flex flex-col items-center gap-3"
-                >
-                    <Ban className="w-8 h-8 text-red-400" />
-                    <p className="text-red-400 font-medium">Failed to load users</p>
-                    <Button variant="outline" size="sm" onClick={() => usersQuery.refetch()} className="border-red-500/30 text-red-400 hover:bg-red-500/10">
+                <div className="flex flex-col items-center gap-3 border border-red-500/20 bg-red-950/20 p-6">
+                    <Ban className="h-6 w-6 text-red-300" />
+                    <p className="font-medium text-red-300">Failed to load users</p>
+                    <CommandButton variant="danger" size="sm" onClick={() => usersQuery.refetch()}>
                         Retry
-                    </Button>
-                </motion.div>
+                    </CommandButton>
+                </div>
             )}
 
             {/* Users Table */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="rounded-2xl bg-[#0a0a0c] border border-zinc-800/50 overflow-hidden"
-            >
+            <div className="overflow-hidden border border-white/10 bg-[#0a0a0c]/92">
                 <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="bg-zinc-900/50">
-                                <th className="px-4 py-3 w-10">
+                    <table className="w-full min-w-[900px] text-left text-xs">
+                        <thead className="bg-black/40 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                            <tr>
+                                <th className="w-10 px-4 py-3">
                                     <Checkbox
                                         checked={selectedUserIds.size === filteredUsers.length ? true : selectedUserIds.size > 0 ? "indeterminate" : false}
                                         onCheckedChange={toggleSelectAll}
-                                        className="border-zinc-600"
+                                        className="border-white/25 bg-black"
                                     />
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">User</th>
-                                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Email</th>
-                                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Regular Roles</th>
-                                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Admin Roles</th>
-                                <th className="px-6 py-3 text-left text-xs font-mono text-zinc-500 uppercase">Joined</th>
-                                <th className="px-6 py-3 text-right text-xs font-mono text-zinc-500 uppercase">Actions</th>
+                                <th className="px-4 py-3">User</th>
+                                <th className="px-4 py-3">Email</th>
+                                <th className="px-4 py-3">Regular Roles</th>
+                                <th className="px-4 py-3">Admin Roles</th>
+                                <th className="px-4 py-3">Joined</th>
+                                <th className="px-4 py-3 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-zinc-800/50">
+                        <tbody className="divide-y divide-white/5">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={7} className="text-center py-12">
+                                    <td colSpan={7} className="py-12 text-center">
                                         <div className="flex items-center justify-center gap-2 text-zinc-500">
-                                            <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                                            <div className="h-5 w-5 animate-spin rounded-full border-2 border-rose-500 border-t-transparent" />
                                             Loading users...
                                         </div>
                                     </td>
                                 </tr>
                             ) : filteredUsers.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="text-center py-12 text-zinc-500">
+                                    <td colSpan={7} className="py-12 text-center text-zinc-500">
                                         No users found
                                     </td>
                                 </tr>
                             ) : (
-                                filteredUsers.map((user, idx) => (
-                                    <motion.tr
-                                        key={user.id}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: idx * 0.01 }}
-                                        className="hover:bg-zinc-900/30 transition-colors"
-                                    >
-                                        <td className="px-4 py-4">
+                                filteredUsers.map((user) => (
+                                    <tr key={user.id} className="transition-colors hover:bg-white/[0.03]">
+                                        <td className="px-4 py-3">
                                             <Checkbox
                                                 checked={selectedUserIds.has(user.id)}
                                                 onCheckedChange={() => toggleSelectUser(user.id)}
-                                                className="border-zinc-600"
+                                                className="border-white/25 bg-black"
                                             />
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center overflow-hidden relative">
+                                                <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-black/40">
                                                     {user.avatar_url ? (
-                                                        <img src={user.avatar_url} loading="lazy" alt="" className="w-full h-full object-cover" />
+                                                        <img src={user.avatar_url} loading="lazy" alt="" className="h-full w-full object-cover" />
                                                     ) : (
-                                                        <Users className="w-5 h-5 text-rose-500" />
+                                                        <Users className="h-4 w-4 text-zinc-500" />
                                                     )}
                                                     {user.is_suspended && (
-                                                        <div className="absolute inset-0 bg-red-500/60 flex items-center justify-center">
-                                                            <Ban className="w-4 h-4 text-white" />
+                                                        <div className="absolute inset-0 flex items-center justify-center bg-red-500/60">
+                                                            <Ban className="h-4 w-4 text-white" />
                                                         </div>
                                                     )}
                                                 </div>
@@ -928,204 +897,186 @@ const UserManagementTool = () => {
                                                             {user.full_name || user.username || 'Unnamed'}
                                                         </p>
                                                         {user.is_suspended && (
-                                                            <Badge variant="destructive" className="text-[10px] h-4 px-1 leading-none bg-red-500/10 text-red-500 border-red-500/20">
+                                                            <span className="border border-red-500/30 px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase leading-none tracking-wider text-red-300">
                                                                 Suspended
-                                                            </Badge>
+                                                            </span>
                                                         )}
                                                     </div>
-                                                    <p className="text-xs text-zinc-500">@{user.username || 'no-username'}</p>
+                                                    <p className="font-mono text-xs text-zinc-500">@{user.username || 'no-username'}</p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-zinc-400">
+                                        <td className="px-4 py-3 text-sm text-zinc-400">
                                             {user.email || 'No email'}
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex gap-1 flex-wrap">
+                                        <td className="px-4 py-3">
+                                            <div className="flex flex-wrap gap-1">
                                                 {getUserRoles(user).map((role) => (
-                                                    <Badge
+                                                    <span
                                                         key={role}
-                                                        className={`${getRoleBadge(role)} border text-xs capitalize`}
+                                                        className={`border px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${getRoleBadge(role)}`}
                                                     >
-                                                        {role === 'venue_owner' ? 'Venue' : role}
-                                                    </Badge>
+                                                        {role === 'venue_owner' ? 'Venue' : role.replace('_', ' ')}
+                                                    </span>
                                                 ))}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex gap-1 flex-wrap">
+                                        <td className="px-4 py-3">
+                                            <div className="flex flex-wrap gap-1">
                                                 {user.admin_roles && user.admin_roles.map((role) => (
-                                                    <Badge
+                                                    <span
                                                         key={role}
-                                                        className={`${getRoleBadge(role, true)} border text-xs capitalize`}
+                                                        className={`border px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${getRoleBadge(role, true)}`}
                                                     >
                                                         {role.replace('_', ' ')}
-                                                    </Badge>
+                                                    </span>
                                                 ))}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-zinc-500">
+                                        <td className="px-4 py-3 font-mono tabular-nums text-zinc-500">
                                             {new Date(user.created_at).toLocaleDateString()}
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-4 py-3 text-right">
                                             <AdminEntityActionMenu actions={buildUserRowActions(user)} />
                                         </td>
-                                    </motion.tr>
+                                    </tr>
                                 ))
                             )}
                         </tbody>
                     </table>
                 </div>
-            </motion.div>
+            </div>
 
             {/* Bulk Action Floating Bar */}
-            <AnimatePresence>
-                {selectedUserIds.size > 0 && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
-                        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3 rounded-2xl bg-zinc-900/95 border border-zinc-700/50 backdrop-blur-xl shadow-2xl"
+            {selectedUserIds.size > 0 && (
+                <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 border border-white/10 bg-[#0a0a0c]/95 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur">
+                    <span className="mr-2 font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-300">
+                        {selectedUserIds.size} selected
+                    </span>
+                    <CommandButton
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleBulkAction('suspend')}
+                        disabled={bulkAction.isPending}
                     >
-                        <span className="text-sm text-zinc-300 font-medium mr-2">
-                            {selectedUserIds.size} selected
-                        </span>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-                            onClick={() => handleBulkAction('suspend')}
-                            disabled={bulkAction.isPending}
-                        >
-                            <Ban className="w-3.5 h-3.5 mr-1.5" />
-                            Suspend
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                            onClick={() => handleBulkAction('unsuspend')}
-                            disabled={bulkAction.isPending}
-                        >
-                            <UserCheck className="w-3.5 h-3.5 mr-1.5" />
-                            Unsuspend
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-zinc-600 text-zinc-400 hover:bg-zinc-800"
-                            onClick={clearSelection}
-                        >
-                            Clear
-                        </Button>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                        <Ban className="h-4 w-4" />
+                        Suspend
+                    </CommandButton>
+                    <CommandButton
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleBulkAction('unsuspend')}
+                        disabled={bulkAction.isPending}
+                    >
+                        <UserCheck className="h-4 w-4" />
+                        Unsuspend
+                    </CommandButton>
+                    <CommandButton variant="ghost" size="sm" onClick={clearSelection}>
+                        Clear
+                    </CommandButton>
+                </div>
+            )}
 
             {/* Bulk Suspend Confirmation Dialog */}
             <Dialog open={!!bulkConfirm} onOpenChange={(open) => { if (!open) { setBulkConfirm(null); setBulkSuspendReason(''); } }}>
-                <DialogContent className="bg-[#0a0a0c] border-zinc-800 text-white max-w-md">
+                <DialogContent className="max-w-md -none border border-white/10 bg-[#0a0a0c] text-white">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-white">
-                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            <AlertTriangle className="h-5 w-5 text-red-400" />
                             Confirm Bulk Suspend
                         </DialogTitle>
                     </DialogHeader>
                     <p className="text-zinc-400 text-sm">
-                        You are about to suspend <span className="text-white font-medium">{selectedUserIds.size} user(s)</span>. This will immediately lock them out of the platform.
+                        You are about to suspend <span className="font-medium text-white">{selectedUserIds.size} user(s)</span>. This will immediately lock them out of the platform.
                     </p>
                     <div className="mt-2">
-                        <label className="text-xs text-zinc-500 uppercase">Reason</label>
-                        <Input
+                        <label className={FIELD_LABEL_CLASS}>Reason</label>
+                        <input
                             value={bulkSuspendReason}
                             onChange={(e) => setBulkSuspendReason(e.target.value)}
                             placeholder="Enter suspension reason..."
-                            className="mt-1 bg-zinc-900 border-zinc-800 text-white"
+                            className={`${CONTROL_CLASS} mt-1`}
                         />
                     </div>
                     <DialogFooter className="mt-4">
-                        <Button variant="outline" size="sm" onClick={() => { setBulkConfirm(null); setBulkSuspendReason(''); }} className="border-zinc-800 text-zinc-400">
+                        <CommandButton variant="ghost" size="sm" onClick={() => { setBulkConfirm(null); setBulkSuspendReason(''); }}>
                             Cancel
-                        </Button>
-                        <Button
+                        </CommandButton>
+                        <CommandButton
+                            variant="danger"
                             size="sm"
                             onClick={confirmBulkAction}
                             disabled={bulkAction.isPending}
-                            className="bg-red-600 hover:bg-red-700 text-white"
                         >
                             {bulkAction.isPending ? 'Suspending...' : `Suspend ${selectedUserIds.size} User(s)`}
-                        </Button>
+                        </CommandButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* Pagination */}
             {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4 px-2">
-                    <p className="text-sm text-zinc-500">
+                <div className="flex items-center justify-between px-2">
+                    <p className="font-mono text-xs tabular-nums text-zinc-500">
                         Showing {page * USERS_PER_PAGE + 1}–{Math.min((page + 1) * USERS_PER_PAGE, totalUsers)} of {totalUsers} users
                     </p>
                     <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
+                        <CommandButton
+                            variant="ghost"
                             size="sm"
                             disabled={page === 0}
                             onClick={() => setPage(p => p - 1)}
-                            className="border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30"
                         >
                             Previous
-                        </Button>
-                        <span className="text-sm text-zinc-400 px-2">
+                        </CommandButton>
+                        <span className="px-2 font-mono text-xs tabular-nums text-zinc-400">
                             Page {page + 1} of {totalPages}
                         </span>
-                        <Button
-                            variant="outline"
+                        <CommandButton
+                            variant="ghost"
                             size="sm"
                             disabled={page >= totalPages - 1}
                             onClick={() => setPage(p => p + 1)}
-                            className="border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30"
                         >
                             Next
-                        </Button>
+                        </CommandButton>
                     </div>
                 </div>
             )}
 
             {/* Suspend Dialog */}
             <Dialog open={suspendDialogOpen} onOpenChange={setSuspendDialogOpen}>
-                <DialogContent className="bg-[#0a0a0c] border-zinc-800">
+                <DialogContent className="-none border border-white/10 bg-[#0a0a0c]">
                     <DialogHeader>
-                        <DialogTitle className="text-white flex items-center gap-2">
-                            <Ban className="w-5 h-5 text-red-500" />
+                        <DialogTitle className="flex items-center gap-2 text-white">
+                            <Ban className="h-5 w-5 text-red-400" />
                             Suspend User
                         </DialogTitle>
                     </DialogHeader>
                     <p className="text-zinc-400">
                         Are you sure you want to suspend{' '}
-                        <span className="text-white font-medium">
+                        <span className="font-medium text-white">
                             {selectedUser?.full_name || selectedUser?.username}
                         </span>?
                     </p>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <label className="text-xs text-zinc-500 uppercase font-mono tracking-widest">Suspension Type</label>
+                            <label className={FIELD_LABEL_CLASS}>Suspension Type</label>
                             <div className="grid grid-cols-2 gap-2">
                                 {['Warning', 'Standard', 'Security', 'Permanent'].map(type => (
-                                    <Button
+                                    <CommandSegmentedButton
                                         key={type}
-                                        variant="outline"
-                                        size="sm"
+                                        active={suspensionType === type}
                                         onClick={() => setSuspensionType(type)}
-                                        className={`border-zinc-800 text-xs ${suspensionType === type ? 'bg-red-500/10 text-red-500 border-red-500/30' : 'text-zinc-500'}`}
                                     >
                                         {type}
-                                    </Button>
+                                    </CommandSegmentedButton>
                                 ))}
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs text-zinc-500 uppercase font-mono tracking-widest">Duration</label>
+                            <label className={FIELD_LABEL_CLASS}>Duration</label>
                             <div className="grid grid-cols-2 gap-2">
                                 {[
                                     { label: '24 Hours', value: '24h' },
@@ -1133,58 +1084,57 @@ const UserManagementTool = () => {
                                     { label: '1 Month', value: '1 month' },
                                     { label: 'Permanent', value: 'permanent' },
                                 ].map(duration => (
-                                    <Button
+                                    <CommandSegmentedButton
                                         key={duration.value}
-                                        variant="outline"
-                                        size="sm"
+                                        active={suspensionDuration === duration.value}
                                         onClick={() => setSuspensionDuration(duration.value)}
-                                        className={`border-zinc-800 text-xs ${suspensionDuration === duration.value ? 'bg-red-500/10 text-red-500 border-red-500/30' : 'text-zinc-500'}`}
                                     >
                                         {duration.label}
-                                    </Button>
+                                    </CommandSegmentedButton>
                                 ))}
                             </div>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs text-zinc-500 uppercase font-mono tracking-widest">Reason for Restriction</label>
+                            <label className={FIELD_LABEL_CLASS}>Reason for Restriction</label>
                             <textarea
                                 value={suspensionReason}
                                 onChange={(e) => setSuspensionReason(e.target.value)}
                                 placeholder="Explain the violation for the user and audit log..."
-                                className="w-full h-24 bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-sm text-zinc-300 focus:outline-none focus:border-red-500/50 resize-none"
+                                className="h-24 w-full resize-none -none border border-white/10 bg-black/60 p-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none transition-colors focus:border-red-500"
                             />
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => {
+                        <CommandButton variant="ghost" size="sm" onClick={() => {
                             setSuspendDialogOpen(false);
                             setSuspensionReason('');
-                        }} className="border-zinc-800">
+                        }}>
                             Cancel
-                        </Button>
-                        <Button
-                            className="bg-red-500 hover:bg-red-600 px-8"
+                        </CommandButton>
+                        <CommandButton
+                            variant="danger"
+                            size="sm"
                             onClick={() => selectedUser && handleSuspendUser(selectedUser.id)}
                             disabled={suspendMutation.isPending}
                         >
                             {suspendMutation.isPending ? 'Restricting...' : 'Apply Restriction'}
-                        </Button>
+                        </CommandButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* User Detail Modal */}
             <Dialog open={!!selectedUser && !suspendDialogOpen} onOpenChange={() => setSelectedUser(null)}>
-                <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-4xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
-                    <div className="sticky top-0 z-10 shrink-0 border-b border-zinc-800 bg-[#0a0a0c] px-6 py-4">
+                <DialogContent className="flex max-h-[85vh] max-w-4xl flex-col overflow-hidden -none border border-white/10 bg-[#0a0a0c] p-0">
+                    <div className="sticky top-0 z-10 shrink-0 border-b border-white/10 bg-[#0a0a0c] px-6 py-4">
                         <div className="flex items-start justify-between gap-4">
-                            <DialogHeader className="text-left space-y-1">
-                                <DialogTitle className="text-white flex items-center gap-2">
-                                    <Users className="w-5 h-5 text-rose-500" />
+                            <DialogHeader className="space-y-1 text-left">
+                                <DialogTitle className="flex items-center gap-2 text-white">
+                                    <Users className="h-5 w-5 text-rose-400" />
                                     {selectedUser?.full_name || selectedUser?.username || 'User Details'}
                                 </DialogTitle>
-                                <p className="text-xs text-zinc-500 font-mono">{selectedUser?.id}</p>
+                                <p className="font-mono text-xs text-zinc-500">{selectedUser?.id}</p>
                             </DialogHeader>
                             {selectedUser && (
                                 <AdminEntityActionMenu actions={buildUserDetailActions(selectedUser)} />
@@ -1192,7 +1142,7 @@ const UserManagementTool = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4 custom-scrollbar" data-lenis-prevent>
+                    <div className="custom-scrollbar flex-1 overflow-y-auto overscroll-contain px-6 py-4" data-lenis-prevent>
                     {detailLoading && (
                         <div className="flex items-center justify-center py-12">
                             <Loader2 className="w-6 h-6 text-rose-500 animate-spin" />
@@ -1204,7 +1154,7 @@ const UserManagementTool = () => {
                         return (
                             <div className="space-y-4">
                                 {/* Basic Info Grid */}
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                                     {[
                                         { label: 'Full Name', value: p.full_name },
                                         { label: 'Username', value: p.username },
@@ -1215,26 +1165,36 @@ const UserManagementTool = () => {
                                         { label: 'Joined', value: new Date(p.created_at).toLocaleDateString() },
                                         { label: 'Last Updated', value: p.updated_at ? new Date(p.updated_at).toLocaleDateString() : null },
                                     ].map((item) => (
-                                        <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50">
-                                            <p className="text-xs text-zinc-500 uppercase">{item.label}</p>
-                                            <p className="text-white text-sm mt-1">{item.value || 'N/A'}</p>
+                                        <div key={item.label} className="border border-white/10 bg-white/[0.025] p-3">
+                                            <p className={FIELD_LABEL_CLASS}>{item.label}</p>
+                                            <p className="mt-1 text-sm text-white">{item.value || 'N/A'}</p>
                                         </div>
                                     ))}
-                                    <div className="p-3 rounded-xl bg-zinc-900/50">
-                                        <p className="text-xs text-zinc-500 uppercase">Verified</p>
-                                        <div className="mt-1">{p.is_verified
-                                            ? <Badge className="bg-green-500/10 text-green-400 border-green-500/20 border">Verified</Badge>
-                                            : <Badge className="bg-zinc-500/10 text-zinc-400 border-zinc-500/20 border">Unverified</Badge>}
+                                    <div className="border border-white/10 bg-white/[0.025] p-3">
+                                        <p className={FIELD_LABEL_CLASS}>License Status</p>
+                                        <div className="mt-1">
+                                            {p.verification_status === 'verified_organizer' && (
+                                                <Badge className="bg-white/10 text-white border border-white/25 font-mono uppercase tracking-wider">Licensed Organizer</Badge>
+                                            )}
+                                            {p.verification_status === 'verified_venue_owner' && (
+                                                <Badge className="bg-white/10 text-white border border-white/25 font-mono uppercase tracking-wider">Licensed Venue Owner</Badge>
+                                            )}
+                                            {p.verification_status === 'email_verified' && (
+                                                <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">Email confirmed · unlicensed</span>
+                                            )}
+                                            {(p.verification_status === 'unverified' || !p.verification_status) && (
+                                                <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-600">Unlicensed</span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Suspension Status */}
                                 {p.is_suspended && (
-                                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                                        <p className="text-xs text-red-400 uppercase mb-1">⚠ Suspended</p>
+                                    <div className="border border-red-500/20 bg-red-950/20 p-3">
+                                        <p className="mb-1 font-mono text-[10px] font-bold uppercase tracking-widest text-red-300">⚠ Suspended</p>
                                         <p className="text-sm text-white">{p.suspension_reason || 'No reason provided'}</p>
-                                        <div className="flex gap-4 mt-1 text-xs text-zinc-400">
+                                        <div className="mt-1 flex gap-4 font-mono text-xs tabular-nums text-zinc-400">
                                             {p.suspension_type && <span>Type: {p.suspension_type}</span>}
                                             {p.suspension_until && <span>Until: {new Date(p.suspension_until).toLocaleDateString()}</span>}
                                         </div>
@@ -1243,72 +1203,108 @@ const UserManagementTool = () => {
 
                                 {/* Bio */}
                                 {p.bio && (
-                                    <div className="p-3 rounded-xl bg-zinc-900/50">
-                                        <p className="text-xs text-zinc-500 uppercase mb-1">Bio</p>
-                                        <p className="text-sm text-zinc-300">{p.bio}</p>
+                                    <div className="border border-white/10 bg-white/[0.025] p-3">
+                                        <p className={`${FIELD_LABEL_CLASS} mb-1`}>Bio</p>
+                                        <p className="text-sm leading-relaxed text-zinc-300">{p.bio}</p>
                                     </div>
                                 )}
 
                                 {/* Connected Accounts */}
                                 {userDetail.connected_accounts.length > 0 && (
-                                    <div className="p-3 rounded-xl bg-zinc-900/50">
-                                        <p className="text-xs text-zinc-500 uppercase mb-2">Connected Accounts</p>
-                                        <div className="flex gap-2 flex-wrap">
-                                            {userDetail.connected_accounts.map((acc) => (
-                                                <Badge key={acc.provider} className="bg-zinc-800 text-zinc-300 border-zinc-700 border capitalize gap-1">
-                                                    <Globe className="w-3 h-3" />
-                                                    {acc.provider}
-                                                    <span className="text-zinc-500 text-[10px]">({acc.provider_id})</span>
-                                                </Badge>
-                                            ))}
+                                    <div className="border border-white/10 bg-white/[0.025] p-3">
+                                        <p className={`${FIELD_LABEL_CLASS} mb-2`}>Connected Accounts</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {userDetail.connected_accounts.map((acc) => {
+                                                const profileUrl = acc.provider.toLowerCase() === 'discord' && /^\d+$/.test(acc.provider_id)
+                                                    ? `https://discord.com/users/${acc.provider_id}`
+                                                    : null;
+                                                return (
+                                                    <a key={acc.provider}
+                                                       href={profileUrl ?? '#'}
+                                                       target={profileUrl ? '_blank' : undefined}
+                                                       rel="noopener noreferrer"
+                                                       onClick={profileUrl ? undefined : (e) => e.preventDefault()}
+                                                       title={profileUrl ? `Open ${acc.provider} profile` : `Provider ID: ${acc.provider_id} (no public profile)`}
+                                                       className="inline-flex items-center gap-1 border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-zinc-300 transition-colors hover:border-rose-500/40 hover:text-rose-200">
+                                                        <Globe className="h-3 w-3" />
+                                                        {acc.provider}
+                                                        <span className="text-zinc-500 tabular-nums normal-case">({acc.provider_id})</span>
+                                                    </a>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Gaming Tags */}
-                                {p.riot_tag && (
-                                    <div className="p-3 rounded-xl bg-zinc-900/50">
-                                        <p className="text-xs text-zinc-500 uppercase mb-2">Gaming Tags</p>
-                                        <div className="flex gap-3 flex-wrap">
+                                {(p.riot_tag || p.steam_tag) && (
+                                    <div className="border border-white/10 bg-white/[0.025] p-3">
+                                        <p className={`${FIELD_LABEL_CLASS} mb-2`}>Gaming Tags</p>
+                                        <div className="flex flex-wrap gap-3">
                                             {p.riot_tag && (
-                                                <span className="text-sm text-zinc-300 flex items-center gap-1">
-                                                    <Gamepad2 className="w-3.5 h-3.5 text-red-400" /> Riot: {p.riot_tag}
+                                                <span className="flex items-center gap-1 font-mono text-xs uppercase tracking-wider text-zinc-200">
+                                                    <Gamepad2 className="h-3.5 w-3.5 text-red-400" /> Riot: {p.riot_tag}
                                                 </span>
+                                            )}
+                                            {p.steam_tag && (
+                                                <a href={steamProfileUrl(p.steam_tag)} target="_blank" rel="noopener noreferrer"
+                                                   className="flex items-center gap-1 font-mono text-xs uppercase tracking-wider text-zinc-200 transition-colors hover:text-rose-300">
+                                                    <Gamepad2 className="h-3.5 w-3.5 text-zinc-400" /> Steam: {p.steam_tag}
+                                                </a>
                                             )}
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Social Links */}
-                                {p.social_links && Object.keys(p.social_links).length > 0 && (
-                                    <div className="p-3 rounded-xl bg-zinc-900/50">
-                                        <p className="text-xs text-zinc-500 uppercase mb-2">Social Links</p>
-                                        <div className="flex gap-2 flex-wrap">
-                                            {Object.entries(p.social_links).map(([platform, url]) => (
-                                                <a key={platform} href={url as string} target="_blank" rel="noopener noreferrer"
-                                                   className="text-sm text-rose-400 hover:text-rose-300 flex items-center gap-1 bg-zinc-800 px-2 py-1 rounded-lg">
-                                                    <Link2 className="w-3 h-3" /> {platform}
-                                                </a>
-                                            ))}
+                                {(() => {
+                                    // Backend may return jsonb as a raw string — normalize before iterating.
+                                    let socials: Record<string, string> = {};
+                                    if (typeof p.social_links === 'string') {
+                                        try { socials = JSON.parse(p.social_links); } catch { socials = {}; }
+                                    } else if (p.social_links && typeof p.social_links === 'object') {
+                                        socials = p.social_links;
+                                    }
+                                    const entries = Object.entries(socials).filter(([, v]) => v);
+                                    if (entries.length === 0) return null;
+                                    return (
+                                        <div className="border border-white/10 bg-white/[0.025] p-3">
+                                            <p className={`${FIELD_LABEL_CLASS} mb-2`}>Social Links</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {entries.map(([platform, value]) => {
+                                                    const resolved = resolveSocialUrl(platform, value);
+                                                    return resolved ? (
+                                                        <a key={platform} href={resolved} target="_blank" rel="noopener noreferrer"
+                                                           className="flex items-center gap-1 border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-rose-300 transition-colors hover:border-white/25 hover:text-rose-200">
+                                                            <Link2 className="h-3 w-3" /> {platform}
+                                                        </a>
+                                                    ) : (
+                                                        <span key={platform} title={`Handle: ${value}`}
+                                                              className="flex items-center gap-1 border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] uppercase tracking-wider text-zinc-400">
+                                                            <Link2 className="h-3 w-3" /> {platform}: {value}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
 
                                 {/* Teams */}
                                 {userDetail.teams.length > 0 && (
-                                    <div className="p-3 rounded-xl bg-zinc-900/50">
-                                        <p className="text-xs text-zinc-500 uppercase mb-2">Teams</p>
+                                    <div className="border border-white/10 bg-white/[0.025] p-3">
+                                        <p className={`${FIELD_LABEL_CLASS} mb-2`}>Teams</p>
                                         <div className="space-y-2">
                                             {userDetail.teams.map((team) => (
-                                                <div key={team.id} className="flex items-center gap-3 bg-zinc-800/50 p-2 rounded-lg">
+                                                <div key={team.id} className="flex items-center gap-3 bg-white/[0.03] p-2">
                                                     {team.logo_url ? (
-                                                        <img src={team.logo_url} alt={team.name} className="w-6 h-6 rounded object-cover" />
+                                                        <img src={team.logo_url} alt={team.name} className="h-6 w-6 rounded-full object-cover" />
                                                     ) : (
-                                                        <div className="w-6 h-6 rounded bg-zinc-700 flex items-center justify-center text-[10px] text-zinc-400">{team.name?.[0]}</div>
+                                                        <div className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-black/40 text-[10px] text-zinc-400">{team.name?.[0]}</div>
                                                     )}
                                                     <span className="text-sm text-white">{team.name}</span>
-                                                    {team.tag && <span className="text-xs text-zinc-500">[{team.tag}]</span>}
-                                                    <Badge className="ml-auto bg-zinc-700 text-zinc-300 border-0 text-[10px] capitalize">{team.role}</Badge>
+                                                    {team.tag && <span className="font-mono text-xs text-zinc-500">[{team.tag}]</span>}
+                                                    <span className={`ml-auto ${CHIP_NEUTRAL_CLASS}`}>{team.role}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -1316,13 +1312,16 @@ const UserManagementTool = () => {
                                 )}
 
                                 {/* Regular Roles */}
-                                <div className="p-3 rounded-xl bg-zinc-900/50">
-                                    <p className="text-xs text-zinc-500 uppercase mb-2">Roles</p>
-                                    <div className="flex gap-2 flex-wrap">
+                                <div className="border border-white/10 bg-white/[0.025] p-3">
+                                    <p className={`${FIELD_LABEL_CLASS} mb-2`}>Roles</p>
+                                    <div className="flex flex-wrap gap-2">
                                         {userDetail.user_roles.filter(r => r.is_active).map((r) => (
-                                            <Badge key={r.role} className={`${getRoleBadge(r.role)} border capitalize`}>
-                                                {r.role}
-                                            </Badge>
+                                            <span
+                                                key={r.role}
+                                                className={`border px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${getRoleBadge(r.role)}`}
+                                            >
+                                                {r.role.replace('_', ' ')}
+                                            </span>
                                         ))}
                                         {userDetail.user_roles.filter(r => r.is_active).length === 0 && (
                                             <span className="text-sm text-zinc-500">No roles assigned</span>
@@ -1332,13 +1331,16 @@ const UserManagementTool = () => {
 
                                 {/* Admin Roles */}
                                 {p.admin_roles && p.admin_roles.length > 0 && (
-                                    <div className="p-3 rounded-xl bg-zinc-900/50">
-                                        <p className="text-xs text-zinc-500 uppercase mb-2">Admin Roles</p>
-                                        <div className="flex gap-2 flex-wrap">
+                                    <div className="border border-white/10 bg-white/[0.025] p-3">
+                                        <p className={`${FIELD_LABEL_CLASS} mb-2`}>Admin Roles</p>
+                                        <div className="flex flex-wrap gap-2">
                                             {p.admin_roles.map((role) => (
-                                                <Badge key={role} className={`${getRoleBadge(role, true)} border capitalize`}>
+                                                <span
+                                                    key={role}
+                                                    className={`border px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${getRoleBadge(role, true)}`}
+                                                >
                                                     {role.replace('_', ' ')}
-                                                </Badge>
+                                                </span>
                                             ))}
                                         </div>
                                     </div>
@@ -1346,15 +1348,15 @@ const UserManagementTool = () => {
 
                                 {/* Licenses */}
                                 {userDetail.licenses.length > 0 && (
-                                    <div className="p-3 rounded-xl bg-zinc-900/50">
-                                        <p className="text-xs text-zinc-500 uppercase mb-2">Licenses</p>
-                                        <div className="space-y-1">
+                                    <div className="border border-white/10 bg-white/[0.025] p-3">
+                                        <p className={`${FIELD_LABEL_CLASS} mb-2`}>Licenses</p>
+                                        <div className="divide-y divide-white/5">
                                             {userDetail.licenses.map((lic) => (
-                                                <div key={lic.id} className="flex items-center justify-between text-sm">
-                                                    <span className="text-zinc-300 capitalize">{lic.license_type}</span>
-                                                    <Badge className={lic.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20 border' : 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20 border'}>
+                                                <div key={lic.id} className="flex items-center justify-between py-1.5 text-sm">
+                                                    <span className="capitalize text-zinc-300">{lic.license_type}</span>
+                                                    <span className={lic.status === 'active' ? CHIP_NEUTRAL_CLASS.replace('text-zinc-500', 'text-white border-white/40') : CHIP_NEUTRAL_CLASS}>
                                                         {lic.status}
-                                                    </Badge>
+                                                    </span>
                                                 </div>
                                             ))}
                                         </div>
@@ -1365,18 +1367,18 @@ const UserManagementTool = () => {
                                 {(userDetail.organizations.length > 0 || userDetail.venues.length > 0) && (
                                     <div className="grid grid-cols-2 gap-3">
                                         {userDetail.organizations.length > 0 && (
-                                            <div className="p-3 rounded-xl bg-zinc-900/50">
-                                                <p className="text-xs text-zinc-500 uppercase mb-2">Organizations</p>
+                                            <div className="border border-white/10 bg-white/[0.025] p-3">
+                                                <p className={`${FIELD_LABEL_CLASS} mb-2`}>Organizations</p>
                                                 {userDetail.organizations.map((org) => (
                                                     <p key={org.id} className="text-sm text-zinc-300">{org.name}</p>
                                                 ))}
                                             </div>
                                         )}
                                         {userDetail.venues.length > 0 && (
-                                            <div className="p-3 rounded-xl bg-zinc-900/50">
-                                                <p className="text-xs text-zinc-500 uppercase mb-2">Venues</p>
+                                            <div className="border border-white/10 bg-white/[0.025] p-3">
+                                                <p className={`${FIELD_LABEL_CLASS} mb-2`}>Venues</p>
                                                 {userDetail.venues.map((v) => (
-                                                    <p key={v.id} className="text-sm text-zinc-300">{v.name} ({v.status})</p>
+                                                    <p key={v.id} className="text-sm text-zinc-300">{v.name} <span className={`ml-1 ${CHIP_NEUTRAL_CLASS}`}>{v.status}</span></p>
                                                 ))}
                                             </div>
                                         )}
@@ -1385,33 +1387,30 @@ const UserManagementTool = () => {
 
                                 {/* Tournaments */}
                                 {userDetail.tournaments.length > 0 && (
-                                    <div className="p-3 rounded-xl bg-zinc-900/50">
-                                        <p className="text-xs text-zinc-500 uppercase mb-2">Tournaments ({userDetail.tournaments.length})</p>
-                                        <div className="space-y-1 max-h-32 overflow-y-auto overscroll-contain custom-scrollbar" data-lenis-prevent>
+                                    <div className="border border-white/10 bg-white/[0.025] p-3">
+                                        <p className={`${FIELD_LABEL_CLASS} mb-2`}>Tournaments ({userDetail.tournaments.length})</p>
+                                        <div className="custom-scrollbar max-h-32 space-y-1 overflow-y-auto overscroll-contain" data-lenis-prevent>
                                             {userDetail.tournaments.map((t) => (
-                                                <div key={t.id} className="flex items-center justify-between text-sm">
-                                                    <span className="text-zinc-300 truncate mr-2">{t.name}</span>
-                                                    <Badge className="bg-zinc-700 text-zinc-300 border-0 text-[10px] shrink-0">{t.status}</Badge>
+                                                <div key={t.id} className="flex items-center justify-between gap-2 text-sm">
+                                                    <span className="mr-2 truncate text-zinc-300">{t.name}</span>
+                                                    <span className={`shrink-0 ${CHIP_NEUTRAL_CLASS}`}>{t.status}</span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 )}
 
-                                <Button
-                                    className="w-full bg-rose-500 hover:bg-rose-600"
-                                    onClick={() => handleViewProfile(p.username)}
-                                >
-                                    <Eye className="w-4 h-4 mr-2" />
+                                <CommandButton className="w-full" onClick={() => handleViewProfile(p.username)}>
+                                    <Eye className="h-4 w-4" />
                                     View Full Profile
-                                </Button>
+                                </CommandButton>
                             </div>
                         );
                     })()}
 
                     {!detailLoading && !userDetail && selectedUser && (
                         <div className="space-y-4">
-                            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm text-amber-200">
+                            <div className="border border-amber-500/20 bg-amber-950/20 p-3 text-sm text-amber-200">
                                 Full detail payload unavailable — showing list snapshot only.
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -1421,9 +1420,9 @@ const UserManagementTool = () => {
                                     { label: 'Email', value: selectedUser.email },
                                     { label: 'Joined', value: new Date(selectedUser.created_at).toLocaleDateString() },
                                 ].map((item) => (
-                                    <div key={item.label} className="p-3 rounded-xl bg-zinc-900/50">
-                                        <p className="text-xs text-zinc-500 uppercase">{item.label}</p>
-                                        <p className="text-white text-sm mt-1">{item.value || 'N/A'}</p>
+                                    <div key={item.label} className="border border-white/10 bg-white/[0.025] p-3">
+                                        <p className={FIELD_LABEL_CLASS}>{item.label}</p>
+                                        <p className="mt-1 text-sm text-white">{item.value || 'N/A'}</p>
                                     </div>
                                 ))}
                             </div>
@@ -1432,9 +1431,9 @@ const UserManagementTool = () => {
 
                     {/* Change History */}
                     {selectedUser && (
-                        <div className="mt-6 border-t border-zinc-800 pt-4">
-                            <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                                <History className="w-4 h-4 text-zinc-400" />
+                        <div className="mt-6 border-t border-white/10 pt-4">
+                            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
+                                <History className="h-4 w-4 text-zinc-400" />
                                 Audit Timeline
                             </h3>
                             <EntityHistoryTimeline targetType="User" targetId={selectedUser.id} />
@@ -1446,56 +1445,57 @@ const UserManagementTool = () => {
 
             {/* Revoke Session Dialog */}
             <Dialog open={!!revokeTarget} onOpenChange={(open) => { if (!open) { setRevokeTarget(null); setRevokeReason(''); } }}>
-                <DialogContent className="bg-[#0a0a0c] border-zinc-800 max-w-md">
+                <DialogContent className="max-w-md -none border border-white/10 bg-[#0a0a0c]">
                     <DialogHeader>
-                        <DialogTitle className="text-white flex items-center gap-2">
-                            <LogOut className="w-5 h-5 text-red-400" />
+                        <DialogTitle className="flex items-center gap-2 text-white">
+                            <LogOut className="h-5 w-5 text-red-400" />
                             Revoke Session
                         </DialogTitle>
                     </DialogHeader>
                     <p className="text-sm text-zinc-400">
                         Force logout for{' '}
-                        <span className="text-white font-medium">
+                        <span className="font-medium text-white">
                             {revokeTarget?.full_name || revokeTarget?.username || revokeTarget?.email}
                         </span>
                         . Tokens are invalidated and cached permissions are evicted.
                     </p>
                     <div className="space-y-2">
-                        <label htmlFor="user-revoke-reason" className="text-xs text-zinc-500 uppercase">Reason (optional)</label>
+                        <label htmlFor="user-revoke-reason" className={FIELD_LABEL_CLASS}>Reason (optional)</label>
                         <Textarea
                             id="user-revoke-reason"
                             value={revokeReason}
                             onChange={(e) => setRevokeReason(e.target.value)}
                             placeholder="Why are you revoking this session?"
-                            className="bg-zinc-900 border-zinc-800 text-white resize-none"
+                            className="resize-none -none border-white/10 bg-black/60 text-white focus:border-red-500"
                             rows={3}
                         />
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => { setRevokeTarget(null); setRevokeReason(''); }} className="border-zinc-800">
+                        <CommandButton variant="ghost" size="sm" onClick={() => { setRevokeTarget(null); setRevokeReason(''); }}>
                             Cancel
-                        </Button>
-                        <Button
-                            className="bg-red-600 hover:bg-red-700 text-white"
+                        </CommandButton>
+                        <CommandButton
+                            variant="danger"
+                            size="sm"
                             onClick={handleRevokeSession}
                             disabled={revokeSessionMutation.isPending}
                         >
                             {revokeSessionMutation.isPending ? 'Revoking…' : 'Revoke Session'}
-                        </Button>
+                        </CommandButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* Ghost Mode Dialog */}
             <Dialog open={!!ghostTarget} onOpenChange={(open) => { if (!open) { setGhostTarget(null); setGhostReason(''); } }}>
-                <DialogContent className="bg-[#0a0a0c] border-red-500/30 max-w-md">
+                <DialogContent className="max-w-md -none border border-red-500/30 bg-[#0a0a0c]">
                     <DialogHeader>
-                        <DialogTitle className="text-white flex items-center gap-2">
-                            <Ghost className="w-5 h-5 text-red-400" />
+                        <DialogTitle className="flex items-center gap-2 text-white">
+                            <Ghost className="h-5 w-5 text-red-400" />
                             Enter Ghost Mode
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-100">
+                    <div className="border border-red-500/20 bg-red-950/20 p-3 text-sm text-red-100">
                         You are requesting a 15-minute scoped impersonation token for{' '}
                         <span className="font-semibold text-white">
                             {ghostTarget?.full_name || ghostTarget?.username || ghostTarget?.email}
@@ -1503,31 +1503,33 @@ const UserManagementTool = () => {
                         . Billing, wallet, GDPR, and admin routes are blocked while impersonating.
                     </div>
                     <div className="space-y-2">
-                        <label htmlFor="ghost-reason" className="text-xs text-zinc-500 uppercase">Audit Reason</label>
+                        <label htmlFor="ghost-reason" className={FIELD_LABEL_CLASS}>Audit Reason</label>
                         <Textarea
                             id="ghost-reason"
                             value={ghostReason}
                             onChange={(e) => setGhostReason(e.target.value)}
                             placeholder="Required: describe the support/security reason"
-                            className="bg-zinc-900 border-zinc-800 text-white resize-none"
+                            className="resize-none -none border-white/10 bg-black/60 text-white focus:border-red-500"
                             rows={4}
                         />
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => { setGhostTarget(null); setGhostReason(''); }} className="border-zinc-800">
+                        <CommandButton variant="ghost" size="sm" onClick={() => { setGhostTarget(null); setGhostReason(''); }}>
                             Cancel
-                        </Button>
-                        <Button
-                            className="bg-red-600 hover:bg-red-700 text-white"
+                        </CommandButton>
+                        <CommandButton
+                            variant="danger"
+                            size="sm"
                             onClick={handleStartGhostMode}
                             disabled={ghostReason.trim().length < 12}
                         >
                             Start 15-Min Ghost Mode
-                        </Button>
+                        </CommandButton>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
+        </AdminPage>
     );
 };
 

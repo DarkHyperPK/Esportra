@@ -1,27 +1,30 @@
 import { useState } from "react";
 import { formatCurrency } from '@/utils/formatCurrency';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft, UsersRound, Search, Eye, MoreVertical,
+  Search, Eye, MoreVertical,
   Users, RefreshCw, Trash2, UserMinus, ArrowRightLeft,
-  Pencil, Loader2, Gamepad2, Crown, Download, Upload, X
+  Pencil, Loader2, Gamepad2, Crown, Download, Upload, X,
+  UsersRound
 } from "lucide-react";
 import { csvEscape } from "@/lib/exportUtils";
-import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/apiClient";
 import { useToast } from "@/hooks/use-toast";
 import EntityHistoryTimeline from '@/components/admin/EntityHistoryTimeline';
+import { AdminPage } from '@/components/admin/AdminPage';
+import {
+  CommandButton,
+  CommandEmptyState,
+  CommandMetric,
+  CommandSection,
+  CommandToolbar,
+} from '@/components/management/CommandSurface';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 // ── Types ────────────────────────────────────────────────────────────────
@@ -78,6 +81,7 @@ interface TeamTournament {
   tournament_status: string;
   start_date: string;
   prize_pool: string | number | null;
+  currency?: string;
 }
 
 interface LeaderboardStats {
@@ -96,6 +100,18 @@ interface TeamDetail {
   invites: Array<Record<string, unknown>>;
   leaderboard: LeaderboardStats | null;
 }
+
+const STATUS_BADGE: Record<string, string> = {
+  completed: 'border-white/40 bg-white/[0.06] text-white',
+  ongoing: 'border-amber-500/35 bg-amber-950/20 text-amber-300',
+};
+
+const DETAIL_TABS: Array<{ value: 'members' | 'tournaments' | 'leaderboard' | 'history'; label: string }> = [
+  { value: 'members', label: 'Members' },
+  { value: 'tournaments', label: 'Tournaments' },
+  { value: 'leaderboard', label: 'Leaderboard' },
+  { value: 'history', label: 'History' },
+];
 
 // ── Component ────────────────────────────────────────────────────────────
 const TeamManagementTool = () => {
@@ -281,160 +297,145 @@ const TeamManagementTool = () => {
 
   // ── Render ──
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link to="/admin/dashboard">
-            <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <UsersRound className="w-6 h-6 text-cyan-500" />
-              Team Management
-            </h1>
-            <p className="text-zinc-400 text-sm">Manage all teams, members, and participation</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="border-white/10 text-white hover:bg-white/5">
-            <RefreshCw className="w-4 h-4 mr-2" /> Refresh
-          </Button>
-          <Button variant="outline" size="sm" onClick={exportCSV} className="border-zinc-800 text-zinc-400 hover:text-white">
-            <Download className="w-4 h-4 mr-2" /> Export CSV
-          </Button>
-        </div>
-      </div>
-
+    <AdminPage
+      eyebrow="Content"
+      title="Teams"
+      description="Manage all teams, members, and participation"
+      actions={
+        <>
+          <CommandButton variant="ghost" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </CommandButton>
+          <CommandButton variant="ghost" size="sm" onClick={exportCSV}>
+            <Download className="h-4 w-4" /> Export CSV
+          </CommandButton>
+        </>
+      }
+    >
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {[
-          { label: 'Real Teams', value: stats.total_teams, icon: UsersRound, color: 'cyan' },
-          { label: 'Active Teams', value: stats.active_teams, icon: Users, color: 'emerald' },
-          { label: 'Avg Members', value: stats.avg_members || 0, icon: Users, color: 'amber' },
-          { label: 'Solo Adapters', value: stats.solo_adapters ?? 0, icon: Gamepad2, color: 'violet' },
-          { label: 'Mock Teams', value: stats.mock_teams ?? 0, icon: Gamepad2, color: 'orange' },
-          { label: 'Orphan Mocks', value: stats.orphan_mock_teams ?? 0, icon: Gamepad2, color: 'rose' },
-        ].map(s => (
-          <div key={s.label} className="rounded-xl border border-white/5 bg-[#0a0a0c] p-4">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg bg-${s.color}-500/10`}>
-                <s.icon className={`w-5 h-5 text-${s.color}-500`} />
-              </div>
-              <div>
-                <p className="text-xs text-zinc-500 uppercase tracking-wide">{s.label}</p>
-                <p className="text-xl font-bold text-white">{s.value}</p>
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <CommandMetric label="Real Teams" value={stats.total_teams} icon={<UsersRound className="h-4 w-4" />} />
+        <CommandMetric label="Active Teams" value={stats.active_teams} tone="success" icon={<Users className="h-4 w-4" />} />
+        <CommandMetric label="Avg Members" value={stats.avg_members || 0} icon={<Users className="h-4 w-4" />} />
+        <CommandMetric label="Solo Adapters" value={stats.solo_adapters ?? 0} tone="warning" icon={<Gamepad2 className="h-4 w-4" />} />
+        <CommandMetric label="Mock Teams" value={stats.mock_teams ?? 0} icon={<Gamepad2 className="h-4 w-4" />} />
+        <CommandMetric label="Orphan Mocks" value={stats.orphan_mock_teams ?? 0} tone="danger" icon={<Gamepad2 className="h-4 w-4" />} />
       </div>
 
       {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-          <Input
-            placeholder="Search teams by name or tag..."
-            value={searchTerm}
-            onChange={e => { setSearchTerm(e.target.value); setPage(0); }}
-            className="pl-10 bg-black/40 border-white/10 text-white"
+      <CommandToolbar>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative lg:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
+            <input
+              value={searchTerm}
+              onChange={e => { setSearchTerm(e.target.value); setPage(0); }}
+              placeholder="Search teams by name or tag..."
+              className="w-full -none border border-white/10 bg-[#0a0a0c]/90 py-1.5 pl-9 pr-3 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+            />
+          </div>
+          <input
+            value={gameFilter}
+            onChange={e => { setGameFilter(e.target.value); setPage(0); }}
+            placeholder="Filter by game..."
+            className="w-full -none border border-white/10 bg-[#0a0a0c]/90 px-3 py-1.5 text-xs text-white placeholder:text-zinc-600 outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 lg:w-48"
           />
         </div>
-        <Input
-          placeholder="Filter by game..."
-          value={gameFilter}
-          onChange={e => { setGameFilter(e.target.value); setPage(0); }}
-          className="w-full sm:w-48 bg-black/40 border-white/10 text-white"
-        />
-      </div>
+        <p className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+          {total} teams · page {page + 1}/{Math.max(totalPages, 1)}
+        </p>
+      </CommandToolbar>
 
       {/* Table */}
       {isLoading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
-        </div>
+        <CommandSection className="py-16 text-center">
+          <Loader2 className="mx-auto h-5 w-5 animate-spin text-zinc-600" />
+        </CommandSection>
       ) : teams.length === 0 ? (
-        <div className="text-center py-20 text-zinc-500">
-          <UsersRound className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>No teams found</p>
-        </div>
+        <CommandEmptyState
+          title="No teams found"
+          description="Teams will appear here once players create or claim them."
+          icon={<UsersRound className="h-5 w-5" />}
+        />
       ) : (
-        <div className="rounded-xl border border-white/5 overflow-hidden">
+        <CommandSection className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5 bg-white/[0.02]">
-                  <th className="text-left px-4 py-3 text-zinc-500 font-medium">Team</th>
-                  <th className="text-left px-4 py-3 text-zinc-500 font-medium">Game</th>
-                  <th className="text-center px-4 py-3 text-zinc-500 font-medium">Members</th>
-                  <th className="text-center px-4 py-3 text-zinc-500 font-medium">Tournaments</th>
-                  <th className="text-center px-4 py-3 text-zinc-500 font-medium">Wins</th>
-                  <th className="text-left px-4 py-3 text-zinc-500 font-medium">Owner</th>
-                  <th className="text-left px-4 py-3 text-zinc-500 font-medium">Created</th>
-                  <th className="px-4 py-3"></th>
+            <table className="w-full min-w-[900px] text-left text-xs">
+              <thead className="bg-black/40 text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+                <tr>
+                  <th className="px-4 py-3">Team</th>
+                  <th className="px-4 py-3">Game</th>
+                  <th className="px-4 py-3 text-center">Members</th>
+                  <th className="px-4 py-3 text-center">Tournaments</th>
+                  <th className="px-4 py-3 text-center">Wins</th>
+                  <th className="px-4 py-3">Owner</th>
+                  <th className="px-4 py-3">Created</th>
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-white/5">
                 {teams.map(team => (
-                  <tr key={team.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                  <tr key={team.id} className="text-zinc-300 transition-colors hover:bg-white/[0.03]">
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2.5">
                         {team.logo_url ? (
-                          <img src={team.logo_url} alt="" className="w-8 h-8 rounded-lg object-cover" />
+                          <img src={team.logo_url} alt="" loading="lazy" className="h-8 w-8 border border-white/10 object-contain" />
                         ) : (
-                          <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                            <UsersRound className="w-4 h-4 text-cyan-500" />
+                          <div className="flex h-8 w-8 items-center justify-center border border-white/10 text-zinc-500">
+                            <UsersRound className="h-4 w-4" />
                           </div>
                         )}
-                        <div>
-                          <p className="text-white font-medium">{team.name}</p>
-                          {team.tag && <p className="text-xs text-zinc-500">[{team.tag}]</p>}
+                        <div className="min-w-0">
+                          <p className="font-medium text-white">{team.name}</p>
+                          {team.tag && <p className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">[{team.tag}]</p>}
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant="outline" className="text-xs border-white/10 text-zinc-400">
-                        <Gamepad2 className="w-3 h-3 mr-1" /> {team.game || '—'}
-                      </Badge>
+                      <span className="inline-flex items-center gap-1.5 border border-white/10 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+                        <Gamepad2 className="h-3 w-3" /> {team.game || '—'}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-center text-zinc-300">{team.member_count}</td>
-                    <td className="px-4 py-3 text-center text-zinc-300">{team.tournament_count}</td>
+                    <td className="px-4 py-3 text-center font-mono tabular-nums text-zinc-300">{team.member_count}</td>
+                    <td className="px-4 py-3 text-center font-mono tabular-nums text-zinc-300">{team.tournament_count}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className={cn("font-medium", team.wins > 0 ? "text-emerald-400" : "text-zinc-500")}>
+                      <span className={cn('font-mono font-bold tabular-nums', team.wins > 0 ? 'text-white' : 'text-zinc-600')}>
                         {team.wins}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {team.owner_avatar ? (
-                          <img src={team.owner_avatar} alt="" className="w-5 h-5 rounded-full" />
+                          <img src={team.owner_avatar} alt="" loading="lazy" className="h-5 w-5 rounded-full" />
                         ) : (
-                          <div className="w-5 h-5 rounded-full bg-zinc-700" />
+                          <div className="h-5 w-5 rounded-full bg-zinc-700" />
                         )}
-                        <span className="text-zinc-300 text-xs">{team.owner_username || '—'}</span>
+                        <span className="text-xs text-zinc-300">{team.owner_username || '—'}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-zinc-500 text-xs">{formatDate(team.created_at)}</td>
+                    <td className="px-4 py-3 font-mono text-[11px] text-zinc-500">{formatDate(team.created_at)}</td>
                     <td className="px-4 py-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400 hover:text-white">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
+                          <button
+                            type="button"
+                            aria-label="Team actions"
+                            title="Team actions"
+                            className="flex h-8 w-8 items-center justify-center border border-white/10 bg-white/[0.03] text-zinc-500 transition-colors hover:border-white/25 hover:text-white"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-[#121214] border-white/10">
-                          <DropdownMenuItem onClick={() => { setSelectedTeamId(team.id); setDetailTab('members'); }} className="text-zinc-300">
-                            <Eye className="w-4 h-4 mr-2" /> View Details
+                        <DropdownMenuContent align="end" className="border-white/10 bg-[#0a0a0c]">
+                          <DropdownMenuItem onClick={() => { setSelectedTeamId(team.id); setDetailTab('members'); }} className="text-zinc-300 focus:bg-white/[0.06] focus:text-white">
+                            <Eye className="mr-2 h-4 w-4" /> View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEditTeam(team)} className="text-zinc-300">
-                            <Pencil className="w-4 h-4 mr-2" /> Edit Team
+                          <DropdownMenuItem onClick={() => openEditTeam(team)} className="text-zinc-300 focus:bg-white/[0.06] focus:text-white">
+                            <Pencil className="mr-2 h-4 w-4" /> Edit Team
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-white/5" />
-                          <DropdownMenuItem onClick={() => setDisbandTeam(team)} className="text-red-400 focus:text-red-400">
-                            <Trash2 className="w-4 h-4 mr-2" /> Disband Team
+                          <DropdownMenuItem onClick={() => setDisbandTeam(team)} className="text-red-400 focus:bg-red-500/10 focus:text-red-300">
+                            <Trash2 className="mr-2 h-4 w-4" /> Disband Team
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -447,165 +448,172 @@ const TeamManagementTool = () => {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
-              <p className="text-xs text-zinc-500">
+            <div className="flex items-center justify-between border-t border-white/10 px-4 py-3">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">
                 Showing {page * limit + 1}–{Math.min((page + 1) * limit, total)} of {total}
               </p>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)} className="border-white/10 text-white text-xs">
+                <CommandButton variant="ghost" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
                   Previous
-                </Button>
-                <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} className="border-white/10 text-white text-xs">
+                </CommandButton>
+                <CommandButton variant="ghost" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
                   Next
-                </Button>
+                </CommandButton>
               </div>
             </div>
           )}
-        </div>
+        </CommandSection>
       )}
 
       {/* ── Team Detail Dialog ── */}
       <Dialog open={!!selectedTeamId} onOpenChange={open => { if (!open) setSelectedTeamId(null); }}>
-        <DialogContent className="max-w-2xl bg-[#0a0a0c] border-white/10 text-white max-h-[85vh] overflow-y-auto overscroll-contain" data-lenis-prevent>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto overscroll-contain -none border-white/10 bg-[#0a0a0c] text-white" data-lenis-prevent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UsersRound className="w-5 h-5 text-cyan-500" />
+              <UsersRound className="h-5 w-5 text-zinc-400" />
               {(teamDetail?.team as Record<string, unknown>)?.name as string || 'Team Details'}
             </DialogTitle>
           </DialogHeader>
 
           {detailLoading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />
+              <Loader2 className="h-6 w-6 animate-spin text-zinc-600" />
             </div>
           ) : teamDetail ? (
-            <Tabs value={detailTab} onValueChange={v => setDetailTab(v as typeof detailTab)}>
-              <TabsList className="bg-white/5 border border-white/5">
-                <TabsTrigger value="members" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
-                  Members ({teamDetail.members.length})
-                </TabsTrigger>
-                <TabsTrigger value="tournaments" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
-                  Tournaments ({teamDetail.tournaments.length})
-                </TabsTrigger>
-                <TabsTrigger value="leaderboard" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
-                  Leaderboard
-                </TabsTrigger>
-                <TabsTrigger value="history" className="text-xs data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
-                  History
-                </TabsTrigger>
-              </TabsList>
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-1 border border-white/10 bg-[#0a0a0c]/92 p-2">
+                {DETAIL_TABS.map(tab => (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setDetailTab(tab.value)}
+                    className={`group relative overflow-hidden -none border px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+                      detailTab === tab.value
+                        ? 'border-transparent bg-rose-500 text-white'
+                        : 'border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/25 hover:text-white'
+                    }`}
+                  >
+                    {tab.label === 'Members' ? `Members (${teamDetail.members.length})`
+                      : tab.label === 'Tournaments' ? `Tournaments (${teamDetail.tournaments.length})`
+                      : tab.label}
+                  </button>
+                ))}
+              </div>
 
               {/* Members Tab */}
-              <TabsContent value="members" className="space-y-2 mt-4">
-                {teamDetail.members.map(m => (
-                  <div key={m.user_id} className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      {m.avatar_url ? (
-                        <img src={m.avatar_url} alt="" className="w-8 h-8 rounded-full" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-zinc-700" />
-                      )}
-                      <div>
-                        <p className="text-white text-sm font-medium">{m.username || m.full_name || 'Unknown'}</p>
-                        <p className="text-xs text-zinc-500">{m.email}</p>
+              {detailTab === 'members' && (
+                <div className="space-y-2">
+                  {teamDetail.members.map(m => (
+                    <div key={m.user_id} className="flex items-center justify-between border border-white/10 bg-white/[0.025] px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} alt="" loading="lazy" className="h-8 w-8 rounded-full" />
+                        ) : (
+                          <div className="h-8 w-8 rounded-full bg-zinc-700" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-white">{m.username || m.full_name || 'Unknown'}</p>
+                          <p className="text-xs text-zinc-500">{m.email}</p>
+                        </div>
+                        <span className={cn(
+                          'ml-2 border px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider',
+                          m.role === 'captain' ? 'border-amber-500/35 bg-amber-950/20 text-amber-300' : 'border-white/10 text-zinc-400'
+                        )}>
+                          {m.role === 'captain' && <Crown className="mr-1 inline h-3 w-3" />}
+                          {m.role}
+                        </span>
                       </div>
-                      <Badge variant="outline" className={cn(
-                        "text-xs ml-2",
-                        m.role === 'captain' ? 'border-amber-500/30 text-amber-400' : 'border-white/10 text-zinc-400'
-                      )}>
-                        {m.role === 'captain' && <Crown className="w-3 h-3 mr-1" />}
-                        {m.role}
-                      </Badge>
+                      <div className="flex gap-1">
+                        {m.role !== 'captain' && (
+                          <>
+                            <button
+                              type="button"
+                              title="Make captain"
+                              aria-label="Make captain"
+                              onClick={() => setTransferTarget({ teamId: selectedTeamId!, member: m })}
+                              className="flex h-7 w-7 items-center justify-center border border-white/10 bg-white/[0.03] text-amber-300 transition-colors hover:border-amber-500/40 hover:text-amber-200"
+                            >
+                              <ArrowRightLeft className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Remove member"
+                              aria-label="Remove member"
+                              onClick={() => setRemoveMember({ teamId: selectedTeamId!, userId: m.user_id, username: m.username })}
+                              className="flex h-7 w-7 items-center justify-center border border-white/10 bg-white/[0.03] text-red-400 transition-colors hover:border-red-500/40 hover:text-red-300"
+                            >
+                              <UserMinus className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      {m.role !== 'captain' && (
-                        <>
-                          <Button
-                            variant="ghost" size="icon"
-                            className="h-7 w-7 text-amber-400 hover:bg-amber-500/10"
-                            title="Make captain"
-                            onClick={() => setTransferTarget({ teamId: selectedTeamId!, member: m })}
-                          >
-                            <ArrowRightLeft className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost" size="icon"
-                            className="h-7 w-7 text-red-400 hover:bg-red-500/10"
-                            title="Remove member"
-                            onClick={() => setRemoveMember({ teamId: selectedTeamId!, userId: m.user_id, username: m.username })}
-                          >
-                            <UserMinus className="w-3.5 h-3.5" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </TabsContent>
+                  ))}
+                </div>
+              )}
 
               {/* Tournaments Tab */}
-              <TabsContent value="tournaments" className="space-y-2 mt-4">
-                {teamDetail.tournaments.length === 0 ? (
-                  <p className="text-zinc-500 text-center py-8">No tournament participation</p>
-                ) : (
-                  teamDetail.tournaments.map(t => (
-                    <div key={t.tournament_id} className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3">
-                      <div>
-                        <p className="text-white text-sm font-medium">{t.tournament_name}</p>
-                        <p className="text-xs text-zinc-500">{t.game} · {formatDate(t.start_date)}</p>
+              {detailTab === 'tournaments' && (
+                <div className="space-y-2">
+                  {teamDetail.tournaments.length === 0 ? (
+                    <p className="py-8 text-center text-zinc-500">No tournament participation</p>
+                  ) : (
+                    teamDetail.tournaments.map(t => (
+                      <div key={t.tournament_id} className="flex items-center justify-between border border-white/10 bg-white/[0.025] px-4 py-3">
+                        <div>
+                          <p className="text-sm font-medium text-white">{t.tournament_name}</p>
+                          <p className="font-mono text-xs text-zinc-500">{t.game} · {formatDate(t.start_date)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {t.prize_pool && (
+                            <span className="font-mono text-xs tabular-nums text-white">{formatCurrency(parseFloat(t.prize_pool?.toString() || '0'), t.currency)}</span>
+                          )}
+                          <span className={`border px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${STATUS_BADGE[t.tournament_status] || 'border-white/10 text-zinc-400'}`}>
+                            {t.tournament_status}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {t.prize_pool && (
-                          <span className="text-xs text-emerald-400 font-mono">{formatCurrency(parseFloat(t.prize_pool?.toString() || '0'), t.currency)}</span>
-                        )}
-                        <Badge variant="outline" className={cn(
-                          "text-xs",
-                          t.tournament_status === 'completed' ? 'border-emerald-500/30 text-emerald-400' :
-                          t.tournament_status === 'ongoing' ? 'border-amber-500/30 text-amber-400' :
-                          'border-white/10 text-zinc-400'
-                        )}>
-                          {t.tournament_status}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </TabsContent>
+                    ))
+                  )}
+                </div>
+              )}
 
               {/* Leaderboard Tab */}
-              <TabsContent value="leaderboard" className="mt-4">
-                {teamDetail.leaderboard ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {[
-                      { label: 'RP', value: teamDetail.leaderboard.rp, color: 'text-cyan-400' },
-                      { label: 'Wins', value: teamDetail.leaderboard.wins, color: 'text-emerald-400' },
-                      { label: 'Losses', value: teamDetail.leaderboard.losses, color: 'text-red-400' },
-                      { label: 'Win Rate', value: `${teamDetail.leaderboard.win_rate}%`, color: 'text-amber-400' },
-                      { label: 'Matches', value: teamDetail.leaderboard.matches_played, color: 'text-white' },
-                      { label: 'Tournaments Won', value: teamDetail.leaderboard.tournaments_won, color: 'text-emerald-400' },
-                    ].map(s => (
-                      <div key={s.label} className="rounded-lg border border-white/5 bg-white/[0.02] p-4 text-center">
-                        <p className="text-xs text-zinc-500 mb-1">{s.label}</p>
-                        <p className={cn("text-xl font-bold", s.color)}>{s.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-zinc-500 text-center py-8">No match data available</p>
-                )}
-              </TabsContent>
+              {detailTab === 'leaderboard' && (
+                <div>
+                  {teamDetail.leaderboard ? (
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                      {[
+                        { label: 'RP', value: teamDetail.leaderboard.rp },
+                        { label: 'Wins', value: teamDetail.leaderboard.wins },
+                        { label: 'Losses', value: teamDetail.leaderboard.losses },
+                        { label: 'Win Rate', value: `${teamDetail.leaderboard.win_rate}%` },
+                        { label: 'Matches', value: teamDetail.leaderboard.matches_played },
+                        { label: 'Tournaments Won', value: teamDetail.leaderboard.tournaments_won },
+                      ].map(s => (
+                        <div key={s.label} className="border border-white/10 bg-white/[0.025] p-4 text-center">
+                          <p className="mb-1 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">{s.label}</p>
+                          <p className="font-mono text-xl font-black tabular-nums text-white">{s.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="py-8 text-center text-zinc-500">No match data available</p>
+                  )}
+                </div>
+              )}
 
-              <TabsContent value="history" className="mt-0">
+              {detailTab === 'history' && (
                 <EntityHistoryTimeline targetType="Team" targetId={selectedTeamId!} />
-              </TabsContent>
-            </Tabs>
+              )}
+            </div>
           ) : null}
         </DialogContent>
       </Dialog>
 
       {/* ── Disband Confirm Dialog ── */}
       <Dialog open={!!disbandTeam} onOpenChange={open => { if (!open) setDisbandTeam(null); }}>
-        <DialogContent className="bg-[#0a0a0c] border-white/10 text-white">
+        <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle className="text-red-400">Disband Team</DialogTitle>
             <DialogDescription className="text-zinc-400">
@@ -613,22 +621,23 @@ const TeamManagementTool = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDisbandTeam(null)} className="border-white/10 text-white">Cancel</Button>
-            <Button
-              variant="destructive"
+            <CommandButton variant="ghost" size="sm" onClick={() => setDisbandTeam(null)}>Cancel</CommandButton>
+            <CommandButton
+              variant="danger"
+              size="sm"
               onClick={() => disbandTeam && disbandMutation.mutate(disbandTeam.id)}
               disabled={disbandMutation.isPending}
             >
-              {disbandMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              {disbandMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
               Disband
-            </Button>
+            </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* ── Remove Member Confirm Dialog ── */}
       <Dialog open={!!removeMember} onOpenChange={open => { if (!open) setRemoveMember(null); }}>
-        <DialogContent className="bg-[#0a0a0c] border-white/10 text-white">
+        <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle>Remove Member</DialogTitle>
             <DialogDescription className="text-zinc-400">
@@ -636,21 +645,22 @@ const TeamManagementTool = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setRemoveMember(null)} className="border-white/10 text-white">Cancel</Button>
-            <Button
-              variant="destructive"
+            <CommandButton variant="ghost" size="sm" onClick={() => setRemoveMember(null)}>Cancel</CommandButton>
+            <CommandButton
+              variant="danger"
+              size="sm"
               onClick={() => removeMember && removeMemberMutation.mutate({ teamId: removeMember.teamId, userId: removeMember.userId })}
               disabled={removeMemberMutation.isPending}
             >
               Remove
-            </Button>
+            </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* ── Transfer Captain Confirm Dialog ── */}
       <Dialog open={!!transferTarget} onOpenChange={open => { if (!open) setTransferTarget(null); }}>
-        <DialogContent className="bg-[#0a0a0c] border-white/10 text-white">
+        <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle>Transfer Captain</DialogTitle>
             <DialogDescription className="text-zinc-400">
@@ -658,14 +668,15 @@ const TeamManagementTool = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setTransferTarget(null)} className="border-white/10 text-white">Cancel</Button>
-            <Button
+            <CommandButton variant="ghost" size="sm" onClick={() => setTransferTarget(null)}>Cancel</CommandButton>
+            <CommandButton
+              variant="warning"
+              size="sm"
               onClick={() => transferTarget && transferMutation.mutate({ teamId: transferTarget.teamId, newCaptainId: transferTarget.member.user_id })}
               disabled={transferMutation.isPending}
-              className="bg-amber-500 hover:bg-amber-600 text-white"
             >
               Transfer
-            </Button>
+            </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -679,22 +690,21 @@ const TeamManagementTool = () => {
           setRemoveLogo(false);
         }
       }}>
-        <DialogContent className="bg-[#0a0a0c] border-white/10 text-white">
+        <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle>Edit Team</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs text-zinc-500 uppercase">Team Logo</label>
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Team Logo</p>
               <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16 border border-white/10">
+                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-zinc-800 font-bold text-zinc-400">
                   {logoPreview && !removeLogo ? (
-                    <AvatarImage src={logoPreview} alt={editForm.name || editTeam?.name || 'Team logo'} />
-                  ) : null}
-                  <AvatarFallback className="bg-zinc-800 text-zinc-400">
-                    {(editForm.tag || editTeam?.tag || 'T').slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                    <img src={logoPreview} alt={editForm.name || editTeam?.name || 'Team logo'} className="h-full w-full object-contain" />
+                  ) : (
+                    (editForm.tag || editTeam?.tag || 'T').slice(0, 2).toUpperCase()
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <label className="inline-flex cursor-pointer">
                     <input
@@ -709,55 +719,54 @@ const TeamManagementTool = () => {
                         setRemoveLogo(false);
                       }}
                     />
-                    <Button type="button" variant="outline" size="sm" className="border-white/10 text-white" asChild>
-                      <span><Upload className="w-4 h-4 mr-2" />Upload Logo</span>
-                    </Button>
+                    <CommandButton type="button" variant="ghost" size="sm" asChild>
+                      <span><Upload className="h-4 w-4" />Upload Logo</span>
+                    </CommandButton>
                   </label>
                   {(logoPreview || editTeam?.logo_url) && !removeLogo && (
-                    <Button
+                    <CommandButton
                       type="button"
-                      variant="outline"
+                      variant="danger"
                       size="sm"
-                      className="border-white/10 text-red-400 hover:text-red-300"
                       onClick={() => {
                         setLogoFile(null);
                         setLogoPreview(null);
                         setRemoveLogo(true);
                       }}
                     >
-                      <X className="w-4 h-4 mr-2" />Remove
-                    </Button>
+                      <X className="h-4 w-4" />Remove
+                    </CommandButton>
                   )}
                 </div>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-xs text-zinc-500 uppercase">Name</label>
-              <Input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="bg-black/40 border-white/10 text-white" />
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Name</p>
+              <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
             </div>
             <div className="space-y-2">
-              <label className="text-xs text-zinc-500 uppercase">Tag</label>
-              <Input value={editForm.tag} onChange={e => setEditForm(f => ({ ...f, tag: e.target.value }))} className="bg-black/40 border-white/10 text-white" />
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Tag</p>
+              <input value={editForm.tag} onChange={e => setEditForm(f => ({ ...f, tag: e.target.value }))} className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
             </div>
             <div className="space-y-2">
-              <label className="text-xs text-zinc-500 uppercase">Game</label>
-              <Input value={editForm.game} onChange={e => setEditForm(f => ({ ...f, game: e.target.value }))} className="bg-black/40 border-white/10 text-white" />
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Game</p>
+              <input value={editForm.game} onChange={e => setEditForm(f => ({ ...f, game: e.target.value }))} className="w-full -none border border-white/10 bg-black/60 px-3 py-2 text-sm text-white outline-none transition-colors focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20" />
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setEditTeam(null)} className="border-white/10 text-white">Cancel</Button>
-            <Button
+            <CommandButton variant="ghost" size="sm" onClick={() => setEditTeam(null)}>Cancel</CommandButton>
+            <CommandButton
+              size="sm"
               onClick={handleSaveTeamEdit}
               disabled={isSavingTeam || editMutation.isPending}
-              className="bg-cyan-500 hover:bg-cyan-600 text-white"
             >
-              {(isSavingTeam || editMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {(isSavingTeam || editMutation.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
               Save Changes
-            </Button>
+            </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPage>
   );
 };
 

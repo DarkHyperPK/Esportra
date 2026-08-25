@@ -1,11 +1,15 @@
-import React, { useRef, useState } from 'react';
-import { Gamepad2, Upload, Trash2, RefreshCw, Rocket, XCircle, Loader2, Map } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Upload, Trash2, RefreshCw, Rocket, XCircle, Loader2 } from 'lucide-react';
 import { GameLogoImage } from '@/components/games/GameLogoImage';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AdminPage } from '@/components/admin/AdminPage';
+import {
+  CommandButton,
+  CommandSection,
+  CommandTabs,
+  CommandToolbar,
+} from '@/components/management/CommandSurface';
 import {
   useAdminGameCatalogDraft,
   useAdminGameCatalogVersions,
@@ -29,19 +33,21 @@ function GameRow({
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="flex items-center gap-4 p-4 rounded-xl border border-zinc-800 bg-[#0a0a0c]">
+    <div className="flex items-center gap-4 border border-white/10 bg-white/[0.025] p-4">
       <GameLogoImage
         gameName={game.name}
         catalogLogo={game.logo}
         alt={game.name}
-        className="w-12 h-12 rounded-lg object-contain bg-zinc-900"
+        className="h-12 w-12 border border-white/10 bg-[#0a0a0c] object-contain"
       />
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-white truncate">{game.name}</h3>
-          <Badge variant="outline" className="text-xs">{game.slug}</Badge>
+          <h3 className="truncate text-sm font-semibold text-white">{game.name}</h3>
+          <span className="border border-white/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+            {game.slug}
+          </span>
         </div>
-        <p className="text-sm text-zinc-400">
+        <p className="mt-1 text-xs text-zinc-500">
           {game.gameType} · {game.modes.length} mode(s) · {game.tournamentStructures.length} structure(s)
         </p>
       </div>
@@ -57,15 +63,15 @@ function GameRow({
             e.target.value = '';
           }}
         />
-        <Button
+        <CommandButton
+          variant="ghost"
           size="sm"
-          variant="outline"
           disabled={isUploading}
           onClick={() => inputRef.current?.click()}
         >
-          {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-          <span className="ml-2">Logo</span>
-        </Button>
+          {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          Logo
+        </CommandButton>
       </div>
     </div>
   );
@@ -140,49 +146,45 @@ function CatalogTab() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[40vh] text-zinc-400">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading catalog draft...
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-zinc-400">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading catalog draft...
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-6 text-red-400">
+      <div className="border border-red-500/30 bg-red-950/20 p-4 text-sm text-red-300">
         Failed to load catalog draft: {error instanceof Error ? error.message : 'Unknown error'}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-zinc-400">
-            Draft: {draft?.catalogVersion} · {draft?.games.length ?? 0} games
-          </p>
-        </div>
+    <div className="space-y-5">
+      <CommandToolbar>
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+          Draft: {draft?.catalogVersion} · {draft?.games.length ?? 0} games
+        </span>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={handleReset} disabled={resetDraft.isPending}>
-            <RefreshCw className="w-4 h-4 mr-2" /> Reset draft
-          </Button>
-          <Button variant="outline" onClick={handleDiscard} disabled={discard.isPending}>
-            <XCircle className="w-4 h-4 mr-2" /> Discard
-          </Button>
-          <Button onClick={handlePublish} disabled={publish.isPending}>
-            <Rocket className="w-4 h-4 mr-2" /> Publish
-          </Button>
+          <CommandButton variant="secondary" size="sm" onClick={handleReset} disabled={resetDraft.isPending}>
+            <RefreshCw className="h-4 w-4" /> Reset draft
+          </CommandButton>
+          <CommandButton variant="danger" size="sm" onClick={handleDiscard} disabled={discard.isPending}>
+            <XCircle className="h-4 w-4" /> Discard
+          </CommandButton>
+          <CommandButton variant="primary" size="sm" onClick={handlePublish} disabled={publish.isPending}>
+            <Rocket className="h-4 w-4" /> Publish
+          </CommandButton>
         </div>
-      </div>
+      </CommandToolbar>
 
-      <div className="flex gap-2 items-center">
-        <Input
-          placeholder="Publish notes (optional)"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          className="max-w-md"
-        />
-      </div>
+      <Input
+        placeholder="Publish notes (optional)"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        className="max-w-md -none border-white/10 bg-[#0a0a0c]"
+      />
 
       <div className="space-y-3">
         {(draft?.games ?? []).map((game) => (
@@ -195,25 +197,35 @@ function CatalogTab() {
         ))}
       </div>
 
-      <div className="rounded-xl border border-zinc-800 p-4">
-        <h2 className="text-lg font-semibold text-white mb-3">Version history</h2>
-        <div className="space-y-2">
+      <CommandSection>
+        <h2 className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+          Version history
+        </h2>
+        <div className="divide-y divide-white/5">
           {(versions ?? []).map((version) => (
-            <div key={version.id} className="flex items-center justify-between text-sm text-zinc-300">
+            <div key={version.id} className="flex items-center justify-between py-2 text-sm text-zinc-300">
               <span>{version.catalogVersion}</span>
               <div className="flex items-center gap-2">
-                <Badge variant="outline">{version.status}</Badge>
-                <Badge variant="outline">{version.source}</Badge>
-                {version.isActive && <Badge className="bg-emerald-600">active</Badge>}
+                <span className="border border-white/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                  {version.status}
+                </span>
+                <span className="border border-white/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                  {version.source}
+                </span>
+                {version.isActive && (
+                  <span className="border border-rose-500/30 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-rose-300">
+                    active
+                  </span>
+                )}
               </div>
             </div>
           ))}
-          {!versions?.length && <p className="text-zinc-500 text-sm">No versions loaded.</p>}
+          {!versions?.length && <p className="py-2 text-sm text-zinc-500">No versions loaded.</p>}
         </div>
-      </div>
+      </CommandSection>
 
-      <p className="text-xs text-zinc-500 flex items-center gap-1">
-        <Trash2 className="w-3 h-3" />
+      <p className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+        <Trash2 className="h-3 w-3" />
         Full game editing UI can extend this page; publish validates modes, structures, and BR config server-side.
       </p>
     </div>
@@ -224,32 +236,21 @@ export default function GameCatalogManagement() {
   const [activeTab, setActiveTab] = useState('catalog');
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center gap-3">
-        <Gamepad2 className="w-7 h-7 text-rose-500" />
-        <h1 className="text-2xl font-bold text-white">Games</h1>
-      </div>
+    <AdminPage eyebrow="Content" title="Game Catalog">
+      <CommandTabs
+        tabs={[
+          { value: 'catalog', label: 'Game Catalog' },
+          { value: 'maps', label: 'Maps' },
+        ]}
+        active={activeTab}
+        onChange={setActiveTab}
+      />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="bg-zinc-900/50 border border-zinc-800">
-          <TabsTrigger value="catalog" className="data-[state=active]:bg-rose-500/20 data-[state=active]:text-rose-300">
-            <Gamepad2 className="w-4 h-4 mr-2" />
-            Game Catalog
-          </TabsTrigger>
-          <TabsTrigger value="maps" className="data-[state=active]:bg-rose-500/20 data-[state=active]:text-rose-300">
-            <Map className="w-4 h-4 mr-2" />
-            Maps
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="catalog" className="mt-6">
-          <CatalogTab />
-        </TabsContent>
-
-        <TabsContent value="maps" className="mt-6">
-          <MapManagement embedded />
-        </TabsContent>
-      </Tabs>
-    </div>
+      {activeTab === 'catalog' ? (
+        <CatalogTab />
+      ) : (
+        <MapManagement embedded />
+      )}
+    </AdminPage>
   );
 }

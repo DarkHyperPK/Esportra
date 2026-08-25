@@ -1,12 +1,8 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import {
   FileText, Shield, Download, CheckCircle, XCircle, Clock,
   AlertTriangle, User, Database, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -16,6 +12,14 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { AdminPage } from '@/components/admin/AdminPage';
+import {
+  CommandButton,
+  CommandIconButton,
+  CommandEmptyState,
+  CommandSection,
+  CommandTabs,
+} from '@/components/management/CommandSurface';
 import {
   useGdprRequests, useGdprStats, useConsentRecords, useProcessGdprRequest,
   type GdprRequest, type ConsentRecord,
@@ -25,12 +29,14 @@ import {
 
 const PAGE_SIZE = 10;
 
+const LABEL_CLASS = 'block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500';
+
 // ── Skeleton components ───────────────────────────────────────────────────────
 
 const StatsSkeleton = () => (
   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
     {Array.from({ length: 5 }).map((_, i) => (
-      <Skeleton key={i} className="h-20 rounded-2xl bg-white/5" />
+      <Skeleton key={i} className="h-20 -none bg-white/[0.025]" />
     ))}
   </div>
 );
@@ -38,7 +44,7 @@ const StatsSkeleton = () => (
 const RequestCardSkeleton = () => (
   <div className="space-y-3">
     {Array.from({ length: 4 }).map((_, i) => (
-      <Skeleton key={i} className="h-24 rounded-2xl bg-white/5" />
+      <Skeleton key={i} className="h-24 -none bg-white/[0.025]" />
     ))}
   </div>
 );
@@ -46,7 +52,7 @@ const RequestCardSkeleton = () => (
 const TableSkeleton = () => (
   <div className="space-y-2">
     {Array.from({ length: 6 }).map((_, i) => (
-      <Skeleton key={i} className="h-12 rounded-xl bg-white/5" />
+      <Skeleton key={i} className="h-12 -none bg-white/[0.025]" />
     ))}
   </div>
 );
@@ -63,46 +69,11 @@ interface StatsBarProps {
 
 const StatsBar = ({ pendingRequests, completedToday, exportRequests, deletionRequests, avgProcessingDays }: StatsBarProps) => {
   const items = [
-    {
-      label: 'Pending',
-      value: pendingRequests,
-      icon: Clock,
-      color: 'text-amber-400',
-      bg: 'bg-amber-400/10',
-      border: 'border-amber-400/20',
-    },
-    {
-      label: 'Completed Today',
-      value: completedToday,
-      icon: CheckCircle,
-      color: 'text-emerald-400',
-      bg: 'bg-emerald-400/10',
-      border: 'border-emerald-400/20',
-    },
-    {
-      label: 'Export Requests',
-      value: exportRequests,
-      icon: Download,
-      color: 'text-blue-400',
-      bg: 'bg-blue-400/10',
-      border: 'border-blue-400/20',
-    },
-    {
-      label: 'Deletion Requests',
-      value: deletionRequests,
-      icon: XCircle,
-      color: 'text-rose-400',
-      bg: 'bg-rose-400/10',
-      border: 'border-rose-400/20',
-    },
-    {
-      label: 'Avg. Processing',
-      value: `${avgProcessingDays}d`,
-      icon: Database,
-      color: 'text-zinc-400',
-      bg: 'bg-zinc-400/10',
-      border: 'border-zinc-400/20',
-    },
+    { label: 'Pending', value: pendingRequests, icon: Clock, tone: 'text-amber-300' },
+    { label: 'Completed Today', value: completedToday, icon: CheckCircle, tone: 'text-white' },
+    { label: 'Export Requests', value: exportRequests, icon: Download, tone: 'text-white' },
+    { label: 'Deletion Requests', value: deletionRequests, icon: XCircle, tone: 'text-red-300' },
+    { label: 'Avg. Processing', value: `${avgProcessingDays}d`, icon: Database, tone: 'text-zinc-400' },
   ];
 
   return (
@@ -110,15 +81,12 @@ const StatsBar = ({ pendingRequests, completedToday, exportRequests, deletionReq
       {items.map((item) => {
         const Icon = item.icon;
         return (
-          <div
-            key={item.label}
-            className={`flex flex-col gap-2 p-4 rounded-2xl border ${item.bg} ${item.border}`}
-          >
+          <div key={item.label} className="border border-white/10 bg-white/[0.025] p-4">
             <div className="flex items-center gap-2">
-              <Icon className={`w-4 h-4 ${item.color}`} />
-              <span className="text-xs text-zinc-400 font-medium">{item.label}</span>
+              <Icon className="h-4 w-4 text-zinc-500" />
+              <span className={LABEL_CLASS}>{item.label}</span>
             </div>
-            <span className={`text-2xl font-bold ${item.color}`}>{item.value}</span>
+            <span className={`mt-2 block text-2xl font-black tabular-nums ${item.tone}`}>{item.value}</span>
           </div>
         );
       })}
@@ -130,23 +98,25 @@ const StatsBar = ({ pendingRequests, completedToday, exportRequests, deletionReq
 
 const StatusBadge = ({ status }: { status: string }) => {
   const map: Record<string, { label: string; className: string }> = {
-    pending: { label: 'Pending', className: 'bg-amber-400/15 text-amber-400 border-amber-400/30' },
-    processing: { label: 'Processing', className: 'bg-blue-400/15 text-blue-400 border-blue-400/30' },
-    completed: { label: 'Completed', className: 'bg-emerald-400/15 text-emerald-400 border-emerald-400/30' },
-    failed: { label: 'Failed', className: 'bg-red-400/15 text-red-400 border-red-400/30' },
-    rejected: { label: 'Rejected', className: 'bg-rose-400/15 text-rose-400 border-rose-400/30' },
+    pending: { label: 'Pending', className: 'border-amber-500/30 text-amber-300' },
+    processing: { label: 'Processing', className: 'border-white/15 text-zinc-300' },
+    completed: { label: 'Completed', className: 'border-white/40 text-white' },
+    failed: { label: 'Failed', className: 'border-red-500/30 text-red-300' },
+    rejected: { label: 'Rejected', className: 'border-rose-500/30 text-rose-300' },
   };
-  const cfg = map[status.toLowerCase()] ?? { label: status, className: 'bg-zinc-700/30 text-zinc-400 border-zinc-600/30' };
+  const cfg = map[status.toLowerCase()] ?? { label: status, className: 'border-white/15 text-zinc-400' };
   return (
-    <Badge className={`text-xs border ${cfg.className} capitalize`}>{cfg.label}</Badge>
+    <span className={`inline-flex shrink-0 items-center border px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider capitalize ${cfg.className}`}>
+      {cfg.label}
+    </span>
   );
 };
 
 const TypeBadge = ({ type }: { type: string }) => {
   if (type.toLowerCase() === 'export') {
-    return <Badge className="text-xs border bg-blue-400/15 text-blue-400 border-blue-400/30">Export</Badge>;
+    return <span className="inline-flex shrink-0 items-center border border-white/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-300">Export</span>;
   }
-  return <Badge className="text-xs border bg-rose-400/15 text-rose-400 border-rose-400/30">Deletion</Badge>;
+  return <span className="inline-flex shrink-0 items-center border border-rose-500/30 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-rose-300">Deletion</span>;
 };
 
 // ── Process Dialog ─────────────────────────────────────────────────────────────
@@ -177,29 +147,29 @@ const ProcessDialog = ({ request, action, onClose }: ProcessDialogProps) => {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="bg-[#0a0a0c] border-white/10 text-white max-w-md">
+      <DialogContent className="max-w-md -none border-white/10 bg-[#0a0a0c] text-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-semibold text-white">
             {action === 'approve' ? (
-              <CheckCircle className="w-5 h-5 text-emerald-400" />
+              <CheckCircle className="h-4 w-4 text-zinc-300" />
             ) : (
-              <XCircle className="w-5 h-5 text-rose-400" />
+              <XCircle className="h-4 w-4 text-rose-400" />
             )}
             {action === 'approve' ? 'Approve' : 'Reject'} GDPR Request
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 mt-2">
+        <div className="mt-2 space-y-4">
           {/* User info */}
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
-            <Avatar className="w-8 h-8">
-              <AvatarFallback className="bg-white/10 text-white text-xs">
-                {request?.username?.[0]?.toUpperCase() ?? <User className="w-4 h-4" />}
+          <div className="flex items-center gap-3 border border-white/10 bg-white/[0.025] p-3">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-white/10 text-xs text-white">
+                {request?.username?.[0]?.toUpperCase() ?? <User className="h-4 w-4" />}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-white truncate">{request?.username ?? 'Unknown'}</p>
-              <p className="text-xs text-zinc-400 truncate">{request?.email ?? '—'}</p>
+              <p className="truncate text-sm font-medium text-white">{request?.username ?? 'Unknown'}</p>
+              <p className="truncate text-xs text-zinc-400">{request?.email ?? '—'}</p>
             </div>
             <div className="ml-auto shrink-0">
               {request && <TypeBadge type={request.requestType} />}
@@ -208,10 +178,10 @@ const ProcessDialog = ({ request, action, onClose }: ProcessDialogProps) => {
 
           {/* Deletion warning */}
           {action === 'approve' && isDeletion && (
-            <div className="flex gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-              <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-              <p className="text-sm text-red-300 leading-relaxed">
-                <strong className="text-red-400">Irreversible action.</strong> This will permanently anonymize
+            <div className="flex gap-3 -none border border-red-500/20 bg-red-500/10 p-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
+              <p className="text-sm leading-relaxed text-red-300">
+                <strong className="text-red-300">Irreversible action.</strong> This will permanently anonymize
                 the user's data. This action cannot be undone.
               </p>
             </div>
@@ -219,14 +189,15 @@ const ProcessDialog = ({ request, action, onClose }: ProcessDialogProps) => {
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-zinc-300">
-              Notes {action === 'reject' ? <span className="text-rose-400">*</span> : <span className="text-zinc-500">(optional)</span>}
+            <label htmlFor="gdpr-notes" className={LABEL_CLASS}>
+              Notes {action === 'reject' ? <span className="text-rose-400">*</span> : <span className="font-mono normal-case tracking-normal">(optional)</span>}
             </label>
             <Textarea
+              id="gdpr-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={action === 'reject' ? 'Reason for rejection (required)…' : 'Additional notes…'}
-              className="bg-white/5 border-white/10 text-white placeholder:text-zinc-500 resize-none h-24 focus:border-rose-500/50"
+              className="h-24 resize-none -none border-white/10 bg-black/40 text-white placeholder:text-zinc-600 focus:border-rose-500 focus-visible:ring-rose-500/20"
             />
             {action === 'reject' && !notes.trim() && (
               <p className="text-xs text-rose-400">A reason is required when rejecting a request.</p>
@@ -235,25 +206,24 @@ const ProcessDialog = ({ request, action, onClose }: ProcessDialogProps) => {
 
           {/* Actions */}
           <div className="flex gap-2 pt-1">
-            <Button
-              variant="outline"
-              className="flex-1 border-white/10 text-zinc-300 hover:bg-white/5"
+            <CommandButton
+              variant="ghost"
+              size="sm"
+              className="flex-1"
               onClick={handleClose}
               disabled={isPending}
             >
               Cancel
-            </Button>
-            <Button
-              className={`flex-1 font-semibold ${
-                action === 'approve'
-                  ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                  : 'bg-rose-500 hover:bg-rose-600 text-white'
-              }`}
+            </CommandButton>
+            <CommandButton
+              variant={action === 'approve' ? 'primary' : 'danger'}
+              size="sm"
+              className="flex-1"
               onClick={handleSubmit}
               disabled={isPending || (action === 'reject' && !notes.trim())}
             >
               {isPending ? 'Processing…' : action === 'approve' ? 'Approve' : 'Reject'}
-            </Button>
+            </CommandButton>
           </div>
         </div>
       </DialogContent>
@@ -274,31 +244,26 @@ const RequestCard = ({ request, onAction }: RequestCardProps) => {
   const hasDownload = isCompleted && request.downloadUrl;
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="p-4 rounded-2xl bg-[#0a0a0c] border border-white/5 hover:border-white/10 transition-all"
-    >
+    <article className="border border-white/10 bg-[#0a0a0c]/92 p-4 transition-colors hover:border-white/25">
       <div className="flex items-start gap-3">
         {/* Avatar */}
-        <Avatar className="w-9 h-9 shrink-0">
-          <AvatarFallback className="bg-white/10 text-white text-sm">
-            {request.username?.[0]?.toUpperCase() ?? <User className="w-4 h-4" />}
+        <Avatar className="h-9 w-9 shrink-0">
+          <AvatarFallback className="bg-white/10 text-sm text-white">
+            {request.username?.[0]?.toUpperCase() ?? <User className="h-4 w-4" />}
           </AvatarFallback>
         </Avatar>
 
         {/* Main content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-0.5">
-            <span className="font-semibold text-white text-sm">
+        <div className="min-w-0 flex-1">
+          <div className="mb-0.5 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-white">
               {request.username ?? 'Unknown User'}
             </span>
             <TypeBadge type={request.requestType} />
             <StatusBadge status={request.status} />
           </div>
-          <p className="text-xs text-zinc-400 truncate mb-1">{request.email ?? '—'}</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-zinc-500">
+          <p className="mb-1 truncate text-xs text-zinc-400">{request.email ?? '—'}</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5 font-mono text-xs tabular-nums text-zinc-500">
             <span>Requested: {new Date(request.requestedAt).toLocaleDateString()}</span>
             {request.processedAt && (
               <span>Processed: {new Date(request.processedAt).toLocaleDateString()}</span>
@@ -308,25 +273,22 @@ const RequestCard = ({ request, onAction }: RequestCardProps) => {
             )}
           </div>
           {request.notes && (
-            <p className="text-xs text-zinc-400 mt-1.5 line-clamp-2 italic">"{request.notes}"</p>
+            <p className="mt-1.5 line-clamp-2 text-xs italic text-zinc-400">"{request.notes}"</p>
           )}
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col gap-2 shrink-0">
+        <div className="flex shrink-0 flex-col gap-2">
           {hasDownload && (
             <div className="space-y-1">
-              <a
-                href={request.downloadUrl!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-500/10 text-blue-400 border border-blue-400/20 hover:bg-blue-500/20 transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Download
-              </a>
+              <CommandButton variant="secondary" size="sm" asChild>
+                <a href={request.downloadUrl!} target="_blank" rel="noopener noreferrer">
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </a>
+              </CommandButton>
               {request.expiresAt && (
-                <p className="text-[10px] text-zinc-500 text-center">
+                <p className="text-center font-mono text-[10px] tabular-nums text-zinc-500">
                   Expires {new Date(request.expiresAt).toLocaleDateString()}
                 </p>
               )}
@@ -334,27 +296,19 @@ const RequestCard = ({ request, onAction }: RequestCardProps) => {
           )}
           {isPending && (
             <div className="flex gap-1.5">
-              <Button
-                size="sm"
-                className="h-7 px-3 text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-400/20 hover:bg-emerald-500/20"
-                onClick={() => onAction(request, 'approve')}
-              >
-                <CheckCircle className="w-3.5 h-3.5 mr-1" />
+              <CommandButton size="sm" onClick={() => onAction(request, 'approve')}>
+                <CheckCircle className="h-3.5 w-3.5" />
                 Approve
-              </Button>
-              <Button
-                size="sm"
-                className="h-7 px-3 text-xs border border-white/15 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"
-                onClick={() => onAction(request, 'reject')}
-              >
-                <XCircle className="w-3.5 h-3.5 mr-1" />
+              </CommandButton>
+              <CommandButton variant="danger" size="sm" onClick={() => onAction(request, 'reject')}>
+                <XCircle className="h-3.5 w-3.5" />
                 Reject
-              </Button>
+              </CommandButton>
             </div>
           )}
         </div>
       </div>
-    </motion.div>
+    </article>
   );
 };
 
@@ -373,30 +327,26 @@ const Pagination = ({ page, total, limit, onPage }: PaginationProps) => {
 
   return (
     <div className="flex items-center justify-between pt-2">
-      <span className="text-xs text-zinc-500">
+      <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
         Page {page} of {totalPages} · {total} total
       </span>
       <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0 border-white/10 text-zinc-400 hover:bg-white/5 disabled:opacity-30"
+        <CommandIconButton
+          label="Previous page"
+          variant="ghost"
           disabled={page <= 1}
           onClick={() => onPage(page - 1)}
-          aria-label="Previous page"
         >
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0 border-white/10 text-zinc-400 hover:bg-white/5 disabled:opacity-30"
+          <ChevronLeft />
+        </CommandIconButton>
+        <CommandIconButton
+          label="Next page"
+          variant="ghost"
           disabled={page >= totalPages}
           onClick={() => onPage(page + 1)}
-          aria-label="Next page"
         >
-          <ChevronRight className="w-4 h-4" />
-        </Button>
+          <ChevronRight />
+        </CommandIconButton>
       </div>
     </div>
   );
@@ -439,12 +389,12 @@ const DataRequestsTab = () => {
       ) : null}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <CommandSection className="flex flex-wrap gap-3">
         <Select value={statusFilter || '__all__'} onValueChange={(v) => { setStatusFilter(v === '__all__' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="w-44 bg-[#0a0a0c] border-white/10 text-zinc-300 focus:border-rose-500/50">
+          <SelectTrigger className="w-44 -none border-white/10 bg-black/40 text-zinc-300 focus:border-rose-500">
             <SelectValue placeholder="All Statuses" />
           </SelectTrigger>
-          <SelectContent className="bg-[#121214] border-white/10 text-white">
+          <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
             <SelectItem value="__all__">All Statuses</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="processing">Processing</SelectItem>
@@ -455,34 +405,34 @@ const DataRequestsTab = () => {
         </Select>
 
         <Select value={typeFilter || '__all__'} onValueChange={(v) => { setTypeFilter(v === '__all__' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="w-44 bg-[#0a0a0c] border-white/10 text-zinc-300 focus:border-rose-500/50">
+          <SelectTrigger className="w-44 -none border-white/10 bg-black/40 text-zinc-300 focus:border-rose-500">
             <SelectValue placeholder="All Types" />
           </SelectTrigger>
-          <SelectContent className="bg-[#121214] border-white/10 text-white">
+          <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
             <SelectItem value="__all__">All Types</SelectItem>
             <SelectItem value="export">Export</SelectItem>
             <SelectItem value="deletion">Deletion</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </CommandSection>
 
       {/* Request list */}
       {isLoading ? (
         <RequestCardSkeleton />
       ) : isError ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-4">
-          <AlertTriangle className="w-10 h-10 text-rose-400" />
+        <CommandSection className="flex flex-col items-center justify-center gap-4 py-16">
+          <AlertTriangle className="h-8 w-8 text-red-300" />
           <p className="text-zinc-400">Failed to load GDPR requests.</p>
-          <Button variant="outline" className="border-white/10 text-zinc-300 hover:bg-white/5" onClick={() => refetch()}>
+          <CommandButton variant="ghost" size="sm" onClick={() => refetch()}>
             Try again
-          </Button>
-        </div>
+          </CommandButton>
+        </CommandSection>
       ) : !data?.requests?.length ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <FileText className="w-10 h-10 text-zinc-600" />
-          <p className="text-zinc-400 font-medium">No requests found</p>
-          <p className="text-zinc-600 text-sm">No GDPR requests match the current filters.</p>
-        </div>
+        <CommandEmptyState
+          title="No requests found"
+          description="No GDPR requests match the current filters."
+          icon={<FileText className="h-5 w-5" />}
+        />
       ) : (
         <div className="space-y-3">
           {data.requests.map((req) => (
@@ -523,12 +473,12 @@ const ConsentRecordsTab = () => {
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <CommandSection className="flex flex-wrap gap-3">
         <Select value={typeFilter || '__all__'} onValueChange={(v) => { setTypeFilter(v === '__all__' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="w-52 bg-[#0a0a0c] border-white/10 text-zinc-300 focus:border-rose-500/50">
+          <SelectTrigger className="w-52 -none border-white/10 bg-black/40 text-zinc-300 focus:border-rose-500">
             <SelectValue placeholder="All Consent Types" />
           </SelectTrigger>
-          <SelectContent className="bg-[#121214] border-white/10 text-white">
+          <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
             <SelectItem value="__all__">All Types</SelectItem>
             {CONSENT_TYPES.map((t) => (
               <SelectItem key={t} value={t}>{formatConsentType(t)}</SelectItem>
@@ -537,77 +487,76 @@ const ConsentRecordsTab = () => {
         </Select>
 
         <Select value={grantedFilter || '__all__'} onValueChange={(v) => { setGrantedFilter(v === '__all__' ? '' : v); setPage(1); }}>
-          <SelectTrigger className="w-40 bg-[#0a0a0c] border-white/10 text-zinc-300 focus:border-rose-500/50">
+          <SelectTrigger className="w-40 -none border-white/10 bg-black/40 text-zinc-300 focus:border-rose-500">
             <SelectValue placeholder="All Consents" />
           </SelectTrigger>
-          <SelectContent className="bg-[#121214] border-white/10 text-white">
+          <SelectContent className="-none border-white/10 bg-[#0a0a0c] text-white">
             <SelectItem value="__all__">All</SelectItem>
             <SelectItem value="true">Granted</SelectItem>
             <SelectItem value="false">Denied</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </CommandSection>
 
       {/* Table */}
       {isLoading ? (
         <TableSkeleton />
       ) : isError ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-4">
-          <AlertTriangle className="w-10 h-10 text-rose-400" />
+        <CommandSection className="flex flex-col items-center justify-center gap-4 py-16">
+          <AlertTriangle className="h-8 w-8 text-red-300" />
           <p className="text-zinc-400">Failed to load consent records.</p>
-          <Button variant="outline" className="border-white/10 text-zinc-300 hover:bg-white/5" onClick={() => refetch()}>
+          <CommandButton variant="ghost" size="sm" onClick={() => refetch()}>
             Try again
-          </Button>
-        </div>
+          </CommandButton>
+        </CommandSection>
       ) : !data?.records?.length ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <Shield className="w-10 h-10 text-zinc-600" />
-          <p className="text-zinc-400 font-medium">No consent records</p>
-          <p className="text-zinc-600 text-sm">No records match the current filters.</p>
-        </div>
+        <CommandEmptyState
+          title="No consent records"
+          description="No records match the current filters."
+          icon={<Shield className="h-5 w-5" />}
+        />
       ) : (
-        <div className="rounded-2xl border border-white/5 overflow-hidden">
+        <CommandSection className="overflow-hidden p-0">
           {/* Header */}
-          <div className="hidden md:grid grid-cols-[1fr_1fr_90px_120px_120px_80px] gap-4 px-4 py-3 bg-white/[0.03] border-b border-white/5">
-            <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">User</span>
-            <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Consent Type</span>
-            <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Status</span>
-            <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">IP Address</span>
-            <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Date</span>
-            <span className="text-xs font-medium text-zinc-500 uppercase tracking-wide">Version</span>
+          <div className="hidden md:grid grid-cols-[1fr_1fr_90px_120px_120px_80px] gap-4 border-b border-white/10 bg-black/40 px-4 py-3 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+            <span>User</span>
+            <span>Consent Type</span>
+            <span>Status</span>
+            <span>IP Address</span>
+            <span>Date</span>
+            <span>Version</span>
           </div>
 
           {/* Rows */}
-          {data.records.map((record: ConsentRecord, idx: number) => (
-            <motion.div
-              key={record.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: idx * 0.03 }}
-              className="flex flex-col md:grid md:grid-cols-[1fr_1fr_90px_120px_120px_80px] gap-2 md:gap-4 px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Avatar className="w-6 h-6 shrink-0">
-                  <AvatarFallback className="bg-white/10 text-white text-[10px]">
-                    {record.username?.[0]?.toUpperCase() ?? '?'}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm text-white truncate">{record.username ?? <span className="text-zinc-500">Unknown</span>}</span>
+          <div className="divide-y divide-white/5">
+            {data.records.map((record: ConsentRecord) => (
+              <div
+                key={record.id}
+                className="flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-white/[0.02] md:grid md:grid-cols-[1fr_1fr_90px_120px_120px_80px] md:items-center md:gap-4"
+              >
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-6 w-6 shrink-0">
+                    <AvatarFallback className="bg-white/10 text-[10px] text-white">
+                      {record.username?.[0]?.toUpperCase() ?? '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate text-sm text-white">{record.username ?? <span className="text-zinc-500">Unknown</span>}</span>
+                </div>
+                <span className="text-sm text-zinc-300">{formatConsentType(record.consentType)}</span>
+                <div>
+                  {record.granted ? (
+                    <span className="inline-flex items-center border border-white/25 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-200">Granted</span>
+                  ) : (
+                    <span className="inline-flex items-center border border-red-500/30 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-red-300">Denied</span>
+                  )}
+                </div>
+                <span className="font-mono text-xs tabular-nums text-zinc-400">{record.ipAddress ?? '—'}</span>
+                <span className="font-mono text-xs tabular-nums text-zinc-400">{new Date(record.recordedAt).toLocaleDateString()}</span>
+                <span className="font-mono text-xs tabular-nums text-zinc-500">{record.version}</span>
               </div>
-              <span className="text-sm text-zinc-300">{formatConsentType(record.consentType)}</span>
-              <div>
-                {record.granted ? (
-                  <Badge className="text-xs border bg-emerald-400/15 text-emerald-400 border-emerald-400/30">Granted</Badge>
-                ) : (
-                  <Badge className="text-xs border bg-red-400/15 text-red-400 border-red-400/30">Denied</Badge>
-                )}
-              </div>
-              <span className="text-xs text-zinc-400 font-mono">{record.ipAddress ?? '—'}</span>
-              <span className="text-xs text-zinc-400">{new Date(record.recordedAt).toLocaleDateString()}</span>
-              <span className="text-xs text-zinc-500">{record.version}</span>
-            </motion.div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </CommandSection>
       )}
 
       {/* Pagination */}
@@ -621,55 +570,27 @@ const ConsentRecordsTab = () => {
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 const GdprCompliance = () => {
+  const [activeTab, setActiveTab] = useState('requests');
+
   return (
-    <div className="min-h-screen bg-transparent px-4 py-8 md:px-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-4"
-        >
-          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20">
-            <Shield className="w-6 h-6 text-rose-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>
-              GDPR Compliance
-            </h1>
-            <p className="text-sm text-zinc-400">Manage data requests and consent records</p>
-          </div>
-        </motion.div>
+    <AdminPage
+      eyebrow="Security"
+      title="GDPR Compliance"
+      description="Manage data requests and consent records"
+    >
+      <div className="space-y-6">
+        <CommandTabs
+          tabs={[
+            { value: 'requests', label: 'Data Requests' },
+            { value: 'consent', label: 'Consent Records' },
+          ]}
+          active={activeTab}
+          onChange={setActiveTab}
+        />
 
-        {/* Tabs */}
-        <Tabs defaultValue="requests" className="space-y-6">
-          <TabsList className="bg-[#0a0a0c] border border-white/5 p-1 rounded-xl">
-            <TabsTrigger
-              value="requests"
-              className="data-[state=active]:bg-rose-500/10 data-[state=active]:text-rose-400 text-zinc-400 rounded-lg px-5 py-2 text-sm font-medium transition-all"
-            >
-              <FileText className="w-4 h-4 mr-2 inline-block" />
-              Data Requests
-            </TabsTrigger>
-            <TabsTrigger
-              value="consent"
-              className="data-[state=active]:bg-rose-500/10 data-[state=active]:text-rose-400 text-zinc-400 rounded-lg px-5 py-2 text-sm font-medium transition-all"
-            >
-              <Shield className="w-4 h-4 mr-2 inline-block" />
-              Consent Records
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="requests" className="mt-0">
-            <DataRequestsTab />
-          </TabsContent>
-
-          <TabsContent value="consent" className="mt-0">
-            <ConsentRecordsTab />
-          </TabsContent>
-        </Tabs>
+        {activeTab === 'requests' ? <DataRequestsTab /> : <ConsentRecordsTab />}
       </div>
-    </div>
+    </AdminPage>
   );
 };
 

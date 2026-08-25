@@ -1,9 +1,7 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Map, Plus, Upload, Trash2, Loader2, Search, Check, Edit2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -22,6 +20,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
+import { AdminPage } from '@/components/admin/AdminPage';
+import {
+  CommandButton,
+  CommandIconButton,
+  CommandPanel,
+  CommandToolbar,
+} from '@/components/management/CommandSurface';
 import { cn } from '@/lib/utils';
 
 const SUPPORTED_GAMES = ['Counter-Strike 2', 'Valorant', 'Rainbow Six Siege'] as const;
@@ -35,6 +40,8 @@ interface GameMap {
   is_active: boolean;
   created_at: string;
 }
+
+const FIELD_LABEL = 'font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500';
 
 function MapCard({
   map,
@@ -53,33 +60,35 @@ function MapCard({
 
   return (
     <div className={cn(
-      "relative flex flex-col rounded-xl border border-zinc-800 bg-[#0a0a0c] overflow-hidden",
-      !map.is_active && "opacity-60"
+      'relative flex flex-col overflow-hidden border border-white/10 bg-white/[0.025]',
+      !map.is_active && 'opacity-60',
     )}>
       {/* Map Image */}
-      <div className="relative aspect-video bg-zinc-900 flex items-center justify-center">
+      <div className="relative flex aspect-video items-center justify-center border-b border-white/10 bg-[#0a0a0c]">
         {map.map_image_url ? (
           <img
             src={map.map_image_url}
             alt={map.map_name}
-            className="w-full h-full object-cover"
+            className="h-full w-full object-contain"
           />
         ) : (
-          <Map className="w-12 h-12 text-zinc-700" />
+          <Map className="h-12 w-12 text-zinc-700" />
         )}
         {!map.is_active && (
-          <Badge className="absolute top-2 right-2 bg-zinc-700">Inactive</Badge>
+          <span className="absolute right-2 top-2 border border-white/15 bg-[#0a0a0c] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+            Inactive
+          </span>
         )}
       </div>
 
       {/* Map Info */}
-      <div className="p-4 flex-1">
-        <h3 className="font-semibold text-white truncate">{map.map_name}</h3>
-        <p className="text-sm text-zinc-400">{map.game}</p>
+      <div className="flex-1 p-4">
+        <h3 className="truncate text-sm font-semibold text-white">{map.map_name}</h3>
+        <p className={cn('mt-1', FIELD_LABEL)}>{map.game}</p>
       </div>
 
       {/* Actions */}
-      <div className="p-4 pt-0 flex gap-2">
+      <div className="flex gap-2 p-4 pt-0">
         <input
           ref={inputRef}
           type="file"
@@ -91,22 +100,22 @@ function MapCard({
             e.target.value = '';
           }}
         />
-        <Button
+        <CommandButton
+          variant="ghost"
           size="sm"
-          variant="outline"
           className="flex-1"
           disabled={isUploading}
           onClick={() => inputRef.current?.click()}
         >
-          {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-          <span className="ml-2">Image</span>
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => onEdit(map)}>
-          <Edit2 className="w-4 h-4" />
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => onDelete(map.id)}>
-          <Trash2 className="w-4 h-4 text-red-400" />
-        </Button>
+          {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          Image
+        </CommandButton>
+        <CommandIconButton label={`Edit ${map.map_name}`} variant="ghost" onClick={() => onEdit(map)}>
+          <Edit2 />
+        </CommandIconButton>
+        <CommandIconButton label={`Delete ${map.map_name}`} variant="danger" onClick={() => onDelete(map.id)}>
+          <Trash2 />
+        </CommandIconButton>
       </div>
     </div>
   );
@@ -269,80 +278,52 @@ export default function MapManagement({ embedded = false }: MapManagementProps) 
     return acc;
   }, {} as Record<string, GameMap[]>);
 
-  if (error) {
-    return (
-      <div className="p-6 text-red-400">
-        Failed to load maps: {error instanceof Error ? error.message : 'Unknown error'}
-      </div>
-    );
-  }
+  const addMapButton = (
+    <CommandButton size="sm" onClick={() => setCreateDialogOpen(true)}>
+      <Plus className="h-4 w-4" /> Add Map
+    </CommandButton>
+  );
 
-  return (
-    <div className={cn("space-y-6", !embedded && "p-6")}>
-      {/* Header */}
-      {!embedded && (
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Map className="w-7 h-7 text-rose-500" />
-              Map Management
-            </h1>
-            <p className="text-zinc-400 mt-1">
-              Add and manage game maps for CS2, Valorant, and R6 Siege
-            </p>
-          </div>
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" /> Add Map
-          </Button>
-        </div>
-      )}
-      {embedded && (
-        <div className="flex justify-between items-center">
-          <p className="text-zinc-400">Add and manage game maps for CS2, Valorant, and R6 Siege</p>
-          <Button onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" /> Add Map
-          </Button>
-        </div>
-      )}
-
+  const body = (
+    <>
       {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+      <CommandToolbar>
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
           <Input
             placeholder="Search maps..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="-none border-white/10 bg-[#0a0a0c] pl-10"
           />
         </div>
         <Select value={filterGame} onValueChange={setFilterGame}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-[200px] -none border-white/10 bg-[#0a0a0c]">
             <SelectValue placeholder="Filter by game" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="-none border-white/10 bg-[#0a0a0c]">
             <SelectItem value="all">All Games</SelectItem>
             {SUPPORTED_GAMES.map((game) => (
               <SelectItem key={game} value={game}>{game}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </CommandToolbar>
 
       {/* Maps Grid */}
       {isLoading ? (
-        <div className="flex items-center justify-center min-h-[40vh] text-zinc-400">
-          <Loader2 className="w-6 h-6 animate-spin mr-2" /> Loading maps...
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-zinc-400">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading maps...
         </div>
       ) : (
         <div className="space-y-8">
           {Object.entries(groupedMaps).map(([game, gameMaps]) => (
             <div key={game}>
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <h2 className="mb-4 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
                 {game}
-                <Badge variant="outline">{gameMaps.length}</Badge>
+                <span className="border border-white/15 px-2 py-0.5 text-zinc-400">{gameMaps.length}</span>
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {gameMaps.map((map) => (
                   <MapCard
                     key={map.id}
@@ -357,7 +338,7 @@ export default function MapManagement({ embedded = false }: MapManagementProps) 
             </div>
           ))}
           {maps.length === 0 && (
-            <div className="text-center text-zinc-500 py-12">
+            <div className="border border-dashed border-white/10 bg-white/[0.02] py-12 text-center text-sm text-zinc-500">
               No maps found. Click "Add Map" to create one.
             </div>
           )}
@@ -366,18 +347,18 @@ export default function MapManagement({ embedded = false }: MapManagementProps) 
 
       {/* Create Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="-none border border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle>Add New Map</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Game</Label>
+              <Label className={FIELD_LABEL}>Game</Label>
               <Select value={formGame} onValueChange={(v) => setFormGame(v as SupportedGame)}>
-                <SelectTrigger>
+                <SelectTrigger className="-none border-white/10 bg-[#0a0a0c]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="-none border-white/10 bg-[#0a0a0c]">
                   {SUPPORTED_GAMES.map((game) => (
                     <SelectItem key={game} value={game}>{game}</SelectItem>
                   ))}
@@ -385,60 +366,97 @@ export default function MapManagement({ embedded = false }: MapManagementProps) 
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Map Name</Label>
+              <Label className={FIELD_LABEL}>Map Name</Label>
               <Input
                 placeholder="e.g., Dust 2, Ascent, Bank"
                 value={formMapName}
                 onChange={(e) => setFormMapName(e.target.value)}
+                className="-none border-white/10 bg-[#0a0a0c]"
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Active</Label>
+              <Label className={FIELD_LABEL}>Active</Label>
               <Switch checked={formIsActive} onCheckedChange={setFormIsActive} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setCreateDialogOpen(false); resetForm(); }}>
+            <CommandButton variant="ghost" size="sm" onClick={() => { setCreateDialogOpen(false); resetForm(); }}>
               Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={createMap.isPending}>
-              {createMap.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+            </CommandButton>
+            <CommandButton size="sm" onClick={handleCreate} disabled={createMap.isPending}>
+              {createMap.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               Create
-            </Button>
+            </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingMap} onOpenChange={(open) => { if (!open) { setEditingMap(null); resetForm(); } }}>
-        <DialogContent>
+        <DialogContent className="-none border border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
             <DialogTitle>Edit Map: {editingMap?.map_name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Map Name</Label>
+              <Label className={FIELD_LABEL}>Map Name</Label>
               <Input
                 value={formMapName}
                 onChange={(e) => setFormMapName(e.target.value)}
+                className="-none border-white/10 bg-[#0a0a0c]"
               />
             </div>
             <div className="flex items-center justify-between">
-              <Label>Active</Label>
+              <Label className={FIELD_LABEL}>Active</Label>
               <Switch checked={formIsActive} onCheckedChange={setFormIsActive} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setEditingMap(null); resetForm(); }}>
+            <CommandButton variant="ghost" size="sm" onClick={() => { setEditingMap(null); resetForm(); }}>
               Cancel
-            </Button>
-            <Button onClick={handleUpdate} disabled={updateMap.isPending}>
-              {updateMap.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+            </CommandButton>
+            <CommandButton size="sm" onClick={handleUpdate} disabled={updateMap.isPending}>
+              {updateMap.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               Save
-            </Button>
+            </CommandButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
+  );
+
+  if (error) {
+    return (
+      <AdminPage eyebrow="Content" title="Game Maps">
+        <div className="border border-red-500/30 bg-red-950/20 p-4 text-sm text-red-300">
+          Failed to load maps: {error instanceof Error ? error.message : 'Unknown error'}
+        </div>
+      </AdminPage>
+    );
+  }
+
+  if (embedded) {
+    return (
+      <div className="space-y-5">
+        <CommandToolbar>
+          <span className={FIELD_LABEL}>
+            Add and manage game maps for CS2, Valorant, and R6 Siege
+          </span>
+          {addMapButton}
+        </CommandToolbar>
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <AdminPage
+      eyebrow="Content"
+      title="Game Maps"
+      description="Add and manage game maps for CS2, Valorant, and R6 Siege"
+      actions={addMapButton}
+    >
+      <CommandPanel className="space-y-6">{body}</CommandPanel>
+    </AdminPage>
   );
 }

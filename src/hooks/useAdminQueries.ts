@@ -5,9 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 // ── Query Keys ──────────────────────────────────────────────────────────────
 export const adminKeys = {
   all: ['admin'] as const,
-  stats: () => [...adminKeys.all, 'stats'] as const,
   analytics: () => [...adminKeys.all, 'analytics'] as const,
-  systemStats: () => [...adminKeys.all, 'system-stats'] as const,
 
   users: (params?: Record<string, any>) =>
     [...adminKeys.all, 'users', params ?? {}] as const,
@@ -27,9 +25,6 @@ export const adminKeys = {
   verificationRequests: () => [...adminKeys.all, 'verification-requests'] as const,
   recentUsers: (limit?: number) => [...adminKeys.all, 'recent-users', limit] as const,
   recentTournaments: (limit?: number) => [...adminKeys.all, 'recent-tournaments', limit] as const,
-  dashboardStats: () => [...adminKeys.all, 'dashboard-stats'] as const,
-  activityFeed: (limit?: number) => [...adminKeys.all, 'activity-feed', limit] as const,
-  trends: (days?: number) => [...adminKeys.all, 'trends', days] as const,
   alerts: (params?: Record<string, any>) => [...adminKeys.all, 'alerts', params ?? {}] as const,
   alertSummary: () => [...adminKeys.all, 'alert-summary'] as const,
   entityHistory: (targetType: string, targetId: string, page?: number) =>
@@ -62,55 +57,15 @@ export const adminKeys = {
   anomalies: (params?: Record<string, string>) => ['admin', 'anomalies', params] as const,
   anomalyRules: () => ['admin', 'anomaly-rules'] as const,
 
-  dashboardWidgets: () => ['admin', 'dashboard-widgets'] as const,
-  dashboardPreferences: () => ['admin', 'dashboard-preferences'] as const,
   operationsSystemConfig: (category?: string) => ['admin', 'operations-system-config', category ?? 'all'] as const,
 };
 
-// ── Stats ───────────────────────────────────────────────────────────────────
-export const useAdminStats = () =>
-  useQuery({
-    queryKey: adminKeys.stats(),
-    queryFn: () => apiClient.get<any>('/api/admin/stats'),
-    staleTime: 1000 * 60, // 1 minute
-  });
-
+// ── Analytics ───────────────────────────────────────────────────────────────
 export const useAdminAnalytics = () =>
   useQuery({
     queryKey: adminKeys.analytics(),
     queryFn: () => apiClient.get<any>('/api/admin/analytics'),
     staleTime: 1000 * 60, // 1 minute
-  });
-
-export const useAdminSystemStats = () =>
-  useQuery({
-    queryKey: adminKeys.systemStats(),
-    queryFn: () => apiClient.get<any>('/api/admin/system-stats'),
-    staleTime: 1000 * 60 * 2, // 2 minutes
-  });
-
-// ── Dashboard ───────────────────────────────────────────────────────────────
-export const useAdminDashboardStats = () =>
-  useQuery({
-    queryKey: adminKeys.dashboardStats(),
-    queryFn: () => apiClient.get<any>('/api/admin/dashboard-stats'),
-    staleTime: 1000 * 30, // 30 seconds
-    refetchInterval: 1000 * 60, // auto-refresh every minute
-  });
-
-export const useAdminActivityFeed = (limit: number = 20) =>
-  useQuery({
-    queryKey: adminKeys.activityFeed(limit),
-    queryFn: () => apiClient.get<any[]>(`/api/admin/activity-feed?limit=${limit}`),
-    staleTime: 1000 * 15, // 15 seconds
-    refetchInterval: 1000 * 30, // auto-refresh every 30s
-  });
-
-export const useAdminTrends = (days: number = 30) =>
-  useQuery({
-    queryKey: adminKeys.trends(days),
-    queryFn: () => apiClient.get<{ userSignups: any[]; tournamentCreations: any[] }>(`/api/admin/trends?days=${days}`),
-    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
 // ── Users (paginated)───────────────────────────────────────────────────────
@@ -206,7 +161,7 @@ export const useAdminTournaments = (params: AdminTournamentsParams = {}) =>
       if (params.date_to) qs.set('date_to', params.date_to);
       if (params.sort_by) qs.set('sort_by', params.sort_by);
       if (params.sort_dir) qs.set('sort_dir', params.sort_dir);
-      return apiClient.get<{ data: any[]; total: number }>(`/api/admin/tournaments?${qs}`);
+      return apiClient.get<{ data: any[]; total: number; statusCounts?: Record<string, number> }>(`/api/admin/tournaments?${qs}`);
     },
     staleTime: 1000 * 30,
   });
@@ -279,7 +234,7 @@ export const useAdminTournamentUpdate = () => {
       apiClient.put(`/api/admin/tournaments/${id}`, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.tournaments() });
-      queryClient.invalidateQueries({ queryKey: adminKeys.stats() });
+      
     },
     onError: (error: Error) => {
       toast({ title: 'Update failed', description: error.message, variant: 'destructive' });
@@ -296,7 +251,7 @@ export const useAdminVenueUpdate = () => {
       apiClient.put(`/api/admin/venues/${id}`, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.venues() });
-      queryClient.invalidateQueries({ queryKey: adminKeys.stats() });
+      
     },
     onError: (error: Error) => {
       toast({ title: 'Update failed', description: error.message, variant: 'destructive' });
@@ -350,7 +305,7 @@ export const useAdminVerificationAction = () => {
       apiClient.put(`/api/admin/verification-requests/${requestId}`, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.verificationRequests() });
-      queryClient.invalidateQueries({ queryKey: adminKeys.stats() });
+      
     },
   });
 };
@@ -1616,66 +1571,4 @@ export const useScanAnomalies = () => {
   });
 };
 
-
-// ── Dashboard Customization ──────────────────────────────────────────────────
-
-export interface DashboardWidget {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  defaultRefreshInterval: number;
-}
-
-export interface WidgetConfig {
-  widgetId: string;
-  position: number;
-  visible: boolean;
-  refreshInterval: number | null;
-}
-
-export interface DashboardPreferences {
-  layout: WidgetConfig[];
-  isDefault?: boolean;
-}
-
-export const useDashboardWidgets = () =>
-  useQuery({
-    queryKey: adminKeys.dashboardWidgets(),
-    queryFn: () => apiClient.get<DashboardWidget[]>('/api/admin/dashboard/widgets'),
-    staleTime: Infinity,
-  });
-
-export const useDashboardPreferences = () =>
-  useQuery({
-    queryKey: adminKeys.dashboardPreferences(),
-    queryFn: () => apiClient.get<DashboardPreferences>('/api/admin/dashboard/preferences'),
-    staleTime: 1000 * 60 * 5,
-  });
-
-export const useSaveDashboardPreferences = () => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: (data: { layout: WidgetConfig[] }) =>
-      apiClient.put<DashboardPreferences>('/api/admin/dashboard/preferences', data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.dashboardPreferences() });
-      toast({
-        title: 'Layout saved',
-        description: 'Your dashboard layout has been updated.',
-      });
-    },
-    onError: (error: unknown) => {
-       
-      const body = (error as any)?.body;
-      toast({
-        title: 'Save failed',
-        description: body?.error || (error as Error)?.message || 'Could not save dashboard preferences.',
-        variant: 'destructive',
-      });
-    },
-  });
-};
 

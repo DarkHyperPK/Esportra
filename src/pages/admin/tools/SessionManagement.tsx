@@ -14,7 +14,6 @@ import {
   RefreshCw,
   AlertTriangle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +30,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  CommandButton,
+  CommandIconButton,
+} from "@/components/management/CommandSurface";
+import { AdminPage } from "@/components/admin/AdminPage";
 import {
   useActiveSessions,
   useSessionAudit,
@@ -88,6 +92,9 @@ function truncateUA(ua: string | null, maxLen = 40): string {
   return ua.length > maxLen ? ua.slice(0, maxLen) + "…" : ua;
 }
 
+const FIELD_LABEL =
+  "font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500";
+
 // ── Skeleton Components ─────────────────────────────────────────────────────
 
 function StatsBarSkeleton() {
@@ -96,7 +103,7 @@ function StatsBarSkeleton() {
       {[1, 2].map((i) => (
         <div
           key={i}
-          className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-5"
+          className="border border-white/10 bg-[#0a0a0c]/92 p-5"
         >
           <Skeleton className="h-4 w-24 mb-3" />
           <Skeleton className="h-8 w-16" />
@@ -112,7 +119,7 @@ function SessionTableSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-4 flex items-center gap-4"
+          className="border border-white/10 bg-[#0a0a0c]/92 p-4 flex items-center gap-4"
         >
           <Skeleton className="h-10 w-10 rounded-full shrink-0" />
           <div className="flex-1 space-y-2">
@@ -132,7 +139,7 @@ function AuditTableSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-4 space-y-2"
+          className="border border-white/10 bg-[#0a0a0c]/92 p-4 space-y-2"
         >
           <div className="flex items-center gap-3">
             <Skeleton className="h-5 w-16" />
@@ -149,31 +156,22 @@ function AuditTableSkeleton() {
 
 function EmptyState({ message, icon: Icon }: { message: string; icon: React.ElementType }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 flex items-center justify-center mb-4">
-        <Icon className="w-8 h-8 text-zinc-600" />
-      </div>
-      <p className="text-zinc-500 text-sm">{message}</p>
+    <div className="flex flex-col items-center justify-center border border-dashed border-white/10 bg-white/[0.02] py-16 text-center">
+      <Icon className="h-8 w-8 text-zinc-600 mb-4" />
+      <p className={FIELD_LABEL}>{message}</p>
     </div>
   );
 }
 
 function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
-        <AlertTriangle className="w-8 h-8 text-red-400" />
-      </div>
+    <div className="flex flex-col items-center justify-center border border-dashed border-red-500/20 bg-red-950/10 py-16 text-center">
+      <AlertTriangle className="h-8 w-8 text-red-400 mb-4" />
       <p className="text-zinc-400 text-sm mb-4">{message}</p>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onRetry}
-        className="border-zinc-700 text-zinc-300 hover:text-white"
-      >
-        <RefreshCw className="w-4 h-4 mr-2" />
+      <CommandButton variant="ghost" size="sm" onClick={onRetry}>
+        <RefreshCw className="h-4 w-4" />
         Retry
-      </Button>
+      </CommandButton>
     </div>
   );
 }
@@ -196,30 +194,26 @@ function Pagination({
 
   return (
     <div className="flex items-center justify-between pt-4">
-      <p className="text-xs text-zinc-500">
+      <p className={`tabular-nums ${FIELD_LABEL}`}>
         Page {page} of {totalPages} · {total} total
       </p>
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
+        <CommandIconButton
+          label="Previous page"
+          variant="ghost"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30"
-          aria-label="Previous page"
         >
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
+          <ChevronLeft className="h-4 w-4" />
+        </CommandIconButton>
+        <CommandIconButton
+          label="Next page"
+          variant="ghost"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="border-zinc-800 text-zinc-400 hover:text-white disabled:opacity-30"
-          aria-label="Next page"
         >
-          <ChevronRight className="w-4 h-4" />
-        </Button>
+          <ChevronRight className="h-4 w-4" />
+        </CommandIconButton>
       </div>
     </div>
   );
@@ -243,18 +237,18 @@ function StatsBar() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-5"
+        className="border border-white/10 bg-[#0a0a0c]/92 p-5"
       >
         <div className="flex items-center gap-2 mb-2">
           <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
           </span>
-          <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+          <span className={FIELD_LABEL}>
             Online Now
           </span>
         </div>
-        <p className="text-3xl font-black text-white" aria-live="polite">
+        <p className="text-3xl font-black text-white tabular-nums" aria-live="polite">
           {onlineData?.count ?? 0}
         </p>
       </motion.div>
@@ -264,15 +258,15 @@ function StatsBar() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
-        className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-5"
+        className="border border-white/10 bg-[#0a0a0c]/92 p-5"
       >
         <div className="flex items-center gap-2 mb-2">
-          <Users className="w-4 h-4 text-zinc-500" />
-          <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+          <Users className="h-4 w-4 text-zinc-500" />
+          <span className={FIELD_LABEL}>
             Total Users
           </span>
         </div>
-        <p className="text-3xl font-black text-white">
+        <p className="text-3xl font-black text-white tabular-nums">
           {sessionsData?.total ?? 0}
         </p>
       </motion.div>
@@ -336,12 +330,12 @@ function ActiveSessionsTab() {
     <div className="space-y-5">
       {/* Search */}
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
         <Input
           placeholder="Search by email or username…"
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
-          className="pl-10 bg-[#0a0a0c] border-white/5 text-white placeholder:text-zinc-600 focus:border-rose-500/40"
+          className="-none border-white/10 bg-[#0a0a0c]/90 pl-10 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500/20"
           aria-label="Search sessions"
         />
       </div>
@@ -364,13 +358,13 @@ function ActiveSessionsTab() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.03 }}
-                  className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:border-white/10 transition-colors"
+                  className="border border-white/10 bg-[#0a0a0c]/92 p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:border-white/25 transition-colors"
                 >
                   {/* Avatar + Info */}
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Avatar className="h-10 w-10 shrink-0">
                       <AvatarImage src={session.avatarUrl ?? undefined} alt="" />
-                      <AvatarFallback className="bg-zinc-800 text-zinc-400 text-xs font-semibold">
+                      <AvatarFallback className="-none border border-white/10 bg-black/40 text-zinc-400 font-mono text-xs font-bold">
                         {getInitials(session.fullName, session.email)}
                       </AvatarFallback>
                     </Avatar>
@@ -380,12 +374,12 @@ function ActiveSessionsTab() {
                           {session.username ?? session.email}
                         </p>
                         {isOwnSession && (
-                          <Badge className="bg-cyan-500/10 text-cyan-400 border-cyan-500/20 text-[10px] px-1.5 py-0">
+                          <Badge className="-none border border-white/25 bg-transparent text-zinc-300 font-mono text-[10px] font-bold uppercase tracking-wider px-1.5 py-0">
                             You
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-zinc-500 truncate">{session.email}</p>
+                      <p className="font-mono text-xs text-zinc-500 truncate">{session.email}</p>
                     </div>
                   </div>
 
@@ -394,9 +388,9 @@ function ActiveSessionsTab() {
                     {session.roles.map((role) => (
                       <Badge
                         key={role}
-                        className="bg-rose-500/10 text-rose-400 border-rose-500/20 text-[10px] px-1.5 py-0"
+                        className="-none border border-white/15 bg-transparent text-zinc-300 font-mono text-[10px] font-bold uppercase tracking-wider px-1.5 py-0"
                       >
-                        <Shield className="w-3 h-3 mr-1" />
+                        <Shield className="mr-1 h-3 w-3" />
                         {role.replace(/_/g, " ")}
                       </Badge>
                     ))}
@@ -404,27 +398,27 @@ function ActiveSessionsTab() {
 
                   {/* Last Sign-In */}
                   <div className="flex items-center gap-1.5 text-xs text-zinc-500 shrink-0">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>{timeAgo(session.lastSignInAt)}</span>
+                    <Clock className="h-3.5 w-3.5" />
+                    <span className="font-mono tabular-nums">{timeAgo(session.lastSignInAt)}</span>
                   </div>
 
                   {/* Created */}
                   <div className="hidden lg:flex items-center gap-1.5 text-xs text-zinc-500 shrink-0">
-                    <Activity className="w-3.5 h-3.5" />
-                    <span>{formatDate(session.createdAt)}</span>
+                    <Activity className="h-3.5 w-3.5" />
+                    <span className="font-mono tabular-nums">{formatDate(session.createdAt)}</span>
                   </div>
 
                   {/* Revoke Button */}
                   {!isOwnSession && (
-                    <Button
-                      variant="outline"
+                    <CommandButton
+                      variant="danger"
                       size="sm"
                       onClick={() => setRevokeTarget(session)}
-                      className="border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300 hover:border-red-500/40 shrink-0"
+                      className="shrink-0"
                     >
-                      <LogOut className="w-3.5 h-3.5 mr-1.5" />
+                      <LogOut className="h-3.5 w-3.5" />
                       Revoke
-                    </Button>
+                    </CommandButton>
                   )}
                 </motion.div>
               );
@@ -450,15 +444,15 @@ function ActiveSessionsTab() {
           }
         }}
       >
-        <AlertDialogContent className="bg-[#121214] border-white/10 max-w-md">
+        <AlertDialogContent className="max-w-md -none border border-white/10 bg-[#0a0a0c]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-white flex items-center gap-2">
-              <LogOut className="w-5 h-5 text-red-400" />
+            <AlertDialogTitle className="flex items-center gap-2 text-white">
+              <LogOut className="h-4 w-4 text-red-400" />
               Force Logout User
             </AlertDialogTitle>
             <AlertDialogDescription className="text-zinc-400">
               Are you sure you want to force logout{" "}
-              <span className="text-white font-semibold">
+              <span className="font-semibold text-white">
                 {revokeTarget?.username ?? revokeTarget?.email}
               </span>
               ? Their active session will be immediately terminated.
@@ -468,7 +462,7 @@ function ActiveSessionsTab() {
           <div className="space-y-2 py-2">
             <label
               htmlFor="revoke-reason"
-              className="text-xs font-medium text-zinc-400"
+              className={FIELD_LABEL}
             >
               Reason (optional)
             </label>
@@ -477,28 +471,28 @@ function ActiveSessionsTab() {
               value={revokeReason}
               onChange={(e) => setRevokeReason(e.target.value)}
               placeholder="Why are you revoking this session?"
-              className="bg-[#0a0a0c] border-white/10 text-white placeholder:text-zinc-600 resize-none"
+              className="resize-none -none border border-white/10 bg-black/60 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500/20"
               rows={3}
             />
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-transparent border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white">
+            <AlertDialogCancel className="-none border border-white/15 bg-transparent font-mono text-xs font-bold uppercase tracking-wider text-zinc-300 hover:bg-white/[0.03] hover:text-white">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRevoke}
               disabled={revokeMutation.isPending}
-              className="bg-red-600 text-white hover:bg-red-700 border-0"
+              className="-none border border-red-500/35 bg-red-950/20 font-mono text-xs font-bold uppercase tracking-wider text-red-100 hover:bg-red-950/50 hover:text-red-50"
             >
               {revokeMutation.isPending ? (
                 <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   Revoking…
                 </>
               ) : (
                 <>
-                  <LogOut className="w-4 h-4 mr-2" />
+                  <LogOut className="mr-2 h-4 w-4" />
                   Revoke Session
                 </>
               )}
@@ -535,23 +529,23 @@ function SessionAuditTab() {
     const lower = actionType.toLowerCase();
     if (lower.includes("login") || lower.includes("sign_in") || lower.includes("signin")) {
       return (
-        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] px-2 py-0.5">
-          <LogOut className="w-3 h-3 mr-1 rotate-180" />
+        <Badge className="-none border border-white/40 bg-transparent text-white font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
+          <LogOut className="mr-1 h-3 w-3 rotate-180" />
           Login
         </Badge>
       );
     }
     if (lower.includes("logout") || lower.includes("sign_out") || lower.includes("signout") || lower.includes("revoke")) {
       return (
-        <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 text-[10px] px-2 py-0.5">
-          <LogOut className="w-3 h-3 mr-1" />
+        <Badge className="-none border border-amber-500/35 bg-transparent text-amber-300 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
+          <LogOut className="mr-1 h-3 w-3" />
           Logout
         </Badge>
       );
     }
     return (
-      <Badge className="bg-zinc-500/10 text-zinc-400 border-zinc-500/20 text-[10px] px-2 py-0.5">
-        <Activity className="w-3 h-3 mr-1" />
+      <Badge className="-none border border-white/10 bg-transparent text-zinc-400 font-mono text-[10px] font-bold uppercase tracking-wider px-2 py-0.5">
+        <Activity className="mr-1 h-3 w-3" />
         {actionType}
       </Badge>
     );
@@ -561,12 +555,12 @@ function SessionAuditTab() {
     <div className="space-y-5">
       {/* Filter */}
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
         <Input
           placeholder="Filter by user ID…"
           value={userIdFilter}
           onChange={(e) => handleFilterChange(e.target.value)}
-          className="pl-10 bg-[#0a0a0c] border-white/5 text-white placeholder:text-zinc-600 focus:border-rose-500/40"
+          className="-none border-white/10 bg-[#0a0a0c]/90 pl-10 text-white placeholder:text-zinc-600 focus-visible:border-rose-500 focus-visible:ring-rose-500/20"
           aria-label="Filter audit by user ID"
         />
       </div>
@@ -581,27 +575,37 @@ function SessionAuditTab() {
       ) : (
         <>
           <div className="space-y-3">
-            {data.items.map((entry, idx) => (
+            {data.items.map((raw, idx) => {
+              // Defense-in-depth: jsonb details can arrive as object OR string —
+              // normalize at the data boundary so no sink can ever render an object.
+              const entry = {
+                ...raw,
+                details:
+                  typeof raw.details === 'object' && raw.details !== null
+                    ? JSON.stringify(raw.details)
+                    : raw.details ?? null,
+              };
+              return (
               <motion.div
                 key={entry.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.03 }}
-                className="rounded-2xl border border-white/5 bg-[#0a0a0c] p-4 space-y-3 hover:border-white/10 transition-colors"
+                className="border border-white/10 bg-[#0a0a0c]/92 p-4 space-y-3 hover:border-white/25 transition-colors"
               >
                 {/* Top row: time + action + user */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                   {getActionBadge(entry.actionType)}
 
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm text-white font-medium truncate">
+                    <span className="truncate text-sm font-medium text-white">
                       {entry.actorUsername ?? entry.actorEmail ?? entry.actorId}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-1.5 text-xs text-zinc-500 sm:ml-auto shrink-0">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>{timeAgo(entry.createdAt)}</span>
+                    <Clock className="h-3.5 w-3.5" />
+                    <span className="font-mono tabular-nums">{timeAgo(entry.createdAt)}</span>
                   </div>
                 </div>
 
@@ -609,26 +613,29 @@ function SessionAuditTab() {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs text-zinc-500">
                   {entry.ipAddress && (
                     <div className="flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5" />
-                      <span>{entry.ipAddress}</span>
+                      <Globe className="h-3.5 w-3.5" />
+                      <span className="font-mono">{entry.ipAddress}</span>
                     </div>
                   )}
                   {entry.userAgent && (
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <Monitor className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate" title={entry.userAgent}>
+                      <Monitor className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate font-mono" title={entry.userAgent}>
                         {truncateUA(entry.userAgent)}
                       </span>
                     </div>
                   )}
                   {entry.details && (
-                    <div className="text-zinc-400 italic truncate">
-                      {entry.details}
+                    <div className="truncate italic text-zinc-400">
+                      {typeof entry.details === 'object' && entry.details !== null
+                        ? JSON.stringify(entry.details)
+                        : String(entry.details)}
                     </div>
                   )}
-                </div>
-              </motion.div>
-            ))}
+                 </div>
+               </motion.div>
+              );
+            })}
           </div>
 
           <Pagination
@@ -647,60 +654,41 @@ function SessionAuditTab() {
 
 export default function SessionManagement() {
   return (
-    <div className="min-h-screen bg-transparent p-4 lg:p-8">
-      <div className="max-w-[1400px] mx-auto space-y-8">
-        {/* Header */}
-        <motion.header
-          initial={{ opacity: 0, y: -16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center">
-              <Monitor className="w-6 h-6 text-cyan-400" />
-            </div>
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white font-[Poppins]">
-                Session Management
-              </h1>
-              <p className="text-zinc-500 text-sm">
-                Monitor active sessions and audit authentication activity
-              </p>
-            </div>
-          </div>
-        </motion.header>
+    <AdminPage
+      eyebrow="Users & Access"
+      title="Sessions"
+      description="Monitor active sessions and audit authentication activity"
+    >
+      {/* Stats */}
+      <StatsBar />
 
-        {/* Stats */}
-        <StatsBar />
+      {/* Tabs */}
+      <Tabs defaultValue="active" className="space-y-6">
+        <TabsList className="-none border border-white/10 bg-[#0a0a0c]/92 p-1">
+          <TabsTrigger
+            value="active"
+            className="-none px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white"
+          >
+            <Users className="mr-2 h-4 w-4" />
+            Active Sessions
+          </TabsTrigger>
+          <TabsTrigger
+            value="audit"
+            className="-none px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-wider text-zinc-400 data-[state=active]:bg-white/10 data-[state=active]:text-white"
+          >
+            <Activity className="mr-2 h-4 w-4" />
+            Session Audit
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Tabs */}
-        <Tabs defaultValue="active" className="space-y-6">
-          <TabsList className="bg-[#0a0a0c] border border-white/5 p-1 rounded-xl">
-            <TabsTrigger
-              value="active"
-              className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-zinc-400 rounded-lg text-sm px-4 py-2"
-            >
-              <Users className="w-4 h-4 mr-2" />
-              Active Sessions
-            </TabsTrigger>
-            <TabsTrigger
-              value="audit"
-              className="data-[state=active]:bg-white/10 data-[state=active]:text-white text-zinc-400 rounded-lg text-sm px-4 py-2"
-            >
-              <Activity className="w-4 h-4 mr-2" />
-              Session Audit
-            </TabsTrigger>
-          </TabsList>
+        <TabsContent value="active">
+          <ActiveSessionsTab />
+        </TabsContent>
 
-          <TabsContent value="active">
-            <ActiveSessionsTab />
-          </TabsContent>
-
-          <TabsContent value="audit">
-            <SessionAuditTab />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
+        <TabsContent value="audit">
+          <SessionAuditTab />
+        </TabsContent>
+      </Tabs>
+    </AdminPage>
   );
 }

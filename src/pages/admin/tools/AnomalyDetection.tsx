@@ -14,9 +14,20 @@ import {
   ChevronRight,
   Loader2,
 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { AdminPage } from '@/components/admin/AdminPage';
+import {
+  CommandButton,
+  CommandEmptyState,
+  CommandIconButton,
+  CommandPanel,
+  CommandSection,
+  CommandTabs,
+  CommandToolbar,
+} from '@/components/management/CommandSurface';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
@@ -24,10 +35,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   useAnomalies,
   useAnomalyRules,
@@ -58,37 +65,32 @@ interface SeverityStyle {
   badge: string;
   icon: string;
   bar: string;
-  glow: string;
   border: string;
 }
 
 const SEVERITY_STYLES: Record<string, SeverityStyle> = {
   critical: {
-    badge: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
-    icon: 'text-rose-400',
-    bar: 'bg-rose-500',
-    glow: 'shadow-rose-500/20',
-    border: 'border-rose-500/30',
+    badge: 'text-red-300 border-red-500/30',
+    icon: 'text-red-300',
+    bar: 'bg-red-500',
+    border: 'border-red-500/30',
   },
   high: {
-    badge: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    icon: 'text-orange-400',
-    bar: 'bg-orange-500',
-    glow: 'shadow-orange-500/20',
-    border: 'border-orange-500/30',
+    badge: 'text-amber-300 border-amber-500/30',
+    icon: 'text-amber-300',
+    bar: 'bg-amber-500',
+    border: 'border-amber-500/30',
   },
   medium: {
-    badge: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    icon: 'text-amber-400',
+    badge: 'text-amber-300 border-amber-500/30',
+    icon: 'text-amber-300',
     bar: 'bg-amber-500',
-    glow: 'shadow-amber-500/20',
     border: 'border-amber-500/30',
   },
   low: {
-    badge: 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30',
+    badge: 'text-zinc-400 border-zinc-500/30',
     icon: 'text-zinc-400',
     bar: 'bg-zinc-500',
-    glow: 'shadow-zinc-500/20',
     border: 'border-zinc-500/30',
   },
 };
@@ -114,7 +116,7 @@ const timeAgo = (iso: string): string => {
 const EventCardSkeleton = () => (
   <div className="space-y-3">
     {Array.from({ length: 4 }).map((_, i) => (
-      <Skeleton key={i} className="h-32 rounded-2xl bg-white/5" />
+      <Skeleton key={i} className="h-32 -none bg-white/5" />
     ))}
   </div>
 );
@@ -122,7 +124,7 @@ const EventCardSkeleton = () => (
 const RuleCardSkeleton = () => (
   <div className="space-y-3">
     {Array.from({ length: 5 }).map((_, i) => (
-      <Skeleton key={i} className="h-24 rounded-2xl bg-white/5" />
+      <Skeleton key={i} className="h-24 -none bg-white/5" />
     ))}
   </div>
 );
@@ -138,27 +140,24 @@ interface StatsStripProps {
 
 const StatsStrip = ({ total, unresolved, critical, high }: StatsStripProps) => {
   const stats = [
-    { label: 'Total Events', value: total, icon: Activity, color: 'text-zinc-300', bg: 'bg-zinc-800/60' },
-    { label: 'Unresolved', value: unresolved, icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-    { label: 'Critical', value: critical, icon: Zap, color: 'text-rose-400', bg: 'bg-rose-500/10' },
-    { label: 'High', value: high, icon: TrendingUp, color: 'text-orange-400', bg: 'bg-orange-500/10' },
+    { label: 'Total Events', value: total, icon: Activity, color: 'text-zinc-400' },
+    { label: 'Unresolved', value: unresolved, icon: AlertTriangle, color: 'text-amber-300' },
+    { label: 'Critical', value: critical, icon: Zap, color: 'text-red-300' },
+    { label: 'High', value: high, icon: TrendingUp, color: 'text-amber-300' },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      {stats.map(({ label, value, icon: Icon, color, bg }) => (
-        <div
-          key={label}
-          className={`${bg} rounded-2xl p-4 border border-white/5 flex items-center gap-3`}
-        >
-          <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
-            <Icon className={`w-4 h-4 ${color}`} />
-          </div>
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {stats.map(({ label, value, icon: Icon, color }) => (
+        <CommandPanel key={label} className="flex items-center gap-3">
+          <Icon className={`h-4 w-4 shrink-0 ${color}`} />
           <div>
-            <p className="text-xl font-bold text-white">{value}</p>
-            <p className="text-xs text-zinc-500">{label}</p>
+            <p className="text-xl font-black text-white">{value}</p>
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+              {label}
+            </p>
           </div>
-        </div>
+        </CommandPanel>
       ))}
     </div>
   );
@@ -185,26 +184,29 @@ const ResolveDialog = ({ event, onClose }: ResolveDialogProps) => {
 
   return (
     <Dialog open={!!event} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="bg-[#0a0a0c] border-white/10 text-white max-w-md">
+      <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-emerald-400" />
+            <CheckCircle className="h-4 w-4 text-zinc-300" />
             Resolve Anomaly
           </DialogTitle>
         </DialogHeader>
 
         {event && (
           <div className="space-y-4">
-            <div className="p-3 rounded-xl bg-white/5 border border-white/5 space-y-1">
+            <CommandPanel className="space-y-1 p-3">
               <p className="text-sm font-medium text-white">{event.ruleName}</p>
-              <p className="text-xs text-zinc-500">
+              <p className="font-mono text-xs uppercase tracking-wider text-zinc-500">
                 {metricLabel(event.metric)} · {event.countObserved}/{event.thresholdCount} in {event.windowMinutes}m
               </p>
-            </div>
+            </CommandPanel>
 
             <div>
-              <label className="block text-sm text-zinc-400 mb-1.5" htmlFor="resolve-notes">
-                Resolution notes <span className="text-zinc-600">(optional)</span>
+              <label
+                className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500"
+                htmlFor="resolve-notes"
+              >
+                Resolution notes <span className="normal-case tracking-normal">(optional)</span>
               </label>
               <Textarea
                 id="resolve-notes"
@@ -212,28 +214,20 @@ const ResolveDialog = ({ event, onClose }: ResolveDialogProps) => {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Describe why this is a false positive or what action was taken…"
                 rows={3}
-                className="bg-white/5 border-white/10 text-white placeholder:text-zinc-600 resize-none"
+                className="-none resize-none border-white/10 bg-white/[0.03] text-white placeholder:text-zinc-600"
               />
             </div>
           </div>
         )}
 
         <DialogFooter className="gap-2">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="border-white/10 text-zinc-300 hover:text-white"
-          >
+          <CommandButton variant="ghost" size="sm" onClick={onClose}>
             Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={resolve.isPending}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white"
-          >
-            {resolve.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          </CommandButton>
+          <CommandButton size="sm" onClick={handleSubmit} disabled={resolve.isPending}>
+            {resolve.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             Mark Resolved
-          </Button>
+          </CommandButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -255,74 +249,75 @@ const EventCard = ({ event, onResolve }: EventCardProps) => {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-[#0a0a0c] border ${event.isResolved ? 'border-white/5' : style.border} rounded-2xl p-4 sm:p-5 space-y-4 hover:border-white/10 transition-all duration-200`}
+      className={`border bg-[#0a0a0c]/92 p-4 space-y-4 transition-colors duration-200 hover:border-white/25 sm:p-5 ${event.isResolved ? 'border-white/10' : style.border}`}
     >
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center shrink-0`}>
-            <AlertTriangle className={`w-4 h-4 ${style.icon}`} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{event.ruleName}</p>
-            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              <span className="text-xs text-zinc-500">{metricLabel(event.metric)}</span>
-              {event.isResolved ? (
-                <Badge className="text-[10px] px-1.5 py-0 h-4 bg-emerald-500/15 text-emerald-400 border-emerald-500/25 border">
-                  Resolved
-                </Badge>
-              ) : (
-                <Badge className={`text-[10px] px-1.5 py-0 h-4 border ${style.badge}`}>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-white">{event.ruleName}</p>
+          <div className="mt-0.5 flex flex-wrap items-center gap-2">
+            <span className="font-mono text-[11px] uppercase tracking-wider text-zinc-500">
+              {metricLabel(event.metric)}
+            </span>
+            {!event.isResolved && (
+              <>
+                <AlertTriangle className={`inline h-3 w-3 ${style.icon}`} />
+                <span className={`border px-1.5 py-0 font-mono text-[10px] font-bold uppercase tracking-wider ${style.badge}`}>
                   {event.severity.charAt(0).toUpperCase() + event.severity.slice(1)}
-                </Badge>
-              )}
-            </div>
+                </span>
+              </>
+            )}
+            {event.isResolved && (
+              <span className="border border-zinc-700 px-1.5 py-0 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                Resolved
+              </span>
+            )}
           </div>
         </div>
 
         {!event.isResolved && (
-          <Button
+          <CommandButton
+            variant="ghost"
             size="sm"
-            variant="outline"
             onClick={() => onResolve(event)}
-            className="shrink-0 border-white/10 text-zinc-300 hover:text-white hover:border-emerald-500/30 text-xs h-8 px-3"
+            className="shrink-0"
           >
-            <CheckCircle className="w-3.5 h-3.5 mr-1" />
+            <CheckCircle className="h-4 w-4" />
             Resolve
-          </Button>
+          </CommandButton>
         )}
       </div>
 
       {/* Count vs threshold */}
       <div className="space-y-1.5">
-        <div className="flex justify-between items-center text-xs">
+        <div className="flex items-center justify-between text-xs">
           <span className="text-zinc-400">
             <span className="font-bold text-white">{event.countObserved}</span>
             {' / '}
             <span className="text-zinc-500">{event.thresholdCount} threshold</span>
           </span>
-          <span className="text-zinc-500 flex items-center gap-1">
-            <Clock className="w-3 h-3" />
+          <span className="flex items-center gap-1 text-zinc-500">
+            <Clock className="h-3 w-3" />
             {event.windowMinutes}m window
           </span>
         </div>
-        <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+        <div className="h-1.5 overflow-hidden bg-white/5">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${style.bar}`}
+            className={`h-full transition-all duration-500 ${style.bar}`}
             style={{ width: `${pct}%` }}
           />
         </div>
       </div>
 
       {/* Footer */}
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
+      <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-wider text-zinc-500">
         <span className="flex items-center gap-1">
-          <Activity className="w-3 h-3" />
+          <Activity className="h-3 w-3" />
           Detected {timeAgo(event.detectedAt)}
         </span>
         {event.isResolved && event.resolvedAt && (
-          <span className="flex items-center gap-1 text-emerald-500/70">
-            <CheckCircle className="w-3 h-3" />
+          <span className="flex items-center gap-1">
+            <CheckCircle className="h-3 w-3" />
             Resolved {timeAgo(event.resolvedAt)}
             {event.resolvedByUsername && ` by ${event.resolvedByUsername}`}
           </span>
@@ -381,60 +376,64 @@ const EditRuleDialog = ({ rule, onClose }: EditRuleDialogProps) => {
     );
   };
 
+  const fieldLabel = 'mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500';
+
   return (
     <Dialog open={!!rule} onOpenChange={handleOpenChange}>
-      <DialogContent className="bg-[#0a0a0c] border-white/10 text-white max-w-md">
+      <DialogContent className="-none border-white/10 bg-[#0a0a0c] text-white max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5 text-rose-400" />
+            <Settings className="h-4 w-4 text-zinc-300" />
             Edit Detection Rule
           </DialogTitle>
         </DialogHeader>
 
         {rule && (
           <div className="space-y-4">
-            <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+            <CommandPanel className="p-3">
               <p className="text-sm font-semibold text-white">{rule.name}</p>
-              <p className="text-xs text-zinc-500 mt-0.5">{metricLabel(rule.metric)}</p>
-            </div>
+              <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+                {metricLabel(rule.metric)}
+              </p>
+            </CommandPanel>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">Threshold count</label>
+                <label className={fieldLabel}>Threshold count</label>
                 <Input
                   type="number"
                   min={1}
                   value={threshold}
                   onChange={(e) => setThreshold(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white h-9"
+                  className="h-9 -none border-white/10 bg-white/[0.03] text-white"
                 />
               </div>
               <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">Window (minutes)</label>
+                <label className={fieldLabel}>Window (minutes)</label>
                 <Input
                   type="number"
                   min={1}
                   value={window}
                   onChange={(e) => setWindow(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white h-9"
+                  className="h-9 -none border-white/10 bg-white/[0.03] text-white"
                 />
               </div>
               <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">Cooldown (minutes)</label>
+                <label className={fieldLabel}>Cooldown (minutes)</label>
                 <Input
                   type="number"
                   min={0}
                   value={cooldown}
                   onChange={(e) => setCooldown(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white h-9"
+                  className="h-9 -none border-white/10 bg-white/[0.03] text-white"
                 />
               </div>
               <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">Severity</label>
+                <label className={fieldLabel}>Severity</label>
                 <select
                   value={severity}
                   onChange={(e) => setSeverity(e.target.value)}
-                  className="w-full h-9 rounded-md bg-white/5 border border-white/10 text-white text-sm px-3 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+                  className="h-9 w-full -none border border-white/10 bg-white/[0.03] px-3 font-mono text-xs uppercase tracking-wider text-white focus:outline-none focus:ring-2 focus:ring-rose-500/40"
                 >
                   <option value="low" className="bg-[#121214]">Low</option>
                   <option value="medium" className="bg-[#121214]">Medium</option>
@@ -447,21 +446,13 @@ const EditRuleDialog = ({ rule, onClose }: EditRuleDialogProps) => {
         )}
 
         <DialogFooter className="gap-2">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="border-white/10 text-zinc-300 hover:text-white"
-          >
+          <CommandButton variant="ghost" size="sm" onClick={onClose}>
             Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={updateRule.isPending}
-            className="bg-rose-600 hover:bg-rose-500 text-white"
-          >
-            {updateRule.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          </CommandButton>
+          <CommandButton size="sm" onClick={handleSave} disabled={updateRule.isPending}>
+            {updateRule.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             Save Changes
-          </Button>
+          </CommandButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -487,45 +478,40 @@ const RuleCard = ({ rule, onEdit }: RuleCardProps) => {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-[#0a0a0c] border border-white/5 rounded-2xl p-4 sm:p-5 hover:border-white/10 transition-all duration-200 ${!rule.isActive ? 'opacity-60' : ''}`}
+      className={`border border-white/10 bg-[#0a0a0c]/92 p-4 transition-colors duration-200 hover:border-white/25 sm:p-5 ${!rule.isActive ? 'opacity-60' : ''}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center shrink-0 mt-0.5">
-            <Shield className={`w-4 h-4 ${style.icon}`} />
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Shield className={`h-4 w-4 shrink-0 ${style.icon}`} />
+            <p className="text-sm font-semibold text-white">{rule.name}</p>
+            <span className={`border px-1.5 py-0 font-mono text-[10px] font-bold uppercase tracking-wider ${style.badge}`}>
+              {rule.severity.charAt(0).toUpperCase() + rule.severity.slice(1)}
+            </span>
+            <span className="border border-zinc-700 px-1.5 py-0 font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+              {metricLabel(rule.metric)}
+            </span>
           </div>
 
-          <div className="min-w-0 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold text-white">{rule.name}</p>
-              <Badge className={`text-[10px] px-1.5 py-0 h-4 border ${style.badge}`}>
-                {rule.severity.charAt(0).toUpperCase() + rule.severity.slice(1)}
-              </Badge>
-              <Badge className="text-[10px] px-1.5 py-0 h-4 bg-zinc-800 text-zinc-400 border border-zinc-700">
-                {metricLabel(rule.metric)}
-              </Badge>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+            <span className="flex items-center gap-1">
+              <TrendingUp className="h-3 w-3" />
+              {rule.thresholdCount} events / {rule.windowMinutes}m window
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {rule.cooldownMinutes}m cooldown
+            </span>
+            {rule.lastTriggeredAt && (
               <span className="flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                {rule.thresholdCount} events / {rule.windowMinutes}m window
+                <Activity className="h-3 w-3" />
+                Last triggered {timeAgo(rule.lastTriggeredAt)}
               </span>
-              <span className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {rule.cooldownMinutes}m cooldown
-              </span>
-              {rule.lastTriggeredAt && (
-                <span className="flex items-center gap-1">
-                  <Activity className="w-3 h-3" />
-                  Last triggered {timeAgo(rule.lastTriggeredAt)}
-                </span>
-              )}
-            </div>
+            )}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <Switch
             checked={rule.isActive}
             onCheckedChange={handleToggle}
@@ -533,15 +519,13 @@ const RuleCard = ({ rule, onEdit }: RuleCardProps) => {
             aria-label={`Toggle ${rule.name}`}
             className="data-[state=checked]:bg-rose-500"
           />
-          <Button
-            size="sm"
-            variant="outline"
+          <CommandIconButton
+            label={`Edit ${rule.name}`}
+            variant="ghost"
             onClick={() => onEdit(rule)}
-            className="border-white/10 text-zinc-400 hover:text-white h-8 w-8 p-0"
-            aria-label={`Edit ${rule.name}`}
           >
-            <Settings className="w-3.5 h-3.5" />
-          </Button>
+            <Settings className="h-4 w-4" />
+          </CommandIconButton>
         </div>
       </div>
     </motion.div>
@@ -563,29 +547,25 @@ const Pagination = ({ page, total, pageSize, onChange }: PaginationProps) => {
 
   return (
     <div className="flex items-center justify-center gap-3 pt-2">
-      <Button
-        variant="outline"
-        size="sm"
+      <CommandIconButton
+        label="Previous page"
+        variant="ghost"
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
-        className="border-white/10 text-zinc-400 hover:text-white h-8 w-8 p-0"
-        aria-label="Previous page"
       >
-        <ChevronLeft className="w-4 h-4" />
-      </Button>
-      <span className="text-sm text-zinc-400">
-        Page <span className="text-white font-medium">{page}</span> of {totalPages}
+        <ChevronLeft className="h-4 w-4" />
+      </CommandIconButton>
+      <span className="font-mono text-xs uppercase tracking-wider text-zinc-500">
+        Page <span className="font-bold text-white">{page}</span> of {totalPages}
       </span>
-      <Button
-        variant="outline"
-        size="sm"
+      <CommandIconButton
+        label="Next page"
+        variant="ghost"
         onClick={() => onChange(page + 1)}
         disabled={page >= totalPages}
-        className="border-white/10 text-zinc-400 hover:text-white h-8 w-8 p-0"
-        aria-label="Next page"
       >
-        <ChevronRight className="w-4 h-4" />
-      </Button>
+        <ChevronRight className="h-4 w-4" />
+      </CommandIconButton>
     </div>
   );
 };
@@ -614,16 +594,16 @@ const AnomaliesTab = () => {
   return (
     <div className="space-y-5">
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <CommandToolbar>
         <div className="flex items-center gap-2">
           <input
             type="checkbox"
             id="show-resolved"
             checked={showResolved}
             onChange={(e) => { setShowResolved(e.target.checked); setPage(1); }}
-            className="w-4 h-4 rounded border-white/20 bg-white/5 accent-rose-500 cursor-pointer"
+            className="h-4 w-4 cursor-pointer border border-white/20 bg-white/[0.03] accent-rose-500"
           />
-          <label htmlFor="show-resolved" className="text-sm text-zinc-400 cursor-pointer select-none">
+          <label htmlFor="show-resolved" className="cursor-pointer select-none font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">
             Show resolved
           </label>
           <span
@@ -635,25 +615,27 @@ const AnomaliesTab = () => {
           </span>
         </div>
 
-        <Button
+        <CommandButton
+          size="sm"
+          slide
           onClick={() => scan.mutate()}
           disabled={scan.isPending}
-          className="bg-rose-600 hover:bg-rose-500 text-white h-9 text-sm self-start sm:self-auto"
           aria-label="Run manual anomaly scan"
+          className="self-start sm:self-auto"
         >
           {scan.isPending ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
               Scanning…
             </>
           ) : (
             <>
-              <Scan className="w-4 h-4 mr-2" />
+              <Scan className="h-4 w-4" />
               Scan Now
             </>
           )}
-        </Button>
-      </div>
+        </CommandButton>
+      </CommandToolbar>
 
       {/* Stats strip */}
       {!isLoading && !error && (
@@ -669,24 +651,22 @@ const AnomaliesTab = () => {
       {isLoading ? (
         <EventCardSkeleton />
       ) : error ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-          <AlertTriangle className="w-10 h-10 text-rose-400 opacity-60" />
-          <p className="text-zinc-400 text-sm">Failed to load anomaly events.</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            className="border-white/10 text-zinc-400 hover:text-white mt-1"
-          >
-            Retry
-          </Button>
-        </div>
+        <CommandEmptyState
+          title="Failed to load anomaly events."
+          description="The scan data could not be retrieved. Retry when ready."
+          icon={<AlertTriangle className="h-5 w-5" />}
+          action={
+            <CommandButton variant="ghost" size="sm" onClick={() => refetch()}>
+              Retry
+            </CommandButton>
+          }
+        />
       ) : events.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-          <Shield className="w-10 h-10 text-emerald-400 opacity-60" />
-          <p className="text-white font-medium">No anomalies detected</p>
-          <p className="text-zinc-500 text-sm">All systems are operating within normal thresholds.</p>
-        </div>
+        <CommandEmptyState
+          title="No anomalies detected"
+          description="All systems are operating within normal thresholds."
+          icon={<Shield className="h-5 w-5" />}
+        />
       ) : (
         <AnimatePresence mode="popLayout">
           <div className="space-y-3">
@@ -717,24 +697,22 @@ const RulesTab = () => {
       {isLoading ? (
         <RuleCardSkeleton />
       ) : error ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-          <AlertTriangle className="w-10 h-10 text-rose-400 opacity-60" />
-          <p className="text-zinc-400 text-sm">Failed to load detection rules.</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            className="border-white/10 text-zinc-400 hover:text-white mt-1"
-          >
-            Retry
-          </Button>
-        </div>
+        <CommandEmptyState
+          title="Failed to load detection rules."
+          description="The rules could not be retrieved. Retry when ready."
+          icon={<AlertTriangle className="h-5 w-5" />}
+          action={
+            <CommandButton variant="ghost" size="sm" onClick={() => refetch()}>
+              Retry
+            </CommandButton>
+          }
+        />
       ) : !rules || rules.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-          <Settings className="w-10 h-10 text-zinc-600 opacity-60" />
-          <p className="text-white font-medium">No detection rules found</p>
-          <p className="text-zinc-500 text-sm">System detection rules will appear here once configured.</p>
-        </div>
+        <CommandEmptyState
+          title="No detection rules found"
+          description="System detection rules will appear here once configured."
+          icon={<Settings className="h-5 w-5" />}
+        />
       ) : (
         <AnimatePresence mode="popLayout">
           <div className="space-y-3">
@@ -752,55 +730,29 @@ const RulesTab = () => {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-const AnomalyDetection = () => (
-  <div className="min-h-screen p-4 lg:p-8 max-w-[1400px] mx-auto">
-    {/* Header */}
-    <motion.header
-      initial={{ opacity: 0, y: -16 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8"
+const AnomalyDetection = () => {
+  const [activeTab, setActiveTab] = useState('anomalies');
+
+  return (
+    <AdminPage
+      eyebrow="System"
+      title="Anomaly Detection"
+      description="Real-time platform threat monitoring"
     >
-      <div className="flex items-center gap-4">
-        <div className="w-11 h-11 rounded-2xl bg-orange-500/10 flex items-center justify-center">
-          <Zap className="w-5 h-5 text-orange-400" />
-        </div>
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white">
-            Anomaly Detection
-          </h1>
-          <p className="text-zinc-500 text-sm">Real-time platform threat monitoring</p>
-        </div>
-      </div>
-    </motion.header>
+      <CommandTabs
+        tabs={[
+          { value: 'anomalies', label: 'Active Anomalies' },
+          { value: 'rules', label: 'Detection Rules' },
+        ]}
+        active={activeTab}
+        onChange={setActiveTab}
+      />
 
-    {/* Tabs */}
-    <Tabs defaultValue="anomalies" className="space-y-6">
-      <TabsList className="bg-white/5 border border-white/10 p-1 rounded-xl h-auto flex-wrap">
-        <TabsTrigger
-          value="anomalies"
-          className="data-[state=active]:bg-rose-500/20 data-[state=active]:text-rose-400 text-zinc-400 rounded-lg text-sm px-4 py-2"
-        >
-          <AlertTriangle className="w-4 h-4 mr-2" />
-          Active Anomalies
-        </TabsTrigger>
-        <TabsTrigger
-          value="rules"
-          className="data-[state=active]:bg-rose-500/20 data-[state=active]:text-rose-400 text-zinc-400 rounded-lg text-sm px-4 py-2"
-        >
-          <Shield className="w-4 h-4 mr-2" />
-          Detection Rules
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="anomalies" className="mt-0">
-        <AnomaliesTab />
-      </TabsContent>
-
-      <TabsContent value="rules" className="mt-0">
-        <RulesTab />
-      </TabsContent>
-    </Tabs>
-  </div>
-);
+      <CommandSection className="space-y-5">
+        {activeTab === 'anomalies' ? <AnomaliesTab /> : <RulesTab />}
+      </CommandSection>
+    </AdminPage>
+  );
+};
 
 export default AnomalyDetection;
