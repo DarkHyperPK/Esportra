@@ -1,38 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Medal, Crown, ChevronDown, Users, Target, Award, TrendingUp, Swords, Star } from 'lucide-react';
-import { apiClient } from '@/lib/apiClient';
-import { getCountryFlagUrl } from '@/utils/countries';
-import { Globe } from 'lucide-react';
-import EntityAvatar from '@/components/ui/EntityAvatar';
-import { useQuery } from '@tanstack/react-query';
+import React, { useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import {
+    Trophy, Medal, Crown, Award, TrendingUp, Swords, Target,
+    Globe2, AlertTriangle, RotateCcw, ChevronLeft, ChevronRight, X,
+} from 'lucide-react';
 import { SEO } from '@/components/SEO';
-
-// ── Types ──
-interface TeamStats {
-    id: string;
-    name: string;
-    logo_url: string | null;
-    country_code: string | null;
-    game: string | null;
-    matches_played: number;
-    wins: number;
-    losses: number;
-    win_rate: number;
-    tournaments_won: number;
-    rp: number;
-}
-
-interface LeaderboardFilters {
-    games: string[];
-    countries: string[];
-}
-
-// ── Constants ──
-const RP_PER_WIN = 50;
-const RP_PER_LOSS = -10;
-const RP_PER_TOURNAMENT_WIN = 500;
-const RP_PER_MVP = 25;
+import EntityAvatar from '@/components/ui/EntityAvatar';
+import { getCountryFlagUrl } from '@/utils/countries';
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+    LEADERBOARD_PAGE_SIZE, useLeaderboardFilters, useLeaderboardMeta, useTeamLeaderboard,
+} from '@/hooks/useTeamLeaderboard';
+import type { LeaderboardScope, LeaderboardTeamRow } from '@/types/leaderboard';
 
 const RANK_COLORS = [
     'from-yellow-400 to-amber-500',   // 1st
@@ -42,47 +29,132 @@ const RANK_COLORS = [
 
 const RANK_ICONS = [Crown, Medal, Award];
 
-// ── Page Component ──
-const Leaderboards: React.FC = () => {
-    const [teams, setTeams] = useState<TeamStats[]>([]);
-    const [country, setCountry] = useState('');
-    const [countryMenuOpen, setCountryMenuOpen] = useState(false);
-    const [loading, setLoading] = useState(true);
+const SCOPE_TABS: { value: LeaderboardScope; label: string }[] = [
+    { value: 'global', label: 'Global' },
+    { value: 'region', label: 'By Region' },
+    { value: 'country', label: 'By Country' },
+];
 
-    // Fetch filter options
-    const { data: filterOptions } = useQuery<LeaderboardFilters>({
-        queryKey: ['leaderboard-filters'],
-        queryFn: () => apiClient.get<LeaderboardFilters>('/api/leaderboards/filters'),
-        staleTime: 5 * 60 * 1000,
+const prettyRegion = (value: string) =>
+    value.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+const prettyGame = (value: string) =>
+    value.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+const RankBadge: React.FC<{ rank: number }> = ({ rank }) => {
+    const isTopThree = rank <= 3;
+    if (!isTopThree) {
+        return <span className="text-sm font-black text-zinc-600 tabular-nums">{rank}</span>;
+    }
+    const Icon = RANK_ICONS[rank - 1];
+    return (
+        <div className={`w-9 h-9 bg-gradient-to-br ${RANK_COLORS[rank - 1]} flex items-center justify-center`}>
+            <Icon className="w-4 h-4 text-white" />
+        </div>
+    );
+};
+
+const LeaderboardSkeletonRows: React.FC = () => (
+    <>
+        {Array.from({ length: 8 }).map((_, i) => (
+            <TableRow key={i}>
+                <TableCell><Skeleton className="h-8 w-8 mx-auto bg-white/5" /></TableCell>
+                <TableCell>
+                    <div className="flex items-center gap-3">
+                        <Skeleton className="w-10 h-10 rounded-full bg-white/5" />
+                        <Skeleton className="h-4 w-36 bg-white/5" />
+                    </div>
+                </TableCell>
+                <TableCell colSpan={7}><Skeleton className="h-4 w-full max-w-xs ml-auto bg-white/5" /></TableCell>
+            </TableRow>
+        ))}
+    </>
+);
+
+const Leaderboards: React.FC = () => {
+    // ── URL-param state (shareable, back-button friendly) ──
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const scopeParam = searchParams.get('scope');
+    const scope: LeaderboardScope =
+        scopeParam === 'region' || scopeParam === 'country' ? scopeParam : 'global';
+
+    const game = searchParams.get('game') ?? '';
+    const country = searchParams.get('country') ?? '';
+    const region = searchParams.get('region') ?? '';
+    const page = Math.max(1, Number(searchParams.get('page')) || 1);
+
+    const updateParam = (key: string, value: string) => {
+        setSearchParams(
+            prev => {
+                const next = new URLSearchParams(prev);
+                if (value) next.set(key, value);
+                else next.delete(key);
+                if (key !== 'page') next.delete('page');
+                return next;
+            },
+            { replace: true },
+        );
+    };
+
+    const setScope = (next: string) => {
+        setSearchParams(
+            prev => {
+                const sp = new URLSearchParams(prev);
+                sp.set('scope', next);
+                if (next !== 'region') sp.delete('region');
+                if (next !== 'country') sp.delete('country');
+                sp.delete('page');
+                return sp;
+            },
+            { replace: true },
+        );
+    };
+
+    const clearFilters = () => {
+        const sp = new URLSearchParams();
+        if (scope !== 'global') sp.set('scope', scope);
+        setSearchParams(sp);
+    };
+
+    const hasActiveFilters = Boolean(game || country || region);
+
+    // ── Data ──
+    const filtersQuery = useLeaderboardFilters();
+    const metaQuery = useLeaderboardMeta();
+
+    const offset = (page - 1) * LEADERBOARD_PAGE_SIZE;
+    const boardQuery = useTeamLeaderboard({
+        scope,
+        game: game || undefined,
+        country: country || undefined,
+        region: region || undefined,
+        limit: LEADERBOARD_PAGE_SIZE,
+        offset,
     });
 
-    // ── Fetch Valorant Team Leaderboard ──
-    useEffect(() => {
-        setLoading(true);
-        const fetchData = async () => {
-            try {
-                const params = new URLSearchParams({ game: 'Valorant' });
-                if (country) params.set('country', country);
-                const stats = await apiClient.get<TeamStats[]>(`/api/leaderboards/teams?${params.toString()}`);
-                setTeams(stats || []);
-            } catch (err) {
-                console.error('Leaderboard fetch error:', err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, [country]);
+    const rows: LeaderboardTeamRow[] = boardQuery.data?.items ?? [];
+    const total = boardQuery.data?.total ?? 0;
+    const totalPages = Math.max(1, Math.ceil(total / LEADERBOARD_PAGE_SIZE));
+    const isLoading = boardQuery.isLoading || filtersQuery.isLoading;
+
+    const gameOptions = useMemo(
+        () => [...(filtersQuery.data?.games ?? [])].sort(),
+        [filtersQuery.data?.games],
+    );
+
+    const meta = metaQuery.data;
 
     return (
         <div className="min-h-screen pb-20">
             <SEO
                 title="Leaderboards"
-                description="View top esports players and teams ranked by performance across Valorant, CS2, League of Legends, and more."
+                description="Global team rankings across every esports title on Esportra — filter by game, region, or country."
                 url="/leaderboards"
             />
+
             {/* Hero Header */}
-            <div className="relative overflow-hidden pt-10 pb-16 px-4">
+            <div className="relative overflow-hidden pt-10 pb-12 px-4">
                 <div className="absolute inset-0 bg-gradient-to-b from-rose-500/10 via-rose-500/5 to-transparent pointer-events-none" />
                 <div className="relative z-10 max-w-5xl mx-auto text-center">
                     <motion.div
@@ -98,198 +170,236 @@ const Leaderboards: React.FC = () => {
                             Leader<span className="text-rose-500">boards</span>
                         </h1>
                         <p className="text-zinc-500 text-sm sm:text-base max-w-md mx-auto">
-                            See who dominates the competition. Rankings based on match wins, tournament victories, and MVP performances.
+                            Team rankings across every title — earned through match wins, tournament placements, and championships.
                         </p>
                     </motion.div>
                 </div>
             </div>
 
             {/* Controls */}
-            <div className="max-w-5xl mx-auto px-4 mb-8">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                    {/* Game Badge */}
-                    <div className="flex items-center border border-white/10 bg-[#0a0a0c]/90 p-1">
-                        <div className="flex items-center gap-2 px-5 py-2.5 text-xs font-black uppercase tracking-widest bg-rose-500 text-white">
-                            <Users className="w-3.5 h-3.5" />
-                            Valorant — Teams
-                        </div>
+            <div className="max-w-5xl mx-auto px-4 mb-6">
+                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+                    {/* Scope tabs */}
+                    <div className="flex items-center border border-white/10 bg-[#0a0a0c]/90 p-1 self-start">
+                        {SCOPE_TABS.map(tab => (
+                            <button
+                                key={tab.value}
+                                onClick={() => setScope(tab.value)}
+                                className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-widest transition-all ${
+                                    scope === tab.value
+                                        ? 'bg-rose-500 text-white'
+                                        : 'text-zinc-500 hover:text-white'
+                                }`}
+                            >
+                                {tab.value === 'global' && <Globe2 className="w-3.5 h-3.5" />}
+                                {tab.label}
+                            </button>
+                        ))}
                     </div>
 
-                    {/* Country Filter Dropdown */}
-                    <div className="relative">
-                        <button
-                            onClick={() => setCountryMenuOpen(!countryMenuOpen)}
-                            className="flex items-center gap-2 border border-white/10 bg-[#0a0a0c]/90 px-5 py-2.5 text-xs font-bold uppercase tracking-widest text-zinc-300 hover:border-white/25 transition-all"
+                    {/* Filters */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Select
+                            value={game}
+                            onValueChange={v => updateParam('game', v === '__all' ? '' : v)}
                         >
-                            <Globe className="w-3.5 h-3.5 text-rose-400" />
-                            {country || 'All Countries'}
-                            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${countryMenuOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                        <AnimatePresence>
-                            {countryMenuOpen && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                                    className="absolute right-0 mt-2 w-56 bg-[#0a0a0c]/95 border border-white/10 overflow-hidden shadow-2xl z-50 max-h-72 overflow-y-auto overscroll-contain" data-lenis-prevent
-                                >
-                                    <button
-                                        onClick={() => { setCountry(''); setCountryMenuOpen(false); }}
-                                        className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all ${!country
-                                            ? 'bg-rose-600/20 text-rose-300'
-                                            : 'text-zinc-400 hover:bg-white/5 hover:text-white'
-                                            }`}
-                                    >
-                                        All Countries
-                                    </button>
-                                    {(filterOptions?.countries ?? []).map(c => (
-                                        <button
-                                            key={c}
-                                            onClick={() => { setCountry(c); setCountryMenuOpen(false); }}
-                                            className={`w-full text-left px-4 py-3 text-sm font-semibold transition-all flex items-center gap-2 ${country === c
-                                                ? 'bg-rose-600/20 text-rose-300'
-                                                : 'text-zinc-400 hover:bg-white/5 hover:text-white'
-                                                }`}
-                                        >
-                                            <img
-                                                src={getCountryFlagUrl(c)}
-                                                alt={c}
-                                                className="w-5 h-3.5 object-cover rounded-sm"
-                                            />
-                                            {c}
-                                        </button>
+                            <SelectTrigger className="w-[170px] bg-[#0a0a0c]/90 border-white/10 focus:border-rose-500/50 text-xs font-bold uppercase tracking-wider">
+                                <SelectValue placeholder="All Games" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#121214] border-zinc-800 text-white max-h-[300px]">
+                                <SelectItem value="__all" className="focus:bg-zinc-800 cursor-pointer">All Games</SelectItem>
+                                {gameOptions.map(g => (
+                                    <SelectItem key={g} value={g} className="focus:bg-zinc-800 focus:text-rose-500 cursor-pointer">
+                                        {prettyGame(g)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {scope === 'region' && (
+                            <Select
+                                value={region}
+                                onValueChange={v => updateParam('region', v === '__all' ? '' : v)}
+                            >
+                                <SelectTrigger className="w-[180px] bg-[#0a0a0c]/90 border-white/10 focus:border-rose-500/50 text-xs font-bold uppercase tracking-wider">
+                                    <SelectValue placeholder={region ? undefined : 'All Regions'}>{region ? prettyRegion(region) : 'All Regions'}</SelectValue>
+                                </SelectTrigger>
+                                <SelectContent className="bg-[#121214] border-zinc-800 text-white max-h-[300px]">
+                                    <SelectItem value="__all" className="focus:bg-zinc-800 cursor-pointer">All Regions</SelectItem>
+                                    {(filtersQuery.data?.regions ?? []).map(r => (
+                                        <SelectItem key={r} value={r} className="focus:bg-zinc-800 focus:text-rose-500 cursor-pointer">
+                                            {prettyRegion(r)}
+                                        </SelectItem>
                                     ))}
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                                </SelectContent>
+                            </Select>
+                        )}
+
+                        {scope === 'country' && (
+                            <CountryFilterSelect
+                                value={country}
+                                options={filtersQuery.data?.countries ?? []}
+                                onChange={v => updateParam('country', v === '__all' ? '' : v)}
+                            />
+                        )}
+
+                        {hasActiveFilters && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={clearFilters}
+                                className="text-zinc-500 hover:text-white hover:bg-white/5 text-xs font-bold uppercase tracking-wider"
+                            >
+                                <X className="w-3.5 h-3.5 mr-1" /> Clear
+                            </Button>
+                        )}
                     </div>
                 </div>
-            </div>
 
-            {/* Leaderboard Table */}
-            <div className="max-w-5xl mx-auto px-4">
-                {loading ? (
-                    <div className="flex items-center justify-center py-32">
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                            className="w-10 h-10 border-2 border-rose-500/30 border-t-rose-500 rounded-full"
-                        />
-                    </div>
-                ) : teams.length === 0 ? (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="text-center py-32"
-                    >
-                        <div className="w-20 h-20 bg-[#0a0a0c] flex items-center justify-center mx-auto mb-6 border border-white/10">
-                            <Trophy className="w-10 h-10 text-zinc-700" />
-                        </div>
-                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">No Rankings Yet</h3>
-                        <p className="text-zinc-500 text-sm">Complete matches to see rankings here.</p>
-                    </motion.div>
-                ) : (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="overflow-x-auto -mx-4 px-4"
-                    >
-                        <div className="min-w-[32rem] space-y-3">
-                        {/* Header Row */}
-                        <div className="grid grid-cols-[60px,1fr,repeat(4,minmax(60px,100px)),100px] gap-2 px-6 py-3 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">
-                            <span>Rank</span>
-                            <span>Team</span>
-                            <span className="text-center">Played</span>
-                            <span className="text-center">Wins</span>
-                            <span className="text-center">Win%</span>
-                            <span className="text-center">Trophies</span>
-                            <span className="text-right">RP</span>
-                        </div>
-
-                        {/* Rows */}
-                        <AnimatePresence mode="popLayout">
-                            {teams.map((entry, idx) => {
-                                const isTopThree = idx < 3;
-                                const RankIcon = isTopThree ? RANK_ICONS[idx] : null;
-
-                                return (
-                                    <motion.div
-                                        key={entry.id}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ delay: idx * 0.03, type: 'spring', stiffness: 120 }}
-                                        className={`group relative grid grid-cols-[60px,1fr,repeat(4,minmax(60px,100px)),100px] gap-2 items-center px-6 py-4 border transition-all duration-300 ${isTopThree
-                                            ? 'bg-[#0a0a0c]/90 border-rose-500/20 hover:border-rose-500/40'
-                                            : 'bg-[#0a0a0c]/60 border-white/5 hover:border-white/15'
-                                            }`}
-                                    >
-                                        {/* Rank Badge */}
-                                        <div className="flex items-center justify-center">
-                                            {isTopThree ? (
-                                                <div className={`w-9 h-9 ${RANK_COLORS[idx]} flex items-center justify-center`}>
-                                                    {RankIcon && <RankIcon className="w-4 h-4 text-white" />}
-                                                </div>
-                                            ) : (
-                                                <span className="text-sm font-black text-zinc-600 tabular-nums">{idx + 1}</span>
-                                            )}
-                                        </div>
-
-                                        {/* Name + Avatar */}
-                                        <div className="flex items-center gap-4 min-w-0">
-                                            <div className="w-11 h-11 flex-shrink-0 flex items-center justify-center">
-                                                <EntityAvatar
-                                                    src={entry.logo_url}
-                                                    name={entry.name}
-                                                    entityId={entry.id}
-                                                    type="team"
-                                                    size="w-11 h-11"
-                                                />
-                                            </div>
-                                            <span className="text-sm font-bold text-white truncate group-hover:text-rose-300 transition-colors">
-                                                {entry.name}
-                                            </span>
-                                            {entry.country_code && (
-                                                <img
-                                                    src={getCountryFlagUrl(entry.country_code)}
-                                                    alt={entry.country_code}
-                                                    className="w-5 h-3.5 object-cover rounded-sm shadow-sm border border-white/5"
-                                                    title={entry.country_code}
-                                                />
-                                            )}
-                                        </div>
-
-                                        {/* Stats */}
-                                        <span className="text-center text-sm font-bold text-zinc-400 tabular-nums">{entry.matches_played}</span>
-                                        <span className="text-center text-sm font-bold text-emerald-400 tabular-nums">{entry.wins}</span>
-                                        <span className="text-center text-sm font-bold text-zinc-300 tabular-nums">{entry.win_rate}%</span>
-                                        <span className="text-center text-sm font-bold text-yellow-400 tabular-nums flex items-center justify-center gap-1">
-                                            {entry.tournaments_won}
-                                            <Trophy className="w-3 h-3 text-yellow-500/60" />
-                                        </span>
-
-                                        {/* RP */}
-                                        <div className="text-right">
-                                            <span className={`text-base font-black tabular-nums ${isTopThree ? 'text-rose-400' : 'text-white'}`}>
-                                                {entry.rp.toLocaleString()}
-                                            </span>
-                                            <span className="text-[9px] font-bold text-zinc-600 ml-1 uppercase">rp</span>
-                                        </div>
-
-                                        {/* Hover Glow */}
-                                        {isTopThree && (
-                                            <div className="absolute -right-4 -top-4 w-24 h-24 bg-rose-500/5 blur-[60px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                                        )}
-                                    </motion.div>
-                                );
-                            })}
-                        </AnimatePresence>
-                        </div>
-                    </motion.div>
+                {/* Result count */}
+                {!boardQuery.isLoading && !boardQuery.isError && total > 0 && (
+                    <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-zinc-600">
+                        {total.toLocaleString()} ranked team{total === 1 ? '' : 's'}
+                        {game && <> in <span className="text-rose-400">{prettyGame(game)}</span></>}
+                        {scope === 'region' && region && <> in <span className="text-rose-400">{prettyRegion(region)}</span></>}
+                        {scope === 'country' && country && <> from <span className="text-rose-400">{country}</span></>}
+                    </p>
                 )}
             </div>
 
-            {/* RP System Explanation */}
+            {/* Leaderboard */}
+            <div className="max-w-5xl mx-auto px-4">
+                {boardQuery.isError ? (
+                    <div className="text-center py-32">
+                        <div className="w-20 h-20 bg-[#0a0a0c] flex items-center justify-center mx-auto mb-6 border border-rose-500/20">
+                            <AlertTriangle className="w-10 h-10 text-rose-400/60" />
+                        </div>
+                        <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">Couldn't Load Rankings</h3>
+                        <p className="text-zinc-500 text-sm mb-6">Something went wrong while fetching the leaderboard.</p>
+                        <Button
+                            onClick={() => boardQuery.refetch()}
+                            variant="outline"
+                            className="border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+                        >
+                            <RotateCcw className="w-4 h-4 mr-2" /> Try Again
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto -mx-4 px-4">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="hover:bg-transparent">
+                                    <TableHead className="w-[70px] text-center text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Rank</TableHead>
+                                    <TableHead className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Team</TableHead>
+                                    <TableHead className="w-[80px] text-center text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 hidden sm:table-cell">Played</TableHead>
+                                    <TableHead className="w-[70px] text-center text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">W</TableHead>
+                                    <TableHead className="w-[70px] text-center text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 hidden md:table-cell">L</TableHead>
+                                    <TableHead className="w-[80px] text-center text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Win%</TableHead>
+                                    <TableHead className="w-[80px] text-center text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Titles</TableHead>
+                                    <TableHead className="w-[90px] text-center text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 hidden lg:table-cell">Best</TableHead>
+                                    <TableHead className="w-[110px] text-right text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">RP</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading ? (
+                                    <LeaderboardSkeletonRows />
+                                ) : rows.length === 0 ? (
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableCell colSpan={9} className="py-24 text-center">
+                                            <Trophy className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
+                                            <h3 className="text-lg font-black text-white uppercase tracking-tight mb-1">No Rankings Yet</h3>
+                                            <p className="text-zinc-500 text-sm">
+                                                {hasActiveFilters
+                                                    ? 'No teams match these filters yet — try widening your search.'
+                                                    : 'Complete matches to see rankings here.'}
+                                            </p>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    rows.map(entry => {
+                                        const isTopThree = entry.rank <= 3;
+                                        return (
+                                            <TableRow
+                                                key={entry.team_id}
+                                                className={isTopThree ? 'border-rose-500/20 bg-rose-500/[0.03]' : ''}
+                                            >
+                                                <TableCell className="text-center">
+                                                    <RankBadge rank={entry.rank} />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-3 min-w-0">
+                                                        <EntityAvatar
+                                                            src={entry.logo_url}
+                                                            name={entry.name}
+                                                            entityId={entry.team_id}
+                                                            type="team"
+                                                            size="w-10 h-10"
+                                                        />
+                                                        <span className={`text-sm font-bold truncate ${isTopThree ? 'text-rose-100' : 'text-white'}`}>
+                                                            {entry.name}
+                                                        </span>
+                                                        {entry.country_code && (
+                                                            <img
+                                                                src={getCountryFlagUrl(entry.country_code)}
+                                                                alt={entry.country_code}
+                                                                className="w-5 h-3.5 object-cover rounded-sm shadow-sm border border-white/5 flex-shrink-0"
+                                                                title={entry.country_code}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-center text-sm font-bold text-zinc-400 tabular-nums hidden sm:table-cell">{entry.matches_played}</TableCell>
+                                                <TableCell className="text-center text-sm font-bold text-emerald-400 tabular-nums">{entry.wins}</TableCell>
+                                                <TableCell className="text-center text-sm font-bold text-zinc-500 tabular-nums hidden md:table-cell">{entry.losses}</TableCell>
+                                                <TableCell className="text-center text-sm font-bold text-zinc-300 tabular-nums">{entry.win_rate}%</TableCell>
+                                                <TableCell className="text-center text-sm font-bold text-yellow-400 tabular-nums">{entry.tournaments_won}</TableCell>
+                                                <TableCell className="text-center text-sm font-bold text-cyan-400 tabular-nums hidden lg:table-cell">
+                                                    {entry.best_placement ? `#${entry.best_placement}` : '—'}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <span className={`text-base font-black tabular-nums ${isTopThree ? 'text-rose-400' : 'text-white'}`}>
+                                                        {entry.rp.toLocaleString()}
+                                                    </span>
+                                                    <span className="text-[9px] font-bold text-zinc-600 ml-1 uppercase">rp</span>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+
+                {/* Pagination */}
+                {!boardQuery.isError && totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-4 mt-8">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page <= 1 || boardQuery.isFetching}
+                            onClick={() => updateParam('page', String(page - 1))}
+                            className="border-white/10 text-zinc-300 hover:bg-white/5 disabled:opacity-30"
+                        >
+                            <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+                        </Button>
+                        <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 tabular-nums">
+                            Page {page} / {totalPages}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={page >= totalPages || boardQuery.isFetching}
+                            onClick={() => updateParam('page', String(page + 1))}
+                            className="border-white/10 text-zinc-300 hover:bg-white/5 disabled:opacity-30"
+                        >
+                            Next <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                    </div>
+                )}
+            </div>
+
+            {/* RP System Explanation — values live from /api/leaderboards/meta */}
             <div className="max-w-5xl mx-auto px-4 mt-16">
                 <div className="bg-[#0a0a0c]/90 border border-white/10 p-8">
                     <div className="flex items-center gap-3 mb-6">
@@ -298,15 +408,22 @@ const Leaderboards: React.FC = () => {
                         </div>
                         <div>
                             <h3 className="text-sm font-black text-white uppercase tracking-tight">Ranking Points (RP)</h3>
-                            <p className="text-xs text-zinc-500">How Valorant team rankings are calculated</p>
+                            <p className="text-xs text-zinc-500">How team rankings are calculated</p>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         {[
-                            { label: 'Match Win', value: `+${RP_PER_WIN}`, icon: Swords, color: 'text-emerald-400' },
-                            { label: 'Match Loss', value: `${RP_PER_LOSS}`, icon: Target, color: 'text-rose-400' },
-                            { label: 'Tournament Win', value: `+${RP_PER_TOURNAMENT_WIN}`, icon: Trophy, color: 'text-yellow-400' },
-                            { label: 'Match MVP', value: `+${RP_PER_MVP}`, icon: Star, color: 'text-cyan-400' },
+                            { label: 'Match Win', value: `+${meta?.win_points ?? 50}`, icon: Swords, color: 'text-emerald-400' },
+                            { label: 'Match Loss', value: `-${meta?.loss_points ?? 10}`, icon: Target, color: 'text-rose-400' },
+                            { label: 'Championship', value: `+${meta?.tournament_win_points ?? 500}`, icon: Trophy, color: 'text-yellow-400' },
+                            {
+                                label: 'Runner-Up Finishes',
+                                value: meta?.placement_points
+                                    ? `+#2 ${meta.placement_points.find(tier => tier.placement === 2)?.points ?? 300}`
+                                    : '—',
+                                icon: Medal,
+                                color: 'text-cyan-400',
+                            },
                         ].map(item => (
                             <div key={item.label} className="bg-[#0a0a0c]/90 p-4 border border-white/5">
                                 <item.icon className={`w-5 h-5 ${item.color} mb-2`} />
@@ -315,10 +432,55 @@ const Leaderboards: React.FC = () => {
                             </div>
                         ))}
                     </div>
+                    {meta && (
+                        <p className="mt-6 text-xs text-zinc-600 leading-relaxed">
+                            Placement rewards:{' '}
+                            {meta.placement_points.map(tier => (
+                                <span key={`${tier.placement ?? tier.from_placement}`} className="mr-3">
+                                    {tier.placement
+                                        ? <><span className="text-zinc-400">#{tier.placement}</span> +{tier.points}</>
+                                        : <><span className="text-zinc-400">#{tier.from_placement}–{tier.to_placement}</span> +{tier.points}</>}
+                                </span>
+                            ))}
+                            <br />A championship always nets at least +{meta.tournament_win_points} RP from that tournament.
+                        </p>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
+
+const CountryFilterSelect: React.FC<{
+    value: string;
+    options: string[];
+    onChange: (value: string) => void;
+}> = ({ value, options, onChange }) => (
+    <Select value={value || '__all'} onValueChange={onChange}>
+        <SelectTrigger className="w-[180px] bg-[#0a0a0c]/90 border-white/10 focus:border-rose-500/50 text-xs font-bold uppercase tracking-wider">
+            <SelectValue placeholder="All Countries">
+                {value ? (
+                    <span className="flex items-center gap-2">
+                        <img src={getCountryFlagUrl(value)} alt={value} className="w-5 h-3.5 object-cover rounded-sm" />
+                        {value}
+                    </span>
+                ) : (
+                    'All Countries'
+                )}
+            </SelectValue>
+        </SelectTrigger>
+        <SelectContent className="bg-[#121214] border-zinc-800 text-white max-h-[300px]">
+            <SelectItem value="__all" className="focus:bg-zinc-800 cursor-pointer">All Countries</SelectItem>
+            {options.map(c => (
+                <SelectItem key={c} value={c} className="focus:bg-zinc-800 focus:text-rose-500 cursor-pointer">
+                    <span className="flex items-center gap-2">
+                        <img src={getCountryFlagUrl(c)} alt={c} className="w-5 h-3.5 object-cover rounded-sm" />
+                        {c}
+                    </span>
+                </SelectItem>
+            ))}
+        </SelectContent>
+    </Select>
+);
 
 export default Leaderboards;
