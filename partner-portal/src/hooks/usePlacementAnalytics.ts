@@ -29,16 +29,16 @@ interface AnalyticsSummary {
 export function usePlacementAnalytics(days = 30) {
   return useQuery({
     queryKey: ['sponsor', 'analytics', 'placements', days],
-      queryFn: async () => {
-        try {
-          const res = await apiClient.get<{ placements: PlacementStat[] }>(`/api/sponsors/me/analytics/placements?days=${days}`);
-          return res?.placements ?? [];
-        } catch (err: unknown) {
-          if (err && typeof err === 'object' && 'status' in err && ((err as { status: number }).status === 404 || (err as { status: number }).status === 500)) return [];
-          throw err;
-        }
-      },
-      retry: false,
+    queryFn: async () => {
+      try {
+        const res = await apiClient.get<{ placements: PlacementStat[] }>(`/api/sponsors/me/analytics/placements?days=${days}`);
+        return res?.placements ?? [];
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'status' in err && ((err as { status: number }).status === 404 || (err as { status: number }).status === 500)) return [];
+        throw err;
+      }
+    },
+    retry: false,
   });
 }
 
