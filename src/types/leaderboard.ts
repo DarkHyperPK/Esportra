@@ -1,11 +1,12 @@
 /**
  * Global team leaderboard (RP system) — shared contract for /api/leaderboards/*.
  *
- * Note: this is distinct from per-stage Battle Royale points standings
+ * Model A: game is the required base axis; region and country optionally narrow
+ * the ranked pool. There is no mixed-game "global" view.
+ *
+ * Note: distinct from per-stage Battle Royale points standings
  * (see src/types/battleRoyale.ts / BRLeaderboardEntry).
  */
-
-export type LeaderboardScope = 'global' | 'region' | 'country';
 
 export interface LeaderboardTeamRow {
   rank: number;
@@ -13,7 +14,8 @@ export interface LeaderboardTeamRow {
   name: string;
   logo_url: string | null;
   country_code: string | null;
-  regions: string[];
+  game: string;
+  region: string;
   matches_played: number;
   wins: number;
   losses: number;
@@ -27,8 +29,7 @@ export interface LeaderboardTeamRow {
 
 export interface LeaderboardTeamsResponse {
   total: number;
-  scope: LeaderboardScope;
-  game: string | null;
+  game: string;
   country: string | null;
   region: string | null;
   limit: number;
@@ -57,10 +58,9 @@ export interface LeaderboardMetaResponse {
 }
 
 export interface LeaderboardQuery {
-  scope: LeaderboardScope;
-  game?: string;
-  country?: string;
+  game: string;
   region?: string;
+  country?: string;
   limit: number;
   offset: number;
 }

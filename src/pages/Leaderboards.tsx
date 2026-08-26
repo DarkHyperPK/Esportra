@@ -19,7 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
     LEADERBOARD_PAGE_SIZE, useLeaderboardFilters, useLeaderboardMeta, useTeamLeaderboard,
 } from '@/hooks/useTeamLeaderboard';
-import type { LeaderboardScope, LeaderboardTeamRow } from '@/types/leaderboard';
+import type { LeaderboardTeamRow } from '@/types/leaderboard';
 
 const RANK_COLORS = [
     'from-yellow-400 to-amber-500',   // 1st
@@ -28,12 +28,6 @@ const RANK_COLORS = [
 ];
 
 const RANK_ICONS = [Crown, Medal, Award];
-
-const SCOPE_TABS: { value: LeaderboardScope; label: string }[] = [
-    { value: 'global', label: 'Global' },
-    { value: 'region', label: 'By Region' },
-    { value: 'country', label: 'By Country' },
-];
 
 const prettyRegion = (value: string) =>
     value.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -75,10 +69,6 @@ const Leaderboards: React.FC = () => {
     // ── URL-param state (shareable, back-button friendly) ──
     const [searchParams, setSearchParams] = useSearchParams();
 
-    const scopeParam = searchParams.get('scope');
-    const scope: LeaderboardScope =
-        scopeParam === 'region' || scopeParam === 'country' ? scopeParam : 'global';
-
     const game = searchParams.get('game') ?? '';
     const country = searchParams.get('country') ?? '';
     const region = searchParams.get('region') ?? '';
@@ -97,38 +87,37 @@ const Leaderboards: React.FC = () => {
         );
     };
 
-    const setScope = (next: string) => {
-        setSearchParams(
-            prev => {
-                const sp = new URLSearchParams(prev);
-                sp.set('scope', next);
-                if (next !== 'region') sp.delete('region');
-                if (next !== 'country') sp.delete('country');
-                sp.delete('page');
-                return sp;
-            },
-            { replace: true },
-        );
-    };
-
     const clearFilters = () => {
-        const sp = new URLSearchParams();
-        if (scope !== 'global') sp.set('scope', scope);
-        setSearchParams(sp);
+        setSearchParams(prev => {
+            const sp = new URLSearchParams(prev);
+            sp.delete('region');
+            sp.delete('country');
+            sp.delete('page');
+            return sp;
+        }, { replace: true });
     };
 
-    const hasActiveFilters = Boolean(game || country || region);
+    const hasActiveFilters = Boolean(region || country);
 
     // ── Data ──
     const filtersQuery = useLeaderboardFilters();
     const metaQuery = useLeaderboardMeta();
 
+    // Game is the required axis — default to the first game with data so the
+    // board is immediately useful, while keeping the choice in the URL.
+    React.useEffect(() => {
+        const games = filtersQuery.data?.games ?? [];
+        if (!game && games.length > 0) {
+            updateParam('game', [...games].sort()[0]);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filtersQuery.data?.games, game]);
+
     const offset = (page - 1) * LEADERBOARD_PAGE_SIZE;
     const boardQuery = useTeamLeaderboard({
-        scope,
-        game: game || undefined,
-        country: country || undefined,
+        game,
         region: region || undefined,
+        country: country || undefined,
         limit: LEADERBOARD_PAGE_SIZE,
         offset,
     });
@@ -179,22 +168,12 @@ const Leaderboards: React.FC = () => {
             {/* Controls */}
             <div className="max-w-5xl mx-auto px-4 mb-6">
                 <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-                    {/* Scope tabs */}
+                    {/* Game — required base axis */}
                     <div className="flex items-center border border-white/10 bg-[#0a0a0c]/90 p-1 self-start">
-                        {SCOPE_TABS.map(tab => (
-                            <button
-                                key={tab.value}
-                                onClick={() => setScope(tab.value)}
-                                className={`flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-widest transition-all ${
-                                    scope === tab.value
-                                        ? 'bg-rose-500 text-white'
-                                        : 'text-zinc-500 hover:text-white'
-                                }`}
-                            >
-                                {tab.value === 'global' && <Globe2 className="w-3.5 h-3.5" />}
-                                {tab.label}
-                            </button>
-                        ))}
+                        <div className="flex items-center gap-2 px-5 py-2 text-xs font-black uppercase tracking-widest bg-rose-500 text-white">
+                            <Globe2 className="w-3.5 h-3.5" />
+                            {game ? prettyGame(game) : 'Pick a game'}
+                        </div>
                     </div>
 
                     {/* Filters */}
@@ -216,32 +195,28 @@ const Leaderboards: React.FC = () => {
                             </SelectContent>
                         </Select>
 
-                        {scope === 'region' && (
-                            <Select
-                                value={region}
-                                onValueChange={v => updateParam('region', v === '__all' ? '' : v)}
-                            >
-                                <SelectTrigger className="w-[180px] bg-[#0a0a0c]/90 border-white/10 focus:border-rose-500/50 text-xs font-bold uppercase tracking-wider">
-                                    <SelectValue placeholder={region ? undefined : 'All Regions'}>{region ? prettyRegion(region) : 'All Regions'}</SelectValue>
-                                </SelectTrigger>
-                                <SelectContent className="bg-[#121214] border-zinc-800 text-white max-h-[300px]">
-                                    <SelectItem value="__all" className="focus:bg-zinc-800 cursor-pointer">All Regions</SelectItem>
-                                    {(filtersQuery.data?.regions ?? []).map(r => (
-                                        <SelectItem key={r} value={r} className="focus:bg-zinc-800 focus:text-rose-500 cursor-pointer">
-                                            {prettyRegion(r)}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
+                        <Select
+                            value={region}
+                            onValueChange={v => updateParam('region', v === '__all' ? '' : v)}
+                        >
+                            <SelectTrigger className="w-[180px] bg-[#0a0a0c]/90 border-white/10 focus:border-rose-500/50 text-xs font-bold uppercase tracking-wider">
+                                <SelectValue placeholder={region ? undefined : 'All Regions'}>{region ? prettyRegion(region) : 'All Regions'}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#121214] border-zinc-800 text-white max-h-[300px]">
+                                <SelectItem value="__all" className="focus:bg-zinc-800 cursor-pointer">All Regions</SelectItem>
+                                {(filtersQuery.data?.regions ?? []).map(r => (
+                                    <SelectItem key={r} value={r} className="focus:bg-zinc-800 focus:text-rose-500 cursor-pointer">
+                                        {prettyRegion(r)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
 
-                        {scope === 'country' && (
-                            <CountryFilterSelect
-                                value={country}
-                                options={filtersQuery.data?.countries ?? []}
-                                onChange={v => updateParam('country', v === '__all' ? '' : v)}
-                            />
-                        )}
+                        <CountryFilterSelect
+                            value={country}
+                            options={filtersQuery.data?.countries ?? []}
+                            onChange={v => updateParam('country', v === '__all' ? '' : v)}
+                        />
 
                         {hasActiveFilters && (
                             <Button
@@ -261,8 +236,8 @@ const Leaderboards: React.FC = () => {
                     <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-zinc-600">
                         {total.toLocaleString()} ranked team{total === 1 ? '' : 's'}
                         {game && <> in <span className="text-rose-400">{prettyGame(game)}</span></>}
-                        {scope === 'region' && region && <> in <span className="text-rose-400">{prettyRegion(region)}</span></>}
-                        {scope === 'country' && country && <> from <span className="text-rose-400">{country}</span></>}
+                        {region && <> · region <span className="text-rose-400">{prettyRegion(region)}</span></>}
+                        {country && <> · country <span className="text-rose-400">{country}</span></>}
                     </p>
                 )}
             </div>

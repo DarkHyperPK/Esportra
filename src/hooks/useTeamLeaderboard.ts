@@ -11,10 +11,9 @@ const PAGE_SIZE = 25;
 
 function buildLeaderboardParams(query: LeaderboardQuery): string {
   const params = new URLSearchParams();
-  params.set('scope', query.scope);
-  if (query.game) params.set('game', query.game);
-  if (query.country) params.set('country', query.country);
+  params.set('game', query.game);
   if (query.region) params.set('region', query.region);
+  if (query.country) params.set('country', query.country);
   params.set('limit', String(query.limit));
   params.set('offset', String(query.offset));
   return params.toString();
@@ -22,12 +21,13 @@ function buildLeaderboardParams(query: LeaderboardQuery): string {
 
 export const useTeamLeaderboard = (query: LeaderboardQuery, options: { enabled?: boolean } = {}) => {
   const { enabled = true } = options;
+  const queryEnabled = enabled && Boolean(query.game);
   const queryString = buildLeaderboardParams(query);
 
   return useQuery({
     queryKey: ['team-leaderboard', queryString],
     queryFn: () => apiClient.get<LeaderboardTeamsResponse>(`/api/leaderboards/teams?${queryString}`),
-    enabled,
+    enabled: queryEnabled,
     staleTime: 1000 * 60,
     placeholderData: (previous) => previous,
   });
