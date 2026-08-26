@@ -30,7 +30,7 @@ interface StageManagementTabProps {
     locked?: boolean;
 }
 
-export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic = false, checkInRequired = false, locked = false }) => {
+export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tournamentId, stages, onUpdate, game, isPublic: _isPublic = false, checkInRequired = false, locked = false }) => {
     const { toast } = useToast();
     const queryClient = useQueryClient();
     const navigate = useNavigate();
