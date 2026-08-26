@@ -1005,14 +1005,15 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                             Published
                                                         </span>
                                                     )}
-                                                    {/* Seed Teams Button - available whenever bracket exists and stage not locked */}
-                                                    {stageBracketExists && !locked && (
+                                                    {/* Seed Teams Button - always visible when bracket exists */}
+                                                    {stageBracketExists && (
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
                                                             className="text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
                                                             onClick={() => void handleSeedBracket(stage.id)}
-                                                            disabled={seedingStageId === stage.id}
+                                                            disabled={locked || seedingStageId === stage.id}
+                                                            title={locked ? 'Stage is locked' : 'Seed enrolled teams into bracket slots'}
                                                         >
                                                             {seedingStageId === stage.id ? (
                                                                 <>
