@@ -108,7 +108,6 @@ const VenueOwnerDashboard = lazyWithRetry(() => import("./pages/venue-owner/Dash
 
 // Tournament Organizer
 const OrganizerDashboard = lazyWithRetry(() => import("./pages/organizer/Dashboard"));
-const _TournamentList = lazyWithRetry(() => import("./pages/organizer/TournamentList"));
 const ManageTournaments = lazyWithRetry(() => import("./pages/organizer/ManageTournaments"));
 const TournamentManage = lazyWithRetry(() => import("./pages/organizer/TournamentManage"));
 const EditTournament = lazyWithRetry(() => import("./pages/tournaments/Edit"));
@@ -121,7 +120,6 @@ const ManageBracketPage = lazyWithRetry(() => import("./pages/organizer/ManageBr
 const FullscreenBracketPage = lazyWithRetry(() => import("./pages/tournaments/brackets/FullscreenBracketPage"));
 const OrganizationPublicProfile = lazyWithRetry(() => import("./pages/org/PublicProfile"));
 const OrganizationWizard = lazyWithRetry(() => import("./pages/organizer/OrganizationWizard"));
-const _OrganizationSettings = lazyWithRetry(() => import("./pages/organizer/OrganizationSettings"));
 const ADMIN_ROLE_SETS = {
   anyAdmin: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
   userManagement: ['super_admin', 'ops_admin', 'finance_admin', 'moderator', 'support_admin'],
@@ -140,7 +138,6 @@ const ADMIN_ROLE_SETS = {
 const VenueSearch = lazyWithRetry(() => import("./pages/venues/VenueSearchV2"));
 const FeaturedVenues = lazyWithRetry(() => import("./pages/venues/Featured"));
 const VenueDetails = lazyWithRetry(() => import("./pages/venues/VenueDetailsV2"));
-const _ManageVenues = lazyWithRetry(() => import("./pages/venues/ManageVenues"));
 const ListVenue = lazyWithRetry(() => import("./pages/venues/ListVenue"));
 const EditVenue = lazyWithRetry(() => import("./pages/venues/EditVenue"));
 
@@ -631,7 +628,11 @@ function CatalogBootstrapGate({ children }: { children: React.ReactNode }) {
   const { isReady, isLoading, isUnavailable } = useGameCatalogContext();
   const location = useLocation();
 
-  if (isChromelessPath(location.pathname) || location.pathname.startsWith('/auth/')) {
+  if (
+    isChromelessPath(location.pathname)
+    || location.pathname.startsWith('/auth/')
+    || location.pathname.startsWith('/invitations/')
+  ) {
     return <>{children}</>;
   }
 

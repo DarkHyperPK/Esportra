@@ -52,7 +52,9 @@ const Callback = () => {
       }
 
       toast({ title: "Success!", description: "You have successfully signed in." });
-      navigate('/');
+      const postAuthRedirect = sessionStorage.getItem('auth_redirect');
+      if (postAuthRedirect) sessionStorage.removeItem('auth_redirect');
+      navigate(postAuthRedirect || '/');
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
