@@ -1767,7 +1767,7 @@ const TournamentDashboard = () => {
                 <TabsContent value="stages" forceMount key="stages">
                   <TabTransition direction={direction}>
                     {/* Mock Mode panel pinned above stages; always show clear controls while mocks exist. */}
-                    {canActAsOwner && (tournament.status === 'draft' || mockCount > 0) && (
+                    {(isOrganizer || isPlatformAdmin) && (tournament.status === 'draft' || mockCount > 0) && (
                       <div className="mb-4">
                         <MockModePanel
                           tournamentId={tournament.id}
