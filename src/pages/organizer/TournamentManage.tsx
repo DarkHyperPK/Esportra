@@ -137,6 +137,8 @@ interface Participant {
   payment_status?: string | null;
   payment_receipt_url?: string | null;
   payment_rejection_reason?: string | null;
+  entry_kind?: string | null;
+  display_logo_url?: string | null;
   entry_fee_amount?: number | null;
   entry_fee_paid?: boolean;
   source?: string | null;
@@ -156,14 +158,14 @@ const STAFF_PERMISSION_LABELS: Record<StaffPermission, string> = {
 
 // ErrorBoundary component
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
-  constructor(props) {
+  constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: unknown) {
     return { hasError: true, error };
   }
-  componentDidCatch(_error, _errorInfo) {
+  componentDidCatch(_error: Error, _errorInfo: React.ErrorInfo) {
     // You can log errorInfo here if needed
     // console.error('ErrorBoundary caught:', _error, _errorInfo);
   }
@@ -291,7 +293,6 @@ const TournamentDashboard = () => {
     () => (tournamentAccess?.permissions ?? []) as StaffPermission[],
     [tournamentAccess?.permissions],
   );
-  const _staffRole = tournamentAccess?.role ?? 'none';
   const hasTournamentStaffAccess = Boolean(
     tournamentAccess && !tournamentAccess.isOrganizer && tournamentAccess.role !== 'none',
   );
@@ -1766,14 +1767,14 @@ const TournamentDashboard = () => {
                 <TabsContent value="stages" forceMount key="stages">
                   <TabTransition direction={direction}>
                     {/* Mock Mode panel pinned above stages; always show clear controls while mocks exist. */}
-                    {canActAsOwner && ((tournament.status === 'draft' && !tournament.is_public) || mockCount > 0) && (
+                    {canActAsOwner && (tournament.status === 'draft' || mockCount > 0) && (
                       <div className="mb-4">
                         <MockModePanel
                           tournamentId={tournament.id}
                           slug={slug ?? ''}
                           maxTeams={tournament.max_teams}
                           mockCount={mockCount}
-                          canGenerate={tournament.status === 'draft' && !tournament.is_public}
+                          canGenerate={tournament.status === 'draft'}
                         />
                       </div>
                     )}
@@ -2793,7 +2794,7 @@ const TournamentDashboard = () => {
 };
 
 // Wrap TournamentDashboard in ErrorBoundary for export
-export default function TournamentDashboardWithBoundary(props) {
+export default function TournamentDashboardWithBoundary(props: Record<string, unknown>) {
   return (
     <ErrorBoundary>
       <TournamentDashboard {...props} />
