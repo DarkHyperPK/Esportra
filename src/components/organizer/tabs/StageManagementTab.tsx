@@ -44,6 +44,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const [hasBrackets, setHasBrackets] = useState<Record<string, boolean>>({});
     const [bracketVersionInfo, setBracketVersionInfo] = useState<Record<string, { id: string; status: string }>>({});
     const [publishingStageId, setPublishingStageId] = useState<string | null>(null);
+    const [seedingStageId, setSeedingStageId] = useState<string | null>(null);
     const [bracketsLoading, setBracketsLoading] = useState(true);
     const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
     const [deleteBracketDialogOpen, setDeleteBracketDialogOpen] = useState(false);
@@ -434,24 +435,14 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                 })).filter(t => t.id);
             }
             if (teams.length < 2) {
-                if (!isPublic) {
-                    // Draft mode: refuse empty brackets — organizer must generate mock teams first.
-                    toast({
-                        title: 'No participants yet',
-                        description: 'Use Mock Tournament Mode to generate fictitious teams before generating a bracket.',
-                        variant: 'destructive',
-                    });
-                    return;
-                }
-
-                // Published tournament with real but sparse registrations — generate TBD bracket.
+                // Generate a TBD bracket from stage capacity — teams are seeded later.
                 const capacity = stage.capacity ? Number(stage.capacity) : (stage.stage_order === 1 ? 8 : 4);
                 const tbdSlots = Math.max(capacity, 2);
                 teams = [];
                 (teams as any).__tbdSize = tbdSlots;
                 toast({
-                    title: 'Generating empty bracket',
-                    description: `No participants yet — generating a ${tbdSlots}-slot TBD bracket from stage capacity.`,
+                    title: 'Generating TBD bracket',
+                    description: `Generating a ${tbdSlots}-slot bracket — use Seed Teams once participants are enrolled.`,
                 });
             }
 
@@ -685,6 +676,25 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             toast({ title: 'Error', description: error.message || 'Failed to publish bracket', variant: 'destructive' });
         } finally {
             setPublishingStageId(null);
+        }
+    };
+
+    const handleSeedBracket = async (stageId: string) => {
+        if (seedingStageId) return;
+        setSeedingStageId(stageId);
+        try {
+            const result = await apiClient.post<{ seeded: number; byesAdvanced: number }>(
+                `/api/stages/${stageId}/seed-bracket`, {}
+            );
+            toast({
+                title: 'Teams seeded',
+                description: `${result.seeded} team(s) placed into bracket slots.${result.byesAdvanced > 0 ? ` ${result.byesAdvanced} bye(s) auto-advanced.` : ''}`,
+            });
+            onUpdate();
+        } catch (error: any) {
+            toast({ title: 'Seeding failed', description: error.message || 'Failed to seed teams', variant: 'destructive' });
+        } finally {
+            setSeedingStageId(null);
         }
     };
 
@@ -994,6 +1004,28 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                             <CheckCircle2 className="h-3.5 w-3.5" />
                                                             Published
                                                         </span>
+                                                    )}
+                                                    {/* Seed Teams Button - available whenever bracket exists and stage not locked */}
+                                                    {stageBracketExists && !locked && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                                                            onClick={() => void handleSeedBracket(stage.id)}
+                                                            disabled={seedingStageId === stage.id}
+                                                        >
+                                                            {seedingStageId === stage.id ? (
+                                                                <>
+                                                                    <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                                                                    Seeding...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Shuffle className="w-3.5 h-3.5 mr-2" />
+                                                                    Seed Teams
+                                                                </>
+                                                            )}
+                                                        </Button>
                                                     )}
                                                     {/* Delete Bracket Button - only show when bracket exists and not locked */}
                                                     {stageBracketExists && !locked && (
