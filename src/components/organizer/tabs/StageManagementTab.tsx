@@ -43,6 +43,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     const [newStageAdvancement, setNewStageAdvancement] = useState<number | ''>('');
     const [hasBrackets, setHasBrackets] = useState<Record<string, boolean>>({});
     const [bracketVersionInfo, setBracketVersionInfo] = useState<Record<string, { id: string; status: string }>>({});
+    const [bracketSeeded, setBracketSeeded] = useState<Record<string, boolean>>({});
     const [publishingStageId, setPublishingStageId] = useState<string | null>(null);
     const [seedingStageId, setSeedingStageId] = useState<string | null>(null);
     const [bracketsLoading, setBracketsLoading] = useState(true);
@@ -118,6 +119,19 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
                 setHasBrackets(status);
                 setBracketVersionInfo(versionInfo);
+
+                // Check if brackets are seeded (any match has team1_id set)
+                const seededStatus: Record<string, boolean> = {};
+                for (const sid of Object.keys(versionInfo)) {
+                    try {
+                        const matches = await apiClient.get<any[]>(`/api/stages/${sid}/matches`).catch(() => []);
+                        const hasTeams = (matches || []).some((m: any) => m.team1_id != null);
+                        seededStatus[sid] = hasTeams;
+                    } catch {
+                        seededStatus[sid] = false;
+                    }
+                }
+                setBracketSeeded(seededStatus);
 
             } catch (err) {
                 console.error('[StageManagementTab] Error checking brackets:', err);
@@ -368,7 +382,6 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
     };
 
     const handleGenerateStageBracket = async (stageId: string) => {
-        // Find the stage to get its format
         const stage = stages.find(s => s.id === stageId);
         if (!stage) {
             toast({ title: 'Error', description: 'Stage not found', variant: 'destructive' });
@@ -376,206 +389,52 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
         }
 
         try {
-            // Get teams/participants for this stage
-            let teams: Array<{ id: string; name: string; logo_url?: string | null }> = [];
-
-            if (stage.stage_order === 1) {
-                // First stage: Get participants from tournament_participants
-                console.log('[StageManagement] Fetching teams for stage 1, tournamentId:', tournamentId);
-
-                const participants = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/participants`).catch(() => null);
-
-                if (!participants) {
-                    console.error('[StageManagement] Error fetching participants');
-                    toast({
-                        title: 'Fetch Error',
-                        description: 'Failed to fetch participants',
-                        variant: 'destructive'
-                    });
-                    return;
-                }
-
-                console.log('[StageManagement] Found participants raw count:', participants?.length || 0);
-
-                // When check-in is required, exclude participants who haven't checked in
-                const eligible = checkInRequired
-                    ? (participants || []).filter((p: any) => p.checked_in_at || p.status === 'checked_in')
-                    : (participants || []);
-
-                teams = eligible.map((p: any) => {
-                    const isTeam = p.participant_type === 'team'
-                        || p.registration_type === 'team'
-                        || p.entry_kind === 'real_team';
-
-                    if (isTeam) {
-                        return {
-                            id: p.team_id || p.id,
-                            name: p.teams?.name || p.team_name || 'Unknown Team',
-                            logo_url: p.teams?.logo_url || p.team_logo_url
-                        };
-                    } else {
-                        return {
-                            id: p.id,
-                            name: p.gamer_tag || p.team_name || 'Unknown Player',
-                            logo_url: null
-                        };
-                    }
-                }).filter(t => t.id);
-            } else {
-                // Subsequent stages: Get teams from stage_participants (advanced from previous stage)
-                console.log('[StageManagement] Fetching teams for stage >1, stageId:', stageId);
-                const stageParticipants = await apiClient.get<any[]>(`/api/stages/${stageId}/participants`).catch(() => null);
-
-                if (!stageParticipants) throw new Error('Failed to fetch stage participants');
-
-                teams = (stageParticipants || []).map((sp: any) => ({
-                    id: sp.team_id,
-                    name: sp.teams?.name || 'Unknown',
-                    logo_url: sp.teams?.logo_url
-                })).filter(t => t.id);
-            }
-            if (teams.length < 2) {
-                // Generate a TBD bracket from stage capacity — teams are seeded later.
-                const capacity = stage.capacity ? Number(stage.capacity) : (stage.stage_order === 1 ? 8 : 4);
-                const tbdSlots = Math.max(capacity, 2);
-                teams = [];
-                (teams as any).__tbdSize = tbdSlots;
-                toast({
-                    title: 'Generating TBD bracket',
-                    description: `Generating a ${tbdSlots}-slot bracket — use Seed Teams once participants are enrolled.`,
-                });
-            }
-
             // Clean up any existing bracket for this stage before re-generating
             const existingVersions = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/bracket-versions`).catch(() => []);
             const stageVersions = (existingVersions || []).filter((v: any) => v.stage_id === stageId);
-
             for (const v of stageVersions) {
                 await apiClient.delete(`/api/brackets/${v.id}`);
             }
 
-            console.log(`[StageManagement] Deleted ${stageVersions.length} existing versions for stage ${stageId}`);
-
-            // Parse config once — API may return it as JSON string
             const stageConfig: any = typeof stage.config === 'string'
                 ? (() => { try { return JSON.parse(stage.config as string); } catch { return {}; } })()
                 : (stage.config || {});
 
             const format = stage.format || 'single_elimination';
+            const capacity = stage.capacity ? Number(stage.capacity) : (stage.stage_order === 1 ? 8 : 4);
+            const bracketSize = Math.max(capacity, 2);
 
-            // Extract BO configuration from stage (supports per-round BO)
             const bestOf = (stage as any).best_of ?? stageConfig.best_of ?? 1;
             const boMode = (stage as any).bo_mode ?? stageConfig.bo_mode ?? 'per_stage';
 
-            // Parse round_bo_overrides - may be a JSON string from the database
             let roundBoOverrides = (stage as any).round_bo_overrides ?? stageConfig.round_bo_overrides ?? null;
             if (typeof roundBoOverrides === 'string') {
-                try {
-                    roundBoOverrides = JSON.parse(roundBoOverrides);
-                } catch {
-                    roundBoOverrides = null;
-                }
-            }
-            const advancementCount = stage.advancement_count || undefined;
-
-            // Calculate bracket size based on format
-            let bracketSize: number | undefined = undefined;
-            const tbdSize = (teams as any).__tbdSize as number | undefined;
-
-            if (tbdSize !== undefined) {
-                bracketSize = tbdSize;
-            } else if (format === 'swiss' && stageConfig.swiss_rounds) {
-                bracketSize = Number(stageConfig.swiss_rounds);
-            } else if (format === 'round_robin') {
-                if (stageConfig.group_count) {
-                    bracketSize = Number(stageConfig.group_count);
-                }
+                try { roundBoOverrides = JSON.parse(roundBoOverrides); } catch { roundBoOverrides = null; }
             }
 
-            // Fetch tournament start date for scheduling
-            let dailyStartTime: string | undefined;
-            let tournamentStartDate: string | undefined;
-
-            if (format === 'swiss' || format === 'round_robin') {
-                try {
-                    const response = await apiClient.get<any>(`/api/tournaments/${tournamentId}`).catch(() => null);
-                    const tournamentData = response?.tournament || response;
-                    const stageScheduling = await apiClient.get<any>(`/api/stages/${stageId}`).catch(() => null);
-
-                    tournamentStartDate = tournamentData?.start_date;
-                    dailyStartTime = stageScheduling?.scheduling_config?.daily_start_time;
-                } catch (err) {
-                    console.warn('[StageManagement] Could not fetch scheduling config:', err);
-                }
-            }
-
-            // Only include roundBoOverrides when per_round mode is active AND overrides exist
             const hasValidOverrides = boMode === 'per_round'
                 && roundBoOverrides
                 && typeof roundBoOverrides === 'object'
                 && Object.keys(roundBoOverrides).length > 0;
 
-            // Detailed logging for BO configuration debugging
-            console.log('[StageManagement] BO Configuration:', {
-                boMode,
-                bestOf,
-                hasValidOverrides,
-                roundBoOverrides,
-                format,
-                stageId,
-            });
+            const advancementCount = stage.advancement_count || undefined;
 
-            console.log('[StageManagement] Calling backend API with:', {
-                format,
-                teams: teams.length,
-                bestOf,
-                boMode,
-                roundBoOverrides: hasValidOverrides ? roundBoOverrides : null,
-                bracketSize,
-                advancementCount,
-            });
-
-            // Show BO mode in toast for transparency
-            if (boMode === 'per_round' && hasValidOverrides) {
-                toast({
-                    title: 'Generating bracket with per-round BO',
-                    description: `${Object.keys(roundBoOverrides).length} round(s) configured with custom BO values`,
-                });
-            }
-
-            // Call backend API - handles generation, validation, and persistence
+            // Always generate TBD structure — teams are seeded separately via Seed Teams button
             await apiClient.post('/api/brackets/generate', {
                 tournamentId,
                 stageId,
                 format,
-                teams: teams.map(t => ({ id: t.id, name: t.name })),
+                teams: [],
                 bestOf,
                 boMode,
                 ...(hasValidOverrides && { roundBoOverrides }),
                 bracketSize,
                 advancementCount,
-                dailyStartTime,
-                tournamentStartDate,
                 swissGroups: stageConfig.group_count,
                 swissRounds: stageConfig.swiss_rounds,
             });
 
-            // Update state and navigate
             setHasBrackets(prev => ({ ...prev, [stageId]: true }));
-
-            // Runtime BYE warning (Medium Priority)
-            if (format === 'single_elimination' || format === 'double_elimination') {
-                const actualBracketSize = Math.pow(2, Math.ceil(Math.log2(teams.length)));
-                const byeCount = actualBracketSize - teams.length;
-                const byePercentage = (byeCount / actualBracketSize) * 100;
-                if (byePercentage > 50) {
-                    toast({
-                        title: 'Warning: High BYE Count',
-                        description: `${byeCount} of ${actualBracketSize} slots are BYEs (${byePercentage.toFixed(0)}%). Consider adjusting team count.`,
-                        variant: 'destructive'
-                    });
-                }
-            }
 
             toast({ title: 'Success', description: 'Bracket generated successfully!' });
             navigate(`/organizer/tournament/${slug}/manage-bracket/${stageId}`);
@@ -686,13 +545,35 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
             const result = await apiClient.post<{ seeded: number; byesAdvanced: number }>(
                 `/api/stages/${stageId}/seed-bracket`, {}
             );
-            toast({
-                title: 'Teams seeded',
-                description: `${result.seeded} team(s) placed into bracket slots.${result.byesAdvanced > 0 ? ` ${result.byesAdvanced} bye(s) auto-advanced.` : ''}`,
-            });
+            if (result.seeded === 0) {
+                toast({ title: 'No teams to seed', description: 'Enroll participants first, then seed.', variant: 'destructive' });
+            } else {
+                toast({
+                    title: 'Teams seeded',
+                    description: `${result.seeded} team(s) placed into bracket slots.${result.byesAdvanced > 0 ? ` ${result.byesAdvanced} bye(s) auto-advanced.` : ''}`,
+                });
+                setBracketSeeded(prev => ({ ...prev, [stageId]: true }));
+            }
+            queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
             onUpdate();
         } catch (error: any) {
             toast({ title: 'Seeding failed', description: error.message || 'Failed to seed teams', variant: 'destructive' });
+        } finally {
+            setSeedingStageId(null);
+        }
+    };
+
+    const handleUnseedBracket = async (stageId: string) => {
+        if (seedingStageId) return;
+        setSeedingStageId(stageId);
+        try {
+            await apiClient.post(`/api/stages/${stageId}/unseed-bracket`, {});
+            toast({ title: 'Teams cleared', description: 'Bracket reset to TBD structure. Scheduled times preserved.' });
+            setBracketSeeded(prev => ({ ...prev, [stageId]: false }));
+            queryClient.invalidateQueries({ queryKey: ['bracket-graph'] });
+            onUpdate();
+        } catch (error: any) {
+            toast({ title: 'Clear failed', description: error.message || 'Failed to clear teams', variant: 'destructive' });
         } finally {
             setSeedingStageId(null);
         }
@@ -1005,20 +886,28 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                                             Published
                                                         </span>
                                                     )}
-                                                    {/* Seed Teams Button - always visible when bracket exists */}
+                                                    {/* Seed/Clear Teams Button - always visible when bracket exists */}
                                                     {stageBracketExists && (
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            className="text-xs border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
-                                                            onClick={() => void handleSeedBracket(stage.id)}
+                                                            className={`text-xs ${bracketSeeded[stage.id]
+                                                                ? 'border-orange-500/30 text-orange-400 hover:bg-orange-500/10'
+                                                                : 'border-blue-500/30 text-blue-400 hover:bg-blue-500/10'}`}
+                                                            onClick={() => bracketSeeded[stage.id]
+                                                                ? void handleUnseedBracket(stage.id)
+                                                                : void handleSeedBracket(stage.id)}
                                                             disabled={locked || seedingStageId === stage.id}
-                                                            title={locked ? 'Stage is locked' : 'Seed enrolled teams into bracket slots'}
                                                         >
                                                             {seedingStageId === stage.id ? (
                                                                 <>
                                                                     <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
-                                                                    Seeding...
+                                                                    {bracketSeeded[stage.id] ? 'Clearing...' : 'Seeding...'}
+                                                                </>
+                                                            ) : bracketSeeded[stage.id] ? (
+                                                                <>
+                                                                    <Trash2 className="w-3.5 h-3.5 mr-2" />
+                                                                    Clear Teams
                                                                 </>
                                                             ) : (
                                                                 <>
