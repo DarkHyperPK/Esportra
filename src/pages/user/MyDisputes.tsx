@@ -556,7 +556,6 @@ const MyDisputes = () => {
                 const safeReports = parseDisputeReports(selectedDispute.reports);
                 const safeRiotAccounts = parseDisputeRiotAccounts(selectedDispute.riot_accounts);
                 const matchDispute = parseMatchDispute(selectedDispute.match_dispute);
-                const _primaryReport = getPrimaryDisputeReport(safeReports);
                 const canComment = selectedDispute.status === 'open' || selectedDispute.status === 'in_review';
 
                 return (

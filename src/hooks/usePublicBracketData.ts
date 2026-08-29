@@ -5,14 +5,20 @@ export interface Stage {
     id: string;
     name: string;
     stage_order: number;
-    format?: string;
-    best_of?: number | null;
+    format: string;
+    best_of: number | null;
     bo_mode?: 'per_stage' | 'per_round';
     round_bo_overrides?: Record<string, number>;
     scheduling_config?: {
         self_play_enabled?: boolean;
         checkin_window_minutes?: number;
     };
+    progress_label?: string | null;
+    capacity: number | null;
+    advancement_count: number | null;
+    is_locked: boolean;
+    map_pool: string[] | null;
+    config: unknown;
 }
 
 interface BracketVersion {

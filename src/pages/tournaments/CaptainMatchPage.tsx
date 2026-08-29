@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -582,10 +582,10 @@ const CaptainMatchPage = () => {
     const checkinForfeitResolved = Boolean(roomState?.matchOutcome);
     const showCheckinCard = Boolean(
         agreedScheduledTime
-        && activeMatch.team2?.id
+        && activeMatch?.team2?.id
         && !isMatchLive
         && (
-            activeMatch.status === 'pending'
+            activeMatch?.status === 'pending'
             || checkinForfeitResolved
         ),
     );

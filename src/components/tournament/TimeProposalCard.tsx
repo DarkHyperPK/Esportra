@@ -269,7 +269,7 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                             <div className="flex gap-2">
                                 <button type="button"
                                     onClick={handlePropose}
-                                    disabled={proposeTime.isPending || (roundDeadline && new Date(`${proposedDate}T${proposedTime}`) > new Date(roundDeadline))}
+                                    disabled={proposeTime.isPending || Boolean(roundDeadline && new Date(`${proposedDate}T${proposedTime}`) > new Date(roundDeadline))}
                                     className={cn(buttonVariants(), 'flex-1 border-transparent bg-blue-600 hover:bg-blue-700')}
                                 >
                                     {proposeTime.isPending ? 'Sending...' : 'Send Proposal'}
@@ -383,7 +383,7 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                                     <div className="flex gap-2">
                                         <button type="button"
                                             onClick={handleCounter}
-                                            disabled={counterProposal.isPending || (roundDeadline && new Date(`${proposedDate}T${proposedTime}`) > new Date(roundDeadline))}
+                                            disabled={counterProposal.isPending || Boolean(roundDeadline && new Date(`${proposedDate}T${proposedTime}`) > new Date(roundDeadline))}
                                             className={cn(buttonVariants(), 'flex-1 border-transparent bg-purple-600 hover:bg-purple-700')}
                                         >
                                             Send Counter

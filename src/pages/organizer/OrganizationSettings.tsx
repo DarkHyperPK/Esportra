@@ -625,14 +625,10 @@ const OrganizationSettings: React.FC = () => {
                       onClick={async () => {
                         try {
                           setLoading(true);
-                          const data = await apiClient.delete<any>(`/api/organizations/${organization.id}`);
-                          if (data && !data.success) {
-                            toast({ title: 'Cannot delete', description: data.message, variant: 'destructive' });
-                          } else {
-                            toast({ title: 'Deleted', description: 'Organization deleted successfully.' });
-                            setOrganization(null);
-                            navigate('/');
-                          }
+                          await apiClient.delete(`/api/organizations/${organization.id}`);
+                          toast({ title: 'Deleted', description: 'Organization deleted successfully.' });
+                          setOrganization(null);
+                          navigate('/');
                         } catch (error: any) {
                           toast({ title: 'Error', description: error.message, variant: 'destructive' });
                         } finally {

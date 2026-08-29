@@ -10,7 +10,7 @@ import type { CashPayout, RewardDistribution } from '@/types/prizeDistribution';
 import type { Tournament } from '@/types/tournament';
 
 interface PrizeDistributionTabProps {
-    tournament: Tournament;
+    tournament: Pick<Tournament, 'id' | 'prize_pool'>;
     locked?: boolean;
 }
 

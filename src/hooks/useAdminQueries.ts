@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -111,6 +111,7 @@ export const useAdminUsersList = (params: AdminUsersParams = {}) =>
       return apiClient.get<AdminUsersResponse>(`/api/admin/users?${qs}`);
     },
     staleTime: 1000 * 30,
+    placeholderData: keepPreviousData,
   });
 
 // ── Roles ───────────────────────────────────────────────────────────────────
@@ -190,32 +191,6 @@ export const useAdminSponsorApplications = () =>
     staleTime: 1000 * 30,
   });
 
-// ── Audit Logs (paginated) ──────────────────────────────────────────────────
-interface AuditLogParams {
-  limit?: number;
-  offset?: number;
-  search?: string;
-  target_type?: string;
-  from?: string;
-  to?: string;
-}
-
-export const useAdminAuditLogs = (params: AuditLogParams = {}) =>
-  useQuery({
-    queryKey: adminKeys.auditLogs(params),
-    queryFn: () => {
-      const qs = new URLSearchParams();
-      if (params.limit) qs.set('limit', String(params.limit));
-      if (params.offset !== undefined) qs.set('offset', String(params.offset));
-      if (params.search) qs.set('search', params.search);
-      if (params.target_type) qs.set('target_type', params.target_type);
-      if (params.from) qs.set('from', params.from);
-      if (params.to) qs.set('to', params.to);
-      return apiClient.get<any>(`/api/admin/audit-logs?${qs}`);
-    },
-    staleTime: 1000 * 15, // 15 seconds — logs are near-real-time
-  });
-
 // ── Verification Requests ───────────────────────────────────────────────────
 export const useAdminVerificationRequests = () =>
   useQuery({
@@ -280,7 +255,8 @@ export const useAdminUserSuspend = () => {
         suspensionUntil: suspensionUntil ?? null,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'users'] });
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'command-centre'] });
     },
   });
 };
@@ -292,7 +268,8 @@ export const useAdminUserUnsuspend = () => {
     mutationFn: (userId: string) =>
       apiClient.post(`/api/admin/users/${userId}/unsuspend`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'users'] });
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'command-centre'] });
     },
   });
 };
@@ -335,7 +312,8 @@ export const useAdminLicenseDelete = () => {
     mutationFn: (licenseId: string) =>
       apiClient.delete(`/api/admin/licenses/${licenseId}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+      queryClient.invalidateQueries({ queryKey: adminKeys.verificationRequests() });
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'command-centre'] });
       toast({ title: 'License deleted' });
     },
     onError: (error: Error) => {
@@ -363,7 +341,8 @@ export const useAdminUserRoleUpdate = () => {
     mutationFn: (data: { user_id: string; role: string }) =>
       apiClient.post('/api/admin/user-roles', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'users'] });
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'command-centre'] });
     },
   });
 };
@@ -380,7 +359,8 @@ export const useAdminBulkUserAction = () => {
         reason,
       }),
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'users'] });
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'command-centre'] });
       toast({ title: `Bulk ${variables.action} complete`, description: `${data.affected} user(s) affected` });
     },
     onError: (error: Error) => {
@@ -400,7 +380,8 @@ export const useAdminBulkTournamentAction = () => {
         action,
       }),
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.all });
+      queryClient.invalidateQueries({ queryKey: adminKeys.tournaments() });
+      queryClient.invalidateQueries({ queryKey: [...adminKeys.all, 'command-centre'] });
       toast({ title: `Bulk ${variables.action} complete`, description: `${data.affected} tournament(s) affected` });
     },
     onError: (error: Error) => {
@@ -885,7 +866,7 @@ export interface SessionAuditEntry {
   actorUsername: string | null;
   ipAddress: string | null;
   userAgent: string | null;
-  details: string | null;
+  details: unknown;
   createdAt: string;
 }
 

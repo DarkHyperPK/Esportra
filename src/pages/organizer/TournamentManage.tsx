@@ -148,6 +148,193 @@ interface Participant {
   };
 }
 
+// ── handleTeamClick helpers ──
+
+const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+const looksLikeUuid = (s: string) => UUID_RE.test(s);
+
+function extractMemberName(m: unknown): string {
+  if (typeof m === 'string') return m;
+  return (m as any)?.username || (m as any)?.name || '';
+}
+
+function parseTeamMembers(input: unknown): string[] {
+  if (!input) return [];
+  if (Array.isArray(input)) return input.map(extractMemberName).filter(Boolean);
+  if (typeof input !== 'string') return [];
+  const trimmed = input.trim();
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.map(extractMemberName).filter(Boolean);
+    } catch { /* fall through */ }
+  }
+  return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+async function resolveTeamIdentity(
+  participant: Participant,
+): Promise<{ teamId: string | null; logoUrl: string | null }> {
+  let teamId = participant.team_id as string | null;
+  let logoUrl: string | null = participant.team_logo || participant.display_logo_url || null;
+  const isSolo = participant.participant_type === 'solo' || participant.entry_kind === 'solo_player';
+
+  if (isSolo) {
+    logoUrl = logoUrl || participant.display_logo_url || null;
+  } else if (!teamId) {
+    try {
+      const teamResults = await apiClient.get<any[]>(`/api/teams/search?name=${encodeURIComponent(participant.team_name || '')}`).catch(() => []);
+      const exactMatch = (teamResults || []).find((t: any) => t.name === participant.team_name);
+      const match = exactMatch || (teamResults || [])[0];
+      if (match) { teamId = match.id; logoUrl = logoUrl || match.logo_url || null; }
+    } catch { /* ignored */ }
+  } else {
+    try {
+      const teamData = await apiClient.get<any>(`/api/teams/${teamId}`).catch(() => null);
+      if (teamData) logoUrl = logoUrl || teamData.logo_url || null;
+    } catch { /* ignored */ }
+  }
+  return { teamId, logoUrl };
+}
+
+function resolveProfileDisplayName(profile: any, preferRiotTag: boolean): string {
+  const tag = preferRiotTag ? profile.riot_tag : (profile.riot_tag || profile.steam_tag);
+  return tag || profile.username || profile.full_name || `player_${String(profile.id).substring(0, 8)}`;
+}
+
+function resolveProfileMatchedKey(profile: any): string | null {
+  const field = profile.matched_field;
+  if (field === 'riot_tag') return profile.riot_tag;
+  if (field === 'steam_tag') return profile.steam_tag;
+  if (field === 'username') return profile.username;
+  return profile.full_name ?? null;
+}
+
+function resolveProfileBestName(profile: any): string {
+  return profile.riot_tag || profile.steam_tag || profile.username || profile.full_name || '';
+}
+
+async function resolvePlayerNames(
+  tokens: string[],
+  preferRiotTag: boolean,
+): Promise<string[]> {
+  const areUuids = tokens.every(looksLikeUuid);
+  const resolved = await apiClient.post<any[]>('/api/profiles/resolve-players', {
+    tokens: areUuids ? tokens : Array.from(new Set(tokens)),
+    areUuids,
+  });
+
+  if (areUuids) {
+    const map = new Map<string, string>();
+    (resolved || []).forEach((p: any) => map.set(p.id, resolveProfileDisplayName(p, preferRiotTag)));
+    return tokens.map(id => map.get(id) || `player_${String(id).substring(0, 8)}`);
+  }
+
+  const uniq = Array.from(new Set(tokens));
+  const map = new Map<string, string>();
+  (resolved || []).forEach((p: any) => {
+    const key = resolveProfileMatchedKey(p);
+    if (key) map.set(key, resolveProfileBestName(p));
+  });
+  return uniq.map(t => map.get(t) || t);
+}
+
+interface CachedGameData { background_image: string | null; logo_image: string | null; timestamp: number }
+
+function readCachedGameImages(gameName: string): { background: string | null; logo: string | null } {
+  const cacheKey = `rawg_cache_${normalize(gameName)}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (!cached) return { background: null, logo: null };
+  try {
+    const { background_image, logo_image, timestamp } = JSON.parse(cached) as CachedGameData;
+    if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+      return { background: background_image, logo: logo_image };
+    }
+  } catch { /* corrupt cache */ }
+  localStorage.removeItem(cacheKey);
+  return { background: null, logo: null };
+}
+
+async function fetchAndCacheRawgImages(gameName: string): Promise<{ background: string | null; logo: string | null }> {
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/games/search?q=${encodeURIComponent(gameName)}`);
+    const data = await res.json();
+    if (data?.results?.length > 0) {
+      const bg = data.results[0].background_image ?? null;
+      const cacheKey = `rawg_cache_${normalize(gameName)}`;
+      localStorage.setItem(cacheKey, JSON.stringify({ background_image: bg, logo_image: bg, timestamp: Date.now() }));
+      return { background: bg, logo: bg };
+    }
+  } catch (e) {
+    console.warn('RAWG proxy fetch failed, using fallbacks:', e);
+  }
+  return { background: null, logo: null };
+}
+
+async function fetchGameLogo(gameName: string): Promise<string | null> {
+  if (!gameName) return null;
+
+  const staticGame = getGameByName(gameName);
+  if (staticGame?.logo) return staticGame.logo;
+
+  let { background, logo } = readCachedGameImages(gameName);
+  if (!background && !logo) {
+    const fetched = await fetchAndCacheRawgImages(gameName);
+    background = fetched.background;
+    logo = fetched.logo;
+  }
+
+  return logo ?? background ?? null;
+}
+
+function computeAutoExtensionDate(
+  tournament: { start_date?: string | null; end_date?: string | null },
+  stageCompletionQueries: { isLoading: boolean; isError: boolean; data: unknown }[],
+): Date | null {
+  const startDate = tournament.start_date ? new Date(tournament.start_date) : null;
+  const endDate = tournament.end_date ? new Date(tournament.end_date) : null;
+  if (!startDate || !endDate) return null;
+
+  const now = new Date();
+  if (now < startDate || endDate < startDate) return null;
+  if (now <= endDate) return null;
+
+  const hasIncompleteStage = stageCompletionQueries.some(
+    (q) => !q.isLoading && !q.isError && !q.data,
+  );
+  if (!hasIncompleteStage) return null;
+
+  const newEnd = new Date(now);
+  newEnd.setDate(newEnd.getDate() + 1);
+  if (newEnd < startDate) {
+    newEnd.setTime(startDate.getTime());
+    newEnd.setDate(newEnd.getDate() + 1);
+  }
+  return newEnd;
+}
+
+async function resolveRegistrationMembers(
+  tournamentId: string | undefined,
+  teamName: string | null,
+  preferRiotTag: boolean,
+): Promise<string[] | null> {
+  if (!tournamentId || !teamName) return null;
+
+  const regRow = await apiClient.get<any>(
+    `/api/tournaments/${tournamentId}/participants?team_name=${encodeURIComponent(teamName)}`,
+  ).then(r => (Array.isArray(r) ? r[0] : r)).catch(() => null);
+
+  if (!regRow?.team_members) return null;
+
+  const tokens = parseTeamMembers(regRow.team_members);
+  if (tokens.length === 0) return null;
+
+  if (tokens.some(t => !looksLikeUuid(t))) return tokens;
+
+  const names = await resolvePlayerNames(tokens, preferRiotTag);
+  return names.length > 0 ? names : null;
+}
+
 const STAFF_PERMISSION_LABELS: Record<StaffPermission, string> = {
   'scores:update': 'Scores',
   'teams:manage': 'Teams',
@@ -522,41 +709,22 @@ const TournamentDashboard = () => {
   useEffect(() => {
     const checkOverdue = async () => {
       if (!tournament || !canActAsOwner || stages.length === 0) return;
+      if (tournament.status === 'completed') return;
 
-      const startDate = tournament.start_date ? new Date(tournament.start_date) : null;
-      const endDate = tournament.end_date ? new Date(tournament.end_date) : null;
-      if (!endDate) return;
+      const extensionDate = computeAutoExtensionDate(tournament, stageCompletionQueries);
+      if (!extensionDate) return;
 
-      const currentTime = new Date();
-
-      // Never auto-extend before the tournament starts or when dates are invalid.
-      if (!startDate || currentTime < startDate || endDate < startDate) return;
-
-      const isOverdue = currentTime > endDate;
-      const confirmedIncompleteStages = stageCompletionQueries.some(
-        (query) => !query.isLoading && !query.isError && !query.data,
-      );
-
-      if (isOverdue && confirmedIncompleteStages && tournament.status !== 'completed') {
-        const newEndDate = new Date(currentTime);
-        newEndDate.setDate(newEndDate.getDate() + 1);
-        if (newEndDate < startDate) {
-          newEndDate.setTime(startDate.getTime());
-          newEndDate.setDate(newEndDate.getDate() + 1);
-        }
-
-        try {
-          await apiClient.put(`/api/tournaments/${tournament.id}`, { endDate: newEndDate.toISOString() });
-          toast({
-            title: 'Tournament Extended',
-            description: 'Tournament end time has passed with incomplete stages. Extended by 24 hours.',
-            variant: 'default',
-            duration: 6000,
-          });
-          refetchDashboard();
-        } catch (err) {
-          console.error('Error auto-extending tournament:', err);
-        }
+      try {
+        await apiClient.put(`/api/tournaments/${tournament.id}`, { endDate: extensionDate.toISOString() });
+        toast({
+          title: 'Tournament Extended',
+          description: 'Tournament end time has passed with incomplete stages. Extended by 24 hours.',
+          variant: 'default',
+          duration: 6000,
+        });
+        refetchDashboard();
+      } catch (err) {
+        console.error('Error auto-extending tournament:', err);
       }
     };
 
@@ -569,108 +737,24 @@ const TournamentDashboard = () => {
     setTeamLoading(true);
     setTeamCaptain(null);
     try {
-      // Parse any pre-saved members; handle both JSONB array of objects and comma-separated strings
-      const parseTeamMembers = (input: any): string[] => {
-        if (!input) return [];
-        if (Array.isArray(input)) {
-          return input.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
-        }
-        if (typeof input === 'string') {
-          const trimmed = input.trim();
-          if (trimmed.startsWith('[')) {
-            try {
-              const parsed = JSON.parse(trimmed);
-              if (Array.isArray(parsed)) return parsed.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
-            } catch { /* fall through */ }
-          }
-          return trimmed.split(',').map(s => s.trim()).filter(Boolean);
-        }
-        return [];
-      };
       const rawTokens = parseTeamMembers(participant.team_members);
-      const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
-      const tokensAreIds = rawTokens.some(t => looksLikeUuid(t));
-      if (rawTokens.length > 0 && !tokensAreIds) {
+      if (rawTokens.length > 0 && !rawTokens.some(looksLikeUuid)) {
         setSelectedTeamMembers(rawTokens);
       }
-      // Resolve team id and logo
-      const isSoloParticipant = participant.participant_type === 'solo' || participant.entry_kind === 'solo_player';
-      let teamId = participant.team_id as string | null;
-      let logoUrl: string | null = participant.team_logo || participant.display_logo_url || null;
-      if (isSoloParticipant) {
-        logoUrl = logoUrl || participant.display_logo_url || null;
-      } else if (!teamId) {
-        // Try exact name match first
-        try {
-          // Search teams by name — use team search endpoint
-          const teamResults = await apiClient.get<any[]>(`/api/teams/search?name=${encodeURIComponent(participant.team_name || '')}`).catch(() => []);
-          const exactMatch = (teamResults || []).find((t: any) => t.name === participant.team_name);
-          const fuzzyMatch = (teamResults || [])[0];
-          const match = exactMatch || fuzzyMatch;
-          if (match) {
-            teamId = match.id; logoUrl = logoUrl || match.logo_url || null;
-          }
-        } catch { /* ignored */ }
-      } else {
-        try {
-          const teamData = await apiClient.get<any>(`/api/teams/${teamId}`).catch(() => null);
-          if (teamData) {
-            logoUrl = logoUrl || teamData.logo_url || null;
-          }
-        } catch { /* ignored */ }
+
+      const identity = await resolveTeamIdentity(participant);
+      if (identity.logoUrl && selectedTeam) selectedTeam.team_logo = identity.logoUrl;
+
+      const resolved = await resolveRegistrationMembers(
+        tournament?.id, participant.team_name, tournamentModeFeatures.assistedReporting,
+      );
+      if (resolved) {
+        setSelectedTeamMembers(resolved);
+        setTeamLoading(false);
+        setTeamDialogOpen(true);
+        return;
       }
-      if (logoUrl && selectedTeam) selectedTeam.team_logo = logoUrl;
-      // First, try reading names saved in tournament registration directly
-      if (tournament?.id && participant.team_name) {
-        const regRow = await apiClient.get<any>(`/api/tournaments/${tournament.id}/participants?team_name=${encodeURIComponent(participant.team_name)}`).then(r => (Array.isArray(r) ? r[0] : r)).catch(() => null);
-        if (regRow?.team_members) {
-          const tokens = parseTeamMembers(regRow.team_members);
-          const looksUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
-          const hasPlainNames = tokens.some(t => !looksUuid(t));
-          if (tokens.length > 0 && hasPlainNames) {
-            setSelectedTeamMembers(tokens);
-            setTeamLoading(false);
-            setTeamDialogOpen(true);
-            return;
-          }
-          if (tokens.length > 0) {
-            let namesResolved: string[] = [];
-            const areUuids = tokens.every(looksUuid);
-            const resolved = await apiClient.post<any[]>('/api/profiles/resolve-players', {
-              tokens: areUuids ? tokens : Array.from(new Set(tokens)),
-              areUuids,
-            });
-            if (areUuids) {
-              const mapTok = new Map<string, string>();
-              const preferRiotTag = tournamentModeFeatures.assistedReporting;
-              (resolved || []).forEach((p: any) => {
-                const tag = preferRiotTag ? p.riot_tag : (p.riot_tag || p.steam_tag);
-                mapTok.set(p.id, tag || p.username || p.full_name || `player_${String(p.id).substring(0, 8)}`);
-              });
-              namesResolved = tokens.map(id => mapTok.get(id) || `player_${String(id).substring(0, 8)}`);
-            } else {
-              const uniq = Array.from(new Set(tokens));
-              const map = new Map<string, string>();
-              (resolved || []).forEach((p: any) => {
-                const key = p.matched_field === 'riot_tag' ? p.riot_tag
-                  : p.matched_field === 'steam_tag' ? p.steam_tag
-                  : p.matched_field === 'username' ? p.username
-                  : p.full_name;
-                if (key) map.set(key, p.riot_tag || p.steam_tag || p.username || p.full_name);
-              });
-              namesResolved = uniq.map(t => map.get(t) || t);
-            }
-            if (namesResolved.length > 0) {
-              setSelectedTeamMembers(namesResolved);
-              setTeamLoading(false);
-              setTeamDialogOpen(true);
-              return;
-            }
-          }
-        }
-      }
-      // If we reach here, logic continues... (omitted for brevity, assume full logic is needed but I'll trust the user just wants the modal open)
-      // For now, if no logic matched, just open with basic info
+
       setTeamLoading(false);
       setTeamDialogOpen(true);
     } catch (e) {
@@ -1124,66 +1208,11 @@ const TournamentDashboard = () => {
   };
 
   // Fetch game background from RAWG API
-  // Combined Game Data Fetching (Static + RAWG with Caching)
   useEffect(() => {
-    async function fetchGameData(gameName: string) {
-      if (!gameName) return;
-
-      const cacheKey = `rawg_cache_${normalize(gameName)}`;
-      let background = null;
-      let logo = null;
-
-      // 1. Check Cache for RAWG Data
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        try {
-          const { background_image, logo_image, timestamp } = JSON.parse(cached);
-          // Cache valid for 24 hours
-          if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
-            background = background_image;
-            logo = logo_image;
-          }
-        } catch {
-          localStorage.removeItem(cacheKey);
-        }
-      }
-
-      // 2. Fetch from RAWG via Edge Function proxy if missing data
-      if (!background || !logo) {
-        try {
-          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/games/search?q=${encodeURIComponent(gameName)}`);
-          const data = await res.json();
-          if (data && data.results && data.results.length > 0) {
-            const game = data.results[0];
-            background = background || game.background_image;
-            logo = logo || game.background_image; // RAWG uses background_image as the main visual
-            // Cache the result
-            localStorage.setItem(cacheKey, JSON.stringify({
-              background_image: background,
-              logo_image: logo,
-              timestamp: Date.now()
-            }));
-          }
-        } catch (e) {
-          console.warn('RAWG proxy fetch failed, using fallbacks:', e);
-        }
-      }
-
-      // 3. Update State
-      // Check static data for logo override
-      const foundGame = getGameByName(gameName);
-      if (foundGame?.logo) {
-        setGameLogo(foundGame.logo);
-      } else if (logo) {
-        setGameLogo(logo);
-      } else if (background) {
-        setGameLogo(background);
-      }
-    }
-
-    if (tournament?.game) {
-      fetchGameData(tournament.game);
-    }
+    if (!tournament?.game) return;
+    fetchGameLogo(tournament.game).then((logo) => {
+      if (logo) setGameLogo(logo);
+    });
   }, [tournament?.game]);
 
   useEffect(() => {

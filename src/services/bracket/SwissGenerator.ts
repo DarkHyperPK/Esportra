@@ -12,7 +12,7 @@ export class SwissGenerator implements IBracketGenerator {
         stageId?: string,
         bestOf: number = 1,
         bracketSize?: number, // Interpreted as "Total Rounds" for Swiss
-        advancementCount?: number,
+        _advancementCount?: number,
         config?: any
     ): BracketGraph {
         const versionId = crypto.randomUUID();

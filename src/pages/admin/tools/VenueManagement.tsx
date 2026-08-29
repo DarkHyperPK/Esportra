@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAdminVenues, useAdminVenueUpdate } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { AdminPage } from '@/components/admin/AdminPage';
 import {
   CommandButton,
@@ -105,6 +106,7 @@ function VenueStatusChip({ status }: { status: string }) {
 
 const VenueManagementTool = () => {
   const { toast } = useToast();
+  const { can } = useAdminAccess();
   const { data, isLoading, refetch } = useAdminVenues();
   const venueUpdate = useAdminVenueUpdate();
   const venues = data ?? [];
@@ -286,7 +288,7 @@ const VenueManagementTool = () => {
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
-                            {venue.status !== 'published' ? (
+                            {can("venues:edit") && (venue.status !== 'published' ? (
                               <DropdownMenuItem
                                 className="text-white focus:bg-rose-500/15 focus:text-white"
                                 onClick={() => handleVerify(venue.id, true)}
@@ -302,7 +304,7 @@ const VenueManagementTool = () => {
                                 <XCircle className="mr-2 h-4 w-4" />
                                 Remove Verification
                               </DropdownMenuItem>
-                            )}
+                            ))}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>

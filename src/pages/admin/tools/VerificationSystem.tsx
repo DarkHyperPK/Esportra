@@ -18,6 +18,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { auditLog } from "@/lib/auditLog";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 import {
   useAdminVerificationRequests,
   useAdminVerificationAction,
@@ -91,6 +92,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 const VerificationSystemTool = () => {
   const { toast } = useToast();
+  const { can } = useAdminAccess();
   const { data: rawRequests, isLoading: loading, refetch } = useAdminVerificationRequests();
   const verificationAction = useAdminVerificationAction();
   const verificationDelete = useAdminVerificationDelete();
@@ -427,7 +429,7 @@ const VerificationSystemTool = () => {
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
-                          {request.status === 'pending' && (
+                          {request.status === 'pending' && can("verification:approve") && (
                             <DropdownMenuItem
                               className="cursor-pointer text-white focus:bg-white/10 focus:text-white"
                               onClick={() => {
@@ -441,7 +443,7 @@ const VerificationSystemTool = () => {
                             </DropdownMenuItem>
                           )}
 
-                          {request.status === 'pending' && (
+                          {request.status === 'pending' && can("verification:approve") && (
                             <DropdownMenuItem
                               className="cursor-pointer text-red-300 focus:bg-red-500/10 focus:text-red-200"
                               onClick={() => {
@@ -455,17 +457,19 @@ const VerificationSystemTool = () => {
                             </DropdownMenuItem>
                           )}
 
-                          <DropdownMenuItem
-                            className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-300"
-                            onClick={() => {
-                              if (confirm('Delete this verification request permanently?')) {
-                                verificationDelete.mutate(request.id);
-                              }
-                            }}
-                          >
-                            <XCircle className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
+                          {can("verification:delete") && (
+                            <DropdownMenuItem
+                              className="cursor-pointer text-red-400 focus:bg-red-500/10 focus:text-red-300"
+                              onClick={() => {
+                                if (confirm('Delete this verification request permanently?')) {
+                                  verificationDelete.mutate(request.id);
+                                }
+                              }}
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
@@ -500,13 +504,15 @@ const VerificationSystemTool = () => {
             <CommandButton variant="ghost" size="sm" onClick={() => setActionDialogOpen(false)}>
               Cancel
             </CommandButton>
-            <CommandButton
-              variant={actionType === 'approve' ? 'primary' : 'danger'}
-              size="sm"
-              onClick={() => selectedRequest && handleAction(selectedRequest.id, actionType)}
-            >
-              {actionType === 'approve' ? 'Approve' : 'Reject'}
-            </CommandButton>
+            {can("verification:approve") && (
+              <CommandButton
+                variant={actionType === 'approve' ? 'primary' : 'danger'}
+                size="sm"
+                onClick={() => selectedRequest && handleAction(selectedRequest.id, actionType)}
+              >
+                {actionType === 'approve' ? 'Approve' : 'Reject'}
+              </CommandButton>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -804,7 +810,7 @@ const VerificationSystemTool = () => {
                 <CommandButton variant="ghost" size="sm" onClick={() => setSelectedRequest(null)}>
                   Close
                 </CommandButton>
-                {selectedRequest.status === 'pending' && (
+                {selectedRequest.status === 'pending' && can("verification:approve") && (
                   <>
                     <CommandButton variant="danger" size="sm" onClick={() => { setActionType('reject'); setActionDialogOpen(true); }}>
                       Reject

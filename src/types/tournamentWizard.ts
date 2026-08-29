@@ -94,6 +94,11 @@ export interface TournamentWizardData {
     // Game-specific settings
     assistedMatchReporting: boolean;
     mapVetoEnabled: boolean;
+
+    // Tournament metadata
+    rules: string;
+    region: string;
+    serverRegion: string;
 }
 
 export interface WizardStepProps {
@@ -190,4 +195,9 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     // Game-specific
     assistedMatchReporting: false,
     mapVetoEnabled: true,
+
+    // Tournament metadata
+    rules: '',
+    region: '',
+    serverRegion: '',
 };

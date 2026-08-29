@@ -643,7 +643,7 @@ export const useMapVetoMachine = ({
 
                     if (brktMatch?.stage_best_of) {
                         stageBestOf = brktMatch.stage_best_of;
-                        setDbBestOf(stageBestOf);
+                        setDbBestOf(stageBestOf ?? null);
 
                     }
                 } catch {

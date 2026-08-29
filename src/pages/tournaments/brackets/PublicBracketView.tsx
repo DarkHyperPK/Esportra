@@ -96,7 +96,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
         queryKey: ['bracket-match-games', tournamentId],
         queryFn: async () => {
             if (!tournamentId) return {};
-            const data = await apiClient.get(`/api/tournaments/${tournamentId}/match-games`);
+            const data = await apiClient.get<any[]>(`/api/tournaments/${tournamentId}/match-games`);
 
             const map: Record<string, any[]> = {};
             data?.forEach((game: any) => {
@@ -116,7 +116,7 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
         queryKey: ['teams', teamIds],
         queryFn: async () => {
             if (teamIds.length === 0) return [];
-            return apiClient.post('/api/teams/batch', { ids: teamIds });
+            return apiClient.post<any[]>('/api/teams/batch', { ids: teamIds });
         },
         enabled: teamIds.length > 0
     });
@@ -388,8 +388,8 @@ export const PublicBracketView: React.FC<PublicBracketViewProps> = ({
                                                     setResultsDialogMatch(match);
                                                     setResultsDialogOpen(true);
                                                 }}
-                                                hasAutomatedResults={automatedGames?.[getRawId(match.id)]?.length > 0}
-                                                hasProofs={proofs?.[getRawId(match.id)]?.length > 0}
+                                                hasAutomatedResults={(automatedGames?.[getRawId(match.id)]?.length ?? 0) > 0}
+                                                hasProofs={(proofs?.[getRawId(match.id)]?.length ?? 0) > 0}
                                                 hoveredTeamId={hoveredTeamId}
                                                 onTeamHover={setHoveredTeamId}
                                             />

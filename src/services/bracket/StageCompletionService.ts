@@ -71,7 +71,13 @@ export class StageCompletionService {
         isFinalStage?: boolean;
     }> {
         try {
-            const result = await apiClient.post(`/api/stages/${currentStageId}/advance`);
+            const result = await apiClient.post<{
+                success: boolean;
+                nextStageId?: string;
+                advancedCount?: number;
+                error?: string;
+                isFinalStage?: boolean;
+            }>(`/api/stages/${currentStageId}/advance`);
             return {
                 success: result.success,
                 nextStageId: result.nextStageId,

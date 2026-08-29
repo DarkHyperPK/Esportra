@@ -188,7 +188,7 @@ export const BRWaveLobbyPanel: React.FC<BRWaveLobbyPanelProps> = ({
 
   const handleLobbyCodeUpdate = async (
     roundId: string,
-    lobbyCode: string,
+    lobbyCode: string | null,
     scheduledAt: string | null,
     queueTimerMinutes: number | null,
     map?: string | null,

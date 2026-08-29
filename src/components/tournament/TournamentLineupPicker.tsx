@@ -18,6 +18,8 @@ export interface TournamentLineupMember {
   riot_tag_fallback?: string | null;
   is_captain?: boolean;
   is_verified?: boolean;
+  roster_role?: string | null;
+  is_starter?: boolean | null;
 }
 
 interface TournamentLineupPickerProps {

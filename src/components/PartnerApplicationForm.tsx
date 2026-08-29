@@ -33,15 +33,6 @@ const PARTNERSHIP_GOALS = [
     { value: 'exclusive_offers', label: 'Exclusive Offers', desc: 'Provide deals to Esportra users' },
 ];
 
-const _BUDGET_OPTIONS = [
-    { value: 'under_1k', label: 'Under $1,000', tier: 'partner' },
-    { value: '1k_5k', label: '$1,000 – $5,000', tier: 'partner' },
-    { value: '5k_15k', label: '$5,000 – $15,000', tier: 'ascendant' },
-    { value: '15k_50k', label: '$15,000 – $50,000', tier: 'ascendant' },
-    { value: '50k_plus', label: '$50,000+', tier: 'radiant' },
-    { value: 'undecided', label: "Let's discuss", tier: '' },
-];
-
 const HOW_HEARD = [
     'Search Engine', 'Social Media', 'Referral', 'Event / Conference',
     'Press / Media', 'Existing Partner', 'Other',

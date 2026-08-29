@@ -1,7 +1,6 @@
-import React from 'react';
 import { CtaButton, DangerButton } from "@/components/ui/app-buttons";
 import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useTeamManagement, TeamInvite } from '@/hooks/useTeamManagement';
 import { CheckCircle, XCircle, Clock, Users, Bell } from "lucide-react";
 
@@ -96,7 +95,12 @@ const TeamInvites = () => {
 
             {/* Inviter Info */}
             <div className="flex items-center gap-3 mb-4 p-3 backdrop-blur-xl bg-white/5 rounded-xl border border-white/10">
-              <Avatar className="h-8 w-8" src={invite.inviter.avatar_url} name={invite.inviter.username} />
+              <Avatar className="h-8 w-8">
+                {invite.inviter.avatar_url ? (
+                  <AvatarImage src={invite.inviter.avatar_url} alt={invite.inviter.username} />
+                ) : null}
+                <AvatarFallback>{invite.inviter.username.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
               <div>
                 <div className="text-sm font-medium text-white">
                   Invited by {invite.inviter.username}

@@ -442,7 +442,7 @@ export function useBRGameResults({
   // Get lobby code for a specific game
   const getLobbyCode = useCallback(
     (gameNumber: number): string | undefined => {
-      return allGames.get(gameNumber)?.lobbyCode;
+      return allGames.get(gameNumber)?.lobbyCode ?? undefined;
     },
     [allGames]
   );

@@ -1,4 +1,3 @@
-import React from "react";
 import { countries, getCountryFlagUrl } from "@/utils/countries";
 import {
     Select,

@@ -416,13 +416,15 @@ export function isBattleRoyale(gameName: string): boolean {
 
 /** Read persisted tournament format/type from API payloads (snake or camel case). */
 export function getPersistedTournamentFormat(
-  tournament?: {
+  tournament?: unknown,
+): string | null {
+  if (!tournament || typeof tournament !== 'object') return null;
+  const persisted = tournament as {
     tournament_type?: string | null;
     tournamentType?: string | null;
     format?: string | null;
-  } | null,
-): string | null {
-  return tournament?.tournament_type ?? tournament?.tournamentType ?? tournament?.format ?? null;
+  };
+  return persisted.tournament_type ?? persisted.tournamentType ?? persisted.format ?? null;
 }
 
 /** Prefer persisted tournament type when catalog cache is not loaded yet. */

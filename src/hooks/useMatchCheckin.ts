@@ -62,7 +62,6 @@ export const useMatchCheckin = (
 ) => {
   const subscribeRealtime = options?.subscribeRealtime !== false;
   const scheduledTimeForGuard = options?.scheduledTime ?? null;
-  const _checkInWindowMinutesForGuard = options?.checkInWindowMinutes ?? 15;
   const userTeamIdForDisplay = options?.userTeamId;
   const matchOutcomeForGuard = options?.matchOutcome ?? null;
   const forfeitReasonForGuard = options?.forfeitReason ?? null;

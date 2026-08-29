@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 interface PlayerCardProps {
     member: {
         user_id: string;
-        username: string;
+        username?: string;
         avatar_url?: string;
         card_image_url?: string;
         role?: string;

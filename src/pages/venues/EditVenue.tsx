@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
@@ -246,7 +246,7 @@ const EditVenue = () => {
                   <MapPicker
                     latitude={latitude}
                     longitude={longitude}
-                    onChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }}
+                    onChange={(lat: number, lng: number) => { setLatitude(lat); setLongitude(lng); }}
                     height="300px"
                     address={[address, city, country].filter(Boolean).join(', ')}
                   />

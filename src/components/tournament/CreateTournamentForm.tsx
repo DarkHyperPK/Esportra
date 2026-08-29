@@ -1,4 +1,3 @@
-import React from 'react';
 import { Loader2 } from 'lucide-react';
 import TournamentBasicInfoForm from './TournamentBasicInfoForm';
 import TournamentDetailsForm from './TournamentDetailsForm';
@@ -37,8 +36,8 @@ const CreateTournamentForm = () => {
             onCheckboxChange={handleCheckboxChange}
           />
 
-          <button type="button" 
-            type="submit" 
+          <button
+            type="submit"
             className="w-full bg-gaming-purple hover:bg-gaming-purple/80"
             disabled={loading}
           >

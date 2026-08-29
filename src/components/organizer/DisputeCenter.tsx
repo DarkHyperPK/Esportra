@@ -193,8 +193,6 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
       if (!silent) setLoadingComments(true);
       const data = await apiClient.get<any[]>(`/api/organizer/disputes/${disputeId}/comments`);
 
-      console.log('Fetched comments data:', data);
-
       // Fetch profile data for each unique user_id
       const userIds = [...new Set((data || []).map((c: any) => c.user_id))];
       const profileMap = new Map<string, { full_name?: string; username?: string }>();
@@ -223,7 +221,6 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
         };
       });
 
-      console.log('Processed comments:', commentsWithNames);
       setComments(commentsWithNames);
     } catch (error: unknown) {
       console.error('Error fetching comments:', error);

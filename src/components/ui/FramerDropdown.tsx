@@ -11,7 +11,7 @@ interface FramerDropdownRootProps {
     textColor?: string;
     borderColor?: string;
     accentColor?: string;
-    font?: any;
+    font?: React.CSSProperties;
     borderRadius?: number;
     padding?: number;
     className?: string;

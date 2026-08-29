@@ -191,7 +191,7 @@ export default function Broadcasts() {
         target_segment: formTargetType === 'segment' ? formSegment : undefined,
         target_user_ids: formTargetType === 'users' ? formTargetUserIds : undefined,
         channels: ['in_app', ...(formSendEmail ? ['email'] : [])],
-        scheduled_at: formScheduledAt || undefined,
+        scheduled_at: formScheduledAt ? new Date(formScheduledAt).toISOString() : undefined,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'broadcasts'] });
@@ -216,7 +216,7 @@ export default function Broadcasts() {
         target_segment: formTargetType === 'segment' ? formSegment : undefined,
         target_user_ids: formTargetType === 'users' ? formTargetUserIds : undefined,
         channels: ['in_app', ...(formSendEmail ? ['email'] : [])],
-        scheduled_at: formScheduledAt || undefined,
+        scheduled_at: formScheduledAt ? new Date(formScheduledAt).toISOString() : undefined,
       });
     },
     onSuccess: () => {
@@ -282,7 +282,7 @@ export default function Broadcasts() {
     setFormPriority(broadcast.priority);
     // Map old 'specific' value to new 'users' value for backwards compatibility
     setFormTargetType(broadcast.target_type === 'specific' ? 'users' : broadcast.target_type);
-    setFormScheduledAt(broadcast.scheduled_at ?? '');
+    setFormScheduledAt(broadcast.scheduled_at ? broadcast.scheduled_at.slice(0, 16) : '');
     setFormSegment((broadcast.target_segment as TargetSegment) ?? {});
     setFormTargetUserIds(broadcast.target_user_ids ?? []);
     setSelectedUsers([]);

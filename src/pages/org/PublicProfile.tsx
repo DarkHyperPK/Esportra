@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
@@ -9,14 +9,77 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from 'framer-motion';
 import Footer from '@/components/Footer';
 import { TournamentCard } from '@/components/TournamentCard';
-import { mapTournamentCardBadge } from '@/types/tournament';
+import { mapTournamentCardBadge, type TournamentCardBadgeFields, type TournamentStatus } from '@/types/tournament';
+
+interface OrganizationSocialLinks {
+    website?: string;
+    twitter?: string;
+    instagram?: string;
+    youtube?: string;
+    discord?: string;
+}
+
+interface Organization {
+    id: string;
+    slug: string;
+    name: string;
+    description?: string | null;
+    logo_url?: string | null;
+    banner_url?: string | null;
+    is_verified?: boolean;
+    social_links?: OrganizationSocialLinks | null;
+}
+
+interface PublicTournament extends TournamentCardBadgeFields {
+    id: string;
+    slug: string;
+    name: string;
+    game: string;
+    status: TournamentStatus;
+    start_date?: string;
+    end_date?: string;
+    settings?: { venue?: string | null } | null;
+    is_online?: boolean;
+    max_participants?: number;
+    max_teams?: number;
+    participant_count?: number;
+    team_size?: number;
+    prize_pool?: number | string | null;
+    entry_fee?: number | string | null;
+    banner_url?: string | null;
+    organization_name?: string;
+    organizer_owner_id?: string;
+    winner_team_name?: string;
+    currency?: string;
+}
+
+interface AlbumMedia {
+    url: string;
+}
+
+interface AlbumApiResponse {
+    id: string;
+    title: string;
+    description?: string | null;
+    created_at: string;
+    media?: AlbumMedia[] | null;
+}
+
+type Album = AlbumApiResponse & { cover_url: string | null };
+
+interface MediaItem {
+    id: string;
+    url: string;
+    caption?: string | null;
+    album_id?: string | null;
+}
 
 const OrganizationPublicProfile = () => {
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
     const { user } = useAuth();
-    const [selectedMediaItem, setSelectedMediaItem] = useState<any | null>(null);
-    const [activeAlbum, setActiveAlbum] = useState<any | null>(null);
+    const [selectedMediaItem, setSelectedMediaItem] = useState<MediaItem | null>(null);
+    const [activeAlbum, setActiveAlbum] = useState<Album | null>(null);
 
     const ensureHttps = (url: string) => url.startsWith('http') ? url : `https://${url}`;
 
@@ -24,7 +87,7 @@ const OrganizationPublicProfile = () => {
     const { data: org, isLoading: orgLoading } = useQuery({
         queryKey: ['org-public-profile', slug],
         queryFn: async () => {
-            return await apiClient.get(`/api/organizations/by-slug/${slug}`);
+            return await apiClient.get<Organization>(`/api/organizations/by-slug/${slug}`);
         },
         enabled: !!slug,
     });
@@ -33,7 +96,7 @@ const OrganizationPublicProfile = () => {
     const { data: tournaments, isLoading: _tournamentsLoading } = useQuery({
         queryKey: ['org-tournaments', org?.id],
         queryFn: async () => {
-            return await apiClient.get(`/api/organizations/${org.id}/tournaments`);
+            return await apiClient.get<PublicTournament[]>(`/api/organizations/${org!.id}/tournaments`);
         },
         enabled: !!org?.id,
     });
@@ -42,8 +105,8 @@ const OrganizationPublicProfile = () => {
     const { data: albums } = useQuery({
         queryKey: ['org-albums', org?.id],
         queryFn: async () => {
-            const data: any[] = await apiClient.get(`/api/organizations/${org.id}/albums`);
-            return data?.map((album: any) => ({
+            const data = await apiClient.get<AlbumApiResponse[]>(`/api/organizations/${org!.id}/albums`);
+            return data?.map((album) => ({
                 ...album,
                 cover_url: album.media?.[0]?.url || null
             })) || [];
@@ -56,7 +119,7 @@ const OrganizationPublicProfile = () => {
     const { data: media, isLoading: mediaLoading } = useQuery({
         queryKey: ['org-media', org?.id],
         queryFn: async () => {
-            return await apiClient.get(`/api/organizations/${org.id}/media`);
+            return await apiClient.get<MediaItem[]>(`/api/organizations/${org!.id}/media`);
         },
         enabled: !!org?.id,
     });
@@ -326,7 +389,7 @@ const OrganizationPublicProfile = () => {
                                             <Folder className="text-esports-accent w-5 h-5" /> Albums
                                         </h4>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            {albums.map((album: any) => (
+                                            {albums.map((album) => (
                                                 <div
                                                     key={album.id}
                                                     onClick={() => setActiveAlbum(album)}
@@ -371,14 +434,14 @@ const OrganizationPublicProfile = () => {
                                     {media && media.length > 0 ? (
                                         <div className="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">
                                             {media
-                                                .filter((m: any) => activeAlbum ? m.album_id === activeAlbum.id : true)
-                                                .map((item: any) => (
+                                                .filter((m) => activeAlbum ? m.album_id === activeAlbum.id : true)
+                                                .map((item) => (
                                                     <div
                                                         key={item.id}
                                                         className="break-inside-avoid relative group overflow-hidden cursor-zoom-in border border-white/5 bg-[#0a0a0c]"
                                                         onClick={() => setSelectedMediaItem(item)}
                                                     >
-                                                        <img src={item.url} loading="lazy" alt={item.caption} className="w-full h-auto hover:scale-105 transition-transform duration-500" />
+                                                        <img src={item.url} loading="lazy" alt={item.caption ?? undefined} className="w-full h-auto hover:scale-105 transition-transform duration-500" />
                                                         {item.caption && (
                                                             <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 <p className="text-sm font-medium">{item.caption}</p>
@@ -387,7 +450,7 @@ const OrganizationPublicProfile = () => {
                                                     </div>
                                                 ))}
 
-                                            {media.filter((m: any) => activeAlbum ? m.album_id === activeAlbum.id : true).length === 0 && (
+                                            {media                                                .filter((m) => activeAlbum ? m.album_id === activeAlbum.id : true).length === 0 && (
                                                 <div className="col-span-full py-12 text-center text-gray-500">
                                                     No photos in this album.
                                                 </div>

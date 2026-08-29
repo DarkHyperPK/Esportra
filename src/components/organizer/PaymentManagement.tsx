@@ -31,6 +31,8 @@ interface PaymentManagementProps {
 type PaymentFilter = 'all' | 'pending' | 'approved' | 'rejected';
 const PAYMENT_PAGE_SIZE = 20;
 
+const imgFetchPriority = { fetchpriority: 'low' } as const;
+
 const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, participants, onRefresh }) => {
   const { toast } = useToast();
   const [filter, setFilter] = useState<PaymentFilter>('pending');
@@ -241,7 +243,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
                             alt=""
                             loading="lazy"
                             decoding="async"
-                            fetchpriority="low"
+                            {...imgFetchPriority}
                             className="w-10 h-10 rounded-lg object-cover border border-white/10"
                           />
                         ) : (

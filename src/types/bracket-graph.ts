@@ -46,7 +46,7 @@ export interface BracketNode {
 
     scheduled_time?: string | null;
     automated_report_status?: 'idle' | 'processing' | 'verified' | 'failed' | 'partial' | null;
-    version: number;
+    version?: number;
 
     // Eager Loaded Data (Joined from teams table)
     team1_name?: string | null;

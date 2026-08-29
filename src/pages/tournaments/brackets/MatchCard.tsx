@@ -13,8 +13,32 @@ const CARD_HEIGHT = 180;
 import { formatLocalTime, isMatchTooEarlyForLive } from '@/lib/timeUtils';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 
+interface BracketTeam {
+    id?: string | null;
+    name?: string;
+    seed?: number | null;
+    logo_url?: string | null;
+}
+
+interface BracketMatch {
+    id: string | number;
+    round?: number;
+    matchNumber?: number;
+    status?: string;
+    team1_score?: number | null;
+    team2_score?: number | null;
+    team1?: BracketTeam;
+    team2?: BracketTeam;
+    winner?: { id?: string | null };
+    partyCode?: string;
+    scheduledTime?: string | null;
+    scheduled_time?: string | null;
+    bestOf?: number;
+    best_of?: number;
+}
+
 interface MatchCardProps {
-    match: any; // BracketMatch or BracketNode
+    match: BracketMatch;
     x?: number;
     y?: number;
     label?: string;
@@ -23,10 +47,10 @@ interface MatchCardProps {
     isOrganizer?: boolean;
     isProcessing?: boolean;
     onScoreChange?: (id: string, t: 't1' | 't2', v: string) => void;
-    onGoLive?: (m: any, code?: string, force?: boolean) => Promise<void> | void;
-    onMapVeto?: (m: any) => void;
-    onPartyCode?: (m: any) => void;
-    onSaveScore?: (m: any) => void;
+    onGoLive?: (m: BracketMatch, code?: string, force?: boolean) => Promise<void> | void;
+    onMapVeto?: (m: BracketMatch) => void;
+    onPartyCode?: (m: BracketMatch) => void;
+    onSaveScore?: (m: BracketMatch) => void;
     scoreDraftRef?: React.MutableRefObject<Record<string, { t1: string; t2: string }>>;
     proofs?: string[];
     onByeAdvance?: (matchId: string) => void;
@@ -35,8 +59,8 @@ interface MatchCardProps {
     tournamentId?: string;
     versionId?: string | null;
     automatedStatus?: 'idle' | 'processing' | 'verified' | 'failed' | 'partial' | null;
-    onViewResults?: (match: any) => void;
-    onMatchRoom?: (match: any) => void;
+    onViewResults?: (match: BracketMatch) => void;
+    onMatchRoom?: (match: BracketMatch) => void;
     disableGlass?: boolean;
 }
 

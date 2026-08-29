@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import { getGameByName } from '@/utils/gameFeatures';
+import { getGameByName, type GameMode } from '@/utils/gameFeatures';
 import { getCatalogGames } from '@/utils/gameCatalogCache';
 import {
   parseCatalogBrConfig,
@@ -8,7 +8,8 @@ import {
 } from '@/utils/gameCatalogBr';
 
 function gameToCatalogResponse(game: NonNullable<ReturnType<typeof getGameByName>>): GameCatalogGameResponse & { brConfig: ReturnType<typeof parseCatalogBrConfig> } {
-  const modes = (game.modes ?? game.formats).map((mode) => ({
+  const sourceModes: GameMode[] = game.modes ?? game.formats;
+  const modes = sourceModes.map((mode) => ({
     modeKey: mode.key || mode.value,
     name: mode.name,
     teamSize: mode.teamSize,
@@ -37,7 +38,7 @@ function gameToCatalogResponse(game: NonNullable<ReturnType<typeof getGameByName
     category: game.category,
     gameType: game.type,
     defaultModeKey: game.defaultMode ?? game.defaultFormat,
-    features: game.features as Record<string, unknown>,
+    features: { ...game.features },
     brConfig: parseCatalogBrConfig(game.brConfig),
     modes,
     tournamentStructures,

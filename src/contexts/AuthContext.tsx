@@ -116,7 +116,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
             console.log("⚠️ No profile found for authenticated user. User may need to complete profile setup.");
           } else {
             prevProfileIdRef.current = profileResult.id;
-            Sentry.setUser({ id: profileResult.id, username: profileResult.username, email: profileResult.email });
+            Sentry.setUser({ id: profileResult.id, username: profileResult.username, email: profileResult.email ?? undefined });
 
             if (profileResult.is_suspended && window.location.pathname !== '/suspended') {
               console.warn("[AuthContext] Active session suspended, redirecting...");

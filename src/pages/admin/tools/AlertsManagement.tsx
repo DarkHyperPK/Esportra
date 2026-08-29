@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Bell, AlertTriangle, CheckCircle, XCircle, RefreshCw, Filter, ChevronLeft, ChevronRight, Activity, Eye, Loader2 } from "lucide-react";
 import { useAdminAlerts, useAdminAlertSummary, useAcknowledgeAlert, useResolveAlert, useBulkAcknowledgeAlerts } from "@/hooks/useAdminQueries";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { AdminPage } from "@/components/admin/AdminPage";
 import {
   CommandButton,
@@ -15,6 +16,7 @@ const ALERT_LABEL = "font-mono text-[10px] font-bold uppercase tracking-[0.3em] 
 
 const AlertsManagement = () => {
   const { toast } = useToast();
+  const { can } = useAdminAccess();
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('');
@@ -196,7 +198,7 @@ const AlertsManagement = () => {
           </select>
         </div>
 
-        {selectedIds.length > 0 && (
+        {selectedIds.length > 0 && can('alerts:bulk_acknowledge') && (
           <CommandButton
             variant="secondary"
             size="sm"
@@ -295,7 +297,7 @@ const AlertsManagement = () => {
                             >
                               <Eye className="h-3.5 w-3.5" />
                             </CommandIconButton>
-                            {(alert.status === 'active') && (
+                            {alert.status === 'active' && can('alerts:acknowledge') && (
                               <CommandIconButton
                                 label="Acknowledge"
                                 variant="ghost"
@@ -305,7 +307,7 @@ const AlertsManagement = () => {
                                 <CheckCircle className="h-3.5 w-3.5" />
                               </CommandIconButton>
                             )}
-                            {(alert.status === 'active' || alert.status === 'acknowledged') && (
+                            {(alert.status === 'active' || alert.status === 'acknowledged') && can('alerts:resolve') && (
                               <CommandIconButton
                                 label="Resolve"
                                 variant="primary"
@@ -397,7 +399,7 @@ const AlertsManagement = () => {
                           <Eye className="h-3.5 w-3.5" />
                           Details
                         </CommandButton>
-                        {alert.status === 'active' && (
+                        {alert.status === 'active' && can('alerts:acknowledge') && (
                           <CommandButton
                             variant="ghost"
                             size="sm"
@@ -408,7 +410,7 @@ const AlertsManagement = () => {
                             Ack
                           </CommandButton>
                         )}
-                        {(alert.status === 'active' || alert.status === 'acknowledged') && (
+                        {(alert.status === 'active' || alert.status === 'acknowledged') && can('alerts:resolve') && (
                           <CommandButton
                             variant="primary"
                             size="sm"

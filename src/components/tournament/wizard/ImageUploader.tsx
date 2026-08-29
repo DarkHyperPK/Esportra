@@ -52,7 +52,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
         ? { width: 512, height: 512, display: '1:1' }
         : { width: 1920, height: 1080, display: '16:9' };
 
-    const onCropComplete = useCallback((croppedArea: any, croppedAreaPixels: any) => {
+    const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
         setCroppedAreaPixels(croppedAreaPixels);
     }, []);
 

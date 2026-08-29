@@ -262,10 +262,10 @@ const DisputeCenter: React.FC = () => {
       }
 
       await apiClient.post(`/api/admin/disputes/${disputeId}/comments`, {
-        user_id: user.id,
+        userId: user.id,
         comment: commentText.trim() || '',
-        is_internal: false,
-        attachment_url: attachmentUrl,
+        isInternal: false,
+        attachmentUrl: attachmentUrl,
       });
 
       // Update dispute timestamp
@@ -304,8 +304,7 @@ const DisputeCenter: React.FC = () => {
     try {
       await apiClient.put(`/api/admin/disputes/${selectedDispute.id}`, {
         status: resolutionStatus,
-        resolution_notes: resolutionNotes || null,
-        updated_at: new Date().toISOString(),
+        resolutionNotes: resolutionNotes || null,
       });
 
       toast({

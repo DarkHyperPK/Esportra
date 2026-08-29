@@ -172,7 +172,6 @@ const TournamentDisputesPage: React.FC = () => {
     void loadTournament();
   }, [loadTournament]);
 
-  const _listBase = `/organizer/tournament/${slug}/disputes`;
   const tournamentBase = `/organizer/tournament/${slug}`;
 
   const goToDispute = useCallback((id: string) => {

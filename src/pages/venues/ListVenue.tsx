@@ -79,6 +79,32 @@ const STEPS = [
   { id: 6, title: "Contact", icon: Phone, description: "How to reach you" }
 ];
 
+interface VenueFormState {
+  name: string;
+  city: string;
+  state: string;
+  country: string;
+  zip: string;
+  address: string;
+  description: string;
+  stations: string;
+  hours: string;
+  games: string;
+  images: string[];
+  card_image: string;
+  contactEmail: string;
+  contactPhone: string;
+  cpu: string;
+  gpu: string;
+  ram: string;
+  monitors: string;
+  amenities: string[];
+  pricePerHour: string;
+  currency: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
 const ListVenue = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -138,7 +164,7 @@ const ListVenue = () => {
   };
 
   const toggleAmenity = (id: string) => {
-    setFormData(prev => ({
+    setFormData((prev: VenueFormState) => ({
       ...prev,
       amenities: prev.amenities.includes(id)
         ? prev.amenities.filter(a => a !== id)
@@ -147,7 +173,7 @@ const ListVenue = () => {
   };
 
   const handleImageChange = (index: number, url: string | null) => {
-    setFormData(prev => {
+    setFormData((prev: VenueFormState) => {
       const newImages = [...(prev.images || [])];
       if (url) {
         newImages[index] = url;
@@ -366,7 +392,7 @@ const ListVenue = () => {
                           city={formData.city}
                           state={formData.state}
                           country={formData.country}
-                          onSelect={(c, s, co) => setFormData(prev => ({ ...prev, city: c, state: s, country: co }))}
+                          onSelect={(c, s, co) => setFormData((prev: VenueFormState) => ({ ...prev, city: c, state: s, country: co }))}
                         />
                       </div>
 
@@ -399,7 +425,7 @@ const ListVenue = () => {
                           <MapPicker
                             latitude={formData.latitude}
                             longitude={formData.longitude}
-                            onChange={(lat, lng) => setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))}
+                            onChange={(lat: number, lng: number) => setFormData((prev: VenueFormState) => ({ ...prev, latitude: lat, longitude: lng }))}
                             height="280px"
                             address={[formData.address, formData.city, formData.country].filter(Boolean).join(', ')}
                           />
@@ -458,7 +484,7 @@ const ListVenue = () => {
                       <label className="text-sm font-medium text-gray-300 mb-1.5 block">Popular Games</label>
                       <GamesPicker
                         value={formData.games}
-                        onChange={(v) => setFormData(prev => ({ ...prev, games: v }))}
+                        onChange={(v) => setFormData((prev: VenueFormState) => ({ ...prev, games: v }))}
                       />
                     </div>
                   </>
@@ -513,7 +539,7 @@ const ListVenue = () => {
                       </div>
                       <ImageUploader
                         value={formData.card_image || null}
-                        onChange={(url) => setFormData(prev => ({ ...prev, card_image: url || '' }))}
+                        onChange={(url) => setFormData((prev: VenueFormState) => ({ ...prev, card_image: url || '' }))}
                         bucket="venue-images"
                         folder={`uploads/${user?.id}/cards`}
                         aspectRatio="video"
@@ -592,7 +618,7 @@ const ListVenue = () => {
                         <div className="flex gap-3">
                           <select
                             value={formData.currency}
-                            onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+                            onChange={(e) => setFormData((prev: VenueFormState) => ({ ...prev, currency: e.target.value }))}
                             className="bg-[#0a0a0c] border border-white/10 focus:border-rose-500/50 h-12 text-white text-sm px-3 w-28 outline-none appearance-none cursor-pointer"
                           >
                             {CURRENCIES.map(c => (

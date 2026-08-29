@@ -50,7 +50,7 @@ export const PublicMatchDetailsDialog: React.FC<PublicMatchDetailsDialogProps> =
             || (hasScoreData(game) && Boolean(game.game_number || game.gameNumber));
     };
     const visibleAutomatedResults = automatedResults.filter(hasMeaningfulGameData);
-    const isLive = match.status === 'live';
+    const isLive = (match.status as string) === 'live';
     const isCompleted = match.status === 'completed';
     const team1Won = match.winner?.id && match.winner.id === match.team1?.id;
     const team2Won = match.winner?.id && match.winner.id === match.team2?.id;

@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getDenseScheduleNotificationMeta } from '@/utils/notificationDisplay';

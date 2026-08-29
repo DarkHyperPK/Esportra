@@ -64,6 +64,7 @@ export interface BaseTournament extends TournamentCardBadgeFields {
     manual_payout_notes?: string | null;
     created_at: string;
     image_url?: string | null;
+    banner_url?: string | null;
     slug?: string;
     check_in_required?: boolean;
     check_in_deadline?: string | null;

@@ -24,6 +24,7 @@ interface TournamentStage {
   id: string;
   name: string;
   stage_order: number;
+  capacity?: number | null;
   advancement_count?: number;
   status?: string;
 }
@@ -154,6 +155,7 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
       {/* Setup + Distribution */}
       <GroupSetupPanel
         groups={groups}
+        stageCapacity={sortedStages.find(s => s.id === selectedStageId)?.capacity ?? null}
         registeredTeamCount={registeredTeamCount}
         onCreateGroups={async (params) => {
           try { await createGroups.mutateAsync(params); onUpdate(); } catch { /* toast handled by hook */ }
@@ -227,6 +229,7 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
           groupName={groups.find(g => g.id === selectedGroupId)?.name ?? ''}
           teams={teamsByGroup[selectedGroupId] ?? []}
           scoringPreset={scoringPreset}
+          mapConfig={{ mode: 'none', pool: [], fixedMap: null }}
         />
       )}
 
@@ -240,7 +243,7 @@ export const GroupManagementTab: React.FC<GroupManagementTabProps> = ({
         return (
           <AdvanceTeamsPanel
             stageId={selectedStageId}
-            advancementCount={currentStage.advancement_count ?? 4}
+            advancement={{ mode: 'top_n_per_group', perGroup: currentStage.advancement_count ?? 4 }}
             onAdvanced={onUpdate}
           />
         );
