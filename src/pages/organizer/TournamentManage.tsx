@@ -1803,7 +1803,7 @@ const TournamentDashboard = () => {
                           slug={slug ?? ''}
                           maxTeams={tournament.max_teams}
                           mockCount={mockCount}
-                          canGenerate={tournament.status === 'draft'}
+                          canGenerate={tournament.status === 'draft' || mockCount > 0}
                         />
                       </div>
                     )}
