@@ -35,6 +35,7 @@ interface TournamentHeaderProps {
     isLoading?: boolean; // New prop
     checkInStartTime?: Date | null;
     awaitingApproval?: boolean;
+    maxTeams?: number;
 }
 
 export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
@@ -53,7 +54,8 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
     onRedeemInvite,
     isLoading = false, // Default to false
     checkInStartTime,
-    awaitingApproval = false
+    awaitingApproval = false,
+    maxTeams
 }) => {
     const navigate = useNavigate();
     const derivedPhase = deriveTournamentPhase({
@@ -192,7 +194,9 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                 <div className="flex flex-col items-center gap-2">
                                     <Users className="w-5 h-5 text-green-500 mb-2" />
                                     <span>Teams</span>
-                                    <span className="text-white text-lg font-bold font-sans">{tournament.current_participants}</span>
+                                    <span className="text-white text-lg font-bold font-sans">
+                                        {tournament.current_participants}{maxTeams ? ` / ${maxTeams}` : ''}
+                                    </span>
                                 </div>
                             </div>
 

@@ -345,7 +345,7 @@ const TournamentList = () => {
                   date={tournament.date || formatDate(tournament.start_date)}
                   time={tournament.time || ''}
                   venue={tournament.venue || ''}
-                  max_participants={tournament.max_participants}
+                  max_participants={tournament.max_teams ?? tournament.max_participants ?? 0}
                   current_participants={tournament.current_participants}
                   status={tournament.status as any}
                   team_size={tournament.team_size}

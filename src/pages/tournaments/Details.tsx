@@ -684,6 +684,7 @@ const TournamentDetails = () => {
         isLoading={registrationLoading}
         checkInStartTime={requiresCheckIn ? checkInStartTime : null}
         awaitingApproval={awaitingApproval}
+        maxTeams={tournamentMaxTeams || undefined}
       />
 
       {/* --- TABS NAVIGATION (Sticky) --- */}
