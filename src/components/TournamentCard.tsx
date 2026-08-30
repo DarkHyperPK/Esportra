@@ -227,7 +227,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
           )}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/70 border border-white/10">
             <Users className="w-3.5 h-3.5" />
-            <span>{current_participants}/{max_participants}</span>
+            <span>{current_participants}{max_participants > 0 ? `/${max_participants}` : ''}</span>
           </div>
         </div>
       </div>
