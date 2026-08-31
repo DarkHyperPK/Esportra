@@ -736,6 +736,7 @@ const TournamentDashboard = () => {
     setSelectedTeam(participant);
     setTeamLoading(true);
     setTeamCaptain(null);
+    setSelectedTeamMembers([]);
     try {
       const rawTokens = parseTeamMembers(participant.team_members);
       if (rawTokens.length > 0 && !rawTokens.some(looksLikeUuid)) {
@@ -743,7 +744,7 @@ const TournamentDashboard = () => {
       }
 
       const identity = await resolveTeamIdentity(participant);
-      if (identity.logoUrl && selectedTeam) selectedTeam.team_logo = identity.logoUrl;
+      if (identity.logoUrl) participant.team_logo = identity.logoUrl;
 
       const resolved = await resolveRegistrationMembers(
         tournament?.id, participant.team_name, tournamentModeFeatures.assistedReporting,
@@ -761,7 +762,7 @@ const TournamentDashboard = () => {
       console.error(e);
       setTeamLoading(false);
     }
-  }, [tournament?.id, selectedTeam, tournamentModeFeatures.assistedReporting]);
+  }, [tournament?.id, tournamentModeFeatures.assistedReporting]);
 
   // Data managed by useTournamentDashboard
 
