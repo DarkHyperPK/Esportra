@@ -579,13 +579,23 @@ const TournamentManagementTool = () => {
                                   Manage Tournament
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="-none text-zinc-300 focus:bg-rose-500/10 focus:text-white"
-                                onClick={() => handleStatusChange(tournament.id, 'ongoing')}
-                              >
-                                <Play className="mr-2 h-4 w-4" />
-                                Start Tournament
-                              </DropdownMenuItem>
+                              {tournament.status === 'completed' ? (
+                                <DropdownMenuItem
+                                  className="-none text-blue-300 focus:bg-blue-500/10 focus:text-blue-200"
+                                  onClick={() => setConfirmAction({ id: tournament.id, status: 'ongoing', name: tournament.name })}
+                                >
+                                  <RefreshCw className="mr-2 h-4 w-4" />
+                                  Reopen Tournament
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem
+                                  className="-none text-zinc-300 focus:bg-rose-500/10 focus:text-white"
+                                  onClick={() => handleStatusChange(tournament.id, 'ongoing')}
+                                >
+                                  <Play className="mr-2 h-4 w-4" />
+                                  Start Tournament
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 className="-none text-amber-300 focus:bg-amber-500/10 focus:text-amber-200"
                                 onClick={() => setConfirmAction({ id: tournament.id, status: 'completed', name: tournament.name })}
@@ -730,7 +740,12 @@ const TournamentManagementTool = () => {
             <DialogTitle className="text-white">Confirm Action</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-zinc-400">
-            Are you sure you want to {confirmAction?.status === 'cancelled' ? 'cancel' : 'mark as completed'} <span className="font-medium text-white">{confirmAction?.name}</span>? This action cannot be undone.
+            {confirmAction?.status === 'cancelled'
+              ? <>Are you sure you want to cancel <span className="font-medium text-white">{confirmAction?.name}</span>? This action cannot be undone.</>
+              : confirmAction?.status === 'ongoing'
+                ? <>This will reopen <span className="font-medium text-white">{confirmAction?.name}</span> and unlock all stages for editing. The winner record will be cleared.</>
+                : <>Are you sure you want to mark <span className="font-medium text-white">{confirmAction?.name}</span> as completed?</>
+            }
           </p>
           <div className="mt-4 flex justify-end gap-3">
             <CommandButton variant="ghost" size="sm" onClick={() => setConfirmAction(null)}>
@@ -738,7 +753,7 @@ const TournamentManagementTool = () => {
             </CommandButton>
             <CommandButton
               size="sm"
-              variant={confirmAction?.status === 'cancelled' ? 'danger' : 'primary'}
+              variant={confirmAction?.status === 'cancelled' ? 'danger' : confirmAction?.status === 'ongoing' ? 'warning' : 'primary'}
               onClick={() => {
                 if (confirmAction) {
                   handleStatusChange(confirmAction.id, confirmAction.status);
@@ -746,7 +761,7 @@ const TournamentManagementTool = () => {
                 }
               }}
             >
-              {confirmAction?.status === 'cancelled' ? 'Cancel Tournament' : 'Mark Completed'}
+              {confirmAction?.status === 'cancelled' ? 'Cancel Tournament' : confirmAction?.status === 'ongoing' ? 'Reopen Tournament' : 'Mark Completed'}
             </CommandButton>
           </div>
         </DialogContent>

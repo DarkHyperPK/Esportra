@@ -41,6 +41,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  RefreshCw,
   ShieldCheck,
   Swords,
   Trophy,
@@ -1300,6 +1301,18 @@ const TournamentDashboard = () => {
     }
   };
 
+  const handleReopenTournament = async () => {
+    if (!tournament) return;
+    try {
+      await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'ongoing' });
+      refetchDashboard();
+      toast({ title: 'Tournament Reopened', description: 'The tournament has been reopened for editing.' });
+    } catch (error) {
+      console.error('Error reopening tournament:', error);
+      toast({ title: 'Error', description: 'Failed to reopen tournament.', variant: 'destructive' });
+    }
+  };
+
   const handleEditTournament = () => {
     if (!slug) return;
     navigate(`/tournaments/edit/${slug}`);
@@ -1535,6 +1548,42 @@ const TournamentDashboard = () => {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+
+                {isSuperAdmin && tournament.status === 'completed' && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <CommandButton variant="secondary" size="sm">
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Reopen Tournament
+                      </CommandButton>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <RefreshCw className="h-5 w-5 text-blue-400" />
+                          Reopen Tournament
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-zinc-400">
+                          This will unlock the tournament and all stages for editing. The winner record will be cleared. Only use this to correct a mistake.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel asChild>
+                          <CommandButton variant="secondary" size="sm">Cancel</CommandButton>
+                        </AlertDialogCancel>
+                        <AlertDialogAction asChild>
+                          <CommandButton
+                            variant="warning"
+                            size="sm"
+                            onClick={(e) => { e.preventDefault(); handleReopenTournament(); }}
+                          >
+                            Reopen Tournament
+                          </CommandButton>
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
 
                 {canActAsOwner && tournament.status !== 'completed' && tournament.status !== 'draft' && (
                   <AlertDialog>
