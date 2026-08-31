@@ -81,6 +81,7 @@ import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnoun
 // Staff management has moved to Organization Settings (OrganizationStaffManager)
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
 import { PrizeDistributionTab } from '@/components/organizer/PrizeDistributionTab';
+import { OrganizerStandingsTab } from '@/components/organizer/OrganizerStandingsTab';
 import { BRStageManagementTab } from '@/components/organizer/tabs/BRStageManagementTab';
 import { BRGamesTab } from '@/components/organizer/tabs/BRGamesTab';
 import { BRScheduleTab } from '@/components/organizer/tabs/BRScheduleTab';
@@ -1673,8 +1674,8 @@ const TournamentDashboard = () => {
     getPersistedTournamentFormat(tournament),
   );
                   const tabs = isBR
-                    ? ['overview', 'participants', 'stages', 'prizes', 'schedule', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
-                    : ['overview', 'participants', 'stages', 'brackets', 'prizes', 'schedule', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
+                    ? ['overview', 'participants', 'stages', 'standings', 'prizes', 'schedule', 'games', 'bans', 'disputes', 'announcements', 'staff', 'settings']
+                    : ['overview', 'participants', 'stages', 'brackets', 'standings', 'prizes', 'schedule', 'bans', 'disputes', 'announcements', 'staff', 'settings'];
                   return tabs.map((tab) => {
                   if (tab === 'brackets') {
                     return (
@@ -1810,10 +1811,18 @@ const TournamentDashboard = () => {
                 </TabsContent>
               )}
 
+              {activeTab === 'standings' && canActAsOwner && (
+                <TabsContent value="standings" forceMount key="standings">
+                  <TabTransition direction={direction}>
+                    <OrganizerStandingsTab tournament={tournament} locked={tournament.status === 'completed' && !isSuperAdmin} />
+                  </TabTransition>
+                </TabsContent>
+              )}
+
               {activeTab === 'prizes' && canActAsOwner && (
                 <TabsContent value="prizes" forceMount key="prizes">
                   <TabTransition direction={direction}>
-                    <PrizeDistributionTab tournament={tournament} locked={tournament.status === 'completed' && !isSuperAdmin} />
+                    <PrizeDistributionTab tournament={tournament} />
                   </TabTransition>
                 </TabsContent>
               )}

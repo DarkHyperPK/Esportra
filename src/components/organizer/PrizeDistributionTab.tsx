@@ -1,19 +1,6 @@
 import React from 'react';
-import { Trophy, RefreshCw, CheckCircle2, XCircle, Clock, Lock } from 'lucide-react';
-import type { ResolvedPlacement } from '@/types/prizeDistribution';
-
-function groupByPlacement(placements: ResolvedPlacement[]) {
-    const groups: { placement: number; label: string; teams: ResolvedPlacement[] }[] = [];
-    for (const p of placements) {
-        const existing = groups.find(g => g.placement === p.placement);
-        if (existing) existing.teams.push(p);
-        else groups.push({ placement: p.placement, label: p.placement_label, teams: [p] });
-    }
-    return groups;
-}
-import { Button } from '@/components/ui/button';
+import { Trophy, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { usePrizeDistribution } from '@/hooks/usePrizeDistribution';
-import { useTournamentPlacements, useResolvePlacements } from '@/hooks/useTournamentPlacements';
 import { useTournamentPayouts, useUpdatePayout, useRewardDistributions, useUpdateRewardDistribution } from '@/hooks/useTournamentPayouts';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/formatCurrency';
@@ -21,8 +8,7 @@ import type { CashPayout, RewardDistribution } from '@/types/prizeDistribution';
 import type { Tournament } from '@/types/tournament';
 
 interface PrizeDistributionTabProps {
-    tournament: Tournament;
-    locked?: boolean;
+    tournament: Pick<Tournament, 'id' | 'prize_pool'>;
 }
 
 const PAYOUT_STATUS_CONFIG: Record<string, { label: string; icon: React.ElementType; className: string }> = {
@@ -59,16 +45,14 @@ const NEXT_PAYOUT_STATUS: Record<string, string[]> = {
     failed:    ['requested'],
 };
 
-export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tournament, locked }) => {
+export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tournament }) => {
     const { toast } = useToast();
     const tournamentId = tournament.id;
 
     const { data: config, isLoading: configLoading } = usePrizeDistribution(tournamentId);
-    const { data: placements, isLoading: placementsLoading } = useTournamentPlacements(tournamentId);
     const { data: payoutsData, isLoading: payoutsLoading } = useTournamentPayouts(tournamentId);
     const { data: rewardDists } = useRewardDistributions(tournamentId);
 
-    const resolvePlacements = useResolvePlacements();
     const updatePayout = useUpdatePayout();
     const updateReward = useUpdateRewardDistribution();
 
@@ -76,15 +60,6 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
     const currency = (tournament as any).currency ?? 'USD';
     const hasPrizePool = prizePool > 0;
     const isGateway = payoutsData?.payment_method === 'gateway';
-
-    const handleResolve = async () => {
-        try {
-            await resolvePlacements.mutateAsync({ tournamentId, force: true });
-            toast({ title: 'Placements Updated', description: 'Tournament placements have been recalculated.' });
-        } catch {
-            toast({ title: 'Error', description: 'Could not resolve placements.', variant: 'destructive' });
-        }
-    };
 
     const handlePayoutStatus = async (payout: CashPayout, status: string) => {
         try {
@@ -165,95 +140,7 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                 )}
             </section>
 
-            {/* ── Section B: Placements ────────────────────────────────────── */}
-            <section className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-white">Placements</h3>
-                    {locked ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
-                            <Lock className="w-3.5 h-3.5" />
-                            Results locked
-                        </span>
-                    ) : (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleResolve}
-                            disabled={resolvePlacements.isPending}
-                            className="text-xs"
-                        >
-                            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${resolvePlacements.isPending ? 'animate-spin' : ''}`} />
-                            Update
-                        </Button>
-                    )}
-                </div>
-
-                {placementsLoading ? (
-                    <div className="text-sm text-gray-500">Loading placements...</div>
-                ) : (placements?.length ?? 0) === 0 ? (
-                    <div className="rounded-none border border-dashed border-white/10 py-8 text-center">
-                        <p className="text-sm text-gray-500">No placements resolved yet</p>
-                        <p className="text-xs text-gray-600 mt-1">Use the Update button above to calculate placements from current bracket data.</p>
-                    </div>
-                ) : (
-                    <div className="rounded-none border border-white/10 overflow-hidden">
-                        <table className="w-full text-sm">
-                            <thead className="bg-white/[0.03]">
-                                <tr>
-                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-20">Rank</th>
-                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Team</th>
-                                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-10">P</th>
-                                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-14">W–L</th>
-                                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-12">+/−</th>
-                                    {hasPrizePool && <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Prize</th>}
-                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Rewards</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {groupByPlacement(placements!).map((group) =>
-                                    group.teams.map((p, teamIdx) => (
-                                        <tr key={p.team_id} className="border-t border-white/5">
-                                            {teamIdx === 0 && (
-                                                <td
-                                                    className="px-4 py-3 align-middle border-r border-white/5 font-mono text-white"
-                                                    rowSpan={group.teams.length}
-                                                >
-                                                    {group.label}
-                                                </td>
-                                            )}
-                                            <td className="px-4 py-3 text-white">{p.team_name}</td>
-                                            <td className="px-3 py-3 text-center text-gray-400 font-mono">{p.played}</td>
-                                            <td className="px-3 py-3 text-center font-mono">
-                                                <span className="text-green-400">{p.wins}</span>
-                                                <span className="text-gray-600 mx-0.5">–</span>
-                                                <span className="text-red-400">{p.losses}</span>
-                                                {p.ties > 0 && <span className="text-gray-500 ml-0.5">({p.ties})</span>}
-                                            </td>
-                                            <td className="px-3 py-3 text-center font-mono">
-                                                <span className={p.score_diff > 0 ? 'text-green-400' : p.score_diff < 0 ? 'text-red-400' : 'text-gray-500'}>
-                                                    {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
-                                                </span>
-                                            </td>
-                                            {hasPrizePool && (
-                                                <td className="px-4 py-3 text-right text-gray-300">
-                                                    {p.prize_amount > 0 ? formatCurrency(p.prize_amount, p.currency) : '—'}
-                                                </td>
-                                            )}
-                                            <td className="px-4 py-3">
-                                                {p.rewards.length > 0
-                                                    ? p.rewards.map((r, i) => <span key={i} className="mr-1 text-xs text-gray-400">{r.title}</span>)
-                                                    : <span className="text-xs text-gray-600">—</span>}
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </section>
-
-            {/* ── Section C: Payouts (cash) ───────────────────────────────── */}
+            {/* ── Section B: Payouts (cash) ───────────────────────────────── */}
             {hasPrizePool && (
                 <section className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Cash Payouts</h3>
