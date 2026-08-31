@@ -10,7 +10,8 @@ export function useTournamentPlacements(tournamentId?: string) {
             return res.placements ?? [];
         },
         enabled: !!tournamentId,
-        staleTime: 60_000,
+        staleTime: 15_000,
+        refetchInterval: 30_000,
     });
 }
 

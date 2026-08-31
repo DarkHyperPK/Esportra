@@ -25,6 +25,7 @@ interface Options {
 
 export function useBracketRealtime({
   versionId,
+  tournamentId,
   enabled = true,
   onMatchUpdated,
   onBracketReset,
@@ -76,6 +77,9 @@ export function useBracketRealtime({
     const handleMatchUpdated = (payload: Partial<BracketNode> & { matchId?: string }) => {
       if (!active) return;
       invalidateCaptainQueries(payload.matchId);
+      if (tournamentId) {
+        queryClient.invalidateQueries({ queryKey: ['tournament-placements', tournamentId] });
+      }
       onMatchUpdated?.(payload as Partial<BracketNode> & { matchId: string });
     };
 
@@ -100,7 +104,7 @@ export function useBracketRealtime({
       conn.off('MatchInserted', handleMatchInserted);
       conn.off('BracketReset', handleBracketReset);
     };
-  }, [conn, versionId, isEnabled, queryClient, onMatchUpdated, onBracketReset]);
+  }, [conn, versionId, tournamentId, isEnabled, queryClient, onMatchUpdated, onBracketReset]);
 
   return { joined };
 }

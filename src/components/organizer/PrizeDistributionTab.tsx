@@ -1,5 +1,16 @@
 import React from 'react';
 import { Trophy, RefreshCw, CheckCircle2, XCircle, Clock, Lock } from 'lucide-react';
+import type { ResolvedPlacement } from '@/types/prizeDistribution';
+
+function groupByPlacement(placements: ResolvedPlacement[]) {
+    const groups: { placement: number; label: string; teams: ResolvedPlacement[] }[] = [];
+    for (const p of placements) {
+        const existing = groups.find(g => g.placement === p.placement);
+        if (existing) existing.teams.push(p);
+        else groups.push({ placement: p.placement, label: p.placement_label, teams: [p] });
+    }
+    return groups;
+}
 import { Button } from '@/components/ui/button';
 import { usePrizeDistribution } from '@/hooks/usePrizeDistribution';
 import { useTournamentPlacements, useResolvePlacements } from '@/hooks/useTournamentPlacements';
@@ -189,29 +200,53 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                         <table className="w-full text-sm">
                             <thead className="bg-white/[0.03]">
                                 <tr>
-                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Rank</th>
+                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-20">Rank</th>
                                     <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Team</th>
+                                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-10">P</th>
+                                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-14">W–L</th>
+                                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-12">+/−</th>
                                     {hasPrizePool && <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Prize</th>}
                                     <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Rewards</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {placements!.map((p) => (
-                                    <tr key={p.team_id}>
-                                        <td className="px-4 py-3 text-white font-mono">{p.placement_label}</td>
-                                        <td className="px-4 py-3 text-white">{p.team_name}</td>
-                                        {hasPrizePool && (
-                                            <td className="px-4 py-3 text-right text-gray-300">
-                                                {p.prize_amount > 0 ? formatCurrency(p.prize_amount, p.currency) : '—'}
+                            <tbody>
+                                {groupByPlacement(placements!).map((group) =>
+                                    group.teams.map((p, teamIdx) => (
+                                        <tr key={p.team_id} className="border-t border-white/5">
+                                            {teamIdx === 0 && (
+                                                <td
+                                                    className="px-4 py-3 align-middle border-r border-white/5 font-mono text-white"
+                                                    rowSpan={group.teams.length}
+                                                >
+                                                    {group.label}
+                                                </td>
+                                            )}
+                                            <td className="px-4 py-3 text-white">{p.team_name}</td>
+                                            <td className="px-3 py-3 text-center text-gray-400 font-mono">{p.played}</td>
+                                            <td className="px-3 py-3 text-center font-mono">
+                                                <span className="text-green-400">{p.wins}</span>
+                                                <span className="text-gray-600 mx-0.5">–</span>
+                                                <span className="text-red-400">{p.losses}</span>
+                                                {p.ties > 0 && <span className="text-gray-500 ml-0.5">({p.ties})</span>}
                                             </td>
-                                        )}
-                                        <td className="px-4 py-3">
-                                            {p.rewards.length > 0
-                                                ? p.rewards.map((r, i) => <span key={i} className="mr-1 text-xs text-gray-400">{r.title}</span>)
-                                                : <span className="text-xs text-gray-600">—</span>}
-                                        </td>
-                                    </tr>
-                                ))}
+                                            <td className="px-3 py-3 text-center font-mono">
+                                                <span className={p.score_diff > 0 ? 'text-green-400' : p.score_diff < 0 ? 'text-red-400' : 'text-gray-500'}>
+                                                    {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
+                                                </span>
+                                            </td>
+                                            {hasPrizePool && (
+                                                <td className="px-4 py-3 text-right text-gray-300">
+                                                    {p.prize_amount > 0 ? formatCurrency(p.prize_amount, p.currency) : '—'}
+                                                </td>
+                                            )}
+                                            <td className="px-4 py-3">
+                                                {p.rewards.length > 0
+                                                    ? p.rewards.map((r, i) => <span key={i} className="mr-1 text-xs text-gray-400">{r.title}</span>)
+                                                    : <span className="text-xs text-gray-600">—</span>}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
