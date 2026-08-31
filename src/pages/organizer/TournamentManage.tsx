@@ -322,7 +322,7 @@ async function resolveRegistrationMembers(
 
   const regRow = await apiClient.get<any>(
     `/api/tournaments/${tournamentId}/participants?team_name=${encodeURIComponent(teamName)}`,
-  ).then(r => (Array.isArray(r) ? r[0] : r)).catch(() => null);
+  ).then(r => (Array.isArray(r) ? r.find((p: any) => p.team_name === teamName) : r)).catch(() => null);
 
   if (!regRow?.team_members) return null;
 
