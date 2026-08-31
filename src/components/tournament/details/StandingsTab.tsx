@@ -2,10 +2,24 @@ import React from 'react';
 import { Trophy } from 'lucide-react';
 import { useTournamentPlacements } from '@/hooks/useTournamentPlacements';
 import { formatCurrency } from '@/utils/formatCurrency';
+import type { ResolvedPlacement } from '@/types/prizeDistribution';
 
 interface StandingsTabProps {
     tournamentId: string;
     currency?: string;
+}
+
+function groupByPlacement(placements: ResolvedPlacement[]) {
+    const groups: { placement: number; label: string; teams: ResolvedPlacement[] }[] = [];
+    for (const p of placements) {
+        const existing = groups.find(g => g.placement === p.placement);
+        if (existing) {
+            existing.teams.push(p);
+        } else {
+            groups.push({ placement: p.placement, label: p.placement_label, teams: [p] });
+        }
+    }
+    return groups;
 }
 
 const PODIUM_CONFIG = [
@@ -59,26 +73,47 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
                 <table className="w-full text-sm">
                     <thead className="bg-white/[0.03]">
                         <tr>
-                            <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-16">Rank</th>
+                            <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-20">Rank</th>
                             <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Team</th>
+                            <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-10">P</th>
+                            <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-14">W–L</th>
+                            <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-12">+/−</th>
                             <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Prize</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
-                        {placements.map((p) => (
-                            <tr key={p.team_id} className={p.placement <= 3 ? 'bg-white/[0.01]' : ''}>
-                                <td className="px-4 py-3">
-                                    <span className={`font-mono font-bold text-sm ${p.placement === 1 ? 'text-yellow-400' : p.placement === 2 ? 'text-gray-300' : p.placement === 3 ? 'text-amber-600' : 'text-gray-500'}`}>
-                                        {p.placement_label}
-                                    </span>
-                                    {p.is_tied && <span className="ml-1 text-xs text-gray-600">(tied)</span>}
-                                </td>
-                                <td className="px-4 py-3 text-white font-medium">{p.team_name}</td>
-                                <td className="px-4 py-3 text-right text-gray-300 font-mono">
-                                    {p.prize_amount > 0 ? formatCurrency(p.prize_amount, p.currency || currency) : '—'}
-                                </td>
-                            </tr>
-                        ))}
+                    <tbody>
+                        {groupByPlacement(placements).map((group) =>
+                            group.teams.map((p, teamIdx) => (
+                                <tr key={p.team_id} className={`border-t border-white/5 ${p.placement <= 3 ? 'bg-white/[0.01]' : ''}`}>
+                                    {teamIdx === 0 && (
+                                        <td
+                                            className="px-4 py-3 align-middle border-r border-white/5"
+                                            rowSpan={group.teams.length}
+                                        >
+                                            <span className={`font-mono font-bold text-sm ${p.placement === 1 ? 'text-yellow-400' : p.placement === 2 ? 'text-gray-300' : p.placement === 3 ? 'text-amber-600' : 'text-gray-500'}`}>
+                                                {group.label}
+                                            </span>
+                                        </td>
+                                    )}
+                                    <td className="px-4 py-3 text-white font-medium">{p.team_name}</td>
+                                    <td className="px-3 py-3 text-center text-gray-400 font-mono text-sm">{p.played}</td>
+                                    <td className="px-3 py-3 text-center font-mono text-sm">
+                                        <span className="text-green-400">{p.wins}</span>
+                                        <span className="text-gray-600 mx-0.5">–</span>
+                                        <span className="text-red-400">{p.losses}</span>
+                                        {p.ties > 0 && <span className="text-gray-500 ml-0.5">({p.ties})</span>}
+                                    </td>
+                                    <td className="px-3 py-3 text-center font-mono text-sm">
+                                        <span className={p.score_diff > 0 ? 'text-green-400' : p.score_diff < 0 ? 'text-red-400' : 'text-gray-500'}>
+                                            {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-gray-300 font-mono">
+                                        {p.prize_amount > 0 ? formatCurrency(p.prize_amount, p.currency || currency) : '—'}
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>
