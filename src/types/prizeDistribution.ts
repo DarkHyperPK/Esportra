@@ -51,6 +51,11 @@ export interface ResolvedPlacement {
     rewards: PrizeReward[];
     is_tied: boolean;
     resolved_at?: string;
+    played: number;
+    wins: number;
+    losses: number;
+    ties: number;
+    score_diff: number;
 }
 
 export interface CashPayout {
