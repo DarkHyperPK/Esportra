@@ -567,6 +567,7 @@ const TournamentDashboard = () => {
     setSelectedTeam(participant);
     setTeamLoading(true);
     setTeamCaptain(null);
+    setSelectedTeamMembers([]);
     try {
       // Parse any pre-saved members; handle both JSONB array of objects and comma-separated strings
       const parseTeamMembers = (input: any): string[] => {
@@ -618,10 +619,10 @@ const TournamentDashboard = () => {
           }
         } catch { /* ignored */ }
       }
-      if (logoUrl && selectedTeam) selectedTeam.team_logo = logoUrl;
+      if (logoUrl) participant.team_logo = logoUrl;
       // First, try reading names saved in tournament registration directly
       if (tournament?.id && participant.team_name) {
-        const regRow = await apiClient.get<any>(`/api/tournaments/${tournament.id}/participants?team_name=${encodeURIComponent(participant.team_name)}`).then(r => (Array.isArray(r) ? r[0] : r)).catch(() => null);
+        const regRow = await apiClient.get<any>(`/api/tournaments/${tournament.id}/participants?team_name=${encodeURIComponent(participant.team_name)}`).then(r => (Array.isArray(r) ? r.find((p: any) => p.team_name === participant.team_name) : r)).catch(() => null);
         if (regRow?.team_members) {
           const tokens = parseTeamMembers(regRow.team_members);
           const looksUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
@@ -676,7 +677,7 @@ const TournamentDashboard = () => {
       console.error(e);
       setTeamLoading(false);
     }
-  }, [tournament?.id, selectedTeam, tournamentModeFeatures.assistedReporting]);
+  }, [tournament?.id, tournamentModeFeatures.assistedReporting]);
 
   // Data managed by useTournamentDashboard
 
