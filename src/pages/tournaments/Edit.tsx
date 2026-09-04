@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
@@ -193,7 +193,8 @@ const EditTournament = () => {
           ?? 7,
 
         // Game-specific settings
-        assistedMatchReporting: !!(tournamentData.settings as any)?.assistedMatchReporting,
+        assistedMatchReporting: !!(tournamentData.settings as any)?.assistedReportingEnabled,
+        requiredAccountLinks: (tournamentData.settings as any)?.requiredAccountLinks ?? 1,
         mapVetoEnabled: effectiveFeatures.mapVeto
           ? ((tournamentData.settings as any)?.mapVetoEnabled ?? true)
           : false,
@@ -212,7 +213,6 @@ const EditTournament = () => {
         } : {}),
       };
 
-      console.log('[EditTournament] Mapped assistedMatchReporting:', mappedData.assistedMatchReporting);
       setWizardData(mappedData);
 
     } catch (error: any) {

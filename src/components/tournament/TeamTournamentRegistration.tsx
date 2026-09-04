@@ -86,391 +86,6 @@ const resolveTeamKind = (team: TeamRow): 'team' | 'solo' | 'mock' => {
 
 const isRealTeamRow = (team: TeamRow) => resolveTeamKind(team) === 'team';
 
-const mergeUniqueTeams = (base: TeamRow[], incoming: TeamRow[]): TeamRow[] => {
-  const seen = new Set(base.map((team) => team.id));
-  const merged = [...base];
-  for (const team of incoming) {
-    if (!seen.has(team.id)) {
-      seen.add(team.id);
-      merged.push(team);
-    }
-  }
-  return merged;
-};
-
-const sortTeamsNewestFirst = (items: TeamRow[]): TeamRow[] =>
-  [...items].sort((left, right) => {
-    const leftCreated = Date.parse(String(left.created_at ?? left.createdAt ?? '')) || 0;
-    const rightCreated = Date.parse(String(right.created_at ?? right.createdAt ?? '')) || 0;
-    if (leftCreated !== rightCreated) return rightCreated - leftCreated;
-    return right.name.localeCompare(left.name);
-  });
-
-async function fetchTeamsWithFallbacks(
-  userId: string,
-  game: string | undefined,
-): Promise<TeamRow[]> {
-  const normalizeOwnerId = (value: unknown) => String(value ?? '').toLowerCase();
-  const currentUserId = normalizeOwnerId(userId);
-  const gameQuery = game
-    ? `?game=${encodeURIComponent(game)}&limit=${CAPTAIN_TEAMS_PAGE_LIMIT}`
-    : `?limit=${CAPTAIN_TEAMS_PAGE_LIMIT}`;
-
-  let teams: TeamRow[] = [];
-
-  try {
-    const captainTeamsResponse = await apiClient.get<TeamRow[]>(`/api/teams/my-captain-teams${gameQuery}`);
-    teams = mergeUniqueTeams(teams, captainTeamsResponse || []);
-  } catch (captainError) {
-    console.warn('Captain team lookup failed:', captainError);
-  }
-
-  if (teams.length === 0) {
-    try {
-      const ownedQuery = game
-        ? `owner_id=${userId}&game=${encodeURIComponent(game)}&limit=${CAPTAIN_TEAMS_PAGE_LIMIT}`
-        : `owner_id=${userId}&limit=${CAPTAIN_TEAMS_PAGE_LIMIT}`;
-      const ownedTeams = await apiClient.get<TeamRow[]>(`/api/teams?${ownedQuery}`);
-      teams = mergeUniqueTeams(
-        teams,
-        (ownedTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
-      );
-    } catch (ownedError) {
-      console.warn('Owner team lookup failed:', ownedError);
-    }
-  }
-
-  if (teams.length === 0) {
-    const myTeams = await apiClient.get<TeamRow[]>('/api/teams/me');
-    teams = mergeUniqueTeams(
-      teams,
-      (myTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
-    );
-  }
-
-  return sortTeamsNewestFirst(teams.filter(isRealTeamRow));
-}
-
-async function checkTeamEligibility(
-  team: TeamRow,
-  tournamentGame: string,
-  tournamentGameMode: string,
-  rosterMatchesTournamentMode: (r: RosterRow) => boolean,
-  usesLineupSelection: boolean,
-  coreMembers: number,
-): Promise<string[]> {
-  if (!isRealTeamRow(team)) return ['This entry is not a real team roster.'];
-
-  const errs: string[] = [];
-  const rosters = await apiClient.get<RosterRow[]>(`/api/teams/${team.id}/rosters`);
-
-  const normalizeGame = (s?: string | null) => (s || '').toLowerCase().trim();
-  const tournamentGameNormalized = normalizeGame(tournamentGame);
-
-  const gameRosters = (rosters || []).filter(
-    (r: RosterRow) => normalizeGame(r.game) === tournamentGameNormalized,
-  );
-  const matchingRoster = gameRosters.find((r: RosterRow) => rosterMatchesTournamentMode(r));
-
-  if (!matchingRoster) {
-    errs.push("Team doesn't include this game. Create a roster for this game first.");
-    return errs;
-  }
-
-  const rosterMembers = await apiClient.get<RosterMember[]>(
-    `/api/teams/${team.id}/rosters/${matchingRoster.id}/members`,
-  );
-  const limits = getRosterLimits(tournamentGame, tournamentGameMode, coreMembers);
-
-  if (usesLineupSelection) {
-    const playerCount = countRosterPlayers(rosterMembers || []);
-    if (playerCount < limits.maxRoster) {
-      errs.push(`Roster pool needs at least ${limits.maxRoster} players (has ${playerCount}).`);
-    }
-  } else {
-    const starters = (rosterMembers || []).filter(
-      (m) => resolveMemberRosterRole(m) === 'starter',
-    ).length;
-    const players = countRosterPlayers(rosterMembers || []);
-
-    if (starters !== limits.starters) {
-      errs.push(`Roster needs exactly ${limits.starters} starters (has ${starters}).`);
-    }
-    if (players > limits.maxRoster) {
-      errs.push(`Roster exceeds ${limits.maxRoster}-player limit (has ${players}).`);
-    }
-  }
-
-  return errs;
-}
-
-interface EligibilityResult {
-  eligibleIds: Set<string>;
-  reasons: Record<string, string[]>;
-}
-
-async function checkEligibilityInBatches(
-  teams: TeamRow[],
-  tournamentGame: string,
-  tournamentGameMode: string,
-  rosterMatchesTournamentMode: (r: RosterRow) => boolean,
-  usesLineupSelection: boolean,
-  coreMembers: number,
-  onBatchComplete?: (partial: EligibilityResult) => void,
-): Promise<EligibilityResult> {
-  const ids = new Set<string>();
-  const reasons: Record<string, string[]> = {};
-  const batchSize = 12;
-
-  for (let index = 0; index < teams.length; index += batchSize) {
-    const batch = teams.slice(index, index + batchSize);
-    await Promise.all(
-      batch.map(async (team) => {
-        try {
-          const errs = await checkTeamEligibility(
-            team, tournamentGame, tournamentGameMode,
-            rosterMatchesTournamentMode, usesLineupSelection, coreMembers,
-          );
-          if (errs.length === 0) ids.add(team.id);
-          reasons[team.id] = errs;
-        } catch (teamError) {
-          console.error(`Eligibility check failed for team ${team.id}:`, teamError);
-          reasons[team.id] = ['Unable to verify team eligibility. Try again.'];
-        }
-      }),
-    );
-    onBatchComplete?.({ eligibleIds: new Set(ids), reasons: { ...reasons } });
-  }
-
-  return { eligibleIds: ids, reasons };
-}
-
-// ── handleRegister helpers ──
-
-interface RosterLimits {
-  starters: number;
-  maxRoster: number;
-  maxSubstitutes: number;
-  maxCoaches: number;
-}
-
-async function buildProfileDisplayNameMap(
-  members: RosterMember[],
-  preferRiotTag: boolean,
-): Promise<Map<string, string>> {
-  const memberIds = members.map((r) => r.user_id);
-  const profileRows = await apiClient.get<any[]>(`/api/profiles?ids=${memberIds.join(',')}`);
-  const map = new Map<string, string>();
-  (profileRows || []).forEach((p) => {
-    const name =
-      (preferRiotTag && (p as any).riot_tag) ||
-      (p as any).username ||
-      (p as any).full_name ||
-      (p as any).id;
-    if (name) map.set(p.id, name);
-  });
-  return map;
-}
-
-function validateFixedRosterCounts(
-  members: RosterMember[],
-  limits: RosterLimits,
-): void {
-  if (members.length === 0) throw new Error('No roster members found');
-
-  const roleCounts = { starter: 0, substitute: 0, coach: 0 };
-  members.forEach((member) => {
-    roleCounts[resolveMemberRosterRole(member)] += 1;
-  });
-  const playerCount = roleCounts.starter + roleCounts.substitute;
-
-  if (roleCounts.starter !== limits.starters)
-    throw new Error(`Your roster needs exactly ${limits.starters} starters. It currently has ${roleCounts.starter}.`);
-  if (roleCounts.substitute > limits.maxSubstitutes)
-    throw new Error(`Your roster has ${roleCounts.substitute} substitutes, exceeding the limit of ${limits.maxSubstitutes}.`);
-  if (playerCount > limits.maxRoster)
-    throw new Error(`Your roster has ${playerCount} players, exceeding the ${limits.maxRoster}-player limit.`);
-  if (roleCounts.coach > limits.maxCoaches)
-    throw new Error(`Your roster has ${roleCounts.coach} coaches, exceeding the limit of ${limits.maxCoaches}.`);
-}
-
-function verifyCaptainRiotAccount(
-  rosterMembersData: any[],
-  userId: string,
-): void {
-  const captainOnRoster =
-    rosterMembersData.find((m) => m.user_id === userId) ??
-    rosterMembersData.find((m) => m.is_captain);
-  const captainHasRiot =
-    captainOnRoster?.is_verified ||
-    captainOnRoster?.profile?.riot_tag ||
-    captainOnRoster?.riot_tag_fallback;
-  if (!captainHasRiot) {
-    throw new Error(
-      'As the team captain, you must link your Riot account via Riot Sign-On to register for this tournament.',
-    );
-  }
-}
-
-function verifyLineupCaptainRiotAccount(
-  rosterMembersData: any[],
-  userId: string,
-  selectedIds: Set<string>,
-): void {
-  const captainOnRoster =
-    rosterMembersData.find((m) => m.user_id === userId && selectedIds.has(m.user_id)) ??
-    rosterMembersData.find((m) => m.is_captain && selectedIds.has(m.user_id));
-  const captainHasRiot =
-    captainOnRoster?.is_verified ||
-    captainOnRoster?.profile?.riot_tag ||
-    captainOnRoster?.riot_tag_fallback;
-  if (!captainHasRiot) {
-    throw new Error(
-      'As the team captain, you must link your Riot account via Riot Sign-On to register for this tournament.',
-    );
-  }
-}
-
-async function verifyLiveRegistrationEligibility(
-  tournamentId: string,
-  fallbackTournament: { status?: string; registration_deadline?: string; start_date: string; settings?: Record<string, unknown> },
-): Promise<void> {
-  const tournamentData = await apiClient.get<any>(`/api/tournaments/${tournamentId}`);
-  const live = tournamentData?.tournament || tournamentData;
-  const eligibility = evaluateRegistrationEligibility({
-    status: live?.status ?? fallbackTournament.status,
-    registrationOpens: getRegistrationOpensFromSettings(live?.settings ?? fallbackTournament.settings),
-    registrationDeadline: live?.registration_deadline ?? fallbackTournament.registration_deadline,
-    startDate: live?.start_date ?? fallbackTournament.start_date,
-  });
-  if (!eligibility.allowed) {
-    throw new Error(eligibility.reason ?? 'Registration is not available.');
-  }
-}
-
-function buildFixedRosterLineup(
-  members: RosterMember[],
-  nameMap: Map<string, string>,
-): { starters: { userId: string; displayName: string }[]; substitutes: { userId: string; displayName: string }[]; coaches: { userId: string; displayName: string }[] } {
-  const byRole = (role: 'starter' | 'substitute' | 'coach') =>
-    members
-      .filter((m) => resolveMemberRosterRole(m) === role)
-      .map((m) => ({ userId: m.user_id, displayName: nameMap.get(m.user_id) || m.user_id }));
-  return { starters: byRole('starter'), substitutes: byRole('substitute'), coaches: byRole('coach') };
-}
-
-interface RegistrationPayload {
-  rosterLineup: unknown;
-  memberNames: string[];
-}
-
-function buildLineupPayload(
-  rosterMembers: RosterMember[],
-  lineupSelections: TournamentLineupSelection,
-  nameMap: Map<string, string>,
-  assistedReportingEnabled: boolean,
-  rosterMembersData: any[],
-  userId: string,
-): RegistrationPayload {
-  const rosterLineup = buildRosterLineupPayload(rosterMembers, lineupSelections, nameMap);
-  const memberNames = [
-    ...rosterLineup.starters.map((entry) => entry.displayName),
-    ...rosterLineup.substitutes.map((entry) => entry.displayName),
-  ];
-  if (assistedReportingEnabled) {
-    const selectedIds = new Set([
-      ...rosterLineup.starters.map((entry) => entry.userId),
-      ...rosterLineup.substitutes.map((entry) => entry.userId),
-    ]);
-    verifyLineupCaptainRiotAccount(rosterMembersData, userId, selectedIds);
-  }
-  return { rosterLineup, memberNames };
-}
-
-function buildFixedPayload(
-  rosterMembers: RosterMember[],
-  limits: RosterLimits,
-  nameMap: Map<string, string>,
-  assistedReportingEnabled: boolean,
-  rosterMembersData: any[],
-  userId: string,
-): RegistrationPayload {
-  validateFixedRosterCounts(rosterMembers, limits);
-  if (assistedReportingEnabled) {
-    verifyCaptainRiotAccount(rosterMembersData, userId);
-  }
-  const rosterLineup = buildFixedRosterLineup(rosterMembers, nameMap);
-  const memberNames = [
-    ...rosterLineup.starters.map((e) => e.displayName),
-    ...rosterLineup.substitutes.map((e) => e.displayName),
-    ...rosterLineup.coaches.map((e) => e.displayName),
-  ];
-  return { rosterLineup, memberNames };
-}
-
-async function submitRegistration(
-  tournamentId: string,
-  userId: string,
-  teamId: string,
-  rosterId: string,
-  teamName: string,
-  memberNames: string[],
-  rosterLineup: unknown,
-  rosterName: string | undefined | null,
-  email: string | undefined,
-): Promise<void> {
-  await apiClient.post(`/api/tournaments/${tournamentId}/register`, {
-    participantType: 'team',
-    teamCaptainId: userId,
-    teamId,
-    teamName,
-    teamMembers: memberNames.join(','),
-    rosterLineup: JSON.stringify(rosterLineup),
-    rosterId,
-    rosterName: rosterName ?? null,
-    teamContactEmail: email ?? null,
-  });
-}
-
-function showRegistrationToast(
-  toast: (opts: { title: string; description: string }) => void,
-  entryFee: number | undefined,
-): void {
-  const isPaid = (entryFee ?? 0) > 0;
-  toast({
-    title: isPaid ? 'Registration Pending' : 'Registered',
-    description: isPaid
-      ? 'Your registration is pending approval. Upload payment receipt to proceed.'
-      : 'Team registered successfully.',
-  });
-}
-
-function sendRegistrationConfirmationEmail(
-  user: { email?: string; user_metadata?: Record<string, unknown> },
-  tournament: { id: string; name: string; game: string; start_date: string },
-  teamName: string,
-): void {
-  if (!user.email) return;
-  import('@/hooks/useEmail').then(({ sendEmail }) => {
-    const formatDate = (raw?: string | null) =>
-      raw ? new Date(raw).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-    sendEmail({
-      type: 'TournamentRegistration',
-      email: user.email!,
-      data: {
-        username: (user.user_metadata?.username as string) || (user.user_metadata?.full_name as string) || '',
-        tournamentName: tournament.name,
-        teamName,
-        registrationType: 'team',
-        game: tournament.game,
-        startDate: formatDate(tournament.start_date),
-        endDate: formatDate((tournament as Record<string, unknown>).end_date as string | undefined),
-        tournamentUrl: `${window.location.origin}/tournaments/${tournament.id}`,
-      },
-    }).catch((err) => console.warn('[TeamRegistration] Email send failed:', err));
-  }).catch(() => {});
-}
-
 // API response types for roster/member data from .NET endpoints
 interface RosterRow { id: string; game?: string; format?: string | null; team_size?: number; name?: string }
 interface RosterMember {
@@ -503,7 +118,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   const [ineligibleReasons, setIneligibleReasons] = useState<Record<string, string[]>>({});
   const [teamListTruncated, setTeamListTruncated] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
-  const [teamRosters, setTeamRosters] = useState<RosterRow[]>([]);
+  const [teamRosters, setTeamRosters] = useState<Array<{ id: string; name: string; game: string; format: string | null; team_size: number }>>([]);
   const [selectedRosterId, setSelectedRosterId] = useState<string>('');
   const [rosterMembersData, setRosterMembersData] = useState<any[]>([]);
   const [fetchingMembers, setFetchingMembers] = useState(false);
@@ -514,6 +129,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   const rosterGameNames = useMemo(() => teamRosters.map((r) => r.game), [teamRosters]);
   const rosterGameLogos = useGameLogos(rosterGameNames);
 
+  const _normalize = (value: string | null | undefined) => (value || '').trim().toLowerCase();
   const tournamentGameMode = (tournament.gameMode || tournament.game_mode || '').trim();
 
   const getCoreTeamSize = (gameName: string, modeKey?: string | null): number => {
@@ -535,12 +151,13 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
   const modeLimits = getRosterLimits(tournament.game, tournamentGameMode, coreMembers);
   const requiredStarters = modeLimits.starters;
+  const maxPlayers = modeLimits.maxRoster;
   const maxSubstitutes = modeLimits.maxSubstitutes;
   const maxCoaches = modeLimits.maxCoaches;
   const assistedReportingEnabled = isAssistedMatchReportingEnabled(
     tournament.game,
     tournamentGameMode,
-    tournament.settings as { assistedMatchReporting?: boolean } | undefined,
+    tournament.settings as { assistedReportingEnabled?: boolean } | undefined,
   );
   const preferRiotTagForDisplay = getEffectiveGameFeatures(tournament.game, tournamentGameMode).assistedReporting;
 
@@ -635,9 +252,66 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     }
     setFetchingTeams(true);
     try {
-      const teams = await fetchTeamsWithFallbacks(user.id, tournament.game);
+      const normalizeOwnerId = (value: unknown) => String(value ?? '').toLowerCase();
+      const currentUserId = normalizeOwnerId(user.id);
+      const mergeUniqueTeams = (base: TeamRow[], incoming: TeamRow[]) => {
+        const seen = new Set(base.map((team) => team.id));
+        const merged = [...base];
+        for (const team of incoming) {
+          if (!seen.has(team.id)) {
+            seen.add(team.id);
+            merged.push(team);
+          }
+        }
+        return merged;
+      };
+      const sortTeamsNewestFirst = (items: TeamRow[]) =>
+        [...items].sort((left, right) => {
+          const leftCreated = Date.parse(String(left.created_at ?? left.createdAt ?? '')) || 0;
+          const rightCreated = Date.parse(String(right.created_at ?? right.createdAt ?? '')) || 0;
+          if (leftCreated !== rightCreated) return rightCreated - leftCreated;
+          return right.name.localeCompare(left.name);
+        });
+
+      let teams: TeamRow[] = [];
+      const gameQuery = tournament.game
+        ? `?game=${encodeURIComponent(tournament.game)}&limit=${CAPTAIN_TEAMS_PAGE_LIMIT}`
+        : `?limit=${CAPTAIN_TEAMS_PAGE_LIMIT}`;
+
+      try {
+        const captainTeamsResponse = await apiClient.get<TeamRow[]>(`/api/teams/my-captain-teams${gameQuery}`);
+        teams = mergeUniqueTeams(teams, captainTeamsResponse || []);
+      } catch (captainError) {
+        console.warn('Captain team lookup failed:', captainError);
+      }
+
+      if (teams.length === 0) {
+        try {
+          const ownedQuery = tournament.game
+            ? `owner_id=${user.id}&game=${encodeURIComponent(tournament.game)}&limit=${CAPTAIN_TEAMS_PAGE_LIMIT}`
+            : `owner_id=${user.id}&limit=${CAPTAIN_TEAMS_PAGE_LIMIT}`;
+          const ownedTeams = await apiClient.get<TeamRow[]>(`/api/teams?${ownedQuery}`);
+          teams = mergeUniqueTeams(
+            teams,
+            (ownedTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
+          );
+        } catch (ownedError) {
+          console.warn('Owner team lookup failed:', ownedError);
+        }
+      }
+
+      if (teams.length === 0) {
+        const myTeams = await apiClient.get<TeamRow[]>('/api/teams/me');
+        teams = mergeUniqueTeams(
+          teams,
+          (myTeams || []).filter((team) => normalizeOwnerId(team.owner_id) === currentUserId),
+        );
+      }
+
+      teams = sortTeamsNewestFirst(teams.filter(isRealTeamRow));
       const tooManyTeams = teams.length > MAX_ELIGIBILITY_TEAMS;
       setTeamListTruncated(tooManyTeams);
+
       setCaptainTeams(teams);
       setFetchingTeams(false);
 
@@ -648,19 +322,80 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         return;
       }
 
-      const { eligibleIds, reasons } = await checkEligibilityInBatches(
-        teams, tournament.game, tournamentGameMode,
-        rosterMatchesTournamentMode, usesLineupSelection, coreMembers,
-        (partial) => {
-          setEligibleTeamIds(partial.eligibleIds);
-          setIneligibleReasons(partial.reasons);
-        },
-      );
+      const ids = new Set<string>();
+      const reasons: Record<string, string[]> = {};
+      const eligibilityBatchSize = 12;
+      const teamsForEligibility = teams.filter(isRealTeamRow);
 
-      setEligibleTeamIds(eligibleIds);
+      for (let index = 0; index < teamsForEligibility.length; index += eligibilityBatchSize) {
+        const batch = teamsForEligibility.slice(index, index + eligibilityBatchSize);
+        await Promise.all(batch.map(async (team) => {
+          if (!isRealTeamRow(team)) {
+            reasons[team.id] = ['This entry is not a real team roster.'];
+            return;
+          }
+
+          const errs: string[] = [];
+
+          try {
+            const rosters = await apiClient.get<any[]>(`/api/teams/${team.id}/rosters`);
+
+            const normalizeGame = (s: string) => (s || '').toLowerCase().trim();
+            const tournamentGameNormalized = normalizeGame(tournament.game || '');
+
+            const gameRosters = (rosters || []).filter((r: RosterRow) =>
+              normalizeGame(r.game) === tournamentGameNormalized,
+            );
+            const hasMatchingRoster = gameRosters.some((r: RosterRow) => rosterMatchesTournamentMode(r));
+
+            if (!hasMatchingRoster) {
+              errs.push("Team doesn't include this game. Create a roster for this game first.");
+            }
+
+            if (hasMatchingRoster && tournament.game) {
+              const matchingRoster = gameRosters.find((r: RosterRow) => rosterMatchesTournamentMode(r));
+
+              if (matchingRoster) {
+                const rosterMembers = await apiClient.get<RosterMember[]>(
+                  `/api/teams/${team.id}/rosters/${matchingRoster.id}/members`
+                );
+                const limits = getRosterLimits(tournament.game, tournamentGameMode, coreMembers);
+
+                if (usesLineupSelection) {
+                  const playerCount = countRosterPlayers(rosterMembers || []);
+                  if (playerCount < limits.maxRoster) {
+                    errs.push(`Roster pool needs at least ${limits.maxRoster} players (has ${playerCount}).`);
+                  }
+                } else {
+                  const starters = (rosterMembers || []).filter((m) => resolveRosterRole(m) === 'starter').length;
+                  const players = countRosterPlayers(rosterMembers || []);
+
+                  if (starters !== limits.starters) {
+                    errs.push(`Roster needs exactly ${limits.starters} starters (has ${starters}).`);
+                  }
+                  if (players > limits.maxRoster) {
+                    errs.push(`Roster exceeds ${limits.maxRoster}-player limit (has ${players}).`);
+                  }
+                }
+              }
+            }
+          } catch (teamError) {
+            console.error(`Eligibility check failed for team ${team.id}:`, teamError);
+            errs.push('Unable to verify team eligibility. Try again.');
+          }
+
+          if (errs.length === 0) ids.add(team.id);
+          reasons[team.id] = errs;
+        }));
+
+        setEligibleTeamIds(new Set(ids));
+        setIneligibleReasons({ ...reasons });
+      }
+
+      setEligibleTeamIds(ids);
       setIneligibleReasons(reasons);
       if (teams.length > 0) {
-        const firstEligible = teams.find((team) => eligibleIds.has(team.id))?.id || '';
+        const firstEligible = teams.find((team) => ids.has(team.id) && isRealTeamRow(team))?.id || '';
         setSelectedTeamId(firstEligible);
       }
     } catch (error) {
@@ -720,26 +455,167 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
     }
     setLoading(true);
     try {
-      await verifyLiveRegistrationEligibility(tournament.id, tournament);
+      const tournamentData = await apiClient.get<any>(`/api/tournaments/${tournament.id}`);
+      const liveTournament = tournamentData?.tournament || tournamentData;
+      const eligibility = evaluateRegistrationEligibility({
+        status: liveTournament?.status ?? tournament.status,
+        registrationOpens: getRegistrationOpensFromSettings(
+          liveTournament?.settings ?? tournament.settings,
+        ),
+        registrationDeadline: liveTournament?.registration_deadline ?? tournament.registration_deadline,
+        startDate: liveTournament?.start_date ?? tournament.start_date,
+      });
+      if (!eligibility.allowed) {
+        throw new Error(eligibility.reason ?? 'Registration is not available.');
+      }
 
       const team = captainTeams.find(t => t.id === selectedTeamId)!;
-      const members = await apiClient.get<RosterMember[]>(
-        `/api/teams/${selectedTeamId}/rosters/${selectedRosterId}/members`,
-      );
-      const rosterMembers = members || [];
-      const nameMap = await buildProfileDisplayNameMap(rosterMembers, preferRiotTagForDisplay);
 
-      const { rosterLineup, memberNames } = usesLineupSelection
-        ? buildLineupPayload(rosterMembers, lineupSelections, nameMap, assistedReportingEnabled, rosterMembersData, user.id)
-        : buildFixedPayload(rosterMembers, modeLimits, nameMap, assistedReportingEnabled, rosterMembersData, user.id);
+      const rosterMembers = await apiClient.get<RosterMember[]>(
+        `/api/teams/${selectedTeamId}/rosters/${selectedRosterId}/members`
+      );
+
+      let rosterLineup;
+      let memberNames: string[];
+
+      if (usesLineupSelection) {
+        const memberIds = (rosterMembers || []).map((r) => r.user_id);
+        const profileRows = await apiClient.get<any[]>(
+          `/api/profiles?ids=${memberIds.join(',')}`
+        );
+        const memberMap = new Map<string, string>();
+        (profileRows || []).forEach((p) => {
+          const name = (preferRiotTagForDisplay && (p as any).riot_tag) || (p as any).username || (p as any).full_name || (p as any).id;
+          if (name) memberMap.set(p.id, name);
+        });
+
+        rosterLineup = buildRosterLineupPayload(rosterMembers || [], lineupSelections, memberMap);
+        memberNames = [
+          ...rosterLineup.starters.map((entry) => entry.displayName),
+          ...rosterLineup.substitutes.map((entry) => entry.displayName),
+        ];
+
+        if (assistedReportingEnabled) {
+          const selectedIds = new Set([
+            ...rosterLineup.starters.map((entry) => entry.userId),
+            ...rosterLineup.substitutes.map((entry) => entry.userId),
+          ]);
+          const captainOnRoster = rosterMembersData.find((m) => m.user_id === user.id && selectedIds.has(m.user_id))
+            ?? rosterMembersData.find((m) => m.is_captain && selectedIds.has(m.user_id));
+          const captainHasRiot = captainOnRoster?.is_verified || captainOnRoster?.profile?.riot_tag || captainOnRoster?.riot_tag_fallback;
+          if (!captainHasRiot) {
+            throw new Error('As the team captain, you must link your Riot account via Riot Sign-On to register for this tournament.');
+          }
+        }
+      } else {
+        const roleCounts = { starter: 0, substitute: 0, coach: 0 };
+        (rosterMembers || []).forEach((member) => {
+          const role = resolveRosterRole(member);
+          roleCounts[role] += 1;
+        });
+        const playerCount = roleCounts.starter + roleCounts.substitute;
+
+        if (roleCounts.starter !== requiredStarters) {
+          throw new Error(`Your roster needs exactly ${requiredStarters} starters. It currently has ${roleCounts.starter}.`);
+        }
+        if (roleCounts.substitute > maxSubstitutes) {
+          throw new Error(`Your roster has ${roleCounts.substitute} substitutes, exceeding the limit of ${maxSubstitutes}.`);
+        }
+        if (playerCount > maxPlayers) {
+          throw new Error(`Your roster has ${playerCount} players, exceeding the ${maxPlayers}-player limit.`);
+        }
+        if (roleCounts.coach > maxCoaches) {
+          throw new Error(`Your roster has ${roleCounts.coach} coaches, exceeding the limit of ${maxCoaches}.`);
+        }
+        if ((rosterMembers || []).length === 0) {
+          throw new Error('No roster members found');
+        }
+
+        if (assistedReportingEnabled) {
+          const captainOnRoster = rosterMembersData.find(m => m.user_id === user.id)
+            ?? rosterMembersData.find(m => m.is_captain);
+          const captainHasRiot = captainOnRoster?.is_verified || captainOnRoster?.profile?.riot_tag || captainOnRoster?.riot_tag_fallback;
+          if (!captainHasRiot) {
+            throw new Error('As the team captain, you must link your Riot account via Riot Sign-On to register for this tournament.');
+          }
+        }
+
+        const memberIds = (rosterMembers || []).map((r) => r.user_id);
+        const profileRows = await apiClient.get<any[]>(
+          `/api/profiles?ids=${memberIds.join(',')}`
+        );
+
+        const memberMap = new Map<string, string>();
+        (profileRows || []).forEach(p => {
+          const name = (preferRiotTagForDisplay && (p as any).riot_tag) || (p as any).username || (p as any).full_name || (p as any).id;
+          if (name) memberMap.set(p.id, name);
+        });
+
+        const buildNames = (role: 'starter' | 'substitute' | 'coach') =>
+          (rosterMembers || [])
+            .filter((m) => resolveRosterRole(m) === role)
+            .map((m) => memberMap.get(m.user_id))
+            .filter(Boolean) as string[];
+
+        const starterNames = buildNames('starter');
+        const substituteNames = buildNames('substitute');
+        const coachNames = buildNames('coach');
+        memberNames = [...starterNames, ...substituteNames, ...coachNames];
+
+        rosterLineup = {
+          starters: (rosterMembers || [])
+            .filter((m) => resolveRosterRole(m) === 'starter')
+            .map((m) => ({ userId: m.user_id, displayName: memberMap.get(m.user_id) || m.user_id })),
+          substitutes: (rosterMembers || [])
+            .filter((m) => resolveRosterRole(m) === 'substitute')
+            .map((m) => ({ userId: m.user_id, displayName: memberMap.get(m.user_id) || m.user_id })),
+          coaches: (rosterMembers || [])
+            .filter((m) => resolveRosterRole(m) === 'coach')
+            .map((m) => ({ userId: m.user_id, displayName: memberMap.get(m.user_id) || m.user_id })),
+        };
+      }
 
       const roster = teamRosters.find(r => r.id === selectedRosterId);
-      const teamName = roster?.name || team.name;
 
-      await submitRegistration(tournament.id, user.id, selectedTeamId, selectedRosterId, teamName, memberNames, rosterLineup, roster?.name, user.email);
+      await apiClient.post(`/api/tournaments/${tournament.id}/register`, {
+        participantType: 'team',
+        teamCaptainId: user.id,
+        teamId: selectedTeamId,
+        teamName: roster?.name || team.name,
+        teamMembers: memberNames.join(','),
+        rosterLineup: JSON.stringify(rosterLineup),
+        rosterId: selectedRosterId,
+        rosterName: roster?.name || null,
+        teamContactEmail: user.email || null,
+      });
 
-      showRegistrationToast(toast, tournament.entry_fee);
-      if (user.email) sendRegistrationConfirmationEmail(user, tournament, teamName);
+      const isPaid = tournament.entry_fee && tournament.entry_fee > 0;
+      toast({
+        title: isPaid ? 'Registration Pending' : 'Registered',
+        description: isPaid
+          ? 'Your registration is pending approval. Upload payment receipt to proceed.'
+          : 'Team registered successfully.',
+      });
+
+      // Send confirmation email
+      if (user.email) {
+        const { sendEmail } = await import('@/hooks/useEmail');
+        sendEmail({
+          type: 'TournamentRegistration',
+          email: user.email,
+          data: {
+            username: user.user_metadata?.username || user.user_metadata?.full_name || '',
+            tournamentName: tournament.name,
+            teamName: roster?.name || team.name,
+            registrationType: 'team',
+            game: tournament.game,
+            startDate: tournament.start_date ? new Date(tournament.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
+            endDate: (tournament as Record<string, unknown>).end_date ? new Date(String((tournament as Record<string, unknown>).end_date)).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
+            tournamentUrl: `${window.location.origin}/tournaments/${tournament.id}`,
+          },
+        }).catch((err) => console.warn('[TeamRegistration] Email send failed:', err));
+      }
+
       onRegistrationComplete?.();
     } catch (e: unknown) {
       toast({
@@ -978,10 +854,10 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                                       className="text-white hover:bg-[#151515] focus:bg-[#151515] cursor-pointer"
                                     >
                                       <div className="flex items-center gap-2">
-                                        {rosterGameLogos[r.game ?? ''] ? (
+                                        {rosterGameLogos[r.game] ? (
                                           <div className="w-5 h-5 flex items-center justify-center">
                                             <img
-                                              src={rosterGameLogos[r.game ?? ''] ?? undefined}
+                                              src={rosterGameLogos[r.game]}
                                               alt={`${r.game} logo`}
                                               className="w-full h-full object-contain rounded"
                                               onError={(e) => {

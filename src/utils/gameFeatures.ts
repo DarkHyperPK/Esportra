@@ -402,9 +402,9 @@ export function resolveSoloParticipantDisplayName(
 export function isAssistedMatchReportingEnabled(
   gameName: string,
   modeKey?: string | null,
-  tournamentSettings?: { assistedMatchReporting?: boolean } | null,
+  tournamentSettings?: { assistedReportingEnabled?: boolean } | null,
 ): boolean {
-  return tournamentSettings?.assistedMatchReporting === true
+  return tournamentSettings?.assistedReportingEnabled === true
     && getEffectiveGameFeatures(gameName, modeKey).assistedReporting;
 }
 
@@ -416,15 +416,13 @@ export function isBattleRoyale(gameName: string): boolean {
 
 /** Read persisted tournament format/type from API payloads (snake or camel case). */
 export function getPersistedTournamentFormat(
-  tournament?: unknown,
-): string | null {
-  if (!tournament || typeof tournament !== 'object') return null;
-  const persisted = tournament as {
+  tournament?: {
     tournament_type?: string | null;
     tournamentType?: string | null;
     format?: string | null;
-  };
-  return persisted.tournament_type ?? persisted.tournamentType ?? persisted.format ?? null;
+  } | null,
+): string | null {
+  return tournament?.tournament_type ?? tournament?.tournamentType ?? tournament?.format ?? null;
 }
 
 /** Prefer persisted tournament type when catalog cache is not loaded yet. */

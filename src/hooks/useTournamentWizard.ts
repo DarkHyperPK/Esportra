@@ -44,244 +44,6 @@ function migrateWizardDraft(parsed: Record<string, unknown>): TournamentWizardDa
 const STORAGE_KEY = 'tournament_wizard_draft';
 const STEP_KEY = 'tournament_wizard_step';
 
-function deriveGameDefaults(gameName: string): Partial<TournamentWizardData> {
-    const game = getGameByName(gameName);
-    if (!game) return {};
-
-    const defaultMode = getDefaultGameMode(gameName);
-    const gameMode = defaultMode?.value || '';
-    const teamSize = getDefaultTeamSize(gameName, gameMode);
-    const modeFeatures = getEffectiveGameFeatures(gameName, gameMode);
-
-    const defaults: Partial<TournamentWizardData> = {
-        gameMode,
-        teamSize,
-        mapVetoEnabled: modeFeatures.mapVeto,
-        mapPoolIds: [],
-    };
-
-    if (isBattleRoyale(gameName)) {
-        defaults.tournamentType = 'battle_royale';
-        const brConfig = getBRConfig(gameName);
-        if (brConfig) {
-            defaults.brGameCount = brConfig.defaultGameCount;
-            defaults.brScoringPreset = brConfig.defaultPreset;
-            defaults.brDefaultLobbySize = deriveDefaultLobbyUnits(teamSize, brConfig.playersPerLobby);
-            defaults.brDefaultMapMode = brConfig.defaultMapMode
-              ?? (catalogGameHasBRMaps(brConfig) ? 'per_round' : 'none');
-            const preset = brConfig.scoringPresets[brConfig.defaultPreset];
-            if (preset) defaults.brKillCap = preset.killCap;
-        }
-    } else {
-        defaults.tournamentType = 'bracket';
-    }
-
-    return defaults;
-}
-
-function deriveGameModeDefaults(gameName: string, gameMode: string, currentMapVeto: boolean | undefined): Partial<TournamentWizardData> {
-    const modeFeatures = getEffectiveGameFeatures(gameName, gameMode);
-    const result: Partial<TournamentWizardData> = {};
-    result.mapVetoEnabled = modeFeatures.mapVeto ? currentMapVeto : false;
-    if (!modeFeatures.mapPool) result.mapPoolIds = [];
-    return result;
-}
-
-function parseMoney(val: string): number {
-    if (val.toLowerCase() === 'free') return 0;
-    const num = parseFloat(val.replace(/[^0-9.]/g, ''));
-    if (!isFinite(num) || isNaN(num)) return 0;
-    return Math.round(Math.min(Math.max(0, num), 99999999.99) * 100) / 100;
-}
-
-interface TournamentDates {
-    startDateTime: Date;
-    endDateTime: Date;
-    registrationCloses: Date;
-    registrationOpens: Date | null;
-}
-
-function buildTournamentDates(data: TournamentWizardData): TournamentDates {
-    const startDateTime = new Date(`${data.startDate}T${data.startTime}`);
-    const endDateTime = data.endDate && data.endTime
-        ? new Date(`${data.endDate}T${data.endTime}`)
-        : new Date(startDateTime.getTime() + 4 * 60 * 60 * 1000);
-    const registrationCloses = data.registrationCloses
-        ? new Date(data.registrationCloses)
-        : new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000);
-    const registrationOpens = data.registrationOpens
-        ? new Date(data.registrationOpens)
-        : null;
-    return { startDateTime, endDateTime, registrationCloses, registrationOpens };
-}
-
-function buildTournamentSettings(
-    data: TournamentWizardData,
-    modeFeatures: { assistedReporting?: boolean; mapVeto?: boolean },
-    registrationOpens: Date | null,
-): Record<string, unknown> {
-    return {
-        assistedMatchReporting: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
-        checkInWindowMinutes: data.checkInWindowMinutes || 30,
-        mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
-        reservedInviteSlots: data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
-        inviteExpiryDays: data.inviteExpiryDays || 7,
-        ...(registrationOpens ? { registrationOpensAt: registrationOpens.toISOString() } : {}),
-        ...(data.tournamentType === 'battle_royale' ? {
-            brScoringPreset: data.brScoringPreset,
-            brCustomScoring: data.brCustomScoring,
-            brKillCap: data.brKillCap,
-            brTiebreaker: data.brTiebreaker,
-            brDefaultLobbySize: data.brDefaultLobbySize,
-            brDefaultMapMode: data.brDefaultMapMode,
-        } : {}),
-    };
-}
-
-function buildStagesForCreate(data: TournamentWizardData) {
-    if (data.tournamentType === 'battle_royale') return [];
-    return data.stages.map((s, i) => {
-        const stageAny = s as any;
-        const hasOverrides = stageAny.bo_mode === 'per_round' && Object.keys(stageAny.round_bo_overrides ?? {}).length > 0;
-        return {
-            name:             s.name,
-            format:           s.format,
-            stageOrder:       s.stage_order ?? i + 1,
-            bestOf:           stageAny.best_of ?? 1,
-            boMode:           stageAny.bo_mode ?? 'per_stage',
-            capacity:         stageAny.capacity ?? null,
-            advancementCount: stageAny.advancement_count ?? null,
-            ...(hasOverrides ? { roundBoOverrides: stageAny.round_bo_overrides } : {}),
-            ...(stageAny.config ? { config: stageAny.config } : {}),
-        };
-    });
-}
-
-function buildStagesForSync(data: TournamentWizardData) {
-    if (data.tournamentType === 'battle_royale') return [];
-    return data.stages.map(s => ({
-        id:               (s as any).id || null,
-        name:             s.name,
-        format:           s.format,
-        stageOrder:       s.stage_order,
-        bestOf:           (s as any).best_of || 1,
-        capacity:         (s as any).capacity || null,
-        advancementCount: (s as any).advancement_count || null,
-    }));
-}
-
-function validateReservedSlots(
-    data: TournamentWizardData,
-    tournamentId: string | undefined,
-    activeInvitationCount: number | undefined,
-): string | null {
-    const count = activeInvitationCount ?? 0;
-    const reserved = data.invitedTeamsEnabled ? data.reservedInviteSlots : 0;
-    if (!tournamentId || count === 0 || reserved >= count) return null;
-    return `Reserved slots cannot be less than ${count} active invitation${count === 1 ? '' : 's'}. Revoke invitations first.`;
-}
-
-function resolveGameMode(data: TournamentWizardData): string | undefined {
-    return data.gameMode || getDefaultGameMode(data.game)?.value || undefined;
-}
-
-function emptyToNull(val: string | undefined | null): string | null {
-    return val || null;
-}
-
-function buildCommonFields(
-    data: TournamentWizardData,
-    dates: TournamentDates,
-    resolvedGameMode: string | undefined,
-    settings: Record<string, unknown>,
-): Record<string, unknown> {
-    return {
-        name:                 data.name,
-        description:          data.description,
-        maxTeams:             data.maxTeams,
-        teamSize:             data.teamSize,
-        gameMode:             resolvedGameMode,
-        entryFee:             parseMoney(data.entryFee),
-        prizePool:            parseMoney(data.prizePool),
-        startDate:            dates.startDateTime.toISOString(),
-        endDate:              dates.endDateTime.toISOString(),
-        registrationDeadline: dates.registrationCloses.toISOString(),
-        bannerUrl:            data.bannerUrl,
-        logoUrl:              data.logoUrl,
-        checkInRequired:      data.checkInRequired,
-        checkInDeadline:      data.checkInRequired ? dates.startDateTime.toISOString() : undefined,
-        streamUrl:            emptyToNull(data.streamUrl),
-        rules:                emptyToNull(data.rules),
-        paymentInstructions:  emptyToNull(data.paymentInstructions),
-        region:               emptyToNull(data.region),
-        currency:             data.currency || 'USD',
-        payoutMethod:         data.payoutMethod || 'manual',
-        manualPayoutNotes:    emptyToNull(data.manualPayoutNotes),
-        prizeDistribution:    data.prizeDistribution ?? null,
-        reservedInviteSlots:  data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
-        inviteExpiryDays:     data.inviteExpiryDays || 7,
-        settings,
-    };
-}
-
-async function submitUpdateTournament(
-    data: TournamentWizardData,
-    tournamentId: string,
-    dates: TournamentDates,
-    resolvedGameMode: string | undefined,
-    settings: Record<string, unknown>,
-    initialData?: TournamentWizardData,
-): Promise<void> {
-    const launchPayload = launchStateToUpdatePayload(
-        data.launchState,
-        data.status || initialData?.status,
-    );
-    const updatePayload: Record<string, unknown> = {
-        ...buildCommonFields(data, dates, resolvedGameMode, settings),
-        isPublic: launchPayload.isPublic,
-    };
-
-    if (launchPayload.status && launchPayload.status !== initialData?.status) {
-        updatePayload.status = launchPayload.status;
-    }
-
-    await apiClient.put(`/api/tournaments/${tournamentId}`, updatePayload);
-
-    const stagesToSync = buildStagesForSync(data);
-    if (data.tournamentType !== 'battle_royale' && (stagesToSync.length > 0 || initialData?.stages)) {
-        await apiClient.put(`/api/tournaments/${tournamentId}/stages`, { stages: stagesToSync });
-    }
-
-    if (data.mapPoolIds) {
-        await apiClient.put(`/api/tournaments/${tournamentId}/map-pools`, { mapIds: data.mapPoolIds });
-    }
-}
-
-async function submitCreateTournament(
-    data: TournamentWizardData,
-    slug: string,
-    organizationId: string | null | undefined,
-    dates: TournamentDates,
-    resolvedGameMode: string | undefined,
-    settings: Record<string, unknown>,
-): Promise<{ slug: string }> {
-    const createLaunch = launchStateToCreatePayload(data.launchState as LaunchState);
-
-    return await apiClient.post<{ slug: string }>('/api/tournaments', {
-        ...buildCommonFields(data, dates, resolvedGameMode, settings),
-        slug,
-        game:                 data.game,
-        status:               createLaunch.status,
-        isPublic:             createLaunch.isPublic,
-        organizationId:       organizationId ?? undefined,
-        autoRemoveUnchecked:  data.autoRemoveUnchecked,
-        tournamentType:       data.tournamentType || 'bracket',
-        serverRegion:         emptyToNull(data.serverRegion),
-        stages:               buildStagesForCreate(data),
-        mapPoolIds:           data.mapPoolIds ?? [],
-    });
-}
-
 export const useTournamentWizard = (
     initialData?: TournamentWizardData,
     tournamentId?: string,
@@ -300,7 +62,7 @@ export const useTournamentWizard = (
         }
         return 1;
     });
-    const setCurrentStep = useCallback((step: number | ((prev: number) => number)) => {
+    const setCurrentStep = useCallback((step: number) => {
         setCurrentStepRaw(step);
         if (typeof window !== 'undefined' && !tournamentId) {
             localStorage.setItem(STEP_KEY, String(step));
@@ -330,10 +92,43 @@ export const useTournamentWizard = (
         setData(prev => {
             const newData = { ...prev, ...updates };
             if (updates.game && updates.game !== prev.game) {
-                Object.assign(newData, deriveGameDefaults(updates.game));
+                const game = getGameByName(updates.game);
+                if (game) {
+                    const defaultMode = getDefaultGameMode(updates.game);
+                    newData.gameMode = defaultMode?.value || '';
+                    newData.teamSize = getDefaultTeamSize(updates.game, newData.gameMode);
+                    const modeFeatures = getEffectiveGameFeatures(updates.game, newData.gameMode);
+                    newData.mapVetoEnabled = modeFeatures.mapVeto;
+                    newData.mapPoolIds = [];
+                    // Auto-set tournament type based on game
+                    if (isBattleRoyale(updates.game)) {
+                        newData.tournamentType = 'battle_royale';
+                        const brConfig = getBRConfig(updates.game);
+                        if (brConfig) {
+                            newData.brGameCount = brConfig.defaultGameCount;
+                            newData.brScoringPreset = brConfig.defaultPreset;
+                            newData.brDefaultLobbySize = deriveDefaultLobbyUnits(
+                              newData.teamSize,
+                              brConfig.playersPerLobby,
+                            );
+                            newData.brDefaultMapMode = brConfig.defaultMapMode
+                              ?? (catalogGameHasBRMaps(brConfig) ? 'per_round' : 'none');
+                            const preset = brConfig.scoringPresets[brConfig.defaultPreset];
+                            if (preset) {
+                                newData.brKillCap = preset.killCap;
+                            }
+                        }
+                    } else {
+                        newData.tournamentType = 'bracket';
+                    }
+                }
             }
             if (updates.gameMode !== undefined && updates.gameMode !== prev.gameMode) {
-                Object.assign(newData, deriveGameModeDefaults(newData.game, updates.gameMode, newData.mapVetoEnabled));
+                const modeFeatures = getEffectiveGameFeatures(newData.game, updates.gameMode);
+                newData.mapVetoEnabled = modeFeatures.mapVeto ? newData.mapVetoEnabled : false;
+                if (!modeFeatures.mapPool) {
+                    newData.mapPoolIds = [];
+                }
             }
             return newData;
         });
@@ -432,40 +227,223 @@ export const useTournamentWizard = (
             return;
         }
 
-        const inviteError = validateReservedSlots(data, tournamentId, options?.activeInvitationCount);
-        if (inviteError) {
-            setErrors({ reservedInviteSlots: inviteError });
-            toast({ title: 'Validation Error', description: inviteError, variant: 'destructive' });
+        const activeInvitationCount = options?.activeInvitationCount ?? 0;
+        const reservedSlots = data.invitedTeamsEnabled ? data.reservedInviteSlots : 0;
+        if (tournamentId && activeInvitationCount > 0 && reservedSlots < activeInvitationCount) {
+            const message = `Reserved slots cannot be less than ${activeInvitationCount} active invitation${activeInvitationCount === 1 ? '' : 's'}. Revoke invitations first.`;
+            setErrors({ reservedInviteSlots: message });
+            toast({ title: 'Validation Error', description: message, variant: 'destructive' });
             return;
         }
 
         setIsSubmitting(true);
 
         try {
-            const dates = buildTournamentDates(data);
-            const resolvedGameMode = resolveGameMode(data);
+            // Money parser shared by both paths
+            const toMoney = (val: string) => {
+                if (val.toLowerCase() === 'free') return 0;
+                const num = parseFloat(val.replace(/[^0-9.]/g, ''));
+                if (!isFinite(num) || isNaN(num)) return 0;
+                return Math.round(Math.min(Math.max(0, num), 99999999.99) * 100) / 100;
+            };
+
+            const startDateTime  = new Date(`${data.startDate}T${data.startTime}`);
+            const endDateTime    = data.endDate && data.endTime
+                ? new Date(`${data.endDate}T${data.endTime}`)
+                : new Date(startDateTime.getTime() + 4 * 60 * 60 * 1000);
+            const registrationCloses = data.registrationCloses
+                ? new Date(data.registrationCloses)
+                : new Date(startDateTime.getTime() - 24 * 60 * 60 * 1000);
+            const registrationOpens = data.registrationOpens
+                ? new Date(data.registrationOpens)
+                : null;
+            const resolvedGameMode = data.gameMode || getDefaultGameMode(data.game)?.value || undefined;
             const modeFeatures = getEffectiveGameFeatures(data.game, resolvedGameMode);
-            const settings = buildTournamentSettings(data, modeFeatures, dates.registrationOpens);
 
             if (tournamentId) {
-                await submitUpdateTournament(data, tournamentId, dates, resolvedGameMode, settings, initialData);
+                // ── UPDATE path ─────────────────────────────────────────────────
+
+                // Tournament-level fields → .NET API
+                const launchPayload = launchStateToUpdatePayload(
+                    data.launchState,
+                    data.status || initialData?.status,
+                );
+                const updatePayload: Record<string, unknown> = {
+                    name:                 data.name,
+                    description:          data.description,
+                    maxTeams:             data.maxTeams,
+                    teamSize:             data.teamSize,
+                    gameMode:             resolvedGameMode,
+                    entryFee:             toMoney(data.entryFee),
+                    prizePool:            toMoney(data.prizePool),
+                    startDate:            startDateTime.toISOString(),
+                    endDate:              endDateTime.toISOString(),
+                    registrationDeadline: registrationCloses.toISOString(),
+                    bannerUrl:            data.bannerUrl,
+                    logoUrl:              data.logoUrl,
+                    isPublic:             launchPayload.isPublic,
+                    checkInRequired:      data.checkInRequired,
+                    checkInDeadline:      data.checkInRequired ? startDateTime.toISOString() : undefined,
+                    streamUrl:            data.streamUrl || null,
+                    rules:                data.rules || null,
+                    paymentInstructions:  data.paymentInstructions || null,
+                    region:               data.region || null,
+                    currency:             data.currency || 'USD',
+                    payoutMethod:         data.payoutMethod || 'manual',
+                    manualPayoutNotes:    data.manualPayoutNotes || null,
+                    prizeDistribution:    data.prizeDistribution ?? null,
+                    reservedInviteSlots:  data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
+                    inviteExpiryDays:     data.inviteExpiryDays || 7,
+                    assistedReportingEnabled: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
+                    requiredAccountLinks: modeFeatures.assistedReporting && data.assistedMatchReporting ? (data.requiredAccountLinks ?? 1) : 1,
+                    settings:             {
+                        checkInWindowMinutes: data.checkInWindowMinutes || 30,
+                        mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
+                        reservedInviteSlots: data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
+                        inviteExpiryDays: data.inviteExpiryDays || 7,
+                        ...(registrationOpens ? { registrationOpensAt: registrationOpens.toISOString() } : {}),
+                        ...(data.tournamentType === 'battle_royale' ? {
+                            brScoringPreset: data.brScoringPreset,
+                            brCustomScoring: data.brCustomScoring,
+                            brKillCap: data.brKillCap,
+                            brTiebreaker: data.brTiebreaker,
+                            brDefaultLobbySize: data.brDefaultLobbySize,
+                            brDefaultMapMode: data.brDefaultMapMode,
+                        } : {}),
+                    },
+                };
+
+                if (launchPayload.status && launchPayload.status !== initialData?.status) {
+                    updatePayload.status = launchPayload.status;
+                }
+
+                await apiClient.put(`/api/tournaments/${tournamentId}`, updatePayload);
+
+                // Stage sync — single PUT replaces 3 sequential Supabase calls (delete/upsert/insert)
+                const stagesToSync = (() => {
+                    // BR stages are configured post-create via the stage setup wizard
+                    if (data.tournamentType === 'battle_royale') {
+                        return [];
+                    }
+                    return data.stages.map(s => ({
+                        id:               s.id || null,
+                        name:             s.name,
+                        format:           s.format,
+                        stageOrder:       s.stage_order,
+                        bestOf:           (s as any).best_of || 1,
+                        capacity:         (s as any).capacity || null,
+                        advancementCount: (s as any).advancement_count || null,
+                    }));
+                })();
+
+                // BR stages are managed in the organizer Stages tab — never sync from wizard on update
+                if (data.tournamentType !== 'battle_royale' && (stagesToSync.length > 0 || initialData?.stages)) {
+                    await apiClient.put(`/api/tournaments/${tournamentId}/stages`, {
+                        stages: stagesToSync,
+                    });
+                }
+
+                // Map pool — single PUT replaces delete + re-insert
+                if (data.mapPoolIds) {
+                    await apiClient.put(`/api/tournaments/${tournamentId}/map-pools`, {
+                        mapIds: data.mapPoolIds,
+                    });
+                }
 
                 toast({ title: 'Tournament Updated', description: 'Your tournament has been updated successfully.' });
                 queryClient.invalidateQueries({ queryKey: ['tournament-dashboard'] });
                 queryClient.invalidateQueries({ queryKey: ['tournament'] });
                 navigate(`/organizer/tournament/${tournamentId}`);
+
             } else {
+                // ── CREATE path ─────────────────────────────────────────────────
                 const slug = slugify(data.name, { lower: true, strict: true });
                 const organizationId = await fetchCurrentOrganizationId();
-                const tournament = await submitCreateTournament(data, slug, organizationId, dates, resolvedGameMode, settings);
+
+                const createLaunch = launchStateToCreatePayload(data.launchState as LaunchState);
+
+                const tournament = await apiClient.post<{ slug: string; name?: string }>('/api/tournaments', {
+                    name:                 data.name,
+                    description:          data.description,
+                    slug,
+                    game:                 data.game,
+                    gameMode:             resolvedGameMode,
+                    status:               createLaunch.status,
+                    maxTeams:             data.maxTeams,
+                    teamSize:             data.teamSize,
+                    entryFee:             toMoney(data.entryFee),
+                    prizePool:            toMoney(data.prizePool),
+                    startDate:            startDateTime.toISOString(),
+                    endDate:              endDateTime.toISOString(),
+                    registrationDeadline: registrationCloses.toISOString(),
+                    bannerUrl:            data.bannerUrl,
+                    logoUrl:              data.logoUrl,
+                    isPublic:             createLaunch.isPublic,
+                    organizationId:       organizationId ?? undefined,
+                    checkInRequired:      data.checkInRequired,
+                    checkInDeadline:      data.checkInRequired ? startDateTime.toISOString() : undefined,
+                    autoRemoveUnchecked:  data.autoRemoveUnchecked,
+                    streamUrl:            data.streamUrl || null,
+                    rules:                data.rules || null,
+                    paymentInstructions:  data.paymentInstructions || null,
+                    region:               data.region || null,
+                    currency:             data.currency || 'USD',
+                    payoutMethod:         data.payoutMethod || 'manual',
+                    manualPayoutNotes:    data.manualPayoutNotes || null,
+                    prizeDistribution:    data.prizeDistribution ?? null,
+                    tournamentType:       data.tournamentType || 'bracket',
+                    serverRegion:         data.serverRegion || null,
+                    reservedInviteSlots:  data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
+                    inviteExpiryDays:     data.inviteExpiryDays || 7,
+                    assistedReportingEnabled: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
+                    requiredAccountLinks: modeFeatures.assistedReporting && data.assistedMatchReporting ? (data.requiredAccountLinks ?? 1) : 1,
+                    settings: {
+                        checkInWindowMinutes: data.checkInWindowMinutes || 30,
+                        mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
+                        reservedInviteSlots: data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
+                        inviteExpiryDays: data.inviteExpiryDays || 7,
+                        ...(registrationOpens ? { registrationOpensAt: registrationOpens.toISOString() } : {}),
+                        // BR-specific settings
+                        ...(data.tournamentType === 'battle_royale' ? {
+                            brScoringPreset: data.brScoringPreset,
+                            brCustomScoring: data.brCustomScoring,
+                            brKillCap: data.brKillCap,
+                            brTiebreaker: data.brTiebreaker,
+                            brDefaultLobbySize: data.brDefaultLobbySize,
+                            brDefaultMapMode: data.brDefaultMapMode,
+                        } : {}),
+                    },
+                    // Backend handles stages + map pool in one transaction
+                    stages: (() => {
+                        // BR stages are configured post-create via the stage setup wizard
+                        if (data.tournamentType === 'battle_royale') {
+                            return [];
+                        }
+                        return data.stages.map((s, i) => {
+                            const stageAny = s as any;
+                            const hasOverrides = stageAny.bo_mode === 'per_round' && Object.keys(stageAny.round_bo_overrides ?? {}).length > 0;
+                            return {
+                                name:             s.name,
+                                format:           s.format,
+                                stageOrder:       s.stage_order ?? i + 1,
+                                bestOf:           stageAny.best_of ?? 1,
+                                boMode:           stageAny.bo_mode ?? 'per_stage',
+                                capacity:         stageAny.capacity ?? null,
+                                advancementCount: stageAny.advancement_count ?? null,
+                                ...(hasOverrides ? { roundBoOverrides: stageAny.round_bo_overrides } : {}),
+                                ...(stageAny.config ? { config: stageAny.config } : {}),
+                            };
+                        });
+                    })(),
+                    mapPoolIds: data.mapPoolIds ?? [],
+                });
 
                 clearDraft();
                 toast({ title: 'Tournament Created!', description: 'Your tournament has been created successfully.' });
                 navigate(`/organizer/tournament/${tournament.slug}`);
             }
-        } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Failed to save tournament';
-            toast({ title: 'Error', description: message, variant: 'destructive' });
+        } catch (err: any) {
+            toast({ title: 'Error', description: err.message || 'Failed to save tournament', variant: 'destructive' });
         } finally {
             setIsSubmitting(false);
         }
