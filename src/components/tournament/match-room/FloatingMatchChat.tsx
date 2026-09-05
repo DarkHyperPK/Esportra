@@ -3,10 +3,17 @@ import { MessageCircle, X } from 'lucide-react';
 
 interface FloatingMatchChatProps {
   children: React.ReactNode;
+  unreadCount?: number;
+  onOpen?: () => void;
 }
 
-export const FloatingMatchChat: React.FC<FloatingMatchChatProps> = ({ children }) => {
-  const [open, setOpen] = useState(false);
+export const FloatingMatchChat: React.FC<FloatingMatchChatProps> = ({ children, unreadCount = 0, onOpen }) => {
+  const [open, setOpen] = useState(true);
+
+  const handleOpen = () => {
+    setOpen(true);
+    onOpen?.();
+  };
 
   return (
     <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
@@ -36,20 +43,27 @@ export const FloatingMatchChat: React.FC<FloatingMatchChatProps> = ({ children }
       </div>
 
       {/* Circular FAB button */}
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className={`grid h-14 w-14 place-items-center rounded-full shadow-lg transition-all duration-200 ${
-          open
-            ? 'bg-zinc-800 text-zinc-300 shadow-black/40 hover:bg-zinc-700 hover:text-white'
-            : 'bg-cyan-600 text-white shadow-cyan-950/50 hover:bg-cyan-500 hover:shadow-xl'
-        }`}
-        aria-label={open ? 'Close chat' : 'Open chat'}
-      >
-        <span className={`transition-transform duration-200 ${open ? 'rotate-0' : 'rotate-0'}`}>
-          {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
-        </span>
-      </button>
+      <div className="relative">
+        {!open && unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 z-10 min-w-[20px] h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center px-1 font-semibold pointer-events-none">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={open ? () => setOpen(false) : handleOpen}
+          className={`grid h-14 w-14 place-items-center rounded-full shadow-lg transition-all duration-200 ${
+            open
+              ? 'bg-zinc-800 text-zinc-300 shadow-black/40 hover:bg-zinc-700 hover:text-white'
+              : 'bg-cyan-600 text-white shadow-cyan-950/50 hover:bg-cyan-500 hover:shadow-xl'
+          }`}
+          aria-label={open ? 'Close chat' : 'Open chat'}
+        >
+          <span className="transition-transform duration-200">
+            {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
+          </span>
+        </button>
+      </div>
     </div>
   );
 };

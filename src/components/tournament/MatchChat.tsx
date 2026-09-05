@@ -14,6 +14,7 @@ interface MatchChatProps {
     team1Name: string;
     team2Name: string;
     allowMinimize?: boolean;
+    onNewMessage?: () => void;
 }
 
 const MatchChat: React.FC<MatchChatProps> = ({
@@ -23,9 +24,10 @@ const MatchChat: React.FC<MatchChatProps> = ({
     team1Name,
     team2Name,
     allowMinimize = true,
+    onNewMessage,
 }) => {
     const { user } = useAuth();
-    const { messages, sendMessage, scrollRef, scrollToBottom, isLoading, connectionStatus, isJoined, chatError, isError } = useMatchChat(matchId);
+    const { messages, sendMessage, scrollRef, scrollToBottom, isLoading, connectionStatus, isJoined, chatError, isError } = useMatchChat(matchId, { onNewMessage });
     const [messageText, setMessageText] = useState('');
     const [isMinimized, setIsMinimized] = useState(false);
     const [showScrollButton, setShowScrollButton] = useState(false);

@@ -103,6 +103,7 @@ const CaptainMatchPage = () => {
     const [uploadOpen, setUploadOpen] = useState(false);
     const [uploadMatchId, setUploadMatchId] = useState<string | undefined>(undefined);
     const [mapVetoOpen, setMapVetoOpen] = useState(false);
+    const [chatUnread, setChatUnread] = useState(0);
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
     const [mapVetoMatchId, setMapVetoMatchId] = useState<string | null>(null);
 
@@ -1202,7 +1203,10 @@ const CaptainMatchPage = () => {
             )}
 
             {activeMatch ? (
-                <FloatingMatchChat>
+                <FloatingMatchChat
+                    unreadCount={chatUnread}
+                    onOpen={() => setChatUnread(0)}
+                >
                     <MatchChat
                         matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
                         userTeamId={isOrganizerMatchView ? undefined : userTeamId}
@@ -1210,6 +1214,7 @@ const CaptainMatchPage = () => {
                         team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
                         team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                         allowMinimize={false}
+                        onNewMessage={() => setChatUnread((c) => c + 1)}
                     />
                 </FloatingMatchChat>
             ) : null}

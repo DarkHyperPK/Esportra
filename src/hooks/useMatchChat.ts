@@ -42,7 +42,14 @@ function normalizeMessages(rows: unknown): MatchMessage[] {
   return rows.map((row) => fromDto(row as Record<string, any>));
 }
 
-export const useMatchChat = (matchId: string | undefined) => {
+interface UseMatchChatOptions {
+  onNewMessage?: () => void;
+}
+
+export const useMatchChat = (matchId: string | undefined, options: UseMatchChatOptions = {}) => {
+  const onNewMessageRef = useRef(options.onNewMessage);
+  useEffect(() => { onNewMessageRef.current = options.onNewMessage; }, [options.onNewMessage]);
+
   const queryClient = useQueryClient();
   const { toast }   = useToast();
   const { user }    = useAuth();
@@ -79,6 +86,7 @@ export const useMatchChat = (matchId: string | undefined) => {
     let active = true;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let monitorTimer: ReturnType<typeof setInterval> | null = null;
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     let joined = false;
 
     const handleMessageReceived = (dto: Record<string, any>) => {
@@ -97,6 +105,10 @@ export const useMatchChat = (matchId: string | undefined) => {
           return next;
         },
       );
+
+      if (msg.sender_id !== user.id) {
+        onNewMessageRef.current?.();
+      }
     };
 
     const handleHubError = (message: string) => {
@@ -176,10 +188,17 @@ export const useMatchChat = (matchId: string | undefined) => {
       }
     }, 1000);
 
+    // Refresh server-side presence key every 90 s so offline-email detection is accurate
+    heartbeatTimer = setInterval(() => {
+      if (!active || !joined || conn.state !== HubConnectionState.Connected) return;
+      conn.invoke('Heartbeat', matchId).catch(() => {});
+    }, 90_000);
+
     return () => {
       active = false;
       clearRetry();
       if (monitorTimer) clearInterval(monitorTimer);
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
       conn.off('MessageReceived', handleMessageReceived);
       conn.off('Error', handleHubError);
       if (conn.state === HubConnectionState.Connected)
