@@ -55,7 +55,8 @@ function generateBoX(poolSize: number, bestOf: 3 | 5): VetoStep[] {
     }
 
     // Phase 4: decider side pick
-    steps.push({ actionNumber: n++, action: 'pick_side', team: 'T1', isDecider: true });
+    const deciderTeam: TeamSide = bestOf === 5 ? 'T2' : 'T1';
+    steps.push({ actionNumber: n++, action: 'pick_side', team: deciderTeam, isDecider: true });
 
     return steps;
 }
@@ -82,7 +83,7 @@ export const CS2_CONFIG: GameVetoConfig = {
 export const VALORANT_CONFIG: GameVetoConfig = {
     game: 'valorant',
     mapPoolSize: 7,
-    bo1Style: 'ban_pick',
+    bo1Style: 'pure_ban',
 };
 
 export const R6S_CONFIG: GameVetoConfig = {

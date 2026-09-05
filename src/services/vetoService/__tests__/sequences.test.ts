@@ -31,7 +31,11 @@ describe('VetoService R6 9-map sequences', () => {
     it('BO5 with 9-map pool is valid', () => {
         const sequence = service.getSequence(5);
         expect(sequence.length).toBeGreaterThan(0);
-        expect(sequence.at(-1)?.isDecider).toBe(true);
+        expect(sequence.at(-1)).toMatchObject({
+            action: 'pick_side',
+            team: 'T2',
+            isDecider: true,
+        });
     });
 
     it('isDeciderAction identifies final side pick for R6 BO1', () => {
@@ -43,11 +47,36 @@ describe('VetoService R6 9-map sequences', () => {
 describe('VetoService Valorant 7-map regression', () => {
     const service = new VetoService('valorant', 7);
 
-    it('BO1 ban-pick sequence remains 7 actions', () => {
+    it('BO1 pure-ban sequence produces 7 actions', () => {
         const sequence = service.getSequence(1);
         expect(sequence).toHaveLength(7);
-        expect(sequence.filter((step) => step.action === 'ban')).toHaveLength(5);
-        expect(sequence.filter((step) => step.action === 'pick')).toHaveLength(1);
+        expect(sequence.filter((step) => step.action === 'ban')).toHaveLength(6);
+        expect(sequence.filter((step) => step.action === 'pick')).toHaveLength(0);
         expect(sequence.filter((step) => step.action === 'pick_side')).toHaveLength(1);
+        expect(sequence.at(-1)).toMatchObject({
+            action: 'pick_side',
+            isDecider: true,
+            team: 'T1',
+        });
+    });
+
+    it('BO5 decider side pick goes to T2', () => {
+        const sequence = service.getSequence(5);
+        const decider = sequence.at(-1);
+        expect(decider).toMatchObject({
+            action: 'pick_side',
+            team: 'T2',
+            isDecider: true,
+        });
+    });
+
+    it('BO3 decider side pick remains T1', () => {
+        const sequence = service.getSequence(3);
+        const decider = sequence.at(-1);
+        expect(decider).toMatchObject({
+            action: 'pick_side',
+            team: 'T1',
+            isDecider: true,
+        });
     });
 });
