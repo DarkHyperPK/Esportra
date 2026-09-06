@@ -45,7 +45,11 @@ export const FloatingMatchChat: React.FC<FloatingMatchChatProps> = ({ children, 
       {/* Circular FAB button */}
       <div className="relative">
         {!open && unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 z-10 min-w-[20px] h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center px-1 font-semibold pointer-events-none">
+          <span
+            className="absolute -top-1 -right-1 z-10 min-w-[20px] h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center px-1 font-semibold pointer-events-none"
+            role="status"
+            aria-label={`${unreadCount > 99 ? '99+' : unreadCount} unread ${unreadCount === 1 ? 'message' : 'messages'}`}
+          >
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}

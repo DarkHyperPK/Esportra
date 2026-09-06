@@ -3,31 +3,51 @@ import { Card } from "@/components/ui/card";
 import { GhostButton } from "@/components/ui/app-buttons";
 import { Input } from "@/components/ui/input";
 import { MessageCircle, Send, Minimize2, Maximize2, ChevronDown, ShieldCheck, Wifi, WifiOff, Loader2 } from 'lucide-react';
-import { useMatchChat } from '@/hooks/useMatchChat';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
+import type { MatchMessage, ChatConnectionStatus } from '@/hooks/useMatchChat';
+
+interface SendMessageMutation {
+    mutateAsync: (vars: { content: string; teamId?: string; messageType?: string; metadata?: any }) => Promise<void>;
+    isPending: boolean;
+}
 
 interface MatchChatProps {
-    matchId: string;
+    messages: MatchMessage[] | undefined;
+    sendMessage: SendMessageMutation;
+    scrollRef: React.RefObject<HTMLDivElement>;
+    scrollToBottom: () => void;
+    isLoading: boolean;
+    connectionStatus: ChatConnectionStatus;
+    isJoined: boolean;
+    chatError: string | null;
+    isError: boolean;
+    opponentLastReadAt: Date | null;
     userTeamId: string | undefined;
     team1Id: string | undefined;
     team1Name: string;
     team2Name: string;
     allowMinimize?: boolean;
-    onNewMessage?: () => void;
 }
 
 const MatchChat: React.FC<MatchChatProps> = ({
-    matchId,
+    messages,
+    sendMessage,
+    scrollRef,
+    scrollToBottom,
+    isLoading,
+    connectionStatus,
+    isJoined,
+    chatError,
+    isError,
+    opponentLastReadAt,
     userTeamId,
     team1Id,
     team1Name,
     team2Name,
     allowMinimize = true,
-    onNewMessage,
 }) => {
     const { user } = useAuth();
-    const { messages, sendMessage, scrollRef, scrollToBottom, isLoading, connectionStatus, isJoined, chatError, isError } = useMatchChat(matchId, { onNewMessage });
     const [messageText, setMessageText] = useState('');
     const [isMinimized, setIsMinimized] = useState(false);
     const [showScrollButton, setShowScrollButton] = useState(false);
@@ -41,6 +61,15 @@ const MatchChat: React.FC<MatchChatProps> = ({
                 ? 'Disconnected'
                 : 'Connecting';
     const ConnectionIcon = isConnected ? Wifi : connectionStatus === 'disconnected' ? WifiOff : Loader2;
+
+    const lastSeenMessageId = (() => {
+        if (!opponentLastReadAt) return null;
+        const myMessages = (messages ?? []).filter(m => m.sender_id === user?.id);
+        return [...myMessages]
+            .reverse()
+            .find(m => opponentLastReadAt >= new Date(m.created_at))
+            ?.id ?? null;
+    })();
 
     // Scroll to bottom on initial load
     useEffect(() => {
@@ -222,6 +251,13 @@ const MatchChat: React.FC<MatchChatProps> = ({
                                         }`}>
                                         <p className="text-sm leading-relaxed break-words whitespace-pre-wrap">{msg.content}</p>
                                     </div>
+                                    {msg.id === lastSeenMessageId && opponentLastReadAt && (
+                                        <div className="flex justify-end mt-0.5 mr-1">
+                                            <span className="text-[11px] text-zinc-500">
+                                                Seen {format(opponentLastReadAt, 'h:mm a')}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );

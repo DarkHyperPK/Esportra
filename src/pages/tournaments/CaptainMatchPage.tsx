@@ -28,6 +28,7 @@ import PartyCodeGoLiveCard from '@/components/tournament/PartyCodeGoLiveCard';
 import { competitorIdsMatch } from '@/utils/competitorId';
 
 import MatchChat from '@/components/tournament/MatchChat';
+import { useMatchChat } from '@/hooks/useMatchChat';
 import TournamentEndScreen from '@/components/tournament/TournamentEndScreen';
 
 import { useTeamManagement } from '@/hooks/useTeamManagement';
@@ -397,6 +398,22 @@ const CaptainMatchPage = () => {
     }, [activeMatchResolution.shouldUnpinUrl, slug, navigate]);
 
     const activeMatchRawId = activeMatch ? toRawMatchId(activeMatch.id) : undefined;
+
+    const {
+        messages: chatMessages,
+        isLoading: isChatLoading,
+        isError: isChatError,
+        chatError,
+        sendMessage,
+        scrollRef: chatScrollRef,
+        scrollToBottom: chatScrollToBottom,
+        connectionStatus: chatConnectionStatus,
+        isJoined: chatIsJoined,
+        opponentLastReadAt,
+        markRead,
+    } = useMatchChat(activeMatchRawId, {
+        onNewMessage: () => setChatUnread(c => c + 1),
+    });
 
     const lifecycleScope = useMemo(
         () => ({
@@ -1205,16 +1222,27 @@ const CaptainMatchPage = () => {
             {activeMatch ? (
                 <FloatingMatchChat
                     unreadCount={chatUnread}
-                    onOpen={() => setChatUnread(0)}
+                    onOpen={() => {
+                        setChatUnread(0);
+                        markRead();
+                    }}
                 >
                     <MatchChat
-                        matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                        messages={chatMessages}
+                        sendMessage={sendMessage}
+                        scrollRef={chatScrollRef}
+                        scrollToBottom={chatScrollToBottom}
+                        isLoading={isChatLoading}
+                        connectionStatus={chatConnectionStatus}
+                        isJoined={chatIsJoined}
+                        chatError={chatError}
+                        isError={isChatError}
+                        opponentLastReadAt={opponentLastReadAt}
                         userTeamId={isOrganizerMatchView ? undefined : userTeamId}
                         team1Id={activeMatch.team1?.id}
                         team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
                         team2Name={activeMatch.team2?.name || `${terminology.competitorLabel} 2`}
                         allowMinimize={false}
-                        onNewMessage={() => setChatUnread((c) => c + 1)}
                     />
                 </FloatingMatchChat>
             ) : null}
