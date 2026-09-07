@@ -105,6 +105,7 @@ const CaptainMatchPage = () => {
     const [uploadMatchId, setUploadMatchId] = useState<string | undefined>(undefined);
     const [mapVetoOpen, setMapVetoOpen] = useState(false);
     const [chatUnread, setChatUnread] = useState(0);
+    const [isChatOpen, setIsChatOpen] = useState(true);
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
     const [mapVetoMatchId, setMapVetoMatchId] = useState<string | null>(null);
 
@@ -413,6 +414,7 @@ const CaptainMatchPage = () => {
         markRead,
     } = useMatchChat(activeMatchRawId, {
         onNewMessage: () => setChatUnread(c => c + 1),
+        isChatOpen,
     });
 
     const lifecycleScope = useMemo(
@@ -1223,9 +1225,11 @@ const CaptainMatchPage = () => {
                 <FloatingMatchChat
                     unreadCount={chatUnread}
                     onOpen={() => {
+                        setIsChatOpen(true);
                         setChatUnread(0);
                         markRead();
                     }}
+                    onClose={() => setIsChatOpen(false)}
                 >
                     <MatchChat
                         messages={chatMessages}

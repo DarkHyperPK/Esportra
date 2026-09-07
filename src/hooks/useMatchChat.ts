@@ -49,11 +49,14 @@ function normalizeMessages(rows: unknown): MatchMessage[] {
 
 interface UseMatchChatOptions {
   onNewMessage?: () => void;
+  isChatOpen?: boolean;
 }
 
 export const useMatchChat = (matchId: string | undefined, options: UseMatchChatOptions = {}) => {
   const onNewMessageRef = useRef(options.onNewMessage);
   useEffect(() => { onNewMessageRef.current = options.onNewMessage; }, [options.onNewMessage]);
+  const isChatOpenRef = useRef(options.isChatOpen ?? false);
+  useEffect(() => { isChatOpenRef.current = options.isChatOpen ?? false; }, [options.isChatOpen]);
 
   const queryClient = useQueryClient();
   const { toast }   = useToast();
@@ -129,7 +132,7 @@ export const useMatchChat = (matchId: string | undefined, options: UseMatchChatO
 
       if (msg.sender_id !== user.id) {
         onNewMessageRef.current?.();
-        if (joined) {
+        if (joined && isChatOpenRef.current) {
           conn.invoke('MarkRead', matchId).catch(() => {});
         }
       }
@@ -193,7 +196,6 @@ export const useMatchChat = (matchId: string | undefined, options: UseMatchChatO
         setConnectionStatus('connected');
         setIsJoined(true);
         setChatError(null);
-        conn.invoke('MarkRead', matchId).catch(() => {});
       } catch (err) {
         if (!active) return;
         joined = false;
@@ -219,10 +221,11 @@ export const useMatchChat = (matchId: string | undefined, options: UseMatchChatO
       }
     }, 1000);
 
-    // Refresh server-side presence key every 90 s so offline-email detection is accurate
+    // Refresh server-side presence key every 90 s so offline-email detection is accurate.
+    // isChatOpen drives the MarkRead upsert on the server — heartbeat alone never marks read.
     heartbeatTimer = setInterval(() => {
       if (!active || !joined || conn.state !== HubConnectionState.Connected) return;
-      conn.invoke('Heartbeat', matchId).catch(() => {});
+      conn.invoke('Heartbeat', matchId, isChatOpenRef.current).catch(() => {});
     }, 90_000);
 
     return () => {

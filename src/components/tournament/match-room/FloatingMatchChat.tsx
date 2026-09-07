@@ -5,14 +5,20 @@ interface FloatingMatchChatProps {
   children: React.ReactNode;
   unreadCount?: number;
   onOpen?: () => void;
+  onClose?: () => void;
 }
 
-export const FloatingMatchChat: React.FC<FloatingMatchChatProps> = ({ children, unreadCount = 0, onOpen }) => {
+export const FloatingMatchChat: React.FC<FloatingMatchChatProps> = ({ children, unreadCount = 0, onOpen, onClose }) => {
   const [open, setOpen] = useState(true);
 
   const handleOpen = () => {
     setOpen(true);
     onOpen?.();
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    onClose?.();
   };
 
   return (
@@ -32,7 +38,7 @@ export const FloatingMatchChat: React.FC<FloatingMatchChatProps> = ({ children, 
           </div>
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={handleClose}
             className="rounded-lg border border-white/10 p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
             aria-label="Close match chat"
           >
@@ -55,7 +61,7 @@ export const FloatingMatchChat: React.FC<FloatingMatchChatProps> = ({ children, 
         )}
         <button
           type="button"
-          onClick={open ? () => setOpen(false) : handleOpen}
+          onClick={open ? handleClose : handleOpen}
           className={`grid h-14 w-14 place-items-center rounded-full shadow-lg transition-all duration-200 ${
             open
               ? 'bg-zinc-800 text-zinc-300 shadow-black/40 hover:bg-zinc-700 hover:text-white'
