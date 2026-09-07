@@ -191,6 +191,36 @@ function ConnectedAccountsTab() {
     });
   }, [user]);
 
+  // After Discord OAuth redirect, provider_token is present in the session — use it to auto-join the guild
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event !== 'SIGNED_IN') return;
+      const hasDiscord = session?.user?.identities?.some(id => id.provider === 'discord');
+      if (!hasDiscord || !session?.provider_token) return;
+
+      try {
+        const result = await apiClient.post<{ success: boolean; reason?: string }>(
+          '/api/profiles/me/discord-join',
+          { providerToken: session.provider_token }
+        );
+        if (result.success) {
+          toast({ title: 'Discord linked', description: "You've been added to the Esportra server." });
+        } else if (result.reason === 'missing_scope') {
+          toast({ title: 'Discord linked', description: 'Could not add you to the Esportra server automatically — missing guilds.join permission. You can join manually.' });
+        } else if (result.reason !== 'not_configured') {
+          toast({ title: 'Discord linked', description: 'Could not auto-join the Esportra server. You can join manually at any time.' });
+        } else {
+          toast({ title: 'Discord linked' });
+        }
+      } catch { /* non-critical — the Discord account link itself succeeded */ }
+
+      // Refresh identity display
+      const { data: { user: u } } = await supabase.auth.getUser();
+      setDiscordIdentity(u?.identities?.find(id => id.provider === 'discord') ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, [toast]);
+
   const handleUnlinkRiot = async () => {
     setUnlinkingRiot(true);
     try {

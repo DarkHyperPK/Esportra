@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Zap, Swords, Server } from 'lucide-react';
+import { Settings, Zap, Swords, Server, MessageSquare } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {
@@ -22,8 +22,6 @@ const StepSettings: React.FC<WizardStepProps> = ({ data, updateData }) => {
     const showAssistedReporting = features.assistedReporting;
     const isCS2 = data.game?.toLowerCase() === 'counter-strike 2' || data.game?.toLowerCase() === 'cs2';
     const { data: regionGroups, isLoading: regionsLoading } = useServerRegions(isCS2);
-    const hasAnySettings = showMapVeto || showAssistedReporting || isCS2;
-
     return (
         <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -139,14 +137,22 @@ const StepSettings: React.FC<WizardStepProps> = ({ data, updateData }) => {
                         </div>
                     )}
 
-                    {/* No game-specific settings available */}
-                    {!hasAnySettings && (
-                        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
-                            <p className="text-sm text-gray-400">
-                                No game-specific settings available for {data.game || 'this game'}.
+                    {/* Discord Account Requirement — always available */}
+                    <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                        <Switch
+                            checked={data.requireDiscordLink}
+                            onCheckedChange={(checked) => updateData({ requireDiscordLink: checked })}
+                        />
+                        <div className="flex-1">
+                            <p className="font-medium text-white text-sm flex items-center gap-2">
+                                <MessageSquare className="w-4 h-4 text-zinc-400" />
+                                Require Discord Account for Captains
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                                Captains must have their Discord account linked before registering in this tournament.
                             </p>
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
         </motion.div>

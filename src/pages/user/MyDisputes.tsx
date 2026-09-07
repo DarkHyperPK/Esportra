@@ -251,7 +251,9 @@ const MyDisputes = () => {
 
     const found = disputes.find(d => d.id === deepLinkId);
     if (found) {
-      openDisputeDialog(found);
+      setSelectedDispute(found);
+      setDisputeDialogOpen(true);
+      fetchComments(found.id);
     } else {
       // Dispute not in current list — fetch it directly
       apiClient.get<Dispute>(`/api/disputes/${deepLinkId}`)
