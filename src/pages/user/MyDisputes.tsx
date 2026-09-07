@@ -168,7 +168,7 @@ const MyDisputes = () => {
       setLoading(true);
 
       const disputesRaw = await apiClient.get<Dispute[]>(
-        `/api/disputes/mine?limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}${activeTab !== 'all' ? `&status=${activeTab}` : ''}`
+        `/api/disputes/mine?limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`
       );
       const disputesData: Dispute[] = Array.isArray(disputesRaw) ? disputesRaw : [];
 
@@ -185,7 +185,7 @@ const MyDisputes = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, page, activeTab, toast]);
+  }, [user?.id, page, toast]);
 
   const fetchCounts = useCallback(async () => {
     if (!user?.id) return;
@@ -428,7 +428,7 @@ const MyDisputes = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div className="flex items-center gap-4 flex-wrap">
               <div>
-                <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
                   <ShieldAlert className="h-7 w-7 text-rose-500" />
                   My Disputes
                 </h1>
@@ -541,7 +541,7 @@ const MyDisputes = () => {
                                     {meta.label}
                                   </Badge>
                                   {dispute.reference_number && (
-                                    <span className="text-xs font-mono text-white/50 shrink-0">
+                                    <span className="font-mono text-[10px] text-rose-400/70 shrink-0">
                                       #{dispute.reference_number}
                                     </span>
                                   )}
@@ -690,7 +690,7 @@ const MyDisputes = () => {
               }
             }
           }}>
-            <DialogContent className="bg-[#0a0a0c] border border-white/[0.06] max-w-3xl h-[92vh] max-h-[92vh] min-h-0 !grid grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
+            <DialogContent className="bg-[#0a0a0c] border border-white/[0.06] max-w-5xl h-[92vh] max-h-[92vh] min-h-0 !grid grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
               {selectedDispute && (() => {
                 const meta = statusMeta[selectedDispute.status] || defaultStatusMeta;
                 const Icon = meta.icon;
@@ -790,9 +790,9 @@ const MyDisputes = () => {
                       </div>
                     </DialogHeader>
 
-                    <div className="grid grid-rows-[minmax(0,1fr)_minmax(180px,38vh)] min-h-0 overflow-hidden">
-                    {/* Scrollable evidence / match details */}
-                    <div className="min-h-0 overflow-y-auto overscroll-contain px-6 py-5 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] min-h-0 overflow-hidden">
+                    {/* Left column: scrollable match details + evidence */}
+                    <div className="min-h-0 max-h-[45vh] lg:max-h-none overflow-y-auto overscroll-contain px-6 py-5 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 lg:border-r border-white/[0.06]" data-lenis-prevent>
                       {matchView.hasMatch && (
                         <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
                           <div className="px-5 py-4 flex items-center justify-between gap-4">
@@ -869,9 +869,9 @@ const MyDisputes = () => {
                       )}
                     </div>
 
-                    {/* Chat section — pinned below evidence */}
-                    <div className="flex flex-col min-h-0 border-t border-white/[0.06] overflow-hidden bg-[#0a0a0c]">
-                      <div className="shrink-0 px-6 py-2.5 flex items-center gap-2 border-b border-white/[0.05]">
+                    {/* Right column: conversation thread */}
+                    <div className="flex flex-col min-h-0 border-t lg:border-t-0 border-white/[0.06] overflow-hidden bg-[#0a0a0c]">
+                      <div className="shrink-0 px-4 py-2.5 flex items-center gap-2 border-b border-white/[0.05]">
                         <MessageSquare className="w-3.5 h-3.5 text-white/40" />
                         <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">Conversation</span>
                         {comments.length > 0 && (
@@ -879,7 +879,7 @@ const MyDisputes = () => {
                         )}
                       </div>
 
-                      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-4 space-y-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
+                      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
                         {loadingComments ? (
                           <div className="flex items-center justify-center py-6 text-white/40 text-sm">
                             <RefreshCw className="w-4 h-4 animate-spin mr-2" />
@@ -935,7 +935,7 @@ const MyDisputes = () => {
 
                       {/* Composer */}
                       {canComment ? (
-                        <div className="shrink-0 px-6 py-3 border-t border-white/[0.07] bg-white/[0.02]">
+                        <div className="shrink-0 px-4 py-3 border-t border-white/[0.07] bg-white/[0.02]">
                           <div className="flex items-end gap-2">
                             <label className="shrink-0 p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 cursor-pointer transition-colors">
                               <ImageIcon className="h-4 w-4" />
@@ -998,7 +998,7 @@ const MyDisputes = () => {
                           </div>
                         </div>
                       ) : (
-                        <div className="px-6 py-3 border-t border-white/[0.07] bg-white/[0.02]">
+                        <div className="px-4 py-3 border-t border-white/[0.07] bg-white/[0.02]">
                           <p className="text-white/30 text-xs text-center">
                             This dispute is {selectedDispute.status}. No further messages can be sent.
                           </p>
