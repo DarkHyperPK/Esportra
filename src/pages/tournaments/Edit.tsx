@@ -198,6 +198,8 @@ const EditTournament = () => {
         mapVetoEnabled: effectiveFeatures.mapVeto
           ? ((tournamentData.settings as any)?.mapVetoEnabled ?? true)
           : false,
+        discordLinkCount: (tournamentData.settings as any)?.discordLinkCount
+          ?? ((tournamentData.settings as any)?.requireDiscordLink ? 1 : 0),
 
         // Battle Royale settings (from tournament.settings JSON)
         ...(persistedFormat === 'battle_royale' ? {

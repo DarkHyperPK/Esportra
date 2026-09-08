@@ -47,6 +47,7 @@ import {
   Trophy,
   X,
   Zap,
+  MessageSquare,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -564,6 +565,7 @@ const TournamentDashboard = () => {
   const [removingUnchecked, setRemovingUnchecked] = useState(false);
   const [savingAssistedReporting, setSavingAssistedReporting] = useState(false);
   const [savingMapVeto, setSavingMapVeto] = useState(false);
+  const [savingDiscordLink, setSavingDiscordLink] = useState(false);
   const [hasStaffAccess, setHasStaffAccess] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [participantsPage, setParticipantsPage] = useState(1);
@@ -984,6 +986,31 @@ const TournamentDashboard = () => {
       });
     } finally {
       setSavingAssistedReporting(false);
+    }
+  };
+
+  const handleUpdateDiscordLinkCount = async (count: number) => {
+    if (!tournament?.id) return;
+    setSavingDiscordLink(true);
+    try {
+      await apiClient.put(`/api/tournaments/${tournament.id}`, {
+        discordLinkCount: count,
+      });
+      toast({
+        title: count > 0 ? 'Discord Requirement Updated' : 'Discord Requirement Disabled',
+        description: count > 0
+          ? `At least ${count === 1 ? 'the captain' : `${count} players per team`} must have Discord linked to register.`
+          : 'Discord account linking is no longer required for registration.',
+      });
+      refetchDashboard();
+    } catch (error: any) {
+      toast({
+        title: 'Failed to update setting',
+        description: error.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingDiscordLink(false);
     }
   };
 
@@ -2694,6 +2721,62 @@ const TournamentDashboard = () => {
                           </CardContent>
                         </Card>
                       )}
+
+                      {/* Discord Account Requirement — always available */}
+                      <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
+                        <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
+                          <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+                            <MessageSquare className="w-5 h-5 text-indigo-400" />
+                            Discord Account Requirement
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0 space-y-4">
+                          {(() => {
+                            const s = tournament?.settings as any;
+                            const currentCount = s?.discordLinkCount ?? (s?.requireDiscordLink ? 1 : 0);
+                            return (
+                              <>
+                                <div className="flex items-start gap-4 p-4 rounded-none bg-white/[0.02] border border-white/5">
+                                  <Switch
+                                    checked={currentCount > 0}
+                                    onCheckedChange={(checked) => handleUpdateDiscordLinkCount(checked ? 1 : 0)}
+                                    disabled={savingDiscordLink}
+                                  />
+                                  <div className="flex-1">
+                                    <p className="font-medium text-white text-sm">
+                                      {savingDiscordLink ? 'Saving...' : 'Require Discord Account'}
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      When enabled, players must link their Discord account before registering.
+                                    </p>
+                                  </div>
+                                </div>
+                                {currentCount > 0 && (
+                                  <div className="px-4 pb-4 space-y-2">
+                                    <p className="text-sm text-gray-400">How many players per team must have Discord linked:</p>
+                                    <Select
+                                      value={String(currentCount)}
+                                      onValueChange={(val) => handleUpdateDiscordLinkCount(Number(val))}
+                                      disabled={savingDiscordLink}
+                                    >
+                                      <SelectTrigger className="w-48">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {Array.from({ length: tournament?.team_size ?? 5 }, (_, i) => i + 1).map((n) => (
+                                          <SelectItem key={n} value={String(n)}>
+                                            {n === 1 ? 'Captain only' : String(n)}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </CardContent>
+                      </Card>
 
                       {/* Map Veto — games with map veto support */}
                       {tournamentModeFeatures.mapVeto && (

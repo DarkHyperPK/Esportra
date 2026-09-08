@@ -138,20 +138,43 @@ const StepSettings: React.FC<WizardStepProps> = ({ data, updateData }) => {
                     )}
 
                     {/* Discord Account Requirement — always available */}
-                    <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
-                        <Switch
-                            checked={data.requireDiscordLink}
-                            onCheckedChange={(checked) => updateData({ requireDiscordLink: checked })}
-                        />
-                        <div className="flex-1">
-                            <p className="font-medium text-white text-sm flex items-center gap-2">
-                                <MessageSquare className="w-4 h-4 text-zinc-400" />
-                                Require Discord Account for Captains
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">
-                                Captains must have their Discord account linked before registering in this tournament.
-                            </p>
+                    <div className="space-y-3">
+                        <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                            <Switch
+                                checked={(data.discordLinkCount ?? 0) > 0}
+                                onCheckedChange={(checked) => updateData({ discordLinkCount: checked ? 1 : 0 })}
+                            />
+                            <div className="flex-1">
+                                <p className="font-medium text-white text-sm flex items-center gap-2">
+                                    <MessageSquare className="w-4 h-4 text-zinc-400" />
+                                    Require Discord Account
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Players must have their Discord account linked before registering in this tournament.
+                                </p>
+                            </div>
                         </div>
+                        {(data.discordLinkCount ?? 0) > 0 && (
+                            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
+                                <p className="text-sm font-medium text-white">Required Linked Accounts</p>
+                                <p className="text-xs text-gray-400">How many players per team must link their Discord account before registering.</p>
+                                <Select
+                                    value={String(data.discordLinkCount ?? 1)}
+                                    onValueChange={(val) => updateData({ discordLinkCount: Number(val) })}
+                                >
+                                    <SelectTrigger className="w-48">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Array.from({ length: data.teamSize ?? 5 }, (_, i) => i + 1).map((n) => (
+                                            <SelectItem key={n} value={String(n)}>
+                                                {n === 1 ? 'Captain only' : String(n)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

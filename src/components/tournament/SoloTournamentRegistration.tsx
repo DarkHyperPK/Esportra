@@ -62,11 +62,23 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
     steam_tag: profile?.steam_tag || '',
     gamer_tag: profile?.username || ''
   });
+  const [hasDiscordLinked, setHasDiscordLinked] = useState<boolean | null>(null);
+
+  const _settings = tournament.settings as any;
+  const discordLinkCount = _settings?.discordLinkCount ?? (_settings?.requireDiscordLink ? 1 : 0);
+  const requiresDiscordLink = discordLinkCount > 0;
 
   // Riot-linked games require linked Riot account (catalog-driven)
   const tournamentModeKey = tournament.gameMode ?? tournament.game_mode ?? null;
   const isRiotGame = gameSupportsRiotAccountLink(tournament.game, tournamentModeKey);
   const requiresRiotLink = isRiotGame && !!riotAccount;
+
+  useEffect(() => {
+    if (!requiresDiscordLink) return;
+    apiClient.get<{ has_discord: boolean }>('/api/profiles/me/discord-dm')
+      .then((r) => setHasDiscordLinked(r.has_discord))
+      .catch(() => setHasDiscordLinked(false));
+  }, [requiresDiscordLink]);
 
   // Auto-fill gamer tag: Riot tag for Riot games, otherwise username
   useEffect(() => {
@@ -109,6 +121,15 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
       toast({
         title: 'Validation Error',
         description: validationError,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (requiresDiscordLink && !hasDiscordLinked) {
+      toast({
+        title: 'Discord account required',
+        description: 'The organizer requires a linked Discord account. Go to Account Settings → Connected Accounts to link Discord before registering.',
         variant: 'destructive',
       });
       return;
@@ -321,11 +342,24 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
           </div>
         </div>
 
+        {/* Discord link requirement warning */}
+        {requiresDiscordLink && hasDiscordLinked === false && (
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-sm">
+            <span className="text-indigo-400 mt-0.5 flex-shrink-0">⚠</span>
+            <p className="text-indigo-300">
+              This tournament requires a linked Discord account.{' '}
+              <a href="/account/settings?tab=connected" className="underline text-indigo-200 hover:text-white">
+                Connect Discord →
+              </a>
+            </p>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex gap-3 pt-2">
           <CtaButton
             type="submit"
-            disabled={loading || !registrationData.gamer_tag.trim()}
+            disabled={loading || !registrationData.gamer_tag.trim() || (requiresDiscordLink && hasDiscordLinked === false)}
             className="flex-1 h-11 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (

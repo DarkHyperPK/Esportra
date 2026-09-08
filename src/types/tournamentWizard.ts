@@ -94,6 +94,7 @@ export interface TournamentWizardData {
     // Game-specific settings
     assistedMatchReporting: boolean;
     mapVetoEnabled: boolean;
+    discordLinkCount: number;
 
     // Tournament metadata
     rules: string;
@@ -195,6 +196,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     // Game-specific
     assistedMatchReporting: false,
     mapVetoEnabled: true,
+    discordLinkCount: 0,
 
     // Tournament metadata
     rules: '',
