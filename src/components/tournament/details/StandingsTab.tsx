@@ -44,6 +44,8 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
         );
     }
 
+    const active = placements.filter(p => p.placement === null);
+    const eliminated = placements.filter(p => p.placement !== null);
     const top3 = PODIUM_CONFIG.map(cfg => ({
         ...cfg,
         placement: placements.find(p => p.placement === cfg.rank),
@@ -51,7 +53,7 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
 
     return (
         <div className="space-y-8 py-4">
-            {/* Podium */}
+            {/* Podium — only shown once teams have been eliminated */}
             {top3.length >= 2 && (
                 <div className="flex items-end justify-center gap-4 pt-4">
                     {top3.map(({ rank, height, color, bg, placement }) => (
@@ -82,7 +84,40 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
                         </tr>
                     </thead>
                     <tbody>
-                        {groupByPlacement(placements).map((group) =>
+                        {/* Still-competing teams shown first */}
+                        {active.map(p => (
+                            <tr key={p.team_id} className="border-t border-white/5">
+                                <td className="px-4 py-3 align-middle border-r border-white/5">
+                                    <span className="font-mono font-bold text-sm text-gray-500">–</span>
+                                </td>
+                                <td className="px-4 py-3 text-white font-medium">{p.team_name}</td>
+                                <td className="px-3 py-3 text-center text-gray-400 font-mono text-sm">{p.played}</td>
+                                <td className="px-3 py-3 text-center font-mono text-sm">
+                                    <span className="text-green-400">{p.wins}</span>
+                                    <span className="text-gray-600 mx-0.5">–</span>
+                                    <span className="text-red-400">{p.losses}</span>
+                                    {p.ties > 0 && <span className="text-gray-500 ml-0.5">({p.ties})</span>}
+                                </td>
+                                <td className="px-3 py-3 text-center font-mono text-sm">
+                                    <span className={p.score_diff > 0 ? 'text-green-400' : p.score_diff < 0 ? 'text-red-400' : 'text-gray-500'}>
+                                        {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3 text-right text-gray-300 font-mono">—</td>
+                            </tr>
+                        ))}
+
+                        {/* Section divider */}
+                        {active.length > 0 && eliminated.length > 0 && (
+                            <tr className="border-t border-white/10">
+                                <td colSpan={6} className="px-4 py-1.5 text-xs font-bold text-gray-600 uppercase tracking-widest bg-white/[0.02]">
+                                    Eliminated
+                                </td>
+                            </tr>
+                        )}
+
+                        {/* Eliminated teams */}
+                        {groupByPlacement(eliminated).map((group) =>
                             group.teams.map((p, teamIdx) => (
                                 <tr key={p.team_id} className={`border-t border-white/5 ${p.placement !== null && p.placement <= 3 ? 'bg-white/[0.01]' : ''}`}>
                                     {teamIdx === 0 && (
