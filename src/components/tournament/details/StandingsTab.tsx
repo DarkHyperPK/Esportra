@@ -45,7 +45,10 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
     }
 
     const active = placements.filter(p => p.placement === null);
-    const eliminated = placements.filter(p => p.placement !== null);
+    const settled = placements.filter(p => p.placement !== null);
+    // Tournament is complete only when no teams are still competing.
+    // Prizes are withheld until then to avoid leaking financial results mid-event.
+    const isComplete = active.length === 0;
     const top3 = PODIUM_CONFIG.map(cfg => ({
         ...cfg,
         placement: placements.find(p => p.placement === cfg.rank),
@@ -53,8 +56,8 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
 
     return (
         <div className="space-y-8 py-4">
-            {/* Podium — only shown once teams have been eliminated */}
-            {top3.length >= 2 && (
+            {/* Podium — only shown once the tournament is finished */}
+            {isComplete && top3.length >= 2 && (
                 <div className="flex items-end justify-center gap-4 pt-4">
                     {top3.map(({ rank, height, color, bg, placement }) => (
                         placement && (
@@ -80,7 +83,7 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
                             <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-10">P</th>
                             <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-14">W–L</th>
                             <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-12">+/−</th>
-                            <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Prize</th>
+                            {isComplete && <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Prize</th>}
                         </tr>
                     </thead>
                     <tbody>
@@ -103,23 +106,22 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
                                         {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
                                     </span>
                                 </td>
-                                <td className="px-4 py-3 text-right text-gray-300 font-mono">—</td>
                             </tr>
                         ))}
 
-                        {/* Section divider */}
-                        {active.length > 0 && eliminated.length > 0 && (
+                        {/* Section divider — neutral label since this section includes the eventual champion */}
+                        {active.length > 0 && settled.length > 0 && (
                             <tr className="border-t border-white/10">
-                                <td colSpan={6} className="px-4 py-1.5 text-xs font-bold text-gray-600 uppercase tracking-widest bg-white/[0.02]">
-                                    Eliminated
+                                <td colSpan={5} className="px-4 py-1.5 text-xs font-bold text-gray-600 uppercase tracking-widest bg-white/[0.02]">
+                                    Results
                                 </td>
                             </tr>
                         )}
 
-                        {/* Eliminated teams */}
-                        {groupByPlacement(eliminated).map((group) =>
+                        {/* Settled teams in placement order */}
+                        {groupByPlacement(settled).map((group) =>
                             group.teams.map((p, teamIdx) => (
-                                <tr key={p.team_id} className={`border-t border-white/5 ${p.placement !== null && p.placement <= 3 ? 'bg-white/[0.01]' : ''}`}>
+                                <tr key={p.team_id} className={`border-t border-white/5 ${isComplete && p.placement !== null && p.placement <= 3 ? 'bg-white/[0.01]' : ''}`}>
                                     {teamIdx === 0 && (
                                         <td
                                             className="px-4 py-3 align-middle border-r border-white/5"
@@ -143,9 +145,11 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
                                             {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 text-right text-gray-300 font-mono">
-                                        {p.prize_amount > 0 ? formatCurrency(p.prize_amount, p.currency || currency) : '—'}
-                                    </td>
+                                    {isComplete && (
+                                        <td className="px-4 py-3 text-right text-gray-300 font-mono">
+                                            {p.prize_amount > 0 ? formatCurrency(p.prize_amount, p.currency || currency) : '—'}
+                                        </td>
+                                    )}
                                 </tr>
                             ))
                         )}

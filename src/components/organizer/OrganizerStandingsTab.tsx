@@ -73,8 +73,10 @@ export const OrganizerStandingsTab: React.FC<OrganizerStandingsTabProps> = ({ to
                 </div>
             ) : (() => {
                 const active = placements!.filter(p => p.placement === null);
-                const eliminated = placements!.filter(p => p.placement !== null);
-                const colSpan = hasPrizePool ? 6 : 5;
+                const settled = placements!.filter(p => p.placement !== null);
+                const isComplete = active.length === 0;
+                const showPrize = hasPrizePool && isComplete;
+                const colSpan = showPrize ? 6 : 5;
                 return (
                     <div className="rounded-none border border-white/10 overflow-hidden">
                         <table className="w-full text-sm">
@@ -85,7 +87,7 @@ export const OrganizerStandingsTab: React.FC<OrganizerStandingsTabProps> = ({ to
                                     <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-10">P</th>
                                     <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-14">W–L</th>
                                     <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-12">+/−</th>
-                                    {hasPrizePool && <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Prize</th>}
+                                    {showPrize && <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Prize</th>}
                                 </tr>
                             </thead>
                             <tbody>
@@ -106,21 +108,20 @@ export const OrganizerStandingsTab: React.FC<OrganizerStandingsTabProps> = ({ to
                                                 {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
                                             </span>
                                         </td>
-                                        {hasPrizePool && <td className="px-4 py-3 text-right text-gray-300">—</td>}
                                     </tr>
                                 ))}
 
-                                {/* Section divider */}
-                                {active.length > 0 && eliminated.length > 0 && (
+                                {/* Neutral divider — this section includes the champion, not just knocked-out teams */}
+                                {active.length > 0 && settled.length > 0 && (
                                     <tr className="border-t border-white/10">
                                         <td colSpan={colSpan} className="px-4 py-1.5 text-xs font-bold text-gray-600 uppercase tracking-widest bg-white/[0.02]">
-                                            Eliminated
+                                            Results
                                         </td>
                                     </tr>
                                 )}
 
-                                {/* Eliminated teams */}
-                                {groupByPlacement(eliminated).map((group) =>
+                                {/* Settled teams in placement order */}
+                                {groupByPlacement(settled).map((group) =>
                                     group.teams.map((p, teamIdx) => (
                                         <tr key={p.team_id} className="border-t border-white/5">
                                             {teamIdx === 0 && (
@@ -144,7 +145,7 @@ export const OrganizerStandingsTab: React.FC<OrganizerStandingsTabProps> = ({ to
                                                     {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
                                                 </span>
                                             </td>
-                                            {hasPrizePool && (
+                                            {showPrize && (
                                                 <td className="px-4 py-3 text-right text-gray-300">
                                                     {p.prize_amount > 0 ? formatCurrency(p.prize_amount, currency) : '—'}
                                                 </td>
