@@ -10,7 +10,7 @@ interface StandingsTabProps {
 }
 
 function groupByPlacement(placements: ResolvedPlacement[]) {
-    const groups: { placement: number; label: string; teams: ResolvedPlacement[] }[] = [];
+    const groups: { placement: number | null; label: string; teams: ResolvedPlacement[] }[] = [];
     for (const p of placements) {
         const existing = groups.find(g => g.placement === p.placement);
         if (existing) {
@@ -84,7 +84,7 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
                     <tbody>
                         {groupByPlacement(placements).map((group) =>
                             group.teams.map((p, teamIdx) => (
-                                <tr key={p.team_id} className={`border-t border-white/5 ${p.placement <= 3 ? 'bg-white/[0.01]' : ''}`}>
+                                <tr key={p.team_id} className={`border-t border-white/5 ${p.placement !== null && p.placement <= 3 ? 'bg-white/[0.01]' : ''}`}>
                                     {teamIdx === 0 && (
                                         <td
                                             className="px-4 py-3 align-middle border-r border-white/5"

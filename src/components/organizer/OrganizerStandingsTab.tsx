@@ -13,7 +13,7 @@ interface OrganizerStandingsTabProps {
 }
 
 function groupByPlacement(placements: ResolvedPlacement[]) {
-    const groups: { placement: number; label: string; teams: ResolvedPlacement[] }[] = [];
+    const groups: { placement: number | null; label: string; teams: ResolvedPlacement[] }[] = [];
     for (const p of placements) {
         const existing = groups.find(g => g.placement === p.placement);
         if (existing) existing.teams.push(p);

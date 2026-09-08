@@ -44,7 +44,7 @@ export interface ResolvedPlacement {
     team_id: string;
     team_name: string;
     team_logo?: string;
-    placement: number;
+    placement: number | null;
     placement_label: string;
     prize_amount: number;
     currency: string;
