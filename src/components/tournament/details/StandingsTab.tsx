@@ -87,7 +87,7 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
                         </tr>
                     </thead>
                     <tbody>
-                        {/* Still-competing teams shown first */}
+                        {/* Still-competing teams */}
                         {active.map(p => (
                             <tr key={p.team_id} className="border-t border-white/5">
                                 <td className="px-4 py-3 align-middle border-r border-white/5">
@@ -109,26 +109,17 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
                             </tr>
                         ))}
 
-                        {/* Section divider — neutral label since this section includes the eventual champion */}
-                        {active.length > 0 && settled.length > 0 && (
-                            <tr className="border-t border-white/10">
-                                <td colSpan={5} className="px-4 py-1.5 text-xs font-bold text-gray-600 uppercase tracking-widest bg-white/[0.02]">
-                                    Results
-                                </td>
-                            </tr>
-                        )}
-
-                        {/* Settled teams in placement order */}
+                        {/* Confirmed placements — numeric rank only, no "1st Place" labels */}
                         {groupByPlacement(settled).map((group) =>
                             group.teams.map((p, teamIdx) => (
-                                <tr key={p.team_id} className={`border-t border-white/5 ${isComplete && p.placement !== null && p.placement <= 3 ? 'bg-white/[0.01]' : ''}`}>
+                                <tr key={p.team_id} className={`border-t ${teamIdx === 0 && active.length > 0 ? 'border-white/20' : 'border-white/5'} ${isComplete && p.placement !== null && p.placement <= 3 ? 'bg-white/[0.01]' : ''}`}>
                                     {teamIdx === 0 && (
                                         <td
                                             className="px-4 py-3 align-middle border-r border-white/5"
                                             rowSpan={group.teams.length}
                                         >
                                             <span className={`font-mono font-bold text-sm ${p.placement === 1 ? 'text-yellow-400' : p.placement === 2 ? 'text-gray-300' : p.placement === 3 ? 'text-amber-600' : 'text-gray-500'}`}>
-                                                {group.label}
+                                                {p.placement}
                                             </span>
                                         </td>
                                     )}

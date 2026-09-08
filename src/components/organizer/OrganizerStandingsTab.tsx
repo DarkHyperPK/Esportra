@@ -76,7 +76,6 @@ export const OrganizerStandingsTab: React.FC<OrganizerStandingsTabProps> = ({ to
                 const settled = placements!.filter(p => p.placement !== null);
                 const isComplete = active.length === 0;
                 const showPrize = hasPrizePool && isComplete;
-                const colSpan = showPrize ? 6 : 5;
                 return (
                     <div className="rounded-none border border-white/10 overflow-hidden">
                         <table className="w-full text-sm">
@@ -91,7 +90,7 @@ export const OrganizerStandingsTab: React.FC<OrganizerStandingsTabProps> = ({ to
                                 </tr>
                             </thead>
                             <tbody>
-                                {/* Still-competing teams shown first */}
+                                {/* Still-competing teams */}
                                 {active.map(p => (
                                     <tr key={p.team_id} className="border-t border-white/5">
                                         <td className="px-4 py-3 align-middle border-r border-white/5 font-mono text-gray-500">–</td>
@@ -111,25 +110,18 @@ export const OrganizerStandingsTab: React.FC<OrganizerStandingsTabProps> = ({ to
                                     </tr>
                                 ))}
 
-                                {/* Neutral divider — this section includes the champion, not just knocked-out teams */}
-                                {active.length > 0 && settled.length > 0 && (
-                                    <tr className="border-t border-white/10">
-                                        <td colSpan={colSpan} className="px-4 py-1.5 text-xs font-bold text-gray-600 uppercase tracking-widest bg-white/[0.02]">
-                                            Results
-                                        </td>
-                                    </tr>
-                                )}
-
-                                {/* Settled teams in placement order */}
+                                {/* Confirmed placements — numeric rank only */}
                                 {groupByPlacement(settled).map((group) =>
                                     group.teams.map((p, teamIdx) => (
-                                        <tr key={p.team_id} className="border-t border-white/5">
+                                        <tr key={p.team_id} className={`border-t ${teamIdx === 0 && active.length > 0 ? 'border-white/20' : 'border-white/5'}`}>
                                             {teamIdx === 0 && (
                                                 <td
-                                                    className="px-4 py-3 align-middle border-r border-white/5 font-mono text-white"
+                                                    className="px-4 py-3 align-middle border-r border-white/5"
                                                     rowSpan={group.teams.length}
                                                 >
-                                                    {group.label}
+                                                    <span className={`font-mono font-bold text-sm ${p.placement === 1 ? 'text-yellow-400' : p.placement === 2 ? 'text-gray-300' : p.placement === 3 ? 'text-amber-600' : 'text-gray-500'}`}>
+                                                        {p.placement}
+                                                    </span>
                                                 </td>
                                             )}
                                             <td className="px-4 py-3 text-white">{p.team_name}</td>
