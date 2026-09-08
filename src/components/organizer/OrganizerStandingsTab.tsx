@@ -76,6 +76,16 @@ export const OrganizerStandingsTab: React.FC<OrganizerStandingsTabProps> = ({ to
                 const settled = placements!.filter(p => p.placement !== null);
                 const isComplete = active.length === 0;
                 const showPrize = hasPrizePool && isComplete;
+                const activeRanked: Array<typeof active[0] & { rank: number }> = [];
+                for (let i = 0; i < active.length; i++) {
+                    const p = active[i];
+                    const prev = activeRanked[i - 1];
+                    const tied = prev !== undefined
+                        && prev.wins === p.wins
+                        && prev.losses === p.losses
+                        && prev.score_diff === p.score_diff;
+                    activeRanked.push({ ...p, rank: tied ? prev.rank : i + 1 });
+                }
                 return (
                     <div className="rounded-none border border-white/10 overflow-hidden">
                         <table className="w-full text-sm">
@@ -90,10 +100,12 @@ export const OrganizerStandingsTab: React.FC<OrganizerStandingsTabProps> = ({ to
                                 </tr>
                             </thead>
                             <tbody>
-                                {/* Still-competing teams */}
-                                {active.map(p => (
+                                {/* Still-competing teams with provisional rank numbers */}
+                                {activeRanked.map(p => (
                                     <tr key={p.team_id} className="border-t border-white/5">
-                                        <td className="px-4 py-3 align-middle border-r border-white/5 font-mono text-gray-500">–</td>
+                                        <td className="px-4 py-3 align-middle border-r border-white/5">
+                                            <span className="font-mono font-bold text-sm text-white">{p.rank}</span>
+                                        </td>
                                         <td className="px-4 py-3 text-white">{p.team_name}</td>
                                         <td className="px-3 py-3 text-center text-gray-400 font-mono">{p.played}</td>
                                         <td className="px-3 py-3 text-center font-mono">
@@ -119,12 +131,10 @@ export const OrganizerStandingsTab: React.FC<OrganizerStandingsTabProps> = ({ to
                                                     className="px-4 py-3 align-middle border-r border-white/5"
                                                     rowSpan={group.teams.length}
                                                 >
-                                                    <span className={`font-mono font-bold text-sm ${p.placement === 1 ? 'text-yellow-400' : p.placement === 2 ? 'text-gray-300' : p.placement === 3 ? 'text-amber-600' : 'text-gray-500'}`}>
-                                                        {p.placement}
-                                                    </span>
+                                                    <span className="font-mono text-xs text-gray-600">{p.placement}</span>
                                                 </td>
                                             )}
-                                            <td className="px-4 py-3 text-white">{p.team_name}</td>
+                                            <td className="px-4 py-3 text-gray-400">{p.team_name}</td>
                                             <td className="px-3 py-3 text-center text-gray-400 font-mono">{p.played}</td>
                                             <td className="px-3 py-3 text-center font-mono">
                                                 <span className="text-green-400">{p.wins}</span>
