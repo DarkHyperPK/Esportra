@@ -274,17 +274,22 @@ function ConnectedAccountsTab() {
     } finally { setUnlinkingSteam(false); }
   };
 
-  const linkDiscord = () => supabase.auth.linkIdentity({
-    provider: 'discord',
-    options: { redirectTo: window.location.href, scopes: 'identify email guilds.join' },
-  });
+  const linkDiscord = async () => {
+    const { error } = await supabase.auth.linkIdentity({
+      provider: 'discord',
+      options: { redirectTo: window.location.href, scopes: 'identify email guilds.join' },
+    });
+    if (error) {
+      toast({ title: 'Failed to link Discord', description: error.message, variant: 'destructive' });
+    }
+  };
 
   const accounts = [
     {
       key: 'steam', name: 'Steam',
       description: steamLoading ? 'Loading...' : steamAccount
         ? steamAccount.steamName || steamAccount.steam64Id
-        : 'Required for CS2 match automation',
+        : '',
       connected: !!steamAccount, loading: steamLoading,
       icon: <img src="/steam.png" alt="Steam" className="w-8 h-8 drop-shadow-md rounded-full" />,
       onConnect: linkSteamAccount, onUnlink: handleUnlinkSteam, unlinking: unlinkingSteam,
@@ -294,7 +299,7 @@ function ConnectedAccountsTab() {
       key: 'riot', name: 'Riot Games',
       description: riotLoading ? 'Loading...' : riotAccount
         ? `${riotAccount.game_name}#${riotAccount.tag_line}`
-        : 'Required for Valorant tournament registration',
+        : '',
       connected: !!riotAccount, loading: riotLoading,
       icon: <img src="/Riot.png" alt="Riot Games" className="w-8 h-8 drop-shadow-md" />,
       onConnect: linkRiotAccount, onUnlink: handleUnlinkRiot, unlinking: unlinkingRiot,
