@@ -9,24 +9,40 @@ interface StandingsTabProps {
     currency?: string;
 }
 
-function groupByPlacement(placements: ResolvedPlacement[]) {
-    const groups: { placement: number | null; label: string; teams: ResolvedPlacement[] }[] = [];
-    for (const p of placements) {
-        const existing = groups.find(g => g.placement === p.placement);
-        if (existing) {
-            existing.teams.push(p);
-        } else {
-            groups.push({ placement: p.placement, label: p.placement_label, teams: [p] });
-        }
-    }
-    return groups;
-}
-
 const PODIUM_CONFIG = [
     { rank: 2, height: 'h-16', color: 'text-gray-300', bg: 'bg-gray-500/10 border-gray-500/20' },
     { rank: 1, height: 'h-24', color: 'text-yellow-300', bg: 'bg-yellow-500/10 border-yellow-500/20' },
     { rank: 3, height: 'h-12', color: 'text-amber-600', bg: 'bg-amber-600/10 border-amber-600/20' },
 ];
+
+type Row = ResolvedPlacement & { displayRank: number; isConfirmed: boolean };
+
+function buildRows(placements: ResolvedPlacement[]): Row[] {
+    const active = placements.filter(p => p.placement === null);
+    const settled = placements
+        .filter(p => p.placement !== null)
+        .sort((a, b) => (a.placement ?? 0) - (b.placement ?? 0));
+
+    const rows: Row[] = [];
+
+    // Active teams: sequential provisional ranks with tie support
+    for (let i = 0; i < active.length; i++) {
+        const p = active[i];
+        const prev = rows[i - 1];
+        const tied = prev !== undefined && !prev.isConfirmed
+            && prev.wins === p.wins
+            && prev.losses === p.losses
+            && prev.score_diff === p.score_diff;
+        rows.push({ ...p, displayRank: tied ? prev.displayRank : i + 1, isConfirmed: false });
+    }
+
+    // Confirmed teams: their placement IS their rank in the full standings
+    for (const p of settled) {
+        rows.push({ ...p, displayRank: p.placement!, isConfirmed: true });
+    }
+
+    return rows;
+}
 
 const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'USD' }) => {
     const { data: placements, isLoading } = useTournamentPlacements(tournamentId);
@@ -44,23 +60,9 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
         );
     }
 
-    const active = placements.filter(p => p.placement === null);
-    const settled = placements.filter(p => p.placement !== null);
-    const isComplete = active.length === 0;
+    const rows = buildRows(placements);
+    const isComplete = rows.every(r => r.isConfirmed);
 
-    // Compute provisional ranks for still-competing teams with tie support.
-    // Two teams with identical wins/losses/score_diff share the same rank;
-    // the next distinct tier skips accordingly (standard competition ranking).
-    const activeRanked: Array<typeof active[0] & { rank: number }> = [];
-    for (let i = 0; i < active.length; i++) {
-        const p = active[i];
-        const prev = activeRanked[i - 1];
-        const tied = prev !== undefined
-            && prev.wins === p.wins
-            && prev.losses === p.losses
-            && prev.score_diff === p.score_diff;
-        activeRanked.push({ ...p, rank: tied ? prev.rank : i + 1 });
-    }
     const top3 = PODIUM_CONFIG.map(cfg => ({
         ...cfg,
         placement: placements.find(p => p.placement === cfg.rank),
@@ -85,12 +87,12 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
                 </div>
             )}
 
-            {/* Full Rankings Table */}
+            {/* Unified Rankings Table — one continuous rank sequence */}
             <div className="rounded-none border border-white/10 overflow-hidden">
                 <table className="w-full text-sm">
                     <thead className="bg-white/[0.03]">
                         <tr>
-                            <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-20">Rank</th>
+                            <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-16">#</th>
                             <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Team</th>
                             <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-10">P</th>
                             <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-14">W–L</th>
@@ -99,13 +101,16 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
                         </tr>
                     </thead>
                     <tbody>
-                        {/* Still-competing teams with provisional rank numbers */}
-                        {activeRanked.map(p => (
+                        {rows.map(p => (
                             <tr key={p.team_id} className="border-t border-white/5">
-                                <td className="px-4 py-3 align-middle border-r border-white/5">
-                                    <span className="font-mono font-bold text-sm text-white">{p.rank}</span>
+                                <td className="px-4 py-3 border-r border-white/5">
+                                    <span className={`font-mono font-bold text-sm ${p.isConfirmed ? 'text-gray-500' : 'text-white'}`}>
+                                        {p.displayRank}
+                                    </span>
                                 </td>
-                                <td className="px-4 py-3 text-white font-medium">{p.team_name}</td>
+                                <td className={`px-4 py-3 font-medium ${p.isConfirmed ? 'text-gray-400' : 'text-white'}`}>
+                                    {p.team_name}
+                                </td>
                                 <td className="px-3 py-3 text-center text-gray-400 font-mono text-sm">{p.played}</td>
                                 <td className="px-3 py-3 text-center font-mono text-sm">
                                     <span className="text-green-400">{p.wins}</span>
@@ -118,42 +123,13 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
                                         {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
                                     </span>
                                 </td>
+                                {isComplete && (
+                                    <td className="px-4 py-3 text-right text-gray-300 font-mono">
+                                        {p.prize_amount > 0 ? formatCurrency(p.prize_amount, p.currency || currency) : '—'}
+                                    </td>
+                                )}
                             </tr>
                         ))}
-
-                        {/* Confirmed placements — numeric rank only, no "1st Place" labels */}
-                        {groupByPlacement(settled).map((group) =>
-                            group.teams.map((p, teamIdx) => (
-                                <tr key={p.team_id} className={`border-t ${teamIdx === 0 && active.length > 0 ? 'border-white/20' : 'border-white/5'} ${isComplete && p.placement !== null && p.placement <= 3 ? 'bg-white/[0.01]' : ''}`}>
-                                    {teamIdx === 0 && (
-                                        <td
-                                            className="px-4 py-3 align-middle border-r border-white/5"
-                                            rowSpan={group.teams.length}
-                                        >
-                                            <span className="font-mono text-xs text-gray-600">{p.placement}</span>
-                                        </td>
-                                    )}
-                                    <td className="px-4 py-3 text-gray-400 font-medium">{p.team_name}</td>
-                                    <td className="px-3 py-3 text-center text-gray-400 font-mono text-sm">{p.played}</td>
-                                    <td className="px-3 py-3 text-center font-mono text-sm">
-                                        <span className="text-green-400">{p.wins}</span>
-                                        <span className="text-gray-600 mx-0.5">–</span>
-                                        <span className="text-red-400">{p.losses}</span>
-                                        {p.ties > 0 && <span className="text-gray-500 ml-0.5">({p.ties})</span>}
-                                    </td>
-                                    <td className="px-3 py-3 text-center font-mono text-sm">
-                                        <span className={p.score_diff > 0 ? 'text-green-400' : p.score_diff < 0 ? 'text-red-400' : 'text-gray-500'}>
-                                            {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
-                                        </span>
-                                    </td>
-                                    {isComplete && (
-                                        <td className="px-4 py-3 text-right text-gray-300 font-mono">
-                                            {p.prize_amount > 0 ? formatCurrency(p.prize_amount, p.currency || currency) : '—'}
-                                        </td>
-                                    )}
-                                </tr>
-                            ))
-                        )}
                     </tbody>
                 </table>
             </div>
