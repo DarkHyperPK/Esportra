@@ -71,31 +71,28 @@ export const OrganizerStandingsTab: React.FC<OrganizerStandingsTabProps> = ({ to
                     <p className="text-sm text-gray-500">No standings available yet</p>
                     <p className="text-xs text-gray-600 mt-1">Use the Update button to calculate standings from current bracket data.</p>
                 </div>
-            ) : (
-                <div className="rounded-none border border-white/10 overflow-hidden">
-                    <table className="w-full text-sm">
-                        <thead className="bg-white/[0.03]">
-                            <tr>
-                                <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-20">Rank</th>
-                                <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Team</th>
-                                <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-10">P</th>
-                                <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-14">W–L</th>
-                                <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-12">+/−</th>
-                                {hasPrizePool && <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Prize</th>}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {groupByPlacement(placements!).map((group) =>
-                                group.teams.map((p, teamIdx) => (
+            ) : (() => {
+                const active = placements!.filter(p => p.placement === null);
+                const eliminated = placements!.filter(p => p.placement !== null);
+                const colSpan = hasPrizePool ? 6 : 5;
+                return (
+                    <div className="rounded-none border border-white/10 overflow-hidden">
+                        <table className="w-full text-sm">
+                            <thead className="bg-white/[0.03]">
+                                <tr>
+                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-20">Rank</th>
+                                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Team</th>
+                                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-10">P</th>
+                                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-14">W–L</th>
+                                    <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-12">+/−</th>
+                                    {hasPrizePool && <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Prize</th>}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {/* Still-competing teams shown first */}
+                                {active.map(p => (
                                     <tr key={p.team_id} className="border-t border-white/5">
-                                        {teamIdx === 0 && (
-                                            <td
-                                                className="px-4 py-3 align-middle border-r border-white/5 font-mono text-white"
-                                                rowSpan={group.teams.length}
-                                            >
-                                                {group.label}
-                                            </td>
-                                        )}
+                                        <td className="px-4 py-3 align-middle border-r border-white/5 font-mono text-gray-500">–</td>
                                         <td className="px-4 py-3 text-white">{p.team_name}</td>
                                         <td className="px-3 py-3 text-center text-gray-400 font-mono">{p.played}</td>
                                         <td className="px-3 py-3 text-center font-mono">
@@ -109,18 +106,57 @@ export const OrganizerStandingsTab: React.FC<OrganizerStandingsTabProps> = ({ to
                                                 {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
                                             </span>
                                         </td>
-                                        {hasPrizePool && (
-                                            <td className="px-4 py-3 text-right text-gray-300">
-                                                {p.prize_amount > 0 ? formatCurrency(p.prize_amount, currency) : '—'}
-                                            </td>
-                                        )}
+                                        {hasPrizePool && <td className="px-4 py-3 text-right text-gray-300">—</td>}
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+                                ))}
+
+                                {/* Section divider */}
+                                {active.length > 0 && eliminated.length > 0 && (
+                                    <tr className="border-t border-white/10">
+                                        <td colSpan={colSpan} className="px-4 py-1.5 text-xs font-bold text-gray-600 uppercase tracking-widest bg-white/[0.02]">
+                                            Eliminated
+                                        </td>
+                                    </tr>
+                                )}
+
+                                {/* Eliminated teams */}
+                                {groupByPlacement(eliminated).map((group) =>
+                                    group.teams.map((p, teamIdx) => (
+                                        <tr key={p.team_id} className="border-t border-white/5">
+                                            {teamIdx === 0 && (
+                                                <td
+                                                    className="px-4 py-3 align-middle border-r border-white/5 font-mono text-white"
+                                                    rowSpan={group.teams.length}
+                                                >
+                                                    {group.label}
+                                                </td>
+                                            )}
+                                            <td className="px-4 py-3 text-white">{p.team_name}</td>
+                                            <td className="px-3 py-3 text-center text-gray-400 font-mono">{p.played}</td>
+                                            <td className="px-3 py-3 text-center font-mono">
+                                                <span className="text-green-400">{p.wins}</span>
+                                                <span className="text-gray-600 mx-0.5">–</span>
+                                                <span className="text-red-400">{p.losses}</span>
+                                                {p.ties > 0 && <span className="text-gray-500 ml-0.5">({p.ties})</span>}
+                                            </td>
+                                            <td className="px-3 py-3 text-center font-mono">
+                                                <span className={p.score_diff > 0 ? 'text-green-400' : p.score_diff < 0 ? 'text-red-400' : 'text-gray-500'}>
+                                                    {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
+                                                </span>
+                                            </td>
+                                            {hasPrizePool && (
+                                                <td className="px-4 py-3 text-right text-gray-300">
+                                                    {p.prize_amount > 0 ? formatCurrency(p.prize_amount, currency) : '—'}
+                                                </td>
+                                            )}
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                );
+            })()}
         </div>
     );
 };
