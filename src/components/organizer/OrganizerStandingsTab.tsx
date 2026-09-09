@@ -15,7 +15,13 @@ interface OrganizerStandingsTabProps {
 type Row = ResolvedPlacement & { displayRank: number; isConfirmed: boolean };
 
 function buildRows(placements: ResolvedPlacement[]): Row[] {
-    const active = placements.filter(p => p.placement === null);
+    const active = placements
+        .filter(p => p.placement === null)
+        .sort((a, b) => {
+            if (b.wins !== a.wins) return b.wins - a.wins;
+            if (a.losses !== b.losses) return a.losses - b.losses;
+            return b.score_diff - a.score_diff;
+        });
     const settled = placements
         .filter(p => p.placement !== null)
         .sort((a, b) => (a.placement ?? 0) - (b.placement ?? 0));
