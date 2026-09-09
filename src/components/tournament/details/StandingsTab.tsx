@@ -1,8 +1,9 @@
 import React from 'react';
-import { Trophy } from 'lucide-react';
+import { Trophy, Clock } from 'lucide-react';
 import { useTournamentPlacements } from '@/hooks/useTournamentPlacements';
+import { useTournamentStandings } from '@/hooks/useTournamentStandings';
 import { formatCurrency } from '@/utils/formatCurrency';
-import type { ResolvedPlacement } from '@/types/prizeDistribution';
+import type { StandingsRow } from '@/types/standings';
 
 interface StandingsTabProps {
     tournamentId: string;
@@ -15,49 +16,92 @@ const PODIUM_CONFIG = [
     { rank: 3, height: 'h-12', color: 'text-amber-600', bg: 'bg-amber-600/10 border-amber-600/20' },
 ];
 
-type Row = ResolvedPlacement & { displayRank: number; isConfirmed: boolean };
+const COLUMN_HEADERS: Record<string, string> = {
+    rank: '#',
+    team: 'Team',
+    bracket_side: 'Bracket',
+    wins: 'W',
+    losses: 'L',
+    ties: 'T',
+    played: 'P',
+    points: 'Pts',
+    score_diff: '+/-',
+    buchholz: 'Buchholz',
+    round_results: 'Rounds',
+    kills: 'Kills',
+};
 
-function buildRows(placements: ResolvedPlacement[]): Row[] {
-    const active = placements
-        .filter(p => p.placement === null)
-        .sort((a, b) => {
-            if (b.wins !== a.wins) return b.wins - a.wins;
-            if (a.losses !== b.losses) return a.losses - b.losses;
-            return b.score_diff - a.score_diff;
-        });
-    const settled = placements
-        .filter(p => p.placement !== null)
-        .sort((a, b) => (a.placement ?? 0) - (b.placement ?? 0));
+const CELL_RENDERERS: Partial<Record<string, (row: StandingsRow) => React.ReactNode>> = {
+    rank: (row) => <RankCell row={row} />,
+    team: (row) => (
+        <span className={`font-medium ${row.rank_status === 'confirmed' ? 'text-gray-400' : 'text-white'}`}>
+            {row.team_name}
+        </span>
+    ),
+    bracket_side: (row) =>
+        row.bracket_side === 'winners'
+            ? 'Upper Bracket'
+            : row.bracket_side === 'losers'
+              ? 'Lower Bracket'
+              : '–',
+    wins: (row) => <span className="text-green-400">{row.wins}</span>,
+    losses: (row) => <span className="text-red-400">{row.losses}</span>,
+    ties: (row) => String(row.ties),
+    played: (row) => String(row.played),
+    points: (row) => String(row.points),
+    score_diff: (row) => (
+        <span className={row.score_diff > 0 ? 'text-green-400' : row.score_diff < 0 ? 'text-red-400' : 'text-gray-500'}>
+            {row.score_diff > 0 ? `+${row.score_diff}` : String(row.score_diff)}
+        </span>
+    ),
+    buchholz: (row) => String(row.buchholz),
+    round_results: (row) => {
+        if (!row.round_results || row.round_results.length === 0) return '–';
+        return row.round_results
+            .map(r => r === 'win' ? 'W' : r === 'loss' ? 'L' : '·')
+            .join(' ');
+    },
+    kills: (row) => String(row.kills),
+};
 
-    const rows: Row[] = [];
+function RankCell({ row }: { row: StandingsRow }) {
+    const textClass = row.rank_status === 'confirmed' ? 'text-gray-500' : 'text-white';
+    return (
+        <span className="inline-flex items-center gap-1">
+            {row.is_live && (
+                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse flex-shrink-0" />
+            )}
+            <span className={`font-mono font-bold text-sm ${textClass}`}>{row.rank}</span>
+            {row.rank_status === 'provisional' && (
+                <Clock className="w-3 h-3 text-gray-600 flex-shrink-0" aria-label="Provisional rank" />
+            )}
+            {row.is_live && row.live_opponent != null && (
+                <span className="text-xs text-gray-400">vs {row.live_opponent}</span>
+            )}
+        </span>
+    );
+}
 
-    // Active teams: sequential provisional ranks with tie support
-    for (let i = 0; i < active.length; i++) {
-        const p = active[i];
-        const prev = rows[i - 1];
-        const tied = prev !== undefined && !prev.isConfirmed
-            && prev.wins === p.wins
-            && prev.losses === p.losses
-            && prev.score_diff === p.score_diff;
-        rows.push({ ...p, displayRank: tied ? prev.displayRank : i + 1, isConfirmed: false });
-    }
-
-    // Confirmed teams: their placement IS their rank in the full standings
-    for (const p of settled) {
-        rows.push({ ...p, displayRank: p.placement!, isConfirmed: true });
-    }
-
-    return rows;
+function getTdClass(col: string): string {
+    const align = col === 'rank' || col === 'team' ? 'text-left' : 'text-center';
+    const font = col === 'team' ? 'font-medium' : 'font-mono text-sm';
+    const border = col === 'rank' ? 'border-r border-white/5' : '';
+    return ['px-4 py-3', align, font, border].filter(Boolean).join(' ');
 }
 
 const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'USD' }) => {
-    const { data: placements, isLoading } = useTournamentPlacements(tournamentId);
+    const { data: placements, isLoading: placementsLoading } = useTournamentPlacements(tournamentId);
+    const { data: standings, isLoading: standingsLoading, isError: standingsError } = useTournamentStandings(tournamentId);
 
-    if (isLoading) {
+    if (placementsLoading || standingsLoading) {
         return <div className="py-12 text-center text-gray-500 text-sm">Loading standings...</div>;
     }
 
-    if (!placements || !Array.isArray(placements) || placements.length === 0) {
+    if (standingsError) {
+        return <div className="py-12 text-center text-gray-500 text-sm">Could not load standings.</div>;
+    }
+
+    if (!standings || standings.rows.length === 0) {
         return (
             <div className="py-12 text-center">
                 <Trophy className="w-10 h-10 text-gray-600 mx-auto mb-3" />
@@ -66,17 +110,15 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
         );
     }
 
-    const rows = buildRows(placements);
-    const isComplete = rows.every(r => r.isConfirmed);
+    const { rows, columns, is_complete: isComplete } = standings;
 
     const top3 = PODIUM_CONFIG.map(cfg => ({
         ...cfg,
-        placement: placements.find(p => p.placement === cfg.rank),
+        placement: placements?.find(p => p.placement === cfg.rank),
     })).filter(c => c.placement);
 
     return (
         <div className="space-y-8 py-4">
-            {/* Podium — only shown once the tournament is finished */}
             {isComplete && top3.length >= 2 && (
                 <div className="flex items-end justify-center gap-4 pt-4">
                     {top3.map(({ rank, height, color, bg, placement }) => (
@@ -93,45 +135,34 @@ const StandingsTab: React.FC<StandingsTabProps> = ({ tournamentId, currency = 'U
                 </div>
             )}
 
-            {/* Unified Rankings Table — one continuous rank sequence */}
             <div className="rounded-none border border-white/10 overflow-hidden">
                 <table className="w-full text-sm">
                     <thead className="bg-white/[0.03]">
                         <tr>
-                            <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase w-16">#</th>
-                            <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Team</th>
-                            <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-10">P</th>
-                            <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-14">W–L</th>
-                            <th className="px-3 py-2 text-center text-xs font-bold text-gray-500 uppercase w-12">+/−</th>
-                            {isComplete && <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Prize</th>}
+                            {columns.map(col => (
+                                <th
+                                    key={col}
+                                    className={`px-4 py-2 text-xs font-bold text-gray-500 uppercase ${col === 'rank' || col === 'team' ? 'text-left' : 'text-center'}`}
+                                >
+                                    {COLUMN_HEADERS[col] ?? col}
+                                </th>
+                            ))}
+                            {isComplete && (
+                                <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Prize</th>
+                            )}
                         </tr>
                     </thead>
                     <tbody>
-                        {rows.map(p => (
-                            <tr key={p.team_id} className="border-t border-white/5">
-                                <td className="px-4 py-3 border-r border-white/5">
-                                    <span className={`font-mono font-bold text-sm ${p.isConfirmed ? 'text-gray-500' : 'text-white'}`}>
-                                        {p.displayRank}
-                                    </span>
-                                </td>
-                                <td className={`px-4 py-3 font-medium ${p.isConfirmed ? 'text-gray-400' : 'text-white'}`}>
-                                    {p.team_name}
-                                </td>
-                                <td className="px-3 py-3 text-center text-gray-400 font-mono text-sm">{p.played}</td>
-                                <td className="px-3 py-3 text-center font-mono text-sm">
-                                    <span className="text-green-400">{p.wins}</span>
-                                    <span className="text-gray-600 mx-0.5">–</span>
-                                    <span className="text-red-400">{p.losses}</span>
-                                    {p.ties > 0 && <span className="text-gray-500 ml-0.5">({p.ties})</span>}
-                                </td>
-                                <td className="px-3 py-3 text-center font-mono text-sm">
-                                    <span className={p.score_diff > 0 ? 'text-green-400' : p.score_diff < 0 ? 'text-red-400' : 'text-gray-500'}>
-                                        {p.score_diff > 0 ? `+${p.score_diff}` : p.score_diff}
-                                    </span>
-                                </td>
+                        {rows.map(row => (
+                            <tr key={row.team_id} className="border-t border-white/5">
+                                {columns.map(col => (
+                                    <td key={col} className={getTdClass(col)}>
+                                        {CELL_RENDERERS[col]?.(row) ?? '–'}
+                                    </td>
+                                ))}
                                 {isComplete && (
-                                    <td className="px-4 py-3 text-right text-gray-300 font-mono">
-                                        {p.prize_amount > 0 ? formatCurrency(p.prize_amount, p.currency || currency) : '—'}
+                                    <td className="px-4 py-3 text-right text-gray-300 font-mono text-sm">
+                                        {row.prize_amount > 0 ? formatCurrency(row.prize_amount, currency) : '—'}
                                     </td>
                                 )}
                             </tr>
