@@ -991,7 +991,7 @@ const CaptainMatchPage = () => {
                                     )}
 
                                     {/* Waiting for opponent */}
-                                    {(!activeMatch.team2?.id) && activeMatch.status === 'pending' && (
+                                    {(!activeMatch.team1?.id || !activeMatch.team2?.id) && activeMatch.status === 'pending' && (
                                         <div className="bg-zinc-900/60 border border-white/5 rounded-2xl p-5 text-center">
                                             <p className="text-zinc-400 text-sm">⏳ Waiting for your opponent to be determined</p>
                                             <p className="text-zinc-500 text-xs mt-1">Your next match will begin once the other bracket matches are completed.</p>
@@ -1002,7 +1002,7 @@ const CaptainMatchPage = () => {
                                     {selfPlayEnabled
                                         && !agreedScheduledTime
                                         && activeMatch.status === 'pending'
-                                        && activeMatch.team2?.id && (
+                                        && activeMatch.team1?.id && activeMatch.team2?.id && (
                                         (() => {
                                             const roundIndex = activeMatch.round - 1;
                                             const bracketType = activeMatch.bracketType ?? activeMatch.bracketSide ?? null;
