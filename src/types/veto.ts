@@ -7,7 +7,7 @@ export interface VetoStepDto {
 
 export interface VetoSettingsDto {
   matchId: string;
-  mode: number; // 0 = Default, 1 = Custom — integer from API
+  mode: 'Default' | 'Custom'; // string from API
   defaultSequence: VetoStepDto[];
   customSequence: VetoStepDto[] | null;
   effectiveSequence: VetoStepDto[];

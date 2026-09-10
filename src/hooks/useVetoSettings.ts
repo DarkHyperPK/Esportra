@@ -99,13 +99,13 @@ export function useVetoSettings({
   // Keyed on settings?.matchId (not the settings object reference) to avoid render loops.
   useEffect(() => {
     if (!settings?.matchId) return;
-    setLocalModeState(settings.mode === 1 ? 'custom' : 'default');
+    setLocalModeState(settings.mode === 'Custom' ? 'custom' : 'default');
     setLocalSteps(stepsFromDto(settings.effectiveSequence));
   }, [settings?.matchId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isDirty = useMemo(() => {
     if (!settings) return false;
-    const serverMode = settings.mode === 1 ? 'custom' : 'default';
+    const serverMode = settings.mode === 'Custom' ? 'custom' : 'default';
     if (localMode !== serverMode) return true;
     const serverSteps = settings.effectiveSequence;
     if (localSteps.length !== serverSteps.length) return true;
@@ -140,7 +140,7 @@ export function useVetoSettings({
       if (isDirtyRef.current) {
         setExternalUpdatePending(true);
       } else {
-        setLocalModeState(dto.mode === 1 ? 'custom' : 'default');
+        setLocalModeState(dto.mode === 'Custom' ? 'custom' : 'default');
         setLocalSteps(stepsFromDto(dto.effectiveSequence));
       }
     };
