@@ -151,7 +151,7 @@ export function useVetoSettings({
       active = false;
       conn.off('VetoSettingsSync', handleSettingsSync);
     };
-  }, [conn, matchId, enabled, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [conn, matchId, enabled, queryClient]);
 
   const setLocalMode = useCallback(
     (mode: 'default' | 'custom') => {
