@@ -22,6 +22,8 @@ export function getVetoActionLabel(
             return side ? `chose ${getSideShortLabel(side)} on` : 'chose side for';
         case 'auto_decider':
             return 'decider';
+        case 'ignore':
+            return tense === 'present' ? 'auto-removing' : 'auto-removed';
         default:
             return action.replace(/_/g, ' ');
     }
@@ -37,6 +39,8 @@ export function getVetoActionNoun(action: VetoActionKind | string) {
             return 'SIDE';
         case 'auto_decider':
             return 'DECIDER';
+        case 'ignore':
+            return 'AUTO';
         default:
             return action.replace(/_/g, ' ').toUpperCase();
     }
@@ -57,18 +61,24 @@ export function getSideFullLabel(side?: VetoSide | null) {
 export function getVetoActionClasses(action: VetoActionKind | string, variant: 'chip' | 'text' | 'border' | 'surface' = 'chip') {
     const isPick = action === 'pick' || action === 'auto_decider';
     const isSide = action === 'pick_side';
+    const isIgnore = action === 'ignore';
 
     if (variant === 'text') {
+        if (isIgnore) return 'text-zinc-300';
         return isPick ? 'text-emerald-300' : isSide ? 'text-white' : 'text-rose-300';
     }
 
     if (variant === 'border') {
+        if (isIgnore) return 'border-zinc-500/40';
         return isPick ? 'border-emerald-500/40' : isSide ? 'border-white/30' : 'border-rose-500/40';
     }
 
     if (variant === 'surface') {
+        if (isIgnore) return 'bg-zinc-500/15';
         return isPick ? 'bg-emerald-500/12' : isSide ? 'bg-white/10' : 'bg-rose-500/12';
     }
+
+    if (isIgnore) return 'border border-zinc-500/40 bg-zinc-500/15 text-zinc-300';
 
     return cn(
         'border',

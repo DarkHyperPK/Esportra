@@ -7,6 +7,7 @@ import { VetoSelectedMaps } from './map-veto/VetoSelectedMaps';
 import { MapPool } from './map-veto/MapPool';
 import { VetoDialogs } from './map-veto/VetoDialogs';
 import { VetoSequence } from './map-veto/VetoSequence';
+import { VetoSettingsPanel } from './map-veto/VetoSettingsPanel';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -192,6 +193,15 @@ export const MapVeto: React.FC<MapVetoProps> = ({
         showShareLinks={showShareLinks && !readOnly}
         compact={ui.headerCompact}
       />
+
+      {effectiveIsOrganizer && (
+        <VetoSettingsPanel
+          matchId={matchId}
+          vetoStatus={veto.status}
+          team1Name={team1Name}
+          team2Name={team2Name}
+        />
+      )}
 
       {showSelectedMapsInRail && (
         <div className="hidden lg:block">
