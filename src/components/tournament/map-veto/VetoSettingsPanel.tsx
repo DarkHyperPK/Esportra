@@ -47,11 +47,11 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
   );
 
   return (
-    <div className="rounded-xl border border-white/10 bg-black/30 overflow-hidden">
+    <div className="rounded-sm border border-white/[0.06] bg-transparent overflow-hidden">
       <button
         type="button"
         onClick={() => setIsExpanded((e) => !e)}
-        className="flex w-full items-center justify-between px-3 py-2.5 cursor-pointer select-none"
+        className="flex w-full items-center justify-between px-3 py-2.5 cursor-pointer select-none transition-colors hover:bg-white/[0.02]"
       >
         <div className="flex items-center gap-1.5">
           <Settings2 className="h-3.5 w-3.5 text-white/50" />
@@ -97,13 +97,13 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
                   <TabsList className="w-full grid grid-cols-2 mb-3">
                     <TabsTrigger
                       value="default"
-                      disabled={vetoStatus === 'in_progress' || saveStatus === 'saving'}
+                      disabled={saveStatus === 'saving'}
                     >
                       Default
                     </TabsTrigger>
                     <TabsTrigger
                       value="custom"
-                      disabled={vetoStatus === 'in_progress' || saveStatus === 'saving'}
+                      disabled={saveStatus === 'saving'}
                     >
                       Custom
                     </TabsTrigger>

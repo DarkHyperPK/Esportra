@@ -178,7 +178,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   );
 
   const leftRail = (
-    <>
+    <div className="flex min-h-0 flex-col">
       <VetoHeader
         boText={boText}
         vetoStatus={veto.status}
@@ -195,20 +195,26 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       />
 
       {effectiveIsOrganizer && (
-        <VetoSettingsPanel
-          matchId={matchId}
-          vetoStatus={veto.status}
-          team1Name={team1Name}
-          team2Name={team2Name}
-        />
+        <>
+          <div className="my-2 h-px bg-white/[0.06]" />
+          <VetoSettingsPanel
+            matchId={matchId}
+            vetoStatus={veto.status}
+            team1Name={team1Name}
+            team2Name={team2Name}
+          />
+        </>
       )}
 
       {showSelectedMapsInRail && (
-        <div className="hidden lg:block">
-          {renderSelectedMapsPanel(true, 'mb-0', true)}
-        </div>
+        <>
+          <div className="my-3 h-px bg-white/[0.06]" />
+          <div className="hidden lg:block">
+            {renderSelectedMapsPanel(true, 'mb-0', true)}
+          </div>
+        </>
       )}
-    </>
+    </div>
   );
 
   const teamRow = (
@@ -254,8 +260,8 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
   const sequencePanel = (
     <div className={cn(
-      'min-h-0 rounded-xl border border-white/10 bg-black/30 p-2.5 sm:p-3',
-      isComplete && 'bg-gradient-to-b from-white/[0.04] to-black/30',
+      'min-h-0 rounded-md border border-white/[0.06] bg-transparent p-2.5 sm:p-3',
+      isComplete && 'border-emerald-500/20 bg-gradient-to-b from-emerald-500/[0.02] to-transparent',
     )}>
       <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3 sm:gap-3">
         <div>
@@ -306,12 +312,12 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-      className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 sm:px-4"
+      className="border-t border-white/[0.06] bg-transparent px-3 py-3 sm:px-4 sm:py-3.5"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-[10px] font-black uppercase tracking-widest text-white/50">Current Turn</div>
-          <div className={cn('mt-0.5 text-sm font-black', isUserTurn ? 'text-rose-200' : 'text-white')}>
+          <div className={cn('mt-0.5 text-sm font-black tracking-tight', isUserTurn ? 'text-rose-300' : 'text-white')}>
             {isUserTurn ? 'Your turn' : `${currentTeamName}'s turn`}
           </div>
         </div>

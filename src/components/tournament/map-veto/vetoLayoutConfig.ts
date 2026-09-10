@@ -42,7 +42,7 @@ export function getVetoLayoutConfig(mode: VetoLayoutMode, isComplete: boolean): 
       isFullscreen && 'lg:grid-cols-[minmax(260px,22%)_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)] lg:gap-5 xl:gap-6',
     ),
     rail: cn(
-      'flex min-h-0 flex-col gap-2 sm:gap-3',
+      'flex min-h-0 flex-col gap-0',
       !isModal && 'lg:sticky lg:top-0 lg:self-start',
     ),
     stage: 'flex min-h-0 min-w-0 flex-col gap-3 sm:gap-4',
