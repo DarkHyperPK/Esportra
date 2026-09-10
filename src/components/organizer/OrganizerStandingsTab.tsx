@@ -22,7 +22,8 @@ const COLUMN_HEADERS: Record<string, string> = {
     ties: 'T',
     played: 'P',
     points: 'Pts',
-    score_diff: '+/-',
+    score_diff: 'Map +/-',
+    round_diff: 'Rnd +/-',
     buchholz: 'Buchholz',
     round_results: 'Rounds',
     kills: 'Kills',
@@ -49,6 +50,11 @@ const CELL_RENDERERS: Partial<Record<string, (row: StandingsRow) => React.ReactN
     score_diff: (row) => (
         <span className={row.score_diff > 0 ? 'text-green-400' : row.score_diff < 0 ? 'text-red-400' : 'text-gray-500'}>
             {row.score_diff > 0 ? `+${row.score_diff}` : String(row.score_diff)}
+        </span>
+    ),
+    round_diff: (row) => (
+        <span className={row.round_diff > 0 ? 'text-green-400' : row.round_diff < 0 ? 'text-red-400' : 'text-gray-500'}>
+            {row.round_diff > 0 ? `+${row.round_diff}` : String(row.round_diff)}
         </span>
     ),
     buchholz: (row) => String(row.buchholz),

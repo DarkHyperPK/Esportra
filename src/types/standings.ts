@@ -12,6 +12,7 @@ export interface StandingsRow {
     losses: number;
     ties: number;
     score_diff: number;
+    round_diff: number;
     points: number;
     buchholz: number;
     round_results: string[] | null;
