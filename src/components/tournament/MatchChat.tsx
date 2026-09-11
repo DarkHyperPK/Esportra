@@ -207,7 +207,7 @@ const MatchChat: React.FC<MatchChatProps> = ({
                                             )}
                                         </span>
                                     )}
-                                    <div className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words whitespace-pre-wrap ${isMe
+                                    <div className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap min-w-0 w-full ${isMe
                                             ? 'bg-zinc-700/70 text-zinc-100'
                                             : 'bg-zinc-900/80 text-zinc-200'
                                         }`}>
