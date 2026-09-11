@@ -9,7 +9,7 @@ interface FloatingMatchChatProps {
 }
 
 export const FloatingMatchChat: React.FC<FloatingMatchChatProps> = ({ children, unreadCount = 0, onOpen, onClose }) => {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
 
   const handleOpen = () => {
     setOpen(true);
@@ -22,10 +22,10 @@ export const FloatingMatchChat: React.FC<FloatingMatchChatProps> = ({ children, 
   };
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
+    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3 pointer-events-none">
       {/* Chat panel with slide/fade transition */}
       <div
-        className={`w-[min(420px,calc(100vw-2.5rem))] overflow-hidden rounded-xl border border-white/10 bg-[#0a0a0c]/95 shadow-2xl shadow-black/60 backdrop-blur-xl transition-all duration-200 ease-out ${
+        className={`pointer-events-auto w-[min(420px,calc(100vw-2.5rem))] overflow-hidden rounded-xl border border-white/10 bg-[#0a0a0c]/95 shadow-2xl shadow-black/60 backdrop-blur-xl transition-all duration-200 ease-out ${
           open
             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
             : 'pointer-events-none translate-y-2 scale-95 opacity-0'
@@ -49,7 +49,7 @@ export const FloatingMatchChat: React.FC<FloatingMatchChatProps> = ({ children, 
       </div>
 
       {/* Circular FAB button */}
-      <div className="relative">
+      <div className="relative pointer-events-auto">
         {!open && unreadCount > 0 && (
           <span
             className="absolute -top-1 -right-1 z-10 min-w-[20px] h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center px-1 font-semibold pointer-events-none"
