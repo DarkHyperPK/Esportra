@@ -65,6 +65,7 @@ export const useMatchChat = (matchId: string | undefined, options: UseMatchChatO
   const conn        = useHub(HubPaths.Chat);
   const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>('connecting');
   const [isJoined, setIsJoined] = useState(false);
+  const isJoinedRef = useRef(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const [opponentLastReadAt, setOpponentLastReadAt] = useState<Date | null>(null);
 
@@ -102,6 +103,14 @@ export const useMatchChat = (matchId: string | undefined, options: UseMatchChatO
   useEffect(() => {
     setOpponentLastReadAt(chatData?.opponentLastReadAt ?? null);
   }, [chatData?.opponentLastReadAt]);
+
+  // Reactive mark-read: fires the moment both isJoined and isChatOpen become true.
+  // Covers (a) join while panel is already open on desktop, (b) panel open while already joined.
+  useEffect(() => {
+    if (!isJoined || !options.isChatOpen || !matchId) return;
+    if (conn.state !== HubConnectionState.Connected) return;
+    conn.invoke('MarkRead', matchId).catch(() => {});
+  }, [isJoined, options.isChatOpen, matchId, conn]);
 
   useEffect(() => {
     if (!matchId || !user?.id) return;
@@ -147,6 +156,7 @@ export const useMatchChat = (matchId: string | undefined, options: UseMatchChatO
       if (!active) return;
       setChatError(message || 'Unable to join match chat.');
       joined = false;
+      isJoinedRef.current = false;
       setIsJoined(false);
     };
 
@@ -194,11 +204,16 @@ export const useMatchChat = (matchId: string | undefined, options: UseMatchChatO
         if (!active) return;
         joined = true;
         setConnectionStatus('connected');
+        isJoinedRef.current = true;
         setIsJoined(true);
+        if (isChatOpenRef.current) {
+          conn.invoke('MarkRead', matchId).catch(() => {});
+        }
         setChatError(null);
       } catch (err) {
         if (!active) return;
         joined = false;
+        isJoinedRef.current = false;
         setIsJoined(false);
         setChatError(getApiErrorMessage(err, 'Unable to join match chat.'));
         scheduleJoin(1500);
@@ -214,6 +229,7 @@ export const useMatchChat = (matchId: string | undefined, options: UseMatchChatO
       syncStatus();
       if (conn.state !== HubConnectionState.Connected && joined) {
         joined = false;
+        isJoinedRef.current = false;
         setIsJoined(false);
       }
       if (conn.state === HubConnectionState.Connected && !joined) {
@@ -228,11 +244,19 @@ export const useMatchChat = (matchId: string | undefined, options: UseMatchChatO
       conn.invoke('Heartbeat', matchId, isChatOpenRef.current).catch(() => {});
     }, 90_000);
 
+    // Safety-net only — the reactive useEffect above handles all normal cases.
+    const markReadInterval = setInterval(() => {
+      if (conn && isChatOpenRef.current && isJoinedRef.current) {
+        conn.invoke('MarkRead', matchId).catch(() => {});
+      }
+    }, 30000);
+
     return () => {
       active = false;
       clearRetry();
       if (monitorTimer) clearInterval(monitorTimer);
       if (heartbeatTimer) clearInterval(heartbeatTimer);
+      clearInterval(markReadInterval);
       conn.off('MessageReceived', handleMessageReceived);
       conn.off('MessagesSeen', handleMessagesSeen);
       conn.off('Error', handleHubError);
