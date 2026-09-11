@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, AlertTriangle, Check, ChevronDown, Loader2, Lock, Settings2 } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Check, ChevronDown, Loader2, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CtaButton } from '@/components/ui/app-buttons';
@@ -167,19 +167,10 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
                           team1Name={team1Name}
                           team2Name={team2Name}
                           onChange={(patch) => updateStep(index, patch)}
-                          disabled={vetoStatus === 'in_progress' || saveStatus === 'saving'}
+                          disabled={saveStatus === 'saving'}
                         />
                       ))}
                     </div>
-
-                    {vetoStatus === 'in_progress' && (
-                      <div className="mt-2 flex items-center gap-1.5 pt-2 border-t border-white/5">
-                        <Lock className="h-3 w-3 text-white/40 shrink-0" />
-                        <span className="text-[11px] text-white/40">
-                          Veto is live. Settings locked.
-                        </span>
-                      </div>
-                    )}
 
                     {externalUpdatePending && (
                       <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5">
@@ -205,8 +196,7 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
                         disabled={
                           !isDirty ||
                           saveStatus === 'saving' ||
-                          saveStatus === 'success' ||
-                          vetoStatus === 'in_progress'
+                          saveStatus === 'success'
                         }
                         onClick={save}
                       >
