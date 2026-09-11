@@ -801,7 +801,7 @@ const CaptainMatchPage = () => {
             return;
         }
         // Use room-state live flag — bracket cache may lag behind go-live
-        if (!isMatchLive && match.status !== 'in_progress') {
+        if (!canManageMatchRoom && !isMatchLive && match.status !== 'in_progress') {
             toast({
                 title: 'Match not live',
                 description: 'The match must be live before starting map veto.',
@@ -1172,11 +1172,15 @@ const CaptainMatchPage = () => {
                             <aside className="lg:sticky lg:top-8 lg:self-start">
                                 <MatchRoomActionList
                                     vetoEnabled={isVetoEnabled}
-                                    canOpenVeto={isMatchLive && activeMatch.status !== 'completed'}
+                                    canOpenVeto={
+                                        (canManageMatchRoom && !!activeMatch.team1?.id && !!activeMatch.team2?.id)
+                                        || (isMatchLive && activeMatch.status !== 'completed')
+                                    }
                                     manualReportDisabled={(isVetoEnabled && !mapVetoCompleted) || disputedGameNumbers.has(nextGameNumber)}
                                     manualReportLabel={manualReportLabel}
                                     hideManualReport={isOrganizerMatchView}
                                     assistedAction={assistedMatchReportAction}
+                                    isPreLive={canManageMatchRoom && !isMatchLive}
                                     onOpenVeto={() => handleOpenVeto(activeMatch)}
                                     onManualReport={() => handleUploadResult(activeMatch.id)}
                                 />
@@ -1253,7 +1257,7 @@ const CaptainMatchPage = () => {
 
             {/* Modals */}
             <Dialog open={isVetoEnabled && mapVetoOpen} onOpenChange={setMapVetoOpen}>
-                <DialogContent className="bg-[#09090b] border-zinc-800/80 max-w-[min(96vw,1280px)] h-[min(86dvh,780px)] overflow-hidden p-0 flex flex-col gap-0">
+                <DialogContent className="bg-[#09090b] border-zinc-800/80 max-w-[min(96vw,1440px)] h-[min(92dvh,920px)] overflow-hidden p-0 flex flex-col gap-0">
                     <DialogHeader className="px-4 py-3 border-b border-zinc-800 bg-[#18181b] flex-shrink-0">
                         <DialogTitle className="text-white text-base font-semibold">Map Veto</DialogTitle>
                     </DialogHeader>

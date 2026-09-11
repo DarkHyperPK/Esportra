@@ -189,6 +189,7 @@ export function useVetoSettings({
     onSuccess: (data) => {
       queryClient.setQueryData(['veto-settings', matchId], data);
       void queryClient.invalidateQueries({ queryKey: ['veto-settings', matchId] });
+      void queryClient.invalidateQueries({ queryKey: ['veto-history', matchId] });
       setExternalUpdatePending(false);
       setSaveStatus('success');
     },

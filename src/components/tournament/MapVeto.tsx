@@ -8,6 +8,7 @@ import { MapPool } from './map-veto/MapPool';
 import { VetoDialogs } from './map-veto/VetoDialogs';
 import { VetoSequence } from './map-veto/VetoSequence';
 import { VetoSettingsPanel } from './map-veto/VetoSettingsPanel';
+import { useVetoSettings } from '@/hooks/useVetoSettings';
 import { useVetoHistory } from '@/hooks/useVetoHistory';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -116,6 +117,12 @@ export const MapVeto: React.FC<MapVetoProps> = ({
   }, [forcedTeamId, veto, isTeam1Captain, isTeam2Captain, readOnly]);
 
 
+  const { settings: vetoSettings } = useVetoSettings({
+    matchId,
+    vetoStatus: veto?.status,
+    enabled: Boolean(veto),
+  });
+
   const layoutConfig = getVetoLayoutConfig(layout, false);
 
   if (loading) {
@@ -177,6 +184,47 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     />
   );
 
+  const sequencePanel = (
+    <div className="min-h-0 py-1">
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/30">
+          {isComplete ? 'Recap' : 'Veto order'}
+        </span>
+        {!isComplete && veto.current_action && (
+          <span className={cn(
+            'rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest',
+            getVetoActionClasses(veto.current_action),
+          )}>
+            {getVetoActionNoun(veto.current_action)}
+          </span>
+        )}
+      </div>
+      <div className={ui.sequenceScroll} data-lenis-prevent>
+        <VetoSequence
+          veto={veto}
+          entries={vetoHistory}
+          loading={vetoHistoryLoading}
+          bestOf={currentBestOf}
+          team1Name={team1Name}
+          team2Name={team2Name}
+          team1Id={team1Id}
+          team2Id={team2Id}
+          availableMaps={availableMaps}
+          allAvailableMaps={allAvailableMaps}
+          game={game}
+          compact={ui.sequenceCompact}
+          columns={ui.sequenceColumns}
+          externalSequence={vetoSettings?.effectiveSequence}
+          emptyMessage={
+            !vetoLive && !vetoSettings?.effectiveSequence?.length
+              ? 'Veto has not started yet.'
+              : 'No veto actions recorded yet.'
+          }
+        />
+      </div>
+    </div>
+  );
+
   const leftRail = (
     <div className="flex min-h-0 flex-col">
       <VetoHeader
@@ -203,6 +251,15 @@ export const MapVeto: React.FC<MapVetoProps> = ({
             team1Name={team1Name}
             team2Name={team2Name}
           />
+        </>
+      )}
+
+      {layout === 'modal' && !isComplete && (
+        <>
+          <div className="my-3 h-px bg-white/[0.06]" />
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {sequencePanel}
+          </div>
         </>
       )}
 
@@ -258,61 +315,18 @@ export const MapVeto: React.FC<MapVetoProps> = ({
 
   const selectedMapsPanel = renderSelectedMapsPanel();
 
-  const sequencePanel = (
-    <div className={cn(
-      'min-h-0 rounded-md border border-white/[0.06] bg-transparent p-2.5 sm:p-3',
-      isComplete && 'border-emerald-500/20 bg-gradient-to-b from-emerald-500/[0.02] to-transparent',
-    )}>
-      <div className="mb-2 flex items-center justify-between gap-2 sm:mb-3 sm:gap-3">
-        <div>
-          <div className="text-[10px] font-black text-white/60 uppercase tracking-widest">
-            Veto Sequence
-          </div>
-          <div className="mt-0.5 text-[11px] text-zinc-500 sm:mt-1 sm:text-xs">
-            {isComplete ? 'Final ban/pick recap' : 'Live turn order'}
-          </div>
-        </div>
-        {!isComplete && veto.current_action && (
-          <span className={cn(
-            'rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest sm:px-2.5 sm:py-1 sm:text-[10px]',
-            getVetoActionClasses(veto.current_action),
-          )}>
-            {getVetoActionNoun(veto.current_action)}
-          </span>
-        )}
-      </div>
-      <div className={ui.sequenceScroll} data-lenis-prevent>
-        <VetoSequence
-          veto={veto}
-          entries={vetoHistory}
-          loading={vetoHistoryLoading}
-          bestOf={currentBestOf}
-          team1Name={team1Name}
-          team2Name={team2Name}
-          team1Id={team1Id}
-          team2Id={team2Id}
-          availableMaps={availableMaps}
-          allAvailableMaps={allAvailableMaps}
-          game={game}
-          compact={ui.sequenceCompact}
-          columns={ui.sequenceColumns}
-          emptyMessage={
-            !vetoLive
-              ? 'Veto has not started yet.'
-              : 'No veto actions recorded yet.'
-          }
-        />
-      </div>
-    </div>
-  );
-
   const turnBar = !isComplete && vetoLive && veto.current_action ? (
     <motion.div
       key={`${veto.current_action_number}-${veto.current_team_id}-${veto.current_action}`}
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-      className="border-t border-white/[0.06] bg-transparent px-3 py-3 sm:px-4 sm:py-3.5"
+      className={cn(
+        'bg-transparent',
+        layout === 'modal'
+          ? 'rounded-md border border-white/[0.06] px-3 py-2.5 sm:px-4 sm:py-3'
+          : 'border-t border-white/[0.06] px-3 py-3 sm:px-4 sm:py-3.5',
+      )}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -333,22 +347,47 @@ export const MapVeto: React.FC<MapVetoProps> = ({
     </motion.div>
   ) : null;
 
+  const modalStatusBar = layout === 'modal' ? (
+    <div className="mb-3 border-b border-white/[0.06] pb-3">
+      <VetoTeamDisplay
+        team1Name={team1Name}
+        team1Logo={team1Logo}
+        team2Name={team2Name}
+        team2Logo={team2Logo}
+        activeSide={isComplete ? null : activeSide}
+        currentAction={veto.current_action}
+        completed={isComplete}
+        bestOf={currentBestOf}
+        compact={true}
+      />
+    </div>
+  ) : null;
+
   const stageContent = isComplete ? (
     <>
       <div className="min-w-0">{selectedMapsPanel}</div>
-      <div className="min-w-0">{sequencePanel}</div>
+      {layout !== 'modal' && <div className="min-w-0">{sequencePanel}</div>}
     </>
   ) : (
     <>
-      {turnBar}
-      <div className={ui.stageGrid}>
-        <div className="min-w-0">{mapPoolPanel}</div>
-        <div className="min-w-0">{sequencePanel}</div>
-      </div>
-      {showSelectedMapsInRail ? (
-        <div className="min-w-0 lg:hidden">{selectedMapsPanel}</div>
+      {layout === 'modal' ? (
+        <>
+          <div className="min-w-0">{mapPoolPanel}</div>
+          <div className="min-w-0">{selectedMapsPanel}</div>
+        </>
       ) : (
-        <div className="min-w-0">{selectedMapsPanel}</div>
+        <>
+          {turnBar}
+          <div className={ui.stageGrid}>
+            <div className="min-w-0">{mapPoolPanel}</div>
+            <div className="min-w-0">{sequencePanel}</div>
+          </div>
+          {showSelectedMapsInRail ? (
+            <div className="min-w-0 lg:hidden">{selectedMapsPanel}</div>
+          ) : (
+            <div className="min-w-0">{selectedMapsPanel}</div>
+          )}
+        </>
       )}
     </>
   );
@@ -360,7 +399,7 @@ export const MapVeto: React.FC<MapVetoProps> = ({
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
       className={ui.shell}
     >
-      {teamRow}
+      {layout === 'modal' ? modalStatusBar : teamRow}
       <div className={ui.grid}>
         <aside className={ui.rail}>
           {leftRail}

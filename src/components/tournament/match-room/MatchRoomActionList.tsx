@@ -8,6 +8,7 @@ interface MatchRoomActionListProps {
   manualReportLabel: string;
   hideManualReport?: boolean;
   assistedAction?: React.ReactNode;
+  isPreLive?: boolean;
   onOpenVeto: () => void;
   onManualReport: () => void;
 }
@@ -19,6 +20,7 @@ export const MatchRoomActionList: React.FC<MatchRoomActionListProps> = ({
   manualReportLabel,
   hideManualReport = false,
   assistedAction,
+  isPreLive = false,
   onOpenVeto,
   onManualReport,
 }) => {
@@ -31,8 +33,14 @@ export const MatchRoomActionList: React.FC<MatchRoomActionListProps> = ({
       {vetoEnabled ? (
         <ActionRow
           eyebrow="Map veto"
-          title="Open veto room"
-          description={canOpenVeto ? 'Draft the map sequence with your opponent.' : 'Available once the match is live.'}
+          title={canOpenVeto && isPreLive ? 'Configure veto settings' : 'Open veto room'}
+          description={
+            canOpenVeto && isPreLive
+              ? 'Set up the map veto sequence before going live.'
+              : canOpenVeto
+                ? 'Draft the map sequence with your opponent.'
+                : 'Available once the match is live.'
+          }
           icon={<Swords className="h-4 w-4" />}
           disabled={!canOpenVeto}
           onClick={onOpenVeto}
