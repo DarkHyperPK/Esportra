@@ -151,6 +151,35 @@ export const VetoSettingsPanel: React.FC<VetoSettingsPanelProps> = ({
                         </div>
                       ))}
                     </div>
+
+                    {isDirty && (
+                      <div className="mt-3">
+                        <CtaButton
+                          size="sm"
+                          className="w-full"
+                          disabled={saveStatus === 'saving' || saveStatus === 'success'}
+                          onClick={save}
+                        >
+                          {saveStatus === 'saving' && (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                          )}
+                          {saveStatus === 'success' && (
+                            <Check className="h-3.5 w-3.5 mr-1.5" />
+                          )}
+                          {saveStatus === 'saving'
+                            ? 'Saving...'
+                            : saveStatus === 'success'
+                              ? 'Saved!'
+                              : 'Reset to Default'}
+                        </CtaButton>
+                        {saveStatus === 'error' && saveErrorMessage && (
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <AlertCircle className="h-3 w-3 text-rose-400 shrink-0" />
+                            <p className="text-[11px] text-rose-400">{saveErrorMessage}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </TabsContent>
 
                   <TabsContent value="custom">
