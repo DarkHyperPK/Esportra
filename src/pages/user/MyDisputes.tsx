@@ -756,7 +756,7 @@ const MyDisputes = () => {
                               {reasonLabel}
                             </DialogDescription>
                           )}
-                          {(selectedDispute.status === 'resolved' || selectedDispute.status === 'rejected') && (
+                          {selectedDispute.raised_by_user_id === user?.id && (selectedDispute.status === 'resolved' || selectedDispute.status === 'rejected') && (
                             <div className="mt-2">
                               {selectedDispute.can_reopen ? (
                                 <>
