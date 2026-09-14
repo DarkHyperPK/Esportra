@@ -11,7 +11,8 @@ import { useVenueSearch } from '@/hooks/useVenueSearch';
 import { usePasswordChange } from '@/hooks/usePasswordChange';
 import { passwordSchema } from '@/schemas/password';
 import {
-  Loader2, Copy, Check, Shield, Link2, Award, Monitor, Bell,
+  Loader2, Copy, Check, Shield, Link2, Award, Monitor, Bell, Info,
+  Clock, FileText, Calendar, Users, Trophy, MessageSquare, Hash, Target, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -160,7 +161,7 @@ export default function AccountSettings() {
               <p className="text-sm text-gray-500">{activeItem?.description}</p>
             </div>
 
-            {activeTab === 'connected_accounts' && <ConnectedAccountsTab />}
+            {activeTab === 'connected_accounts' && <ConnectedAccountsTab onNavigateToNotifications={() => setActiveTab('notifications')} />}
             {activeTab === 'notifications' && <NotificationsTab />}
             {activeTab === 'licenses' && <LicensesTab userId={user?.id} />}
             {activeTab === 'desktop_pairing' && ownsVenues && <DesktopPairingTab userId={user?.id} />}
@@ -175,7 +176,7 @@ export default function AccountSettings() {
 
 // ─── Tab: Connected Accounts ──────────────────────────────────────────────────
 
-function ConnectedAccountsTab() {
+function ConnectedAccountsTab({ onNavigateToNotifications }: { onNavigateToNotifications: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { riotAccount, isLoading: riotLoading, linkRiotAccount, unlinkRiotAccount } = useRiotAccount();
@@ -320,32 +321,61 @@ function ConnectedAccountsTab() {
   return (
     <div className="space-y-3 max-w-2xl">
       {accounts.map((acc) => (
-        <div key={acc.key} className="rounded-xl border border-white/5 bg-white/[0.02] p-4 flex items-center gap-4">
-          <div className="flex items-center justify-center shrink-0 w-10">
-            {acc.icon}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-medium text-white text-sm">{acc.name}</div>
-            <div className={`text-xs mt-0.5 truncate ${acc.connected ? 'text-emerald-400' : 'text-gray-500'}`}>
-              {acc.description}
+        <div key={acc.key} className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center shrink-0 w-10">
+              {acc.icon}
             </div>
-          </div>
-          {!acc.loading && (
-            acc.connected ? (
-              acc.onUnlink && (
-                <Button size="sm" variant="outline"
-                  className="border-white/15 text-rose-400 hover:bg-rose-500/10 shrink-0 text-xs"
-                  disabled={acc.unlinking} onClick={acc.onUnlink}>
-                  {acc.unlinking
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : 'Unlink'}
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-white text-sm">{acc.name}</div>
+              <div className={`text-xs mt-0.5 truncate ${acc.connected ? 'text-emerald-400' : 'text-gray-500'}`}>
+                {acc.description}
+              </div>
+            </div>
+            {!acc.loading && (
+              acc.connected ? (
+                acc.onUnlink && (
+                  <Button size="sm" variant="outline"
+                    className="border-white/15 text-rose-400 hover:bg-rose-500/10 shrink-0 text-xs"
+                    disabled={acc.unlinking} onClick={acc.onUnlink}>
+                    {acc.unlinking
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : 'Unlink'}
+                  </Button>
+                )
+              ) : (
+                <Button size="sm" className={`shrink-0 text-white text-xs ${acc.connectClass}`} onClick={acc.onConnect}>
+                  Connect
                 </Button>
               )
-            ) : (
-              <Button size="sm" className={`shrink-0 text-white text-xs ${acc.connectClass}`} onClick={acc.onConnect}>
-                Connect
-              </Button>
-            )
+            )}
+          </div>
+          {acc.key === 'discord' && !acc.connected && (
+            <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 mt-4 flex items-start gap-3">
+              <Info className="text-blue-400 w-5 h-5 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-sm font-medium text-white">About Discord Notifications</div>
+                <p className="text-xs text-blue-300 leading-relaxed mt-1">
+                  When you connect Discord, you'll receive direct messages for match reminders, check-in alerts,
+                  scheduling updates, team invites, and tournament notifications. You can manage notification
+                  settings after linking.
+                </p>
+              </div>
+            </div>
+          )}
+          {acc.key === 'discord' && acc.connected && (
+            <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 mt-3 flex items-start gap-2">
+              <Check className="text-emerald-400 w-4 h-4 shrink-0 mt-0.5" />
+              <div className="text-xs text-emerald-400">
+                Discord connected! You'll receive DM notifications for matches and tournaments.{' '}
+                <button
+                  onClick={onNavigateToNotifications}
+                  className="text-emerald-300 underline hover:text-emerald-200 cursor-pointer"
+                >
+                  Manage in Notifications tab
+                </button>
+              </div>
+            </div>
           )}
         </div>
       ))}
@@ -355,6 +385,25 @@ function ConnectedAccountsTab() {
 
 // ─── Tab: Notifications ──────────────────────────────────────────────────────
 
+interface GameNotificationConfig {
+  gameSlug: string;
+  gameName: string;
+  logoUrl: string;
+  categories: Array<{ name: string; types: string[] }>;
+}
+
+const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  'Match Alerts': Bell,
+  'Check-in': Clock,
+  'Results & Disputes': FileText,
+  'Scheduling': Calendar,
+  'Team': Users,
+  'Tournament': Trophy,
+  'Match Chat': MessageSquare,
+  'Party Codes': Hash,
+  'Battle Royale': Target,
+};
+
 function NotificationsTab() {
   const { toast } = useToast();
   const [toggling, setToggling] = useState(false);
@@ -362,6 +411,12 @@ function NotificationsTab() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['discord-dm-prefs'],
     queryFn: () => apiClient.get<{ discord_dm_enabled: boolean; has_discord: boolean }>('/api/profiles/me/discord-dm'),
+  });
+
+  const notifConfigsQuery = useQuery({
+    queryKey: ['game-notification-configs'],
+    queryFn: () => apiClient.get<GameNotificationConfig[]>('/api/game-catalog/notification-configs'),
+    staleTime: 1000 * 60 * 10,
   });
 
   const handleToggle = async () => {
@@ -441,12 +496,80 @@ function NotificationsTab() {
       <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6">
         <h4 className="text-white font-medium mb-3">What you'll receive</h4>
         <ul className="space-y-2 text-sm text-gray-400">
-          <li className="flex items-center gap-2">🎮 <span>Match ready — your match is set up and waiting</span></li>
-          <li className="flex items-center gap-2">⏰ <span>Check-in reminders — don't miss your window</span></li>
-          <li className="flex items-center gap-2">📊 <span>Result reported — scores submitted for your match</span></li>
-          <li className="flex items-center gap-2">🚨 <span>Disputes — result challenged or resolved</span></li>
-          <li className="flex items-center gap-2">🏆 <span>Tournament updates — registration confirmed, tournament starting</span></li>
+          <li className="flex items-center gap-2">
+            <Bell className="w-4 h-4 text-gray-400 shrink-0" />
+            <span>Match ready — your match is set up and waiting</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-gray-400 shrink-0" />
+            <span>Check-in reminders — don't miss your window</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+            <span>Result reported — scores submitted for your match</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-gray-400 shrink-0" />
+            <span>Disputes — result challenged or resolved</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-gray-400 shrink-0" />
+            <span>Tournament updates — registration confirmed, tournament starting</span>
+          </li>
         </ul>
+      </div>
+
+      <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 relative">
+        <h4 className="text-white font-medium mb-4">Discord Notifications by Game</h4>
+
+        {notifConfigsQuery.isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-rose-400" />
+          </div>
+        ) : !notifConfigsQuery.data || notifConfigsQuery.data.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-4">
+            No game notification configurations available.
+          </p>
+        ) : (
+          <>
+            {(!enabled || !hasDiscord) && (
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] rounded-xl flex items-center justify-center z-10">
+                <div className="bg-white/5 border border-white/10 rounded-lg p-4 max-w-xs text-center">
+                  <p className="text-sm text-gray-300">
+                    Turn on Discord DMs above to receive these notifications
+                  </p>
+                </div>
+              </div>
+            )}
+            <div className={!enabled || !hasDiscord ? 'opacity-50 pointer-events-none' : ''}>
+              {notifConfigsQuery.data.map((game, idx) => {
+                const Icon = CATEGORY_ICONS[game.categories[0]?.name] || Bell;
+                return (
+                  <div
+                    key={game.gameSlug}
+                    className={`mb-5 pb-5 border-b border-white/5 last:border-b-0 last:pb-0 last:mb-0`}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <img src={game.logoUrl} alt={game.gameName} className="w-8 h-8 rounded" />
+                      <span className="text-white font-medium text-sm">{game.gameName}</span>
+                    </div>
+                    <div className="space-y-2 ml-11">
+                      {game.categories.map((category) => {
+                        const CategoryIcon = CATEGORY_ICONS[category.name] || Bell;
+                        return (
+                          <div key={category.name} className="flex items-center gap-2">
+                            <CategoryIcon className="text-gray-400 w-4 h-4 shrink-0" />
+                            <span className="text-sm text-gray-400">{category.name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
