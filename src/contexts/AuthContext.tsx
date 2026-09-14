@@ -179,6 +179,17 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     await fetchProfile(user.id);
   }, [user, updateProfile, fetchProfile, applyProfilePatch]);
 
+  // Silent background timezone sync — fires once per session when profile loads
+  useEffect(() => {
+    if (!profile?.id || !user || !isMounted) return;
+
+    const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (profile.timezone_iana === detectedTz) return;
+
+    void apiClient.put('/api/profiles/me/timezone', { timezone_iana: detectedTz });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
+
   // Silent background country detection
   useEffect(() => {
     if (!profile || profile.country_code || hasProfileDateOfBirth(profile) || !user || !isMounted) return;
