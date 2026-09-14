@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import Footer from '@/components/Footer';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -392,6 +393,14 @@ interface GameNotificationConfig {
   categories: Array<{ name: string; types: string[] }>;
 }
 
+interface TournamentDiscordPref {
+  tournamentId: string;
+  tournamentName: string;
+  game: string;
+  startDate: string;
+  discordDmsEnabled: boolean;
+}
+
 const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   'Match Alerts': Bell,
   'Check-in': Clock,
@@ -542,8 +551,7 @@ function NotificationsTab() {
               </div>
             )}
             <div className={!enabled || !hasDiscord ? 'opacity-50 pointer-events-none' : ''}>
-              {notifConfigsQuery.data.map((game, idx) => {
-                const Icon = CATEGORY_ICONS[game.categories[0]?.name] || Bell;
+              {notifConfigsQuery.data.map((game) => {
                 return (
                   <div
                     key={game.gameSlug}
@@ -569,6 +577,103 @@ function NotificationsTab() {
               })}
             </div>
           </>
+        )}
+      </div>
+
+      <TournamentDiscordPrefsSection globalEnabled={enabled} hasDiscord={hasDiscord} />
+    </div>
+  );
+}
+
+// ─── Tournament Discord Prefs Section ─────────────────────────────────────────
+
+function TournamentDiscordPrefsSection({ globalEnabled, hasDiscord }: { globalEnabled: boolean; hasDiscord: boolean }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [optimisticOverrides, setOptimisticOverrides] = useState<Record<string, boolean>>({});
+  const [toggling, setToggling] = useState<Record<string, boolean>>({});
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['tournament-discord-prefs'],
+    queryFn: () => apiClient.get<TournamentDiscordPref[]>('/api/profiles/me/tournament-discord-prefs'),
+    enabled: hasDiscord,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const handleToggle = async (tournamentId: string, newValue: boolean) => {
+    const previousValue = !newValue;
+
+    setOptimisticOverrides((prev) => ({ ...prev, [tournamentId]: newValue }));
+    setToggling((prev) => ({ ...prev, [tournamentId]: true }));
+
+    try {
+      await apiClient.put(`/api/profiles/me/tournament-discord-prefs/${tournamentId}`, { discord_dms_enabled: newValue });
+      queryClient.invalidateQueries({ queryKey: ['tournament-discord-prefs'] });
+    } catch {
+      setOptimisticOverrides((prev) => ({ ...prev, [tournamentId]: previousValue }));
+      toast({ title: 'Failed to update', description: 'Could not update tournament notification preference.', variant: 'destructive' });
+    } finally {
+      setToggling((prev) => ({ ...prev, [tournamentId]: false }));
+    }
+  };
+
+  const isGloballyDisabled = !globalEnabled || !hasDiscord;
+
+  return (
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 relative">
+      <h4 className="text-white font-medium mb-4">Tournament Discord Notifications</h4>
+
+      {isGloballyDisabled && (
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] rounded-xl flex items-center justify-center z-10">
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4 max-w-xs text-center">
+            <p className="text-sm text-gray-300">
+              Enable Discord DMs above to receive tournament notifications.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className={isGloballyDisabled ? 'opacity-50 pointer-events-none' : ''}>
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-rose-400" />
+          </div>
+        ) : !data || data.length === 0 ? (
+          <p className="text-sm text-gray-500 py-2">
+            You're not registered in any active tournaments.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {data.map((pref) => {
+              const resolvedValue = pref.tournamentId in optimisticOverrides
+                ? optimisticOverrides[pref.tournamentId]
+                : pref.discordDmsEnabled;
+              const isToggling = toggling[pref.tournamentId] ?? false;
+
+              return (
+                <div
+                  key={pref.tournamentId}
+                  className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-white truncate">{pref.tournamentName}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {pref.game} · {new Date(pref.startDate).toLocaleDateString()}
+                    </div>
+                  </div>
+                  {isToggling ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-rose-400 shrink-0 ml-3" />
+                  ) : (
+                    <Switch
+                      checked={resolvedValue}
+                      onCheckedChange={(checked) => handleToggle(pref.tournamentId, checked)}
+                      className="shrink-0 ml-3"
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>
