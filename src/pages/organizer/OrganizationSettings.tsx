@@ -373,37 +373,38 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = ({ activeSecti
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-3">
 
-      {/* Org card — compact header strip */}
+      {/* Org card — header with banner */}
       <div className="overflow-hidden border border-white/10 bg-[#0a0a0c]">
-        {bannerUrl && (
-          <div
-            className="h-16 w-full bg-cover bg-center"
-            style={{ backgroundImage: `linear-gradient(to bottom, rgba(5,5,5,0.1), rgba(5,5,5,0.7)), url(${bannerUrl})` }}
-          />
-        )}
-        <div className={cn('flex items-center justify-between gap-4 px-4 py-3', bannerUrl && '-mt-5')}>
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 shrink-0 rounded-none border border-white/15 bg-black ring-1 ring-black">
-              <AvatarImage src={logoUrl} />
-              <AvatarFallback className="rounded-none bg-rose-500 text-sm font-black text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-white">{name || 'Your Organization'}</h2>
-                {organization?.is_verified && (
-                  <span className="inline-flex items-center gap-1 border border-emerald-500/35 bg-emerald-950/20 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-300">
-                    <CheckCircle className="h-2.5 w-2.5" />
-                    Verified
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-zinc-500">@{slug || 'your-slug'} · {ownerName}</p>
+        <div
+          className="h-28 w-full bg-cover bg-center"
+          style={bannerUrl
+            ? { backgroundImage: `linear-gradient(to bottom, rgba(5,5,5,0.1), rgba(5,5,5,0.75)), url(${bannerUrl})` }
+            : { background: 'linear-gradient(135deg, #1a0005 0%, #0a0a0c 60%, #0d0005 100%)' }
+          }
+        />
+        <div className="flex items-end gap-4 px-5 pb-4 -mt-8">
+          <Avatar className="h-14 w-14 shrink-0 rounded-none border-2 border-[#0a0a0c] bg-black ring-1 ring-white/10">
+            <AvatarImage src={logoUrl} />
+            <AvatarFallback className="rounded-none bg-rose-500 text-lg font-black text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
+          </Avatar>
+          <div className="mb-1 min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-bold text-white">{name || 'Your Organization'}</h2>
+              {organization?.is_verified && (
+                <span className="inline-flex items-center gap-1 border border-emerald-500/35 bg-emerald-950/20 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-300">
+                  <CheckCircle className="h-2.5 w-2.5" />
+                  Verified
+                </span>
+              )}
             </div>
-          </div>
-          <div className="flex items-center gap-5">
-            <CompactStat icon={<Trophy className="h-3 w-3" />} value={stats.totalTournaments} label="tournaments" />
-            <CompactStat icon={<Users className="h-3 w-3" />} value={stats.totalParticipants} label="participants" />
-            <CompactStat icon={<Calendar className="h-3 w-3" />} value={stats.activeTournaments} label="active" />
+            <div className="mt-1 flex flex-wrap items-center gap-4">
+              <p className="text-xs text-zinc-500">@{slug || 'your-slug'} · {ownerName}</p>
+              <div className="flex items-center gap-4">
+                <CompactStat icon={<Trophy className="h-3 w-3" />} value={stats.totalTournaments} label="tournaments" />
+                <CompactStat icon={<Users className="h-3 w-3" />} value={stats.totalParticipants} label="participants" />
+                <CompactStat icon={<Calendar className="h-3 w-3" />} value={stats.activeTournaments} label="active" />
+              </div>
+            </div>
           </div>
         </div>
       </div>

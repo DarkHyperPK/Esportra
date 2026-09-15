@@ -555,7 +555,7 @@ const TournamentList = () => {
   if (loading) {
     return (
       <CommandShell>
-        <div className="mx-auto max-w-7xl px-4 py-10">
+        <div className="px-4 py-10">
           <CommandSection>
             <div className="py-16 text-center text-zinc-500">Loading tournaments...</div>
           </CommandSection>
@@ -566,7 +566,7 @@ const TournamentList = () => {
 
   return (
     <CommandShell>
-      <div className="mx-auto max-w-7xl space-y-6 px-4 py-8">
+      <div className="space-y-6 px-4 py-8">
         <CommandHeader
           eyebrow="Tournament Ops"
           title="Manage Tournaments"

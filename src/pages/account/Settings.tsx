@@ -126,7 +126,7 @@ export default function AccountSettings() {
 
   return (
     <div className="min-h-screen bg-transparent text-white">
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="px-6 py-10">
         {/* Page heading */}
         <div className="mb-8 border-b border-white/5 pb-6">
           <h1 className="text-2xl font-bold tracking-tight">Account Settings</h1>
