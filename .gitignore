@@ -107,5 +107,6 @@ Thumbs.db
 supabase/dumps/
 supabase/storage/
 
-design docs kept local-only
-docs/UI_DESIGN_GUIDE.md
+# AI tooling — local only, not for repo
+.claude/
+docs/
