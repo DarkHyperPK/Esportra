@@ -3,15 +3,22 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  Activity,
+  BookOpen,
   Calendar,
   CheckCircle,
+  ChevronRight,
   ImageIcon,
+  Key,
   Loader2,
+  Palette,
   Plus,
   Save,
+  ShieldAlert,
   Trash2,
   Trophy,
   Upload,
+  User,
   Users,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -32,7 +39,6 @@ import {
   CommandEmptyState,
   CommandPanel,
   CommandSection,
-  CommandTabs,
 } from '@/components/management/CommandSurface';
 import { cn } from '@/lib/utils';
 
@@ -71,14 +77,15 @@ interface OrgStats {
   activeTournaments: number;
 }
 
-const tabs = [
-  { value: 'profile', label: 'Profile' },
-  { value: 'branding', label: 'Branding' },
-  { value: 'staff', label: 'Staff' },
-  { value: 'media', label: 'Media' },
-  { value: 'advanced', label: 'Advanced' },
-  { value: 'developer-api', label: 'Developer API' },
-];
+type SettingsSection =
+  | 'profile'
+  | 'branding'
+  | 'staff'
+  | 'media'
+  | 'developer-api-keys'
+  | 'developer-api-analytics'
+  | 'developer-api-docs'
+  | 'advanced';
 
 const textInput = 'rounded-none border-white/10 bg-[#0a0a0c] text-white placeholder:text-zinc-600 focus:border-rose-500';
 
@@ -92,7 +99,7 @@ const OrganizationSettings: React.FC = () => {
   const [stats, setStats] = useState<OrgStats>({ totalTournaments: 0, totalParticipants: 0, activeTournaments: 0 });
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeSection, setActiveSection] = useState('profile');
+  const [activeSection, setActiveSection] = useState<SettingsSection>('profile');
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
@@ -370,7 +377,8 @@ const OrganizationSettings: React.FC = () => {
   const ownerName = profile?.full_name || profile?.username || 'Organizer';
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-4">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="flex flex-col gap-5">
+      {/* Org card header */}
       <CommandPanel className="overflow-hidden p-0">
         <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_220px]">
           <div className="min-w-0 p-4 sm:p-5">
@@ -441,220 +449,242 @@ const OrganizationSettings: React.FC = () => {
         </div>
       </CommandPanel>
 
-      <CommandTabs tabs={tabs} active={activeSection} onChange={setActiveSection} />
+      {/* Settings grid — sidebar + content */}
+      <div className="grid gap-5 lg:grid-cols-[200px_minmax(0,1fr)]">
+        <OrgSettingsSidebar active={activeSection} onChange={setActiveSection} />
 
-      {activeSection === 'profile' && (
-        <CommandSection>
-          <SectionTitle title="Profile" description="Control the identity shown on tournament and organization pages." />
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
-            <Field label="Organization Name" htmlFor="name">
-              <Input id="name" value={name} onChange={(event) => handleNameChange(event.target.value)} className={textInput} placeholder="Esportra Gaming" />
-            </Field>
-            <Field label="URL Slug" htmlFor="slug">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-zinc-600">/org/</span>
-                <Input id="slug" value={slug} onChange={(event) => setSlug(generateSlug(event.target.value))} className={textInput} placeholder="esportra-gaming" />
-              </div>
-            </Field>
-            <Field label="Description" htmlFor="description" className="md:col-span-2">
-              <Textarea id="description" value={description} onChange={(event) => setDescription(event.target.value)} className={cn(textInput, 'min-h-[130px]')} placeholder="Tell players about your organization..." />
-            </Field>
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {(['website', 'twitter', 'instagram', 'youtube', 'discord'] as const).map((key) => (
-              <Field key={key} label={key} htmlFor={`social-${key}`}>
-                <Input
-                  id={`social-${key}`}
-                  value={socialLinks[key] || ''}
-                  onChange={(event) => setSocialLinks((current) => ({ ...current, [key]: event.target.value }))}
-                  className={textInput}
-                  placeholder={key === 'website' ? 'https://example.com' : key}
-                />
-              </Field>
-            ))}
-          </div>
-        </CommandSection>
-      )}
-
-      {activeSection === 'branding' && (
-        <CommandSection>
-          <SectionTitle title="Branding" description="Upload the logo and banner used across organization and tournament surfaces." />
-          <div className="mt-6 grid gap-5 lg:grid-cols-2">
-            <CommandPanel>
-              <div className="flex items-center gap-5">
-                <Avatar className="h-24 w-24 rounded-none border border-white/10">
-                  <AvatarImage src={logoUrl} />
-                  <AvatarFallback className="rounded-none bg-rose-500 text-xl text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-semibold text-white">Logo</h3>
-                  <p className="mt-1 text-sm text-zinc-500">Recommended 200x200 PNG or JPG.</p>
-                  <label className="mt-4 inline-flex cursor-pointer">
-                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
-                    <span className="inline-flex h-10 items-center justify-center border border-white/15 bg-[#0a0a0c] px-4 font-mono text-[11px] font-bold uppercase tracking-wider text-white transition-colors hover:border-white/30 hover:bg-white/[0.06]">
-                      <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Upload Logo</span>
-                    </span>
-                  </label>
-                </div>
-              </div>
-            </CommandPanel>
-
-            <CommandPanel>
-              <div
-                className="flex h-32 items-center justify-center border border-white/10 bg-[#0a0a0c] bg-cover bg-center"
-                style={bannerUrl ? { backgroundImage: `linear-gradient(to top, rgba(5,5,5,0.72), rgba(5,5,5,0.08)), url(${bannerUrl})` } : undefined}
-              >
-                {!bannerUrl ? <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">1200 x 300 recommended</span> : null}
-              </div>
-              <label className="mt-4 inline-flex cursor-pointer">
-                <input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" />
-                <span className="inline-flex h-10 items-center justify-center border border-white/15 bg-[#0a0a0c] px-4 font-mono text-[11px] font-bold uppercase tracking-wider text-white transition-colors hover:border-white/30 hover:bg-white/[0.06]">
-                  <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Upload Banner</span>
-                </span>
-              </label>
-            </CommandPanel>
-          </div>
-        </CommandSection>
-      )}
-
-      {activeSection === 'staff' && organization && user?.id && (
-        <CommandSection>
-          <OrganizationStaffManager organizationId={organization.id} ownerId={user.id} />
-        </CommandSection>
-      )}
-
-      {activeSection === 'media' && (
-        <CommandSection>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <SectionTitle title="Media" description="Manage organization albums and public media assets." />
-            <div className="flex flex-wrap gap-2">
-              <input ref={mediaInputRef} type="file" multiple accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" />
-              <CommandButton variant="secondary" onClick={() => mediaInputRef.current?.click()} disabled={uploadingMedia || !organization}>
-                {uploadingMedia ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                Upload Media
-              </CommandButton>
-              <Dialog open={isCreateAlbumOpen} onOpenChange={setIsCreateAlbumOpen}>
-                <DialogTrigger asChild>
-                  <CommandButton><Plus className="h-4 w-4" />Album</CommandButton>
-                </DialogTrigger>
-                <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
-                  <DialogHeader>
-                    <DialogTitle>Create Album</DialogTitle>
-                    <DialogDescription className="text-zinc-400">Group your photos and videos.</DialogDescription>
-                  </DialogHeader>
-                  <Input value={newAlbumTitle} onChange={(event) => setNewAlbumTitle(event.target.value)} placeholder="Album title" className={textInput} />
-                  <Textarea value={newAlbumDesc} onChange={(event) => setNewAlbumDesc(event.target.value)} placeholder="Description" className={textInput} />
-                  <DialogFooter>
-                    <CommandButton variant="secondary" onClick={() => setIsCreateAlbumOpen(false)}>Cancel</CommandButton>
-                    <CommandButton onClick={handleCreateAlbum} disabled={creatingAlbum}>{creatingAlbum ? 'Creating...' : 'Create'}</CommandButton>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-wrap gap-2">
-            <button type="button" onClick={() => { setActiveAlbum(null); if (organization) void fetchMedia(organization.id, null); }} className={cn('border px-3 py-2 font-mono text-[10px] uppercase tracking-wider', !activeAlbum ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>
-              All Media
-            </button>
-            {albums.map((album) => (
-              <button key={album.id} type="button" onClick={() => { setActiveAlbum(album); if (organization) void fetchMedia(organization.id, album.id); }} className={cn('border px-3 py-2 font-mono text-[10px] uppercase tracking-wider', activeAlbum?.id === album.id ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>
-                {album.title}
-              </button>
-            ))}
-          </div>
-
-          {albums.length > 0 && (
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
-              {albums.map((album) => (
-                <CommandPanel key={album.id} className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="truncate font-semibold text-white">{album.title}</h3>
-                    <p className="text-xs text-zinc-500">{new Date(album.created_at).toLocaleDateString()}</p>
+        <div className="min-w-0">
+          {activeSection === 'profile' && (
+            <CommandSection>
+              <SectionTitle title="Profile" description="Control the identity shown on tournament and organization pages." />
+              <div className="mt-6 grid gap-5 md:grid-cols-2">
+                <Field label="Organization Name" htmlFor="name">
+                  <Input id="name" value={name} onChange={(event) => handleNameChange(event.target.value)} className={textInput} placeholder="Esportra Gaming" />
+                </Field>
+                <Field label="URL Slug" htmlFor="slug">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-zinc-600">/org/</span>
+                    <Input id="slug" value={slug} onChange={(event) => setSlug(generateSlug(event.target.value))} className={textInput} placeholder="esportra-gaming" />
                   </div>
-                  <CommandButton size="sm" variant="danger" onClick={() => handleDeleteAlbum(album.id)} aria-label={`Delete ${album.title}`}>
-                    <Trash2 className="h-4 w-4" />
-                  </CommandButton>
-                </CommandPanel>
-              ))}
-            </div>
-          )}
+                </Field>
+                <Field label="Description" htmlFor="description" className="md:col-span-2">
+                  <Textarea id="description" value={description} onChange={(event) => setDescription(event.target.value)} className={cn(textInput, 'min-h-[130px]')} placeholder="Tell players about your organization..." />
+                </Field>
+              </div>
 
-          <div className="mt-6">
-            {mediaItems.length === 0 ? (
-              <CommandEmptyState title="No media uploaded yet" description="Upload media assets for your organization gallery." icon={<ImageIcon className="h-5 w-5" />} />
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {mediaItems.map((item) => (
-                  <div key={item.id} className="group relative overflow-hidden border border-white/10 bg-black">
-                    <img src={item.url} loading="lazy" alt={item.caption || ''} className="h-52 w-full object-cover" />
-                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/82 p-3">
-                      <span className="truncate text-xs text-zinc-400">{item.caption || 'Media asset'}</span>
-                      <CommandButton size="sm" variant="danger" onClick={() => handleDeleteMedia(item.id)} aria-label="Delete media">
-                        <Trash2 className="h-4 w-4" />
-                      </CommandButton>
-                    </div>
-                  </div>
+              <div className="mt-6 grid gap-4 md:grid-cols-2">
+                {(['website', 'twitter', 'instagram', 'youtube', 'discord'] as const).map((key) => (
+                  <Field key={key} label={key} htmlFor={`social-${key}`}>
+                    <Input
+                      id={`social-${key}`}
+                      value={socialLinks[key] || ''}
+                      onChange={(event) => setSocialLinks((current) => ({ ...current, [key]: event.target.value }))}
+                      className={textInput}
+                      placeholder={key === 'website' ? 'https://example.com' : key}
+                    />
+                  </Field>
                 ))}
               </div>
-            )}
-          </div>
-        </CommandSection>
-      )}
+            </CommandSection>
+          )}
 
-      {activeSection === 'advanced' && organization && (
-        <CommandSection className="border-red-500/25 bg-red-950/10">
-          <SectionTitle title="Advanced" description="Irreversible controls for this organization." />
-          <CommandPanel className="mt-6 border-red-500/25 bg-red-950/10">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="font-semibold text-red-100">Delete Organization</h3>
-                <p className="mt-1 text-sm text-red-200/60">Active tournaments must be completed or cancelled first.</p>
+          {activeSection === 'branding' && (
+            <CommandSection>
+              <SectionTitle title="Branding" description="Upload the logo and banner used across organization and tournament surfaces." />
+              <div className="mt-6 grid gap-5 lg:grid-cols-2">
+                <CommandPanel>
+                  <div className="flex items-center gap-5">
+                    <Avatar className="h-24 w-24 rounded-none border border-white/10">
+                      <AvatarImage src={logoUrl} />
+                      <AvatarFallback className="rounded-none bg-rose-500 text-xl text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold text-white">Logo</h3>
+                      <p className="mt-1 text-sm text-zinc-500">Recommended 200x200 PNG or JPG.</p>
+                      <label className="mt-4 inline-flex cursor-pointer">
+                        <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                        <span className="inline-flex h-10 items-center justify-center border border-white/15 bg-[#0a0a0c] px-4 font-mono text-[11px] font-bold uppercase tracking-wider text-white transition-colors hover:border-white/30 hover:bg-white/[0.06]">
+                          <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Upload Logo</span>
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </CommandPanel>
+
+                <CommandPanel>
+                  <div
+                    className="flex h-32 items-center justify-center border border-white/10 bg-[#0a0a0c] bg-cover bg-center"
+                    style={bannerUrl ? { backgroundImage: `linear-gradient(to top, rgba(5,5,5,0.72), rgba(5,5,5,0.08)), url(${bannerUrl})` } : undefined}
+                  >
+                    {!bannerUrl ? <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">1200 x 300 recommended</span> : null}
+                  </div>
+                  <label className="mt-4 inline-flex cursor-pointer">
+                    <input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" />
+                    <span className="inline-flex h-10 items-center justify-center border border-white/15 bg-[#0a0a0c] px-4 font-mono text-[11px] font-bold uppercase tracking-wider text-white transition-colors hover:border-white/30 hover:bg-white/[0.06]">
+                      <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> Upload Banner</span>
+                    </span>
+                  </label>
+                </CommandPanel>
               </div>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <CommandButton variant="danger"><Trash2 className="h-4 w-4" />Delete</CommandButton>
-                </DialogTrigger>
-                <DialogContent className="rounded-none border-red-900 bg-zinc-950 text-white">
-                  <DialogHeader>
-                    <DialogTitle className="text-red-400">Delete Organization?</DialogTitle>
-                    <DialogDescription className="text-zinc-400">This action cannot be undone.</DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <CommandButton variant="secondary">Cancel</CommandButton>
-                    <CommandButton
-                      variant="danger"
-                      onClick={async () => {
-                        try {
-                          setLoading(true);
-                          await apiClient.delete(`/api/organizations/${organization.id}`);
-                          toast({ title: 'Deleted', description: 'Organization deleted successfully.' });
-                          setOrganization(null);
-                          navigate('/');
-                        } catch (error: any) {
-                          toast({ title: 'Error', description: error.message, variant: 'destructive' });
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                    >
-                      Delete Forever
-                    </CommandButton>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CommandPanel>
-        </CommandSection>
-      )}
+            </CommandSection>
+          )}
 
-      {activeSection === 'developer-api' && organization && (
-        <DeveloperApiSettings
-          orgId={organization.id}
-          isApiApproved={organization.is_api_approved ?? false}
-        />
-      )}
+          {activeSection === 'staff' && organization && user?.id && (
+            <CommandSection>
+              <OrganizationStaffManager organizationId={organization.id} ownerId={user.id} />
+            </CommandSection>
+          )}
+
+          {activeSection === 'media' && (
+            <CommandSection>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <SectionTitle title="Media" description="Manage organization albums and public media assets." />
+                <div className="flex flex-wrap gap-2">
+                  <input ref={mediaInputRef} type="file" multiple accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" />
+                  <CommandButton variant="secondary" onClick={() => mediaInputRef.current?.click()} disabled={uploadingMedia || !organization}>
+                    {uploadingMedia ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    Upload Media
+                  </CommandButton>
+                  <Dialog open={isCreateAlbumOpen} onOpenChange={setIsCreateAlbumOpen}>
+                    <DialogTrigger asChild>
+                      <CommandButton><Plus className="h-4 w-4" />Album</CommandButton>
+                    </DialogTrigger>
+                    <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
+                      <DialogHeader>
+                        <DialogTitle>Create Album</DialogTitle>
+                        <DialogDescription className="text-zinc-400">Group your photos and videos.</DialogDescription>
+                      </DialogHeader>
+                      <Input value={newAlbumTitle} onChange={(event) => setNewAlbumTitle(event.target.value)} placeholder="Album title" className={textInput} />
+                      <Textarea value={newAlbumDesc} onChange={(event) => setNewAlbumDesc(event.target.value)} placeholder="Description" className={textInput} />
+                      <DialogFooter>
+                        <CommandButton variant="secondary" onClick={() => setIsCreateAlbumOpen(false)}>Cancel</CommandButton>
+                        <CommandButton onClick={handleCreateAlbum} disabled={creatingAlbum}>{creatingAlbum ? 'Creating...' : 'Create'}</CommandButton>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-2">
+                <button type="button" onClick={() => { setActiveAlbum(null); if (organization) void fetchMedia(organization.id, null); }} className={cn('border px-3 py-2 font-mono text-[10px] uppercase tracking-wider', !activeAlbum ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>
+                  All Media
+                </button>
+                {albums.map((album) => (
+                  <button key={album.id} type="button" onClick={() => { setActiveAlbum(album); if (organization) void fetchMedia(organization.id, album.id); }} className={cn('border px-3 py-2 font-mono text-[10px] uppercase tracking-wider', activeAlbum?.id === album.id ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>
+                    {album.title}
+                  </button>
+                ))}
+              </div>
+
+              {albums.length > 0 && (
+                <div className="mt-5 grid gap-3 md:grid-cols-3">
+                  {albums.map((album) => (
+                    <CommandPanel key={album.id} className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="truncate font-semibold text-white">{album.title}</h3>
+                        <p className="text-xs text-zinc-500">{new Date(album.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <CommandButton size="sm" variant="danger" onClick={() => handleDeleteAlbum(album.id)} aria-label={`Delete ${album.title}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </CommandButton>
+                    </CommandPanel>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-6">
+                {mediaItems.length === 0 ? (
+                  <CommandEmptyState title="No media uploaded yet" description="Upload media assets for your organization gallery." icon={<ImageIcon className="h-5 w-5" />} />
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {mediaItems.map((item) => (
+                      <div key={item.id} className="group relative overflow-hidden border border-white/10 bg-black">
+                        <img src={item.url} loading="lazy" alt={item.caption || ''} className="h-52 w-full object-cover" />
+                        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/82 p-3">
+                          <span className="truncate text-xs text-zinc-400">{item.caption || 'Media asset'}</span>
+                          <CommandButton size="sm" variant="danger" onClick={() => handleDeleteMedia(item.id)} aria-label="Delete media">
+                            <Trash2 className="h-4 w-4" />
+                          </CommandButton>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CommandSection>
+          )}
+
+          {activeSection === 'developer-api-keys' && organization && (
+            <DeveloperApiSettings
+              orgId={organization.id}
+              isApiApproved={organization.is_api_approved ?? false}
+              activePanel="keys"
+            />
+          )}
+
+          {activeSection === 'developer-api-analytics' && organization && (
+            <DeveloperApiSettings
+              orgId={organization.id}
+              isApiApproved={organization.is_api_approved ?? false}
+              activePanel="analytics"
+            />
+          )}
+
+          {activeSection === 'developer-api-docs' && organization && (
+            <DeveloperApiSettings
+              orgId={organization.id}
+              isApiApproved={organization.is_api_approved ?? false}
+              activePanel="docs"
+            />
+          )}
+
+          {activeSection === 'advanced' && organization && (
+            <CommandSection className="border-red-500/25 bg-red-950/10">
+              <SectionTitle title="Advanced" description="Irreversible controls for this organization." />
+              <CommandPanel className="mt-6 border-red-500/25 bg-red-950/10">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="font-semibold text-red-100">Delete Organization</h3>
+                    <p className="mt-1 text-sm text-red-200/60">Active tournaments must be completed or cancelled first.</p>
+                  </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <CommandButton variant="danger"><Trash2 className="h-4 w-4" />Delete</CommandButton>
+                    </DialogTrigger>
+                    <DialogContent className="rounded-none border-red-900 bg-zinc-950 text-white">
+                      <DialogHeader>
+                        <DialogTitle className="text-red-400">Delete Organization?</DialogTitle>
+                        <DialogDescription className="text-zinc-400">This action cannot be undone.</DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <CommandButton variant="secondary">Cancel</CommandButton>
+                        <CommandButton
+                          variant="danger"
+                          onClick={async () => {
+                            try {
+                              setLoading(true);
+                              await apiClient.delete(`/api/organizations/${organization.id}`);
+                              toast({ title: 'Deleted', description: 'Organization deleted successfully.' });
+                              setOrganization(null);
+                              navigate('/');
+                            } catch (error: any) {
+                              toast({ title: 'Error', description: error.message, variant: 'destructive' });
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                        >
+                          Delete Forever
+                        </CommandButton>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CommandPanel>
+            </CommandSection>
+          )}
+        </div>
+      </div>
 
       <Dialog open={!!pendingLogoPreview} onOpenChange={(open) => { if (!open) cancelLogoPreview(); }}>
         <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
@@ -704,6 +734,79 @@ const OrganizationSettings: React.FC = () => {
     </motion.div>
   );
 };
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+interface OrgSettingsSidebarProps {
+  active: SettingsSection;
+  onChange: (section: SettingsSection) => void;
+}
+
+function OrgSettingsSidebar({ active, onChange }: OrgSettingsSidebarProps) {
+  const groups: Array<{
+    label: string;
+    labelClass: string;
+    items: Array<{ value: SettingsSection; label: string; icon: React.ElementType }>;
+  }> = [
+    {
+      label: 'Settings',
+      labelClass: 'text-zinc-400',
+      items: [
+        { value: 'profile', label: 'Profile', icon: User },
+        { value: 'branding', label: 'Branding', icon: Palette },
+        { value: 'staff', label: 'Staff', icon: Users },
+        { value: 'media', label: 'Media', icon: ImageIcon },
+      ],
+    },
+    {
+      label: 'Developer',
+      labelClass: 'text-zinc-400',
+      items: [
+        { value: 'developer-api-keys', label: 'API Keys', icon: Key },
+        { value: 'developer-api-analytics', label: 'Usage', icon: Activity },
+        { value: 'developer-api-docs', label: 'Docs', icon: BookOpen },
+      ],
+    },
+    {
+      label: 'Danger Zone',
+      labelClass: 'text-red-400',
+      items: [
+        { value: 'advanced', label: 'Advanced', icon: ShieldAlert },
+      ],
+    },
+  ];
+
+  return (
+    <nav className="h-fit border border-white/10 bg-[#08080a] p-2 lg:sticky lg:top-24">
+      {groups.map((group, index) => (
+        <div key={group.label} className={cn(index > 0 && 'mt-1 border-t border-white/10 pt-4')}>
+          <p className={cn('mb-3 px-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em]', group.labelClass)}>
+            {group.label}
+          </p>
+          <div className="space-y-1">
+            {group.items.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onChange(value)}
+                className={cn(
+                  'relative flex h-10 w-full items-center gap-3 border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70',
+                  active === value
+                    ? 'border-transparent bg-rose-500 text-white'
+                    : 'border-white/15 bg-black text-zinc-200 hover:border-white/25 hover:bg-white/[0.06] hover:text-white',
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="text-xs font-bold uppercase tracking-wide">{label}</span>
+                {active === value && <ChevronRight className="ml-auto h-4 w-4" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </nav>
+  );
+}
 
 function SectionTitle({ title, description }: { title: string; description: string }) {
   return (
