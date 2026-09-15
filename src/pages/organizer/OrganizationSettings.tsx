@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import OrganizationStaffManager from '@/components/organizer/OrganizationStaffManager';
+import { DeveloperApiSettings } from '@/pages/organizer/DeveloperApiSettings';
 import {
   CommandActionBar,
   CommandButton,
@@ -51,6 +52,7 @@ interface Organization {
     discord?: string;
   };
   is_verified: boolean;
+  is_api_approved?: boolean;
   created_at: string;
 }
 
@@ -75,6 +77,7 @@ const tabs = [
   { value: 'staff', label: 'Staff' },
   { value: 'media', label: 'Media' },
   { value: 'advanced', label: 'Advanced' },
+  { value: 'developer-api', label: 'Developer API' },
 ];
 
 const textInput = 'rounded-none border-white/10 bg-[#0a0a0c] text-white placeholder:text-zinc-600 focus:border-rose-500';
@@ -644,6 +647,13 @@ const OrganizationSettings: React.FC = () => {
             </div>
           </CommandPanel>
         </CommandSection>
+      )}
+
+      {activeSection === 'developer-api' && organization && (
+        <DeveloperApiSettings
+          orgId={organization.id}
+          isApiApproved={organization.is_api_approved ?? false}
+        />
       )}
 
       <Dialog open={!!pendingLogoPreview} onOpenChange={(open) => { if (!open) cancelLogoPreview(); }}>
