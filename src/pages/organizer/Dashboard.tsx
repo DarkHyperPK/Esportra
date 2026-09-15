@@ -1,14 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
+  Activity,
+  ArrowLeft,
   BarChart3,
   BookOpen,
   Building2,
   Calendar,
   ChevronRight,
+  ImageIcon,
+  Key,
+  Palette,
   Plus,
+  ShieldAlert,
   ShieldCheck,
   Trophy,
+  User,
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,7 +28,7 @@ import ParticipantsList from "@/components/organizer/ParticipantsList";
 import TournamentSchedule from "@/components/organizer/TournamentSchedule";
 import TournamentAnalytics from "@/components/organizer/TournamentAnalytics";
 import TournamentHistory from "@/components/organizer/TournamentHistory";
-import OrganizationSettings from "@/pages/organizer/OrganizationSettings";
+import OrganizationSettings, { type OrgSettingsSection } from "@/pages/organizer/OrganizationSettings";
 import OrganizationStaffManager from "@/components/organizer/OrganizationStaffManager";
 import {
   CommandButton,
@@ -84,6 +91,37 @@ const tabTitles: Record<string, { eyebrow: string; title: string; description: s
 
 const staffScheduleTabs = new Set(["schedule", "history"]);
 
+const ORG_SETTINGS_GROUPS: Array<{
+  label: string;
+  labelClass: string;
+  items: Array<{ value: OrgSettingsSection; label: string; icon: React.ElementType }>;
+}> = [
+  {
+    label: "Settings",
+    labelClass: "text-zinc-400",
+    items: [
+      { value: "profile", label: "Profile", icon: User },
+      { value: "branding", label: "Branding", icon: Palette },
+      { value: "staff", label: "Staff", icon: Users },
+      { value: "media", label: "Media", icon: ImageIcon },
+    ],
+  },
+  {
+    label: "Developer",
+    labelClass: "text-zinc-400",
+    items: [
+      { value: "developer-api-keys", label: "API Keys", icon: Key },
+      { value: "developer-api-analytics", label: "Usage", icon: Activity },
+      { value: "developer-api-docs", label: "Docs", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Danger Zone",
+    labelClass: "text-red-400",
+    items: [{ value: "advanced", label: "Advanced", icon: ShieldAlert }],
+  },
+];
+
 const OrganizerDashboard = () => {
   const { profile, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -102,6 +140,7 @@ const OrganizerDashboard = () => {
       ? tabFromUrl || "organization"
       : tabFromUrl || "tournaments";
   const [activeTab, setActiveTabState] = useState(defaultTab);
+  const [orgSection, setOrgSection] = useState<OrgSettingsSection>("profile");
   const { data: stats, isLoading: statsLoading } = useOrganizerStats();
   const [orgId, setOrgId] = useState<string | null>(null);
   const [orgName, setOrgName] = useState("");
@@ -193,59 +232,105 @@ const OrganizerDashboard = () => {
             </div>
 
             <div className="relative z-20 border-t border-white/10 pt-4">
-              <p className="mb-3 px-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">Manage</p>
-              <div role="navigation" aria-label="Organizer management" className="grid gap-2">
-                {visibleTabs.map((tab) => {
-                  const Icon = tab.icon;
-                  const active = activeTab === tab.value;
-                  return (
-                    <button
-                      key={tab.value}
-                      type="button"
-                      onClick={() => setActiveTab(tab.value)}
-                      className={cn(
-                        "relative z-20 flex h-10 w-full items-center gap-3 border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70",
-                        active
-                          ? "border-transparent bg-rose-500 text-white"
-                          : "border-white/15 bg-black text-zinc-200 hover:border-white/25 hover:bg-white/[0.06] hover:text-white",
-                      )}
-                    >
-                      <Icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-zinc-400")} />
-                      <span className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wide">{tab.label}</span>
-                      <ChevronRight className={cn("h-4 w-4 shrink-0 transition-opacity", active ? "text-white opacity-100" : "text-zinc-500 opacity-0")} />
-                    </button>
-                  );
-                })}
-              </div>
+              {activeTab === "organization" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("tournaments")}
+                    className="mb-4 flex items-center gap-1.5 text-xs text-zinc-500 transition-colors hover:text-white"
+                  >
+                    <ArrowLeft className="h-3 w-3" />
+                    Management
+                  </button>
+                  {ORG_SETTINGS_GROUPS.map((group, index) => (
+                    <div key={group.label} className={cn(index > 0 && "mt-1 border-t border-white/10 pt-4")}>
+                      <p className={cn("mb-3 px-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em]", group.labelClass)}>
+                        {group.label}
+                      </p>
+                      <div className="grid gap-2">
+                        {group.items.map(({ value, label, icon: Icon }) => {
+                          const active = orgSection === value;
+                          return (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => setOrgSection(value)}
+                              className={cn(
+                                "relative z-20 flex h-10 w-full items-center gap-3 border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70",
+                                active
+                                  ? "border-transparent bg-rose-500 text-white"
+                                  : "border-white/15 bg-black text-zinc-200 hover:border-white/25 hover:bg-white/[0.06] hover:text-white",
+                              )}
+                            >
+                              <Icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-zinc-400")} />
+                              <span className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wide">{label}</span>
+                              <ChevronRight className={cn("h-4 w-4 shrink-0 transition-opacity", active ? "text-white opacity-100" : "text-zinc-500 opacity-0")} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <p className="mb-3 px-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">Manage</p>
+                  <div role="navigation" aria-label="Organizer management" className="grid gap-2">
+                    {visibleTabs.map((tab) => {
+                      const Icon = tab.icon;
+                      const active = activeTab === tab.value;
+                      return (
+                        <button
+                          key={tab.value}
+                          type="button"
+                          onClick={() => setActiveTab(tab.value)}
+                          className={cn(
+                            "relative z-20 flex h-10 w-full items-center gap-3 border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70",
+                            active
+                              ? "border-transparent bg-rose-500 text-white"
+                              : "border-white/15 bg-black text-zinc-200 hover:border-white/25 hover:bg-white/[0.06] hover:text-white",
+                          )}
+                        >
+                          <Icon className={cn("h-4 w-4 shrink-0", active ? "text-white" : "text-zinc-400")} />
+                          <span className="min-w-0 flex-1 truncate text-xs font-bold uppercase tracking-wide">{tab.label}</span>
+                          <ChevronRight className={cn("h-4 w-4 shrink-0 transition-opacity", active ? "text-white opacity-100" : "text-zinc-500 opacity-0")} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           </CommandRail>
         }
       >
-        <CommandHeader
-          eyebrow={activeMeta.eyebrow}
-          title={activeMeta.title}
-          description={activeMeta.description}
-          actions={
-            staffOnlyView ? undefined : (
-              <>
-                <CommandButton variant="secondary" onClick={() => navigate("/organizer/tournaments")}>
-                  <Trophy className="h-4 w-4" />
-                  Tournaments
-                </CommandButton>
-                <CommandButton slide onClick={() => navigate("/tournaments/create")}>
-                  <Plus className="h-4 w-4" />
-                  Create Tournament
-                </CommandButton>
-                <CommandButton variant="ghost" onClick={() => navigate("/help?entry=organizer-guide")}>
-                  <BookOpen className="h-4 w-4" />
-                  Organizer Guide
-                </CommandButton>
-              </>
-            )
-          }
-        />
+        {activeTab !== "organization" && (
+          <CommandHeader
+            eyebrow={activeMeta.eyebrow}
+            title={activeMeta.title}
+            description={activeMeta.description}
+            actions={
+              staffOnlyView ? undefined : (
+                <>
+                  <CommandButton variant="secondary" onClick={() => navigate("/organizer/tournaments")}>
+                    <Trophy className="h-4 w-4" />
+                    Tournaments
+                  </CommandButton>
+                  <CommandButton slide onClick={() => navigate("/tournaments/create")}>
+                    <Plus className="h-4 w-4" />
+                    Create Tournament
+                  </CommandButton>
+                  <CommandButton variant="ghost" onClick={() => navigate("/help?entry=organizer-guide")}>
+                    <BookOpen className="h-4 w-4" />
+                    Organizer Guide
+                  </CommandButton>
+                </>
+              )
+            }
+          />
+        )}
 
-        {!staffOnlyView && (
+        {!staffOnlyView && activeTab !== "organization" && (
           <div className="grid grid-cols-3 gap-3">
             {metrics.map((metric) => (
               <CommandMetric key={metric.label} label={metric.label} value={metric.value} icon={metric.icon} />
@@ -258,7 +343,7 @@ const OrganizerDashboard = () => {
         {activeTab === "schedule" && <TournamentSchedule />}
         {activeTab === "analytics" && <TournamentAnalytics />}
         {activeTab === "history" && <TournamentHistory />}
-        {activeTab === "organization" && <OrganizationSettings />}
+        {activeTab === "organization" && <OrganizationSettings activeSection={orgSection} />}
         {activeTab === "staff" && (
           <CommandSection>
             {orgId && user?.id ? (
