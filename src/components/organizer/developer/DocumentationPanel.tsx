@@ -2,20 +2,20 @@ import { useState } from 'react';
 import { ExternalLink, FileText } from 'lucide-react';
 import { CommandButton, CommandEmptyState, CommandPanel, CommandSection } from '@/components/management/CommandSurface';
 
-const DOCS_URL = '/api/v1/docs';
+const DOCS_URL = `${import.meta.env.VITE_API_URL}/api/v1/docs`;
 
 export function DocumentationPanel() {
   const [iframeError, setIframeError] = useState(false);
-  const origin = window.location.origin;
+  const apiBase = import.meta.env.VITE_API_URL as string;
 
   const curlExample = `# List your tournaments
 curl -X GET \\
-  "${origin}/api/v1/tournaments" \\
+  "${apiBase}/api/v1/tournaments" \\
   -H "X-Api-Key: ek_sand_YOUR_API_KEY"
 
 # Create a tournament
 curl -X POST \\
-  "${origin}/api/v1/tournaments" \\
+  "${apiBase}/api/v1/tournaments" \\
   -H "X-Api-Key: ek_sand_YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"name":"My Tournament","game":"valorant","format":"single_elimination"}'`;
