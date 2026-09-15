@@ -41,7 +41,7 @@ export function KeyManagementDashboard({
   keys,
   isLoading,
 }: KeyManagementDashboardProps) {
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createDialogEnv, setCreateDialogEnv] = useState<'sandbox' | 'live' | null>(null);
 
   const sandboxKeys = keys.filter((k) => k.environment === 'sandbox' && k.status !== 'revoked');
   const liveKeys = keys.filter((k) => k.environment === 'live' && k.status !== 'revoked');
@@ -77,7 +77,7 @@ export function KeyManagementDashboard({
           </div>
           <CommandButton
             size="sm"
-            onClick={() => setShowCreateDialog(true)}
+            onClick={() => setCreateDialogEnv('sandbox')}
             disabled={sandboxAtLimit}
           >
             <Plus className="h-4 w-4" />
@@ -118,7 +118,7 @@ export function KeyManagementDashboard({
           {isApiApproved && (
             <CommandButton
               size="sm"
-              onClick={() => setShowCreateDialog(true)}
+              onClick={() => setCreateDialogEnv('live')}
               disabled={liveAtLimit}
             >
               <Plus className="h-4 w-4" />
@@ -167,11 +167,11 @@ export function KeyManagementDashboard({
         />
       )}
 
-      {showCreateDialog && (
+      {createDialogEnv && (
         <CreateKeyDialog
           orgId={orgId}
-          isApiApproved={isApiApproved}
-          onOpenChange={(open) => { if (!open) setShowCreateDialog(false); }}
+          environment={createDialogEnv}
+          onOpenChange={(open) => { if (!open) setCreateDialogEnv(null); }}
         />
       )}
     </div>

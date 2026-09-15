@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, Shield } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   CommandButton,
   CommandPanel,
-  CommandSegmentedButton,
 } from '@/components/management/CommandSurface';
 import {
   type CreateKeyResponse,
@@ -37,15 +36,13 @@ const textInput = 'rounded-none border-white/10 bg-[#0a0a0c] text-white placehol
 
 interface CreateKeyDialogProps {
   orgId: string;
-  isApiApproved: boolean;
+  environment: 'sandbox' | 'live';
   onOpenChange: (open: boolean) => void;
 }
 
-export function CreateKeyDialog({ orgId, isApiApproved, onOpenChange }: CreateKeyDialogProps) {
+export function CreateKeyDialog({ orgId, environment, onOpenChange }: CreateKeyDialogProps) {
   const [name, setName] = useState('');
-  const [environment, setEnvironment] = useState<'sandbox' | 'live'>('sandbox');
   const [scopes, setScopes] = useState<string[]>(SCOPES.map((s) => s.value));
-  const [rateLimit, setRateLimit] = useState(60);
   const [nameError, setNameError] = useState('');
   const [createdKeyData, setCreatedKeyData] = useState<CreateKeyResponse | null>(null);
 
@@ -67,12 +64,11 @@ export function CreateKeyDialog({ orgId, isApiApproved, onOpenChange }: CreateKe
     if (scopes.length === 0) {
       return;
     }
-    const clampedRate = Math.min(300, Math.max(1, rateLimit));
     createMutation.mutate({
       name: name.trim(),
       environment,
       scopes,
-      rate_limit_per_min: clampedRate,
+      rate_limit_per_min: 60,
     });
   };
 
@@ -81,8 +77,7 @@ export function CreateKeyDialog({ orgId, isApiApproved, onOpenChange }: CreateKe
     onOpenChange(false);
   };
 
-  const rateLimitValid = rateLimit >= 1 && rateLimit <= 300;
-  const canSubmit = name.trim().length > 0 && scopes.length > 0 && rateLimitValid;
+  const canSubmit = name.trim().length > 0 && scopes.length > 0;
 
   return (
     <>
@@ -108,32 +103,6 @@ export function CreateKeyDialog({ orgId, isApiApproved, onOpenChange }: CreateKe
                 className={textInput}
               />
               {nameError && <p className="text-xs text-rose-400">{nameError}</p>}
-            </div>
-
-            {/* Environment */}
-            <div className="space-y-2">
-              <Label className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                Environment
-              </Label>
-              <div className="flex gap-2">
-                <CommandSegmentedButton
-                  active={environment === 'sandbox'}
-                  onClick={() => setEnvironment('sandbox')}
-                >
-                  Sandbox
-                </CommandSegmentedButton>
-                <CommandSegmentedButton
-                  active={environment === 'live'}
-                  onClick={() => { if (isApiApproved) setEnvironment('live'); }}
-                  disabled={!isApiApproved}
-                >
-                  {!isApiApproved && <Shield className="mr-1 h-3 w-3" />}
-                  Live
-                </CommandSegmentedButton>
-              </div>
-              {!isApiApproved && (
-                <p className="text-xs text-zinc-500">Live access requires API approval. Apply below.</p>
-              )}
             </div>
 
             {/* Scopes */}
@@ -164,23 +133,6 @@ export function CreateKeyDialog({ orgId, isApiApproved, onOpenChange }: CreateKe
               </CommandPanel>
             </div>
 
-            {/* Rate limit */}
-            <div className="space-y-2">
-              <Label className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                Rate Limit (requests / minute)
-              </Label>
-              <Input
-                type="number"
-                value={rateLimit}
-                onChange={(e) => setRateLimit(Number(e.target.value))}
-                min={1}
-                max={300}
-                className={`${textInput} w-32`}
-              />
-              {!rateLimitValid && (
-                <p className="text-xs text-rose-400">Must be between 1 and 300.</p>
-              )}
-            </div>
           </div>
 
           <DialogFooter>
