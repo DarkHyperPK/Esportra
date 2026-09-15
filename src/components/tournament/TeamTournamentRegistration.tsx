@@ -24,6 +24,7 @@ import {
   Zap,
   Info
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useGameLogo, useGameLogos } from '@/hooks/useGameLogo';
 import TournamentLineupPicker, { isTournamentLineupComplete } from '@/components/tournament/TournamentLineupPicker';
 import { getGameMode, getEffectiveGameFeatures, getRosterLimits, isAssistedMatchReportingEnabled } from '@/utils/gameFeatures';
@@ -112,16 +113,16 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   const [loading, setLoading] = useState(false);
   const [fetchingTeams, setFetchingTeams] = useState(true);
   const [hasDiscordLinked, setHasDiscordLinked] = useState<boolean | null>(null);
+  const [discordDmsEnabled, setDiscordDmsEnabled] = useState(true);
   const _settings = tournament.settings as any;
   const discordLinkCount = _settings?.discordLinkCount ?? (_settings?.requireDiscordLink ? 1 : 0);
   const requiresDiscordLink = discordLinkCount > 0;
 
   useEffect(() => {
-    if (!requiresDiscordLink) return;
     apiClient.get<{ has_discord: boolean }>('/api/profiles/me/discord-dm')
       .then((r) => setHasDiscordLinked(r.has_discord))
       .catch(() => setHasDiscordLinked(false));
-  }, [requiresDiscordLink]);
+  }, []);
 
   // Team selection flow
   const [captainTeams, setCaptainTeams] = useState<TeamRow[]>([]);
@@ -606,6 +607,12 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         teamContactEmail: user.email || null,
       });
 
+      // Best-effort: write Discord DM preference if user opted out
+      if (hasDiscordLinked && !discordDmsEnabled) {
+        apiClient.put(`/api/profiles/me/tournament-discord-prefs/${tournament.id}`, { discord_dms_enabled: false })
+          .catch(() => {});
+      }
+
       const isPaid = tournament.entry_fee && tournament.entry_fee > 0;
       toast({
         title: isPaid ? 'Registration Pending' : 'Registered',
@@ -1026,6 +1033,20 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Discord DM opt-in */}
+        {hasDiscordLinked && (
+          <div className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3">
+            <Switch
+              id="discord-dms-team"
+              checked={discordDmsEnabled}
+              onCheckedChange={setDiscordDmsEnabled}
+            />
+            <label htmlFor="discord-dms-team" className="text-sm text-gray-300 cursor-pointer">
+              Send me Discord DMs for this tournament
+            </label>
           </div>
         )}
 

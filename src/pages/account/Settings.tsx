@@ -12,7 +12,7 @@ import { usePasswordChange } from '@/hooks/usePasswordChange';
 import { passwordSchema } from '@/schemas/password';
 import {
   Loader2, Copy, Check, Shield, Link2, Award, Monitor, Bell, Info,
-  Clock, FileText, Calendar, Users, Trophy, MessageSquare, Hash, Target, AlertTriangle,
+  Clock, FileText, Trophy, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -386,13 +386,6 @@ function ConnectedAccountsTab({ onNavigateToNotifications }: { onNavigateToNotif
 
 // ─── Tab: Notifications ──────────────────────────────────────────────────────
 
-interface GameNotificationConfig {
-  gameSlug: string;
-  gameName: string;
-  logoUrl: string;
-  categories: Array<{ name: string; types: string[] }>;
-}
-
 interface TournamentDiscordPref {
   tournamentId: string;
   tournamentName: string;
@@ -401,17 +394,6 @@ interface TournamentDiscordPref {
   discordDmsEnabled: boolean;
 }
 
-const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  'Match Alerts': Bell,
-  'Check-in': Clock,
-  'Results & Disputes': FileText,
-  'Scheduling': Calendar,
-  'Team': Users,
-  'Tournament': Trophy,
-  'Match Chat': MessageSquare,
-  'Party Codes': Hash,
-  'Battle Royale': Target,
-};
 
 function NotificationsTab() {
   const { toast } = useToast();
@@ -420,12 +402,6 @@ function NotificationsTab() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['discord-dm-prefs'],
     queryFn: () => apiClient.get<{ discord_dm_enabled: boolean; has_discord: boolean }>('/api/profiles/me/discord-dm'),
-  });
-
-  const notifConfigsQuery = useQuery({
-    queryKey: ['game-notification-configs'],
-    queryFn: () => apiClient.get<GameNotificationConfig[]>('/api/game-catalog/notification-configs'),
-    staleTime: 1000 * 60 * 10,
   });
 
   const handleToggle = async () => {
@@ -526,58 +502,6 @@ function NotificationsTab() {
             <span>Tournament updates — registration confirmed, tournament starting</span>
           </li>
         </ul>
-      </div>
-
-      <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 relative">
-        <h4 className="text-white font-medium mb-4">Discord Notifications by Game</h4>
-
-        {notifConfigsQuery.isLoading ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-rose-400" />
-          </div>
-        ) : !notifConfigsQuery.data || notifConfigsQuery.data.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-4">
-            No game notification configurations available.
-          </p>
-        ) : (
-          <>
-            {(!enabled || !hasDiscord) && (
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] rounded-xl flex items-center justify-center z-10">
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4 max-w-xs text-center">
-                  <p className="text-sm text-gray-300">
-                    Turn on Discord DMs above to receive these notifications
-                  </p>
-                </div>
-              </div>
-            )}
-            <div className={!enabled || !hasDiscord ? 'opacity-50 pointer-events-none' : ''}>
-              {notifConfigsQuery.data.map((game) => {
-                return (
-                  <div
-                    key={game.gameSlug}
-                    className={`mb-5 pb-5 border-b border-white/5 last:border-b-0 last:pb-0 last:mb-0`}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <img src={game.logoUrl} alt={game.gameName} className="w-8 h-8 rounded" />
-                      <span className="text-white font-medium text-sm">{game.gameName}</span>
-                    </div>
-                    <div className="space-y-2 ml-11">
-                      {game.categories.map((category) => {
-                        const CategoryIcon = CATEGORY_ICONS[category.name] || Bell;
-                        return (
-                          <div key={category.name} className="flex items-center gap-2">
-                            <CategoryIcon className="text-gray-400 w-4 h-4 shrink-0" />
-                            <span className="text-sm text-gray-400">{category.name}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
       </div>
 
       <TournamentDiscordPrefsSection globalEnabled={enabled} hasDiscord={hasDiscord} />

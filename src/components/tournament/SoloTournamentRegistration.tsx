@@ -20,6 +20,7 @@ import {
   Shield,
   ShieldCheck
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 
 interface SoloTournamentRegistrationProps {
   tournament: {
@@ -63,6 +64,7 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
     gamer_tag: profile?.username || ''
   });
   const [hasDiscordLinked, setHasDiscordLinked] = useState<boolean | null>(null);
+  const [discordDmsEnabled, setDiscordDmsEnabled] = useState(true);
 
   const _settings = tournament.settings as any;
   const discordLinkCount = _settings?.discordLinkCount ?? (_settings?.requireDiscordLink ? 1 : 0);
@@ -74,11 +76,10 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
   const requiresRiotLink = isRiotGame && !!riotAccount;
 
   useEffect(() => {
-    if (!requiresDiscordLink) return;
     apiClient.get<{ has_discord: boolean }>('/api/profiles/me/discord-dm')
       .then((r) => setHasDiscordLinked(r.has_discord))
       .catch(() => setHasDiscordLinked(false));
-  }, [requiresDiscordLink]);
+  }, []);
 
   // Auto-fill gamer tag: Riot tag for Riot games, otherwise username
   useEffect(() => {
@@ -180,6 +181,12 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
         gamerTag: registrationData.gamer_tag.trim(),
         soloContactEmail: user.email,
       });
+
+      // Best-effort: write Discord DM preference if user opted out
+      if (hasDiscordLinked && !discordDmsEnabled) {
+        apiClient.put(`/api/profiles/me/tournament-discord-prefs/${tournament.id}`, { discord_dms_enabled: false })
+          .catch(() => {});
+      }
 
       toast({
         title: 'Registration Successful!',
@@ -341,6 +348,20 @@ const SoloTournamentRegistration: React.FC<SoloTournamentRegistrationProps> = ({
             </p>
           </div>
         </div>
+
+        {/* Discord DM opt-in */}
+        {hasDiscordLinked && (
+          <div className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3">
+            <Switch
+              id="discord-dms-solo"
+              checked={discordDmsEnabled}
+              onCheckedChange={setDiscordDmsEnabled}
+            />
+            <label htmlFor="discord-dms-solo" className="text-sm text-gray-300 cursor-pointer">
+              Send me Discord DMs for this tournament
+            </label>
+          </div>
+        )}
 
         {/* Discord link requirement warning */}
         {requiresDiscordLink && hasDiscordLinked === false && (
