@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import Footer from '@/components/Footer';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -328,7 +329,21 @@ function ConnectedAccountsTab({ onNavigateToNotifications }: { onNavigateToNotif
               {acc.icon}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-white text-sm">{acc.name}</div>
+              <div className="font-medium text-white text-sm flex items-center gap-1.5">
+                {acc.name}
+                {acc.key === 'discord' && !acc.connected && (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="w-3.5 h-3.5 text-blue-400/60 hover:text-blue-400 cursor-default shrink-0 transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+                        Connecting Discord lets you receive DMs for match alerts, check-in reminders, scheduling updates, and tournament notifications. Manage preferences in the Notifications tab after linking.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
               <div className={`text-xs mt-0.5 truncate ${acc.connected ? 'text-emerald-400' : 'text-gray-500'}`}>
                 {acc.description}
               </div>
@@ -351,19 +366,6 @@ function ConnectedAccountsTab({ onNavigateToNotifications }: { onNavigateToNotif
               )
             )}
           </div>
-          {acc.key === 'discord' && !acc.connected && (
-            <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 mt-4 flex items-start gap-3">
-              <Info className="text-blue-400 w-5 h-5 shrink-0 mt-0.5" />
-              <div>
-                <div className="text-sm font-medium text-white">About Discord Notifications</div>
-                <p className="text-xs text-blue-300 leading-relaxed mt-1">
-                  When you connect Discord, you'll receive direct messages for match reminders, check-in alerts,
-                  scheduling updates, team invites, and tournament notifications. You can manage notification
-                  settings after linking.
-                </p>
-              </div>
-            </div>
-          )}
           {acc.key === 'discord' && acc.connected && (
             <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 mt-3 flex items-start gap-2">
               <Check className="text-emerald-400 w-4 h-4 shrink-0 mt-0.5" />
