@@ -373,23 +373,25 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = ({ activeSecti
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-3">
 
-      {/* Org card — header with banner */}
+      {/* Org card — header */}
       <div className="overflow-hidden border border-white/10 bg-[#0a0a0c]">
+        {/* Banner */}
         <div
-          className="h-28 w-full bg-cover bg-center"
+          className="h-36 w-full bg-cover bg-center"
           style={bannerUrl
-            ? { backgroundImage: `linear-gradient(to bottom, rgba(5,5,5,0.1), rgba(5,5,5,0.75)), url(${bannerUrl})` }
-            : { background: 'linear-gradient(135deg, #1a0005 0%, #0a0a0c 60%, #0d0005 100%)' }
+            ? { backgroundImage: `linear-gradient(to bottom, rgba(5,5,5,0.05), rgba(5,5,5,0.6)), url(${bannerUrl})` }
+            : { background: 'linear-gradient(135deg, #3b0010 0%, #1a000a 40%, #0a0a0c 100%)' }
           }
         />
-        <div className="flex items-end gap-4 px-5 pb-4 -mt-8">
-          <Avatar className="h-14 w-14 shrink-0 rounded-none border-2 border-[#0a0a0c] bg-black ring-1 ring-white/10">
+        {/* Identity row — avatar overlaps banner */}
+        <div className="flex items-end gap-4 px-6 -mt-9 pb-5">
+          <Avatar className="h-16 w-16 shrink-0 rounded-none border-2 border-[#0a0a0c] bg-[#0a0a0c] ring-1 ring-white/15 shadow-xl">
             <AvatarImage src={logoUrl} />
-            <AvatarFallback className="rounded-none bg-rose-500 text-lg font-black text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
+            <AvatarFallback className="rounded-none bg-rose-500 text-xl font-black text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
           </Avatar>
-          <div className="mb-1 min-w-0 flex-1">
+          <div className="mb-0.5 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-bold text-white">{name || 'Your Organization'}</h2>
+              <h2 className="text-lg font-bold tracking-tight text-white">{name || 'Your Organization'}</h2>
               {organization?.is_verified && (
                 <span className="inline-flex items-center gap-1 border border-emerald-500/35 bg-emerald-950/20 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-300">
                   <CheckCircle className="h-2.5 w-2.5" />
@@ -397,15 +399,14 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = ({ activeSecti
                 </span>
               )}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-4">
-              <p className="text-xs text-zinc-500">@{slug || 'your-slug'} · {ownerName}</p>
-              <div className="flex items-center gap-4">
-                <CompactStat icon={<Trophy className="h-3 w-3" />} value={stats.totalTournaments} label="tournaments" />
-                <CompactStat icon={<Users className="h-3 w-3" />} value={stats.totalParticipants} label="participants" />
-                <CompactStat icon={<Calendar className="h-3 w-3" />} value={stats.activeTournaments} label="active" />
-              </div>
-            </div>
+            <p className="mt-0.5 text-xs text-zinc-500">@{slug || 'your-slug'} · {ownerName}</p>
           </div>
+        </div>
+        {/* Stats bar */}
+        <div className="flex items-center gap-6 border-t border-white/5 px-6 py-3">
+          <CompactStat icon={<Trophy className="h-3 w-3" />} value={stats.totalTournaments} label="tournaments" />
+          <CompactStat icon={<Users className="h-3 w-3" />} value={stats.totalParticipants} label="participants" />
+          <CompactStat icon={<Calendar className="h-3 w-3" />} value={stats.activeTournaments} label="active" />
         </div>
       </div>
 

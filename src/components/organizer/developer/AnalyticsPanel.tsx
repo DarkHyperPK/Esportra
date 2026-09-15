@@ -117,9 +117,9 @@ export function AnalyticsPanel({ orgId }: AnalyticsPanelProps) {
         />
         <CommandMetric
           label="Avg Response"
-          value={summaryData ? `${summaryData.avg_response_ms.toFixed(0)}ms` : '—'}
+          value={summaryData ? `${(summaryData.avg_response_ms ?? 0).toFixed(0)}ms` : '—'}
           icon={<Clock className="h-4 w-4" />}
-          tone={summaryData ? responseTone(summaryData.avg_response_ms) : 'neutral'}
+          tone={summaryData ? responseTone(summaryData.avg_response_ms ?? 0) : 'neutral'}
         />
         <CommandMetric
           label="Rate Limited"
