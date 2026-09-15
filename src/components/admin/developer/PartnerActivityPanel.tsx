@@ -27,8 +27,8 @@ function periodRange(period: Period): { from: string; to: string } {
   return { from: toIso(from), to: toIso(to) };
 }
 
-function errorRateClass(rate: number) {
-  if (rate === 0) return 'text-emerald-400';
+function errorRateClass(rate: number | null) {
+  if (!rate) return 'text-emerald-400';
   if (rate < 5) return 'text-amber-400';
   return 'text-red-400';
 }
@@ -47,7 +47,7 @@ function PartnerRow({ partner }: PartnerRowProps) {
         {partner.total_requests.toLocaleString()}
       </td>
       <td className={cn('py-3 pr-4 text-sm font-mono', errorRateClass(partner.error_rate))}>
-        {partner.error_rate.toFixed(1)}%
+        {(partner.error_rate ?? 0).toFixed(1)}%
       </td>
       <td className="py-3 pr-4 text-sm text-zinc-300">
         {partner.sandbox_key_count.toLocaleString()}

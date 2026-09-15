@@ -87,7 +87,7 @@ export type PartnerActivity = {
   organization_id: string;
   org_name: string;
   total_requests: number;
-  error_rate: number;
+  error_rate: number | null;
   sandbox_key_count: number;
   live_key_count: number;
   last_active_at: string | null;
