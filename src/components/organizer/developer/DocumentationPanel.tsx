@@ -4,20 +4,21 @@ import { CommandButton, CommandEmptyState, CommandPanel, CommandSection } from '
 
 const DOCS_URL = '/api/v1/docs';
 
-const CURL_EXAMPLE = `# List your tournaments
+export function DocumentationPanel() {
+  const [iframeError, setIframeError] = useState(false);
+  const origin = window.location.origin;
+
+  const curlExample = `# List your tournaments
 curl -X GET \\
-  "${window?.location?.origin ?? ''}/api/v1/tournaments" \\
+  "${origin}/api/v1/tournaments" \\
   -H "X-Api-Key: ek_sand_YOUR_API_KEY"
 
 # Create a tournament
 curl -X POST \\
-  "${window?.location?.origin ?? ''}/api/v1/tournaments" \\
+  "${origin}/api/v1/tournaments" \\
   -H "X-Api-Key: ek_sand_YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"name":"My Tournament","game":"valorant","format":"single_elimination"}'`;
-
-export function DocumentationPanel() {
-  const [iframeError, setIframeError] = useState(false);
 
   return (
     <div className="space-y-5">
@@ -31,7 +32,7 @@ export function DocumentationPanel() {
             <span className="flex h-6 w-6 shrink-0 items-center justify-center bg-rose-500 font-mono text-xs font-bold text-white">
               1
             </span>
-            <p>Create a sandbox API key on the Keys tab above.</p>
+            <p>Create a sandbox API key on the Keys tab.</p>
           </div>
           <div className="flex gap-4">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center bg-rose-500 font-mono text-xs font-bold text-white">
@@ -48,7 +49,7 @@ export function DocumentationPanel() {
             <span className="flex h-6 w-6 shrink-0 items-center justify-center bg-rose-500 font-mono text-xs font-bold text-white">
               3
             </span>
-            <p>Explore the interactive docs below.</p>
+            <p>Explore the interactive reference below or open it in a new tab.</p>
           </div>
         </div>
 
@@ -56,7 +57,7 @@ export function DocumentationPanel() {
           <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-zinc-500">
             Example curl
           </p>
-          <pre className="overflow-x-auto text-xs text-emerald-300">{CURL_EXAMPLE}</pre>
+          <pre className="overflow-x-auto text-xs text-emerald-300">{curlExample}</pre>
         </CommandPanel>
       </CommandSection>
 

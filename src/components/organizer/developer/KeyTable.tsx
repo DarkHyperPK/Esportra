@@ -95,8 +95,8 @@ export function KeyTable({ keys, emptyMessage = 'No keys yet.' }: KeyTableProps)
   return (
     <>
       {/* Column headers */}
-      <div className="hidden grid-cols-[200px_160px_90px_90px_1fr_130px_130px_80px] gap-4 border border-white/5 bg-white/[0.01] px-4 py-2 lg:grid">
-        {['Name', 'Key Prefix', 'Env', 'Status', 'Scopes', 'Last Used', 'Created', 'Actions'].map((h) => (
+      <div className="hidden grid-cols-[200px_160px_90px_90px_130px_130px_80px] gap-4 border border-white/5 bg-white/[0.01] px-4 py-2 lg:grid">
+        {['Name', 'Key Prefix', 'Env', 'Status', 'Last Used', 'Created', 'Actions'].map((h) => (
           <span key={h} className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-600">
             {h}
           </span>
@@ -106,7 +106,7 @@ export function KeyTable({ keys, emptyMessage = 'No keys yet.' }: KeyTableProps)
       <div className="space-y-2">
         {keys.map((key) => (
           <CommandPanel key={key.id} className="p-3">
-            <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[200px_160px_90px_90px_1fr_130px_130px_80px] lg:items-center lg:gap-4">
+            <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[200px_160px_90px_90px_130px_130px_80px] lg:items-center lg:gap-4">
               {/* Name */}
               <div>
                 <InlineNameEditor keyId={key.id} currentName={key.name} />
@@ -147,15 +147,6 @@ export function KeyTable({ keys, emptyMessage = 'No keys yet.' }: KeyTableProps)
                     {formatDistanceToNow(new Date(key.grace_period_until), { addSuffix: true })}
                   </p>
                 )}
-              </div>
-
-              {/* Scopes */}
-              <div>
-                <p className="truncate text-xs text-zinc-400">
-                  {key.scopes.length > 3
-                    ? `${key.scopes.slice(0, 3).join(', ')} +${key.scopes.length - 3}`
-                    : key.scopes.join(', ')}
-                </p>
               </div>
 
               {/* Last used */}
