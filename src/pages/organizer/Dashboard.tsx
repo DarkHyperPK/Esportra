@@ -221,13 +221,13 @@ const OrganizerDashboard = () => {
       <CommandPageGrid
         rail={
           <CommandRail className="lg:sticky lg:top-24">
-            <div className="relative z-20 flex items-center gap-3 pb-4">
-              <div className="flex h-10 w-10 items-center justify-center border border-white/10 bg-black">
-                {orgLogo ? <img src={orgLogo} alt="" className="h-full w-full object-cover" /> : <Building2 className="h-5 w-5 text-rose-400" />}
+            <div className="relative z-20 flex items-center gap-2.5 pb-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center border border-white/10 bg-black">
+                {orgLogo ? <img src={orgLogo} alt="" className="h-full w-full object-cover" /> : <Building2 className="h-4 w-4 text-rose-400" />}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">{orgName || "Organization"}</p>
-                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-500">{ownerName}</p>
+                <p className="truncate text-xs font-semibold text-white">{orgName || "Organization"}</p>
+                <p className="font-mono text-[9px] uppercase tracking-widest text-zinc-500">{ownerName}</p>
               </div>
             </div>
 
@@ -237,17 +237,17 @@ const OrganizerDashboard = () => {
                   <button
                     type="button"
                     onClick={() => setActiveTab("tournaments")}
-                    className="mb-4 flex items-center gap-1.5 text-xs text-zinc-500 transition-colors hover:text-white"
+                    className="mb-3 flex items-center gap-1.5 text-[10px] text-zinc-500 transition-colors hover:text-white"
                   >
                     <ArrowLeft className="h-3 w-3" />
                     Management
                   </button>
                   {ORG_SETTINGS_GROUPS.map((group, index) => (
-                    <div key={group.label} className={cn(index > 0 && "mt-1 border-t border-white/10 pt-4")}>
-                      <p className={cn("mb-3 px-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em]", group.labelClass)}>
+                    <div key={group.label} className={cn(index > 0 && "mt-0.5 border-t border-white/10 pt-3")}>
+                      <p className={cn("mb-1.5 px-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em]", group.labelClass)}>
                         {group.label}
                       </p>
-                      <div className="grid gap-2">
+                      <div className="grid gap-0.5">
                         {group.items.map(({ value, label, icon: Icon }) => {
                           const active = orgSection === value;
                           return (
@@ -256,7 +256,7 @@ const OrganizerDashboard = () => {
                               type="button"
                               onClick={() => setOrgSection(value)}
                               className={cn(
-                                "relative z-20 flex h-10 w-full items-center gap-3 border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70",
+                                "relative z-20 flex h-8 w-full items-center gap-2.5 border px-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70",
                                 active
                                   ? "border-transparent bg-rose-500 text-white"
                                   : "border-white/15 bg-black text-zinc-200 hover:border-white/25 hover:bg-white/[0.06] hover:text-white",
@@ -274,8 +274,8 @@ const OrganizerDashboard = () => {
                 </>
               ) : (
                 <>
-                  <p className="mb-3 px-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">Manage</p>
-                  <div role="navigation" aria-label="Organizer management" className="grid gap-2">
+                  <p className="mb-1.5 px-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">Manage</p>
+                  <div role="navigation" aria-label="Organizer management" className="grid gap-0.5">
                     {visibleTabs.map((tab) => {
                       const Icon = tab.icon;
                       const active = activeTab === tab.value;
@@ -285,7 +285,7 @@ const OrganizerDashboard = () => {
                           type="button"
                           onClick={() => setActiveTab(tab.value)}
                           className={cn(
-                            "relative z-20 flex h-10 w-full items-center gap-3 border px-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70",
+                            "relative z-20 flex h-8 w-full items-center gap-2.5 border px-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70",
                             active
                               ? "border-transparent bg-rose-500 text-white"
                               : "border-white/15 bg-black text-zinc-200 hover:border-white/25 hover:bg-white/[0.06] hover:text-white",

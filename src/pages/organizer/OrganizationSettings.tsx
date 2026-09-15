@@ -371,78 +371,63 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = ({ activeSecti
   const ownerName = profile?.full_name || profile?.username || 'Organizer';
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-5">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-3">
 
-      {/* Org card — full content width, acts as page hero */}
+      {/* Org card — compact header strip */}
       <div className="overflow-hidden border border-white/10 bg-[#0a0a0c]">
-        <div
-          className="relative h-40 w-full bg-[#0a0a0c] bg-cover bg-center sm:h-52"
-          style={bannerUrl ? { backgroundImage: `linear-gradient(to bottom, rgba(5,5,5,0.15), rgba(5,5,5,0.85)), url(${bannerUrl})` } : undefined}
-        >
-          {!bannerUrl && (
-            <div className="absolute inset-0 flex items-end px-6 pb-6">
-              <span className="font-heading text-3xl font-black uppercase tracking-tight text-zinc-800 sm:text-5xl">{name || 'Your Organization'}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex items-end gap-4">
-            <Avatar className="-mt-12 h-20 w-20 shrink-0 rounded-none border-2 border-[#0a0a0c] bg-black ring-1 ring-white/10 sm:-mt-14 sm:h-24 sm:w-24">
+        {bannerUrl && (
+          <div
+            className="h-16 w-full bg-cover bg-center"
+            style={{ backgroundImage: `linear-gradient(to bottom, rgba(5,5,5,0.1), rgba(5,5,5,0.7)), url(${bannerUrl})` }}
+          />
+        )}
+        <div className={cn('flex items-center justify-between gap-4 px-4 py-3', bannerUrl && '-mt-5')}>
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10 shrink-0 rounded-none border border-white/15 bg-black ring-1 ring-black">
               <AvatarImage src={logoUrl} />
-              <AvatarFallback className="rounded-none bg-rose-500 text-2xl font-black text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
+              <AvatarFallback className="rounded-none bg-rose-500 text-sm font-black text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
             </Avatar>
-            <div className="min-w-0 pb-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-heading text-xl font-black uppercase leading-none tracking-tight text-white sm:text-2xl">{name || 'Your Organization'}</h2>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold text-white">{name || 'Your Organization'}</h2>
                 {organization?.is_verified && (
-                  <span className="inline-flex items-center gap-1 border border-emerald-500/35 bg-emerald-950/20 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-emerald-300">
-                    <CheckCircle className="h-3 w-3" />
+                  <span className="inline-flex items-center gap-1 border border-emerald-500/35 bg-emerald-950/20 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-300">
+                    <CheckCircle className="h-2.5 w-2.5" />
                     Verified
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-sm text-zinc-500">@{slug || 'your-slug'} · {ownerName}</p>
+              <p className="text-[11px] text-zinc-500">@{slug || 'your-slug'} · {ownerName}</p>
             </div>
           </div>
-
-          <div className="flex gap-6 pb-1">
-            <StatPill icon={<Trophy className="h-4 w-4" />} value={stats.totalTournaments} label="Tournaments" />
-            <StatPill icon={<Users className="h-4 w-4" />} value={stats.totalParticipants} label="Participants" />
-            <StatPill icon={<Calendar className="h-4 w-4" />} value={stats.activeTournaments} label="Active" />
+          <div className="flex items-center gap-5">
+            <CompactStat icon={<Trophy className="h-3 w-3" />} value={stats.totalTournaments} label="tournaments" />
+            <CompactStat icon={<Users className="h-3 w-3" />} value={stats.totalParticipants} label="participants" />
+            <CompactStat icon={<Calendar className="h-3 w-3" />} value={stats.activeTournaments} label="active" />
           </div>
         </div>
-
-        {description && (
-          <div className="border-t border-white/5 px-5 py-4">
-            <p className="max-w-3xl whitespace-pre-wrap text-sm leading-relaxed text-zinc-400">{description}</p>
-          </div>
-        )}
       </div>
 
       {/* Section content — fills full available width */}
       {activeSection === 'profile' && (
-        <CommandSection>
-          <SectionTitle title="Profile" description="Control the identity shown on tournament and organization pages." />
-          <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            <Field label="Organization Name" htmlFor="name">
+        <CommandSection className="p-4">
+          <SectionTitle title="Profile" description="Controls the identity shown on tournament and organization pages." />
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <Field label="Name" htmlFor="name">
               <Input id="name" value={name} onChange={(event) => handleNameChange(event.target.value)} className={textInput} placeholder="Esportra Gaming" />
             </Field>
             <Field label="URL Slug" htmlFor="slug">
               <div className="flex items-center gap-2">
-                <span className="shrink-0 text-sm text-zinc-600">/org/</span>
+                <span className="shrink-0 text-xs text-zinc-600">/org/</span>
                 <Input id="slug" value={slug} onChange={(event) => setSlug(generateSlug(event.target.value))} className={textInput} placeholder="esportra-gaming" />
               </div>
             </Field>
-          </div>
-
-          <div className="mt-5">
-            <Field label="Description" htmlFor="description">
-              <Textarea id="description" value={description} onChange={(event) => setDescription(event.target.value)} className={cn(textInput, 'min-h-[120px] max-w-3xl')} placeholder="Tell players about your organization..." />
+            <Field label="Description" htmlFor="description" className="md:col-span-2 xl:col-span-3">
+              <Textarea id="description" value={description} onChange={(event) => setDescription(event.target.value)} className={cn(textInput, 'min-h-[72px] max-w-3xl')} placeholder="Tell players about your organization..." />
             </Field>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {(['website', 'twitter', 'instagram', 'youtube', 'discord'] as const).map((key) => (
               <Field key={key} label={key} htmlFor={`social-${key}`}>
                 <Input
@@ -459,9 +444,9 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = ({ activeSecti
       )}
 
       {activeSection === 'branding' && (
-        <CommandSection>
-          <SectionTitle title="Branding" description="Upload the logo and banner used across organization and tournament surfaces." />
-          <div className="mt-6 grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+        <CommandSection className="p-4">
+          <SectionTitle title="Branding" description="Logo and banner used across organization and tournament surfaces." />
+          <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
             <CommandPanel>
               <div className="flex items-center gap-5">
                 <Avatar className="h-24 w-24 rounded-none border border-white/10">
@@ -483,7 +468,7 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = ({ activeSecti
 
             <CommandPanel className="xl:col-span-2">
               <div
-                className="flex h-36 items-center justify-center border border-white/10 bg-[#0a0a0c] bg-cover bg-center"
+                className="flex h-24 items-center justify-center border border-white/10 bg-[#0a0a0c] bg-cover bg-center"
                 style={bannerUrl ? { backgroundImage: `linear-gradient(to top, rgba(5,5,5,0.72), rgba(5,5,5,0.08)), url(${bannerUrl})` } : undefined}
               >
                 {!bannerUrl && <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">1200 × 300 recommended</span>}
@@ -500,14 +485,14 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = ({ activeSecti
       )}
 
       {activeSection === 'staff' && organization && user?.id && (
-        <CommandSection>
+        <CommandSection className="p-4">
           <OrganizationStaffManager organizationId={organization.id} ownerId={user.id} />
         </CommandSection>
       )}
 
       {activeSection === 'media' && (
-        <CommandSection>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <CommandSection className="p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <SectionTitle title="Media" description="Manage organization albums and public media assets." />
             <div className="flex flex-wrap gap-2">
               <input ref={mediaInputRef} type="file" multiple accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" />
@@ -535,7 +520,7 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = ({ activeSecti
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-1.5">
             <button type="button" onClick={() => { setActiveAlbum(null); if (organization) void fetchMedia(organization.id, null); }} className={cn('border px-3 py-2 font-mono text-[10px] uppercase tracking-wider', !activeAlbum ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>
               All Media
             </button>
@@ -595,7 +580,7 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = ({ activeSecti
       )}
 
       {activeSection === 'advanced' && organization && (
-        <CommandSection className="border-red-500/25 bg-red-950/10">
+        <CommandSection className="border-red-500/25 bg-red-950/10 p-4">
           <SectionTitle title="Advanced" description="Irreversible controls for this organization." />
           <CommandPanel className="mt-6 border-red-500/25 bg-red-950/10">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -693,12 +678,12 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = ({ activeSecti
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatPill({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
+function CompactStat({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
   return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="flex items-center gap-1.5 text-rose-400">{icon}</div>
-      <div className="text-xl font-black text-white">{value}</div>
-      <div className="font-mono text-[9px] font-bold uppercase tracking-widest text-zinc-500">{label}</div>
+    <div className="flex items-center gap-1.5 text-zinc-400">
+      <span className="text-zinc-600">{icon}</span>
+      <span className="text-xs font-semibold text-zinc-300">{value}</span>
+      <span className="text-[10px] text-zinc-500">{label}</span>
     </div>
   );
 }
@@ -706,8 +691,8 @@ function StatPill({ icon, value, label }: { icon: React.ReactNode; value: number
 function SectionTitle({ title, description }: { title: string; description: string }) {
   return (
     <div>
-      <h3 className="text-lg font-black uppercase tracking-tight text-white">{title}</h3>
-      <p className="mt-1 text-sm text-zinc-500">{description}</p>
+      <h3 className="text-sm font-semibold text-white">{title}</h3>
+      <p className="mt-0.5 text-xs text-zinc-500">{description}</p>
     </div>
   );
 }
@@ -715,7 +700,7 @@ function SectionTitle({ title, description }: { title: string; description: stri
 function Field({ label, htmlFor, children, className }: { label: string; htmlFor: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={cn('space-y-2', className)}>
-      <Label htmlFor={htmlFor} className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-400">{label}</Label>
+      <Label htmlFor={htmlFor} className="text-[11px] font-medium text-zinc-400">{label}</Label>
       {children}
     </div>
   );
