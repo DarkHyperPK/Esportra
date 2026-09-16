@@ -268,7 +268,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
   const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
   
   // Bracket container ref for viewport culling
-  const bracketContainerRef = useRef<HTMLDivElement>(null);
+  const bracketContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [resultsDialogOpen, setResultsDialogOpen] = useState(false);
   const [resultsDialogMatch, setResultsDialogMatch] = useState<BracketMatch | null>(null);
@@ -593,7 +593,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
 
   const disableGlass = matches.length > 64;
 
-  const renderMatchCard = useCallback((match: BracketMatch, x: number | undefined, y: number | undefined, label: string) => (
+  const renderMatchCard = useCallback((match: BracketMatch, x?: number, y?: number, label?: string) => (
     <MatchCard
       key={match.id}
       match={match}
@@ -605,7 +605,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
       isOrganizer={isOrganizer}
       isProcessing={isProcessing}
       versionId={versionId}
-      tournamentId={tournamentId}
+      tournamentId={tournamentId ?? undefined}
       onScoreChange={handleScoreChange}
       onGoLive={openGoLive}
       onMapVeto={canUseMapVeto ? openMapVeto : undefined}
@@ -729,7 +729,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
           isOrganizer={isOrganizer}
           onMatchUpdate={handleRefresh}
           teamsMap={teamsMap}
-          tournamentId={tournamentId}
+          tournamentId={tournamentId ?? undefined}
           game={tournamentGame}
           onByeAdvance={onByeAdvance}
           stage={stage}
@@ -752,7 +752,7 @@ const BracketVisualization: React.FC<BracketVisualizationProps> = React.memo(({
           matches={matches}
           isOrganizer={isOrganizer}
           onMatchUpdate={handleRefresh}
-          tournamentId={tournamentId}
+          tournamentId={tournamentId ?? undefined}
           game={tournamentGame}
           onByeAdvance={onByeAdvance}
           stage={stage}

@@ -21,6 +21,11 @@ export function readProfileCountryCode(profile: ApiProfile | UserProfile | null 
 export function normalizeProfileFromApi(data: ApiProfile, userId: string): UserProfile {
   const role = (data.role ?? data.base_role ?? 'casual') as UserRole;
 
+  const rawTz = data.timezone_iana;
+  const timezoneIana = (typeof rawTz === 'string' && rawTz.trim().length > 0)
+    ? rawTz.trim()
+    : null;
+
   return {
     ...(data as UserProfile),
     id: (data.id as string | undefined) ?? userId,
@@ -28,6 +33,7 @@ export function normalizeProfileFromApi(data: ApiProfile, userId: string): UserP
     role,
     date_of_birth: readProfileDateOfBirth(data),
     country_code: readProfileCountryCode(data),
+    timezone_iana: timezoneIana,
   };
 }
 

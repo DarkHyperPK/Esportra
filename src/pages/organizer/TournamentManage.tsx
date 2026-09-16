@@ -41,11 +41,13 @@ import {
   Loader2,
   Mail,
   MapPin,
+  RefreshCw,
   ShieldCheck,
   Swords,
   Trophy,
   X,
   Zap,
+  MessageSquare,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -138,6 +140,8 @@ interface Participant {
   payment_status?: string | null;
   payment_receipt_url?: string | null;
   payment_rejection_reason?: string | null;
+  entry_kind?: string | null;
+  display_logo_url?: string | null;
   entry_fee_amount?: number | null;
   entry_fee_paid?: boolean;
   source?: string | null;
@@ -145,6 +149,193 @@ interface Participant {
     username: string;
     full_name: string | null;
   };
+}
+
+// ── handleTeamClick helpers ──
+
+const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+const looksLikeUuid = (s: string) => UUID_RE.test(s);
+
+function extractMemberName(m: unknown): string {
+  if (typeof m === 'string') return m;
+  return (m as any)?.username || (m as any)?.name || '';
+}
+
+function parseTeamMembers(input: unknown): string[] {
+  if (!input) return [];
+  if (Array.isArray(input)) return input.map(extractMemberName).filter(Boolean);
+  if (typeof input !== 'string') return [];
+  const trimmed = input.trim();
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed.map(extractMemberName).filter(Boolean);
+    } catch { /* fall through */ }
+  }
+  return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+async function resolveTeamIdentity(
+  participant: Participant,
+): Promise<{ teamId: string | null; logoUrl: string | null }> {
+  let teamId = participant.team_id as string | null;
+  let logoUrl: string | null = participant.team_logo || participant.display_logo_url || null;
+  const isSolo = participant.participant_type === 'solo' || participant.entry_kind === 'solo_player';
+
+  if (isSolo) {
+    logoUrl = logoUrl || participant.display_logo_url || null;
+  } else if (!teamId) {
+    try {
+      const teamResults = await apiClient.get<any[]>(`/api/teams/search?name=${encodeURIComponent(participant.team_name || '')}`).catch(() => []);
+      const exactMatch = (teamResults || []).find((t: any) => t.name === participant.team_name);
+      const match = exactMatch || (teamResults || [])[0];
+      if (match) { teamId = match.id; logoUrl = logoUrl || match.logo_url || null; }
+    } catch { /* ignored */ }
+  } else {
+    try {
+      const teamData = await apiClient.get<any>(`/api/teams/${teamId}`).catch(() => null);
+      if (teamData) logoUrl = logoUrl || teamData.logo_url || null;
+    } catch { /* ignored */ }
+  }
+  return { teamId, logoUrl };
+}
+
+function resolveProfileDisplayName(profile: any, preferRiotTag: boolean): string {
+  const tag = preferRiotTag ? profile.riot_tag : (profile.riot_tag || profile.steam_tag);
+  return tag || profile.username || profile.full_name || `player_${String(profile.id).substring(0, 8)}`;
+}
+
+function resolveProfileMatchedKey(profile: any): string | null {
+  const field = profile.matched_field;
+  if (field === 'riot_tag') return profile.riot_tag;
+  if (field === 'steam_tag') return profile.steam_tag;
+  if (field === 'username') return profile.username;
+  return profile.full_name ?? null;
+}
+
+function resolveProfileBestName(profile: any): string {
+  return profile.riot_tag || profile.steam_tag || profile.username || profile.full_name || '';
+}
+
+async function resolvePlayerNames(
+  tokens: string[],
+  preferRiotTag: boolean,
+): Promise<string[]> {
+  const areUuids = tokens.every(looksLikeUuid);
+  const resolved = await apiClient.post<any[]>('/api/profiles/resolve-players', {
+    tokens: areUuids ? tokens : Array.from(new Set(tokens)),
+    areUuids,
+  });
+
+  if (areUuids) {
+    const map = new Map<string, string>();
+    (resolved || []).forEach((p: any) => map.set(p.id, resolveProfileDisplayName(p, preferRiotTag)));
+    return tokens.map(id => map.get(id) || `player_${String(id).substring(0, 8)}`);
+  }
+
+  const uniq = Array.from(new Set(tokens));
+  const map = new Map<string, string>();
+  (resolved || []).forEach((p: any) => {
+    const key = resolveProfileMatchedKey(p);
+    if (key) map.set(key, resolveProfileBestName(p));
+  });
+  return uniq.map(t => map.get(t) || t);
+}
+
+interface CachedGameData { background_image: string | null; logo_image: string | null; timestamp: number }
+
+function readCachedGameImages(gameName: string): { background: string | null; logo: string | null } {
+  const cacheKey = `rawg_cache_${normalize(gameName)}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (!cached) return { background: null, logo: null };
+  try {
+    const { background_image, logo_image, timestamp } = JSON.parse(cached) as CachedGameData;
+    if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+      return { background: background_image, logo: logo_image };
+    }
+  } catch { /* corrupt cache */ }
+  localStorage.removeItem(cacheKey);
+  return { background: null, logo: null };
+}
+
+async function fetchAndCacheRawgImages(gameName: string): Promise<{ background: string | null; logo: string | null }> {
+  try {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/games/search?q=${encodeURIComponent(gameName)}`);
+    const data = await res.json();
+    if (data?.results?.length > 0) {
+      const bg = data.results[0].background_image ?? null;
+      const cacheKey = `rawg_cache_${normalize(gameName)}`;
+      localStorage.setItem(cacheKey, JSON.stringify({ background_image: bg, logo_image: bg, timestamp: Date.now() }));
+      return { background: bg, logo: bg };
+    }
+  } catch (e) {
+    console.warn('RAWG proxy fetch failed, using fallbacks:', e);
+  }
+  return { background: null, logo: null };
+}
+
+async function fetchGameLogo(gameName: string): Promise<string | null> {
+  if (!gameName) return null;
+
+  const staticGame = getGameByName(gameName);
+  if (staticGame?.logo) return staticGame.logo;
+
+  let { background, logo } = readCachedGameImages(gameName);
+  if (!background && !logo) {
+    const fetched = await fetchAndCacheRawgImages(gameName);
+    background = fetched.background;
+    logo = fetched.logo;
+  }
+
+  return logo ?? background ?? null;
+}
+
+function computeAutoExtensionDate(
+  tournament: { start_date?: string | null; end_date?: string | null },
+  stageCompletionQueries: { isLoading: boolean; isError: boolean; data: unknown }[],
+): Date | null {
+  const startDate = tournament.start_date ? new Date(tournament.start_date) : null;
+  const endDate = tournament.end_date ? new Date(tournament.end_date) : null;
+  if (!startDate || !endDate) return null;
+
+  const now = new Date();
+  if (now < startDate || endDate < startDate) return null;
+  if (now <= endDate) return null;
+
+  const hasIncompleteStage = stageCompletionQueries.some(
+    (q) => !q.isLoading && !q.isError && !q.data,
+  );
+  if (!hasIncompleteStage) return null;
+
+  const newEnd = new Date(now);
+  newEnd.setDate(newEnd.getDate() + 1);
+  if (newEnd < startDate) {
+    newEnd.setTime(startDate.getTime());
+    newEnd.setDate(newEnd.getDate() + 1);
+  }
+  return newEnd;
+}
+
+async function resolveRegistrationMembers(
+  tournamentId: string | undefined,
+  teamName: string | null,
+  preferRiotTag: boolean,
+): Promise<string[] | null> {
+  if (!tournamentId || !teamName) return null;
+
+  const regRow = await apiClient.get<any>(
+    `/api/tournaments/${tournamentId}/participants?team_name=${encodeURIComponent(teamName)}`,
+  ).then(r => (Array.isArray(r) ? r.find((p: any) => p.team_name === teamName) : r)).catch(() => null);
+
+  if (!regRow?.team_members) return null;
+
+  const tokens = parseTeamMembers(regRow.team_members);
+  if (tokens.length === 0) return null;
+
+  if (tokens.some(t => !looksLikeUuid(t))) return tokens;
+
+  const names = await resolvePlayerNames(tokens, preferRiotTag);
+  return names.length > 0 ? names : null;
 }
 
 const STAFF_PERMISSION_LABELS: Record<StaffPermission, string> = {
@@ -157,14 +348,14 @@ const STAFF_PERMISSION_LABELS: Record<StaffPermission, string> = {
 
 // ErrorBoundary component
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
-  constructor(props) {
+  constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(error: unknown) {
     return { hasError: true, error };
   }
-  componentDidCatch(_error, _errorInfo) {
+  componentDidCatch(_error: Error, _errorInfo: React.ErrorInfo) {
     // You can log errorInfo here if needed
     // console.error('ErrorBoundary caught:', _error, _errorInfo);
   }
@@ -292,7 +483,6 @@ const TournamentDashboard = () => {
     () => (tournamentAccess?.permissions ?? []) as StaffPermission[],
     [tournamentAccess?.permissions],
   );
-  const _staffRole = tournamentAccess?.role ?? 'none';
   const hasTournamentStaffAccess = Boolean(
     tournamentAccess && !tournamentAccess.isOrganizer && tournamentAccess.role !== 'none',
   );
@@ -375,6 +565,7 @@ const TournamentDashboard = () => {
   const [removingUnchecked, setRemovingUnchecked] = useState(false);
   const [savingAssistedReporting, setSavingAssistedReporting] = useState(false);
   const [savingMapVeto, setSavingMapVeto] = useState(false);
+  const [savingDiscordLink, setSavingDiscordLink] = useState(false);
   const [hasStaffAccess, setHasStaffAccess] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [participantsPage, setParticipantsPage] = useState(1);
@@ -522,41 +713,22 @@ const TournamentDashboard = () => {
   useEffect(() => {
     const checkOverdue = async () => {
       if (!tournament || !canActAsOwner || stages.length === 0) return;
+      if (tournament.status === 'completed') return;
 
-      const startDate = tournament.start_date ? new Date(tournament.start_date) : null;
-      const endDate = tournament.end_date ? new Date(tournament.end_date) : null;
-      if (!endDate) return;
+      const extensionDate = computeAutoExtensionDate(tournament, stageCompletionQueries);
+      if (!extensionDate) return;
 
-      const currentTime = new Date();
-
-      // Never auto-extend before the tournament starts or when dates are invalid.
-      if (!startDate || currentTime < startDate || endDate < startDate) return;
-
-      const isOverdue = currentTime > endDate;
-      const confirmedIncompleteStages = stageCompletionQueries.some(
-        (query) => !query.isLoading && !query.isError && !query.data,
-      );
-
-      if (isOverdue && confirmedIncompleteStages && tournament.status !== 'completed') {
-        const newEndDate = new Date(currentTime);
-        newEndDate.setDate(newEndDate.getDate() + 1);
-        if (newEndDate < startDate) {
-          newEndDate.setTime(startDate.getTime());
-          newEndDate.setDate(newEndDate.getDate() + 1);
-        }
-
-        try {
-          await apiClient.put(`/api/tournaments/${tournament.id}`, { endDate: newEndDate.toISOString() });
-          toast({
-            title: 'Tournament Extended',
-            description: 'Tournament end time has passed with incomplete stages. Extended by 24 hours.',
-            variant: 'default',
-            duration: 6000,
-          });
-          refetchDashboard();
-        } catch (err) {
-          console.error('Error auto-extending tournament:', err);
-        }
+      try {
+        await apiClient.put(`/api/tournaments/${tournament.id}`, { endDate: extensionDate.toISOString() });
+        toast({
+          title: 'Tournament Extended',
+          description: 'Tournament end time has passed with incomplete stages. Extended by 24 hours.',
+          variant: 'default',
+          duration: 6000,
+        });
+        refetchDashboard();
+      } catch (err) {
+        console.error('Error auto-extending tournament:', err);
       }
     };
 
@@ -570,108 +742,24 @@ const TournamentDashboard = () => {
     setTeamCaptain(null);
     setSelectedTeamMembers([]);
     try {
-      // Parse any pre-saved members; handle both JSONB array of objects and comma-separated strings
-      const parseTeamMembers = (input: any): string[] => {
-        if (!input) return [];
-        if (Array.isArray(input)) {
-          return input.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
-        }
-        if (typeof input === 'string') {
-          const trimmed = input.trim();
-          if (trimmed.startsWith('[')) {
-            try {
-              const parsed = JSON.parse(trimmed);
-              if (Array.isArray(parsed)) return parsed.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
-            } catch { /* fall through */ }
-          }
-          return trimmed.split(',').map(s => s.trim()).filter(Boolean);
-        }
-        return [];
-      };
       const rawTokens = parseTeamMembers(participant.team_members);
-      const looksLikeUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
-      const tokensAreIds = rawTokens.some(t => looksLikeUuid(t));
-      if (rawTokens.length > 0 && !tokensAreIds) {
+      if (rawTokens.length > 0 && !rawTokens.some(looksLikeUuid)) {
         setSelectedTeamMembers(rawTokens);
       }
-      // Resolve team id and logo
-      const isSoloParticipant = participant.participant_type === 'solo' || participant.entry_kind === 'solo_player';
-      let teamId = participant.team_id as string | null;
-      let logoUrl: string | null = participant.team_logo || participant.display_logo_url || null;
-      if (isSoloParticipant) {
-        logoUrl = logoUrl || participant.display_logo_url || null;
-      } else if (!teamId) {
-        // Try exact name match first
-        try {
-          // Search teams by name — use team search endpoint
-          const teamResults = await apiClient.get<any[]>(`/api/teams/search?name=${encodeURIComponent(participant.team_name || '')}`).catch(() => []);
-          const exactMatch = (teamResults || []).find((t: any) => t.name === participant.team_name);
-          const fuzzyMatch = (teamResults || [])[0];
-          const match = exactMatch || fuzzyMatch;
-          if (match) {
-            teamId = match.id; logoUrl = logoUrl || match.logo_url || null;
-          }
-        } catch { /* ignored */ }
-      } else {
-        try {
-          const teamData = await apiClient.get<any>(`/api/teams/${teamId}`).catch(() => null);
-          if (teamData) {
-            logoUrl = logoUrl || teamData.logo_url || null;
-          }
-        } catch { /* ignored */ }
+
+      const identity = await resolveTeamIdentity(participant);
+      if (identity.logoUrl) participant.team_logo = identity.logoUrl;
+
+      const resolved = await resolveRegistrationMembers(
+        tournament?.id, participant.team_name, tournamentModeFeatures.assistedReporting,
+      );
+      if (resolved) {
+        setSelectedTeamMembers(resolved);
+        setTeamLoading(false);
+        setTeamDialogOpen(true);
+        return;
       }
-      if (logoUrl) participant.team_logo = logoUrl;
-      // First, try reading names saved in tournament registration directly
-      if (tournament?.id && participant.team_name) {
-        const regRow = await apiClient.get<any>(`/api/tournaments/${tournament.id}/participants?team_name=${encodeURIComponent(participant.team_name)}`).then(r => (Array.isArray(r) ? r.find((p: any) => p.team_name === participant.team_name) : r)).catch(() => null);
-        if (regRow?.team_members) {
-          const tokens = parseTeamMembers(regRow.team_members);
-          const looksUuid = (s: string) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s);
-          const hasPlainNames = tokens.some(t => !looksUuid(t));
-          if (tokens.length > 0 && hasPlainNames) {
-            setSelectedTeamMembers(tokens);
-            setTeamLoading(false);
-            setTeamDialogOpen(true);
-            return;
-          }
-          if (tokens.length > 0) {
-            let namesResolved: string[] = [];
-            const areUuids = tokens.every(looksUuid);
-            const resolved = await apiClient.post<any[]>('/api/profiles/resolve-players', {
-              tokens: areUuids ? tokens : Array.from(new Set(tokens)),
-              areUuids,
-            });
-            if (areUuids) {
-              const mapTok = new Map<string, string>();
-              const preferRiotTag = tournamentModeFeatures.assistedReporting;
-              (resolved || []).forEach((p: any) => {
-                const tag = preferRiotTag ? p.riot_tag : (p.riot_tag || p.steam_tag);
-                mapTok.set(p.id, tag || p.username || p.full_name || `player_${String(p.id).substring(0, 8)}`);
-              });
-              namesResolved = tokens.map(id => mapTok.get(id) || `player_${String(id).substring(0, 8)}`);
-            } else {
-              const uniq = Array.from(new Set(tokens));
-              const map = new Map<string, string>();
-              (resolved || []).forEach((p: any) => {
-                const key = p.matched_field === 'riot_tag' ? p.riot_tag
-                  : p.matched_field === 'steam_tag' ? p.steam_tag
-                  : p.matched_field === 'username' ? p.username
-                  : p.full_name;
-                if (key) map.set(key, p.riot_tag || p.steam_tag || p.username || p.full_name);
-              });
-              namesResolved = uniq.map(t => map.get(t) || t);
-            }
-            if (namesResolved.length > 0) {
-              setSelectedTeamMembers(namesResolved);
-              setTeamLoading(false);
-              setTeamDialogOpen(true);
-              return;
-            }
-          }
-        }
-      }
-      // If we reach here, logic continues... (omitted for brevity, assume full logic is needed but I'll trust the user just wants the modal open)
-      // For now, if no logic matched, just open with basic info
+
       setTeamLoading(false);
       setTeamDialogOpen(true);
     } catch (e) {
@@ -901,6 +989,31 @@ const TournamentDashboard = () => {
     }
   };
 
+  const handleUpdateDiscordLinkCount = async (count: number) => {
+    if (!tournament?.id) return;
+    setSavingDiscordLink(true);
+    try {
+      await apiClient.put(`/api/tournaments/${tournament.id}`, {
+        discordLinkCount: count,
+      });
+      toast({
+        title: count > 0 ? 'Discord Requirement Updated' : 'Discord Requirement Disabled',
+        description: count > 0
+          ? `At least ${count === 1 ? 'the captain' : `${count} players per team`} must have Discord linked to register.`
+          : 'Discord account linking is no longer required for registration.',
+      });
+      refetchDashboard();
+    } catch (error: any) {
+      toast({
+        title: 'Failed to update setting',
+        description: error.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingDiscordLink(false);
+    }
+  };
+
   const handleToggleMapVeto = async (enabled: boolean) => {
     if (!tournament?.id) return;
     setSavingMapVeto(true);
@@ -1125,66 +1238,11 @@ const TournamentDashboard = () => {
   };
 
   // Fetch game background from RAWG API
-  // Combined Game Data Fetching (Static + RAWG with Caching)
   useEffect(() => {
-    async function fetchGameData(gameName: string) {
-      if (!gameName) return;
-
-      const cacheKey = `rawg_cache_${normalize(gameName)}`;
-      let background = null;
-      let logo = null;
-
-      // 1. Check Cache for RAWG Data
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        try {
-          const { background_image, logo_image, timestamp } = JSON.parse(cached);
-          // Cache valid for 24 hours
-          if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
-            background = background_image;
-            logo = logo_image;
-          }
-        } catch {
-          localStorage.removeItem(cacheKey);
-        }
-      }
-
-      // 2. Fetch from RAWG via Edge Function proxy if missing data
-      if (!background || !logo) {
-        try {
-          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/games/search?q=${encodeURIComponent(gameName)}`);
-          const data = await res.json();
-          if (data && data.results && data.results.length > 0) {
-            const game = data.results[0];
-            background = background || game.background_image;
-            logo = logo || game.background_image; // RAWG uses background_image as the main visual
-            // Cache the result
-            localStorage.setItem(cacheKey, JSON.stringify({
-              background_image: background,
-              logo_image: logo,
-              timestamp: Date.now()
-            }));
-          }
-        } catch (e) {
-          console.warn('RAWG proxy fetch failed, using fallbacks:', e);
-        }
-      }
-
-      // 3. Update State
-      // Check static data for logo override
-      const foundGame = getGameByName(gameName);
-      if (foundGame?.logo) {
-        setGameLogo(foundGame.logo);
-      } else if (logo) {
-        setGameLogo(logo);
-      } else if (background) {
-        setGameLogo(background);
-      }
-    }
-
-    if (tournament?.game) {
-      fetchGameData(tournament.game);
-    }
+    if (!tournament?.game) return;
+    fetchGameLogo(tournament.game).then((logo) => {
+      if (logo) setGameLogo(logo);
+    });
   }, [tournament?.game]);
 
   useEffect(() => {
@@ -1268,6 +1326,18 @@ const TournamentDashboard = () => {
         description: 'Failed to complete tournament.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleReopenTournament = async () => {
+    if (!tournament) return;
+    try {
+      await apiClient.put(`/api/tournaments/${tournament.id}`, { status: 'ongoing' });
+      refetchDashboard();
+      toast({ title: 'Tournament Reopened', description: 'The tournament has been reopened for editing.' });
+    } catch (error) {
+      console.error('Error reopening tournament:', error);
+      toast({ title: 'Error', description: 'Failed to reopen tournament.', variant: 'destructive' });
     }
   };
 
@@ -1506,6 +1576,42 @@ const TournamentDashboard = () => {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+
+                {isSuperAdmin && tournament.status === 'completed' && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <CommandButton variant="secondary" size="sm">
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Reopen Tournament
+                      </CommandButton>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-[#0a0a0c] border-white/10">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <RefreshCw className="h-5 w-5 text-blue-400" />
+                          Reopen Tournament
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-zinc-400">
+                          This will unlock the tournament and all stages for editing. The winner record will be cleared. Only use this to correct a mistake.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel asChild>
+                          <CommandButton variant="secondary" size="sm">Cancel</CommandButton>
+                        </AlertDialogCancel>
+                        <AlertDialogAction asChild>
+                          <CommandButton
+                            variant="warning"
+                            size="sm"
+                            onClick={(e) => { e.preventDefault(); handleReopenTournament(); }}
+                          >
+                            Reopen Tournament
+                          </CommandButton>
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
 
                 {canActAsOwner && tournament.status !== 'completed' && tournament.status !== 'draft' && (
                   <AlertDialog>
@@ -1768,14 +1874,14 @@ const TournamentDashboard = () => {
                 <TabsContent value="stages" forceMount key="stages">
                   <TabTransition direction={direction}>
                     {/* Mock Mode panel pinned above stages; always show clear controls while mocks exist. */}
-                    {canActAsOwner && ((tournament.status === 'draft' && !tournament.is_public) || mockCount > 0) && (
+                    {(isOrganizer || isPlatformAdmin) && (tournament.status === 'draft' || mockCount > 0) && (
                       <div className="mb-4">
                         <MockModePanel
                           tournamentId={tournament.id}
                           slug={slug ?? ''}
                           maxTeams={tournament.max_teams}
                           mockCount={mockCount}
-                          canGenerate={tournament.status === 'draft' && !tournament.is_public}
+                          canGenerate={tournament.status === 'draft' || mockCount > 0}
                         />
                       </div>
                     )}
@@ -2616,6 +2722,62 @@ const TournamentDashboard = () => {
                         </Card>
                       )}
 
+                      {/* Discord Account Requirement — always available */}
+                      <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
+                        <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
+                          <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+                            <MessageSquare className="w-5 h-5 text-indigo-400" />
+                            Discord Account Requirement
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0 space-y-4">
+                          {(() => {
+                            const s = tournament?.settings as any;
+                            const currentCount = s?.discordLinkCount ?? (s?.requireDiscordLink ? 1 : 0);
+                            return (
+                              <>
+                                <div className="flex items-start gap-4 p-4 rounded-none bg-white/[0.02] border border-white/5">
+                                  <Switch
+                                    checked={currentCount > 0}
+                                    onCheckedChange={(checked) => handleUpdateDiscordLinkCount(checked ? 1 : 0)}
+                                    disabled={savingDiscordLink}
+                                  />
+                                  <div className="flex-1">
+                                    <p className="font-medium text-white text-sm">
+                                      {savingDiscordLink ? 'Saving...' : 'Require Discord Account'}
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      When enabled, players must link their Discord account before registering.
+                                    </p>
+                                  </div>
+                                </div>
+                                {currentCount > 0 && (
+                                  <div className="px-4 pb-4 space-y-2">
+                                    <p className="text-sm text-gray-400">How many players per team must have Discord linked:</p>
+                                    <Select
+                                      value={String(currentCount)}
+                                      onValueChange={(val) => handleUpdateDiscordLinkCount(Number(val))}
+                                      disabled={savingDiscordLink}
+                                    >
+                                      <SelectTrigger className="w-48">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {Array.from({ length: tournament?.team_size ?? 5 }, (_, i) => i + 1).map((n) => (
+                                          <SelectItem key={n} value={String(n)}>
+                                            {n === 1 ? 'Captain only' : String(n)}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </CardContent>
+                      </Card>
+
                       {/* Map Veto — games with map veto support */}
                       {tournamentModeFeatures.mapVeto && (
                         <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
@@ -2803,7 +2965,7 @@ const TournamentDashboard = () => {
 };
 
 // Wrap TournamentDashboard in ErrorBoundary for export
-export default function TournamentDashboardWithBoundary(props) {
+export default function TournamentDashboardWithBoundary(props: Record<string, unknown>) {
   return (
     <ErrorBoundary>
       <TournamentDashboard {...props} />

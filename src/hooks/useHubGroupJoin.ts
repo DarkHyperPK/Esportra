@@ -29,6 +29,12 @@ export function useHubGroupJoin(
   options: UseHubGroupJoinOptions,
 ): { joined: boolean; connectionState: HubConnectionState } {
   const { enabled = true, join, leave, ensureConnected, onJoinError } = options;
+  const joinRef = useRef(join);
+  joinRef.current = join;
+  const leaveRef = useRef(leave);
+  leaveRef.current = leave;
+  const ensureConnectedRef = useRef(ensureConnected);
+  ensureConnectedRef.current = ensureConnected;
   const onJoinErrorRef = useRef(onJoinError);
   onJoinErrorRef.current = onJoinError;
   const [joined, setJoined] = useState(false);
@@ -70,9 +76,9 @@ export function useHubGroupJoin(
       syncConnectionState();
 
       if (conn.state === HubConnectionState.Disconnected) {
-        if (ensureConnected) {
+        if (ensureConnectedRef.current) {
           try {
-            await ensureConnected();
+            await ensureConnectedRef.current();
           } catch (error) {
             if (!isBenignConnectionError(error)) {
               onJoinErrorRef.current?.(error);
@@ -92,7 +98,7 @@ export function useHubGroupJoin(
       }
 
       try {
-        await join();
+        await joinRef.current();
         if (!active) return;
         setJoinedState(true);
       } catch (error) {
@@ -121,11 +127,11 @@ export function useHubGroupJoin(
       clearRetry();
       if (monitorTimer) clearInterval(monitorTimer);
       setJoinedState(false);
-      if (leave && conn.state === HubConnectionState.Connected) {
-        void leave().catch(() => {});
+      if (leaveRef.current && conn.state === HubConnectionState.Connected) {
+        void leaveRef.current().catch(() => {});
       }
     };
-  }, [conn, enabled, join, leave, ensureConnected]);
+  }, [conn, enabled]);
 
   return { joined, connectionState };
 }

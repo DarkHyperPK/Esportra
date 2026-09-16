@@ -3,8 +3,29 @@ import { formatLocalTime } from '@/lib/timeUtils';
 import { cn } from '@/lib/utils';
 import { formatBracketMatchLabel } from '@/utils/bracketMatchLabel';
 
+interface ReadOnlyBracketTeam {
+    id?: string | null;
+    name?: string;
+    seed?: number | null;
+    logo_url?: string | null;
+}
+
+interface ReadOnlyBracketMatch {
+    id?: string | number;
+    status?: string;
+    team1_score?: number | null;
+    team2_score?: number | null;
+    team1?: ReadOnlyBracketTeam;
+    team2?: ReadOnlyBracketTeam;
+    winner?: { id?: string | null };
+    scheduledTime?: string | null;
+    scheduled_time?: string | null;
+    round_index?: number;
+    match_number?: number;
+}
+
 interface ReadOnlyMatchCardProps {
-    match: any;
+    match: ReadOnlyBracketMatch;
     x?: number;
     y?: number;
     className?: string;

@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Copy, ChevronDown } from 'lucide-react';
 import { FullScoreboard } from '@/components/tournament/FullScoreboard';
+import type { ScoreboardPlayer } from '@/types/scoreboardPlayer';
 import { useToast } from '@/hooks/use-toast';
 import {
   getDisputingTeamName,
@@ -76,7 +77,7 @@ const ReportDetailBlock: React.FC<{
   const isAutoFetch = !!report.riot_match_id && !!report.match_data;
   const hasScreenshots = report.screenshot_urls && report.screenshot_urls.length > 0;
   const matchData = report.match_data as Record<string, unknown> | null;
-  const hasPlayers = isAutoFetch && matchData?.players;
+  const hasPlayers = Boolean(isAutoFetch && matchData?.players);
 
   return (
     <div className="space-y-3">
@@ -99,7 +100,7 @@ const ReportDetailBlock: React.FC<{
 
       {hasPlayers && (
         <FullScoreboard
-          players={matchData!.players as unknown[]}
+          players={matchData!.players as ScoreboardPlayer[]}
           team1Name={matchContext?.team1_name || 'Team 1'}
           team2Name={matchContext?.team2_name || 'Team 2'}
           team1Score={report.team1_score}

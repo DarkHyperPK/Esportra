@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 
-interface MatchMessage {
+export interface MatchMessage {
   id: string;
   match_id: string;
   sender_id: string;
@@ -20,7 +20,12 @@ interface MatchMessage {
   is_organizer?: boolean;
 }
 
-type ChatConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
+export type ChatConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
+
+interface MessagesQueryData {
+  messages: MatchMessage[];
+  opponentLastReadAt: Date | null;
+}
 
 function fromDto(dto: Record<string, any>): MatchMessage {
   return {
@@ -42,7 +47,17 @@ function normalizeMessages(rows: unknown): MatchMessage[] {
   return rows.map((row) => fromDto(row as Record<string, any>));
 }
 
-export const useMatchChat = (matchId: string | undefined) => {
+interface UseMatchChatOptions {
+  onNewMessage?: () => void;
+  isChatOpen?: boolean;
+}
+
+export const useMatchChat = (matchId: string | undefined, options: UseMatchChatOptions = {}) => {
+  const onNewMessageRef = useRef(options.onNewMessage);
+  useEffect(() => { onNewMessageRef.current = options.onNewMessage; }, [options.onNewMessage]);
+  const isChatOpenRef = useRef(options.isChatOpen ?? false);
+  useEffect(() => { isChatOpenRef.current = options.isChatOpen ?? false; }, [options.isChatOpen]);
+
   const queryClient = useQueryClient();
   const { toast }   = useToast();
   const { user }    = useAuth();
@@ -50,20 +65,32 @@ export const useMatchChat = (matchId: string | undefined) => {
   const conn        = useHub(HubPaths.Chat);
   const [connectionStatus, setConnectionStatus] = useState<ChatConnectionStatus>('connecting');
   const [isJoined, setIsJoined] = useState(false);
+  const isJoinedRef = useRef(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [opponentLastReadAt, setOpponentLastReadAt] = useState<Date | null>(null);
 
   const messagesQueryKey = ['match-messages', matchId, user?.id ?? 'anonymous'] as const;
 
-  const { data: messages, isLoading, isError, error } = useQuery<MatchMessage[]>({
+  const { data: chatData, isLoading, isError, error } = useQuery<MessagesQueryData>({
     queryKey: messagesQueryKey,
     queryFn:  async () => {
-      const rows = await apiClient.get<unknown>(`/api/matches/${matchId}/messages`);
-      return normalizeMessages(rows);
+      const response = await apiClient.get<unknown>(`/api/matches/${matchId}/messages`);
+      const msgs = Array.isArray(response) ? response : (response as { messages: unknown[] }).messages;
+      const receipts = Array.isArray(response)
+        ? []
+        : ((response as { readReceipts?: { userId: string; lastReadAt: string }[] }).readReceipts ?? []);
+      const opponentReceipt = receipts.find((r) => r.userId !== user?.id);
+      return {
+        messages: normalizeMessages(msgs),
+        opponentLastReadAt: opponentReceipt ? new Date(opponentReceipt.lastReadAt) : null,
+      };
     },
     enabled:  !!matchId && !!user?.id,
     staleTime: 30_000,
     retry: false,
   });
+
+  const messages = chatData?.messages;
 
   useEffect(() => {
     if (isError) {
@@ -74,35 +101,62 @@ export const useMatchChat = (matchId: string | undefined) => {
   }, [isError, error]);
 
   useEffect(() => {
+    setOpponentLastReadAt(chatData?.opponentLastReadAt ?? null);
+  }, [chatData?.opponentLastReadAt]);
+
+  // Reactive mark-read: fires the moment both isJoined and isChatOpen become true.
+  // Covers (a) join while panel is already open on desktop, (b) panel open while already joined.
+  useEffect(() => {
+    if (!isJoined || !options.isChatOpen || !matchId) return;
+    if (conn.state !== HubConnectionState.Connected) return;
+    conn.invoke('MarkRead', matchId).catch(() => {});
+  }, [isJoined, options.isChatOpen, matchId, conn]);
+
+  useEffect(() => {
     if (!matchId || !user?.id) return;
 
     let active = true;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let monitorTimer: ReturnType<typeof setInterval> | null = null;
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     let joined = false;
 
     const handleMessageReceived = (dto: Record<string, any>) => {
       if (!active) return;
       const msg = fromDto(dto);
 
-      queryClient.setQueryData<MatchMessage[]>(
+      queryClient.setQueryData<MessagesQueryData>(
         messagesQueryKey,
-        (old = []) => {
-          if (old.some((m) => m.id === msg.id)) return old;
-          const next = [...old, msg];
+        (old) => {
+          const prev = old ?? { messages: [], opponentLastReadAt: null };
+          if (prev.messages.some((m) => m.id === msg.id)) return prev;
+          const next = [...prev.messages, msg];
           setTimeout(() => scrollRef.current?.scrollTo({
             top: scrollRef.current.scrollHeight,
             behavior: 'smooth',
           }), 80);
-          return next;
+          return { ...prev, messages: next };
         },
       );
+
+      if (msg.sender_id !== user.id) {
+        onNewMessageRef.current?.();
+        if (joined && isChatOpenRef.current) {
+          conn.invoke('MarkRead', matchId).catch(() => {});
+        }
+      }
+    };
+
+    const handleMessagesSeen = (payload: { matchId: string; userId: string; lastReadAt: string }) => {
+      if (!active) return;
+      setOpponentLastReadAt(new Date(payload.lastReadAt));
     };
 
     const handleHubError = (message: string) => {
       if (!active) return;
       setChatError(message || 'Unable to join match chat.');
       joined = false;
+      isJoinedRef.current = false;
       setIsJoined(false);
     };
 
@@ -150,11 +204,16 @@ export const useMatchChat = (matchId: string | undefined) => {
         if (!active) return;
         joined = true;
         setConnectionStatus('connected');
+        isJoinedRef.current = true;
         setIsJoined(true);
+        if (isChatOpenRef.current) {
+          conn.invoke('MarkRead', matchId).catch(() => {});
+        }
         setChatError(null);
       } catch (err) {
         if (!active) return;
         joined = false;
+        isJoinedRef.current = false;
         setIsJoined(false);
         setChatError(getApiErrorMessage(err, 'Unable to join match chat.'));
         scheduleJoin(1500);
@@ -162,6 +221,7 @@ export const useMatchChat = (matchId: string | undefined) => {
     };
 
     conn.on('MessageReceived', handleMessageReceived);
+    conn.on('MessagesSeen', handleMessagesSeen);
     conn.on('Error', handleHubError);
     join();
     monitorTimer = setInterval(() => {
@@ -169,6 +229,7 @@ export const useMatchChat = (matchId: string | undefined) => {
       syncStatus();
       if (conn.state !== HubConnectionState.Connected && joined) {
         joined = false;
+        isJoinedRef.current = false;
         setIsJoined(false);
       }
       if (conn.state === HubConnectionState.Connected && !joined) {
@@ -176,11 +237,28 @@ export const useMatchChat = (matchId: string | undefined) => {
       }
     }, 1000);
 
+    // Refresh server-side presence key every 90 s so offline-email detection is accurate.
+    // isChatOpen drives the MarkRead upsert on the server — heartbeat alone never marks read.
+    heartbeatTimer = setInterval(() => {
+      if (!active || !joined || conn.state !== HubConnectionState.Connected) return;
+      conn.invoke('Heartbeat', matchId, isChatOpenRef.current).catch(() => {});
+    }, 90_000);
+
+    // Safety-net only — the reactive useEffect above handles all normal cases.
+    const markReadInterval = setInterval(() => {
+      if (conn && isChatOpenRef.current && isJoinedRef.current) {
+        conn.invoke('MarkRead', matchId).catch(() => {});
+      }
+    }, 30000);
+
     return () => {
       active = false;
       clearRetry();
       if (monitorTimer) clearInterval(monitorTimer);
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      clearInterval(markReadInterval);
       conn.off('MessageReceived', handleMessageReceived);
+      conn.off('MessagesSeen', handleMessagesSeen);
       conn.off('Error', handleHubError);
       if (conn.state === HubConnectionState.Connected)
         conn.invoke('LeaveChat', matchId).catch(() => {});
@@ -212,6 +290,11 @@ export const useMatchChat = (matchId: string | undefined) => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, []);
 
+  const markRead = useCallback(() => {
+    if (!matchId || !isJoined || conn.state !== HubConnectionState.Connected) return;
+    conn.invoke('MarkRead', matchId).catch(() => {});
+  }, [conn, matchId, isJoined]);
+
   return {
     messages,
     isLoading,
@@ -223,5 +306,7 @@ export const useMatchChat = (matchId: string | undefined) => {
     scrollToBottom,
     connectionStatus,
     isJoined,
+    opponentLastReadAt,
+    markRead,
   };
 };

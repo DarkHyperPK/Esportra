@@ -193,10 +193,13 @@ const EditTournament = () => {
           ?? 7,
 
         // Game-specific settings
-        assistedMatchReporting: !!(tournamentData.settings as any)?.assistedMatchReporting,
+        assistedMatchReporting: !!(tournamentData.settings as any)?.assistedReportingEnabled,
+        requiredAccountLinks: (tournamentData.settings as any)?.requiredAccountLinks ?? 1,
         mapVetoEnabled: effectiveFeatures.mapVeto
           ? ((tournamentData.settings as any)?.mapVetoEnabled ?? true)
           : false,
+        discordLinkCount: (tournamentData.settings as any)?.discordLinkCount
+          ?? ((tournamentData.settings as any)?.requireDiscordLink ? 1 : 0),
 
         // Battle Royale settings (from tournament.settings JSON)
         ...(persistedFormat === 'battle_royale' ? {
@@ -212,7 +215,6 @@ const EditTournament = () => {
         } : {}),
       };
 
-      console.log('[EditTournament] Mapped assistedMatchReporting:', mappedData.assistedMatchReporting);
       setWizardData(mappedData);
 
     } catch (error: any) {

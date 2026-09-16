@@ -275,7 +275,7 @@ const MatchStatisticsDetail: React.FC<{
     }
 
     const side = resolveMatchSide(match, teamId);
-    const isTeam1 = side === 'team1' || (isOrganizer && !teamId);
+    const isTeam1 = Boolean(side === 'team1' || (isOrganizer && !teamId));
     const opponentName = resolveOpponentName(match, teamId);
     const team1Name = match.team1?.name || 'Team 1';
     const team2Name = match.team2?.name || 'Team 2';

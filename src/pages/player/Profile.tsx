@@ -30,7 +30,7 @@ const PlayerProfilePage = () => {
   const displayedProfile = username ? profileQuery.data ?? null : authProfile;
   const loading = username ? profileQuery.isLoading : false;
 
-  const isOwnProfile = !username || (authProfile && displayedProfile?.id === authProfile.id);
+  const isOwnProfile = Boolean(!username || (authProfile && displayedProfile?.id === authProfile.id));
 
   if (loading) {
     return (

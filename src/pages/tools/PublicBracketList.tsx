@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Share2, Trash2, Trophy } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";

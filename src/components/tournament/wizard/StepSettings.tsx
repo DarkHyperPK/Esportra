@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Zap, Swords, Server } from 'lucide-react';
+import { Settings, Zap, Swords, Server, MessageSquare } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import {
@@ -22,8 +22,6 @@ const StepSettings: React.FC<WizardStepProps> = ({ data, updateData }) => {
     const showAssistedReporting = features.assistedReporting;
     const isCS2 = data.game?.toLowerCase() === 'counter-strike 2' || data.game?.toLowerCase() === 'cs2';
     const { data: regionGroups, isLoading: regionsLoading } = useServerRegions(isCS2);
-    const hasAnySettings = showMapVeto || showAssistedReporting || isCS2;
-
     return (
         <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -59,25 +57,46 @@ const StepSettings: React.FC<WizardStepProps> = ({ data, updateData }) => {
 
                     {/* Assisted Match Reporting — games with API integration only */}
                     {showAssistedReporting && (
-                        <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
-                            <Switch
-                                checked={data.assistedMatchReporting}
-                                onCheckedChange={(checked) => updateData({ assistedMatchReporting: checked })}
-                            />
-                            <div className="flex-1">
-                                <p className="font-medium text-white text-sm flex items-center gap-2">
-                                    <Zap className="w-4 h-4 text-zinc-400" />
-                                    Assisted Match Reporting
-                                </p>
-                                <p className="text-xs text-gray-400 mt-1">
-                                    Automatically detects match results from Riot's API. Captains can scan their recent matches to report scores instantly.
-                                </p>
-                                {data.assistedMatchReporting && (
-                                    <p className="text-xs text-amber-400 mt-2">
-                                        ⚠ Players will be required to link their Riot account before registering.
+                        <div className="space-y-3">
+                            <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                                <Switch
+                                    checked={data.assistedMatchReporting}
+                                    onCheckedChange={(checked) => updateData({ assistedMatchReporting: checked, requiredAccountLinks: checked ? (data.requiredAccountLinks || 1) : 1 })}
+                                />
+                                <div className="flex-1">
+                                    <p className="font-medium text-white text-sm flex items-center gap-2">
+                                        <Zap className="w-4 h-4 text-zinc-400" />
+                                        Assisted Match Reporting
                                     </p>
-                                )}
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Automatically detects match results from Riot's API. Captains can scan their recent matches to report scores instantly.
+                                    </p>
+                                </div>
                             </div>
+                            {data.assistedMatchReporting && (
+                                <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
+                                    <p className="text-sm font-medium text-white">Required Linked Accounts</p>
+                                    <p className="text-xs text-gray-400">How many roster members must link their Riot account before registering.</p>
+                                    <Select
+                                        value={String(data.requiredAccountLinks ?? 1)}
+                                        onValueChange={(val) => updateData({ requiredAccountLinks: Number(val) })}
+                                    >
+                                        <SelectTrigger className="w-48">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {Array.from({ length: data.teamSize ?? 5 }, (_, i) => i + 1).map((n) => (
+                                                <SelectItem key={n} value={String(n)}>
+                                                    {n === 1 ? 'Captain only' : String(n)}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-amber-400 pt-1">
+                                        ⚠ Players without a linked Riot account will be blocked from registering if the requirement is not met.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -118,14 +137,45 @@ const StepSettings: React.FC<WizardStepProps> = ({ data, updateData }) => {
                         </div>
                     )}
 
-                    {/* No game-specific settings available */}
-                    {!hasAnySettings && (
-                        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 text-center">
-                            <p className="text-sm text-gray-400">
-                                No game-specific settings available for {data.game || 'this game'}.
-                            </p>
+                    {/* Discord Account Requirement — always available */}
+                    <div className="space-y-3">
+                        <div className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                            <Switch
+                                checked={(data.discordLinkCount ?? 0) > 0}
+                                onCheckedChange={(checked) => updateData({ discordLinkCount: checked ? 1 : 0 })}
+                            />
+                            <div className="flex-1">
+                                <p className="font-medium text-white text-sm flex items-center gap-2">
+                                    <MessageSquare className="w-4 h-4 text-zinc-400" />
+                                    Require Discord Account
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Players must have their Discord account linked before registering in this tournament.
+                                </p>
+                            </div>
                         </div>
-                    )}
+                        {(data.discordLinkCount ?? 0) > 0 && (
+                            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
+                                <p className="text-sm font-medium text-white">Required Linked Accounts</p>
+                                <p className="text-xs text-gray-400">How many players per team must link their Discord account before registering.</p>
+                                <Select
+                                    value={String(data.discordLinkCount ?? 1)}
+                                    onValueChange={(val) => updateData({ discordLinkCount: Number(val) })}
+                                >
+                                    <SelectTrigger className="w-48">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {Array.from({ length: data.teamSize ?? 5 }, (_, i) => i + 1).map((n) => (
+                                            <SelectItem key={n} value={String(n)}>
+                                                {n === 1 ? 'Captain only' : String(n)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </motion.div>

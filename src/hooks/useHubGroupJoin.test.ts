@@ -17,7 +17,7 @@ function createMockConnection() {
     start: vi.fn(async () => {
       state = HubConnectionState.Connected;
     }),
-    invoke: vi.fn(async () => undefined),
+    invoke: vi.fn(async (..._args: unknown[]) => undefined),
     on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
       const set = handlers.get(event) ?? new Set();
       set.add(handler);

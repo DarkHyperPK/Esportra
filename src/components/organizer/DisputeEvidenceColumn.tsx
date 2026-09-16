@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Copy, ChevronDown, ImageOff } from 'lucide-react';
 import { FullScoreboard } from '@/components/tournament/FullScoreboard';
+import type { ScoreboardPlayer } from '@/types/scoreboardPlayer';
 import { useToast } from '@/hooks/use-toast';
 import type { DisputeReport, MatchDisputeEvidence } from './DisputeEvidencePanel';
 import { resolveDisputingEvidenceUrls } from '@/utils/disputeReportUtils';
@@ -186,7 +187,7 @@ const DisputeEvidenceColumn: React.FC<DisputeEvidenceColumnProps> = ({
             {scoreboardOpen && (
               <div className="mt-3">
                 <FullScoreboard
-                  players={matchData!.players as unknown[]}
+                  players={matchData!.players as ScoreboardPlayer[]}
                   team1Name={matchContext?.team1_name || 'Team 1'}
                   team2Name={matchContext?.team2_name || 'Team 2'}
                   team1Score={report!.team1_score}

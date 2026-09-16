@@ -66,9 +66,34 @@ jobs:
           VITE_API_URL: https://placeholder.api.com
         run: npm run test --if-present
 
+  backend-health:
+    name: Backend staging health check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check backend API health
+        env:
+          API_URL: ${{ secrets.VITE_API_URL }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "::warning title=Backend health skipped::VITE_API_URL not set — backend health check skipped."
+            exit 0
+          fi
+          echo "Checking backend health at $API_URL/health"
+          for i in 1 2 3; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$API_URL/health" || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Backend healthy (HTTP $STATUS)"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $STATUS — retrying in 15s"
+            sleep 15
+          done
+          echo "::error title=Backend unhealthy::Backend staging API returned non-200 after 3 attempts. Deploy the backend and wait for its CI to pass before re-running this workflow."
+          exit 1
+
   promote:
     name: Promote to deploy/staging
-    needs: [build-and-lint, test]
+    needs: [build-and-lint, test, backend-health]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -102,7 +127,7 @@ jobs:
 
   notify-failure:
     name: Report failure
-    needs: [build-and-lint, test, promote, smoke]
+    needs: [build-and-lint, test, backend-health, promote, smoke]
     if: failure() && !cancelled()
     runs-on: ubuntu-latest
     permissions:

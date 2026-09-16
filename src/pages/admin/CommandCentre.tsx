@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { Link } from 'react-router-dom';
@@ -142,7 +141,10 @@ const chartTick = {
   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
 };
 
-const formatDayTick = (day: string) => format(new Date(`${day}T00:00:00`), 'MMM d');
+const formatDayTick = (day: string) => {
+  const iso = String(day).slice(0, 10);
+  return format(new Date(`${iso}T00:00:00`), 'MMM d');
+};
 
 function mergeDailyCounts(
   primary: { day: string; count: number }[],
@@ -179,18 +181,13 @@ function ChartTooltip({ active, payload, label }: TooltipProps<number, string>) 
 
 export default function CommandCentre() {
   const { can, isSuperAdmin } = useAdminAccess();
-  const { connected: hubConnected, refreshCounts } = useAdminHub();
-
-  useEffect(() => {
-    if (hubConnected) {
-      refreshCounts();
-    }
-  }, [hubConnected, refreshCounts]);
+  const { connected: hubConnected } = useAdminHub();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin', 'command-centre'],
     queryFn: () => apiClient.get<CommandCentreData>('/api/admin/command-centre'),
     refetchInterval: 60000,
+    staleTime: 45_000,
   });
 
   if (isLoading) {
@@ -342,8 +339,8 @@ export default function CommandCentre() {
                 ))}
               </div>
               <div className="mt-1.5 flex justify-between font-mono text-[9px] uppercase tracking-wider text-zinc-700">
-                <span>{data.signups_7d[0]?.day}</span>
-                <span>{data.signups_7d[data.signups_7d.length - 1]?.day}</span>
+                <span>{data.signups_7d[0]?.day.slice(0, 10)}</span>
+                <span>{data.signups_7d[data.signups_7d.length - 1]?.day.slice(0, 10)}</span>
               </div>
             </div>
           </CommandSection>

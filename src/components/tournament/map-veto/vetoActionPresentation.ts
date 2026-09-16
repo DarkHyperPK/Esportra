@@ -22,6 +22,8 @@ export function getVetoActionLabel(
             return side ? `chose ${getSideShortLabel(side)} on` : 'chose side for';
         case 'auto_decider':
             return 'decider';
+        case 'ignore':
+            return tense === 'present' ? 'auto-removing' : 'auto-removed';
         default:
             return action.replace(/_/g, ' ');
     }
@@ -37,6 +39,8 @@ export function getVetoActionNoun(action: VetoActionKind | string) {
             return 'SIDE';
         case 'auto_decider':
             return 'DECIDER';
+        case 'ignore':
+            return 'AUTO';
         default:
             return action.replace(/_/g, ' ').toUpperCase();
     }
@@ -57,35 +61,41 @@ export function getSideFullLabel(side?: VetoSide | null) {
 export function getVetoActionClasses(action: VetoActionKind | string, variant: 'chip' | 'text' | 'border' | 'surface' = 'chip') {
     const isPick = action === 'pick' || action === 'auto_decider';
     const isSide = action === 'pick_side';
+    const isIgnore = action === 'ignore';
 
     if (variant === 'text') {
-        return isPick ? 'text-emerald-300' : isSide ? 'text-white' : 'text-rose-300';
+        if (isIgnore) return 'text-zinc-500';
+        return isPick ? 'text-zinc-300' : isSide ? 'text-white/70' : 'text-rose-300';
     }
 
     if (variant === 'border') {
-        return isPick ? 'border-emerald-500/40' : isSide ? 'border-white/30' : 'border-rose-500/40';
+        if (isIgnore) return 'border-zinc-700/50';
+        return isPick ? 'border-zinc-500/40' : isSide ? 'border-white/20' : 'border-rose-500/35';
     }
 
     if (variant === 'surface') {
-        return isPick ? 'bg-emerald-500/12' : isSide ? 'bg-white/10' : 'bg-rose-500/12';
+        if (isIgnore) return 'bg-zinc-800/40';
+        return isPick ? 'bg-zinc-700/20' : isSide ? 'bg-white/[0.06]' : 'bg-rose-500/10';
     }
+
+    if (isIgnore) return 'border border-zinc-700/40 bg-zinc-800/30 text-zinc-500';
 
     return cn(
         'border',
-        isPick && 'border-emerald-500/45 bg-emerald-500/15 text-emerald-200',
-        isSide && 'border-white/30 bg-white/10 text-white',
-        !isPick && !isSide && 'border-rose-500/45 bg-rose-500/15 text-rose-200',
+        isPick && 'border-zinc-500/40 bg-zinc-700/20 text-zinc-200',
+        isSide && 'border-white/20 bg-white/[0.06] text-white/80',
+        !isPick && !isSide && 'border-rose-500/35 bg-rose-500/10 text-rose-300',
     );
 }
 
 export function getVetoActionHoverClasses(action: VetoActionKind | string) {
     if (action === 'pick' || action === 'auto_decider') {
-        return 'border-emerald-500/50 hover:border-emerald-400 hover:shadow-emerald-500/20';
+        return 'border-zinc-500/40 hover:border-zinc-400 hover:shadow-zinc-500/15';
     }
 
     if (action === 'pick_side') {
-        return 'border-white/40 hover:border-white hover:shadow-white/15';
+        return 'border-white/25 hover:border-white/50 hover:shadow-white/10';
     }
 
-    return 'border-rose-500/50 hover:border-rose-400 hover:shadow-rose-500/20';
+    return 'border-rose-500/40 hover:border-rose-400 hover:shadow-rose-500/20';
 }

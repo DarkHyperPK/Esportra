@@ -84,6 +84,7 @@ describe('tournamentInviteUtils', () => {
       registrationType: 'open' as const,
       reservedSlots: 0,
       isPublic: true,
+      maxTeams: 16,
       registrationDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       startDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
     };

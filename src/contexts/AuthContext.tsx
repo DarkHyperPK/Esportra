@@ -116,7 +116,7 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
             console.log("⚠️ No profile found for authenticated user. User may need to complete profile setup.");
           } else {
             prevProfileIdRef.current = profileResult.id;
-            Sentry.setUser({ id: profileResult.id, username: profileResult.username, email: profileResult.email });
+            Sentry.setUser({ id: profileResult.id, username: profileResult.username, email: profileResult.email ?? undefined });
 
             if (profileResult.is_suspended && window.location.pathname !== '/suspended') {
               console.warn("[AuthContext] Active session suspended, redirecting...");
@@ -178,6 +178,17 @@ function AuthProviderImpl({ children }: AuthProviderProps) {
     applyProfilePatch(user.id, updated as unknown as Record<string, unknown>);
     await fetchProfile(user.id);
   }, [user, updateProfile, fetchProfile, applyProfilePatch]);
+
+  // Silent background timezone sync — fires once per session when profile loads
+  useEffect(() => {
+    if (!profile?.id || !user || !isMounted) return;
+
+    const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (profile.timezone_iana === detectedTz) return;
+
+    void apiClient.put('/api/profiles/me/timezone', { timezone_iana: detectedTz });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
 
   // Silent background country detection
   useEffect(() => {

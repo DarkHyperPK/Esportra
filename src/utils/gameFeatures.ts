@@ -402,9 +402,9 @@ export function resolveSoloParticipantDisplayName(
 export function isAssistedMatchReportingEnabled(
   gameName: string,
   modeKey?: string | null,
-  tournamentSettings?: { assistedMatchReporting?: boolean } | null,
+  tournamentSettings?: { assistedReportingEnabled?: boolean } | null,
 ): boolean {
-  return tournamentSettings?.assistedMatchReporting === true
+  return tournamentSettings?.assistedReportingEnabled === true
     && getEffectiveGameFeatures(gameName, modeKey).assistedReporting;
 }
 

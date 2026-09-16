@@ -91,6 +91,7 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
   const [enforceReportScore, setEnforceReportScore] = useState(false);
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string | null>(null);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const [comments, setComments] = useState<Array<{ id: string; user_id: string; comment: string; created_at: string; user_name?: string; is_internal: boolean; attachment_url?: string }>>([]);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -193,8 +194,6 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
       if (!silent) setLoadingComments(true);
       const data = await apiClient.get<any[]>(`/api/organizer/disputes/${disputeId}/comments`);
 
-      console.log('Fetched comments data:', data);
-
       // Fetch profile data for each unique user_id
       const userIds = [...new Set((data || []).map((c: any) => c.user_id))];
       const profileMap = new Map<string, { full_name?: string; username?: string }>();
@@ -223,7 +222,6 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
         };
       });
 
-      console.log('Processed comments:', commentsWithNames);
       setComments(commentsWithNames);
     } catch (error: unknown) {
       console.error('Error fetching comments:', error);
@@ -452,6 +450,21 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : (error as any)?.message || JSON.stringify(error);
       toast({ title: 'Error', description: `Failed to update dispute: ${errorMessage}`, variant: 'destructive' });
+    }
+  };
+
+  const handleReopenDispute = async (disputeId: string) => {
+    try {
+      setReopening(true);
+      await apiClient.post(`/api/organizer/disputes/${disputeId}/reopen`, {});
+      toast({ title: 'Dispute reopened', description: 'The dispute has been reopened.' });
+      setSelectedDispute(null);
+      fetchDisputes();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Failed to reopen dispute';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setReopening(false);
     }
   };
 
@@ -739,6 +752,19 @@ const DisputeCenter: React.FC<DisputeCenterProps> = ({
                       reportId: enforceReportScore && disputedReport?.id ? disputedReport.id : null,
                     })}
                   />
+                )}
+
+                {isClosed && (
+                  <div className="shrink-0 px-4 py-3 border-t border-white/[0.06]">
+                    <button
+                      onClick={() => handleReopenDispute(selectedDispute.id)}
+                      disabled={reopening}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-sm font-medium hover:bg-amber-500/20 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${reopening ? 'animate-spin' : ''}`} />
+                      {reopening ? 'Reopening…' : 'Reopen Dispute'}
+                    </button>
+                  </div>
                 )}
               </motion.div>
             );

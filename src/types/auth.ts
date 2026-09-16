@@ -15,6 +15,7 @@ export type UserProfile = {
   riot_tag?: string | null;
   steam_tag?: string | null;
   country_code?: string | null;
+  timezone_iana?: string | null;
   date_of_birth?: string | null;
   is_admin?: boolean;
   admin_roles?: string[];

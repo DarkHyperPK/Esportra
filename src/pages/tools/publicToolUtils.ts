@@ -67,7 +67,7 @@ const resolveToolBracketPayloadSource = (raw: AnyRecord): AnyRecord => {
 
 export const normalizeToolBracketResponse = (raw: AnyRecord): PublicBracketResponse => ({
   id: String(pick(raw, "id") ?? ""),
-  title: String(pick(raw, "title") ?? pick(raw, "payload", "Payload")?.title ?? "Untitled bracket"),
+  title: String(pick(raw, "title") ?? pick<AnyRecord>(raw, "payload", "Payload")?.title ?? "Untitled bracket"),
   format: String(pick(raw, "format") ?? ""),
   bestOf: asNumber(pick(raw, "bestOf", "best_of"), 1),
   status: String(pick(raw, "status") ?? "active"),
@@ -155,8 +155,6 @@ export const adaptPublicBracketPayload = (payload: PublicBracketPayload): Bracke
 
   return rawNodes.map((node): BracketMatch => {
     const id = String(pick(node, "id", "Id") ?? "");
-    const _team1Id = pick<string>(node, "team1Id", "team1_id", "Team1Id");
-    const _team2Id = pick<string>(node, "team2Id", "team2_id", "Team2Id");
     const winnerId = pick<string>(node, "winnerId", "winner_id", "WinnerId");
     const bracketType = String(pick(node, "bracketType", "bracket_type", "BracketType") ?? "winners");
     const bracketSide = bracketType === "losers" ? "losers" : bracketType === "final" ? "final" : "winners";

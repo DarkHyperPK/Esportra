@@ -38,7 +38,7 @@ export interface JourneyTourProps {
 const ACCENTS: Record<Accent, {
   icon: string; iconBorder: string; iconBg: string;
   dotActive: string; dotDone: string;
-  cta: string; ctaShadow: string;
+  cta?: string; ctaShadow?: string;
 }> = {
   rose: {
     icon: 'text-rose-400',

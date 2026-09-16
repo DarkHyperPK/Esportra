@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { LoadingSpinner } from '@/components/effects/LoadingSpinner';
 import { apiClient } from '@/lib/apiClient';
@@ -27,7 +27,7 @@ const FullscreenBracketPage = () => {
             setTournament(tournamentData);
 
             // Fetch bracket version (active or draft)
-            const versionsData = await apiClient.get(`/api/tournaments/${tournamentData.id}/bracket-versions?status=active,draft`);
+            const versionsData = await apiClient.get<Array<{ id: string }>>(`/api/tournaments/${tournamentData.id}/bracket-versions?status=active,draft`);
             if (versionsData && versionsData.length > 0) {
                 setActiveVersionId(versionsData[0].id);
             } else {
@@ -49,9 +49,7 @@ const FullscreenBracketPage = () => {
 
     // Realtime updates
     useBracketRealtime({
-        tournamentId: tournament?.id,
         versionId: activeVersionId || undefined,
-        slug: slug,
         enabled: !!tournament?.id && !!activeVersionId
     });
 

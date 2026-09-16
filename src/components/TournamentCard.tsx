@@ -24,17 +24,17 @@ interface TournamentCardProps {
   game: string;
   date: string;
   time: string;
-  venue: string;
+  venue: string | null;
   max_participants: number;
-  current_participants: number;
-  status: 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled';
-  team_size: number;
+  current_participants: number | undefined;
+  status: 'draft' | 'published' | 'open' | 'closed' | 'ongoing' | 'completed' | 'cancelled' | 'check_in';
+  team_size?: number;
   prize_pool: string;
   user_id?: string;
   organizer_id?: string;
-  entry_fee?: string;
+  entry_fee?: string | null;
   is_online?: boolean;
-  image_url?: string;
+  image_url?: string | null;
   registrationData?: { id: string } | null;
   currentUserId?: string;
   slug: string;
@@ -306,7 +306,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
           {isOrganizer ? (
             <div className="flex gap-2 w-full pt-2">
               <JackButton
-                onClick={(e) => { e.stopPropagation(); navigate(`/organizer/tournament/${slug || id}`); }}
+                onClick={(e: React.MouseEvent) => { e.stopPropagation(); navigate(`/organizer/tournament/${slug || id}`); }}
                 className="flex-1"
               >
                 Manage

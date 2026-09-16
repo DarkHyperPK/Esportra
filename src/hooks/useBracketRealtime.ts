@@ -18,6 +18,8 @@ import type { BracketNode } from '@/types/bracket-graph';
 
 interface Options {
   versionId: string | null | undefined;
+  /** Accepted for API compatibility; subscriptions are keyed by versionId only. */
+  tournamentId?: string | null;
   enabled?: boolean;
   onMatchUpdated?: (node: Partial<BracketNode> & { matchId: string }) => void;
   onBracketReset?: () => void;

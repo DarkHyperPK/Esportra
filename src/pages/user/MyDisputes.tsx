@@ -11,7 +11,7 @@ import {
   ShieldAlert, Trophy, Calendar, ChevronRight,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageTransition } from '@/components/PageTransition';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -62,6 +62,13 @@ interface Dispute {
   reports?: DisputeReport[];
   riot_accounts?: DisputeRiotAccount[];
   match_dispute?: MatchDisputeEvidence | null;
+  can_reopen?: boolean;
+  reopen_count?: number;
+  comment_count?: number;
+  tournament_format?: string | null;
+  tournament_start_date?: string | null;
+  tournament_game?: string | null;
+  raised_by_user_id?: string;
 }
 
 function getDisputeMatchView(dispute: Dispute) {
@@ -130,9 +137,18 @@ const MyDisputes = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const conn = useHub(HubPaths.Match);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'open' | 'resolved' | 'rejected'>('all');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 20;
+  const [activeTab, setActiveTab] = useState<'all' | 'open' | 'resolved' | 'rejected'>(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam === 'open' || statusParam === 'resolved' || statusParam === 'rejected') return statusParam;
+    return 'all';
+  });
+  const [tabCounts, setTabCounts] = useState<{ open: number; resolved: number; rejected: number; total: number }>({ open: 0, resolved: 0, rejected: 0, total: 0 });
+  const [loadError, setLoadError] = useState(false);
   const [selectedDispute, setSelectedDispute] = useState<Dispute | null>(null);
   const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
   const [comments, setComments] = useState<Array<{ id: string; user_id: string; comment: string; created_at: string; user_name?: string; is_internal: boolean; attachment_url?: string | null }>>([]);
@@ -142,6 +158,8 @@ const MyDisputes = () => {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [loadingComments, setLoadingComments] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [reopening, setReopening] = useState(false);
+  const [reopenError, setReopenError] = useState<string | null>(null);
 
   const fetchDisputes = useCallback(async () => {
     if (!user?.id) return;
@@ -149,26 +167,35 @@ const MyDisputes = () => {
     try {
       setLoading(true);
 
-      const disputesRaw = await apiClient.get<Dispute[]>('/api/disputes/mine');
+      const disputesRaw = await apiClient.get<Dispute[]>(
+        `/api/disputes/mine?limit=${PAGE_SIZE}&offset=${page * PAGE_SIZE}`
+      );
       const disputesData: Dispute[] = Array.isArray(disputesRaw) ? disputesRaw : [];
 
       setDisputes(disputesData.map((d) => ({
         ...d,
         tournament_name: d.tournament_name || (d.tournament_id ? 'Unknown Tournament' : 'General Support'),
       })));
+      setLoadError(false);
     } catch (error: unknown) {
       console.error('Error fetching disputes:', error);
-      const errorMessage = error instanceof Error ? error.message : (error as any)?.message || JSON.stringify(error);
-      toast({ title: 'Error', description: `Failed to load disputes: ${errorMessage}`, variant: 'destructive' });
+      toast({ title: 'Error', description: 'Failed to load disputes. Please try again.', variant: 'destructive' });
       setDisputes([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
-  }, [user?.id, toast]);
+  }, [user?.id, page, toast]);
 
-  useEffect(() => {
-    fetchDisputes();
-  }, [fetchDisputes]);
+  const fetchCounts = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const data = await apiClient.get<{ open: number; resolved: number; rejected: number; total: number }>('/api/disputes/mine/counts');
+      setTabCounts(data);
+    } catch {
+      // fallback: keep current counts
+    }
+  }, [user?.id]);
 
   const fetchComments = useCallback(async (disputeId: string, silent = false) => {
     if (!user?.id) return;
@@ -208,6 +235,49 @@ const MyDisputes = () => {
       setLoadingComments(false);
     }
   }, [user?.id, toast]);
+
+  useEffect(() => {
+    fetchDisputes();
+  }, [fetchDisputes]);
+
+  useEffect(() => {
+    fetchCounts();
+  }, [fetchCounts, disputes]);
+
+  // Deep-link support via ?disputeId= query param
+  useEffect(() => {
+    const deepLinkId = searchParams.get('disputeId');
+    if (!deepLinkId || loading || disputes.length === 0) return;
+
+    const found = disputes.find(d => d.id === deepLinkId);
+    if (found) {
+      setSelectedDispute(found);
+      setDisputeDialogOpen(true);
+      fetchComments(found.id);
+    } else {
+      // Dispute not in current list — fetch it directly
+      apiClient.get<Dispute>(`/api/disputes/${deepLinkId}`)
+        .then(dispute => {
+          if (dispute) {
+            setSelectedDispute(dispute);
+            setDisputeDialogOpen(true);
+            fetchComments(dispute.id);
+          }
+        })
+        .catch((error: any) => {
+          const status = error?.status || error?.response?.status;
+          if (status === 403 || status === 404) {
+            toast({ title: 'Not Found', description: 'Dispute not found or you do not have access.', variant: 'destructive' });
+          } else {
+            toast({ title: 'Error', description: 'Failed to load dispute. Please try again.', variant: 'destructive' });
+          }
+        });
+    }
+
+    // Clear the query param after handling so it doesn't re-open on tab changes
+    searchParams.delete('disputeId');
+    setSearchParams(searchParams, { replace: true });
+  }, [disputes, loading, searchParams, setSearchParams, toast, fetchComments]);
 
   const handleAddComment = async (disputeId: string) => {
     if (!user?.id || (!commentText.trim() && !commentAttachment)) return;
@@ -256,8 +326,6 @@ const MyDisputes = () => {
         attachment_url: attachmentUrl,
       });
 
-      await apiClient.patch(`/api/disputes/${disputeId}`, { updated_at: new Date().toISOString() });
-
       setCommentText('');
       setCommentAttachment(null);
       fetchComments(disputeId, true);
@@ -269,6 +337,34 @@ const MyDisputes = () => {
       setSubmittingComment(false);
       setUploadingAttachment(false);
     }
+  };
+
+  const handleReopen = async (disputeId: string) => {
+    try {
+      setReopening(true);
+      setReopenError(null);
+      await apiClient.post(`/api/disputes/${disputeId}/reopen`, {});
+      await fetchDisputes();
+      setSelectedDispute(prev => prev ? { ...prev, status: 'open', can_reopen: false, resolution_notes: undefined } : null);
+      toast({ title: 'Dispute Reopened', description: 'Your dispute has been reopened successfully.' });
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : 'Failed to reopen dispute';
+      setReopenError(errMsg);
+      toast({ title: 'Error', description: errMsg, variant: 'destructive' });
+    } finally {
+      setReopening(false);
+    }
+  };
+
+  const handleTabChange = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    setPage(0);
+    if (tab === 'all') {
+      searchParams.delete('status');
+    } else {
+      searchParams.set('status', tab);
+    }
+    setSearchParams(searchParams, { replace: true });
   };
 
   const openDisputeDialog = (dispute: Dispute) => {
@@ -309,15 +405,7 @@ const MyDisputes = () => {
 
   const filteredDisputes = activeTab === 'all'
     ? disputes
-    : activeTab === 'resolved'
-      ? disputes.filter(d => d.status === 'resolved' || d.status === 'rejected' || d.status === 'closed')
-      : disputes.filter(d => d.status === activeTab);
-
-  const stats = {
-    all: disputes.length,
-    open: disputes.filter(d => d.status === 'open' || d.status === 'in_review').length,
-    closed: disputes.filter(d => d.status === 'resolved' || d.status === 'rejected' || d.status === 'closed').length,
-  };
+    : disputes.filter(d => d.status === activeTab);
 
   if (loading) {
     return (
@@ -340,7 +428,7 @@ const MyDisputes = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div className="flex items-center gap-4 flex-wrap">
               <div>
-                <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
                   <ShieldAlert className="h-7 w-7 text-rose-500" />
                   My Disputes
                 </h1>
@@ -348,13 +436,16 @@ const MyDisputes = () => {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs bg-yellow-500/10 text-yellow-300/80 px-2.5 py-1 rounded-full border border-yellow-500/20 tabular-nums">
-                  {stats.open} Open
+                  {tabCounts.open} Open
                 </span>
                 <span className="text-xs bg-white/[0.04] text-white/50 px-2.5 py-1 rounded-full border border-white/[0.06] tabular-nums">
-                  {stats.closed} Closed
+                  {tabCounts.resolved} Resolved
                 </span>
                 <span className="text-xs bg-white/[0.04] text-white/50 px-2.5 py-1 rounded-full border border-white/[0.06] tabular-nums">
-                  {stats.all} Total
+                  {tabCounts.rejected} Rejected
+                </span>
+                <span className="text-xs bg-white/[0.04] text-white/50 px-2.5 py-1 rounded-full border border-white/[0.06] tabular-nums">
+                  {tabCounts.total} Total
                 </span>
               </div>
             </div>
@@ -369,11 +460,12 @@ const MyDisputes = () => {
             {([
               { key: 'all', label: 'All' },
               { key: 'open', label: 'Open' },
-              { key: 'resolved', label: 'Closed' },
+              { key: 'resolved', label: 'Resolved' },
+              { key: 'rejected', label: 'Rejected' },
             ] as const).map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => handleTabChange(tab.key)}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                   activeTab === tab.key
                     ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/20'
@@ -386,16 +478,26 @@ const MyDisputes = () => {
           </div>
 
           <div>
-              {filteredDisputes.length === 0 ? (
+              {loadError && disputes.length === 0 ? (
+                <div className="bg-[#0a0a0c] border border-white/[0.06] rounded-2xl py-16 text-center">
+                  <XCircle className="h-14 w-14 text-red-500/30 mx-auto mb-4" />
+                  <p className="text-white/70 text-lg font-semibold mb-1">Failed to load disputes</p>
+                  <p className="text-white/35 text-sm mb-6">Something went wrong. Please try again.</p>
+                  <Button onClick={() => { setLoadError(false); fetchDisputes(); }} className="bg-rose-600 hover:bg-rose-500 text-white">
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Retry
+                  </Button>
+                </div>
+              ) : filteredDisputes.length === 0 ? (
                 <div className="bg-[#0a0a0c] border border-white/[0.06] rounded-2xl py-16 text-center">
                   <ShieldAlert className="h-14 w-14 text-white/10 mx-auto mb-4" />
                   <p className="text-white/70 text-lg font-semibold mb-1">
-                    {activeTab === 'all' ? 'No disputes yet' : `No ${activeTab === 'resolved' ? 'closed' : activeTab} disputes`}
+                    {activeTab === 'all' ? 'No disputes yet' : `No ${activeTab} disputes`}
                   </p>
                   <p className="text-white/35 text-sm mb-6 max-w-sm mx-auto">
                     {activeTab === 'all'
                       ? "File a dispute if you encounter any issues with a match or tournament."
-                      : `You have no disputes with "${activeTab === 'resolved' ? 'closed' : activeTab}" status.`}
+                      : `You have no disputes with "${activeTab}" status.`}
                   </p>
                   {activeTab === 'all' && (
                     <Button onClick={() => navigate('/user/raise-dispute')} className="bg-rose-600 hover:bg-rose-500 text-white">
@@ -439,11 +541,14 @@ const MyDisputes = () => {
                                     {meta.label}
                                   </Badge>
                                   {dispute.reference_number && (
-                                    <span className="text-xs font-mono text-white/50 shrink-0">
+                                    <span className="font-mono text-[10px] text-rose-400/70 shrink-0">
                                       #{dispute.reference_number}
                                     </span>
                                   )}
                                   <span className="text-xs text-white/40 truncate">{dispute.tournament_name}</span>
+                                  {dispute.tournament_game && (
+                                    <span className="text-xs text-white/30 shrink-0">{dispute.tournament_game}</span>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                   <span className="text-xs text-white/25">
@@ -491,6 +596,9 @@ const MyDisputes = () => {
                                         Match #{matchView.matchNumber}
                                       </span>
                                     )}
+                                    {dispute.match?.round_index != null && (
+                                      <span className="text-xs text-white/45">Round {dispute.match.round_index + 1}</span>
+                                    )}
                                     {matchView.bestOf !== null && matchView.bestOf !== undefined && (
                                       <span className="text-xs text-white/45">BO{matchView.bestOf}</span>
                                     )}
@@ -514,6 +622,14 @@ const MyDisputes = () => {
                               {/* Dispute description preview */}
                               <div className="px-4 pb-3">
                                 <p className="text-sm text-white/50 line-clamp-2">{dispute.description}</p>
+                                {dispute.comment_count != null && dispute.comment_count > 0 && (
+                                  <div className="flex items-center gap-1 mt-2">
+                                    <span className="text-xs text-white/40 flex items-center gap-1">
+                                      <MessageSquare className="w-3 h-3" />
+                                      {dispute.comment_count}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
 
                               {/* Resolution banner */}
@@ -531,6 +647,29 @@ const MyDisputes = () => {
                     );
                   })}
                   </AnimatePresence>
+
+                  {/* Pagination Controls */}
+                  <div className="flex items-center justify-between mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={page === 0}
+                      onClick={() => setPage(p => p - 1)}
+                      className="text-white/60 border-white/10"
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-xs text-white/40">Page {page + 1}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={filteredDisputes.length < PAGE_SIZE}
+                      onClick={() => setPage(p => p + 1)}
+                      className="text-white/60 border-white/10"
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
               )}
           </div>
@@ -543,9 +682,15 @@ const MyDisputes = () => {
               setComments([]);
               setCommentText('');
               setCommentAttachment(null);
+              setReopenError(null);
+              // Clear disputeId query param if present
+              if (searchParams.has('disputeId')) {
+                searchParams.delete('disputeId');
+                setSearchParams(searchParams, { replace: true });
+              }
             }
           }}>
-            <DialogContent className="bg-[#0a0a0c] border border-white/[0.06] max-w-3xl h-[92vh] max-h-[92vh] min-h-0 !grid grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
+            <DialogContent className="bg-[#0a0a0c] border border-white/[0.06] max-w-5xl h-[92vh] max-h-[92vh] min-h-0 !grid grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden p-0">
               {selectedDispute && (() => {
                 const meta = statusMeta[selectedDispute.status] || defaultStatusMeta;
                 const Icon = meta.icon;
@@ -556,7 +701,6 @@ const MyDisputes = () => {
                 const safeReports = parseDisputeReports(selectedDispute.reports);
                 const safeRiotAccounts = parseDisputeRiotAccounts(selectedDispute.riot_accounts);
                 const matchDispute = parseMatchDispute(selectedDispute.match_dispute);
-                const _primaryReport = getPrimaryDisputeReport(safeReports);
                 const canComment = selectedDispute.status === 'open' || selectedDispute.status === 'in_review';
 
                 return (
@@ -573,6 +717,10 @@ const MyDisputes = () => {
                             {selectedDispute.reference_number && (
                               <span className="text-xs font-mono text-white/40">#{selectedDispute.reference_number}</span>
                             )}
+                            <span className="text-xs text-white/40 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              Opened {format(new Date(selectedDispute.created_at), 'MMM d, yyyy')}
+                            </span>
                             <span className="text-xs text-white/50">{selectedDispute.tournament_name}</span>
                             {selectedDispute.tournament_slug && (
                               <button
@@ -582,24 +730,69 @@ const MyDisputes = () => {
                                 <ExternalLink className="w-3 h-3" />
                               </button>
                             )}
+                            {selectedDispute.tournament_game && (
+                              <span className="text-xs bg-white/[0.06] text-white/50 px-2 py-0.5 rounded">{selectedDispute.tournament_game}</span>
+                            )}
+                            {selectedDispute.tournament_format && (
+                              <span className="text-xs text-white/40">{selectedDispute.tournament_format}</span>
+                            )}
+                            {selectedDispute.tournament_start_date && (
+                              <span className="text-xs text-white/40 flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {format(new Date(selectedDispute.tournament_start_date), 'MMM d, yyyy')}
+                              </span>
+                            )}
                           </div>
                           <DialogTitle className="text-white text-lg leading-snug">
                             {matchView.hasMatch
                               ? `${matchView.team1Name} vs ${matchView.team2Name}`
                               : selectedDispute.title}
                           </DialogTitle>
+                          {selectedDispute.raised_by_user_id === user?.id && (
+                            <span className="text-xs text-white/40">Filed by you</span>
+                          )}
                           {reasonLabel && (
                             <DialogDescription className="text-rose-400/70 text-xs mt-0.5">
                               {reasonLabel}
                             </DialogDescription>
                           )}
+                          {selectedDispute.raised_by_user_id === user?.id && (selectedDispute.status === 'resolved' || selectedDispute.status === 'rejected') && (
+                            <div className="mt-2">
+                              {selectedDispute.can_reopen ? (
+                                <>
+                                  <Button
+                                    onClick={() => handleReopen(selectedDispute.id)}
+                                    disabled={reopening}
+                                    size="sm"
+                                    className="bg-amber-600 hover:bg-amber-500 text-white text-xs"
+                                  >
+                                    {reopening ? <RefreshCw className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                                    Reopen Dispute
+                                  </Button>
+                                  {reopenError && (
+                                    <p className="text-xs text-red-400 mt-1">{reopenError}</p>
+                                  )}
+                                </>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <Button disabled size="sm" className="bg-white/5 text-white/30 text-xs cursor-not-allowed">
+                                    <RefreshCw className="w-3 h-3 mr-1" />
+                                    Reopen Dispute
+                                  </Button>
+                                  <span className="text-[10px] text-white/25">
+                                    {(selectedDispute.reopen_count ?? 0) > 0 ? 'Already reopened once' : 'Reopen window expired'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </DialogHeader>
 
-                    <div className="grid grid-rows-[minmax(0,1fr)_minmax(180px,38vh)] min-h-0 overflow-hidden">
-                    {/* Scrollable evidence / match details */}
-                    <div className="min-h-0 overflow-y-auto overscroll-contain px-6 py-5 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] min-h-0 overflow-hidden">
+                    {/* Left column: scrollable match details + evidence */}
+                    <div className="min-h-0 max-h-[45vh] lg:max-h-none overflow-y-auto overscroll-contain px-6 py-5 space-y-5 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 lg:border-r border-white/[0.06]" data-lenis-prevent>
                       {matchView.hasMatch && (
                         <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] overflow-hidden">
                           <div className="px-5 py-4 flex items-center justify-between gap-4">
@@ -626,6 +819,9 @@ const MyDisputes = () => {
                                 <Trophy className="w-3.5 h-3.5" />
                                 <span>Match #{matchView.matchNumber}</span>
                               </div>
+                            )}
+                            {selectedDispute.match?.round_index != null && (
+                              <span className="text-xs text-white/50">Round {selectedDispute.match.round_index + 1}</span>
                             )}
                             {matchView.bestOf !== null && matchView.bestOf !== undefined && (
                               <span className="text-xs text-white/50">BO{matchView.bestOf}</span>
@@ -673,9 +869,9 @@ const MyDisputes = () => {
                       )}
                     </div>
 
-                    {/* Chat section — pinned below evidence */}
-                    <div className="flex flex-col min-h-0 border-t border-white/[0.06] overflow-hidden bg-[#0a0a0c]">
-                      <div className="shrink-0 px-6 py-2.5 flex items-center gap-2 border-b border-white/[0.05]">
+                    {/* Right column: conversation thread */}
+                    <div className="flex flex-col min-h-0 border-t lg:border-t-0 border-white/[0.06] overflow-hidden bg-[#0a0a0c]">
+                      <div className="shrink-0 px-4 py-2.5 flex items-center gap-2 border-b border-white/[0.05]">
                         <MessageSquare className="w-3.5 h-3.5 text-white/40" />
                         <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">Conversation</span>
                         {comments.length > 0 && (
@@ -683,7 +879,7 @@ const MyDisputes = () => {
                         )}
                       </div>
 
-                      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-4 space-y-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
+                      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10" data-lenis-prevent>
                         {loadingComments ? (
                           <div className="flex items-center justify-center py-6 text-white/40 text-sm">
                             <RefreshCw className="w-4 h-4 animate-spin mr-2" />
@@ -739,23 +935,23 @@ const MyDisputes = () => {
 
                       {/* Composer */}
                       {canComment ? (
-                        <div className="shrink-0 px-6 py-3 border-t border-white/[0.07] bg-white/[0.02]">
+                        <div className="shrink-0 px-4 py-3 border-t border-white/[0.07] bg-white/[0.02]">
                           <div className="flex items-end gap-2">
                             <label className="shrink-0 p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/5 cursor-pointer transition-colors">
                               <ImageIcon className="h-4 w-4" />
                               <input
                                 type="file"
                                 className="hidden"
-                                accept="image/*"
+                                accept="image/*,application/pdf"
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (!file) return;
-                                  if (file.size > 5 * 1024 * 1024) {
-                                    toast({ title: 'File too large', description: 'Max 5MB', variant: 'destructive' });
+                                  if (file.size > 50 * 1024 * 1024) {
+                                    toast({ title: 'File too large', description: 'Max 50MB', variant: 'destructive' });
                                     return;
                                   }
-                                  if (!file.type.startsWith('image/')) {
-                                    toast({ title: 'Invalid file type', description: 'Images only', variant: 'destructive' });
+                                  if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+                                    toast({ title: 'Invalid file type', description: 'Images and PDFs only', variant: 'destructive' });
                                     return;
                                   }
                                   setCommentAttachment(file);
@@ -802,7 +998,7 @@ const MyDisputes = () => {
                           </div>
                         </div>
                       ) : (
-                        <div className="px-6 py-3 border-t border-white/[0.07] bg-white/[0.02]">
+                        <div className="px-4 py-3 border-t border-white/[0.07] bg-white/[0.02]">
                           <p className="text-white/30 text-xs text-center">
                             This dispute is {selectedDispute.status}. No further messages can be sent.
                           </p>

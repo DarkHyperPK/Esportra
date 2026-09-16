@@ -205,7 +205,7 @@ const BRGameRunRow: React.FC<{
   onToggle: () => void;
   onStartGame: (map: string | null, queueTimerMinutes: number | null) => Promise<unknown>;
   onCompleteGame: (map: string | null) => Promise<unknown>;
-  onReopenGame: () => Promise<unknown>;
+  onReopenGame: () => void | Promise<unknown>;
   onMapUpdate: (map: string | null) => Promise<unknown>;
   onQueueSave: (queueTimerMinutes: number | null) => Promise<unknown>;
   isUpdating: boolean;

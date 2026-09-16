@@ -305,7 +305,7 @@ export const MapPool: React.FC<MapPoolProps> = ({
         let pickedByTeamLogo: string | null = null;
         if (pickedMap?.teamName) {
             const isTeam1Pick = team1Picked.some((p: any) => p.map_id === mapId);
-            pickedByTeamLogo = isTeam1Pick ? team1Logo : team2Logo;
+            pickedByTeamLogo = (isTeam1Pick ? team1Logo : team2Logo) ?? null;
         }
 
         return {

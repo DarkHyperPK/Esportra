@@ -25,15 +25,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import OrganizationStaffManager from '@/components/organizer/OrganizationStaffManager';
+import { DeveloperApiSettings } from '@/pages/organizer/DeveloperApiSettings';
 import {
   CommandActionBar,
   CommandButton,
   CommandEmptyState,
   CommandPanel,
   CommandSection,
-  CommandTabs,
 } from '@/components/management/CommandSurface';
 import { cn } from '@/lib/utils';
+
+export type OrgSettingsSection =
+  | 'profile'
+  | 'branding'
+  | 'staff'
+  | 'media'
+  | 'developer-api-keys'
+  | 'developer-api-analytics'
+  | 'developer-api-docs'
+  | 'advanced';
 
 interface Organization {
   id: string;
@@ -51,6 +61,7 @@ interface Organization {
     discord?: string;
   };
   is_verified: boolean;
+  is_api_approved?: boolean;
   created_at: string;
 }
 
@@ -69,17 +80,13 @@ interface OrgStats {
   activeTournaments: number;
 }
 
-const tabs = [
-  { value: 'profile', label: 'Profile' },
-  { value: 'branding', label: 'Branding' },
-  { value: 'staff', label: 'Staff' },
-  { value: 'media', label: 'Media' },
-  { value: 'advanced', label: 'Advanced' },
-];
+interface OrganizationSettingsProps {
+  activeSection: OrgSettingsSection;
+}
 
 const textInput = 'rounded-none border-white/10 bg-[#0a0a0c] text-white placeholder:text-zinc-600 focus:border-rose-500';
 
-const OrganizationSettings: React.FC = () => {
+const OrganizationSettings: React.FC<OrganizationSettingsProps> = ({ activeSection }) => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -89,7 +96,6 @@ const OrganizationSettings: React.FC = () => {
   const [stats, setStats] = useState<OrgStats>({ totalTournaments: 0, totalParticipants: 0, activeTournaments: 0 });
   const mediaInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeSection, setActiveSection] = useState('profile');
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
@@ -110,6 +116,7 @@ const OrganizationSettings: React.FC = () => {
   const [pendingBannerPreview, setPendingBannerPreview] = useState<string | null>(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+
   const hasUnsavedChanges = organization
     ? name !== organization.name ||
       slug !== organization.slug ||
@@ -183,7 +190,6 @@ const OrganizationSettings: React.FC = () => {
       toast({ title: 'Error', description: 'Name and slug are required.', variant: 'destructive' });
       return;
     }
-
     setSaving(true);
     try {
       const orgData = {
@@ -194,7 +200,6 @@ const OrganizationSettings: React.FC = () => {
         bannerUrl: bannerUrl.trim() || null,
         socialLinks,
       };
-
       if (organization) {
         await apiClient.put(`/api/organizations/${organization.id}`, orgData);
         toast({ title: 'Saved', description: 'Organization updated successfully.' });
@@ -282,7 +287,6 @@ const OrganizationSettings: React.FC = () => {
   const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files?.length || !organization) return;
-
     setUploadingMedia(true);
     try {
       for (let index = 0; index < files.length; index += 1) {
@@ -367,98 +371,65 @@ const OrganizationSettings: React.FC = () => {
   const ownerName = profile?.full_name || profile?.username || 'Organizer';
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-4">
-      <CommandPanel className="overflow-hidden p-0">
-        <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_220px]">
-          <div className="min-w-0 p-4 sm:p-5">
-            <div
-              className="relative aspect-[5/1] min-h-[128px] overflow-hidden border border-white/10 bg-[#0a0a0c] bg-cover bg-center"
-              style={bannerUrl ? { backgroundImage: `linear-gradient(to top, rgba(5,5,5,0.82), rgba(5,5,5,0.1)), url(${bannerUrl})` } : undefined}
-            >
-              {!bannerUrl ? (
-                <div className="absolute inset-0 flex items-center justify-center px-6 text-center">
-                  <span className="font-heading text-2xl font-black uppercase tracking-tight text-zinc-800 sm:text-4xl">{name || 'Organization banner'}</span>
-                </div>
-              ) : null}
-            </div>
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="space-y-3">
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-[104px_minmax(0,1fr)]">
-              <div className="flex lg:block">
-                <Avatar className="h-24 w-24 shrink-0 rounded-none border border-white/10 bg-black">
-                  <AvatarImage src={logoUrl} />
-                  <AvatarFallback className="rounded-none bg-rose-500 text-xl font-black text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
-                </Avatar>
-              </div>
-
-              <div className="min-w-0">
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="min-w-0 break-words font-heading text-2xl font-black uppercase leading-none tracking-tight text-white md:text-3xl">{name || 'Your Organization'}</h2>
-                      {organization?.is_verified ? (
-                        <span className="inline-flex items-center gap-1 border border-emerald-500/35 px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-emerald-300">
-                          <CheckCircle className="h-3 w-3" />
-                          Verified
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-2 text-sm text-zinc-500">@{slug || 'your-slug'} / {ownerName}</p>
-                  </div>
-                </div>
-
-                <div className="mt-4 border border-white/10 bg-[#0a0a0c] p-3">
-                  <div className="mb-2 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-400">Bio</div>
-                  {description ? (
-                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-zinc-300">{description}</p>
-                  ) : (
-                    <p className="text-sm leading-relaxed text-zinc-600">No organization bio has been added yet.</p>
-                  )}
-                </div>
-              </div>
+      {/* Org card — header */}
+      <div className="overflow-hidden border border-white/10 bg-[#0a0a0c]">
+        {/* Banner */}
+        <div
+          className="h-36 w-full bg-cover bg-center"
+          style={bannerUrl
+            ? { backgroundImage: `linear-gradient(to bottom, rgba(5,5,5,0.05), rgba(5,5,5,0.6)), url(${bannerUrl})` }
+            : { background: 'linear-gradient(135deg, #3b0010 0%, #1a000a 40%, #0a0a0c 100%)' }
+          }
+        />
+        {/* Identity row — avatar overlaps banner */}
+        <div className="flex items-end gap-4 px-6 -mt-9 pb-5">
+          <Avatar className="h-16 w-16 shrink-0 rounded-none border-2 border-[#0a0a0c] bg-[#0a0a0c] ring-1 ring-white/15 shadow-xl">
+            <AvatarImage src={logoUrl} />
+            <AvatarFallback className="rounded-none bg-rose-500 text-xl font-black text-white">{name ? name[0].toUpperCase() : 'O'}</AvatarFallback>
+          </Avatar>
+          <div className="mb-0.5 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-bold tracking-tight text-white">{name || 'Your Organization'}</h2>
+              {organization?.is_verified && (
+                <span className="inline-flex items-center gap-1 border border-emerald-500/35 bg-emerald-950/20 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-300">
+                  <CheckCircle className="h-2.5 w-2.5" />
+                  Verified
+                </span>
+              )}
             </div>
-          </div>
-
-          <div className="grid grid-cols-3 border-t border-white/10 xl:grid-cols-1 xl:border-l xl:border-t-0">
-            <div className="border-r border-white/10 p-4 xl:border-b xl:border-r-0">
-              <Trophy className="mb-3 h-4 w-4 text-rose-400" />
-              <div className="text-2xl font-black text-white">{stats.totalTournaments}</div>
-              <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-widest text-zinc-500">Tournaments</div>
-            </div>
-            <div className="border-r border-white/10 p-4 xl:border-b xl:border-r-0">
-              <Users className="mb-3 h-4 w-4 text-rose-400" />
-              <div className="text-2xl font-black text-white">{stats.totalParticipants}</div>
-              <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-widest text-zinc-500">Participants</div>
-            </div>
-            <div className="p-4">
-              <Calendar className="mb-3 h-4 w-4 text-rose-400" />
-              <div className="text-2xl font-black text-white">{stats.activeTournaments}</div>
-              <div className="mt-1 font-mono text-[9px] font-bold uppercase tracking-widest text-zinc-500">Active</div>
-            </div>
+            <p className="mt-0.5 text-xs text-zinc-500">@{slug || 'your-slug'} · {ownerName}</p>
           </div>
         </div>
-      </CommandPanel>
+        {/* Stats bar */}
+        <div className="flex items-center gap-6 border-t border-white/5 px-6 py-3">
+          <CompactStat icon={<Trophy className="h-3 w-3" />} value={stats.totalTournaments} label="tournaments" />
+          <CompactStat icon={<Users className="h-3 w-3" />} value={stats.totalParticipants} label="participants" />
+          <CompactStat icon={<Calendar className="h-3 w-3" />} value={stats.activeTournaments} label="active" />
+        </div>
+      </div>
 
-      <CommandTabs tabs={tabs} active={activeSection} onChange={setActiveSection} />
-
+      {/* Section content — fills full available width */}
       {activeSection === 'profile' && (
-        <CommandSection>
-          <SectionTitle title="Profile" description="Control the identity shown on tournament and organization pages." />
-          <div className="mt-6 grid gap-5 md:grid-cols-2">
-            <Field label="Organization Name" htmlFor="name">
+        <CommandSection className="p-4">
+          <SectionTitle title="Profile" description="Controls the identity shown on tournament and organization pages." />
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <Field label="Name" htmlFor="name">
               <Input id="name" value={name} onChange={(event) => handleNameChange(event.target.value)} className={textInput} placeholder="Esportra Gaming" />
             </Field>
             <Field label="URL Slug" htmlFor="slug">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-zinc-600">/org/</span>
+                <span className="shrink-0 text-xs text-zinc-600">/org/</span>
                 <Input id="slug" value={slug} onChange={(event) => setSlug(generateSlug(event.target.value))} className={textInput} placeholder="esportra-gaming" />
               </div>
             </Field>
-            <Field label="Description" htmlFor="description" className="md:col-span-2">
-              <Textarea id="description" value={description} onChange={(event) => setDescription(event.target.value)} className={cn(textInput, 'min-h-[130px]')} placeholder="Tell players about your organization..." />
+            <Field label="Description" htmlFor="description" className="md:col-span-2 xl:col-span-3">
+              <Textarea id="description" value={description} onChange={(event) => setDescription(event.target.value)} className={cn(textInput, 'min-h-[72px] max-w-3xl')} placeholder="Tell players about your organization..." />
             </Field>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {(['website', 'twitter', 'instagram', 'youtube', 'discord'] as const).map((key) => (
               <Field key={key} label={key} htmlFor={`social-${key}`}>
                 <Input
@@ -475,9 +446,9 @@ const OrganizationSettings: React.FC = () => {
       )}
 
       {activeSection === 'branding' && (
-        <CommandSection>
-          <SectionTitle title="Branding" description="Upload the logo and banner used across organization and tournament surfaces." />
-          <div className="mt-6 grid gap-5 lg:grid-cols-2">
+        <CommandSection className="p-4">
+          <SectionTitle title="Branding" description="Logo and banner used across organization and tournament surfaces." />
+          <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
             <CommandPanel>
               <div className="flex items-center gap-5">
                 <Avatar className="h-24 w-24 rounded-none border border-white/10">
@@ -486,7 +457,7 @@ const OrganizationSettings: React.FC = () => {
                 </Avatar>
                 <div>
                   <h3 className="font-semibold text-white">Logo</h3>
-                  <p className="mt-1 text-sm text-zinc-500">Recommended 200x200 PNG or JPG.</p>
+                  <p className="mt-1 text-sm text-zinc-500">200×200 PNG or JPG recommended.</p>
                   <label className="mt-4 inline-flex cursor-pointer">
                     <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
                     <span className="inline-flex h-10 items-center justify-center border border-white/15 bg-[#0a0a0c] px-4 font-mono text-[11px] font-bold uppercase tracking-wider text-white transition-colors hover:border-white/30 hover:bg-white/[0.06]">
@@ -497,12 +468,12 @@ const OrganizationSettings: React.FC = () => {
               </div>
             </CommandPanel>
 
-            <CommandPanel>
+            <CommandPanel className="xl:col-span-2">
               <div
-                className="flex h-32 items-center justify-center border border-white/10 bg-[#0a0a0c] bg-cover bg-center"
+                className="flex h-24 items-center justify-center border border-white/10 bg-[#0a0a0c] bg-cover bg-center"
                 style={bannerUrl ? { backgroundImage: `linear-gradient(to top, rgba(5,5,5,0.72), rgba(5,5,5,0.08)), url(${bannerUrl})` } : undefined}
               >
-                {!bannerUrl ? <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">1200 x 300 recommended</span> : null}
+                {!bannerUrl && <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">1200 × 300 recommended</span>}
               </div>
               <label className="mt-4 inline-flex cursor-pointer">
                 <input type="file" accept="image/*" onChange={handleBannerUpload} className="hidden" />
@@ -516,14 +487,14 @@ const OrganizationSettings: React.FC = () => {
       )}
 
       {activeSection === 'staff' && organization && user?.id && (
-        <CommandSection>
+        <CommandSection className="p-4">
           <OrganizationStaffManager organizationId={organization.id} ownerId={user.id} />
         </CommandSection>
       )}
 
       {activeSection === 'media' && (
-        <CommandSection>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <CommandSection className="p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <SectionTitle title="Media" description="Manage organization albums and public media assets." />
             <div className="flex flex-wrap gap-2">
               <input ref={mediaInputRef} type="file" multiple accept="image/*,video/*" onChange={handleMediaUpload} className="hidden" />
@@ -551,7 +522,7 @@ const OrganizationSettings: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-1.5">
             <button type="button" onClick={() => { setActiveAlbum(null); if (organization) void fetchMedia(organization.id, null); }} className={cn('border px-3 py-2 font-mono text-[10px] uppercase tracking-wider', !activeAlbum ? 'border-rose-500 bg-rose-500 text-white' : 'border-white/10 text-zinc-400 hover:text-white')}>
               All Media
             </button>
@@ -563,7 +534,7 @@ const OrganizationSettings: React.FC = () => {
           </div>
 
           {albums.length > 0 && (
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {albums.map((album) => (
                 <CommandPanel key={album.id} className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -582,7 +553,7 @@ const OrganizationSettings: React.FC = () => {
             {mediaItems.length === 0 ? (
               <CommandEmptyState title="No media uploaded yet" description="Upload media assets for your organization gallery." icon={<ImageIcon className="h-5 w-5" />} />
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {mediaItems.map((item) => (
                   <div key={item.id} className="group relative overflow-hidden border border-white/10 bg-black">
                     <img src={item.url} loading="lazy" alt={item.caption || ''} className="h-52 w-full object-cover" />
@@ -600,8 +571,18 @@ const OrganizationSettings: React.FC = () => {
         </CommandSection>
       )}
 
+      {activeSection === 'developer-api-keys' && organization && (
+        <DeveloperApiSettings orgId={organization.id} isApiApproved={organization.is_api_approved ?? false} activePanel="keys" />
+      )}
+      {activeSection === 'developer-api-analytics' && organization && (
+        <DeveloperApiSettings orgId={organization.id} isApiApproved={organization.is_api_approved ?? false} activePanel="analytics" />
+      )}
+      {activeSection === 'developer-api-docs' && organization && (
+        <DeveloperApiSettings orgId={organization.id} isApiApproved={organization.is_api_approved ?? false} activePanel="docs" />
+      )}
+
       {activeSection === 'advanced' && organization && (
-        <CommandSection className="border-red-500/25 bg-red-950/10">
+        <CommandSection className="border-red-500/25 bg-red-950/10 p-4">
           <SectionTitle title="Advanced" description="Irreversible controls for this organization." />
           <CommandPanel className="mt-6 border-red-500/25 bg-red-950/10">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -625,14 +606,10 @@ const OrganizationSettings: React.FC = () => {
                       onClick={async () => {
                         try {
                           setLoading(true);
-                          const data = await apiClient.delete<any>(`/api/organizations/${organization.id}`);
-                          if (data && !data.success) {
-                            toast({ title: 'Cannot delete', description: data.message, variant: 'destructive' });
-                          } else {
-                            toast({ title: 'Deleted', description: 'Organization deleted successfully.' });
-                            setOrganization(null);
-                            navigate('/');
-                          }
+                          await apiClient.delete(`/api/organizations/${organization.id}`);
+                          toast({ title: 'Deleted', description: 'Organization deleted successfully.' });
+                          setOrganization(null);
+                          navigate('/');
                         } catch (error: any) {
                           toast({ title: 'Error', description: error.message, variant: 'destructive' });
                         } finally {
@@ -650,6 +627,7 @@ const OrganizationSettings: React.FC = () => {
         </CommandSection>
       )}
 
+      {/* Logo confirm dialog */}
       <Dialog open={!!pendingLogoPreview} onOpenChange={(open) => { if (!open) cancelLogoPreview(); }}>
         <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white">
           <DialogHeader>
@@ -669,6 +647,7 @@ const OrganizationSettings: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Banner confirm dialog */}
       <Dialog open={!!pendingBannerPreview} onOpenChange={(open) => { if (!open) cancelBannerPreview(); }}>
         <DialogContent className="rounded-none border-white/10 bg-[#0a0a0c] text-white sm:max-w-2xl">
           <DialogHeader>
@@ -699,12 +678,23 @@ const OrganizationSettings: React.FC = () => {
   );
 };
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function CompactStat({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) {
+  return (
+    <div className="flex items-center gap-1.5 text-zinc-400">
+      <span className="text-zinc-600">{icon}</span>
+      <span className="text-xs font-semibold text-zinc-300">{value}</span>
+      <span className="text-[10px] text-zinc-500">{label}</span>
+    </div>
+  );
+}
+
 function SectionTitle({ title, description }: { title: string; description: string }) {
   return (
     <div>
-      <p className="font-mono text-[10px] font-bold uppercase tracking-[0.35em] text-rose-400">{title}</p>
-      <h3 className="mt-1 text-xl font-black uppercase text-white">{title}</h3>
-      <p className="mt-2 text-sm text-zinc-500">{description}</p>
+      <h3 className="text-sm font-semibold text-white">{title}</h3>
+      <p className="mt-0.5 text-xs text-zinc-500">{description}</p>
     </div>
   );
 }
@@ -712,7 +702,7 @@ function SectionTitle({ title, description }: { title: string; description: stri
 function Field({ label, htmlFor, children, className }: { label: string; htmlFor: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={cn('space-y-2', className)}>
-      <Label htmlFor={htmlFor} className="font-mono text-[10px] font-bold uppercase tracking-widest text-zinc-400">{label}</Label>
+      <Label htmlFor={htmlFor} className="text-[11px] font-medium text-zinc-400">{label}</Label>
       {children}
     </div>
   );

@@ -430,7 +430,7 @@ const RiotTest = () => {
             ) as { history?: Array<{ matchId: string }> };
 
             if (listData?.history && listData.history.length > 0) {
-                const latestMatchIds = listData.history.slice(0, 5).map((entry) => entry.matchId);
+                const latestMatchIds = listData.history.slice(0, 20).map((entry) => entry.matchId);
                 const matchDetails: EnrichedRiotMatchData[] = [];
 
                 for (const matchId of latestMatchIds) {

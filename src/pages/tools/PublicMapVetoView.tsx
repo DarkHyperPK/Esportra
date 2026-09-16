@@ -350,7 +350,7 @@ const PublicMapVetoView: React.FC<PublicMapVetoViewProps> = ({
                   >
                     <div className="px-1 text-[9px] font-black uppercase tracking-[0.18em] text-zinc-400">{theme.label}</div>
                     <OverlayPreviewFrame
-                      src={buildPublicVetoOverlayUrl(overlayToken, overlayTransition, theme.value)}
+                      src={overlayToken ? buildPublicVetoOverlayUrl(overlayToken, overlayTransition, theme.value) : ""}
                       refreshKey={overlayPreviewKey}
                       title={`Map veto ${theme.label} preview`}
                     />

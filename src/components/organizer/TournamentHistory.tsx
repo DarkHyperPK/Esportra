@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Loader2, Calendar, Users, Trophy, ChevronDown, ChevronUp, Search, Swords } from "lucide-react";
 import { apiClient } from '@/lib/apiClient';

@@ -128,7 +128,7 @@ const TeamsPage = () => {
   // Game images for edit modal
   const [gameImages, setGameImages] = useState<Record<string, string>>({});
 
-  type TeamMember = {
+  type TeamMemberRecord = {
     id: string;
     user_id: string;
     username: string;
@@ -145,7 +145,8 @@ const TeamsPage = () => {
       winRate: string;
       hs: string;
     };
-  } | null;
+  };
+  type TeamMember = TeamMemberRecord | null;
   const [memberToRemove, setMemberToRemove] = useState<TeamMember>(null);
   const [showTransferCaptaincy, setShowTransferCaptaincy] = useState(false);
   const [showDisbandTeam, setShowDisbandTeam] = useState(false);
@@ -157,14 +158,14 @@ const TeamsPage = () => {
   const [teamInvites, setTeamInvites] = useState<Array<{ id: string; invited_email?: string | null; invited_user_id?: string | null; created_at?: string }>>([]);
   const [ownerProfile, setOwnerProfile] = useState<{ username?: string; email?: string; avatar_url?: string; card_image_url?: string } | null>(null);
   const [refreshingAfterAccept, setRefreshingAfterAccept] = useState(false);
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMemberRecord[]>([]);
 
   // Rosters
   type RosterLineupRole = 'starter' | 'substitute' | 'coach';
   type RosterMember = {
     user_id: string;
-    username: string;
-    avatar_url: string | null;
+    username?: string;
+    avatar_url?: string | null;
     card_image_url?: string | null;
     is_starter?: boolean;
     roster_role?: RosterLineupRole;
@@ -275,7 +276,7 @@ const TeamsPage = () => {
   // State for tournaments
   type RegistrationWithTournament = {
     id: string;
-    tournaments?: { name: string; start_date: string; prize_pool: string; slug?: string; game?: string; winner_id?: string | null; status?: string } | null;
+    tournaments?: { name: string; start_date: string; prize_pool: string; currency?: string; slug?: string; game?: string; winner_id?: string | null; status?: string } | null;
   };
   const [teamRegistrations, setTeamRegistrations] = useState<RegistrationWithTournament[]>([]);
 

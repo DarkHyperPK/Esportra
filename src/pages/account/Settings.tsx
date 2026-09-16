@@ -11,11 +11,14 @@ import { useVenueSearch } from '@/hooks/useVenueSearch';
 import { usePasswordChange } from '@/hooks/usePasswordChange';
 import { passwordSchema } from '@/schemas/password';
 import {
-  Loader2, Copy, Check, Shield, Link2, Award, Monitor, Bell,
+  Loader2, Copy, Check, Shield, Link2, Award, Monitor, Bell, Info,
+  Clock, FileText, Trophy, AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import Footer from '@/components/Footer';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -123,7 +126,7 @@ export default function AccountSettings() {
 
   return (
     <div className="min-h-screen bg-transparent text-white">
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="px-6 py-10">
         {/* Page heading */}
         <div className="mb-8 border-b border-white/5 pb-6">
           <h1 className="text-2xl font-bold tracking-tight">Account Settings</h1>
@@ -160,7 +163,7 @@ export default function AccountSettings() {
               <p className="text-sm text-gray-500">{activeItem?.description}</p>
             </div>
 
-            {activeTab === 'connected_accounts' && <ConnectedAccountsTab />}
+            {activeTab === 'connected_accounts' && <ConnectedAccountsTab onNavigateToNotifications={() => setActiveTab('notifications')} />}
             {activeTab === 'notifications' && <NotificationsTab />}
             {activeTab === 'licenses' && <LicensesTab userId={user?.id} />}
             {activeTab === 'desktop_pairing' && ownsVenues && <DesktopPairingTab userId={user?.id} />}
@@ -175,7 +178,7 @@ export default function AccountSettings() {
 
 // ─── Tab: Connected Accounts ──────────────────────────────────────────────────
 
-function ConnectedAccountsTab() {
+function ConnectedAccountsTab({ onNavigateToNotifications }: { onNavigateToNotifications: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { riotAccount, isLoading: riotLoading, linkRiotAccount, unlinkRiotAccount } = useRiotAccount();
@@ -191,13 +194,71 @@ function ConnectedAccountsTab() {
     });
   }, [user]);
 
+  // After Discord OAuth redirect, provider_token is present in the session — use it to auto-join the guild
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event !== 'SIGNED_IN' && event !== 'USER_UPDATED') return;
+      const hasDiscord = session?.user?.identities?.some(id => id.provider === 'discord');
+      if (!hasDiscord || !session?.provider_token) return;
+
+      try {
+        const result = await apiClient.post<{ success: boolean; reason?: string }>(
+          '/api/profiles/me/discord-join',
+          { providerToken: session.provider_token }
+        );
+        if (result.success) {
+          toast({ title: 'Discord linked', description: "You've been added to the Esportra server." });
+        } else if (result.reason === 'missing_scope') {
+          toast({ title: 'Discord linked', description: 'Could not add you to the Esportra server automatically — missing guilds.join permission. You can join manually.' });
+        } else if (result.reason !== 'not_configured') {
+          toast({ title: 'Discord linked', description: 'Could not auto-join the Esportra server. You can join manually at any time.' });
+        } else {
+          toast({ title: 'Discord linked' });
+        }
+      } catch { /* non-critical — the Discord account link itself succeeded */ }
+
+      // Refresh identity display
+      const { data: { user: u } } = await supabase.auth.getUser();
+      setDiscordIdentity(u?.identities?.find(id => id.provider === 'discord') ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, [toast]);
+
+  const [unlinkingDiscord, setUnlinkingDiscord] = useState(false);
+
+  const handleUnlinkDiscord = async () => {
+    setUnlinkingDiscord(true);
+    try {
+      await apiClient.delete('/api/profiles/me/discord');
+      const { data: { user: u } } = await supabase.auth.getUser();
+      setDiscordIdentity(u?.identities?.find(id => id.provider === 'discord') ?? null);
+      toast({ title: 'Discord unlinked' });
+    } catch (error: any) {
+      const body = error?.body as Record<string, unknown> | undefined;
+      if (body?.error === 'active_registration') {
+        toast({
+          title: 'Cannot unlink Discord',
+          description: String(body.message ?? 'You have an active tournament registration that requires Discord. Withdraw first.'),
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: 'Error', description: 'Failed to unlink Discord account.', variant: 'destructive' });
+      }
+    } finally { setUnlinkingDiscord(false); }
+  };
+
   const handleUnlinkRiot = async () => {
     setUnlinkingRiot(true);
     try {
       await unlinkRiotAccount();
       toast({ title: 'Riot unlinked' });
-    } catch {
-      toast({ title: 'Error', description: 'Failed to unlink Riot account.', variant: 'destructive' });
+    } catch (error: any) {
+      const body = error?.body as Record<string, unknown> | undefined;
+      if (body?.error === 'active_registration') {
+        toast({ title: 'Cannot unlink Riot', description: String(body.message ?? 'Withdraw from all active tournaments requiring Riot before unlinking.'), variant: 'destructive' });
+      } else {
+        toast({ title: 'Error', description: 'Failed to unlink Riot account.', variant: 'destructive' });
+      }
     } finally { setUnlinkingRiot(false); }
   };
 
@@ -206,22 +267,32 @@ function ConnectedAccountsTab() {
     try {
       await unlinkSteamAccount();
       toast({ title: 'Steam unlinked' });
-    } catch {
-      toast({ title: 'Error', description: 'Failed to unlink Steam account.', variant: 'destructive' });
+    } catch (error: any) {
+      const body = error?.body as Record<string, unknown> | undefined;
+      if (body?.error === 'active_registration') {
+        toast({ title: 'Cannot unlink Steam', description: String(body.message ?? 'Withdraw from all active CS2 tournaments before unlinking.'), variant: 'destructive' });
+      } else {
+        toast({ title: 'Error', description: 'Failed to unlink Steam account.', variant: 'destructive' });
+      }
     } finally { setUnlinkingSteam(false); }
   };
 
-  const linkDiscord = () => supabase.auth.signInWithOAuth({
-    provider: 'discord',
-    options: { redirectTo: window.location.href, scopes: 'identify email guilds.join' },
-  });
+  const linkDiscord = async () => {
+    const { error } = await supabase.auth.linkIdentity({
+      provider: 'discord',
+      options: { redirectTo: window.location.href, scopes: 'identify email guilds.join' },
+    });
+    if (error) {
+      toast({ title: 'Failed to link Discord', description: error.message, variant: 'destructive' });
+    }
+  };
 
   const accounts = [
     {
       key: 'steam', name: 'Steam',
       description: steamLoading ? 'Loading...' : steamAccount
         ? steamAccount.steamName || steamAccount.steam64Id
-        : 'Required for CS2 match automation',
+        : '',
       connected: !!steamAccount, loading: steamLoading,
       icon: <img src="/steam.png" alt="Steam" className="w-8 h-8 drop-shadow-md rounded-full" />,
       onConnect: linkSteamAccount, onUnlink: handleUnlinkSteam, unlinking: unlinkingSteam,
@@ -231,7 +302,7 @@ function ConnectedAccountsTab() {
       key: 'riot', name: 'Riot Games',
       description: riotLoading ? 'Loading...' : riotAccount
         ? `${riotAccount.game_name}#${riotAccount.tag_line}`
-        : 'Required for Valorant tournament registration',
+        : '',
       connected: !!riotAccount, loading: riotLoading,
       icon: <img src="/Riot.png" alt="Riot Games" className="w-8 h-8 drop-shadow-md" />,
       onConnect: linkRiotAccount, onUnlink: handleUnlinkRiot, unlinking: unlinkingRiot,
@@ -244,7 +315,7 @@ function ConnectedAccountsTab() {
         : 'Link your Discord account',
       connected: !!discordIdentity, loading: false,
       icon: <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.14 96.36" className="w-8 h-8 drop-shadow-md"><path fill="#5865F2" d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.2,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>,
-      onConnect: linkDiscord, onUnlink: undefined, unlinking: false,
+      onConnect: linkDiscord, onUnlink: handleUnlinkDiscord, unlinking: unlinkingDiscord,
       connectClass: 'bg-[#5865F2] hover:bg-[#4752C4] border border-white/10',
     },
   ];
@@ -252,32 +323,62 @@ function ConnectedAccountsTab() {
   return (
     <div className="space-y-3 max-w-2xl">
       {accounts.map((acc) => (
-        <div key={acc.key} className="rounded-xl border border-white/5 bg-white/[0.02] p-4 flex items-center gap-4">
-          <div className="flex items-center justify-center shrink-0 w-10">
-            {acc.icon}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-medium text-white text-sm">{acc.name}</div>
-            <div className={`text-xs mt-0.5 truncate ${acc.connected ? 'text-emerald-400' : 'text-gray-500'}`}>
-              {acc.description}
+        <div key={acc.key} className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center shrink-0 w-10">
+              {acc.icon}
             </div>
-          </div>
-          {!acc.loading && (
-            acc.connected ? (
-              acc.onUnlink && (
-                <Button size="sm" variant="outline"
-                  className="border-white/15 text-rose-400 hover:bg-rose-500/10 shrink-0 text-xs"
-                  disabled={acc.unlinking} onClick={acc.onUnlink}>
-                  {acc.unlinking
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : 'Unlink'}
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-white text-sm flex items-center gap-1.5">
+                {acc.name}
+                {acc.key === 'discord' && !acc.connected && (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="w-3.5 h-3.5 text-blue-400/60 hover:text-blue-400 cursor-default shrink-0 transition-colors" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+                        Connecting Discord lets you receive DMs for match alerts, check-in reminders, scheduling updates, and tournament notifications. Manage preferences in the Notifications tab after linking.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+              <div className={`text-xs mt-0.5 truncate ${acc.connected ? 'text-emerald-400' : 'text-gray-500'}`}>
+                {acc.description}
+              </div>
+            </div>
+            {!acc.loading && (
+              acc.connected ? (
+                acc.onUnlink && (
+                  <Button size="sm" variant="outline"
+                    className="border-white/15 text-rose-400 hover:bg-rose-500/10 shrink-0 text-xs"
+                    disabled={acc.unlinking} onClick={acc.onUnlink}>
+                    {acc.unlinking
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : 'Unlink'}
+                  </Button>
+                )
+              ) : (
+                <Button size="sm" className={`shrink-0 text-white text-xs ${acc.connectClass}`} onClick={acc.onConnect}>
+                  Connect
                 </Button>
               )
-            ) : (
-              <Button size="sm" className={`shrink-0 text-white text-xs ${acc.connectClass}`} onClick={acc.onConnect}>
-                Connect
-              </Button>
-            )
+            )}
+          </div>
+          {acc.key === 'discord' && acc.connected && (
+            <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 mt-3 flex items-start gap-2">
+              <Check className="text-emerald-400 w-4 h-4 shrink-0 mt-0.5" />
+              <div className="text-xs text-emerald-400">
+                Discord connected! You'll receive DM notifications for matches and tournaments.{' '}
+                <button
+                  onClick={onNavigateToNotifications}
+                  className="text-emerald-300 underline hover:text-emerald-200 cursor-pointer"
+                >
+                  Manage in Notifications tab
+                </button>
+              </div>
+            </div>
           )}
         </div>
       ))}
@@ -286,6 +387,15 @@ function ConnectedAccountsTab() {
 }
 
 // ─── Tab: Notifications ──────────────────────────────────────────────────────
+
+interface TournamentDiscordPref {
+  tournamentId: string;
+  tournamentName: string;
+  game: string;
+  startDate: string;
+  discordDmsEnabled: boolean;
+}
+
 
 function NotificationsTab() {
   const { toast } = useToast();
@@ -373,12 +483,124 @@ function NotificationsTab() {
       <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6">
         <h4 className="text-white font-medium mb-3">What you'll receive</h4>
         <ul className="space-y-2 text-sm text-gray-400">
-          <li className="flex items-center gap-2">🎮 <span>Match ready — your match is set up and waiting</span></li>
-          <li className="flex items-center gap-2">⏰ <span>Check-in reminders — don't miss your window</span></li>
-          <li className="flex items-center gap-2">📊 <span>Result reported — scores submitted for your match</span></li>
-          <li className="flex items-center gap-2">🚨 <span>Disputes — result challenged or resolved</span></li>
-          <li className="flex items-center gap-2">🏆 <span>Tournament updates — registration confirmed, tournament starting</span></li>
+          <li className="flex items-center gap-2">
+            <Bell className="w-4 h-4 text-gray-400 shrink-0" />
+            <span>Match ready — your match is set up and waiting</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-gray-400 shrink-0" />
+            <span>Check-in reminders — don't miss your window</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+            <span>Result reported — scores submitted for your match</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-gray-400 shrink-0" />
+            <span>Disputes — result challenged or resolved</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-gray-400 shrink-0" />
+            <span>Tournament updates — registration confirmed, tournament starting</span>
+          </li>
         </ul>
+      </div>
+
+      <TournamentDiscordPrefsSection globalEnabled={enabled} hasDiscord={hasDiscord} />
+    </div>
+  );
+}
+
+// ─── Tournament Discord Prefs Section ─────────────────────────────────────────
+
+function TournamentDiscordPrefsSection({ globalEnabled, hasDiscord }: { globalEnabled: boolean; hasDiscord: boolean }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [optimisticOverrides, setOptimisticOverrides] = useState<Record<string, boolean>>({});
+  const [toggling, setToggling] = useState<Record<string, boolean>>({});
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['tournament-discord-prefs'],
+    queryFn: () => apiClient.get<TournamentDiscordPref[]>('/api/profiles/me/tournament-discord-prefs'),
+    enabled: hasDiscord,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const handleToggle = async (tournamentId: string, newValue: boolean) => {
+    const previousValue = !newValue;
+
+    setOptimisticOverrides((prev) => ({ ...prev, [tournamentId]: newValue }));
+    setToggling((prev) => ({ ...prev, [tournamentId]: true }));
+
+    try {
+      await apiClient.put(`/api/profiles/me/tournament-discord-prefs/${tournamentId}`, { discord_dms_enabled: newValue });
+      queryClient.invalidateQueries({ queryKey: ['tournament-discord-prefs'] });
+    } catch {
+      setOptimisticOverrides((prev) => ({ ...prev, [tournamentId]: previousValue }));
+      toast({ title: 'Failed to update', description: 'Could not update tournament notification preference.', variant: 'destructive' });
+    } finally {
+      setToggling((prev) => ({ ...prev, [tournamentId]: false }));
+    }
+  };
+
+  const isGloballyDisabled = !globalEnabled || !hasDiscord;
+
+  return (
+    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-6 relative">
+      <h4 className="text-white font-medium mb-4">Tournament Discord Notifications</h4>
+
+      {isGloballyDisabled && (
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] rounded-xl flex items-center justify-center z-10">
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4 max-w-xs text-center">
+            <p className="text-sm text-gray-300">
+              Enable Discord DMs above to receive tournament notifications.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className={isGloballyDisabled ? 'opacity-50 pointer-events-none' : ''}>
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-rose-400" />
+          </div>
+        ) : !data || data.length === 0 ? (
+          <p className="text-sm text-gray-500 py-2">
+            You're not registered in any active tournaments.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {data.map((pref) => {
+              const resolvedValue = pref.tournamentId in optimisticOverrides
+                ? optimisticOverrides[pref.tournamentId]
+                : pref.discordDmsEnabled;
+              const isToggling = toggling[pref.tournamentId] ?? false;
+
+              return (
+                <div
+                  key={pref.tournamentId}
+                  className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-white truncate">{pref.tournamentName}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {pref.game} · {new Date(pref.startDate).toLocaleDateString()}
+                    </div>
+                  </div>
+                  {isToggling ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-rose-400 shrink-0 ml-3" />
+                  ) : (
+                    <Switch
+                      checked={resolvedValue}
+                      onCheckedChange={(checked) => handleToggle(pref.tournamentId, checked)}
+                      className="shrink-0 ml-3"
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

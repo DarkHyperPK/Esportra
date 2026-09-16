@@ -11,12 +11,15 @@ interface RichTextEditorProps {
   content: string;
   onChange: (content: string) => void;
   className?: string;
+  /** Accepted for API compatibility; the editor keeps its built-in minimum height. */
+  minHeight?: string;
 }
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
   content,
   onChange,
-  className
+  className,
+  minHeight: _minHeight
 }) => {
   const editor = useEditor({
     extensions: [

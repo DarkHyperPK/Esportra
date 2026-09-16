@@ -48,7 +48,6 @@ const ManageBracketPage = () => {
 
         try {
             if (!silent) setLoading(true);
-            console.log('ManageBracketPage: Fetching data for slug:', slug, 'stageId:', stageId);
 
             // Fetch tournament
             const tournamentData = await apiClient.get<any>(`/api/tournaments/by-slug/${encodeURIComponent(slug)}`).catch(() => null);
@@ -60,7 +59,6 @@ const ManageBracketPage = () => {
                 return;
             }
 
-            console.log('ManageBracketPage: Tournament found:', tournamentData);
             setTournament(tournamentData);
 
             // Bracket manage permission resolved via useTournamentAccess (see effect below)

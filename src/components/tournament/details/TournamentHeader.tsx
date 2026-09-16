@@ -112,7 +112,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                 src={bannerSrc}
                                 alt={tournament.name}
                                 decoding="async"
-                                fetchpriority="high"
+                                fetchPriority="high"
                                 className="w-full h-full object-cover contrast-110"
                             />
                         )}
@@ -142,7 +142,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                 </span>
                                 {tournament.region && (
                                     <span className="px-4 py-1.5 rounded-full border border-amber-500/20 bg-amber-500/5 text-xs text-amber-400 font-mono tracking-[0.2em] uppercase backdrop-blur-md">
-                                        REGION: {{ 'na-east': 'NA East', 'na-west': 'NA West', 'latam': 'LATAM', 'eu': 'EU', 'me': 'ME', 'sea': 'SEA', 'oce': 'OCE' }[tournament.region] || tournament.region}
+                                        REGION: {{ 'na-east': 'NA East', 'na-west': 'NA West', 'latam': 'LATAM', 'eu': 'EU', 'me': 'ME', 'sea': 'SEA', 'oce': 'OCE' }[tournament.region as keyof { 'na-east': string; 'na-west': string; latam: string; eu: string; me: string; sea: string; oce: string }] || tournament.region}
                                     </span>
                                 )}
                                 <span className={cn(

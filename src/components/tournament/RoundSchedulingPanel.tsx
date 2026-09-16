@@ -164,9 +164,9 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
 
     // Group matches by config key — for DE, scoped by bracket_type + round_index
     const matchesByConfigKey = useMemo(() => {
-        if (!matches) return new Map<string, typeof matches>();
+        if (!matches) return new Map<string, NonNullable<typeof matches>>();
 
-        const grouped = new Map<string, typeof matches>();
+        const grouped = new Map<string, NonNullable<typeof matches>>();
         matches.forEach(match => {
             const bt = stageFormat === 'double_elimination' ? ((match as any).bracket_type || 'winners') : null;
             const key = configKey(match.round_index, bt);
@@ -178,9 +178,9 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
 
     // Legacy flat grouping (used by non-DE rendering)
     const matchesByRound = useMemo(() => {
-        if (!matches) return new Map<number, typeof matches>();
+        if (!matches) return new Map<number, NonNullable<typeof matches>>();
 
-        const grouped = new Map<number, typeof matches>();
+        const grouped = new Map<number, NonNullable<typeof matches>>();
         matches.forEach(match => {
             const round = match.round_index;
             if (!grouped.has(round)) grouped.set(round, []);
@@ -193,7 +193,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     const bracketSections = useMemo((): BracketSection[] | null => {
         if (stageFormat !== 'double_elimination' || !matches || matches.length === 0) return null;
 
-        const sectionMap = new Map<string, Map<number, typeof matches>>();
+        const sectionMap = new Map<string, Map<number, NonNullable<typeof matches>>>();
 
         matches.forEach(match => {
             const bt = (match as any).bracket_type || 'winners';

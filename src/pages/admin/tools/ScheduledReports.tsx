@@ -61,6 +61,7 @@ import {
   useRunReportNow,
 } from "@/hooks/useAdminQueries";
 import type { ReportSchedule, ReportRunLog } from "@/hooks/useAdminQueries";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { AdminPage } from "@/components/admin/AdminPage";
 import {
   CommandButton,
@@ -331,6 +332,7 @@ function ScheduleCard({
   const meta = getReportTypeMeta(schedule.reportType);
   const Icon = meta.icon;
   const isToggling = isTogglingId === schedule.id;
+  const { can } = useAdminAccess();
 
   const visibleRecipients = schedule.recipients.slice(0, 2);
   const extraCount = schedule.recipients.length - 2;
@@ -356,7 +358,7 @@ function ScheduleCard({
 
         {/* Active toggle */}
         <div className="flex shrink-0 items-center gap-2">
-          {isToggling ? (
+          {can("reports:edit") && (isToggling ? (
             <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
           ) : (
             <Switch
@@ -365,7 +367,7 @@ function ScheduleCard({
               aria-label={schedule.isActive ? "Deactivate schedule" : "Activate schedule"}
               className="data-[state=checked]:bg-rose-500"
             />
-          )}
+          ))}
         </div>
       </div>
 
@@ -418,35 +420,41 @@ function ScheduleCard({
       {/* Actions row */}
       <Separator className="mb-3 bg-white/5" />
       <div className="flex flex-wrap items-center gap-2">
-        <CommandButton
-          variant="ghost"
-          size="sm"
-          onClick={() => onRunNow(schedule.id)}
-          disabled={isRunning}
-          aria-label="Run report now"
-        >
-          {isRunning ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Play className="h-3.5 w-3.5" />
-          )}
-          Run Now
-        </CommandButton>
+        {can("reports:run") && (
+          <CommandButton
+            variant="ghost"
+            size="sm"
+            onClick={() => onRunNow(schedule.id)}
+            disabled={isRunning}
+            aria-label="Run report now"
+          >
+            {isRunning ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Play className="h-3.5 w-3.5" />
+            )}
+            Run Now
+          </CommandButton>
+        )}
 
         <CommandButton variant="ghost" size="sm" onClick={() => onHistory(schedule)} aria-label="View run history">
           <Clock className="h-3.5 w-3.5" />
           History
         </CommandButton>
 
-        <CommandButton variant="secondary" size="sm" onClick={() => onEdit(schedule)} aria-label="Edit schedule">
-          <Pencil className="h-3.5 w-3.5" />
-          Edit
-        </CommandButton>
+        {can("reports:edit") && (
+          <CommandButton variant="secondary" size="sm" onClick={() => onEdit(schedule)} aria-label="Edit schedule">
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </CommandButton>
+        )}
 
-        <CommandButton variant="danger" size="sm" onClick={() => onDelete(schedule)} aria-label="Delete schedule" className="ml-auto">
-          <Trash2 className="h-3.5 w-3.5" />
-          Delete
-        </CommandButton>
+        {can("reports:delete") && (
+          <CommandButton variant="danger" size="sm" onClick={() => onDelete(schedule)} aria-label="Delete schedule" className="ml-auto">
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+          </CommandButton>
+        )}
       </div>
     </article>
   );
@@ -601,6 +609,7 @@ interface ScheduleDialogProps {
 function ScheduleDialog({ open, onOpenChange, editing }: ScheduleDialogProps) {
   const createMutation = useCreateReportSchedule();
   const updateMutation = useUpdateReportSchedule();
+  const { can } = useAdminAccess();
 
   const [form, setForm] = useState<ScheduleFormData>(EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -843,14 +852,16 @@ function ScheduleDialog({ open, onOpenChange, editing }: ScheduleDialogProps) {
           >
             Cancel
           </CommandButton>
-          <CommandButton
-            size="sm"
-            onClick={handleSubmit}
-            disabled={isPending}
-          >
-            {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isEditMode ? "Save Changes" : "Create Schedule"}
-          </CommandButton>
+          {can(isEditMode ? "reports:edit" : "reports:create") && (
+            <CommandButton
+              size="sm"
+              onClick={handleSubmit}
+              disabled={isPending}
+            >
+              {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isEditMode ? "Save Changes" : "Create Schedule"}
+            </CommandButton>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -860,6 +871,7 @@ function ScheduleDialog({ open, onOpenChange, editing }: ScheduleDialogProps) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function ScheduledReports() {
+  const { can } = useAdminAccess();
   const { data: schedules, isLoading, error, refetch } = useReportSchedules();
   const deleteMutation = useDeleteReportSchedule();
   const updateMutation = useUpdateReportSchedule();
@@ -924,10 +936,12 @@ export default function ScheduledReports() {
             : `${count} schedule${count !== 1 ? "s" : ""} configured`
         }
         actions={
-          <CommandButton size="sm" onClick={handleAdd}>
-            <Plus className="h-4 w-4" />
-            Add Schedule
-          </CommandButton>
+          can("reports:create") && (
+            <CommandButton size="sm" onClick={handleAdd}>
+              <Plus className="h-4 w-4" />
+              Add Schedule
+            </CommandButton>
+          )
         }
       >
         {isLoading ? (
@@ -1009,14 +1023,16 @@ export default function ScheduledReports() {
             <AlertDialogCancel className="-none border-white/10 bg-transparent text-zinc-400 hover:bg-white/5 hover:text-white">
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              disabled={deleteMutation.isPending}
-              className="gap-2 -none border border-red-500/35 bg-red-950/20 font-mono text-[11px] font-bold uppercase tracking-wider text-red-100 hover:bg-rose-600 hover:text-white"
-            >
-              {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Delete Schedule
-            </AlertDialogAction>
+            {can("reports:delete") && (
+              <AlertDialogAction
+                onClick={confirmDelete}
+                disabled={deleteMutation.isPending}
+                className="gap-2 -none border border-red-500/35 bg-red-950/20 font-mono text-[11px] font-bold uppercase tracking-wider text-red-100 hover:bg-rose-600 hover:text-white"
+              >
+                {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                Delete Schedule
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1027,16 +1043,20 @@ export default function ScheduledReports() {
 // ── Sub-components for page layout ────────────────────────────────────────────
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
+  const { can } = useAdminAccess();
+
   return (
     <CommandEmptyState
       title="No scheduled reports"
       description="Automate data exports by scheduling reports to run daily, weekly, or monthly."
       icon={<CalendarClock className="h-5 w-5" />}
       action={
-        <CommandButton size="sm" onClick={onAdd}>
-          <Plus className="h-4 w-4" />
-          Create first schedule
-        </CommandButton>
+        can("reports:create") && (
+          <CommandButton size="sm" onClick={onAdd}>
+            <Plus className="h-4 w-4" />
+            Create first schedule
+          </CommandButton>
+        )
       }
     />
   );

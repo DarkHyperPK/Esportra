@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
 import {
@@ -114,6 +115,7 @@ function CopyBadge({ text }: { text: string }) {
 
 export default function LicenseManagement() {
   const { toast } = useToast();
+  const { can } = useAdminAccess();
 
   // List state
   const [licenses, setLicenses] = useState<LicenseRow[]>([]);
@@ -252,9 +254,11 @@ export default function LicenseManagement() {
           <CommandButton variant="ghost" size="sm" onClick={fetchLicenses}>
             <RefreshCw className="h-4 w-4" /> Refresh
           </CommandButton>
-          <CommandButton size="sm" onClick={() => setAssignOpen(true)}>
-            <UserPlus className="h-4 w-4" /> Assign License
-          </CommandButton>
+          {can('licenses:create') && (
+            <CommandButton size="sm" onClick={() => setAssignOpen(true)}>
+              <UserPlus className="h-4 w-4" /> Assign License
+            </CommandButton>
+          )}
         </div>
       </CommandToolbar>
 
@@ -396,18 +400,22 @@ export default function LicenseManagement() {
                         <CommandIconButton label="View details" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-white" onClick={() => openDetail(lic.user_id)}>
                           <Eye className="h-3.5 w-3.5" />
                         </CommandIconButton>
-                        {lic.status === 'active' ? (
-                          <CommandIconButton label="Revoke license" variant="danger" className="h-8 w-8" onClick={() => revokeLicense(lic.user_id, lic.license_type)}>
-                            <Ban className="h-3.5 w-3.5" />
-                          </CommandIconButton>
-                        ) : (
-                          <CommandIconButton label="Reinstate license" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-white" onClick={() => reinstateLicense(lic.user_id, lic.license_type)}>
-                            <RotateCcw className="h-3.5 w-3.5" />
+                        {lic.status === 'active'
+                          ? can('licenses:revoke') && (
+                            <CommandIconButton label="Revoke license" variant="danger" className="h-8 w-8" onClick={() => revokeLicense(lic.user_id, lic.license_type)}>
+                              <Ban className="h-3.5 w-3.5" />
+                            </CommandIconButton>
+                          )
+                          : can('licenses:reinstate') && (
+                            <CommandIconButton label="Reinstate license" variant="ghost" className="h-8 w-8 text-zinc-500 hover:text-white" onClick={() => reinstateLicense(lic.user_id, lic.license_type)}>
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </CommandIconButton>
+                          )}
+                        {can('licenses:delete') && (
+                          <CommandIconButton label="Delete license" variant="danger" className="h-8 w-8" onClick={() => deleteLicense(lic.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
                           </CommandIconButton>
                         )}
-                        <CommandIconButton label="Delete license" variant="danger" className="h-8 w-8" onClick={() => deleteLicense(lic.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </CommandIconButton>
                       </div>
                     </td>
                   </motion.tr>
@@ -466,10 +474,12 @@ export default function LicenseManagement() {
           </div>
           <DialogFooter>
             <CommandButton variant="ghost" size="sm" onClick={() => setAssignOpen(false)}>Cancel</CommandButton>
-            <CommandButton size="sm" onClick={handleAssign} disabled={!assignEmail || assignLoading}>
-              {assignLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-              Assign
-            </CommandButton>
+            {can('licenses:create') && (
+              <CommandButton size="sm" onClick={handleAssign} disabled={!assignEmail || assignLoading}>
+                {assignLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+                Assign
+              </CommandButton>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -526,11 +536,13 @@ export default function LicenseManagement() {
                             <span className={statusClass(lic.status)}>{lic.status}</span>
                           </div>
                           <div className="flex gap-1">
-                            {lic.status === 'active' ? (
-                              <CommandButton variant="danger" size="sm" onClick={() => revokeLicense(detailUser.profile.id, lic.license_type)}>Revoke</CommandButton>
-                            ) : (
-                              <CommandButton variant="ghost" size="sm" onClick={() => reinstateLicense(detailUser.profile.id, lic.license_type)}>Reinstate</CommandButton>
-                            )}
+                            {lic.status === 'active'
+                              ? can('licenses:revoke') && (
+                                <CommandButton variant="danger" size="sm" onClick={() => revokeLicense(detailUser.profile.id, lic.license_type)}>Revoke</CommandButton>
+                              )
+                              : can('licenses:reinstate') && (
+                                <CommandButton variant="ghost" size="sm" onClick={() => reinstateLicense(detailUser.profile.id, lic.license_type)}>Reinstate</CommandButton>
+                              )}
                           </div>
                         </div>
                       ))}

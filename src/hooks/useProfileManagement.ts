@@ -15,9 +15,10 @@ export const useProfileManagement = () => {
   const updateProfile = async (updates: Partial<UserProfile>, userId: string): Promise<UserProfile> => {
     // Filter to allowed fields
     const valid: Record<string, unknown> = {};
+    const source = updates as Partial<Record<(typeof ALLOWED_FIELDS)[number], unknown>>;
     for (const key of ALLOWED_FIELDS) {
-      if (updates[key] !== undefined && updates[key] !== null)
-        valid[key] = updates[key];
+      if (source[key] !== undefined && source[key] !== null)
+        valid[key] = source[key];
     }
 
     if (Object.keys(valid).length === 0) {

@@ -38,7 +38,7 @@ const DEFAULT_SERIES_OPTIONS = [
 ];
 
 /** Returns the dropdown options for a game's series formats */
-function getSeriesOptions(gameData: { features?: { seriesFormats?: string[] } } | null) {
+function getSeriesOptions(gameData: { features?: { seriesFormats?: string[] } } | null | undefined) {
     const formats = gameData?.features?.seriesFormats;
     if (!formats || formats.length === 0) return DEFAULT_SERIES_OPTIONS;
     return formats
@@ -47,7 +47,7 @@ function getSeriesOptions(gameData: { features?: { seriesFormats?: string[] } } 
 }
 
 /** Returns the display label for a best_of value given the game context */
-function getBestOfLabel(bestOf: number, gameData: { features?: { seriesFormats?: string[] } } | null): string {
+function getBestOfLabel(bestOf: number, gameData: { features?: { seriesFormats?: string[] } } | null | undefined): string {
     const formats = gameData?.features?.seriesFormats;
     if (formats) {
         const match = formats.map(f => SERIES_FORMAT_MAP[f]).find(m => m && m.value === bestOf);

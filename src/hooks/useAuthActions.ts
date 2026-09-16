@@ -18,8 +18,7 @@ export const useAuthActions = () => {
     setLoading(true);
 
     try {
-      console.log("Attempting sign in for:", email);
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data: _data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
@@ -28,8 +27,6 @@ export const useAuthActions = () => {
         console.error("Authentication error:", error.message, "Code:", error.code);
         throw error;
       }
-
-      console.log("Sign in successful:", data.user?.id);
 
       const profile = await apiClient.get<{
         is_suspended?: boolean;
@@ -82,7 +79,6 @@ export const useAuthActions = () => {
     countryCode?: string,
   ) => {
     setLoading(true);
-    console.log("Signing up with role:", role);
 
     try {
       // Step 1: Create the auth user with profile metadata used by handle_new_user trigger
@@ -108,8 +104,6 @@ export const useAuthActions = () => {
       if (!authData?.user) {
         throw new Error("User creation failed");
       }
-
-      console.log(`User created with ID: ${authData.user.id} and role: ${role}`);
 
       if (dateOfBirth || countryCode) {
         try {
@@ -145,7 +139,7 @@ export const useAuthActions = () => {
 
       const { sendEmail } = await import('@/hooks/useEmail');
       sendEmail({
-        type: 'WELCOME',
+        type: 'Welcome',
         email: email,
         data: { username },
       }).catch((err) => console.warn('[SignUp] Welcome email failed:', err));

@@ -97,7 +97,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
         setScanStep('scanning');
         setScanError(null);
         try {
-            const data = await apiClient.post('/api/matches/scan', {
+            const data = await apiClient.post<{ error?: string; matches?: MatchCandidate[] }>('/api/matches/scan', {
                 matchId, gameNumber, mapName, scheduledTime,
             });
             if (data.error) throw new Error(data.error);

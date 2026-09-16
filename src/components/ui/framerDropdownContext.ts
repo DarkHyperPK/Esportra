@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import type { CSSProperties } from 'react';
 
 export interface FramerDropdownContextType {
   isOpen: boolean;
@@ -10,7 +11,7 @@ export interface FramerDropdownContextType {
     accentColor: string;
     borderRadius: number;
     padding: number;
-    font: unknown;
+    font: CSSProperties;
     textColor: string;
   };
 }

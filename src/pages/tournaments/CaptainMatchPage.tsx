@@ -28,6 +28,7 @@ import PartyCodeGoLiveCard from '@/components/tournament/PartyCodeGoLiveCard';
 import { competitorIdsMatch } from '@/utils/competitorId';
 
 import MatchChat from '@/components/tournament/MatchChat';
+import { useMatchChat } from '@/hooks/useMatchChat';
 import TournamentEndScreen from '@/components/tournament/TournamentEndScreen';
 
 import { useTeamManagement } from '@/hooks/useTeamManagement';
@@ -103,6 +104,8 @@ const CaptainMatchPage = () => {
     const [uploadOpen, setUploadOpen] = useState(false);
     const [uploadMatchId, setUploadMatchId] = useState<string | undefined>(undefined);
     const [mapVetoOpen, setMapVetoOpen] = useState(false);
+    const [chatUnread, setChatUnread] = useState(0);
+    const [isChatOpen, setIsChatOpen] = useState(true);
     const [mapVetoMatch, setMapVetoMatch] = useState<BracketMatch | null>(null);
     const [mapVetoMatchId, setMapVetoMatchId] = useState<string | null>(null);
 
@@ -396,6 +399,23 @@ const CaptainMatchPage = () => {
     }, [activeMatchResolution.shouldUnpinUrl, slug, navigate]);
 
     const activeMatchRawId = activeMatch ? toRawMatchId(activeMatch.id) : undefined;
+
+    const {
+        messages: chatMessages,
+        isLoading: isChatLoading,
+        isError: isChatError,
+        chatError,
+        sendMessage,
+        scrollRef: chatScrollRef,
+        scrollToBottom: chatScrollToBottom,
+        connectionStatus: chatConnectionStatus,
+        isJoined: chatIsJoined,
+        opponentLastReadAt,
+        markRead,
+    } = useMatchChat(activeMatchRawId, {
+        onNewMessage: () => setChatUnread(c => c + 1),
+        isChatOpen,
+    });
 
     const lifecycleScope = useMemo(
         () => ({
@@ -781,7 +801,7 @@ const CaptainMatchPage = () => {
             return;
         }
         // Use room-state live flag — bracket cache may lag behind go-live
-        if (!isMatchLive && match.status !== 'in_progress') {
+        if (!canManageMatchRoom && !isMatchLive && match.status !== 'in_progress') {
             toast({
                 title: 'Match not live',
                 description: 'The match must be live before starting map veto.',
@@ -877,7 +897,7 @@ const CaptainMatchPage = () => {
             const assistedEnabled = isAssistedMatchReportingEnabled(
                 tournament?.game || '',
                 tournament?.game_mode,
-                tournament?.settings as { assistedMatchReporting?: boolean },
+                tournament?.settings as { assistedReportingEnabled?: boolean },
             );
             if (!assistedEnabled) return null;
 
@@ -971,7 +991,7 @@ const CaptainMatchPage = () => {
                                     )}
 
                                     {/* Waiting for opponent */}
-                                    {(!activeMatch.team2?.id) && activeMatch.status === 'pending' && (
+                                    {(!activeMatch.team1?.id || !activeMatch.team2?.id) && activeMatch.status === 'pending' && (
                                         <div className="bg-zinc-900/60 border border-white/5 rounded-2xl p-5 text-center">
                                             <p className="text-zinc-400 text-sm">⏳ Waiting for your opponent to be determined</p>
                                             <p className="text-zinc-500 text-xs mt-1">Your next match will begin once the other bracket matches are completed.</p>
@@ -982,7 +1002,7 @@ const CaptainMatchPage = () => {
                                     {selfPlayEnabled
                                         && !agreedScheduledTime
                                         && activeMatch.status === 'pending'
-                                        && activeMatch.team2?.id && (
+                                        && activeMatch.team1?.id && activeMatch.team2?.id && (
                                         (() => {
                                             const roundIndex = activeMatch.round - 1;
                                             const bracketType = activeMatch.bracketType ?? activeMatch.bracketSide ?? null;
@@ -1152,11 +1172,15 @@ const CaptainMatchPage = () => {
                             <aside className="lg:sticky lg:top-8 lg:self-start">
                                 <MatchRoomActionList
                                     vetoEnabled={isVetoEnabled}
-                                    canOpenVeto={isMatchLive && activeMatch.status !== 'completed'}
+                                    canOpenVeto={
+                                        (canManageMatchRoom && !!activeMatch.team1?.id && !!activeMatch.team2?.id)
+                                        || (isMatchLive && activeMatch.status !== 'completed')
+                                    }
                                     manualReportDisabled={(isVetoEnabled && !mapVetoCompleted) || disputedGameNumbers.has(nextGameNumber)}
                                     manualReportLabel={manualReportLabel}
                                     hideManualReport={isOrganizerMatchView}
                                     assistedAction={assistedMatchReportAction}
+                                    isPreLive={canManageMatchRoom && !isMatchLive}
                                     onOpenVeto={() => handleOpenVeto(activeMatch)}
                                     onManualReport={() => handleUploadResult(activeMatch.id)}
                                 />
@@ -1202,9 +1226,26 @@ const CaptainMatchPage = () => {
             )}
 
             {activeMatch ? (
-                <FloatingMatchChat>
+                <FloatingMatchChat
+                    unreadCount={chatUnread}
+                    onOpen={() => {
+                        setIsChatOpen(true);
+                        setChatUnread(0);
+                        markRead();
+                    }}
+                    onClose={() => setIsChatOpen(false)}
+                >
                     <MatchChat
-                        matchId={activeMatch.id.replace(/^(db-|wb-|lb-)/, '')}
+                        messages={chatMessages}
+                        sendMessage={sendMessage}
+                        scrollRef={chatScrollRef}
+                        scrollToBottom={chatScrollToBottom}
+                        isLoading={isChatLoading}
+                        connectionStatus={chatConnectionStatus}
+                        isJoined={chatIsJoined}
+                        chatError={chatError}
+                        isError={isChatError}
+                        opponentLastReadAt={opponentLastReadAt}
                         userTeamId={isOrganizerMatchView ? undefined : userTeamId}
                         team1Id={activeMatch.team1?.id}
                         team1Name={activeMatch.team1?.name || `${terminology.competitorLabel} 1`}
@@ -1216,7 +1257,7 @@ const CaptainMatchPage = () => {
 
             {/* Modals */}
             <Dialog open={isVetoEnabled && mapVetoOpen} onOpenChange={setMapVetoOpen}>
-                <DialogContent className="bg-[#09090b] border-zinc-800/80 max-w-[min(96vw,1280px)] h-[min(86dvh,780px)] overflow-hidden p-0 flex flex-col gap-0">
+                <DialogContent className="bg-[#09090b] border-zinc-800/80 max-w-[min(96vw,1440px)] h-[min(92dvh,920px)] overflow-hidden p-0 flex flex-col gap-0">
                     <DialogHeader className="px-4 py-3 border-b border-zinc-800 bg-[#18181b] flex-shrink-0">
                         <DialogTitle className="text-white text-base font-semibold">Map Veto</DialogTitle>
                     </DialogHeader>

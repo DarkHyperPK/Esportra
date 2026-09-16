@@ -13,7 +13,7 @@ export interface AdminPendingCounts {
 
 export function useAdminHub() {
   const conn = useHub('/hubs/admin');
-  const { ensureConnected } = useSignalR();
+  const { ensureHubStarted: ensureConnected } = useSignalR();
   const queryClient = useQueryClient();
   const [connected, setConnected] = useState(false);
   const [pendingCounts, setPendingCounts] = useState<AdminPendingCounts | null>(null);

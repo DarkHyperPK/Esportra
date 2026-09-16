@@ -62,7 +62,7 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
                 )}>MAP VETO</h1>
                 <Badge className="bg-white/10 text-white px-2.5 py-0.5 text-[10px] font-bold border border-white/20 rounded-full">{boText}</Badge>
                 {vetoStatus === 'in_progress' && (
-                    <Badge className="bg-rose-500/15 text-rose-300 px-2.5 py-0.5 text-[10px] font-bold border border-rose-500/30 rounded-full animate-pulse">
+                    <Badge className="bg-rose-500/20 text-rose-200 px-2.5 py-0.5 text-[10px] font-black border border-rose-500/40 rounded-full animate-pulse shadow-[0_0_12px_rgba(244,63,94,0.25)]">
                         LIVE
                     </Badge>
                 )}
@@ -73,7 +73,7 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
                     {showShareLinks && team1LinkToken && (
                         <button type="button"
                             onClick={() => copyLink(team1LinkToken, 'team1', team1Name)}
-                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5 px-3 py-1.5 text-xs font-semibold border-white/20 text-white/80 hover:bg-white/10 hover:border-white/30')}
+                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5 px-3 py-1.5 text-xs font-semibold border-white/10 text-white/70 hover:bg-white/[0.04] hover:border-white/20')}
                         >
                             {copiedTeam === 'team1' ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
                             {team1Name} Link
@@ -82,7 +82,7 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
                     {showShareLinks && team2LinkToken && (
                         <button type="button"
                             onClick={() => copyLink(team2LinkToken, 'team2', team2Name)}
-                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5 px-3 py-1.5 text-xs font-semibold border-white/15 text-rose-400 hover:bg-rose-500/10 hover:border-white/25')}
+                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-1.5 px-3 py-1.5 text-xs font-semibold border-rose-500/20 text-rose-300 hover:bg-rose-500/10 hover:border-rose-500/30')}
                         >
                             {copiedTeam === 'team2' ? <Check className="h-3 w-3" /> : <Link2 className="h-3 w-3" />}
                             {team2Name} Link
@@ -92,7 +92,7 @@ export const VetoHeader: React.FC<VetoHeaderProps> = ({
                         <button type="button"
                             onClick={handleResetVeto}
                             disabled={resetting}
-                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2 px-3 py-1.5 text-xs font-semibold border-white/20 text-white/80 hover:bg-white/10 hover:text-white hover:border-white/30')}
+                            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'gap-2 px-3 py-1.5 text-xs font-semibold border-white/10 text-white/70 hover:bg-white/[0.04] hover:text-white hover:border-white/20')}
                         >
                             <RotateCcw className={cn('h-3.5 w-3.5', resetting && 'animate-spin')} />
                             {resetting ? 'Resetting...' : 'Reset'}

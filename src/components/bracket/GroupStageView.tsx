@@ -314,8 +314,8 @@ export const GroupStageView: React.FC<GroupStageViewProps> = ({
 
     // Convert matches with team data
     const matches = useMemo(() => (rawMatches as any[]).map(node => {
-        // If it's already a BracketMatch, just return it
-        if (node.team1 && typeof node.team1 === 'object' && 'seed' in node.team1) return node as BracketMatch;
+        // If it's already a BracketMatch (pre-adapted), return as-is
+        if ('groupId' in node || (node.team1 && typeof node.team1 === 'object' && 'seed' in node.team1)) return node as BracketMatch;
 
         const team1 = node.team1_id ? teamsMap.get(node.team1_id) : null;
         const team2 = node.team2_id ? teamsMap.get(node.team2_id) : null;

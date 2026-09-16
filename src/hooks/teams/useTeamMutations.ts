@@ -117,7 +117,7 @@ export const useTeamMutations = () => {
             const data = await apiClient.put(`/api/teams/${teamId}`, finalUpdateData);
             return data;
         },
-        onSuccess: (data, variables) => {
+        onSuccess: (_data, variables) => {
             // Invalidate both individual team and the list of user teams
             queryClient.invalidateQueries({ queryKey: ['team', variables.teamId] });
             queryClient.invalidateQueries({ queryKey: ['my-teams'] });

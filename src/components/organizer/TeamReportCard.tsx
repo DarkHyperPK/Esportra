@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Copy } from 'lucide-react';
 import { FullScoreboard } from '@/components/tournament/FullScoreboard';
+import type { ScoreboardPlayer } from '@/types/scoreboardPlayer';
 import { useToast } from '@/hooks/use-toast';
 
 interface Report {
@@ -71,10 +72,10 @@ const TeamReportCard: React.FC<TeamReportCardProps> = ({
               </div>
             )}
 
-            {report.match_data && (report.match_data as Record<string, unknown>).players && (
+            {Boolean(report.match_data && (report.match_data as Record<string, unknown>).players) && (
               <div className="rounded-lg overflow-hidden border border-zinc-800">
                 <FullScoreboard
-                  players={(report.match_data as Record<string, unknown>).players as unknown[]}
+                  players={(report.match_data as Record<string, unknown>).players as ScoreboardPlayer[]}
                   team1Name={matchTeam1Name}
                   team2Name={matchTeam2Name}
                   team1Score={report.team1_score}

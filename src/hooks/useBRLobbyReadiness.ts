@@ -48,21 +48,21 @@ export function useBRLobbyReadiness(
     onError: (err: unknown) => {
       toast({
         title: 'Check-in failed',
-        description: getApiErrorMessage(err, { context: 'brReadiness' }),
+        description: getApiErrorMessage(err, { context: 'checkIn' }),
         variant: 'destructive',
       });
     },
   });
 
   const checkOutMutation = useMutation({
-    mutationFn: () => apiClient.delete<{ success: boolean }>(`/api/br/lobbies/${lobbyId}/readiness`),
+    mutationFn: () => apiClient.delete(`/api/br/lobbies/${lobbyId}/readiness`),
     onSuccess: async () => {
       await invalidate();
     },
     onError: (err: unknown) => {
       toast({
         title: 'Could not undo check-in',
-        description: getApiErrorMessage(err, { context: 'brReadiness' }),
+        description: getApiErrorMessage(err, { context: 'checkIn' }),
         variant: 'destructive',
       });
     },

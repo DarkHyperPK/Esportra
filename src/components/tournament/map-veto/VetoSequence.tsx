@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { VetoHistoryEntry } from '@/hooks/useVetoHistory';
+import type { VetoStepDto } from '@/types/veto';
 import {
     getBestOf,
     getSidePickerTeam,
@@ -38,6 +39,7 @@ interface VetoSequenceProps {
     columns?: boolean;
     className?: string;
     emptyMessage?: string;
+    externalSequence?: VetoStepDto[];
 }
 
 interface SequenceItem {
@@ -88,6 +90,7 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
     columns = false,
     className,
     emptyMessage = 'No veto actions recorded yet.',
+    externalSequence,
 }) => {
     const reduceMotion = useReducedMotion();
     const sequenceItems = useMemo<SequenceItem[]>(() => {
@@ -105,18 +108,36 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
             return entryItems;
         }
 
-        if (!isVetoLive(veto)) {
-            return [];
-        }
-
         const mapLookup = allAvailableMaps.length > 0 ? allAvailableMaps : availableMaps;
         const service = new VetoService(game, mapLookup.length || undefined);
         const currentBestOf = getBestOf(bestOf || veto.best_of);
-        const sequence = service.getSequence(getVetoFormat(currentBestOf));
-        const resolvedThrough = Math.max(0, (veto.current_action_number ?? 1) - 1);
-        const trustedEntries = entries.filter((entry) => entry.actionNumber <= resolvedThrough);
         const effectiveTeam1Id = veto.team1_id || team1Id || 'team1';
         const effectiveTeam2Id = veto.team2_id || team2Id || 'team2';
+
+        type NormalizedStep = { actionNumber: number; action: string; isDecider: boolean; teamId: string };
+        let normalizedSteps: NormalizedStep[];
+        if (externalSequence && externalSequence.length > 0) {
+            normalizedSteps = externalSequence.map((step) => ({
+                actionNumber: step.actionNumber,
+                action: step.action,
+                isDecider: step.isDecider,
+                teamId: step.team === 'T1' ? effectiveTeam1Id : effectiveTeam2Id,
+            }));
+        } else if (isVetoLive(veto)) {
+            normalizedSteps = service.getSequence(getVetoFormat(currentBestOf)).map((step) => ({
+                actionNumber: step.actionNumber,
+                action: step.action,
+                isDecider: step.isDecider,
+                teamId: step.action === 'pick_side'
+                    ? getSidePickerTeam(step.actionNumber, currentBestOf, effectiveTeam1Id, effectiveTeam2Id, service)
+                    : getTeamForAction(step.actionNumber, currentBestOf, effectiveTeam1Id, effectiveTeam2Id, service),
+            }));
+        } else {
+            return [];
+        }
+
+        const resolvedThrough = Math.max(0, (veto.current_action_number ?? 1) - 1);
+        const trustedEntries = entries.filter((entry) => entry.actionNumber <= resolvedThrough);
         const usedMapIds = new Set([
             ...normalizeBannedMaps(veto.team1_banned_maps),
             ...normalizeBannedMaps(veto.team2_banned_maps),
@@ -124,7 +145,7 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
             ...(veto.team2_picked_maps || []).map((picked) => picked.map_id),
         ]);
 
-        return sequence.map((step) => {
+        return normalizedSteps.map((step) => {
             const historyEntry = getEntryForStep(trustedEntries, step.actionNumber);
             if (historyEntry) {
                 return {
@@ -138,9 +159,7 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
                 };
             }
 
-            const teamId = step.action === 'pick_side'
-                ? getSidePickerTeam(step.actionNumber, currentBestOf, effectiveTeam1Id, effectiveTeam2Id, service)
-                : getTeamForAction(step.actionNumber, currentBestOf, effectiveTeam1Id, effectiveTeam2Id, service);
+            const teamId = step.teamId;
             const previousEntry = getEntryForStep(trustedEntries, step.actionNumber - 1);
             const status = veto.current_action_number === step.actionNumber ? 'current' : 'upcoming';
             const remainingMaps = step.isDecider
@@ -166,7 +185,7 @@ export const VetoSequence: React.FC<VetoSequenceProps> = ({
                 status,
             };
         });
-    }, [allAvailableMaps, availableMaps, bestOf, doneOnly, entries, game, team1Id, team1Name, team2Id, team2Name, veto]);
+    }, [allAvailableMaps, availableMaps, bestOf, doneOnly, entries, externalSequence, game, team1Id, team1Name, team2Id, team2Name, veto]);
 
     if (loading) {
         return (

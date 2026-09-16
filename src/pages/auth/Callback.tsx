@@ -1,13 +1,22 @@
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
+import CountryPickerModal from '@/components/auth/CountryPickerModal';
 
 const Callback = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [showCountryModal, setShowCountryModal] = useState(false);
+  const [pendingRedirect, setPendingRedirect] = useState('/');
+
+  const handlePostCountrySave = () => {
+    setShowCountryModal(false);
+    toast({ title: "Success!", description: "You have successfully signed in." });
+    navigate(pendingRedirect);
+  };
 
   useEffect(() => {
     const handleSession = async (session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']) => {
@@ -31,6 +40,7 @@ const Callback = () => {
         suspension_reason?: string | null;
         suspension_until?: string | null;
         suspension_type?: string | null;
+        country_code?: string | null;
       }>('/api/profiles/me');
 
       if (profile?.is_suspended) {
@@ -51,10 +61,21 @@ const Callback = () => {
         return;
       }
 
-      toast({ title: "Success!", description: "You have successfully signed in." });
       const postAuthRedirect = sessionStorage.getItem('auth_redirect');
       if (postAuthRedirect) sessionStorage.removeItem('auth_redirect');
-      navigate(postAuthRedirect || '/');
+      const redirectTo = postAuthRedirect || '/';
+
+      const provider = session.user?.app_metadata?.provider;
+      const isOAuth = provider === 'google' || provider === 'discord';
+
+      if (isOAuth && !profile?.country_code) {
+        setPendingRedirect(redirectTo);
+        setShowCountryModal(true);
+        return;
+      }
+
+      toast({ title: "Success!", description: "You have successfully signed in." });
+      navigate(redirectTo);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -80,6 +101,10 @@ const Callback = () => {
       clearTimeout(fallback);
     };
   }, [navigate, toast]);
+
+  if (showCountryModal) {
+    return <CountryPickerModal onSave={handlePostCountrySave} />;
+  }
 
   return (
     <div className="min-h-screen bg-transparent text-white flex flex-col justify-center items-center">

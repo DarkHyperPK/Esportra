@@ -6,7 +6,8 @@ import type { BRRound } from '@/types/brLobbies';
 
 type LeaderboardRowInput = GroupLeaderboardResponse & Record<string, unknown>;
 
-interface GroupLeaderboardResponse {
+type GroupLeaderboardResponse = {
+  [key: string]: unknown;
   team_id?: string;
   team_name?: string;
   logo_url?: string | null;
@@ -17,7 +18,7 @@ interface GroupLeaderboardResponse {
   total_kills?: number;
   wins?: number;
   best_placement?: number;
-}
+};
 
 function pickLeaderboardField<T>(row: LeaderboardRowInput, snake: string, camel: string): T | undefined {
   const value = row[snake] ?? row[camel];

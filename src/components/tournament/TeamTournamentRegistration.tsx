@@ -24,6 +24,7 @@ import {
   Zap,
   Info
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useGameLogo, useGameLogos } from '@/hooks/useGameLogo';
 import TournamentLineupPicker, { isTournamentLineupComplete } from '@/components/tournament/TournamentLineupPicker';
 import { getGameMode, getEffectiveGameFeatures, getRosterLimits, isAssistedMatchReportingEnabled } from '@/utils/gameFeatures';
@@ -111,6 +112,17 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [fetchingTeams, setFetchingTeams] = useState(true);
+  const [hasDiscordLinked, setHasDiscordLinked] = useState<boolean | null>(null);
+  const [discordDmsEnabled, setDiscordDmsEnabled] = useState(true);
+  const _settings = tournament.settings as any;
+  const discordLinkCount = _settings?.discordLinkCount ?? (_settings?.requireDiscordLink ? 1 : 0);
+  const requiresDiscordLink = discordLinkCount > 0;
+
+  useEffect(() => {
+    apiClient.get<{ has_discord: boolean }>('/api/profiles/me/discord-dm')
+      .then((r) => setHasDiscordLinked(r.has_discord))
+      .catch(() => setHasDiscordLinked(false));
+  }, []);
 
   // Team selection flow
   const [captainTeams, setCaptainTeams] = useState<TeamRow[]>([]);
@@ -157,7 +169,7 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
   const assistedReportingEnabled = isAssistedMatchReportingEnabled(
     tournament.game,
     tournamentGameMode,
-    tournament.settings as { assistedMatchReporting?: boolean } | undefined,
+    tournament.settings as { assistedReportingEnabled?: boolean } | undefined,
   );
   const preferRiotTagForDisplay = getEffectiveGameFeatures(tournament.game, tournamentGameMode).assistedReporting;
 
@@ -507,6 +519,9 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
             throw new Error('As the team captain, you must link your Riot account via Riot Sign-On to register for this tournament.');
           }
         }
+        if (requiresDiscordLink && !hasDiscordLinked) {
+          throw new Error('The organizer requires a linked Discord account. Go to Account Settings → Connected Accounts to link Discord before registering.');
+        }
       } else {
         const roleCounts = { starter: 0, substitute: 0, coach: 0 };
         (rosterMembers || []).forEach((member) => {
@@ -538,6 +553,9 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
           if (!captainHasRiot) {
             throw new Error('As the team captain, you must link your Riot account via Riot Sign-On to register for this tournament.');
           }
+        }
+        if (requiresDiscordLink && !hasDiscordLinked) {
+          throw new Error('The organizer requires a linked Discord account. Go to Account Settings → Connected Accounts to link Discord before registering.');
         }
 
         const memberIds = (rosterMembers || []).map((r) => r.user_id);
@@ -588,6 +606,12 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
         rosterName: roster?.name || null,
         teamContactEmail: user.email || null,
       });
+
+      // Best-effort: write Discord DM preference if user opted out
+      if (hasDiscordLinked && !discordDmsEnabled) {
+        apiClient.put(`/api/profiles/me/tournament-discord-prefs/${tournament.id}`, { discord_dms_enabled: false })
+          .catch(() => {});
+      }
 
       const isPaid = tournament.entry_fee && tournament.entry_fee > 0;
       toast({
@@ -1012,10 +1036,39 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
           </div>
         )}
 
+        {/* Discord DM opt-in */}
+        {hasDiscordLinked && (
+          <div className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.02] px-4 py-3">
+            <Switch
+              id="discord-dms-team"
+              checked={discordDmsEnabled}
+              onCheckedChange={setDiscordDmsEnabled}
+            />
+            <label htmlFor="discord-dms-team" className="text-sm text-gray-300 cursor-pointer">
+              Send me Discord DMs for this tournament
+            </label>
+          </div>
+        )}
+
+        {/* Discord link requirement warning */}
+        {requiresDiscordLink && hasDiscordLinked === false && (
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-sm">
+            <span className="text-indigo-400 mt-0.5 flex-shrink-0">⚠</span>
+            <p className="text-indigo-300">
+              {discordLinkCount > 1
+                ? `This tournament requires at least ${discordLinkCount} players per team to have Discord linked. You (captain) must be one of them.`
+                : 'This tournament requires captains to have a linked Discord account.'}{' '}
+              <a href="/account/settings?tab=connected_accounts" className="underline text-indigo-200 hover:text-white">
+                Connect Discord →
+              </a>
+            </p>
+          </div>
+        )}
+
         {/* Actions - Clean */}
         <div className="flex gap-3 pt-2 border-t border-[#1a1a1a]">
           <CtaButton
-            disabled={!selectedTeamId || !eligibleTeamIds.has(selectedTeamId) || !selectedRosterId || !lineupComplete || loading}
+            disabled={!selectedTeamId || !eligibleTeamIds.has(selectedTeamId) || !selectedRosterId || !lineupComplete || loading || (requiresDiscordLink && hasDiscordLinked === false)}
             onClick={handleRegister}
             className="flex-1 py-3 text-base disabled:opacity-40 disabled:cursor-not-allowed"
           >

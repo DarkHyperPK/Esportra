@@ -11,7 +11,7 @@ export interface PartnerApplication {
     contact_email: string;
     contact_phone?: string;
     contact_title?: string;
-    partnership_tier: 'radiant' | 'ascendant' | 'diamond' | 'standard';
+    partnership_tier: 'radiant' | 'ascendant' | 'diamond' | 'standard' | 'partner';
     partnership_goals: string[];
     budget_range?: 'under_1k' | '1k_5k' | '5k_15k' | '15k_50k' | '50k_plus' | 'undecided';
     message?: string;

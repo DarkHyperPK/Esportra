@@ -24,6 +24,7 @@ import {
   useGdprRequests, useGdprStats, useConsentRecords, useProcessGdprRequest,
   type GdprRequest, type ConsentRecord,
 } from '@/hooks/useAdminQueries';
+import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -130,6 +131,7 @@ interface ProcessDialogProps {
 const ProcessDialog = ({ request, action, onClose }: ProcessDialogProps) => {
   const [notes, setNotes] = useState('');
   const { mutate, isPending } = useProcessGdprRequest();
+  const { can } = useAdminAccess();
 
   const open = !!(request && action);
 
@@ -215,15 +217,17 @@ const ProcessDialog = ({ request, action, onClose }: ProcessDialogProps) => {
             >
               Cancel
             </CommandButton>
-            <CommandButton
-              variant={action === 'approve' ? 'primary' : 'danger'}
-              size="sm"
-              className="flex-1"
-              onClick={handleSubmit}
-              disabled={isPending || (action === 'reject' && !notes.trim())}
-            >
-              {isPending ? 'Processing…' : action === 'approve' ? 'Approve' : 'Reject'}
-            </CommandButton>
+            {can('gdpr:process') && (
+              <CommandButton
+                variant={action === 'approve' ? 'primary' : 'danger'}
+                size="sm"
+                className="flex-1"
+                onClick={handleSubmit}
+                disabled={isPending || (action === 'reject' && !notes.trim())}
+              >
+                {isPending ? 'Processing…' : action === 'approve' ? 'Approve' : 'Reject'}
+              </CommandButton>
+            )}
           </div>
         </div>
       </DialogContent>
@@ -239,6 +243,7 @@ interface RequestCardProps {
 }
 
 const RequestCard = ({ request, onAction }: RequestCardProps) => {
+  const { can } = useAdminAccess();
   const isPending = request.status.toLowerCase() === 'pending';
   const isCompleted = request.status.toLowerCase() === 'completed';
   const hasDownload = isCompleted && request.downloadUrl;
@@ -294,7 +299,7 @@ const RequestCard = ({ request, onAction }: RequestCardProps) => {
               )}
             </div>
           )}
-          {isPending && (
+          {isPending && can('gdpr:process') && (
             <div className="flex gap-1.5">
               <CommandButton size="sm" onClick={() => onAction(request, 'approve')}>
                 <CheckCircle className="h-3.5 w-3.5" />

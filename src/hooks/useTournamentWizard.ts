@@ -294,8 +294,10 @@ export const useTournamentWizard = (
                     prizeDistribution:    data.prizeDistribution ?? null,
                     reservedInviteSlots:  data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
                     inviteExpiryDays:     data.inviteExpiryDays || 7,
+                    assistedReportingEnabled: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
+                    requiredAccountLinks: modeFeatures.assistedReporting && data.assistedMatchReporting ? (data.requiredAccountLinks ?? 1) : 1,
+                    discordLinkCount:     data.discordLinkCount ?? 0,
                     settings:             {
-                        assistedMatchReporting: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
                         checkInWindowMinutes: data.checkInWindowMinutes || 30,
                         mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
                         reservedInviteSlots: data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
@@ -394,8 +396,10 @@ export const useTournamentWizard = (
                     serverRegion:         data.serverRegion || null,
                     reservedInviteSlots:  data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,
                     inviteExpiryDays:     data.inviteExpiryDays || 7,
+                    assistedReportingEnabled: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
+                    requiredAccountLinks: modeFeatures.assistedReporting && data.assistedMatchReporting ? (data.requiredAccountLinks ?? 1) : 1,
+                    discordLinkCount:     data.discordLinkCount ?? 0,
                     settings: {
-                        assistedMatchReporting: modeFeatures.assistedReporting ? (data.assistedMatchReporting ?? false) : false,
                         checkInWindowMinutes: data.checkInWindowMinutes || 30,
                         mapVetoEnabled: modeFeatures.mapVeto ? (data.mapVetoEnabled ?? true) : false,
                         reservedInviteSlots: data.invitedTeamsEnabled ? data.reservedInviteSlots : 0,

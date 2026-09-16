@@ -1,5 +1,11 @@
 import { apiClient } from '@/lib/apiClient';
-import { BracketGraph, BracketNode, BracketEdge, MatchEvent } from '@/types/bracket-graph';
+import { BracketGraph, BracketNode, BracketEdge, MatchEvent, BracketVersion } from '@/types/bracket-graph';
+
+interface GraphStructureResponse {
+    version: BracketVersion;
+    nodes: unknown;
+    edges: unknown;
+}
 
 export class MatchRepository {
     /**
@@ -39,7 +45,7 @@ export class MatchRepository {
      * Fetches the full graph structure (Version, Nodes & Edges).
      */
     async getGraphStructure(versionId: string): Promise<BracketGraph> {
-        const data = await apiClient.get(`/api/brackets/${versionId}/graph`);
+        const data = await apiClient.get<GraphStructureResponse>(`/api/brackets/${versionId}/graph`);
 
         const { version, nodes: rawNodes, edges: rawEdges } = data;
 

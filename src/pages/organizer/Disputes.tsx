@@ -215,7 +215,7 @@ const OrganizerDisputesPage: React.FC = () => {
         setUploadingAttachment(false);
       }
 
-      const _result = await apiClient.post<{ autoPromoted?: boolean }>(`/api/organizer/disputes/${selectedDispute.id}/comments`, {
+      await apiClient.post<{ autoPromoted?: boolean }>(`/api/organizer/disputes/${selectedDispute.id}/comments`, {
         comment: commentText.trim() || '',
         attachmentUrl,
       });

@@ -425,48 +425,6 @@ function cleanDamageAssetLabel(asset?: DamageAssetMetadata, fallback?: string): 
   return label;
 }
 
-function _getPlayerName(player?: { gameName?: string; tagLine?: string }): string {
-  if (!player?.gameName) return 'Unknown';
-  return player.tagLine ? `${player.gameName}#${player.tagLine}` : player.gameName;
-}
-
-const _AgentPortrait: React.FC<{
-  icon?: string;
-  name: string;
-  side?: string;
-  roleLabel?: string;
-  tone?: 'killer' | 'victim' | 'neutral';
-}> = ({ icon, name, side, roleLabel, tone = 'neutral' }) => (
-  <div className="min-w-0">
-    {roleLabel ? (
-      <div
-        className={cn(
-          'mb-1 text-center text-[8px] font-black uppercase tracking-widest',
-          tone === 'killer' ? 'text-emerald-300' : 'text-rose-300',
-        )}
-      >
-        {roleLabel}
-      </div>
-    ) : null}
-    {icon ? (
-      <img
-        src={icon}
-        alt=""
-        className={cn(
-          'mx-auto h-12 w-12 rounded-full object-cover drop-shadow-lg',
-          tone === 'killer' && 'ring-2 ring-emerald-300',
-          tone === 'victim' && 'ring-2 ring-rose-300',
-        )}
-        loading="lazy"
-      />
-    ) : (
-      <Crosshair className="mx-auto h-8 w-8 text-zinc-500" />
-    )}
-    <div className="mt-1 truncate text-center text-[10px] font-bold text-zinc-200">{name}</div>
-    {side ? <div className="truncate text-center text-[8px] uppercase tracking-wider text-zinc-600">{side}</div> : null}
-  </div>
-);
-
 function formatDistanceLabel(
   first?: RiotMapPoint | null,
   second?: RiotMapPoint | null,
@@ -727,7 +685,6 @@ export const RiotTimelineMap: React.FC<RiotTimelineMapProps> = ({
     ? projectPoint(previewAction.location, mapData)
     : null;
   const previewKillerParticipant = previewAction?.participants.find((participant) => participant.role === 'killer');
-  const _previewVictimParticipant = previewAction?.participants.find((participant) => participant.role === 'victim');
   const activeSpikeAction = previewAction
     ? roundActions
       .filter((action) => action.type === 'plant' && action.timeMillis <= previewAction.timeMillis)

@@ -41,6 +41,9 @@ export interface DashboardTournament {
     check_in_deadline: string | null;
     auto_remove_unchecked: boolean;
     team_size: number;
+    game_mode?: string | null;
+    currency?: string;
+    winner_team_name?: string | null;
     format: 'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin';
     // Legacy/Computed fields
     date?: string;
@@ -72,6 +75,8 @@ export interface DashboardParticipant {
     payment_receipt_url?: string | null;
     payment_rejection_reason?: string | null;
     entry_fee_paid?: boolean | null;
+    entry_fee_amount?: number | null;
+    currency?: string | null;
     user?: {
         username: string;
         avatar_url: string | null;
@@ -96,6 +101,9 @@ export interface DashboardStage {
     bo_mode: 'per_stage' | 'per_round';
     round_bo_overrides: Record<string, number> | null;
     is_locked: boolean;
+    progress_label?: string | null;
+    starts_at: string | null;
+    ends_at: string | null;
     created_at: string;
     updated_at: string;
 }
