@@ -107,15 +107,6 @@ const ORG_SETTINGS_GROUPS: Array<{
     ],
   },
   {
-    label: "Developer",
-    labelClass: "text-zinc-400",
-    items: [
-      { value: "developer-api-keys", label: "API Keys", icon: Key },
-      { value: "developer-api-analytics", label: "Usage", icon: Activity },
-      { value: "developer-api-docs", label: "Docs", icon: BookOpen },
-    ],
-  },
-  {
     label: "Danger Zone",
     labelClass: "text-red-400",
     items: [{ value: "advanced", label: "Advanced", icon: ShieldAlert }],

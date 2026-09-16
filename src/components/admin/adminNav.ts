@@ -3,7 +3,6 @@ import {
   BarChart3,
   Bell,
   CalendarClock,
-  Code,
   Database,
   FileText,
   Flag,
@@ -71,7 +70,6 @@ export const adminNavGroups: AdminNavGroup[] = [
     label: 'Partners',
     items: [
       { label: 'Sponsors', href: '/admin/partners/sponsors', icon: Flag, permission: 'sponsors:view' },
-      { label: 'Developer API', href: '/admin/tools/developer-api', icon: Code, permission: 'developer_keys:manage' },
     ],
   },
   {
