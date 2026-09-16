@@ -20,6 +20,7 @@ export type DeveloperKey = {
 export type CreateKeyRequest = {
   name: string;
   environment: 'sandbox' | 'live';
+  scopes: string[];
   rate_limit_per_min: number;
 };
 

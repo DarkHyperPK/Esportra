@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Loader2, Plus } from 'lucide-react';
+import { Key, Loader2, Plus } from 'lucide-react';
 import {
   CommandButton,
+  CommandEmptyState,
   CommandPanel,
   CommandSection,
 } from '@/components/management/CommandSurface';
@@ -156,6 +157,15 @@ export function KeyManagementDashboard({
           )}
         </div>
       </CommandSection>
+
+      {/* Empty state for no keys at all */}
+      {keys.length === 0 && !isLoading && (
+        <CommandEmptyState
+          title="No API keys"
+          description="Create your first sandbox key to start exploring the API."
+          icon={<Key className="h-5 w-5" />}
+        />
+      )}
 
       {createDialogEnv && (
         <CreateKeyDialog
