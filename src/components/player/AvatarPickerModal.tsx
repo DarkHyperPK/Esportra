@@ -4,7 +4,7 @@ import type { Area } from 'react-easy-crop';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, Loader2, Check, ImageIcon, Lock, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { CtaButton } from '@/components/ui/app-buttons';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -267,13 +267,13 @@ function AvatarPoolPicker({ onSelect, currentSeed }: {
                             </div>
                             <div className="border-t border-zinc-800/60 px-4 py-3 flex items-center justify-between gap-3">
                                 {!ownedIsActive ? (
-                                    <Button
+                                    <CtaButton
                                         onClick={() => handleApplyOwned(owned)}
-                                        className="flex-1 bg-rose-600 hover:bg-rose-700 text-white h-9 font-semibold text-sm"
+                                        className="flex-1 h-9 font-semibold text-sm"
                                     >
                                         <Check className="w-4 h-4 mr-1.5" />
                                         Apply this avatar
-                                    </Button>
+                                    </CtaButton>
                                 ) : (
                                     <span className="text-xs text-zinc-500">This avatar is your active identity</span>
                                 )}
@@ -439,25 +439,25 @@ function AvatarPoolPicker({ onSelect, currentSeed }: {
                             </div>
                         </div>
                         {ownedButInactive && (
-                            <Button
+                            <CtaButton
                                 onClick={() => handleApplyOwned(selectedItem)}
-                                className="w-full bg-rose-600 hover:bg-rose-700 text-white h-10 font-semibold"
+                                className="w-full h-10 font-semibold"
                             >
                                 <Check className="w-4 h-4 mr-2" />
                                 Apply this avatar
-                            </Button>
+                            </CtaButton>
                         )}
                         {ownedAndActive && (
-                            <Button disabled className="w-full h-10 font-semibold disabled:opacity-40">
+                            <CtaButton disabled className="w-full h-10 font-semibold">
                                 <Check className="w-4 h-4 mr-2" />
                                 Already active
-                            </Button>
+                            </CtaButton>
                         )}
                         {!isOwned && (
-                            <Button
+                            <CtaButton
                                 onClick={handleClaim}
                                 disabled={claimMutation.isPending || blockedByOther}
-                                className="w-full bg-rose-600 hover:bg-rose-700 text-white h-10 font-semibold disabled:opacity-40"
+                                className="w-full h-10 font-semibold"
                             >
                                 {claimMutation.isPending
                                     ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Claiming...</>
@@ -465,7 +465,7 @@ function AvatarPoolPicker({ onSelect, currentSeed }: {
                                         ? 'Release your current avatar first'
                                         : 'Claim this avatar'
                                 }
-                            </Button>
+                            </CtaButton>
                         )}
                     </div>
                 );
@@ -597,12 +597,11 @@ function PhotoPicker({ userId, existingUrl, onSelect }: {
                 >
                     Change
                 </button>
-                <Button onClick={handleUpload} disabled={isUploading}
-                    className="flex-1 bg-rose-600 hover:bg-rose-700 text-white h-10 font-semibold">
+                <CtaButton onClick={handleUpload} disabled={isUploading} className="flex-1 h-10 font-semibold">
                     {isUploading
                         ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading...</>
                         : <><Upload className="w-4 h-4 mr-2" />Save photo</>}
-                </Button>
+                </CtaButton>
             </div>
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleFileSelect} />
         </div>

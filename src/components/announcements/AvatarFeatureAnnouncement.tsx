@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { JackButton } from '@/components/ui/JackButton';
 
 const STORAGE_KEY = 'esportra_seen_feature_avatars_v1';
 
@@ -177,18 +178,12 @@ export function AvatarFeatureAnnouncement() {
                                 </p>
 
                                 <div className="flex gap-3">
-                                    <button
-                                        onClick={dismiss}
-                                        className="flex-1 h-11 rounded-xl text-[13px] font-medium text-zinc-500 hover:text-zinc-200 border border-white/[0.08] hover:border-white/[0.14] transition-colors"
-                                    >
+                                    <JackButton variant="ghost" size="md" onClick={dismiss} className="flex-1">
                                         Not now
-                                    </button>
-                                    <button
-                                        onClick={openPool}
-                                        className="flex-1 h-11 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[13px] font-semibold transition-colors shadow-[0_0_32px_rgba(225,29,72,0.35)] hover:shadow-[0_0_44px_rgba(225,29,72,0.5)]"
-                                    >
+                                    </JackButton>
+                                    <JackButton variant="primary" size="md" onClick={openPool} className="flex-1">
                                         Open the pool
-                                    </button>
+                                    </JackButton>
                                 </div>
                             </motion.div>
                         </div>
