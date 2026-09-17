@@ -63,18 +63,32 @@ function dicebearUrl(style: string, seed: string) {
 
 // ── Pool item card ─────────────────────────────────────────────────────────────
 
-function PoolItemCard({ item, onDelete }: { item: AdminPoolItem; onDelete: (id: string) => void }) {
+function PoolItemCard({
+    item, isSelected, onToggleSelect, onDelete,
+}: {
+    item: AdminPoolItem;
+    isSelected: boolean;
+    onToggleSelect: () => void;
+    onDelete: (id: string) => void;
+}) {
     const isClaimed = !!item.claimed_by;
 
     return (
-        <div className={cn(
-            'group relative border bg-white/[0.025] p-3 flex flex-col gap-2 transition-colors',
-            isClaimed ? 'border-white/5' : 'border-white/10 hover:border-white/20',
-        )}>
+        <div
+            onClick={() => { if (!isClaimed) onToggleSelect(); }}
+            className={cn(
+                'group relative border bg-white/[0.025] p-3 flex flex-col gap-2 transition-all',
+                isClaimed
+                    ? 'border-white/5 cursor-default'
+                    : isSelected
+                        ? 'border-rose-500/60 bg-rose-500/[0.07] cursor-pointer'
+                        : 'border-white/10 hover:border-white/20 cursor-pointer',
+            )}
+        >
             <div className="flex items-center gap-3">
                 <div className={cn(
                     'relative w-10 h-10 rounded-full overflow-hidden shrink-0 ring-1',
-                    isClaimed ? 'ring-white/10 opacity-50' : 'ring-white/20',
+                    isClaimed ? 'ring-white/10 opacity-50' : isSelected ? 'ring-rose-500/60' : 'ring-white/20',
                 )}>
                     <img
                         src={dicebearUrl(item.style, item.seed)}
@@ -86,6 +100,11 @@ function PoolItemCard({ item, onDelete }: { item: AdminPoolItem; onDelete: (id: 
                             <Lock className="w-3 h-3 text-zinc-400" />
                         </div>
                     )}
+                    {isSelected && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-rose-500/40">
+                            <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -93,10 +112,10 @@ function PoolItemCard({ item, onDelete }: { item: AdminPoolItem; onDelete: (id: 
                     <p className="font-mono text-[10px] text-zinc-600 capitalize">{item.style}</p>
                 </div>
 
-                {!isClaimed && (
+                {!isClaimed && !isSelected && (
                     <button
                         type="button"
-                        onClick={() => onDelete(item.id)}
+                        onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
                         className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-zinc-600 hover:text-red-400"
                         title="Delete"
                     >
@@ -110,8 +129,11 @@ function PoolItemCard({ item, onDelete }: { item: AdminPoolItem; onDelete: (id: 
                     CLAIMED — {item.claimed_by_username ?? 'unknown'}
                 </div>
             ) : (
-                <div className="font-mono text-[9px] text-emerald-600 border-t border-white/5 pt-1.5">
-                    AVAILABLE
+                <div className={cn(
+                    'font-mono text-[9px] border-t pt-1.5',
+                    isSelected ? 'border-rose-500/20 text-rose-400' : 'border-white/5 text-emerald-600',
+                )}>
+                    {isSelected ? 'SELECTED' : 'AVAILABLE'}
                 </div>
             )}
         </div>
@@ -315,6 +337,8 @@ export default function AvatarPoolManagement() {
     const queryClient = useQueryClient();
     const [styleFilter, setStyleFilter] = useState<AvatarStyleId | 'all'>('all');
     const [page, setPage] = useState(0);
+    const [poolSelected, setPoolSelected] = useState<Set<string>>(new Set());
+    const [bulkDeleting, setBulkDeleting] = useState(false);
     const PAGE_SIZE = 20;
 
     const { data, isLoading, refetch } = useQuery({
@@ -337,11 +361,51 @@ export default function AvatarPoolManagement() {
         },
     });
 
+    const unclaimedItems = data?.items.filter(i => !i.claimed_by) ?? [];
+    const allUnclaimedSelected = unclaimedItems.length > 0 && unclaimedItems.every(i => poolSelected.has(i.id));
+
+    const togglePoolSelect = (id: string) => {
+        setPoolSelected(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) { next.delete(id); } else { next.add(id); }
+            return next;
+        });
+    };
+
+    const toggleSelectAllUnclaimed = () => {
+        if (allUnclaimedSelected) {
+            setPoolSelected(new Set());
+        } else {
+            setPoolSelected(new Set(unclaimedItems.map(i => i.id)));
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (poolSelected.size === 0) return;
+        setBulkDeleting(true);
+        const ids = [...poolSelected];
+        let deleted = 0;
+        let failed = 0;
+        await Promise.all(ids.map(id =>
+            apiClient.delete(`/api/admin/avatars/pool/${id}`)
+                .then(() => { deleted++; })
+                .catch(() => { failed++; })
+        ));
+        setBulkDeleting(false);
+        setPoolSelected(new Set());
+        queryClient.invalidateQueries({ queryKey: ['admin-avatar-pool'] });
+        toast({
+            title: `${deleted} avatar${deleted === 1 ? '' : 's'} deleted`,
+            description: failed > 0 ? `${failed} could not be deleted (may be claimed).` : undefined,
+        });
+    };
+
     const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
 
     const handleStyleFilter = (s: AvatarStyleId | 'all') => {
         setStyleFilter(s);
         setPage(0);
+        setPoolSelected(new Set());
     };
 
     return (
@@ -375,7 +439,7 @@ export default function AvatarPoolManagement() {
                     {/* Pool browser */}
                     <CommandSection title="Pool">
                         {/* Style filter */}
-                        <div className="flex flex-wrap gap-1.5 mb-5">
+                        <div className="flex flex-wrap gap-1.5 mb-4">
                             {(['all', ...AVATAR_STYLES.map(s => s.id)] as const).map((id) => {
                                 const label = id === 'all' ? 'All' : AVATAR_STYLES.find(s => s.id === id)?.label ?? id;
                                 return (
@@ -396,6 +460,45 @@ export default function AvatarPoolManagement() {
                             })}
                         </div>
 
+                        {/* Selection toolbar */}
+                        {unclaimedItems.length > 0 && (
+                            <div className="flex items-center gap-2 mb-4">
+                                <button
+                                    type="button"
+                                    onClick={toggleSelectAllUnclaimed}
+                                    className="flex items-center gap-1.5 h-7 px-3 border border-white/10 bg-white/[0.03] font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-white hover:border-white/20 transition-colors"
+                                >
+                                    {allUnclaimedSelected ? 'Deselect all' : 'Select all'}
+                                </button>
+                                {poolSelected.size > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={handleBulkDelete}
+                                        disabled={bulkDeleting}
+                                        className="flex items-center gap-1.5 h-7 px-3 border border-red-500/30 bg-red-500/10 font-mono text-[10px] font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20 disabled:opacity-50 transition-colors"
+                                    >
+                                        {bulkDeleting
+                                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                                            : <Trash2 className="w-3 h-3" />
+                                        }
+                                        Delete {poolSelected.size}
+                                    </button>
+                                )}
+                                {poolSelected.size > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setPoolSelected(new Set())}
+                                        className="font-mono text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors"
+                                    >
+                                        Clear selection
+                                    </button>
+                                )}
+                                {poolSelected.size === 0 && (
+                                    <p className="font-mono text-[10px] text-zinc-700">Click unclaimed items to select</p>
+                                )}
+                            </div>
+                        )}
+
                         {isLoading ? (
                             <div className="flex items-center justify-center h-40">
                                 <Loader2 className="w-6 h-6 animate-spin text-zinc-600" />
@@ -413,6 +516,8 @@ export default function AvatarPoolManagement() {
                                         <PoolItemCard
                                             key={item.id}
                                             item={item}
+                                            isSelected={poolSelected.has(item.id)}
+                                            onToggleSelect={() => togglePoolSelect(item.id)}
                                             onDelete={(id) => deleteMutation.mutate(id)}
                                         />
                                     ))}
