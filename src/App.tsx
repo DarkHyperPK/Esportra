@@ -17,6 +17,7 @@ import { TransitionLayout } from "@/components/TransitionLayout";
 import { SuspensionGuard } from "@/components/auth/SuspensionGuard";
 import { ProfileCompletionPrompt } from "@/components/profile/ProfileCompletionPrompt";
 import { TournamentInvitePrompt } from "@/components/tournament/TournamentInvitePrompt";
+import { AvatarFeatureAnnouncement } from "@/components/announcements/AvatarFeatureAnnouncement";
 import { useGlobalSmoothScroll } from "@/hooks/useGlobalSmoothScroll";
 
 import { PremiumLoadingScreen } from "@/components/ui/PremiumLoadingScreen";
@@ -247,6 +248,7 @@ const AppContent = React.memo(() => {
       <GhostModeBanner />
       <ProfileCompletionPrompt />
       <TournamentInvitePrompt />
+      <AvatarFeatureAnnouncement />
       {!isChromelessRoute && !isAdminRoute && (
         <>
           <Navbar />
