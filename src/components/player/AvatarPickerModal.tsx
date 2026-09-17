@@ -1,11 +1,10 @@
 import React, { useState, useRef, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
-import { useQuery } from '@tanstack/react-query';
-import { Shuffle, Upload, Loader2, Check, ImageIcon, Lock } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Upload, Loader2, Check, ImageIcon, Lock, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -14,9 +13,7 @@ import { getCroppedImg } from '@/lib/imageUtils';
 import { AVATAR_COMPRESS_PRESET, compressImageForUpload } from '@/utils/compressImage';
 import {
     AVATAR_STYLES,
-    DEFAULT_STYLE,
     type AvatarStyleId,
-    type DiceBearResult,
     type PhotoResult,
     type AvatarPickerSelection,
 } from './avatarStyles';
@@ -25,14 +22,6 @@ import {
 
 function dicebearUrl(style: string, seed: string) {
     return `https://api.dicebear.com/10.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
-}
-
-function randomSeed() {
-    return Math.random().toString(36).slice(2, 9);
-}
-
-function generateGridSeeds(base: string): string[] {
-    return [base, `${base}-2`, `${base}-3`, `${base}-4`, `${base}-5`, `${base}-6`, `${base}-7`, `${base}-8`];
 }
 
 interface AvatarPickerModalProps {
@@ -45,190 +34,218 @@ interface AvatarPickerModalProps {
     onSelect: (result: AvatarPickerSelection) => void;
 }
 
-// ── DiceBear tab ──────────────────────────────────────────────────────────────
+interface PoolItem {
+    id: string;
+    style: string;
+    seed: string;
+    claimed_by: string | null;
+    claimed_at: string | null;
+}
 
-function DiceBearPicker({ userId, username, currentSeed, currentStyle, onSelect }: {
-    userId: string;
-    username: string;
-    currentSeed: string | null;
-    currentStyle: AvatarStyleId | null;
-    onSelect: (result: DiceBearResult) => void;
+// ── Pool browser tab ──────────────────────────────────────────────────────────
+
+function AvatarPoolPicker({ onSelect }: {
+    userId?: string;
+    onSelect: (result: AvatarPickerSelection) => void;
 }) {
     const { toast } = useToast();
-    const initialBase = currentSeed || username || userId;
-    const [style, setStyle]               = useState<AvatarStyleId>(currentStyle ?? DEFAULT_STYLE);
-    const [gridSeeds, setGridSeeds]       = useState(() => generateGridSeeds(initialBase));
-    const [selectedSeed, setSelectedSeed] = useState(initialBase);
-    const [customInput, setCustomInput]   = useState(currentSeed || '');
+    const queryClient = useQueryClient();
+    const [styleFilter, setStyleFilter] = useState<AvatarStyleId | 'all'>('all');
+    const [page, setPage] = useState(0);
+    const [selectedItem, setSelectedItem] = useState<PoolItem | null>(null);
+    const PAGE_SIZE = 16;
 
-    const { data: claimedSet = new Set<string>() } = useQuery({
-        queryKey: ['avatar-availability', style, gridSeeds],
-        queryFn: async () => {
-            const params = new URLSearchParams({ style });
-            gridSeeds.forEach(s => params.append('seeds', s));
-            const data = await apiClient.get<{ claimed: string[] }>(`/api/avatars/availability?${params}`);
-            return new Set(data.claimed);
+    // Load user's current owned avatar
+    const { data: mineData } = useQuery({
+        queryKey: ['avatar-mine'],
+        queryFn: () => apiClient.get<{ owned: PoolItem | null }>('/api/avatars/mine'),
+    });
+    const owned = mineData?.owned ?? null;
+
+    // Browse available pool items
+    const { data: poolData, isLoading } = useQuery({
+        queryKey: ['avatar-pool', styleFilter, page],
+        queryFn: () => {
+            const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+            if (styleFilter !== 'all') params.set('style', styleFilter);
+            return apiClient.get<{ items: PoolItem[]; total: number }>(`/api/avatars/pool?${params}`);
         },
-        staleTime: 10_000,
+    });
+    const items = poolData?.items ?? [];
+    const total = poolData?.total ?? 0;
+    const hasMore = (page + 1) * PAGE_SIZE < total;
+
+    // Claim mutation
+    const claimMutation = useMutation({
+        mutationFn: (itemId: string) => apiClient.post('/api/avatars/claim', { itemId }),
+        onSuccess: (_data, itemId) => {
+            const item = selectedItem ?? items.find(i => i.id === itemId);
+            if (item) {
+                onSelect({ type: 'dicebear', style: item.style as AvatarStyleId, seed: item.seed, avatarUrl: dicebearUrl(item.style, item.seed) });
+            }
+            queryClient.invalidateQueries({ queryKey: ['avatar-mine'] });
+            queryClient.invalidateQueries({ queryKey: ['avatar-pool'] });
+            queryClient.invalidateQueries({ queryKey: ['profile'] });
+        },
+        onError: (err: any) => {
+            toast({ title: 'Could not claim', description: err?.body?.error ?? 'Something went wrong.', variant: 'destructive' });
+        },
     });
 
-    const handleCustomInput = (val: string) => {
-        setCustomInput(val);
-        if (val.trim()) setSelectedSeed(val.trim());
+    // Release mutation
+    const releaseMutation = useMutation({
+        mutationFn: () => apiClient.delete('/api/avatars/claim'),
+        onSuccess: () => {
+            toast({ title: 'Avatar released', description: 'You can now claim a new one.' });
+            queryClient.invalidateQueries({ queryKey: ['avatar-mine'] });
+            queryClient.invalidateQueries({ queryKey: ['avatar-pool'] });
+            queryClient.invalidateQueries({ queryKey: ['profile'] });
+        },
+        onError: (err: any) => {
+            toast({ title: 'Could not release', description: err?.body?.error ?? 'Something went wrong.', variant: 'destructive' });
+        },
+    });
+
+    const handleClaim = () => {
+        if (!selectedItem) return;
+        claimMutation.mutate(selectedItem.id);
     };
 
-    const handleShuffle = () => {
-        const next = Array.from({ length: 8 }, () => randomSeed());
-        setGridSeeds(next);
-        setSelectedSeed(next[0]);
-        setCustomInput('');
+    const handleStyleFilter = (s: AvatarStyleId | 'all') => {
+        setStyleFilter(s);
+        setPage(0);
+        setSelectedItem(null);
     };
 
-    const handleGridPick = (seed: string) => {
-        if (claimedSet.has(seed)) return;
-        setSelectedSeed(seed);
-        setCustomInput(seed);
-    };
+    const isOwnedItem = (item: PoolItem) => owned?.id === item.id;
+    const isMine = !!owned;
 
-    const handleUse = () => {
-        if (claimedSet.has(selectedSeed)) {
-            toast({ title: 'Already claimed', description: 'This avatar belongs to another user. Try a different seed.', variant: 'destructive' });
-            return;
-        }
-        onSelect({ type: 'dicebear', style, seed: selectedSeed, avatarUrl: dicebearUrl(style, selectedSeed) });
-    };
-
-    const selectedIsClaimed = claimedSet.has(selectedSeed);
+    // Pool is empty state
+    if (!isLoading && items.length === 0 && page === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center h-52 gap-3 text-center">
+                <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center">
+                    <Lock className="w-5 h-5 text-zinc-600" />
+                </div>
+                <div>
+                    <p className="text-sm font-medium text-zinc-300">No avatars available</p>
+                    <p className="text-xs text-zinc-600 mt-0.5">Check back when the next drop goes live</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-6">
-            {/* ── Preview hero ─────────────────────────────────────────────── */}
-            <div className="flex items-center gap-5 px-1">
-                {/* Avatar with conditional glow */}
-                <div className="relative shrink-0">
-                    <div className={cn(
-                        'w-[88px] h-[88px] rounded-full overflow-hidden transition-all duration-300',
-                        selectedIsClaimed
-                            ? 'ring-2 ring-zinc-700 opacity-50'
-                            : 'ring-2 ring-rose-500 shadow-[0_0_20px_rgba(225,29,72,0.35)]'
-                    )}>
-                        <img
-                            src={dicebearUrl(style, selectedSeed)}
-                            alt="Selected avatar"
-                            className="w-full h-full object-cover"
-                        />
+        <div className="space-y-5">
+            {/* Owned avatar banner */}
+            {owned && (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-rose-500/8 border border-rose-500/20">
+                    <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-rose-500/50 shrink-0">
+                        <img src={dicebearUrl(owned.style, owned.seed)} alt="Your avatar" className="w-full h-full object-cover" />
                     </div>
-                    {selectedIsClaimed && (
-                        <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40">
-                            <Lock className="w-5 h-5 text-zinc-400" />
-                        </div>
-                    )}
-                </div>
-
-                {/* Identity text */}
-                <div className="min-w-0">
-                    <p className="text-[11px] text-zinc-500 mb-1">Your identity</p>
-                    <p className="text-white font-semibold text-sm truncate">
-                        {selectedSeed || username}
-                    </p>
-                    <div className="mt-1.5">
-                        {selectedIsClaimed ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
-                                <Lock className="w-2.5 h-2.5" /> Claimed by another user
-                            </span>
-                        ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-full px-2 py-0.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Available
-                            </span>
-                        )}
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs text-zinc-400">Your avatar</p>
+                        <p className="text-sm font-medium text-white truncate">{owned.seed}</p>
+                        <p className="text-[10px] text-zinc-500 capitalize">{owned.style}</p>
                     </div>
-                </div>
-            </div>
-
-            {/* ── Style selector ───────────────────────────────────────────── */}
-            <div className="space-y-2">
-                <p className="text-[11px] font-medium text-zinc-400 px-1">Style</p>
-                <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {AVATAR_STYLES.map(({ id, label }) => (
-                        <button
-                            key={id}
-                            type="button"
-                            onClick={() => setStyle(id)}
-                            className={cn(
-                                'shrink-0 flex flex-col items-center gap-1 transition-all',
-                            )}
-                        >
-                            <div className={cn(
-                                'w-11 h-11 rounded-full overflow-hidden transition-all duration-200',
-                                style === id
-                                    ? 'ring-2 ring-rose-500 ring-offset-2 ring-offset-[#0f0f11] shadow-[0_0_10px_rgba(225,29,72,0.3)]'
-                                    : 'ring-1 ring-zinc-800 opacity-60 hover:opacity-100 hover:ring-zinc-600'
-                            )}>
-                                <img src={dicebearUrl(id, selectedSeed)} alt={label} className="w-full h-full object-cover" />
-                            </div>
-                            <span className={cn(
-                                'text-[9px] leading-tight',
-                                style === id ? 'text-rose-400 font-medium' : 'text-zinc-600'
-                            )}>
-                                {label}
-                            </span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* ── Seed input ───────────────────────────────────────────────── */}
-            <div className="space-y-1.5 px-1">
-                <p className="text-[11px] font-medium text-zinc-400">Seed — any text gives you a unique look</p>
-                <div className="flex gap-2">
-                    <Input
-                        value={customInput}
-                        onChange={(e) => handleCustomInput(e.target.value)}
-                        placeholder={`Try "${username}" or anything you like`}
-                        className="bg-zinc-900/60 border-zinc-800 focus:border-rose-500/60 text-sm h-9 placeholder:text-zinc-600"
-                    />
                     <button
                         type="button"
-                        onClick={handleShuffle}
-                        title="Shuffle"
-                        className="shrink-0 w-9 h-9 rounded-lg border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 hover:border-zinc-700 transition-colors flex items-center justify-center text-zinc-400 hover:text-white"
+                        onClick={() => releaseMutation.mutate()}
+                        disabled={releaseMutation.isPending}
+                        className="shrink-0 text-[10px] text-zinc-400 hover:text-red-400 transition-colors font-medium flex items-center gap-1"
                     >
-                        <Shuffle className="w-3.5 h-3.5" />
+                        {releaseMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        Release
                     </button>
                 </div>
+            )}
+
+            {/* Notice */}
+            <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full bg-rose-500 inline-block shrink-0" />
+                One avatar per account — yours forever once claimed
+            </p>
+
+            {/* Style filter */}
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <button
+                    type="button"
+                    onClick={() => handleStyleFilter('all')}
+                    className={cn(
+                        'shrink-0 h-7 px-3 rounded-full text-[11px] font-medium transition-all border',
+                        styleFilter === 'all'
+                            ? 'bg-rose-600 border-rose-600 text-white'
+                            : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                    )}
+                >
+                    All
+                </button>
+                {AVATAR_STYLES.map(({ id, label }) => (
+                    <button
+                        key={id}
+                        type="button"
+                        onClick={() => handleStyleFilter(id)}
+                        className={cn(
+                            'shrink-0 h-7 px-3 rounded-full text-[11px] font-medium transition-all border',
+                            styleFilter === id
+                                ? 'bg-rose-600 border-rose-600 text-white'
+                                : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                        )}
+                    >
+                        {label}
+                    </button>
+                ))}
             </div>
 
-            {/* ── Variations grid (circular) ───────────────────────────────── */}
-            <div className="space-y-2 px-1">
-                <p className="text-[11px] font-medium text-zinc-400">Variations</p>
+            {/* Pool grid */}
+            {isLoading ? (
+                <div className="flex items-center justify-center h-32">
+                    <Loader2 className="w-5 h-5 animate-spin text-zinc-500" />
+                </div>
+            ) : (
                 <div className="grid grid-cols-4 gap-3">
-                    {gridSeeds.map((seed) => {
-                        const isClaimed = claimedSet.has(seed);
-                        const isSelected = selectedSeed === seed;
+                    {items.map((item) => {
+                        const mine = isOwnedItem(item);
+                        const takenByOther = item.claimed_by && !mine;
+                        const isSelected = selectedItem?.id === item.id;
+
                         return (
                             <button
-                                key={seed}
+                                key={item.id}
                                 type="button"
-                                onClick={() => handleGridPick(seed)}
-                                disabled={isClaimed}
+                                disabled={!!takenByOther}
+                                onClick={() => !takenByOther && setSelectedItem(isSelected ? null : item)}
                                 className={cn(
                                     'relative aspect-square rounded-full overflow-hidden transition-all duration-200',
-                                    isClaimed
-                                        ? 'opacity-35 cursor-not-allowed grayscale'
-                                        : isSelected
-                                            ? 'ring-2 ring-rose-500 ring-offset-2 ring-offset-[#0f0f11] shadow-[0_0_12px_rgba(225,29,72,0.4)] scale-105'
-                                            : 'ring-1 ring-zinc-800 hover:ring-zinc-600 hover:scale-105'
+                                    takenByOther
+                                        ? 'opacity-25 cursor-not-allowed grayscale'
+                                        : mine
+                                            ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-[#0f0f11]'
+                                            : isSelected
+                                                ? 'ring-2 ring-rose-500 ring-offset-2 ring-offset-[#0f0f11] shadow-[0_0_14px_rgba(225,29,72,0.4)] scale-105'
+                                                : 'ring-1 ring-zinc-800 hover:ring-zinc-600 hover:scale-105'
                                 )}
                             >
-                                <img src={dicebearUrl(style, seed)} alt="" className="w-full h-full object-cover" />
-                                {isSelected && !isClaimed && (
+                                <img
+                                    src={dicebearUrl(item.style, item.seed)}
+                                    alt={item.seed}
+                                    className="w-full h-full object-cover"
+                                />
+                                {isSelected && !mine && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                        <div className="w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center shadow-sm">
+                                        <div className="w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center">
                                             <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
                                         </div>
                                     </div>
                                 )}
-                                {isClaimed && (
+                                {mine && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                        <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
+                                            <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+                                        </div>
+                                    </div>
+                                )}
+                                {takenByOther && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                                         <Lock className="w-3 h-3 text-zinc-500" />
                                     </div>
@@ -237,24 +254,45 @@ function DiceBearPicker({ userId, username, currentSeed, currentStyle, onSelect 
                         );
                     })}
                 </div>
-            </div>
+            )}
 
-            {/* ── CTA ──────────────────────────────────────────────────────── */}
-            <div className="px-1 pt-1">
-                <Button
-                    onClick={handleUse}
-                    disabled={selectedIsClaimed}
-                    className="w-full bg-rose-600 hover:bg-rose-700 text-white h-10 font-semibold tracking-wide disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            {/* Load more */}
+            {hasMore && (
+                <button
+                    type="button"
+                    onClick={() => setPage(p => p + 1)}
+                    className="w-full h-8 rounded-lg border border-zinc-800 text-xs text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 transition-colors"
                 >
-                    {selectedIsClaimed
-                        ? <><Lock className="w-4 h-4 mr-2" />Already claimed</>
-                        : 'Claim this avatar'
-                    }
-                </Button>
-                {!selectedIsClaimed && (
-                    <p className="text-center text-[10px] text-zinc-600 mt-2">Yours forever once claimed</p>
-                )}
-            </div>
+                    Load more
+                </button>
+            )}
+
+            {/* Selected preview + CTA */}
+            {selectedItem && (
+                <div className="pt-2 border-t border-zinc-800/60 space-y-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-rose-500 shrink-0">
+                            <img src={dicebearUrl(selectedItem.style, selectedItem.seed)} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold text-white">{selectedItem.seed}</p>
+                            <p className="text-[10px] text-zinc-500 capitalize">{selectedItem.style}</p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={handleClaim}
+                        disabled={claimMutation.isPending || isMine}
+                        className="w-full bg-rose-600 hover:bg-rose-700 text-white h-10 font-semibold disabled:opacity-40"
+                    >
+                        {claimMutation.isPending
+                            ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Claiming...</>
+                            : isMine
+                                ? 'Release your current avatar first'
+                                : 'Claim this avatar'
+                        }
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }
@@ -340,7 +378,6 @@ function PhotoPicker({ userId, onSelect }: {
 
     return (
         <div className="space-y-4">
-            {/* Crop area */}
             <div className="relative h-64 rounded-2xl overflow-hidden bg-zinc-950">
                 <Cropper
                     image={imageSrc}
@@ -359,7 +396,6 @@ function PhotoPicker({ userId, onSelect }: {
                 />
             </div>
 
-            {/* Sliders */}
             <div className="space-y-3 px-1">
                 <div className="flex items-center gap-3">
                     <span className="text-[11px] text-zinc-500 w-20 shrink-0">Zoom</span>
@@ -375,7 +411,6 @@ function PhotoPicker({ userId, onSelect }: {
                 </div>
             </div>
 
-            {/* Actions */}
             <div className="flex gap-2 px-1">
                 <button
                     type="button"
@@ -399,7 +434,7 @@ function PhotoPicker({ userId, onSelect }: {
 // ── Modal shell ───────────────────────────────────────────────────────────────
 
 const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
-    open, onClose, userId, username, currentSeed, currentStyle, onSelect,
+    open, onClose, userId, username: _username, currentSeed: _currentSeed, currentStyle: _currentStyle, onSelect,
 }) => {
     const [tab, setTab] = useState<'avatar' | 'photo'>('avatar');
     const handleSelect = (result: AvatarPickerSelection) => { onSelect(result); onClose(); };
@@ -410,12 +445,10 @@ const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                 className="max-w-[420px] w-full bg-[#0f0f11] border-zinc-800/80 text-white p-0 overflow-hidden max-h-[92vh] flex flex-col"
                 data-lenis-prevent
             >
-                {/* Header */}
                 <div className="px-6 pt-6 pb-0 shrink-0">
                     <h2 className="text-base font-semibold text-white">Choose your identity</h2>
-                    <p className="text-xs text-zinc-500 mt-0.5">Pick a generated avatar or upload your own photo</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">Claim an avatar from the pool or upload your own photo</p>
 
-                    {/* Tab switcher */}
                     <div className="flex mt-4 bg-zinc-900/60 rounded-lg p-0.5 border border-zinc-800/60">
                         {(['avatar', 'photo'] as const).map((t) => (
                             <button
@@ -424,30 +457,20 @@ const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                                 onClick={() => setTab(t)}
                                 className={cn(
                                     'flex-1 h-8 rounded-md text-xs font-medium transition-all',
-                                    tab === t
-                                        ? 'bg-zinc-800 text-white shadow-sm'
-                                        : 'text-zinc-500 hover:text-zinc-300'
+                                    tab === t ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
                                 )}
                             >
-                                {t === 'avatar' ? 'Generate avatar' : 'Upload photo'}
+                                {t === 'avatar' ? 'Avatar pool' : 'Upload photo'}
                             </button>
                         ))}
                     </div>
                 </div>
 
-                {/* Tab content */}
                 <div className="flex-1 overflow-y-auto px-6 pb-6 pt-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {tab === 'avatar' ? (
-                        <DiceBearPicker
-                            userId={userId}
-                            username={username}
-                            currentSeed={currentSeed}
-                            currentStyle={currentStyle}
-                            onSelect={handleSelect}
-                        />
-                    ) : (
-                        <PhotoPicker userId={userId} onSelect={handleSelect} />
-                    )}
+                    {tab === 'avatar'
+                        ? <AvatarPoolPicker userId={userId} onSelect={handleSelect} />
+                        : <PhotoPicker userId={userId} onSelect={handleSelect} />
+                    }
                 </div>
             </DialogContent>
         </Dialog>
