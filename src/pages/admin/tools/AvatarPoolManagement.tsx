@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-    Loader2, Trash2, Lock, RefreshCw, ChevronLeft, ChevronRight, Wand2,
+    Check, ChevronLeft, ChevronRight, Loader2, Lock, RefreshCw, Trash2, Wand2,
 } from 'lucide-react';
 import { AdminPage } from '@/components/admin/AdminPage';
 import { CommandButton, CommandSection } from '@/components/management/CommandSurface';
@@ -124,6 +124,7 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
     const { toast } = useToast();
     const [style, setStyle] = useState<AvatarStyleId>('critters');
     const [seeds, setSeeds] = useState<string[]>([]);
+    const [selected, setSelected] = useState<Set<string>>(new Set());
 
     const batchMutation = useMutation({
         mutationFn: (items: { Style: string; Seed: string }[]) =>
@@ -136,6 +137,7 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
                     : 'All seeds are now in the pool.',
             });
             setSeeds([]);
+            setSelected(new Set());
             onSuccess();
         },
         onError: (err: any) => {
@@ -152,11 +154,28 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
         });
     };
 
-    const handleRemove = (seed: string) => setSeeds(prev => prev.filter(s => s !== seed));
+    const toggleSelect = (seed: string) => {
+        setSelected(prev => {
+            const next = new Set(prev);
+            next.has(seed) ? next.delete(seed) : next.add(seed);
+            return next;
+        });
+    };
+
+    const deleteSelected = () => {
+        setSeeds(prev => prev.filter(s => !selected.has(s)));
+        setSelected(new Set());
+    };
 
     const handleDrop = () => {
         if (seeds.length === 0) return;
         batchMutation.mutate(seeds.map(seed => ({ Style: style, Seed: seed })));
+    };
+
+    const allSelected = seeds.length > 0 && selected.size === seeds.length;
+
+    const toggleSelectAll = () => {
+        setSelected(allSelected ? new Set() : new Set(seeds));
     };
 
     return (
@@ -166,7 +185,7 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
             {/* Style selector */}
             <div className="space-y-1">
                 <p className="font-mono text-[10px] uppercase tracking-wider text-zinc-600">Style</p>
-                <Select value={style} onValueChange={(v) => setStyle(v as AvatarStyleId)}>
+                <Select value={style} onValueChange={(v) => { setStyle(v as AvatarStyleId); setSelected(new Set()); }}>
                     <SelectTrigger className="bg-black border-white/10 text-white font-mono text-xs h-9">
                         <SelectValue />
                     </SelectTrigger>
@@ -181,7 +200,7 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
             </div>
 
             {/* Actions row */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
                 <button
                     type="button"
                     onClick={handleGenerate}
@@ -191,14 +210,35 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
                     Generate 10
                 </button>
                 {seeds.length > 0 && (
-                    <button
-                        type="button"
-                        onClick={() => setSeeds([])}
-                        className="flex items-center gap-1.5 h-7 px-3 border border-white/10 bg-white/[0.03] font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-600 hover:text-red-400 hover:border-red-500/20 transition-colors"
-                    >
-                        <Trash2 className="w-3 h-3" />
-                        Clear all
-                    </button>
+                    <>
+                        <button
+                            type="button"
+                            onClick={toggleSelectAll}
+                            className="flex items-center gap-1.5 h-7 px-3 border border-white/10 bg-white/[0.03] font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-500 hover:text-white hover:border-white/20 transition-colors"
+                        >
+                            {allSelected ? 'Deselect all' : 'Select all'}
+                        </button>
+                        {selected.size > 0 && (
+                            <button
+                                type="button"
+                                onClick={deleteSelected}
+                                className="flex items-center gap-1.5 h-7 px-3 border border-red-500/30 bg-red-500/10 font-mono text-[10px] font-bold uppercase tracking-wider text-red-400 hover:bg-red-500/20 transition-colors"
+                            >
+                                <Trash2 className="w-3 h-3" />
+                                Delete {selected.size}
+                            </button>
+                        )}
+                        {selected.size === 0 && (
+                            <button
+                                type="button"
+                                onClick={() => { setSeeds([]); setSelected(new Set()); }}
+                                className="flex items-center gap-1.5 h-7 px-3 border border-white/10 bg-white/[0.03] font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-600 hover:text-red-400 hover:border-red-500/20 transition-colors"
+                            >
+                                <Trash2 className="w-3 h-3" />
+                                Clear all
+                            </button>
+                        )}
+                    </>
                 )}
             </div>
 
@@ -209,26 +249,40 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
                     <p className="font-mono text-[10px] text-zinc-700">Generate avatars to preview them</p>
                 </div>
             ) : (
-                <div className="max-h-64 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <div className="grid grid-cols-5 gap-2">
-                        {seeds.map(seed => (
-                            <button
-                                key={seed}
-                                type="button"
-                                onClick={() => handleRemove(seed)}
-                                title={seed}
-                                className="group relative aspect-square rounded-full overflow-hidden ring-1 ring-white/10 hover:ring-red-500/50 transition-all"
-                            >
-                                <img
-                                    src={dicebearUrl(style, seed)}
-                                    alt={seed}
-                                    className="w-full h-full object-cover group-hover:opacity-40 transition-opacity"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                                </div>
-                            </button>
-                        ))}
+                <div className="max-h-72 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.1)_transparent]">
+                    <div className="grid grid-cols-3 gap-2 pr-1">
+                        {seeds.map(seed => {
+                            const isSelected = selected.has(seed);
+                            return (
+                                <button
+                                    key={seed}
+                                    type="button"
+                                    onClick={() => toggleSelect(seed)}
+                                    className={cn(
+                                        'flex flex-col items-center gap-1.5 p-2 border transition-all',
+                                        isSelected
+                                            ? 'border-rose-500/60 bg-rose-500/10'
+                                            : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]',
+                                    )}
+                                >
+                                    <div className="relative w-12 h-12 rounded-full overflow-hidden shrink-0">
+                                        <img
+                                            src={dicebearUrl(style, seed)}
+                                            alt={seed}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        {isSelected && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-rose-500/40">
+                                                <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="font-mono text-[9px] text-zinc-400 truncate w-full text-center leading-tight">
+                                        {seed}
+                                    </p>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             )}
