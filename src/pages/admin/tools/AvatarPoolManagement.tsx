@@ -157,7 +157,7 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
     const toggleSelect = (seed: string) => {
         setSelected(prev => {
             const next = new Set(prev);
-            next.has(seed) ? next.delete(seed) : next.add(seed);
+            if (next.has(seed)) { next.delete(seed); } else { next.add(seed); }
             return next;
         });
     };
