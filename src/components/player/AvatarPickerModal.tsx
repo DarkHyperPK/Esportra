@@ -53,14 +53,21 @@ function AvatarPoolPicker({ onSelect }: {
     const [styleFilter, setStyleFilter] = useState<AvatarStyleId | 'all'>('all');
     const [page, setPage] = useState(0);
     const [selectedItem, setSelectedItem] = useState<PoolItem | null>(null);
+    const [confirmingRelease, setConfirmingRelease] = useState(false);
     const PAGE_SIZE = 16;
 
-    // Load user's current owned avatar
+    // Load user's current owned avatar + release info
     const { data: mineData } = useQuery({
         queryKey: ['avatar-mine'],
-        queryFn: () => apiClient.get<{ owned: PoolItem | null }>('/api/avatars/mine'),
+        queryFn: () => apiClient.get<{
+            owned: PoolItem | null;
+            releases_used: number;
+            releases_remaining: number;
+        }>('/api/avatars/mine'),
     });
     const owned = mineData?.owned ?? null;
+    const releasesRemaining = mineData?.releases_remaining ?? 2;
+    const canRelease = releasesRemaining > 0;
 
     // Browse available pool items
     const { data: poolData, isLoading } = useQuery({
@@ -96,12 +103,14 @@ function AvatarPoolPicker({ onSelect }: {
     const releaseMutation = useMutation({
         mutationFn: () => apiClient.delete('/api/avatars/claim'),
         onSuccess: () => {
-            toast({ title: 'Avatar released', description: 'You can now claim a new one.' });
+            setConfirmingRelease(false);
+            toast({ title: 'Avatar released', description: `${releasesRemaining - 1} release${releasesRemaining - 1 === 1 ? '' : 's'} remaining.` });
             queryClient.invalidateQueries({ queryKey: ['avatar-mine'] });
             queryClient.invalidateQueries({ queryKey: ['avatar-pool'] });
             queryClient.invalidateQueries({ queryKey: ['profile'] });
         },
         onError: (err: any) => {
+            setConfirmingRelease(false);
             toast({ title: 'Could not release', description: err?.body?.error ?? 'Something went wrong.', variant: 'destructive' });
         },
     });
@@ -120,16 +129,46 @@ function AvatarPoolPicker({ onSelect }: {
     const isOwnedItem = (item: PoolItem) => owned?.id === item.id;
     const isMine = !!owned;
 
-    // Pool is empty state
+    // Empty state — filtered, show a way back
     if (!isLoading && items.length === 0 && page === 0) {
         return (
-            <div className="flex flex-col items-center justify-center h-52 gap-3 text-center">
-                <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center">
-                    <Lock className="w-5 h-5 text-zinc-600" />
+            <div className="space-y-5">
+                {/* Style filter stays visible so they can switch */}
+                <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <button type="button" onClick={() => handleStyleFilter('all')}
+                        className={cn('shrink-0 h-7 px-3 rounded-full text-[11px] font-medium transition-all border',
+                            styleFilter === 'all' ? 'bg-rose-600 border-rose-600 text-white' : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200')}>
+                        All
+                    </button>
+                    {AVATAR_STYLES.map(({ id, label }) => (
+                        <button key={id} type="button" onClick={() => handleStyleFilter(id)}
+                            className={cn('shrink-0 h-7 px-3 rounded-full text-[11px] font-medium transition-all border',
+                                styleFilter === id ? 'bg-rose-600 border-rose-600 text-white' : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200')}>
+                            {label}
+                        </button>
+                    ))}
                 </div>
-                <div>
-                    <p className="text-sm font-medium text-zinc-300">No avatars available</p>
-                    <p className="text-xs text-zinc-600 mt-0.5">Check back when the next drop goes live</p>
+
+                <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
+                    <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center">
+                        <Lock className="w-5 h-5 text-zinc-600" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-zinc-300">
+                            {styleFilter === 'all' ? 'No avatars available' : 'None available in this style'}
+                        </p>
+                        <p className="text-xs text-zinc-600 mt-0.5">
+                            {styleFilter === 'all'
+                                ? 'Check back when the next drop goes live'
+                                : 'Try a different style or check back later'}
+                        </p>
+                    </div>
+                    {styleFilter !== 'all' && (
+                        <button type="button" onClick={() => handleStyleFilter('all')}
+                            className="text-xs text-rose-400 hover:text-rose-300 transition-colors font-medium">
+                            Show all styles
+                        </button>
+                    )}
                 </div>
             </div>
         );
@@ -139,24 +178,66 @@ function AvatarPoolPicker({ onSelect }: {
         <div className="space-y-5">
             {/* Owned avatar banner */}
             {owned && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-rose-500/8 border border-rose-500/20">
-                    <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-rose-500/50 shrink-0">
-                        <img src={dicebearUrl(owned.style, owned.seed)} alt="Your avatar" className="w-full h-full object-cover" />
+                <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] overflow-hidden">
+                    <div className="flex items-center gap-3 p-3">
+                        <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-rose-500/50 shrink-0">
+                            <img src={dicebearUrl(owned.style, owned.seed)} alt="Your avatar" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs text-zinc-400">Your avatar</p>
+                            <p className="text-sm font-medium text-white truncate">{owned.seed}</p>
+                            <p className="text-[10px] text-zinc-500 capitalize">{owned.style}</p>
+                        </div>
+                        {!confirmingRelease && (
+                            <button
+                                type="button"
+                                onClick={() => canRelease && setConfirmingRelease(true)}
+                                disabled={!canRelease}
+                                className={cn(
+                                    'shrink-0 text-[10px] font-medium flex items-center gap-1 transition-colors',
+                                    canRelease ? 'text-zinc-400 hover:text-red-400' : 'text-zinc-700 cursor-not-allowed',
+                                )}
+                            >
+                                <RefreshCw className="w-3 h-3" />
+                                {canRelease ? 'Release' : 'No releases left'}
+                            </button>
+                        )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-xs text-zinc-400">Your avatar</p>
-                        <p className="text-sm font-medium text-white truncate">{owned.seed}</p>
-                        <p className="text-[10px] text-zinc-500 capitalize">{owned.style}</p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => releaseMutation.mutate()}
-                        disabled={releaseMutation.isPending}
-                        className="shrink-0 text-[10px] text-zinc-400 hover:text-red-400 transition-colors font-medium flex items-center gap-1"
-                    >
-                        {releaseMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                        Release
-                    </button>
+
+                    {/* Inline release confirmation */}
+                    {confirmingRelease && (
+                        <div className="border-t border-rose-500/20 bg-rose-500/[0.06] px-3 py-2.5 flex items-center justify-between gap-3">
+                            <p className="text-[11px] text-zinc-300 leading-snug">
+                                Release this avatar? You'll have{' '}
+                                <span className="text-white font-semibold">{releasesRemaining - 1}</span>{' '}
+                                release{releasesRemaining - 1 === 1 ? '' : 's'} left after this.
+                            </p>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <button type="button" onClick={() => setConfirmingRelease(false)}
+                                    className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors font-medium px-2">
+                                    Cancel
+                                </button>
+                                <button type="button" onClick={() => releaseMutation.mutate()}
+                                    disabled={releaseMutation.isPending}
+                                    className="flex items-center gap-1 text-[11px] text-white bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded font-medium transition-colors disabled:opacity-50">
+                                    {releaseMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                                    Yes, release
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Release counter */}
+                    {!confirmingRelease && (
+                        <div className="border-t border-rose-500/10 px-3 py-1.5">
+                            <p className="text-[10px] text-zinc-600">
+                                {releasesRemaining > 0
+                                    ? <><span className="text-zinc-400">{releasesRemaining}</span> release{releasesRemaining === 1 ? '' : 's'} remaining</>
+                                    : <span className="text-zinc-700">No releases remaining — this avatar is permanent</span>
+                                }
+                            </p>
+                        </div>
+                    )}
                 </div>
             )}
 
