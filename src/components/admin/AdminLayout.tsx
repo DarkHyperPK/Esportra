@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   ShieldPlus,
   SlidersHorizontal,
+  Smile,
   ToggleRight,
   Trophy,
   UserSearch,
@@ -75,6 +76,7 @@ const adminNavGroups: AdminNavGroup[] = [
       { label: 'Venues', href: '/admin/content/venues', icon: MapPin, permission: 'venues:view' },
       { label: 'Games', href: '/admin/content/games', icon: Gamepad2, permission: 'games:manage' },
       { label: 'Moderation', href: '/admin/content/moderation', icon: Shield, permission: 'moderation:view' },
+      { label: 'Avatar Pool', href: '/admin/tools/avatar-pool', icon: Smile, permission: 'system:config_view', superOnly: true },
     ],
   },
   {

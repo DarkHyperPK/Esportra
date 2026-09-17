@@ -97,6 +97,7 @@ const AnomalyDetection = lazyWithRetry(() => import("./pages/admin/tools/Anomaly
 const GameCatalogManagement = lazyWithRetry(() => import("./pages/admin/tools/GameCatalogManagement"));
 const MapManagement = lazyWithRetry(() => import("./pages/admin/tools/MapManagement"));
 const DeveloperApiAdmin = lazyWithRetry(() => import("./pages/admin/tools/DeveloperApiAdmin"));
+const AvatarPoolManagement = lazyWithRetry(() => import("./pages/admin/tools/AvatarPoolManagement"));
 
 // New admin pages
 const FeatureFlags = lazyWithRetry(() => import("./pages/admin/system/FeatureFlags"));
@@ -371,6 +372,7 @@ const AppContent = React.memo(() => {
                   <Route path="tools/gdpr" element={<AdminRouteGuard requiredPermission="gdpr:view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><GdprCompliance /></AdminRouteGuard>} />
                   <Route path="tools/anomaly-detection" element={<AdminRouteGuard requiredPermission="system:audit" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><AnomalyDetection /></AdminRouteGuard>} />
                   <Route path="tools/developer-api" element={<AdminRouteGuard requiredPermission="developer_keys:manage"><DeveloperApiAdmin /></AdminRouteGuard>} />
+                  <Route path="tools/avatar-pool" element={<AdminRouteGuard requiredPermission="system:config_view" requiredRoles={ADMIN_ROLE_SETS.superAdmin}><AvatarPoolManagement /></AdminRouteGuard>} />
 
                   {/* System */}
                   <Route path="system/feature-flags" element={<AdminRouteGuard requiredPermission="feature_flags:view"><FeatureFlags /></AdminRouteGuard>} />
