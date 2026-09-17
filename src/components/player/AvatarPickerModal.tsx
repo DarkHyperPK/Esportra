@@ -31,6 +31,7 @@ interface AvatarPickerModalProps {
     username: string;
     currentSeed: string | null;
     currentStyle: AvatarStyleId | null;
+    currentPhotoUrl: string | null;
     onSelect: (result: AvatarPickerSelection) => void;
 }
 
@@ -380,14 +381,15 @@ function AvatarPoolPicker({ onSelect }: {
 
 // ── Photo upload + crop tab ───────────────────────────────────────────────────
 
-function PhotoPicker({ userId, onSelect }: {
+function PhotoPicker({ userId, existingUrl, onSelect }: {
     userId: string;
+    existingUrl: string | null;
     onSelect: (result: PhotoResult) => void;
 }) {
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [imageSrc, setImageSrc]                   = useState<string | null>(null);
+    const [imageSrc, setImageSrc]                   = useState<string | null>(existingUrl);
     const [crop, setCrop]                            = useState({ x: 0, y: 0 });
     const [zoom, setZoom]                            = useState(1);
     const [brightness, setBrightness]               = useState(100);
@@ -515,7 +517,8 @@ function PhotoPicker({ userId, onSelect }: {
 // ── Modal shell ───────────────────────────────────────────────────────────────
 
 const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
-    open, onClose, userId, username: _username, currentSeed: _currentSeed, currentStyle: _currentStyle, onSelect,
+    open, onClose, userId, username: _username, currentSeed: _currentSeed, currentStyle: _currentStyle,
+    currentPhotoUrl, onSelect,
 }) => {
     const [tab, setTab] = useState<'avatar' | 'photo'>('avatar');
     const handleSelect = (result: AvatarPickerSelection) => { onSelect(result); onClose(); };
@@ -550,7 +553,7 @@ const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                 <div className="flex-1 overflow-y-auto px-6 pb-6 pt-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {tab === 'avatar'
                         ? <AvatarPoolPicker userId={userId} onSelect={handleSelect} />
-                        : <PhotoPicker userId={userId} onSelect={handleSelect} />
+                        : <PhotoPicker userId={userId} existingUrl={currentPhotoUrl} onSelect={handleSelect} />
                     }
                 </div>
             </DialogContent>

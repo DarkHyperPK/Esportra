@@ -133,10 +133,10 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
         }
     };
 
-    const resolvedStyle = formData.avatar_style || DEFAULT_STYLE;
-    const resolvedSeed  = formData.avatar_seed || profile?.id || '';
     const effectiveAvatarUrl = formData.avatar_url
-        || `https://api.dicebear.com/10.x/${resolvedStyle}/svg?seed=${encodeURIComponent(resolvedSeed)}`;
+        || (formData.avatar_seed
+            ? `https://api.dicebear.com/10.x/${formData.avatar_style || DEFAULT_STYLE}/svg?seed=${encodeURIComponent(formData.avatar_seed)}`
+            : null);
 
     const handleSave = async () => {
         setLoading(true);
@@ -223,6 +223,11 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                                         username={profile.username}
                                         currentSeed={formData.avatar_seed || null}
                                         currentStyle={(formData.avatar_style as AvatarStyleId) || null}
+                                        currentPhotoUrl={
+                                            formData.avatar_url && !formData.avatar_url.includes('dicebear')
+                                                ? formData.avatar_url
+                                                : null
+                                        }
                                         onSelect={handleAvatarSelect}
                                     />
                                 )}
