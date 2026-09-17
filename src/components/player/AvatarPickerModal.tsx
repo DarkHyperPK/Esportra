@@ -3,17 +3,10 @@ import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
 import { useQuery } from '@tanstack/react-query';
 import { Shuffle, Upload, Loader2, Check, ImageIcon, Lock } from 'lucide-react';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
@@ -52,49 +45,6 @@ interface AvatarPickerModalProps {
     onSelect: (result: AvatarPickerSelection) => void;
 }
 
-// ── Style selector row ────────────────────────────────────────────────────────
-
-function StyleSelector({ seed, selected, onSelect }: {
-    seed: string;
-    selected: AvatarStyleId;
-    onSelect: (id: AvatarStyleId) => void;
-}) {
-    return (
-        <div className="space-y-1.5">
-            <Label className="text-xs text-zinc-400">Style</Label>
-            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-zinc-700">
-                {AVATAR_STYLES.map(({ id, label }) => (
-                    <button
-                        key={id}
-                        type="button"
-                        onClick={() => onSelect(id)}
-                        className={cn(
-                            'shrink-0 flex flex-col items-center gap-1.5 p-1.5 rounded-xl border-2 transition-all w-16',
-                            selected === id
-                                ? 'border-rose-500 bg-rose-500/10'
-                                : 'border-zinc-800 hover:border-zinc-600 bg-zinc-900/40'
-                        )}
-                    >
-                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-900">
-                            <img
-                                src={dicebearUrl(id, seed)}
-                                alt={label}
-                                className="w-full h-full object-cover"
-                            />
-                        </div>
-                        <span className={cn(
-                            'text-[9px] font-medium leading-tight text-center',
-                            selected === id ? 'text-rose-400' : 'text-zinc-500'
-                        )}>
-                            {label}
-                        </span>
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-}
-
 // ── DiceBear tab ──────────────────────────────────────────────────────────────
 
 function DiceBearPicker({ userId, username, currentSeed, currentStyle, onSelect }: {
@@ -111,7 +61,6 @@ function DiceBearPicker({ userId, username, currentSeed, currentStyle, onSelect 
     const [selectedSeed, setSelectedSeed] = useState(initialBase);
     const [customInput, setCustomInput]   = useState(currentSeed || '');
 
-    // Batch-check which grid seeds are already claimed by other users
     const { data: claimedSet = new Set<string>() } = useQuery({
         queryKey: ['avatar-availability', style, gridSeeds],
         queryFn: async () => {
@@ -152,51 +101,107 @@ function DiceBearPicker({ userId, username, currentSeed, currentStyle, onSelect 
     const selectedIsClaimed = claimedSet.has(selectedSeed);
 
     return (
-        <div className="space-y-5">
-            {/* Large preview */}
-            <div className="flex flex-col items-center gap-2">
-                <div className={cn(
-                    "w-28 h-28 rounded-full border-2 bg-zinc-900 overflow-hidden shadow-lg",
-                    selectedIsClaimed ? "border-zinc-600 opacity-60" : "border-rose-500 shadow-rose-500/10"
-                )}>
-                    <img src={dicebearUrl(style, selectedSeed)} alt="preview" className="w-full h-full object-cover" />
+        <div className="space-y-6">
+            {/* ── Preview hero ─────────────────────────────────────────────── */}
+            <div className="flex items-center gap-5 px-1">
+                {/* Avatar with conditional glow */}
+                <div className="relative shrink-0">
+                    <div className={cn(
+                        'w-[88px] h-[88px] rounded-full overflow-hidden transition-all duration-300',
+                        selectedIsClaimed
+                            ? 'ring-2 ring-zinc-700 opacity-50'
+                            : 'ring-2 ring-rose-500 shadow-[0_0_20px_rgba(225,29,72,0.35)]'
+                    )}>
+                        <img
+                            src={dicebearUrl(style, selectedSeed)}
+                            alt="Selected avatar"
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
+                    {selectedIsClaimed && (
+                        <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40">
+                            <Lock className="w-5 h-5 text-zinc-400" />
+                        </div>
+                    )}
                 </div>
-                {selectedIsClaimed
-                    ? <p className="text-[10px] text-amber-400 flex items-center gap-1"><Lock className="w-3 h-3" /> Already claimed</p>
-                    : <p className="text-[10px] text-zinc-500">Live preview</p>
-                }
+
+                {/* Identity text */}
+                <div className="min-w-0">
+                    <p className="text-[11px] text-zinc-500 mb-1">Your identity</p>
+                    <p className="text-white font-semibold text-sm truncate">
+                        {selectedSeed || username}
+                    </p>
+                    <div className="mt-1.5">
+                        {selectedIsClaimed ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
+                                <Lock className="w-2.5 h-2.5" /> Claimed by another user
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-full px-2 py-0.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Available
+                            </span>
+                        )}
+                    </div>
+                </div>
             </div>
 
-            {/* Style selector */}
-            <StyleSelector seed={selectedSeed} selected={style} onSelect={setStyle} />
+            {/* ── Style selector ───────────────────────────────────────────── */}
+            <div className="space-y-2">
+                <p className="text-[11px] font-medium text-zinc-400 px-1">Style</p>
+                <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {AVATAR_STYLES.map(({ id, label }) => (
+                        <button
+                            key={id}
+                            type="button"
+                            onClick={() => setStyle(id)}
+                            className={cn(
+                                'shrink-0 flex flex-col items-center gap-1 transition-all',
+                            )}
+                        >
+                            <div className={cn(
+                                'w-11 h-11 rounded-full overflow-hidden transition-all duration-200',
+                                style === id
+                                    ? 'ring-2 ring-rose-500 ring-offset-2 ring-offset-[#0f0f11] shadow-[0_0_10px_rgba(225,29,72,0.3)]'
+                                    : 'ring-1 ring-zinc-800 opacity-60 hover:opacity-100 hover:ring-zinc-600'
+                            )}>
+                                <img src={dicebearUrl(id, selectedSeed)} alt={label} className="w-full h-full object-cover" />
+                            </div>
+                            <span className={cn(
+                                'text-[9px] leading-tight',
+                                style === id ? 'text-rose-400 font-medium' : 'text-zinc-600'
+                            )}>
+                                {label}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            </div>
 
-            {/* Custom seed + shuffle */}
-            <div className="space-y-1.5">
-                <Label className="text-xs text-zinc-400">Seed (any text = unique look)</Label>
+            {/* ── Seed input ───────────────────────────────────────────────── */}
+            <div className="space-y-1.5 px-1">
+                <p className="text-[11px] font-medium text-zinc-400">Seed — any text gives you a unique look</p>
                 <div className="flex gap-2">
                     <Input
                         value={customInput}
                         onChange={(e) => handleCustomInput(e.target.value)}
-                        placeholder={`e.g. "${username}" or anything`}
-                        className="bg-zinc-900/50 border-zinc-800 focus:border-rose-500/50 text-sm h-9"
+                        placeholder={`Try "${username}" or anything you like`}
+                        className="bg-zinc-900/60 border-zinc-800 focus:border-rose-500/60 text-sm h-9 placeholder:text-zinc-600"
                     />
-                    <Button
+                    <button
                         type="button"
-                        variant="outline"
-                        size="icon"
                         onClick={handleShuffle}
-                        className="shrink-0 border-zinc-700 hover:bg-zinc-800 h-9 w-9"
-                        title="Shuffle random seeds"
+                        title="Shuffle"
+                        className="shrink-0 w-9 h-9 rounded-lg border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 hover:border-zinc-700 transition-colors flex items-center justify-center text-zinc-400 hover:text-white"
                     >
-                        <Shuffle className="w-4 h-4" />
-                    </Button>
+                        <Shuffle className="w-3.5 h-3.5" />
+                    </button>
                 </div>
             </div>
 
-            {/* 8-seed grid */}
-            <div className="space-y-1.5">
-                <Label className="text-xs text-zinc-400">Variations</Label>
-                <div className="grid grid-cols-4 gap-2">
+            {/* ── Variations grid (circular) ───────────────────────────────── */}
+            <div className="space-y-2 px-1">
+                <p className="text-[11px] font-medium text-zinc-400">Variations</p>
+                <div className="grid grid-cols-4 gap-3">
                     {gridSeeds.map((seed) => {
                         const isClaimed = claimedSet.has(seed);
                         const isSelected = selectedSeed === seed;
@@ -207,25 +212,25 @@ function DiceBearPicker({ userId, username, currentSeed, currentStyle, onSelect 
                                 onClick={() => handleGridPick(seed)}
                                 disabled={isClaimed}
                                 className={cn(
-                                    'relative w-full aspect-square rounded-xl border-2 bg-zinc-900 overflow-hidden transition-all',
+                                    'relative aspect-square rounded-full overflow-hidden transition-all duration-200',
                                     isClaimed
-                                        ? 'border-zinc-800 opacity-50 cursor-not-allowed'
+                                        ? 'opacity-35 cursor-not-allowed grayscale'
                                         : isSelected
-                                            ? 'border-rose-500 shadow-md shadow-rose-500/20'
-                                            : 'border-zinc-800 hover:border-zinc-600'
+                                            ? 'ring-2 ring-rose-500 ring-offset-2 ring-offset-[#0f0f11] shadow-[0_0_12px_rgba(225,29,72,0.4)] scale-105'
+                                            : 'ring-1 ring-zinc-800 hover:ring-zinc-600 hover:scale-105'
                                 )}
                             >
-                                <img src={dicebearUrl(style, seed)} alt={seed} className="w-full h-full object-cover" />
+                                <img src={dicebearUrl(style, seed)} alt="" className="w-full h-full object-cover" />
                                 {isSelected && !isClaimed && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                        <div className="w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center">
-                                            <Check className="w-3 h-3 text-white" />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                        <div className="w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center shadow-sm">
+                                            <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
                                         </div>
                                     </div>
                                 )}
                                 {isClaimed && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                                        <Lock className="w-4 h-4 text-zinc-400" />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                        <Lock className="w-3 h-3 text-zinc-500" />
                                     </div>
                                 )}
                             </button>
@@ -234,13 +239,22 @@ function DiceBearPicker({ userId, username, currentSeed, currentStyle, onSelect 
                 </div>
             </div>
 
-            <Button
-                onClick={handleUse}
-                disabled={selectedIsClaimed}
-                className="w-full bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {selectedIsClaimed ? <><Lock className="w-4 h-4 mr-2" /> Already Claimed</> : 'Use This Avatar'}
-            </Button>
+            {/* ── CTA ──────────────────────────────────────────────────────── */}
+            <div className="px-1 pt-1">
+                <Button
+                    onClick={handleUse}
+                    disabled={selectedIsClaimed}
+                    className="w-full bg-rose-600 hover:bg-rose-700 text-white h-10 font-semibold tracking-wide disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                    {selectedIsClaimed
+                        ? <><Lock className="w-4 h-4 mr-2" />Already claimed</>
+                        : 'Claim this avatar'
+                    }
+                </Button>
+                {!selectedIsClaimed && (
+                    <p className="text-center text-[10px] text-zinc-600 mt-2">Yours forever once claimed</p>
+                )}
+            </div>
         </div>
     );
 }
@@ -254,12 +268,12 @@ function PhotoPicker({ userId, onSelect }: {
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [imageSrc, setImageSrc]               = useState<string | null>(null);
-    const [crop, setCrop]                        = useState({ x: 0, y: 0 });
-    const [zoom, setZoom]                        = useState(1);
-    const [brightness, setBrightness]            = useState(100);
+    const [imageSrc, setImageSrc]                   = useState<string | null>(null);
+    const [crop, setCrop]                            = useState({ x: 0, y: 0 });
+    const [zoom, setZoom]                            = useState(1);
+    const [brightness, setBrightness]               = useState(100);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
-    const [isUploading, setIsUploading]          = useState(false);
+    const [isUploading, setIsUploading]             = useState(false);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -305,18 +319,18 @@ function PhotoPicker({ userId, onSelect }: {
 
     if (!imageSrc) {
         return (
-            <div className="space-y-4">
+            <div>
                 <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-48 rounded-xl border-2 border-dashed border-zinc-700 hover:border-rose-500/60 bg-zinc-900/40 hover:bg-zinc-900/60 transition-colors flex flex-col items-center justify-center gap-3 text-zinc-400 hover:text-zinc-200"
+                    className="w-full h-52 rounded-2xl border border-dashed border-zinc-800 hover:border-rose-500/40 bg-zinc-900/30 hover:bg-zinc-900/50 transition-all flex flex-col items-center justify-center gap-3"
                 >
-                    <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center">
-                        <ImageIcon className="w-6 h-6" />
+                    <div className="w-14 h-14 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                        <ImageIcon className="w-6 h-6 text-zinc-500" />
                     </div>
                     <div className="text-center">
-                        <p className="text-sm font-medium">Click to upload a photo</p>
-                        <p className="text-xs text-zinc-500 mt-0.5">PNG or JPEG — up to 1MB</p>
+                        <p className="text-sm font-medium text-zinc-300">Upload your photo</p>
+                        <p className="text-xs text-zinc-600 mt-0.5">PNG or JPEG — up to 1MB</p>
                     </div>
                 </button>
                 <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleFileSelect} />
@@ -326,7 +340,8 @@ function PhotoPicker({ userId, onSelect }: {
 
     return (
         <div className="space-y-4">
-            <div className="relative h-64 rounded-xl overflow-hidden bg-zinc-950">
+            {/* Crop area */}
+            <div className="relative h-64 rounded-2xl overflow-hidden bg-zinc-950">
                 <Cropper
                     image={imageSrc}
                     crop={crop}
@@ -338,40 +353,42 @@ function PhotoPicker({ userId, onSelect }: {
                     onZoomChange={setZoom}
                     onCropComplete={onCropComplete}
                     style={{
-                        containerStyle: { borderRadius: '0.75rem' },
+                        containerStyle: { borderRadius: '1rem' },
                         mediaStyle: { filter: `brightness(${brightness}%)` },
                     }}
                 />
             </div>
 
-            <div className="space-y-3">
-                <div className="space-y-1.5">
-                    <div className="flex justify-between">
-                        <Label className="text-xs text-zinc-400">Zoom</Label>
-                        <span className="text-xs text-zinc-500">{zoom.toFixed(1)}×</span>
-                    </div>
+            {/* Sliders */}
+            <div className="space-y-3 px-1">
+                <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-zinc-500 w-20 shrink-0">Zoom</span>
                     <Slider min={1} max={3} step={0.05} value={[zoom]} onValueChange={([v]) => setZoom(v)}
-                        className="[&_[role=slider]]:bg-rose-500" />
+                        className="flex-1 [&_[role=slider]]:bg-rose-500" />
+                    <span className="text-[11px] text-zinc-500 w-8 text-right">{zoom.toFixed(1)}×</span>
                 </div>
-                <div className="space-y-1.5">
-                    <div className="flex justify-between">
-                        <Label className="text-xs text-zinc-400">Brightness</Label>
-                        <span className="text-xs text-zinc-500">{brightness}%</span>
-                    </div>
+                <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-zinc-500 w-20 shrink-0">Brightness</span>
                     <Slider min={60} max={140} step={1} value={[brightness]} onValueChange={([v]) => setBrightness(v)}
-                        className="[&_[role=slider]]:bg-rose-500" />
+                        className="flex-1 [&_[role=slider]]:bg-rose-500" />
+                    <span className="text-[11px] text-zinc-500 w-8 text-right">{brightness}%</span>
                 </div>
             </div>
 
-            <div className="flex gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={reset}
-                    className="border-zinc-700 hover:bg-zinc-800 text-white">
-                    Change Photo
-                </Button>
-                <Button onClick={handleUpload} disabled={isUploading} className="flex-1 bg-rose-600 hover:bg-rose-700 text-white">
+            {/* Actions */}
+            <div className="flex gap-2 px-1">
+                <button
+                    type="button"
+                    onClick={reset}
+                    className="h-10 px-4 rounded-lg border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 transition-colors text-sm text-zinc-300"
+                >
+                    Change
+                </button>
+                <Button onClick={handleUpload} disabled={isUploading}
+                    className="flex-1 bg-rose-600 hover:bg-rose-700 text-white h-10 font-semibold">
                     {isUploading
                         ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading...</>
-                        : <><Upload className="w-4 h-4 mr-2" />Upload & Use</>}
+                        : <><Upload className="w-4 h-4 mr-2" />Save photo</>}
                 </Button>
             </div>
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleFileSelect} />
@@ -384,26 +401,43 @@ function PhotoPicker({ userId, onSelect }: {
 const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
     open, onClose, userId, username, currentSeed, currentStyle, onSelect,
 }) => {
+    const [tab, setTab] = useState<'avatar' | 'photo'>('avatar');
     const handleSelect = (result: AvatarPickerSelection) => { onSelect(result); onClose(); };
 
     return (
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="max-w-md bg-[#121214] border-zinc-800 text-white max-h-[90vh] overflow-y-auto" data-lenis-prevent>
-                <DialogHeader>
-                    <DialogTitle className="text-lg font-bold">Choose Avatar</DialogTitle>
-                </DialogHeader>
+            <DialogContent
+                className="max-w-[420px] w-full bg-[#0f0f11] border-zinc-800/80 text-white p-0 overflow-hidden max-h-[92vh] flex flex-col"
+                data-lenis-prevent
+            >
+                {/* Header */}
+                <div className="px-6 pt-6 pb-0 shrink-0">
+                    <h2 className="text-base font-semibold text-white">Choose your identity</h2>
+                    <p className="text-xs text-zinc-500 mt-0.5">Pick a generated avatar or upload your own photo</p>
 
-                <Tabs defaultValue="avatar" className="mt-1">
-                    <TabsList className="w-full bg-zinc-900/50 border border-zinc-800 p-1 mb-4">
-                        <TabsTrigger value="avatar" className="flex-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-rose-500">
-                            Generate Avatar
-                        </TabsTrigger>
-                        <TabsTrigger value="photo" className="flex-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-rose-500">
-                            Upload Photo
-                        </TabsTrigger>
-                    </TabsList>
+                    {/* Tab switcher */}
+                    <div className="flex mt-4 bg-zinc-900/60 rounded-lg p-0.5 border border-zinc-800/60">
+                        {(['avatar', 'photo'] as const).map((t) => (
+                            <button
+                                key={t}
+                                type="button"
+                                onClick={() => setTab(t)}
+                                className={cn(
+                                    'flex-1 h-8 rounded-md text-xs font-medium transition-all',
+                                    tab === t
+                                        ? 'bg-zinc-800 text-white shadow-sm'
+                                        : 'text-zinc-500 hover:text-zinc-300'
+                                )}
+                            >
+                                {t === 'avatar' ? 'Generate avatar' : 'Upload photo'}
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
-                    <TabsContent value="avatar" className="mt-0">
+                {/* Tab content */}
+                <div className="flex-1 overflow-y-auto px-6 pb-6 pt-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {tab === 'avatar' ? (
                         <DiceBearPicker
                             userId={userId}
                             username={username}
@@ -411,12 +445,10 @@ const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                             currentStyle={currentStyle}
                             onSelect={handleSelect}
                         />
-                    </TabsContent>
-
-                    <TabsContent value="photo" className="mt-0">
+                    ) : (
                         <PhotoPicker userId={userId} onSelect={handleSelect} />
-                    </TabsContent>
-                </Tabs>
+                    )}
+                </div>
             </DialogContent>
         </Dialog>
     );
