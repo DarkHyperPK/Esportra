@@ -1,7 +1,8 @@
 import React, { useState, useRef, useCallback } from 'react';
 import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
-import { Shuffle, Upload, Loader2, Check, ImageIcon } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Shuffle, Upload, Loader2, Check, ImageIcon, Lock } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -18,27 +19,16 @@ import { cn } from '@/lib/utils';
 import { apiClient } from '@/lib/apiClient';
 import { getCroppedImg } from '@/lib/imageUtils';
 import { AVATAR_COMPRESS_PRESET, compressImageForUpload } from '@/utils/compressImage';
+import {
+    AVATAR_STYLES,
+    DEFAULT_STYLE,
+    type AvatarStyleId,
+    type DiceBearResult,
+    type PhotoResult,
+    type AvatarPickerSelection,
+} from './avatarStyles';
 
-// ── Style catalogue ───────────────────────────────────────────────────────────
-
-export const AVATAR_STYLES = [
-    { id: 'critters',           label: 'Critters' },
-    { id: 'adventurer',         label: 'Adventurer' },
-    { id: 'pixel-art',          label: 'Pixel Art' },
-    { id: 'bottts',             label: 'Robots' },
-    { id: 'fun-emoji',          label: 'Emoji' },
-    { id: 'big-smile',          label: 'Big Smile' },
-    { id: 'micah',              label: 'Micah' },
-    { id: 'notionists',         label: 'Notionist' },
-    { id: 'open-peeps',         label: 'Peeps' },
-    { id: 'lorelei',            label: 'Lorelei' },
-    { id: 'shapes',             label: 'Shapes' },
-    { id: 'thumbs',             label: 'Thumbs' },
-] as const;
-
-export type AvatarStyleId = (typeof AVATAR_STYLES)[number]['id'];
-
-export const DEFAULT_STYLE: AvatarStyleId = 'critters';
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function dicebearUrl(style: string, seed: string) {
     return `https://api.dicebear.com/10.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
@@ -51,12 +41,6 @@ function randomSeed() {
 function generateGridSeeds(base: string): string[] {
     return [base, `${base}-2`, `${base}-3`, `${base}-4`, `${base}-5`, `${base}-6`, `${base}-7`, `${base}-8`];
 }
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface DiceBearResult { type: 'dicebear'; style: AvatarStyleId; seed: string; avatarUrl: string }
-interface PhotoResult    { type: 'photo';    avatarUrl: string }
-export type AvatarPickerSelection = DiceBearResult | PhotoResult;
 
 interface AvatarPickerModalProps {
     open: boolean;
@@ -120,11 +104,24 @@ function DiceBearPicker({ userId, username, currentSeed, currentStyle, onSelect 
     currentStyle: AvatarStyleId | null;
     onSelect: (result: DiceBearResult) => void;
 }) {
+    const { toast } = useToast();
     const initialBase = currentSeed || username || userId;
-    const [style, setStyle]           = useState<AvatarStyleId>(currentStyle ?? DEFAULT_STYLE);
-    const [gridSeeds, setGridSeeds]   = useState(() => generateGridSeeds(initialBase));
+    const [style, setStyle]               = useState<AvatarStyleId>(currentStyle ?? DEFAULT_STYLE);
+    const [gridSeeds, setGridSeeds]       = useState(() => generateGridSeeds(initialBase));
     const [selectedSeed, setSelectedSeed] = useState(initialBase);
     const [customInput, setCustomInput]   = useState(currentSeed || '');
+
+    // Batch-check which grid seeds are already claimed by other users
+    const { data: claimedSet = new Set<string>() } = useQuery({
+        queryKey: ['avatar-availability', style, gridSeeds],
+        queryFn: async () => {
+            const params = new URLSearchParams({ style });
+            gridSeeds.forEach(s => params.append('seeds', s));
+            const data = await apiClient.get<{ claimed: string[] }>(`/api/avatars/availability?${params}`);
+            return new Set(data.claimed);
+        },
+        staleTime: 10_000,
+    });
 
     const handleCustomInput = (val: string) => {
         setCustomInput(val);
@@ -139,18 +136,35 @@ function DiceBearPicker({ userId, username, currentSeed, currentStyle, onSelect 
     };
 
     const handleGridPick = (seed: string) => {
+        if (claimedSet.has(seed)) return;
         setSelectedSeed(seed);
         setCustomInput(seed);
     };
+
+    const handleUse = () => {
+        if (claimedSet.has(selectedSeed)) {
+            toast({ title: 'Already claimed', description: 'This avatar belongs to another user. Try a different seed.', variant: 'destructive' });
+            return;
+        }
+        onSelect({ type: 'dicebear', style, seed: selectedSeed, avatarUrl: dicebearUrl(style, selectedSeed) });
+    };
+
+    const selectedIsClaimed = claimedSet.has(selectedSeed);
 
     return (
         <div className="space-y-5">
             {/* Large preview */}
             <div className="flex flex-col items-center gap-2">
-                <div className="w-28 h-28 rounded-full border-2 border-rose-500 bg-zinc-900 overflow-hidden shadow-lg shadow-rose-500/10">
+                <div className={cn(
+                    "w-28 h-28 rounded-full border-2 bg-zinc-900 overflow-hidden shadow-lg",
+                    selectedIsClaimed ? "border-zinc-600 opacity-60" : "border-rose-500 shadow-rose-500/10"
+                )}>
                     <img src={dicebearUrl(style, selectedSeed)} alt="preview" className="w-full h-full object-cover" />
                 </div>
-                <p className="text-[10px] text-zinc-500">Live preview</p>
+                {selectedIsClaimed
+                    ? <p className="text-[10px] text-amber-400 flex items-center gap-1"><Lock className="w-3 h-3" /> Already claimed</p>
+                    : <p className="text-[10px] text-zinc-500">Live preview</p>
+                }
             </div>
 
             {/* Style selector */}
@@ -183,36 +197,49 @@ function DiceBearPicker({ userId, username, currentSeed, currentStyle, onSelect 
             <div className="space-y-1.5">
                 <Label className="text-xs text-zinc-400">Variations</Label>
                 <div className="grid grid-cols-4 gap-2">
-                    {gridSeeds.map((seed) => (
-                        <button
-                            key={seed}
-                            type="button"
-                            onClick={() => handleGridPick(seed)}
-                            className={cn(
-                                'relative w-full aspect-square rounded-xl border-2 bg-zinc-900 overflow-hidden transition-all',
-                                selectedSeed === seed
-                                    ? 'border-rose-500 shadow-md shadow-rose-500/20'
-                                    : 'border-zinc-800 hover:border-zinc-600'
-                            )}
-                        >
-                            <img src={dicebearUrl(style, seed)} alt={seed} className="w-full h-full object-cover" />
-                            {selectedSeed === seed && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                    <div className="w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center">
-                                        <Check className="w-3 h-3 text-white" />
+                    {gridSeeds.map((seed) => {
+                        const isClaimed = claimedSet.has(seed);
+                        const isSelected = selectedSeed === seed;
+                        return (
+                            <button
+                                key={seed}
+                                type="button"
+                                onClick={() => handleGridPick(seed)}
+                                disabled={isClaimed}
+                                className={cn(
+                                    'relative w-full aspect-square rounded-xl border-2 bg-zinc-900 overflow-hidden transition-all',
+                                    isClaimed
+                                        ? 'border-zinc-800 opacity-50 cursor-not-allowed'
+                                        : isSelected
+                                            ? 'border-rose-500 shadow-md shadow-rose-500/20'
+                                            : 'border-zinc-800 hover:border-zinc-600'
+                                )}
+                            >
+                                <img src={dicebearUrl(style, seed)} alt={seed} className="w-full h-full object-cover" />
+                                {isSelected && !isClaimed && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                        <div className="w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center">
+                                            <Check className="w-3 h-3 text-white" />
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-                        </button>
-                    ))}
+                                )}
+                                {isClaimed && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                                        <Lock className="w-4 h-4 text-zinc-400" />
+                                    </div>
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
             <Button
-                onClick={() => onSelect({ type: 'dicebear', style, seed: selectedSeed, avatarUrl: dicebearUrl(style, selectedSeed) })}
-                className="w-full bg-rose-600 hover:bg-rose-700 text-white"
+                onClick={handleUse}
+                disabled={selectedIsClaimed}
+                className="w-full bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                Use This Avatar
+                {selectedIsClaimed ? <><Lock className="w-4 h-4 mr-2" /> Already Claimed</> : 'Use This Avatar'}
             </Button>
         </div>
     );
@@ -237,12 +264,12 @@ function PhotoPicker({ userId, onSelect }: {
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (!file.type.startsWith('image/')) {
-            toast({ title: 'Invalid file', description: 'Please upload an image.', variant: 'destructive' });
+        if (!['image/png', 'image/jpeg'].includes(file.type)) {
+            toast({ title: 'Invalid file', description: 'Only PNG and JPEG are supported.', variant: 'destructive' });
             return;
         }
-        if (file.size > 10 * 1024 * 1024) {
-            toast({ title: 'File too large', description: 'Max 10MB.', variant: 'destructive' });
+        if (file.size > 1 * 1024 * 1024) {
+            toast({ title: 'File too large', description: 'Max size is 1MB.', variant: 'destructive' });
             return;
         }
         setImageSrc(URL.createObjectURL(file));
@@ -289,10 +316,10 @@ function PhotoPicker({ userId, onSelect }: {
                     </div>
                     <div className="text-center">
                         <p className="text-sm font-medium">Click to upload a photo</p>
-                        <p className="text-xs text-zinc-500 mt-0.5">PNG, JPG, WebP — up to 10MB</p>
+                        <p className="text-xs text-zinc-500 mt-0.5">PNG or JPEG — up to 1MB</p>
                     </div>
                 </button>
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+                <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleFileSelect} />
             </div>
         );
     }
@@ -347,7 +374,7 @@ function PhotoPicker({ userId, onSelect }: {
                         : <><Upload className="w-4 h-4 mr-2" />Upload & Use</>}
                 </Button>
             </div>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+            <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleFileSelect} />
         </div>
     );
 }

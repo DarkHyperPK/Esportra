@@ -35,8 +35,13 @@ export const useProfileManagement = () => {
         const body = err.body as any;
         const msg  = body?.error ?? err.message;
         if (err.status === 409) {
-          toast({ title: 'Username already taken', description: msg, variant: 'destructive' });
-          throw new Error('Username already taken');
+          const isAvatarConflict = msg.toLowerCase().includes('avatar') || msg.toLowerCase().includes('claimed');
+          toast({
+            title: isAvatarConflict ? 'Avatar already claimed' : 'Username already taken',
+            description: msg,
+            variant: 'destructive',
+          });
+          throw new Error(msg);
         }
         toast({ title: 'Error updating profile', description: msg, variant: 'destructive' });
       } else {
