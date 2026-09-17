@@ -3,7 +3,7 @@ import Cropper from 'react-easy-crop';
 import type { Area } from 'react-easy-crop';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload, Loader2, Check, ImageIcon, Lock, RefreshCw } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { CtaButton } from '@/components/ui/app-buttons';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
@@ -624,8 +624,8 @@ const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                 data-lenis-prevent
             >
                 <div className="px-6 pt-6 pb-0 shrink-0">
-                    <h2 className="text-base font-semibold text-white">Choose your identity</h2>
-                    <p className="text-xs text-zinc-500 mt-0.5">Claim an avatar from the pool or upload your own photo</p>
+                    <DialogTitle className="text-base font-semibold text-white">Choose your identity</DialogTitle>
+                    <DialogDescription className="text-xs text-zinc-500 mt-0.5">Claim an avatar from the pool or upload your own photo</DialogDescription>
 
                     <div className="flex mt-4 bg-zinc-900/60 rounded-lg p-0.5 border border-zinc-800/60">
                         {(['avatar', 'photo'] as const).map((t) => (
