@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Loader2, Trash2, Lock, RefreshCw, ChevronLeft, ChevronRight, Wand2,
@@ -123,12 +123,7 @@ function PoolItemCard({ item, onDelete }: { item: AdminPoolItem; onDelete: (id: 
 function DropPanel({ onSuccess }: { onSuccess: () => void }) {
     const { toast } = useToast();
     const [style, setStyle] = useState<AvatarStyleId>('critters');
-    const [seedsText, setSeedsText] = useState('');
-
-    const seeds = useMemo(
-        () => seedsText.split('\n').map(s => s.trim()).filter(Boolean),
-        [seedsText],
-    );
+    const [seeds, setSeeds] = useState<string[]>([]);
 
     const batchMutation = useMutation({
         mutationFn: (items: { Style: string; Seed: string }[]) =>
@@ -140,7 +135,7 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
                     ? `${data.total - data.inserted} duplicate(s) skipped.`
                     : 'All seeds are now in the pool.',
             });
-            setSeedsText('');
+            setSeeds([]);
             onSuccess();
         },
         onError: (err: any) => {
@@ -150,11 +145,14 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
 
     const handleGenerate = () => {
         const generated = generateRandomSeeds(10);
-        setSeedsText(prev => {
-            const existing = prev.trim();
-            return existing ? `${existing}\n${generated.join('\n')}` : generated.join('\n');
+        setSeeds(prev => {
+            const existing = new Set(prev);
+            generated.forEach(s => existing.add(s));
+            return [...existing];
         });
     };
+
+    const handleRemove = (seed: string) => setSeeds(prev => prev.filter(s => s !== seed));
 
     const handleDrop = () => {
         if (seeds.length === 0) return;
@@ -165,6 +163,7 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
         <div className="border border-white/10 bg-white/[0.02] p-5 space-y-5">
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-500">Drop Batch</p>
 
+            {/* Style selector */}
             <div className="space-y-1">
                 <p className="font-mono text-[10px] uppercase tracking-wider text-zinc-600">Style</p>
                 <Select value={style} onValueChange={(v) => setStyle(v as AvatarStyleId)}>
@@ -181,33 +180,63 @@ function DropPanel({ onSuccess }: { onSuccess: () => void }) {
                 </Select>
             </div>
 
-            <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-zinc-600">Seeds</p>
+            {/* Actions row */}
+            <div className="flex items-center gap-2">
+                <button
+                    type="button"
+                    onClick={handleGenerate}
+                    className="flex items-center gap-1.5 h-7 px-3 border border-white/10 bg-white/[0.03] font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400 hover:text-white hover:border-white/20 transition-colors"
+                >
+                    <Wand2 className="w-3 h-3" />
+                    Generate 10
+                </button>
+                {seeds.length > 0 && (
                     <button
                         type="button"
-                        onClick={handleGenerate}
-                        className="flex items-center gap-1 font-mono text-[10px] text-rose-400 hover:text-rose-300 transition-colors"
+                        onClick={() => setSeeds([])}
+                        className="flex items-center gap-1.5 h-7 px-3 border border-white/10 bg-white/[0.03] font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-600 hover:text-red-400 hover:border-red-500/20 transition-colors"
                     >
-                        <Wand2 className="w-3 h-3" />
-                        Generate 10
+                        <Trash2 className="w-3 h-3" />
+                        Clear all
                     </button>
-                </div>
-                <textarea
-                    value={seedsText}
-                    onChange={e => setSeedsText(e.target.value)}
-                    rows={10}
-                    placeholder="One seed per line&#10;e.g. shadowwolf&#10;    ironclad&#10;    ..."
-                    className="w-full bg-black border border-white/10 text-white font-mono text-xs p-3 resize-none focus:outline-none focus:border-rose-500/40 placeholder:text-zinc-700"
-                    spellCheck={false}
-                />
+                )}
             </div>
 
-            <div className="flex items-center justify-between pt-1">
+            {/* Avatar preview grid */}
+            {seeds.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-32 border border-dashed border-white/10 gap-2">
+                    <Wand2 className="w-5 h-5 text-zinc-700" />
+                    <p className="font-mono text-[10px] text-zinc-700">Generate avatars to preview them</p>
+                </div>
+            ) : (
+                <div className="max-h-64 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className="grid grid-cols-5 gap-2">
+                        {seeds.map(seed => (
+                            <button
+                                key={seed}
+                                type="button"
+                                onClick={() => handleRemove(seed)}
+                                title={seed}
+                                className="group relative aspect-square rounded-full overflow-hidden ring-1 ring-white/10 hover:ring-red-500/50 transition-all"
+                            >
+                                <img
+                                    src={dicebearUrl(style, seed)}
+                                    alt={seed}
+                                    className="w-full h-full object-cover group-hover:opacity-40 transition-opacity"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Footer */}
+            <div className="flex items-center justify-between pt-1 border-t border-white/10">
                 <p className="font-mono text-[10px] text-zinc-600">
-                    {seeds.length > 0
-                        ? <span className="text-white">{seeds.length}</span>
-                        : '0'} seed{seeds.length === 1 ? '' : 's'} ready
+                    {seeds.length > 0 ? <span className="text-white">{seeds.length}</span> : '0'} ready
                 </p>
                 <CommandButton
                     onClick={handleDrop}
