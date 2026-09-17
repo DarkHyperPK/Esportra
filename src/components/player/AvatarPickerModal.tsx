@@ -12,7 +12,6 @@ import { apiClient } from '@/lib/apiClient';
 import { getCroppedImg } from '@/lib/imageUtils';
 import { AVATAR_COMPRESS_PRESET, compressImageForUpload } from '@/utils/compressImage';
 import {
-    AVATAR_STYLES,
     type AvatarStyleId,
     type PhotoResult,
     type AvatarPickerSelection,
@@ -45,13 +44,13 @@ interface PoolItem {
 
 // ── Pool browser tab ──────────────────────────────────────────────────────────
 
-function AvatarPoolPicker({ onSelect }: {
-    userId?: string;
+function AvatarPoolPicker({ onSelect, currentSeed }: {
     onSelect: (result: AvatarPickerSelection) => void;
+    currentSeed: string | null;
 }) {
     const { toast } = useToast();
     const queryClient = useQueryClient();
-    const [styleFilter, setStyleFilter] = useState<AvatarStyleId | 'all'>('all');
+    const [filter, setFilter] = useState<'all' | 'owned'>('all');
     const [page, setPage] = useState(0);
     const [selectedItem, setSelectedItem] = useState<PoolItem | null>(null);
     const [confirmingRelease, setConfirmingRelease] = useState(false);
@@ -70,14 +69,14 @@ function AvatarPoolPicker({ onSelect }: {
     const releasesRemaining = mineData?.releases_remaining ?? 2;
     const canRelease = releasesRemaining > 0;
 
-    // Browse available pool items
+    // Browse available pool items (only fetched in All view)
     const { data: poolData, isLoading } = useQuery({
-        queryKey: ['avatar-pool', styleFilter, page],
+        queryKey: ['avatar-pool', page],
         queryFn: () => {
             const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
-            if (styleFilter !== 'all') params.set('style', styleFilter);
             return apiClient.get<{ items: PoolItem[]; total: number }>(`/api/avatars/pool?${params}`);
         },
+        enabled: filter === 'all',
     });
     const items = poolData?.items ?? [];
     const total = poolData?.total ?? 0;
@@ -121,64 +120,42 @@ function AvatarPoolPicker({ onSelect }: {
         claimMutation.mutate(selectedItem.id);
     };
 
-    const handleStyleFilter = (s: AvatarStyleId | 'all') => {
-        setStyleFilter(s);
+    const handleApplyOwned = (item: PoolItem) => {
+        onSelect({ type: 'dicebear', style: item.style as AvatarStyleId, seed: item.seed, avatarUrl: dicebearUrl(item.style, item.seed) });
+    };
+
+    const handleFilterChange = (f: 'all' | 'owned') => {
+        setFilter(f);
         setPage(0);
         setSelectedItem(null);
     };
 
     const isOwnedItem = (item: PoolItem) => owned?.id === item.id;
     const isMine = !!owned;
+    const ownedIsActive = owned !== null && owned.seed === currentSeed;
 
-    // Empty state — filtered, show a way back
-    if (!isLoading && items.length === 0 && page === 0) {
-        return (
-            <div className="space-y-5">
-                {/* Style filter stays visible so they can switch */}
-                <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <button type="button" onClick={() => handleStyleFilter('all')}
-                        className={cn('shrink-0 h-7 px-3 rounded-full text-[11px] font-medium transition-all border',
-                            styleFilter === 'all' ? 'bg-rose-600 border-rose-600 text-white' : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200')}>
-                        All
-                    </button>
-                    {AVATAR_STYLES.map(({ id, label }) => (
-                        <button key={id} type="button" onClick={() => handleStyleFilter(id)}
-                            className={cn('shrink-0 h-7 px-3 rounded-full text-[11px] font-medium transition-all border',
-                                styleFilter === id ? 'bg-rose-600 border-rose-600 text-white' : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200')}>
-                            {label}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
-                    <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center">
-                        <Lock className="w-5 h-5 text-zinc-600" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-zinc-300">
-                            {styleFilter === 'all' ? 'No avatars available' : 'None available in this style'}
-                        </p>
-                        <p className="text-xs text-zinc-600 mt-0.5">
-                            {styleFilter === 'all'
-                                ? 'Check back when the next drop goes live'
-                                : 'Try a different style or check back later'}
-                        </p>
-                    </div>
-                    {styleFilter !== 'all' && (
-                        <button type="button" onClick={() => handleStyleFilter('all')}
-                            className="text-xs text-rose-400 hover:text-rose-300 transition-colors font-medium">
-                            Show all styles
-                        </button>
-                    )}
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="space-y-5">
-            {/* Owned avatar banner */}
-            {owned && (
+            {/* All / Owned filter */}
+            <div className="flex bg-zinc-900/60 rounded-lg p-0.5 border border-zinc-800/60">
+                {(['all', 'owned'] as const).map((f) => (
+                    <button
+                        key={f}
+                        type="button"
+                        onClick={() => handleFilterChange(f)}
+                        className={cn(
+                            'flex-1 h-7 rounded-md text-[11px] font-medium transition-all',
+                            filter === f ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
+                        )}
+                    >
+                        {f === 'all' ? 'All avatars' : 'Owned'}
+                    </button>
+                ))}
+            </div>
+
+            {/* Owned avatar banner (visible in All view) */}
+            {filter === 'all' && owned && (
                 <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] overflow-hidden">
                     <div className="flex items-center gap-3 p-3">
                         <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-rose-500/50 shrink-0">
@@ -189,18 +166,33 @@ function AvatarPoolPicker({ onSelect }: {
                             <p className="text-sm font-medium text-white truncate">{owned.seed}</p>
                             <p className="text-[10px] text-zinc-500 capitalize">{owned.style}</p>
                         </div>
+                        {!confirmingRelease && !ownedIsActive && (
+                            <button
+                                type="button"
+                                onClick={() => handleApplyOwned(owned)}
+                                className="shrink-0 text-[10px] font-semibold flex items-center gap-1 text-rose-400 hover:text-rose-300 transition-colors"
+                            >
+                                <Check className="w-3 h-3" />
+                                Apply
+                            </button>
+                        )}
+                        {!confirmingRelease && ownedIsActive && (
+                            <span className="shrink-0 text-[10px] font-medium text-emerald-500 flex items-center gap-1">
+                                <Check className="w-3 h-3" />
+                                Active
+                            </span>
+                        )}
                         {!confirmingRelease && (
                             <button
                                 type="button"
                                 onClick={() => canRelease && setConfirmingRelease(true)}
                                 disabled={!canRelease}
                                 className={cn(
-                                    'shrink-0 text-[10px] font-medium flex items-center gap-1 transition-colors',
-                                    canRelease ? 'text-zinc-400 hover:text-red-400' : 'text-zinc-700 cursor-not-allowed',
+                                    'shrink-0 text-[10px] font-medium flex items-center gap-1 transition-colors ml-1',
+                                    canRelease ? 'text-zinc-600 hover:text-red-400' : 'text-zinc-800 cursor-not-allowed',
                                 )}
                             >
                                 <RefreshCw className="w-3 h-3" />
-                                {canRelease ? 'Release' : 'No releases left'}
                             </button>
                         )}
                     </div>
@@ -242,47 +234,124 @@ function AvatarPoolPicker({ onSelect }: {
                 </div>
             )}
 
-            {/* Notice */}
-            <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
-                <span className="w-1 h-1 rounded-full bg-rose-500 inline-block shrink-0" />
-                One avatar per account — yours forever once claimed
-            </p>
+            {/* Notice (All view only) */}
+            {filter === 'all' && (
+                <p className="text-[11px] text-zinc-500 flex items-center gap-1.5">
+                    <span className="w-1 h-1 rounded-full bg-rose-500 inline-block shrink-0" />
+                    One avatar per account — yours forever once claimed
+                </p>
+            )}
 
-            {/* Style filter */}
-            <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <button
-                    type="button"
-                    onClick={() => handleStyleFilter('all')}
-                    className={cn(
-                        'shrink-0 h-7 px-3 rounded-full text-[11px] font-medium transition-all border',
-                        styleFilter === 'all'
-                            ? 'bg-rose-600 border-rose-600 text-white'
-                            : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
-                    )}
-                >
-                    All
-                </button>
-                {AVATAR_STYLES.map(({ id, label }) => (
-                    <button
-                        key={id}
-                        type="button"
-                        onClick={() => handleStyleFilter(id)}
-                        className={cn(
-                            'shrink-0 h-7 px-3 rounded-full text-[11px] font-medium transition-all border',
-                            styleFilter === id
-                                ? 'bg-rose-600 border-rose-600 text-white'
-                                : 'border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
-                        )}
-                    >
-                        {label}
-                    </button>
-                ))}
-            </div>
+            {/* Owned filter view */}
+            {filter === 'owned' && (
+                owned ? (
+                    <div className="space-y-4">
+                        <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 overflow-hidden">
+                            <div className="flex items-center gap-4 p-4">
+                                <div className={cn(
+                                    'w-16 h-16 rounded-full overflow-hidden ring-2 shrink-0',
+                                    ownedIsActive ? 'ring-emerald-500' : 'ring-zinc-700'
+                                )}>
+                                    <img src={dicebearUrl(owned.style, owned.seed)} alt={owned.seed} className="w-full h-full object-cover" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-white truncate">{owned.seed}</p>
+                                    <p className="text-xs text-zinc-500 capitalize mt-0.5">{owned.style}</p>
+                                    {ownedIsActive && (
+                                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-500 font-medium mt-1">
+                                            <Check className="w-3 h-3" />
+                                            Currently active
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="border-t border-zinc-800/60 px-4 py-3 flex items-center justify-between gap-3">
+                                {!ownedIsActive ? (
+                                    <Button
+                                        onClick={() => handleApplyOwned(owned)}
+                                        className="flex-1 bg-rose-600 hover:bg-rose-700 text-white h-9 font-semibold text-sm"
+                                    >
+                                        <Check className="w-4 h-4 mr-1.5" />
+                                        Apply this avatar
+                                    </Button>
+                                ) : (
+                                    <span className="text-xs text-zinc-500">This avatar is your active identity</span>
+                                )}
+                                {!confirmingRelease && (
+                                    <button
+                                        type="button"
+                                        onClick={() => canRelease && setConfirmingRelease(true)}
+                                        disabled={!canRelease}
+                                        className={cn(
+                                            'text-[11px] font-medium flex items-center gap-1 transition-colors shrink-0',
+                                            canRelease ? 'text-zinc-500 hover:text-red-400' : 'text-zinc-700 cursor-not-allowed',
+                                        )}
+                                    >
+                                        <RefreshCw className="w-3 h-3" />
+                                        {canRelease ? 'Release' : 'No releases left'}
+                                    </button>
+                                )}
+                            </div>
+                            {confirmingRelease && (
+                                <div className="border-t border-zinc-800/60 px-4 py-3 flex items-center justify-between gap-3">
+                                    <p className="text-[11px] text-zinc-300 leading-snug">
+                                        Release this avatar? {releasesRemaining - 1} release{releasesRemaining - 1 === 1 ? '' : 's'} left after this.
+                                    </p>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button type="button" onClick={() => setConfirmingRelease(false)}
+                                            className="text-[11px] text-zinc-500 hover:text-zinc-300 font-medium px-2">
+                                            Cancel
+                                        </button>
+                                        <button type="button" onClick={() => releaseMutation.mutate()}
+                                            disabled={releaseMutation.isPending}
+                                            className="flex items-center gap-1 text-[11px] text-white bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded font-medium disabled:opacity-50">
+                                            {releaseMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                                            Yes, release
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="border-t border-zinc-800/40 px-4 py-2">
+                                <p className="text-[10px] text-zinc-600">
+                                    {releasesRemaining > 0
+                                        ? <><span className="text-zinc-400">{releasesRemaining}</span> release{releasesRemaining === 1 ? '' : 's'} remaining</>
+                                        : <span className="text-zinc-700">No releases remaining — this avatar is permanent</span>
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
+                        <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center">
+                            <Lock className="w-5 h-5 text-zinc-600" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-zinc-300">No avatar claimed yet</p>
+                            <p className="text-xs text-zinc-600 mt-0.5">Browse all avatars to claim yours</p>
+                        </div>
+                        <button type="button" onClick={() => handleFilterChange('all')}
+                            className="text-xs text-rose-400 hover:text-rose-300 transition-colors font-medium">
+                            Browse pool
+                        </button>
+                    </div>
+                )
+            )}
 
-            {/* Pool grid */}
-            {isLoading ? (
+            {/* All filter: Pool grid */}
+            {filter === 'all' && (isLoading ? (
                 <div className="flex items-center justify-center h-32">
                     <Loader2 className="w-5 h-5 animate-spin text-zinc-500" />
+                </div>
+            ) : items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
+                    <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center">
+                        <Lock className="w-5 h-5 text-zinc-600" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-zinc-300">No avatars available</p>
+                        <p className="text-xs text-zinc-600 mt-0.5">Check back when the next drop goes live</p>
+                    </div>
                 </div>
             ) : (
                 <div className="grid grid-cols-4 gap-3">
@@ -336,7 +405,7 @@ function AvatarPoolPicker({ onSelect }: {
                         );
                     })}
                 </div>
-            )}
+            ))}
 
             {/* Load more */}
             {hasMore && (
@@ -349,32 +418,58 @@ function AvatarPoolPicker({ onSelect }: {
                 </button>
             )}
 
-            {/* Selected preview + CTA */}
-            {selectedItem && (
-                <div className="pt-2 border-t border-zinc-800/60 space-y-3">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-rose-500 shrink-0">
-                            <img src={dicebearUrl(selectedItem.style, selectedItem.seed)} alt="" className="w-full h-full object-cover" />
+            {/* Selected preview + CTA (All view only) */}
+            {filter === 'all' && selectedItem && (() => {
+                const isOwned = isOwnedItem(selectedItem);
+                const ownedAndActive = isOwned && ownedIsActive;
+                const ownedButInactive = isOwned && !ownedIsActive;
+                const blockedByOther = isMine && !isOwned;
+                return (
+                    <div className="pt-2 border-t border-zinc-800/60 space-y-3">
+                        <div className="flex items-center gap-3">
+                            <div className={cn(
+                                'w-10 h-10 rounded-full overflow-hidden ring-2 shrink-0',
+                                isOwned ? 'ring-emerald-500' : 'ring-rose-500'
+                            )}>
+                                <img src={dicebearUrl(selectedItem.style, selectedItem.seed)} alt="" className="w-full h-full object-cover" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-white">{selectedItem.seed}</p>
+                                <p className="text-[10px] text-zinc-500 capitalize">{selectedItem.style}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-sm font-semibold text-white">{selectedItem.seed}</p>
-                            <p className="text-[10px] text-zinc-500 capitalize">{selectedItem.style}</p>
-                        </div>
+                        {ownedButInactive && (
+                            <Button
+                                onClick={() => handleApplyOwned(selectedItem)}
+                                className="w-full bg-rose-600 hover:bg-rose-700 text-white h-10 font-semibold"
+                            >
+                                <Check className="w-4 h-4 mr-2" />
+                                Apply this avatar
+                            </Button>
+                        )}
+                        {ownedAndActive && (
+                            <Button disabled className="w-full h-10 font-semibold disabled:opacity-40">
+                                <Check className="w-4 h-4 mr-2" />
+                                Already active
+                            </Button>
+                        )}
+                        {!isOwned && (
+                            <Button
+                                onClick={handleClaim}
+                                disabled={claimMutation.isPending || blockedByOther}
+                                className="w-full bg-rose-600 hover:bg-rose-700 text-white h-10 font-semibold disabled:opacity-40"
+                            >
+                                {claimMutation.isPending
+                                    ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Claiming...</>
+                                    : blockedByOther
+                                        ? 'Release your current avatar first'
+                                        : 'Claim this avatar'
+                                }
+                            </Button>
+                        )}
                     </div>
-                    <Button
-                        onClick={handleClaim}
-                        disabled={claimMutation.isPending || isMine}
-                        className="w-full bg-rose-600 hover:bg-rose-700 text-white h-10 font-semibold disabled:opacity-40"
-                    >
-                        {claimMutation.isPending
-                            ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Claiming...</>
-                            : isMine
-                                ? 'Release your current avatar first'
-                                : 'Claim this avatar'
-                        }
-                    </Button>
-                </div>
-            )}
+                );
+            })()}
         </div>
     );
 }
@@ -517,7 +612,7 @@ function PhotoPicker({ userId, existingUrl, onSelect }: {
 // ── Modal shell ───────────────────────────────────────────────────────────────
 
 const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
-    open, onClose, userId, username: _username, currentSeed: _currentSeed, currentStyle: _currentStyle,
+    open, onClose, userId, username: _username, currentSeed, currentStyle: _currentStyle,
     currentPhotoUrl, onSelect,
 }) => {
     const [tab, setTab] = useState<'avatar' | 'photo'>('avatar');
@@ -552,7 +647,7 @@ const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
 
                 <div className="flex-1 overflow-y-auto px-6 pb-6 pt-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {tab === 'avatar'
-                        ? <AvatarPoolPicker userId={userId} onSelect={handleSelect} />
+                        ? <AvatarPoolPicker currentSeed={currentSeed} onSelect={handleSelect} />
                         : <PhotoPicker userId={userId} existingUrl={currentPhotoUrl} onSelect={handleSelect} />
                     }
                 </div>
