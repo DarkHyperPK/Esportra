@@ -8,10 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { User, Share2, Loader2, Save, Edit, Globe, MapPin, ShieldCheck } from "lucide-react";
+import { User, Share2, Loader2, Save, Edit, Globe, MapPin, ShieldCheck, Camera } from "lucide-react";
 import AvatarUploader from "./AvatarUploader";
+import AvatarPickerModal, { type AvatarPickerSelection } from "./AvatarPickerModal";
 import { getCountryFlag, detectUserCountry, getCountryName, countries, getCountryFlagUrl } from "@/utils/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import EntityAvatar from "@/components/ui/EntityAvatar";
 
 interface EditProfileDialogProps {
     open: boolean;
@@ -25,6 +27,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
     const [detecting, setDetecting] = useState(false);
     const [detectionFailed, setDetectionFailed] = useState(false);
     const [showManualSelector, setShowManualSelector] = useState(false);
+    const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
 
     const teamQuery = useQuery({
         queryKey: ['my-teams'],
@@ -42,6 +45,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
         full_name: "",
         bio: "",
         avatar_url: "",
+        avatar_seed: "",
         card_image_url: "",
         social_links: {
             twitter: "",
@@ -81,6 +85,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                 full_name: profile.full_name || "",
                 bio: profile.bio || "",
                 avatar_url: profile.avatar_url || "",
+                avatar_seed: profile.avatar_seed || "",
                 card_image_url: profile.card_image_url || "",
                 social_links: {
                     twitter: profile.social_links?.twitter || "",
@@ -115,6 +120,19 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
         }));
     };
 
+    const handleAvatarSelect = (result: AvatarPickerSelection) => {
+        if (result.type === 'dicebear') {
+            setFormData(prev => ({ ...prev, avatar_seed: result.seed, avatar_url: '' }));
+        } else {
+            setFormData(prev => ({ ...prev, avatar_url: result.avatarUrl, avatar_seed: '' }));
+        }
+    };
+
+    const effectiveAvatarUrl = formData.avatar_url
+        || (formData.avatar_seed
+            ? `https://api.dicebear.com/10.x/critters/svg?seed=${encodeURIComponent(formData.avatar_seed)}`
+            : `https://api.dicebear.com/10.x/critters/svg?seed=${encodeURIComponent(profile?.id || '')}`);
+
     const handleSave = async () => {
         setLoading(true);
         try {
@@ -123,6 +141,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                 full_name: formData.full_name,
                 bio: formData.bio,
                 avatar_url: formData.avatar_url,
+                avatar_seed: formData.avatar_seed,
                 card_image_url: formData.card_image_url,
                 social_links: formData.social_links,
                 riot_tag: formData.riot_tag,
@@ -167,15 +186,39 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                         <div className="p-6 flex-1">
                             <TabsContent value="general" className="space-y-6 mt-0">
                                 <div className="flex flex-col items-center justify-center mb-6">
-                                    <AvatarUploader
-                                        value={formData.avatar_url || ''}
-                                        onChange={(url) => setFormData({ ...formData, avatar_url: url })}
-                                        onRemove={() => setFormData({ ...formData, avatar_url: '' })}
-                                        size="xl"
-                                        uploadPath={profile?.id ? `profile-pictures/${profile.id}_${Date.now()}_avatar.png` : undefined}
-                                    />
-                                    <p className="text-xs text-gray-500 mt-4">Click to update avatar</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAvatarPickerOpen(true)}
+                                        className="relative group cursor-pointer"
+                                    >
+                                        <div className="w-32 h-32 rounded-full border-2 border-zinc-700 group-hover:border-rose-500 transition-colors bg-zinc-900 overflow-hidden">
+                                            <EntityAvatar
+                                                src={effectiveAvatarUrl}
+                                                name="Avatar"
+                                                type="user"
+                                                size="w-32 h-32"
+                                                className="border-none"
+                                            />
+                                        </div>
+                                        <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                            <div className="bg-rose-500 p-2 rounded-full text-white shadow-lg scale-90 group-hover:scale-100 transition-transform">
+                                                <Camera className="w-4 h-4" />
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <p className="text-xs text-gray-500 mt-4">Click to change avatar</p>
                                 </div>
+
+                                {profile && (
+                                    <AvatarPickerModal
+                                        open={avatarPickerOpen}
+                                        onClose={() => setAvatarPickerOpen(false)}
+                                        userId={profile.id}
+                                        username={profile.username}
+                                        currentSeed={formData.avatar_seed || null}
+                                        onSelect={handleAvatarSelect}
+                                    />
+                                )}
 
                                 <div className="space-y-4 border-t border-zinc-800 pt-6">
                                     <Label>Player Card Picture</Label>
