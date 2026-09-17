@@ -19,9 +19,10 @@ import EntityAvatar from "@/components/ui/EntityAvatar";
 interface EditProfileDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    autoOpenAvatarPicker?: boolean;
 }
 
-const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
+const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditProfileDialogProps) => {
     const { profile, updateProfile } = useAuth();
     const queryClient = useQueryClient();
     const [loading, setLoading] = useState(false);
@@ -109,7 +110,8 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
         });
 
         if (!profile.country_code) handleAutodetect();
-    }, [open, profile, handleAutodetect]);
+        if (autoOpenAvatarPicker) setAvatarPickerOpen(true);
+    }, [open, profile, handleAutodetect, autoOpenAvatarPicker]);
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));

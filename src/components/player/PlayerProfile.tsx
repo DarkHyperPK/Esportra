@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Settings } from "lucide-react";
@@ -15,6 +16,18 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
   const { profile: authProfile } = useAuth();
   const displayProfile = profileData || authProfile;
   const [editOpen, setEditOpen] = useState(false);
+  const [autoOpenAvatarPicker, setAutoOpenAvatarPicker] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isOwnProfile && (location.state as any)?.openAvatarPicker) {
+      setEditOpen(true);
+      setAutoOpenAvatarPicker(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -68,7 +81,11 @@ const PlayerProfile = ({ profileData, isOwnProfile = true }: PlayerProfileProps)
       </div>
 
       {isOwnProfile && (
-        <EditProfileDialog open={editOpen} onOpenChange={setEditOpen} />
+        <EditProfileDialog
+          open={editOpen}
+          onOpenChange={(v) => { setEditOpen(v); if (!v) setAutoOpenAvatarPicker(false); }}
+          autoOpenAvatarPicker={autoOpenAvatarPicker}
+        />
       )}
     </div>
   );

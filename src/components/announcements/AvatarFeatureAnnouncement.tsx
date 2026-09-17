@@ -49,7 +49,7 @@ export function AvatarFeatureAnnouncement() {
     const openPool = () => {
         localStorage.setItem(STORAGE_KEY, '1');
         setOpen(false);
-        navigate('/user/profile');
+        navigate('/user/profile', { state: { openAvatarPicker: true } });
     };
 
     return (
