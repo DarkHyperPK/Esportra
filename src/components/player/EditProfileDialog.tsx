@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { apiClient } from "@/lib/apiClient";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -78,35 +78,37 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
         }
     }, []);
 
-    // Initialize form data when profile loads or dialog opens
+    // Initialize form data only when the dialog transitions to open.
+    // Using a ref to detect the open→true edge avoids re-initializing mid-session
+    // (e.g. when autodetect updates formData.country_code or profile refreshes).
+    const wasOpenRef = useRef(false);
     useEffect(() => {
-        if (profile && open) {
-            setFormData({
-                username: profile.username || "",
-                full_name: profile.full_name || "",
-                bio: profile.bio || "",
-                avatar_url: profile.avatar_url || "",
-                avatar_seed: profile.avatar_seed || "",
-                avatar_style: (profile.avatar_style as AvatarStyleId) || "",
-                card_image_url: profile.card_image_url || "",
-                social_links: {
-                    twitter: profile.social_links?.twitter || "",
-                    twitch: profile.social_links?.twitch || "",
-                    youtube: profile.social_links?.youtube || "",
-                    instagram: profile.social_links?.instagram || "",
-                    discord: profile.social_links?.discord || ""
-                },
-                riot_tag: profile.riot_tag || "",
-                steam_tag: profile.steam_tag || "",
-                country_code: profile.country_code || ""
-            });
+        const justOpened = open && !wasOpenRef.current;
+        wasOpenRef.current = open;
+        if (!justOpened || !profile) return;
 
-            // Autodetect if empty
-            if (!profile.country_code && !formData.country_code) {
-                handleAutodetect();
-            }
-        }
-    }, [profile, open, formData.country_code, handleAutodetect]);
+        setFormData({
+            username: profile.username || "",
+            full_name: profile.full_name || "",
+            bio: profile.bio || "",
+            avatar_url: profile.avatar_url || "",
+            avatar_seed: profile.avatar_seed || "",
+            avatar_style: (profile.avatar_style as AvatarStyleId) || "",
+            card_image_url: profile.card_image_url || "",
+            social_links: {
+                twitter: profile.social_links?.twitter || "",
+                twitch: profile.social_links?.twitch || "",
+                youtube: profile.social_links?.youtube || "",
+                instagram: profile.social_links?.instagram || "",
+                discord: profile.social_links?.discord || ""
+            },
+            riot_tag: profile.riot_tag || "",
+            steam_tag: profile.steam_tag || "",
+            country_code: profile.country_code || ""
+        });
+
+        if (!profile.country_code) handleAutodetect();
+    }, [open, profile, handleAutodetect]);
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));

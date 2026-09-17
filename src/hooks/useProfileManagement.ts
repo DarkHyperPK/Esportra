@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { normalizeProfileFromApi } from '@/utils/profileFields';
 
 const ALLOWED_FIELDS = [
-  'username', 'full_name', 'avatar_url', 'bio',
+  'username', 'full_name', 'avatar_url', 'avatar_seed', 'avatar_style', 'bio',
   'riot_tag', 'steam_tag', 'phone', 'location',
   'social_links', 'card_image_url', 'country_code', 'date_of_birth',
 ] as const;
