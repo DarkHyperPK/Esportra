@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Activity,
   ArrowLeft,
   BarChart3,
   BookOpen,
@@ -9,7 +8,6 @@ import {
   Calendar,
   ChevronRight,
   ImageIcon,
-  Key,
   Palette,
   Plus,
   ShieldAlert,
@@ -104,15 +102,6 @@ const ORG_SETTINGS_GROUPS: Array<{
       { value: "branding", label: "Branding", icon: Palette },
       { value: "staff", label: "Staff", icon: Users },
       { value: "media", label: "Media", icon: ImageIcon },
-    ],
-  },
-  {
-    label: "Developer",
-    labelClass: "text-zinc-400",
-    items: [
-      { value: "developer-api-keys", label: "API Keys", icon: Key },
-      { value: "developer-api-analytics", label: "Usage", icon: Activity },
-      { value: "developer-api-docs", label: "Docs", icon: BookOpen },
     ],
   },
   {

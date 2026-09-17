@@ -25,7 +25,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import OrganizationStaffManager from '@/components/organizer/OrganizationStaffManager';
-import { DeveloperApiSettings } from '@/pages/organizer/DeveloperApiSettings';
 import {
   CommandActionBar,
   CommandButton,
@@ -40,9 +39,6 @@ export type OrgSettingsSection =
   | 'branding'
   | 'staff'
   | 'media'
-  | 'developer-api-keys'
-  | 'developer-api-analytics'
-  | 'developer-api-docs'
   | 'advanced';
 
 interface Organization {
@@ -61,7 +57,6 @@ interface Organization {
     discord?: string;
   };
   is_verified: boolean;
-  is_api_approved?: boolean;
   created_at: string;
 }
 
@@ -569,16 +564,6 @@ const OrganizationSettings: React.FC<OrganizationSettingsProps> = ({ activeSecti
             )}
           </div>
         </CommandSection>
-      )}
-
-      {activeSection === 'developer-api-keys' && organization && (
-        <DeveloperApiSettings orgId={organization.id} isApiApproved={organization.is_api_approved ?? false} activePanel="keys" />
-      )}
-      {activeSection === 'developer-api-analytics' && organization && (
-        <DeveloperApiSettings orgId={organization.id} isApiApproved={organization.is_api_approved ?? false} activePanel="analytics" />
-      )}
-      {activeSection === 'developer-api-docs' && organization && (
-        <DeveloperApiSettings orgId={organization.id} isApiApproved={organization.is_api_approved ?? false} activePanel="docs" />
       )}
 
       {activeSection === 'advanced' && organization && (
