@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { CtaButton } from '@/components/ui/app-buttons';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Footer from '@/components/Footer';
@@ -185,11 +186,10 @@ const EditVenue = () => {
             </button>
             <h1 className="text-2xl font-bold">Edit Venue</h1>
           </div>
-          <Button onClick={handleSave} disabled={saving}
-            className="bg-rose-600 hover:bg-rose-700 text-white">
+          <CtaButton onClick={handleSave} disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
             Save Changes
-          </Button>
+          </CtaButton>
         </div>
 
         <div className="space-y-10">
@@ -411,11 +411,10 @@ const EditVenue = () => {
               className="border-white/10 hover:bg-white/5">
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving}
-              className="bg-rose-600 hover:bg-rose-700 text-white px-8">
+            <CtaButton onClick={handleSave} disabled={saving} className="px-8">
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               Save Changes
-            </Button>
+            </CtaButton>
           </div>
         </div>
       </div>

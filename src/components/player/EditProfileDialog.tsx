@@ -3,6 +3,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { CtaButton, CancelButton, OutlineButton } from "@/components/ui/app-buttons";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -297,14 +298,13 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
                                                             </div>
                                                         )}
                                                         {detectionFailed && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
+                                                            <button
+                                                                type="button"
                                                                 onClick={() => setShowManualSelector(true)}
-                                                                className="ml-auto text-[10px] text-rose-400 hover:text-rose-300 h-6 px-2 underline"
+                                                                className="ml-auto text-[10px] text-rose-400 hover:text-rose-300 h-6 px-2 underline transition-colors"
                                                             >
                                                                 Change
-                                                            </Button>
+                                                            </button>
                                                         )}
                                                     </>
                                                 ) : detecting ? (
@@ -318,14 +318,13 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
                                                             <ShieldCheck className="w-4 h-4" />
                                                             Detection failed
                                                         </div>
-                                                        <Button
-                                                            variant="outline"
+                                                        <OutlineButton
                                                             size="sm"
                                                             onClick={handleAutodetect}
-                                                            className="h-7 text-[10px] border-zinc-700 hover:bg-zinc-800"
+                                                            className="h-7 text-[10px]"
                                                         >
                                                             Try Again
-                                                        </Button>
+                                                        </OutlineButton>
                                                     </div>
                                                 ) : null}
                                             </div>
@@ -447,10 +446,10 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
                 </div>
 
                 <DialogFooter className="p-6 bg-zinc-900/50 border-t border-zinc-800">
-                    <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading} className="border-zinc-700 hover:bg-zinc-800 text-white">
+                    <CancelButton onClick={() => onOpenChange(false)} disabled={loading}>
                         Cancel
-                    </Button>
-                    <Button onClick={handleSave} disabled={loading} className="bg-rose-600 hover:bg-rose-700 text-white">
+                    </CancelButton>
+                    <CtaButton onClick={handleSave} disabled={loading}>
                         {loading ? (
                             <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
@@ -460,7 +459,7 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
                                 <Save className="mr-2 h-4 w-4" /> Save Changes
                             </>
                         )}
-                    </Button>
+                    </CtaButton>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
