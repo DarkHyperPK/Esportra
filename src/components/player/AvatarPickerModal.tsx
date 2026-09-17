@@ -19,10 +19,29 @@ import { apiClient } from '@/lib/apiClient';
 import { getCroppedImg } from '@/lib/imageUtils';
 import { AVATAR_COMPRESS_PRESET, compressImageForUpload } from '@/utils/compressImage';
 
-const DICEBEAR_BASE = 'https://api.dicebear.com/10.x/critters/svg';
+// ── Style catalogue ───────────────────────────────────────────────────────────
 
-function dicebearUrl(seed: string) {
-    return `${DICEBEAR_BASE}?seed=${encodeURIComponent(seed)}`;
+export const AVATAR_STYLES = [
+    { id: 'critters',           label: 'Critters' },
+    { id: 'adventurer',         label: 'Adventurer' },
+    { id: 'pixel-art',          label: 'Pixel Art' },
+    { id: 'bottts',             label: 'Robots' },
+    { id: 'fun-emoji',          label: 'Emoji' },
+    { id: 'big-smile',          label: 'Big Smile' },
+    { id: 'micah',              label: 'Micah' },
+    { id: 'notionists',         label: 'Notionist' },
+    { id: 'open-peeps',         label: 'Peeps' },
+    { id: 'lorelei',            label: 'Lorelei' },
+    { id: 'shapes',             label: 'Shapes' },
+    { id: 'thumbs',             label: 'Thumbs' },
+] as const;
+
+export type AvatarStyleId = (typeof AVATAR_STYLES)[number]['id'];
+
+export const DEFAULT_STYLE: AvatarStyleId = 'critters';
+
+function dicebearUrl(style: string, seed: string) {
+    return `https://api.dicebear.com/10.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
 }
 
 function randomSeed() {
@@ -33,18 +52,11 @@ function generateGridSeeds(base: string): string[] {
     return [base, `${base}-2`, `${base}-3`, `${base}-4`, `${base}-5`, `${base}-6`, `${base}-7`, `${base}-8`];
 }
 
-interface AvatarPickerResult {
-    type: 'dicebear';
-    seed: string;
-    avatarUrl: string;
-}
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-interface PhotoPickerResult {
-    type: 'photo';
-    avatarUrl: string;
-}
-
-export type AvatarPickerSelection = AvatarPickerResult | PhotoPickerResult;
+interface DiceBearResult { type: 'dicebear'; style: AvatarStyleId; seed: string; avatarUrl: string }
+interface PhotoResult    { type: 'photo';    avatarUrl: string }
+export type AvatarPickerSelection = DiceBearResult | PhotoResult;
 
 interface AvatarPickerModalProps {
     open: boolean;
@@ -52,56 +64,106 @@ interface AvatarPickerModalProps {
     userId: string;
     username: string;
     currentSeed: string | null;
+    currentStyle: AvatarStyleId | null;
     onSelect: (result: AvatarPickerSelection) => void;
+}
+
+// ── Style selector row ────────────────────────────────────────────────────────
+
+function StyleSelector({ seed, selected, onSelect }: {
+    seed: string;
+    selected: AvatarStyleId;
+    onSelect: (id: AvatarStyleId) => void;
+}) {
+    return (
+        <div className="space-y-1.5">
+            <Label className="text-xs text-zinc-400">Style</Label>
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-zinc-700">
+                {AVATAR_STYLES.map(({ id, label }) => (
+                    <button
+                        key={id}
+                        type="button"
+                        onClick={() => onSelect(id)}
+                        className={cn(
+                            'shrink-0 flex flex-col items-center gap-1.5 p-1.5 rounded-xl border-2 transition-all w-16',
+                            selected === id
+                                ? 'border-rose-500 bg-rose-500/10'
+                                : 'border-zinc-800 hover:border-zinc-600 bg-zinc-900/40'
+                        )}
+                    >
+                        <div className="w-10 h-10 rounded-lg overflow-hidden bg-zinc-900">
+                            <img
+                                src={dicebearUrl(id, seed)}
+                                alt={label}
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
+                        <span className={cn(
+                            'text-[9px] font-medium leading-tight text-center',
+                            selected === id ? 'text-rose-400' : 'text-zinc-500'
+                        )}>
+                            {label}
+                        </span>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
 }
 
 // ── DiceBear tab ──────────────────────────────────────────────────────────────
 
-function DiceBearPicker({ userId, username, currentSeed, onSelect }: {
+function DiceBearPicker({ userId, username, currentSeed, currentStyle, onSelect }: {
     userId: string;
     username: string;
     currentSeed: string | null;
-    onSelect: (result: AvatarPickerResult) => void;
+    currentStyle: AvatarStyleId | null;
+    onSelect: (result: DiceBearResult) => void;
 }) {
     const initialBase = currentSeed || username || userId;
-    const [gridSeeds, setGridSeeds] = useState(() => generateGridSeeds(initialBase));
-    const [selectedSeed, setSelectedSeed] = useState(currentSeed || initialBase);
-    const [customInput, setCustomInput] = useState(currentSeed || '');
+    const [style, setStyle]           = useState<AvatarStyleId>(currentStyle ?? DEFAULT_STYLE);
+    const [gridSeeds, setGridSeeds]   = useState(() => generateGridSeeds(initialBase));
+    const [selectedSeed, setSelectedSeed] = useState(initialBase);
+    const [customInput, setCustomInput]   = useState(currentSeed || '');
 
-    const handleCustomInputChange = (val: string) => {
+    const handleCustomInput = (val: string) => {
         setCustomInput(val);
         if (val.trim()) setSelectedSeed(val.trim());
     };
 
     const handleShuffle = () => {
-        const newSeeds = Array.from({ length: 8 }, () => randomSeed());
-        setGridSeeds(newSeeds);
-        setSelectedSeed(newSeeds[0]);
+        const next = Array.from({ length: 8 }, () => randomSeed());
+        setGridSeeds(next);
+        setSelectedSeed(next[0]);
         setCustomInput('');
+    };
+
+    const handleGridPick = (seed: string) => {
+        setSelectedSeed(seed);
+        setCustomInput(seed);
     };
 
     return (
         <div className="space-y-5">
             {/* Large preview */}
-            <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-col items-center gap-2">
                 <div className="w-28 h-28 rounded-full border-2 border-rose-500 bg-zinc-900 overflow-hidden shadow-lg shadow-rose-500/10">
-                    <img
-                        src={dicebearUrl(selectedSeed)}
-                        alt="Avatar preview"
-                        className="w-full h-full object-cover"
-                    />
+                    <img src={dicebearUrl(style, selectedSeed)} alt="preview" className="w-full h-full object-cover" />
                 </div>
-                <p className="text-xs text-zinc-400">Preview</p>
+                <p className="text-[10px] text-zinc-500">Live preview</p>
             </div>
 
-            {/* Seed input + shuffle */}
+            {/* Style selector */}
+            <StyleSelector seed={selectedSeed} selected={style} onSelect={setStyle} />
+
+            {/* Custom seed + shuffle */}
             <div className="space-y-1.5">
-                <Label className="text-xs text-zinc-400">Custom seed (any text = unique critter)</Label>
+                <Label className="text-xs text-zinc-400">Seed (any text = unique look)</Label>
                 <div className="flex gap-2">
                     <Input
                         value={customInput}
-                        onChange={(e) => handleCustomInputChange(e.target.value)}
-                        placeholder={`e.g. "${username}" or anything fun`}
+                        onChange={(e) => handleCustomInput(e.target.value)}
+                        placeholder={`e.g. "${username}" or anything`}
                         className="bg-zinc-900/50 border-zinc-800 focus:border-rose-500/50 text-sm h-9"
                     />
                     <Button
@@ -110,7 +172,7 @@ function DiceBearPicker({ userId, username, currentSeed, onSelect }: {
                         size="icon"
                         onClick={handleShuffle}
                         className="shrink-0 border-zinc-700 hover:bg-zinc-800 h-9 w-9"
-                        title="Shuffle random styles"
+                        title="Shuffle random seeds"
                     >
                         <Shuffle className="w-4 h-4" />
                     </Button>
@@ -119,13 +181,13 @@ function DiceBearPicker({ userId, username, currentSeed, onSelect }: {
 
             {/* 8-seed grid */}
             <div className="space-y-1.5">
-                <Label className="text-xs text-zinc-400">Or pick a style</Label>
+                <Label className="text-xs text-zinc-400">Variations</Label>
                 <div className="grid grid-cols-4 gap-2">
                     {gridSeeds.map((seed) => (
                         <button
                             key={seed}
                             type="button"
-                            onClick={() => { setSelectedSeed(seed); setCustomInput(seed); }}
+                            onClick={() => handleGridPick(seed)}
                             className={cn(
                                 'relative w-full aspect-square rounded-xl border-2 bg-zinc-900 overflow-hidden transition-all',
                                 selectedSeed === seed
@@ -133,11 +195,7 @@ function DiceBearPicker({ userId, username, currentSeed, onSelect }: {
                                     : 'border-zinc-800 hover:border-zinc-600'
                             )}
                         >
-                            <img
-                                src={dicebearUrl(seed)}
-                                alt={seed}
-                                className="w-full h-full object-cover"
-                            />
+                            <img src={dicebearUrl(style, seed)} alt={seed} className="w-full h-full object-cover" />
                             {selectedSeed === seed && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                                     <div className="w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center">
@@ -151,7 +209,7 @@ function DiceBearPicker({ userId, username, currentSeed, onSelect }: {
             </div>
 
             <Button
-                onClick={() => onSelect({ type: 'dicebear', seed: selectedSeed, avatarUrl: dicebearUrl(selectedSeed) })}
+                onClick={() => onSelect({ type: 'dicebear', style, seed: selectedSeed, avatarUrl: dicebearUrl(style, selectedSeed) })}
                 className="w-full bg-rose-600 hover:bg-rose-700 text-white"
             >
                 Use This Avatar
@@ -164,22 +222,21 @@ function DiceBearPicker({ userId, username, currentSeed, onSelect }: {
 
 function PhotoPicker({ userId, onSelect }: {
     userId: string;
-    onSelect: (result: PhotoPickerResult) => void;
+    onSelect: (result: PhotoResult) => void;
 }) {
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [imageSrc, setImageSrc] = useState<string | null>(null);
-    const [crop, setCrop] = useState({ x: 0, y: 0 });
-    const [zoom, setZoom] = useState(1);
-    const [brightness, setBrightness] = useState(100);
+    const [imageSrc, setImageSrc]               = useState<string | null>(null);
+    const [crop, setCrop]                        = useState({ x: 0, y: 0 });
+    const [zoom, setZoom]                        = useState(1);
+    const [brightness, setBrightness]            = useState(100);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
-    const [isUploading, setIsUploading] = useState(false);
+    const [isUploading, setIsUploading]          = useState(false);
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         if (!file.type.startsWith('image/')) {
             toast({ title: 'Invalid file', description: 'Please upload an image.', variant: 'destructive' });
             return;
@@ -188,17 +245,13 @@ function PhotoPicker({ userId, onSelect }: {
             toast({ title: 'File too large', description: 'Max 10MB.', variant: 'destructive' });
             return;
         }
-
-        const url = URL.createObjectURL(file);
-        setImageSrc(url);
+        setImageSrc(URL.createObjectURL(file));
         setCrop({ x: 0, y: 0 });
         setZoom(1);
         setBrightness(100);
     };
 
-    const onCropComplete = useCallback((_: Area, pixels: Area) => {
-        setCroppedAreaPixels(pixels);
-    }, []);
+    const onCropComplete = useCallback((_: Area, pixels: Area) => setCroppedAreaPixels(pixels), []);
 
     const handleUpload = async () => {
         if (!imageSrc || !croppedAreaPixels) return;
@@ -206,16 +259,13 @@ function PhotoPicker({ userId, onSelect }: {
         try {
             const blob = await getCroppedImg(imageSrc, croppedAreaPixels, brightness);
             if (!blob) throw new Error('Crop failed');
-
-            const rawFile = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
-            const compressed = await compressImageForUpload(rawFile, AVATAR_COMPRESS_PRESET);
-
-            const formData = new FormData();
-            formData.append('file', compressed);
-            formData.append('bucket', 'users.avatars');
-            formData.append('folder', `avatars/${userId}`);
-
-            const { url } = await apiClient.upload<{ url: string }>('/api/storage/upload', formData);
+            const raw = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+            const compressed = await compressImageForUpload(raw, AVATAR_COMPRESS_PRESET);
+            const fd = new FormData();
+            fd.append('file', compressed);
+            fd.append('bucket', 'users.avatars');
+            fd.append('folder', `avatars/${userId}`);
+            const { url } = await apiClient.upload<{ url: string }>('/api/storage/upload', fd);
             onSelect({ type: 'photo', avatarUrl: url });
         } catch (err: any) {
             toast({ title: 'Upload failed', description: err.message || 'Something went wrong.', variant: 'destructive' });
@@ -223,6 +273,8 @@ function PhotoPicker({ userId, onSelect }: {
             setIsUploading(false);
         }
     };
+
+    const reset = () => { setImageSrc(null); if (fileInputRef.current) fileInputRef.current.value = ''; };
 
     if (!imageSrc) {
         return (
@@ -237,7 +289,7 @@ function PhotoPicker({ userId, onSelect }: {
                     </div>
                     <div className="text-center">
                         <p className="text-sm font-medium">Click to upload a photo</p>
-                        <p className="text-xs text-zinc-500 mt-0.5">PNG, JPG, WebP up to 10MB</p>
+                        <p className="text-xs text-zinc-500 mt-0.5">PNG, JPG, WebP — up to 10MB</p>
                     </div>
                 </button>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
@@ -247,7 +299,6 @@ function PhotoPicker({ userId, onSelect }: {
 
     return (
         <div className="space-y-4">
-            {/* Cropper */}
             <div className="relative h-64 rounded-xl overflow-hidden bg-zinc-950">
                 <Cropper
                     image={imageSrc}
@@ -266,58 +317,34 @@ function PhotoPicker({ userId, onSelect }: {
                 />
             </div>
 
-            {/* Controls */}
             <div className="space-y-3">
                 <div className="space-y-1.5">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between">
                         <Label className="text-xs text-zinc-400">Zoom</Label>
                         <span className="text-xs text-zinc-500">{zoom.toFixed(1)}×</span>
                     </div>
-                    <Slider
-                        min={1}
-                        max={3}
-                        step={0.05}
-                        value={[zoom]}
-                        onValueChange={([v]) => setZoom(v)}
-                        className="[&_[role=slider]]:bg-rose-500"
-                    />
+                    <Slider min={1} max={3} step={0.05} value={[zoom]} onValueChange={([v]) => setZoom(v)}
+                        className="[&_[role=slider]]:bg-rose-500" />
                 </div>
                 <div className="space-y-1.5">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between">
                         <Label className="text-xs text-zinc-400">Brightness</Label>
                         <span className="text-xs text-zinc-500">{brightness}%</span>
                     </div>
-                    <Slider
-                        min={60}
-                        max={140}
-                        step={1}
-                        value={[brightness]}
-                        onValueChange={([v]) => setBrightness(v)}
-                        className="[&_[role=slider]]:bg-rose-500"
-                    />
+                    <Slider min={60} max={140} step={1} value={[brightness]} onValueChange={([v]) => setBrightness(v)}
+                        className="[&_[role=slider]]:bg-rose-500" />
                 </div>
             </div>
 
             <div className="flex gap-2">
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => { setImageSrc(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                    className="border-zinc-700 hover:bg-zinc-800 text-white"
-                >
+                <Button type="button" variant="outline" size="sm" onClick={reset}
+                    className="border-zinc-700 hover:bg-zinc-800 text-white">
                     Change Photo
                 </Button>
-                <Button
-                    onClick={handleUpload}
-                    disabled={isUploading}
-                    className="flex-1 bg-rose-600 hover:bg-rose-700 text-white"
-                >
-                    {isUploading ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Uploading...</>
-                    ) : (
-                        <><Upload className="w-4 h-4 mr-2" /> Upload & Use</>
-                    )}
+                <Button onClick={handleUpload} disabled={isUploading} className="flex-1 bg-rose-600 hover:bg-rose-700 text-white">
+                    {isUploading
+                        ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading...</>
+                        : <><Upload className="w-4 h-4 mr-2" />Upload & Use</>}
                 </Button>
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
@@ -328,21 +355,13 @@ function PhotoPicker({ userId, onSelect }: {
 // ── Modal shell ───────────────────────────────────────────────────────────────
 
 const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
-    open,
-    onClose,
-    userId,
-    username,
-    currentSeed,
-    onSelect,
+    open, onClose, userId, username, currentSeed, currentStyle, onSelect,
 }) => {
-    const handleSelect = (result: AvatarPickerSelection) => {
-        onSelect(result);
-        onClose();
-    };
+    const handleSelect = (result: AvatarPickerSelection) => { onSelect(result); onClose(); };
 
     return (
         <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-            <DialogContent className="max-w-md bg-[#121214] border-zinc-800 text-white">
+            <DialogContent className="max-w-md bg-[#121214] border-zinc-800 text-white max-h-[90vh] overflow-y-auto" data-lenis-prevent>
                 <DialogHeader>
                     <DialogTitle className="text-lg font-bold">Choose Avatar</DialogTitle>
                 </DialogHeader>
@@ -362,6 +381,7 @@ const AvatarPickerModal: React.FC<AvatarPickerModalProps> = ({
                             userId={userId}
                             username={username}
                             currentSeed={currentSeed}
+                            currentStyle={currentStyle}
                             onSelect={handleSelect}
                         />
                     </TabsContent>

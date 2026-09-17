@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { User, Share2, Loader2, Save, Edit, Globe, MapPin, ShieldCheck, Camera } from "lucide-react";
 import AvatarUploader from "./AvatarUploader";
-import AvatarPickerModal, { type AvatarPickerSelection } from "./AvatarPickerModal";
+import AvatarPickerModal, { type AvatarPickerSelection, type AvatarStyleId, DEFAULT_STYLE } from "./AvatarPickerModal";
 import { getCountryFlag, detectUserCountry, getCountryName, countries, getCountryFlagUrl } from "@/utils/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import EntityAvatar from "@/components/ui/EntityAvatar";
@@ -46,6 +46,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
         bio: "",
         avatar_url: "",
         avatar_seed: "",
+        avatar_style: "" as AvatarStyleId | "",
         card_image_url: "",
         social_links: {
             twitter: "",
@@ -86,6 +87,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                 bio: profile.bio || "",
                 avatar_url: profile.avatar_url || "",
                 avatar_seed: profile.avatar_seed || "",
+                avatar_style: (profile.avatar_style as AvatarStyleId) || "",
                 card_image_url: profile.card_image_url || "",
                 social_links: {
                     twitter: profile.social_links?.twitter || "",
@@ -122,16 +124,16 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
 
     const handleAvatarSelect = (result: AvatarPickerSelection) => {
         if (result.type === 'dicebear') {
-            setFormData(prev => ({ ...prev, avatar_seed: result.seed, avatar_url: '' }));
+            setFormData(prev => ({ ...prev, avatar_seed: result.seed, avatar_style: result.style, avatar_url: '' }));
         } else {
-            setFormData(prev => ({ ...prev, avatar_url: result.avatarUrl, avatar_seed: '' }));
+            setFormData(prev => ({ ...prev, avatar_url: result.avatarUrl, avatar_seed: '', avatar_style: '' }));
         }
     };
 
+    const resolvedStyle = formData.avatar_style || DEFAULT_STYLE;
+    const resolvedSeed  = formData.avatar_seed || profile?.id || '';
     const effectiveAvatarUrl = formData.avatar_url
-        || (formData.avatar_seed
-            ? `https://api.dicebear.com/10.x/critters/svg?seed=${encodeURIComponent(formData.avatar_seed)}`
-            : `https://api.dicebear.com/10.x/critters/svg?seed=${encodeURIComponent(profile?.id || '')}`);
+        || `https://api.dicebear.com/10.x/${resolvedStyle}/svg?seed=${encodeURIComponent(resolvedSeed)}`;
 
     const handleSave = async () => {
         setLoading(true);
@@ -142,6 +144,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                 bio: formData.bio,
                 avatar_url: formData.avatar_url,
                 avatar_seed: formData.avatar_seed,
+                avatar_style: formData.avatar_style,
                 card_image_url: formData.card_image_url,
                 social_links: formData.social_links,
                 riot_tag: formData.riot_tag,
@@ -216,6 +219,7 @@ const EditProfileDialog = ({ open, onOpenChange }: EditProfileDialogProps) => {
                                         userId={profile.id}
                                         username={profile.username}
                                         currentSeed={formData.avatar_seed || null}
+                                        currentStyle={(formData.avatar_style as AvatarStyleId) || null}
                                         onSelect={handleAvatarSelect}
                                     />
                                 )}

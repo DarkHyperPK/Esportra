@@ -8,6 +8,7 @@ export type UserProfile = {
   full_name: string | null;
   avatar_url: string | null;
   avatar_seed?: string | null;
+  avatar_style?: string | null;
   email: string | null;
   role?: UserRole;
   bio?: string | null;
