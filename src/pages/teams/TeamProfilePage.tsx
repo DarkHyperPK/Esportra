@@ -59,41 +59,40 @@ function RoleBadge({ role }: { role: string }) {
 
 function StatTile({ value, label }: { value: string | number; label: string }) {
     return (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5 px-5 py-4 bg-white/[0.03] border border-white/[0.06] rounded-xl min-w-[100px]">
             <span className="text-3xl font-bold text-white tabular-nums">{value}</span>
-            <span className="text-xs text-zinc-500 uppercase tracking-wider">{label}</span>
+            <span className="text-[10px] text-zinc-500 uppercase tracking-widest">{label}</span>
         </div>
     );
 }
 
 function MemberCard({ member }: { member: TeamMember }) {
+    const displayName = member.full_name || member.username;
+    const gameTag = member.riot_tag || `@${member.username}`;
+    const roleLabel = member.role === 'co_captain' ? 'co-captain' : member.role;
+
     return (
         <PlayerHandle userId={member.id}>
-            <div className="flex items-center gap-3 p-4 bg-white/[0.03] border border-white/5 rounded-xl hover:bg-white/[0.06] hover:border-white/10 transition-all cursor-pointer group">
+            <div className="group flex flex-col items-center gap-3 pt-6 pb-4 px-4 bg-white/[0.03] border border-white/[0.07] rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.05] hover:border-violet-500/25 hover:shadow-[0_0_20px_rgba(139,92,246,0.12)]">
                 <EntityAvatar
                     type="user"
                     src={member.avatar_url}
                     name={member.username}
                     entityId={member.id}
-                    size="w-11 h-11"
+                    size="w-16 h-16"
                     shape="circle"
                 />
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-white truncate group-hover:text-white/90">
-                            {member.full_name || member.username}
+                <div className="flex flex-col items-center gap-1 w-full min-w-0 text-center">
+                    <div className="flex items-center justify-center gap-1.5 w-full">
+                        <span className="text-sm font-semibold text-white truncate">
+                            {displayName}
                         </span>
                         <RoleBadge role={member.role} />
                     </div>
-                    {member.riot_tag && (
-                        <p className="text-xs text-zinc-500 truncate mt-0.5">{member.riot_tag}</p>
-                    )}
-                    {!member.riot_tag && (
-                        <p className="text-xs text-zinc-600 truncate mt-0.5">@{member.username}</p>
-                    )}
+                    <p className="text-xs text-zinc-500 truncate w-full">{gameTag}</p>
                 </div>
-                <span className="text-[10px] uppercase tracking-wider text-zinc-600 capitalize shrink-0">
-                    {member.role === 'co_captain' ? 'co-capt' : member.role}
+                <span className="text-[10px] uppercase tracking-widest text-zinc-700">
+                    {roleLabel}
                 </span>
             </div>
         </PlayerHandle>
@@ -188,7 +187,7 @@ export default function TeamProfilePage() {
                 </button>
             </div>
 
-            <div className="max-w-3xl mx-auto px-6 py-10 space-y-10">
+            <div className="px-6 py-10 space-y-10">
                 {loadingTeam ? (
                     <Skeleton />
                 ) : !team ? (
@@ -238,7 +237,7 @@ export default function TeamProfilePage() {
                         </div>
 
                         {/* Stats — system-derived, transparent */}
-                        <div className="flex gap-10 py-6 border-y border-white/5">
+                        <div className="flex gap-3 py-4 border-y border-white/5">
                             <StatTile value={totalTournaments} label="Tournaments" />
                             <StatTile
                                 value={wins > 0 ? wins : '—'}
@@ -258,7 +257,7 @@ export default function TeamProfilePage() {
                                 <span>{team.members.length} members</span>
                             </h2>
                             {team.members.length > 0 ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                                     {team.members.map(member => (
                                         <MemberCard key={member.id} member={member} />
                                     ))}
