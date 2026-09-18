@@ -148,7 +148,7 @@ export function ProfilePeekSheet(): React.JSX.Element {
                 position: 'fixed',
                 inset: 0,
                 background: 'rgba(0,0,0,1)',
-                zIndex: 499,
+                zIndex: 1099,
                 display: 'none',
               }}
               className="peek-mobile-backdrop"
@@ -183,7 +183,7 @@ export function ProfilePeekSheet(): React.JSX.Element {
                 width: 380,
                 background: '#0E0E12',
                 borderLeft: '1px solid rgba(255,255,255,0.08)',
-                zIndex: 500,
+                zIndex: 1100,
                 overflowY: 'auto',
                 flexDirection: 'column',
               }}
@@ -222,7 +222,7 @@ export function ProfilePeekSheet(): React.JSX.Element {
                 background: '#0E0E12',
                 borderTop: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: '12px 12px 0 0',
-                zIndex: 500,
+                zIndex: 1100,
                 overflowY: 'auto',
                 flexDirection: 'column',
                 paddingBottom: 'max(16px, env(safe-area-inset-bottom))',

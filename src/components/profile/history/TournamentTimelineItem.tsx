@@ -38,10 +38,9 @@ function formatPlacement(placement: number | null): {
   return { label, color, isOrdinal: true };
 }
 
-function formatPrize(cents: number | null): string {
-  if (!cents || cents === 0) return '';
-  const dollars = cents / 100;
-  return '$' + dollars.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+function formatPrize(amount: number | null): string {
+  if (!amount || amount === 0) return '';
+  return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 export function TournamentTimelineItem({
@@ -65,7 +64,7 @@ export function TournamentTimelineItem({
       })()
     : '';
 
-  const showPrize = !entry.is_team_tournament && entry.prize_cents && entry.prize_cents > 0;
+  const showPrize = !entry.is_team_tournament && entry.prize_amount && entry.prize_amount > 0;
   const showTrophyOnly = entry.is_team_tournament && entry.placement === 1;
 
   const variants = {
@@ -213,7 +212,7 @@ export function TournamentTimelineItem({
             )}
             {showPrize && (
               <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
-                {formatPrize(entry.prize_cents)}
+                {formatPrize(entry.prize_amount)}
               </span>
             )}
             {/* Date */}

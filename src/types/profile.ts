@@ -57,7 +57,7 @@ export interface TournamentHistoryEntryDto {
   start_date: string | null;
   tournament_status: string | null;
   placement: number | null;
-  prize_cents: number | null;
+  prize_amount: number | null;
   is_team_tournament: boolean;
   team_name: string | null;
   team_logo_url: string | null;
