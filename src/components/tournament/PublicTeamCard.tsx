@@ -5,6 +5,7 @@ import EntityAvatar from '@/components/ui/EntityAvatar';
 import { normalizeStorageUrl } from '@/lib/storage';
 import { resolveSoloEsportraDisplayName } from '@/utils/gameFeatures';
 import { PlayerHandle } from '@/components/profile/PlayerHandle';
+import { usePeekStore } from '@/stores/peekStore';
 
 interface PublicTeamCardProps {
     participant: any;
@@ -12,6 +13,7 @@ interface PublicTeamCardProps {
     game?: string;
     gameMode?: string | null;
     renderStatusBadge?: (participant: any) => React.ReactNode;
+    onTeamClick?: (teamId: string) => void;
 }
 
 function parseTeamMembers(membersInput: unknown): string[] {
@@ -89,15 +91,23 @@ function SoloPlayerCard({
     avatarSrc,
     registeredAt,
     renderStatusBadge,
+    onClick,
 }: {
     participant: any;
     displayName: string;
     avatarSrc?: string | null;
     registeredAt?: string | null;
     renderStatusBadge?: (participant: any) => React.ReactNode;
+    onClick?: () => void;
 }) {
     return (
-        <div className="relative w-full h-[320px]">
+        <div
+            className={`relative w-full h-[320px]${onClick ? ' cursor-pointer' : ''}`}
+            onClick={onClick}
+            role={onClick ? 'button' : undefined}
+            tabIndex={onClick ? 0 : undefined}
+            onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+        >
             <div
                 className="h-[320px] bg-[#09090b] border border-white/10 rounded-xl shadow-2xl flex flex-col overflow-hidden"
                 style={{ fontFamily: "'Poppins', sans-serif" }}
@@ -133,14 +143,17 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({
     participant,
     isSolo = false,
     renderStatusBadge,
+    onTeamClick,
 }) => {
     const [isHovered, setIsHovered] = React.useState(false);
+    const openPeek = usePeekStore((s) => s.openPeek);
 
     const registeredAt = participant.registered_at || participant.created_at;
 
     if (isSolo) {
         const displayName = resolveSoloEsportraDisplayName(participant);
         const avatarSrc = participant.solo_avatar_url || participant.user?.avatar_url || participant.team_logo;
+        const userId: string | undefined = participant.user_id || participant.user?.id;
 
         return (
             <SoloPlayerCard
@@ -149,6 +162,7 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({
                 avatarSrc={avatarSrc}
                 registeredAt={registeredAt}
                 renderStatusBadge={renderStatusBadge}
+                onClick={userId ? () => openPeek(userId) : undefined}
             />
         );
     }
@@ -156,9 +170,20 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({
     const displayName = participant.team_name || 'Unknown Team';
     const avatarSrc = participant.team_logo;
     const members = parseTeamMembers(participant.team_members);
+    const teamId: string | undefined = participant.team_id;
+
+    const handleTeamClick = () => {
+        if (teamId && onTeamClick) onTeamClick(teamId);
+    };
 
     return (
-        <div className="relative w-full h-[320px] z-0">
+        <div
+            className={`relative w-full h-[320px] z-0${teamId && onTeamClick ? ' cursor-pointer' : ''}`}
+            onClick={teamId && onTeamClick ? handleTeamClick : undefined}
+            role={teamId && onTeamClick ? 'button' : undefined}
+            tabIndex={teamId && onTeamClick ? 0 : undefined}
+            onKeyDown={teamId && onTeamClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTeamClick(); } } : undefined}
+        >
             <motion.div
                 className="absolute top-0 left-0 w-full min-h-[320px] bg-[#09090b] border border-white/5 rounded-xl shadow-2xl flex flex-col overflow-hidden group"
                 style={{ fontFamily: "'Poppins', sans-serif" }}
