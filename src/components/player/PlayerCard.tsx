@@ -2,6 +2,7 @@ import React from 'react';
 import { Crown, Camera, ClipboardList, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { PlayerHandle } from '@/components/profile/PlayerHandle';
 
 interface PlayerCardProps {
     member: {
@@ -147,9 +148,11 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser:
                         {/* PLAYER NAME */}
                         <div className="relative mb-3">
                             <div className="absolute -top-3 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                            <h3 className="text-lg font-black uppercase tracking-[0.15em] text-white text-center leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-                                {member.username}
-                            </h3>
+                            <PlayerHandle userId={member.user_id} asSpan>
+                                <h3 className="text-lg font-black uppercase tracking-[0.15em] text-white text-center leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                                    {member.username}
+                                </h3>
+                            </PlayerHandle>
                         </div>
 
                         {/* STATS GRID */}

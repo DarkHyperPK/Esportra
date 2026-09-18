@@ -4,6 +4,7 @@ import { Users } from 'lucide-react';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import { normalizeStorageUrl } from '@/lib/storage';
 import { resolveSoloEsportraDisplayName } from '@/utils/gameFeatures';
+import { PlayerHandle } from '@/components/profile/PlayerHandle';
 
 interface PublicTeamCardProps {
     participant: any;
@@ -202,7 +203,9 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({
 
                             <div className="text-center w-full relative z-10">
                                 <h3 className="text-xl font-bold text-white truncate px-2">
-                                    {displayName}
+                                    {isSolo && participant.user_id ? (
+                                        <PlayerHandle userId={participant.user_id} asSpan>{displayName}</PlayerHandle>
+                                    ) : displayName}
                                 </h3>
                                 {registeredAt && (
                                     <p className="text-sm text-gray-500 mt-1">

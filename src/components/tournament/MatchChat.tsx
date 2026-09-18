@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card } from "@/components/ui/card";
 import { GhostButton } from "@/components/ui/app-buttons";
+import { PlayerHandle } from '@/components/profile/PlayerHandle';
 
 import { MessageCircle, Send, Maximize2, ChevronDown, ShieldCheck, WifiOff, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -198,7 +199,13 @@ const MatchChat: React.FC<MatchChatProps> = ({
                                 <div className={`flex flex-col max-w-[78%] min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
                                     {isFirstInGroup && (
                                         <span className="text-[11px] text-zinc-600 mb-1 px-1">
-                                            {isMe ? 'You' : msg.sender_name}
+                                            {isMe ? 'You' : (
+                                                msg.sender_id ? (
+                                                    <PlayerHandle userId={msg.sender_id} asSpan>
+                                                        {msg.sender_name}
+                                                    </PlayerHandle>
+                                                ) : msg.sender_name
+                                            )}
                                             {msg.is_organizer && (
                                                 <span className="inline-flex items-center gap-0.5 text-zinc-500 ml-1">
                                                     <ShieldCheck className="w-3 h-3" />

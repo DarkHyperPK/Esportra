@@ -27,6 +27,10 @@ export type UserProfile = {
   suspension_until?: string | null;
   suspension_reason?: string | null;
   suspension_type?: string | null;
+  privacy_settings?: {
+    show_riot_account: boolean;
+    show_steam_account: boolean;
+  } | null;
 };
 
 export type AuthContextType = {

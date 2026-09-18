@@ -19,6 +19,7 @@ import { ProfileCompletionPrompt } from "@/components/profile/ProfileCompletionP
 import { TournamentInvitePrompt } from "@/components/tournament/TournamentInvitePrompt";
 import { AvatarFeatureAnnouncement } from "@/components/announcements/AvatarFeatureAnnouncement";
 import { useGlobalSmoothScroll } from "@/hooks/useGlobalSmoothScroll";
+import { ProfilePeekSheet } from "@/components/profile/peek/ProfilePeekSheet";
 
 import { PremiumLoadingScreen } from "@/components/ui/PremiumLoadingScreen";
 
@@ -54,6 +55,7 @@ function BRGameRoomLegacyRedirect() {
 }
 
 // Lazy Load Pages
+const ProfilePage = lazyWithRetry(() => import("./pages/profile/ProfilePage"));
 const Index = lazyWithRetry(() => import("./pages/Index"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Unauthorized = lazyWithRetry(() => import("./pages/Unauthorized"));
@@ -242,6 +244,8 @@ const AppContent = React.memo(() => {
         </div>
       )}
 
+      {/* ProfilePeekSheet: global overlay, mounted once at app root, outside all routes */}
+      <ProfilePeekSheet />
       <Toaster />
       <Sonner />
       <GhostModeBanner />
@@ -499,6 +503,8 @@ const AppContent = React.memo(() => {
                   </ProtectedRoute>
                 } />
                 <Route path="/tournaments" element={<BrowseTournaments />} />
+                {/* Public player profile — no auth required */}
+                <Route path="/profile/:username" element={<ProfilePage />} />
                 <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
                 <Route path="/invitations/redeem" element={<RedeemInvitePage />} />
                 <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />

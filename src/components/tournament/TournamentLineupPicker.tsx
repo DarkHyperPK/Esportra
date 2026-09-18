@@ -1,6 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { getRosterLimits } from '@/utils/gameFeatures';
+import { PlayerHandle } from '@/components/profile/PlayerHandle';
 import {
   resolveMemberRosterRole,
   type TournamentLineupSelection,
@@ -80,7 +81,7 @@ const TournamentLineupPicker: React.FC<TournamentLineupPickerProps> = ({
                 </div>
                 <div className="min-w-0">
                   <span className="text-sm text-white font-medium flex items-center gap-1.5 truncate">
-                    {displayName}
+                    <PlayerHandle userId={member.user_id} asSpan>{displayName}</PlayerHandle>
                     {member.is_captain && (
                       <Badge className="bg-[#1a1a1a] text-blue-400 border-blue-500/20 text-[8px] h-3.5 px-1 uppercase">
                         Cap

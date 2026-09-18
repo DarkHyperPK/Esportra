@@ -9,7 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { User, Share2, Loader2, Save, Edit, Globe, MapPin, ShieldCheck, Camera } from "lucide-react";
+import { User, Share2, Loader2, Save, Edit, Globe, MapPin, ShieldCheck, Camera, Lock } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
 import AvatarUploader from "./AvatarUploader";
 import AvatarPickerModal from "./AvatarPickerModal";
 import { type AvatarPickerSelection, type AvatarStyleId, DEFAULT_STYLE } from "./avatarStyles";
@@ -26,11 +28,18 @@ interface EditProfileDialogProps {
 const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditProfileDialogProps) => {
     const { profile, updateProfile } = useAuth();
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [detecting, setDetecting] = useState(false);
     const [detectionFailed, setDetectionFailed] = useState(false);
     const [showManualSelector, setShowManualSelector] = useState(false);
     const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+
+    const [privacySettings, setPrivacySettings] = useState({
+        show_riot_account: true,
+        show_steam_account: true,
+    });
+    const [privacySaving, setPrivacySaving] = useState(false);
 
     const teamQuery = useQuery({
         queryKey: ['my-teams'],
@@ -110,6 +119,11 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
             country_code: profile.country_code || ""
         });
 
+        setPrivacySettings({
+            show_riot_account: profile.privacy_settings?.show_riot_account ?? true,
+            show_steam_account: profile.privacy_settings?.show_steam_account ?? true,
+        });
+
         if (!profile.country_code) handleAutodetect();
         if (autoOpenAvatarPicker) setAvatarPickerOpen(true);
     }, [open, profile, handleAutodetect, autoOpenAvatarPicker]);
@@ -126,6 +140,22 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
                 [key]: value
             }
         }));
+    };
+
+    const handlePrivacyToggle = async (field: 'show_riot_account' | 'show_steam_account', value: boolean) => {
+        const updated = { ...privacySettings, [field]: value };
+        setPrivacySettings(updated);
+        setPrivacySaving(true);
+        try {
+            await apiClient.put('/api/profiles/me/privacy', updated);
+            toast({ title: 'Privacy settings saved' });
+        } catch (error) {
+            console.error('Failed to save privacy settings', error);
+            setPrivacySettings((prev) => ({ ...prev, [field]: !value }));
+            toast({ title: 'Failed to save', variant: 'destructive' });
+        } finally {
+            setPrivacySaving(false);
+        }
     };
 
     const handleAvatarSelect = (result: AvatarPickerSelection) => {
@@ -188,6 +218,9 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
                                 </TabsTrigger>
                                 <TabsTrigger value="socials" className="flex-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-rose-500">
                                     <Share2 className="w-4 h-4 mr-2" /> Socials
+                                </TabsTrigger>
+                                <TabsTrigger value="privacy" className="flex-1 data-[state=active]:bg-zinc-800 data-[state=active]:text-rose-500">
+                                    <Lock className="w-4 h-4 mr-2" /> Privacy
                                 </TabsTrigger>
                             </TabsList>
                         </div>
@@ -438,6 +471,43 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
                                                 placeholder="username"
                                             />
                                         </div>
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="privacy" className="space-y-6 mt-0">
+                                <div className="space-y-1 border-b border-zinc-800 pb-4">
+                                    <h3 className="text-sm font-medium text-gray-300">Account Visibility</h3>
+                                    <p className="text-xs text-gray-500">
+                                        Control which linked accounts appear on your public profile.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-0 divide-y divide-zinc-800/60">
+                                    <div className="flex items-center justify-between py-4">
+                                        <div className="space-y-0.5">
+                                            <p className="text-sm text-gray-200">Riot account</p>
+                                            <p className="text-xs text-gray-500">Show on public profile</p>
+                                        </div>
+                                        <Switch
+                                            checked={privacySettings.show_riot_account}
+                                            onCheckedChange={(checked) => handlePrivacyToggle('show_riot_account', checked)}
+                                            disabled={privacySaving}
+                                            aria-label="Show Riot account on public profile"
+                                        />
+                                    </div>
+
+                                    <div className="flex items-center justify-between py-4">
+                                        <div className="space-y-0.5">
+                                            <p className="text-sm text-gray-200">Steam account</p>
+                                            <p className="text-xs text-gray-500">Show on public profile</p>
+                                        </div>
+                                        <Switch
+                                            checked={privacySettings.show_steam_account}
+                                            onCheckedChange={(checked) => handlePrivacyToggle('show_steam_account', checked)}
+                                            disabled={privacySaving}
+                                            aria-label="Show Steam account on public profile"
+                                        />
                                     </div>
                                 </div>
                             </TabsContent>
