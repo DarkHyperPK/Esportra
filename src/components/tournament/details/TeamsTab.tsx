@@ -60,6 +60,7 @@ export const TeamsTab: React.FC<TeamsTabProps> = ({ participants, isSolo = false
             <TeamDetailSheet
                 teamId={selectedTeamId}
                 onClose={() => setSelectedTeamId(null)}
+                game={game}
             />
             {visibleParticipants.length === 0 ? (
                 <div className="min-h-[400px] flex items-center justify-center border border-dashed border-white/10 rounded-2xl bg-[#121214]">

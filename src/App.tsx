@@ -56,6 +56,7 @@ function BRGameRoomLegacyRedirect() {
 
 // Lazy Load Pages
 const ProfilePage = lazyWithRetry(() => import("./pages/profile/ProfilePage"));
+const TeamProfilePage = lazyWithRetry(() => import("./pages/teams/TeamProfilePage"));
 const Index = lazyWithRetry(() => import("./pages/Index"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Unauthorized = lazyWithRetry(() => import("./pages/Unauthorized"));
@@ -505,6 +506,7 @@ const AppContent = React.memo(() => {
                 <Route path="/tournaments" element={<BrowseTournaments />} />
                 {/* Public player profile — no auth required */}
                 <Route path="/profile/:username" element={<ProfilePage />} />
+                <Route path="/teams/:id" element={<TeamProfilePage />} />
                 <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
                 <Route path="/invitations/redeem" element={<RedeemInvitePage />} />
                 <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />

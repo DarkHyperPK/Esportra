@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { Crown, Shield } from 'lucide-react';
+import { Crown, Shield, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
     Dialog,
     DialogContent,
@@ -25,12 +26,29 @@ interface TeamDetail {
     tag: string | null;
     logo_url: string | null;
     description: string | null;
+    game: string | null;
     members: TeamMember[];
 }
 
 interface TeamDetailSheetProps {
     teamId: string | null;
     onClose: () => void;
+    game?: string;
+}
+
+const RIOT_GAMES = ['valorant', 'league of legends', 'league', 'tft', 'teamfight tactics', 'wild rift'];
+
+function isRiotGame(game?: string): boolean {
+    if (!game) return false;
+    const lower = game.toLowerCase();
+    return RIOT_GAMES.some(g => lower.includes(g));
+}
+
+function getMemberTag(member: TeamMember, game?: string): { label: string; value: string } | null {
+    if (member.riot_tag && isRiotGame(game)) {
+        return { label: 'Riot ID', value: member.riot_tag };
+    }
+    return null;
 }
 
 function RoleBadge({ role }: { role: string }) {
@@ -43,7 +61,9 @@ function RoleBadge({ role }: { role: string }) {
     return null;
 }
 
-function MemberRow({ member }: { member: TeamMember }) {
+function MemberRow({ member, game }: { member: TeamMember; game?: string }) {
+    const tag = getMemberTag(member, game);
+
     return (
         <PlayerHandle userId={member.id}>
             <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer">
@@ -63,7 +83,7 @@ function MemberRow({ member }: { member: TeamMember }) {
                         <RoleBadge role={member.role} />
                     </div>
                     <p className="text-xs text-zinc-500 truncate">
-                        {member.riot_tag ? member.riot_tag : `@${member.username}`}
+                        {tag ? tag.value : `@${member.username}`}
                     </p>
                 </div>
                 <span className="text-[10px] uppercase tracking-wider text-zinc-600 capitalize shrink-0">
@@ -98,7 +118,9 @@ function Skeleton() {
     );
 }
 
-export function TeamDetailSheet({ teamId, onClose }: TeamDetailSheetProps) {
+export function TeamDetailSheet({ teamId, onClose, game }: TeamDetailSheetProps) {
+    const navigate = useNavigate();
+
     const { data: team, isLoading, isError } = useQuery<TeamDetail>({
         queryKey: ['team-detail', teamId],
         queryFn: async () => {
@@ -112,10 +134,18 @@ export function TeamDetailSheet({ teamId, onClose }: TeamDetailSheetProps) {
         staleTime: 30_000,
     });
 
+    const effectiveGame = game || team?.game || undefined;
+
+    const handleViewProfile = () => {
+        onClose();
+        navigate(`/teams/${teamId}`);
+    };
+
     return (
         <Dialog open={!!teamId} onOpenChange={(open) => { if (!open) onClose(); }}>
             <DialogContent className="sm:max-w-md bg-[#0f0f11] border border-white/10 text-white p-0 overflow-hidden">
-                <div className="p-6 pb-0">
+                {/* Header */}
+                <div className="p-6 pb-4">
                     <DialogHeader>
                         {isLoading || !team ? (
                             <div className="h-5 w-32 bg-white/10 rounded animate-pulse" />
@@ -145,18 +175,17 @@ export function TeamDetailSheet({ teamId, onClose }: TeamDetailSheetProps) {
                     </DialogHeader>
 
                     {!isLoading && team?.description && (
-                        <p className="text-sm text-zinc-400 mt-3 leading-relaxed">
+                        <p className="text-sm text-zinc-400 mt-3 leading-relaxed line-clamp-2">
                             {team.description}
                         </p>
                     )}
                 </div>
 
-                <div className="h-px bg-white/5 mx-6 my-4" />
+                <div className="h-px bg-white/5" />
 
-                <div className="px-3 pb-4">
-                    <p className="text-[10px] text-zinc-600 uppercase tracking-widest px-3 mb-2">
-                        Roster
-                    </p>
+                {/* Roster */}
+                <div className="px-3 py-4 max-h-[340px] overflow-y-auto">
+                    <p className="text-[10px] text-zinc-600 uppercase tracking-widest px-3 mb-2">Roster</p>
 
                     {isLoading && <Skeleton />}
 
@@ -170,7 +199,7 @@ export function TeamDetailSheet({ teamId, onClose }: TeamDetailSheetProps) {
                         team.members.length > 0 ? (
                             <div className="space-y-0.5">
                                 {team.members.map((member) => (
-                                    <MemberRow key={member.id} member={member} />
+                                    <MemberRow key={member.id} member={member} game={effectiveGame} />
                                 ))}
                             </div>
                         ) : (
@@ -180,6 +209,22 @@ export function TeamDetailSheet({ teamId, onClose }: TeamDetailSheetProps) {
                         )
                     )}
                 </div>
+
+                {/* Footer — View Team Profile */}
+                {team && !isLoading && (
+                    <>
+                        <div className="h-px bg-white/5" />
+                        <div className="p-4">
+                            <button
+                                onClick={handleViewProfile}
+                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] transition-colors text-sm font-medium text-white"
+                            >
+                                <ExternalLink className="w-4 h-4 text-zinc-400" />
+                                View Team Profile
+                            </button>
+                        </div>
+                    </>
+                )}
             </DialogContent>
         </Dialog>
     );

@@ -1,10 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Users } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import { normalizeStorageUrl } from '@/lib/storage';
 import { resolveSoloEsportraDisplayName } from '@/utils/gameFeatures';
-import { PlayerHandle } from '@/components/profile/PlayerHandle';
 import { usePeekStore } from '@/stores/peekStore';
 
 interface PublicTeamCardProps {
@@ -50,20 +48,12 @@ function getInitials(value: string): string {
     return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase();
 }
 
-function SoloPlayerAvatar({
-    src,
-    name,
-}: {
-    src?: string | null;
-    name: string;
-}) {
+function SoloPlayerAvatar({ src, name }: { src?: string | null; name: string }) {
     const [imgError, setImgError] = useState(false);
     const resolvedSrc = normalizeStorageUrl(src);
     const initials = useMemo(() => getInitials(name), [name]);
 
-    useEffect(() => {
-        setImgError(false);
-    }, [src]);
+    useEffect(() => { setImgError(false); }, [src]);
 
     if (!resolvedSrc || imgError) {
         return (
@@ -85,56 +75,11 @@ function SoloPlayerAvatar({
     );
 }
 
-function SoloPlayerCard({
-    participant,
-    displayName,
-    avatarSrc,
-    registeredAt,
-    renderStatusBadge,
-    onClick,
-}: {
-    participant: any;
-    displayName: string;
-    avatarSrc?: string | null;
-    registeredAt?: string | null;
-    renderStatusBadge?: (participant: any) => React.ReactNode;
-    onClick?: () => void;
-}) {
+function HoverHint({ label }: { label: string }) {
     return (
-        <div
-            className={`relative w-full h-[320px]${onClick ? ' cursor-pointer' : ''}`}
-            onClick={onClick}
-            role={onClick ? 'button' : undefined}
-            tabIndex={onClick ? 0 : undefined}
-            onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
-        >
-            <div
-                className="h-[320px] bg-[#09090b] border border-white/10 rounded-xl shadow-2xl flex flex-col overflow-hidden"
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-            >
-                <div className="p-6 flex flex-col items-center justify-center h-full gap-4 relative">
-                    {renderStatusBadge && (
-                        <div className="absolute top-3 left-3 z-10 scale-90 origin-top-left">
-                            {renderStatusBadge(participant)}
-                        </div>
-                    )}
-
-                    <div className="flex h-28 w-full shrink-0 items-center justify-center overflow-hidden px-4">
-                        <SoloPlayerAvatar src={avatarSrc} name={displayName} />
-                    </div>
-
-                    <div className="text-center w-full">
-                        <h3 className="text-xl font-bold text-white truncate px-2">
-                            {displayName}
-                        </h3>
-                        {registeredAt && (
-                            <p className="text-sm text-gray-500 mt-1">
-                                {new Date(registeredAt).toLocaleDateString()}
-                            </p>
-                        )}
-                    </div>
-                </div>
-            </div>
+        <div className="absolute inset-x-0 bottom-0 h-11 flex items-center justify-center gap-1.5 bg-gradient-to-t from-violet-950/90 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-200 ease-out rounded-b-xl pointer-events-none">
+            <span className="text-xs font-medium text-violet-300">{label}</span>
+            <ChevronRight className="w-3.5 h-3.5 text-violet-300" />
         </div>
     );
 }
@@ -145,7 +90,6 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({
     renderStatusBadge,
     onTeamClick,
 }) => {
-    const [isHovered, setIsHovered] = React.useState(false);
     const openPeek = usePeekStore((s) => s.openPeek);
 
     const registeredAt = participant.registered_at || participant.created_at;
@@ -156,14 +100,40 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({
         const userId: string | undefined = participant.user_id || participant.user?.id;
 
         return (
-            <SoloPlayerCard
-                participant={participant}
-                displayName={displayName}
-                avatarSrc={avatarSrc}
-                registeredAt={registeredAt}
-                renderStatusBadge={renderStatusBadge}
+            <div
+                className={`relative w-full h-[280px] overflow-hidden${userId ? ' cursor-pointer group' : ''}`}
                 onClick={userId ? () => openPeek(userId) : undefined}
-            />
+                role={userId ? 'button' : undefined}
+                tabIndex={userId ? 0 : undefined}
+                onKeyDown={userId ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPeek(userId); } } : undefined}
+            >
+                <div className="h-full bg-[#09090b] border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-colors duration-200 group-hover:border-white/20">
+                    {renderStatusBadge && (
+                        <div className="absolute top-3 left-3 z-10 scale-90 origin-top-left">
+                            {renderStatusBadge(participant)}
+                        </div>
+                    )}
+
+                    <div className="p-6 flex flex-col items-center justify-center h-full gap-4 relative">
+                        <div className="flex h-28 w-full shrink-0 items-center justify-center overflow-hidden px-4">
+                            <SoloPlayerAvatar src={avatarSrc} name={displayName} />
+                        </div>
+
+                        <div className="text-center w-full">
+                            <h3 className="text-xl font-bold text-white truncate px-2" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                                {displayName}
+                            </h3>
+                            {registeredAt && (
+                                <p className="text-sm text-gray-500 mt-1">
+                                    {new Date(registeredAt).toLocaleDateString()}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    {userId && <HoverHint label="View Profile" />}
+                </div>
+            </div>
         );
     }
 
@@ -171,115 +141,57 @@ export const PublicTeamCard: React.FC<PublicTeamCardProps> = ({
     const avatarSrc = participant.team_logo;
     const members = parseTeamMembers(participant.team_members);
     const teamId: string | undefined = participant.team_id;
-
-    const handleTeamClick = () => {
-        if (teamId && onTeamClick) onTeamClick(teamId);
-    };
+    const isClickable = !!(teamId && onTeamClick);
 
     return (
         <div
-            className={`relative w-full h-[320px] z-0${teamId && onTeamClick ? ' cursor-pointer' : ''}`}
-            onClick={teamId && onTeamClick ? handleTeamClick : undefined}
-            role={teamId && onTeamClick ? 'button' : undefined}
-            tabIndex={teamId && onTeamClick ? 0 : undefined}
-            onKeyDown={teamId && onTeamClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTeamClick(); } } : undefined}
+            className={`relative w-full h-[280px] overflow-hidden${isClickable ? ' cursor-pointer group' : ''}`}
+            onClick={isClickable ? () => onTeamClick!(teamId!) : undefined}
+            role={isClickable ? 'button' : undefined}
+            tabIndex={isClickable ? 0 : undefined}
+            onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTeamClick!(teamId!); } } : undefined}
+            style={{ fontFamily: "'Poppins', sans-serif" }}
         >
-            <motion.div
-                className="absolute top-0 left-0 w-full min-h-[320px] bg-[#09090b] border border-white/5 rounded-xl shadow-2xl flex flex-col overflow-hidden group"
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-                initial={false}
-                animate={{
-                    height: isHovered ? 'auto' : '320px',
-                    zIndex: isHovered ? 50 : 1,
-                    borderColor: isHovered ? 'rgba(124, 58, 237, 0.5)' : 'rgba(255, 255, 255, 0.1)',
-                }}
-                transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-            >
-                <AnimatePresence mode="wait">
-                    {!isHovered ? (
-                        <motion.div
-                            key="front"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="p-6 flex flex-col items-center justify-center h-[320px] gap-3 relative"
-                        >
-                            {renderStatusBadge && (
-                                <div className="absolute top-3 left-3 z-10 scale-90 origin-top-left">
-                                    {renderStatusBadge(participant)}
-                                </div>
-                            )}
+            <div className="h-full bg-[#09090b] border border-white/10 rounded-xl shadow-2xl overflow-hidden transition-colors duration-200 group-hover:border-white/20">
+                {renderStatusBadge && (
+                    <div className="absolute top-3 left-3 z-10 scale-90 origin-top-left">
+                        {renderStatusBadge(participant)}
+                    </div>
+                )}
 
-                            <div className="relative w-24 h-24 flex items-center justify-center mb-2">
-                                <EntityAvatar
-                                    type="team"
-                                    src={avatarSrc}
-                                    name={displayName}
-                                    entityId={participant.team_id || participant.user_id || participant.id}
-                                    size="w-24 h-24"
-                                    className="border border-white/10 bg-white/[0.03] p-1.5"
-                                    imgClassName="object-contain filter drop-shadow-md"
-                                    fallbackClassName="text-xl tracking-wider"
-                                />
-                            </div>
+                <div className="p-6 flex flex-col items-center justify-center h-full gap-3 relative">
+                    <div className="relative w-20 h-20 flex items-center justify-center mb-1">
+                        <EntityAvatar
+                            type="team"
+                            src={avatarSrc}
+                            name={displayName}
+                            entityId={participant.team_id || participant.user_id || participant.id}
+                            size="w-20 h-20"
+                            className="border border-white/10 bg-white/[0.03] p-1.5"
+                            imgClassName="object-contain filter drop-shadow-md"
+                            fallbackClassName="text-xl tracking-wider"
+                        />
+                    </div>
 
-                            <div className="text-center w-full relative z-10">
-                                <h3 className="text-xl font-bold text-white truncate px-2">
-                                    {isSolo && participant.user_id ? (
-                                        <PlayerHandle userId={participant.user_id} asSpan>{displayName}</PlayerHandle>
-                                    ) : displayName}
-                                </h3>
-                                {registeredAt && (
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        {new Date(registeredAt).toLocaleDateString()}
-                                    </p>
-                                )}
-                            </div>
-                        </motion.div>
-                    ) : (
-                        <motion.div
-                            key="back"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="p-6 flex flex-col h-full bg-[#09090b]"
-                        >
-                            <div className="flex items-center justify-center gap-2 mb-6 pt-2">
-                                <Users className="w-5 h-5 text-purple-400" />
-                                <h4 className="text-lg font-bold text-white tracking-wide uppercase">
-                                    ROSTER
-                                </h4>
-                            </div>
+                    <div className="text-center w-full">
+                        <h3 className="text-lg font-bold text-white truncate px-2">
+                            {displayName}
+                        </h3>
+                        {members.length > 0 && (
+                            <p className="text-xs text-zinc-500 mt-1">
+                                {members.length} member{members.length !== 1 ? 's' : ''}
+                            </p>
+                        )}
+                        {registeredAt && (
+                            <p className="text-xs text-zinc-600 mt-0.5">
+                                {new Date(registeredAt).toLocaleDateString()}
+                            </p>
+                        )}
+                    </div>
+                </div>
 
-                            <div className="flex flex-col gap-3 px-2 pb-6">
-                                {members.length > 0 ? (
-                                    members.slice(0, 5).map((member, idx) => (
-                                        <div key={idx} className="flex items-baseline gap-3 text-white font-medium text-lg">
-                                            <span className="text-gray-500 text-sm font-normal w-4 text-right">{idx + 1}.</span>
-                                            <span className="truncate">{member}</span>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-sm text-gray-500 italic text-center py-4">
-                                        No members listed
-                                    </p>
-                                )}
-                                {members.length > 5 && (
-                                    <p className="text-xs text-gray-500 text-center italic mt-1">
-                                        + {members.length - 5} more
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="absolute bottom-0 left-0 w-full h-1 bg-rose-500" />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </motion.div>
+                {isClickable && <HoverHint label="View Roster" />}
+            </div>
         </div>
     );
 };
