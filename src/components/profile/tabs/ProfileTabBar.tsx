@@ -29,7 +29,9 @@ export function ProfileTabBar({ activeTab, onTabChange, accentColor }: ProfileTa
         .profile-tab-bar {
           position: sticky;
           top: 0;
-          background: #0E0E12;
+          background: rgba(14,14,18,0.7);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
           z-index: 50;
           border-bottom: 1px solid rgba(255,255,255,0.06);
         }
