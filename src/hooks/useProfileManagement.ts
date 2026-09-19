@@ -6,7 +6,7 @@ import { normalizeProfileFromApi } from '@/utils/profileFields';
 const ALLOWED_FIELDS = [
   'username', 'full_name', 'avatar_url', 'avatar_seed', 'avatar_style', 'bio',
   'riot_tag', 'steam_tag', 'phone', 'location',
-  'social_links', 'card_image_url', 'country_code', 'date_of_birth',
+  'social_links', 'card_image_url', 'banner_url', 'country_code', 'date_of_birth',
 ] as const;
 
 export const useProfileManagement = () => {
@@ -14,10 +14,11 @@ export const useProfileManagement = () => {
 
   const updateProfile = async (updates: Partial<UserProfile>, userId: string): Promise<UserProfile> => {
     // Filter to allowed fields
+    const CLEARABLE = new Set(['banner_url', 'card_image_url', 'avatar_url']);
     const valid: Record<string, unknown> = {};
     const source = updates as Partial<Record<(typeof ALLOWED_FIELDS)[number], unknown>>;
     for (const key of ALLOWED_FIELDS) {
-      if (source[key] !== undefined && source[key] !== null)
+      if (source[key] !== undefined && (source[key] !== null || CLEARABLE.has(key)))
         valid[key] = source[key];
     }
 

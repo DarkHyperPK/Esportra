@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type ChangeEvent } from "react";
 import { apiClient } from "@/lib/apiClient";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { User, Share2, Loader2, Save, Edit, Globe, MapPin, ShieldCheck, Camera, Lock } from "lucide-react";
+import { User, Share2, Loader2, Save, Edit, Globe, MapPin, ShieldCheck, Camera, Lock, ImageIcon, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import AvatarUploader from "./AvatarUploader";
@@ -34,6 +34,8 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
     const [detectionFailed, setDetectionFailed] = useState(false);
     const [showManualSelector, setShowManualSelector] = useState(false);
     const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+    const [bannerUploading, setBannerUploading] = useState(false);
+    const bannerInputRef = useRef<HTMLInputElement>(null);
 
     const [privacySettings, setPrivacySettings] = useState({
         show_riot_account: true,
@@ -56,6 +58,7 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
         username: "",
         full_name: "",
         bio: "",
+        banner_url: "",
         avatar_url: "",
         avatar_seed: "",
         avatar_style: "" as AvatarStyleId | "",
@@ -103,6 +106,7 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
             username: profile.username || "",
             full_name: profile.full_name || "",
             bio: profile.bio || "",
+            banner_url: profile.banner_url || "",
             avatar_url: profile.avatar_url || "",
             avatar_seed: profile.avatar_seed || "",
             avatar_style: (profile.avatar_style as AvatarStyleId) || "",
@@ -166,6 +170,26 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
         }
     };
 
+    const handleBannerChange = async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !profile?.id) return;
+        setBannerUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('bucket', 'users.banners');
+            fd.append('folder', `banners/${profile.id}`);
+            const { url } = await apiClient.upload<{ url: string }>('/api/storage/upload', fd);
+            setFormData(prev => ({ ...prev, banner_url: url }));
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Upload failed';
+            toast({ title: 'Banner upload failed', description: msg, variant: 'destructive' });
+        } finally {
+            setBannerUploading(false);
+            if (bannerInputRef.current) bannerInputRef.current.value = '';
+        }
+    };
+
     const effectiveAvatarUrl = formData.avatar_url
         || (formData.avatar_seed
             ? `https://api.dicebear.com/10.x/${formData.avatar_style || DEFAULT_STYLE}/svg?seed=${encodeURIComponent(formData.avatar_seed)}`
@@ -178,6 +202,7 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
                 username: formData.username,
                 full_name: formData.full_name,
                 bio: formData.bio,
+                banner_url: formData.banner_url || null,
                 avatar_url: formData.avatar_url,
                 avatar_seed: formData.avatar_seed,
                 avatar_style: formData.avatar_style,
@@ -227,6 +252,48 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
 
                         <div className="p-6 flex-1">
                             <TabsContent value="general" className="space-y-6 mt-0">
+                                {/* Banner upload */}
+                                <div className="space-y-2">
+                                    <Label className="flex items-center gap-2"><ImageIcon className="w-4 h-4 text-rose-500" /> Profile Banner</Label>
+                                    <div className="relative rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900/40" style={{ height: 100 }}>
+                                        {formData.banner_url ? (
+                                            <img src={formData.banner_url} alt="Banner" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full bg-gradient-to-br from-zinc-900 to-zinc-800 flex items-center justify-center">
+                                                <span className="text-xs text-zinc-600">No banner set</span>
+                                            </div>
+                                        )}
+                                        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/40 opacity-0 hover:opacity-100 transition-opacity">
+                                            <button
+                                                type="button"
+                                                onClick={() => bannerInputRef.current?.click()}
+                                                disabled={bannerUploading}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 hover:bg-rose-400 text-white text-xs font-semibold rounded-md transition-colors disabled:opacity-50"
+                                            >
+                                                {bannerUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
+                                                {bannerUploading ? 'Uploading…' : 'Upload'}
+                                            </button>
+                                            {formData.banner_url && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFormData(prev => ({ ...prev, banner_url: '' }))}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-semibold rounded-md transition-colors"
+                                                >
+                                                    <X className="w-3 h-3" /> Remove
+                                                </button>
+                                            )}
+                                        </div>
+                                        <input
+                                            ref={bannerInputRef}
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp,image/avif"
+                                            className="hidden"
+                                            onChange={handleBannerChange}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-500">Hover the banner to upload. Recommended: 1500×500px, JPEG/PNG.</p>
+                                </div>
+
                                 <div className="flex flex-col items-center justify-center mb-6">
                                     <button
                                         type="button"

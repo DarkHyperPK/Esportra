@@ -13,6 +13,7 @@ export type UserProfile = {
   role?: UserRole;
   bio?: string | null;
   social_links?: any | null; // using any for flexibility with JSONB
+  banner_url?: string | null;
   card_image_url?: string | null;
   riot_tag?: string | null;
   steam_tag?: string | null;
