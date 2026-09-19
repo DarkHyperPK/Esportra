@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { useReducedMotion } from 'framer-motion';
 import type { PublicProfileDto, UserStatsDto, LinkedAccountsDto } from '@/types/profile';
 import { TournamentTimelineItem } from '@/components/profile/history/TournamentTimelineItem';
+import { SocialLinks } from '@/components/profile/sidebar/SocialLinks';
 import { useAccentColor } from '@/hooks/useAccentColor';
 import { format, parseISO } from 'date-fns';
 import { getCountryFlag } from '@/utils/countries';
@@ -39,6 +40,15 @@ export function ProfilePeekContent({
 
   const hasLinkedAccounts = !!linkedAccounts.riot || !!linkedAccounts.steam || !!linkedAccounts.discord;
   const hasBio = !!profile.bio;
+  const hasSocials = !!(
+    profile.social_links && (
+      profile.social_links.twitter ||
+      profile.social_links.twitch ||
+      profile.social_links.youtube ||
+      profile.social_links.instagram ||
+      profile.social_links.discord_handle
+    )
+  );
 
   const memberSince = (() => {
     try { return format(parseISO(profile.created_at), 'MMM yyyy'); }
@@ -283,6 +293,11 @@ export function ProfilePeekContent({
               </div>
             )}
           </div>
+        )}
+
+        {/* Social links */}
+        {hasSocials && profile.social_links && (
+          <SocialLinks socials={profile.social_links} />
         )}
 
         {/* View full profile CTA */}
