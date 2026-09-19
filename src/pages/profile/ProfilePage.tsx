@@ -235,7 +235,7 @@ export default function ProfilePage(): React.JSX.Element {
 
   return (
     <div
-      style={{ minHeight: '100vh', background: '#0E0E12', color: '#FFFFFF', position: 'relative', overflowX: 'hidden' }}
+      style={{ minHeight: '100vh', background: '#0E0E12', color: '#FFFFFF', position: 'relative', overflowX: 'hidden', paddingBottom: 80 }}
     >
       {/* Signature background — grid + noise + rose glow blobs */}
       <div className="fixed inset-0 pointer-events-none z-0">
