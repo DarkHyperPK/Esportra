@@ -84,6 +84,16 @@ export default function ProfilePage(): React.JSX.Element {
     linkedQuery.data ?? null,
   );
 
+  const isOwner = !!authProfile && authProfile.username === username;
+
+  const bannerPositionMutation = useMutation({
+    mutationFn: (focalY: number) =>
+      apiClient.put('/api/profiles/me/banner-position', { focal_y: focalY }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['public-profile-by-username', username] });
+    },
+  });
+
   // Loading state
   if (profileQuery.isLoading) {
     return (
@@ -177,15 +187,6 @@ export default function ProfilePage(): React.JSX.Element {
   }
 
   const profile = profileQuery.data!;
-  const isOwner = !!authProfile && authProfile.username === username;
-
-  const bannerPositionMutation = useMutation({
-    mutationFn: (focalY: number) =>
-      apiClient.put('/api/profiles/me/banner-position', { focal_y: focalY }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['public-profile-by-username', username] });
-    },
-  });
 
   const stats = statsQuery.data ?? { statistics: null, achievements: [], placement_achievements: [], verified_role: null, achievements_count: 0 };
   const linkedAccounts = linkedQuery.data ?? null;
