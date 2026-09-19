@@ -13,6 +13,7 @@ import type {
 } from '@/types/profile';
 import { useAccentColor } from '@/hooks/useAccentColor';
 import { useAuth } from '@/hooks/useAuth';
+import Footer from '@/components/Footer';
 import { ProfileHero } from '@/components/profile/hero/ProfileHero';
 import { ProfileSidebar } from '@/components/profile/sidebar/ProfileSidebar';
 import { ProfileTabBar, type ProfileTab } from '@/components/profile/tabs/ProfileTabBar';
@@ -235,7 +236,7 @@ export default function ProfilePage(): React.JSX.Element {
 
   return (
     <div
-      style={{ minHeight: '100vh', background: '#0E0E12', color: '#FFFFFF', position: 'relative', overflowX: 'hidden', paddingBottom: 80 }}
+      style={{ minHeight: '100vh', background: '#0E0E12', color: '#FFFFFF', position: 'relative', overflowX: 'hidden' }}
     >
       {/* Signature background — grid + noise + rose glow blobs */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -292,6 +293,7 @@ export default function ProfilePage(): React.JSX.Element {
         </div>
       </div>
       </div>{/* end relative z-10 */}
+      <Footer />
     </div>
   );
 }
