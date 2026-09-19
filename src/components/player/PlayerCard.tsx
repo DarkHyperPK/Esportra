@@ -26,9 +26,10 @@ interface PlayerCardProps {
     onUploadImage?: () => void;
     onRemove?: () => void;
     className?: string;
+    noHoverGlow?: boolean;
 }
 
-const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser: _isCurrentUser, onEdit, onUploadImage, onRemove, className }) => {
+const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser: _isCurrentUser, onEdit, onUploadImage, onRemove, className, noHoverGlow }) => {
     const hasStats = member.stats && (member.stats.rating || member.stats.kd || member.stats.winRate || member.stats.hs);
 
     return (
@@ -57,7 +58,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser:
 
                     {/* CINEMATIC OVERLAY LAYERS */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
-                    <div className="absolute inset-0 bg-gradient-to-br from-rose-950/30 via-transparent to-rose-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    {!noHoverGlow && <div className="absolute inset-0 bg-gradient-to-br from-rose-950/30 via-transparent to-rose-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />}
 
                     {/* TOP EDGE HIGHLIGHT */}
                     <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />

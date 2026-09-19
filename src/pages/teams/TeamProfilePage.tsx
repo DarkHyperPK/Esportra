@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import EntityAvatar from '@/components/ui/EntityAvatar';
 import PlayerCard from '@/components/player/PlayerCard';
+import { PlayerHandle } from '@/components/profile/PlayerHandle';
 
 interface TeamMember {
     id: string;
@@ -33,6 +34,7 @@ interface TeamDetail {
 
 interface TournamentEntry {
     tournament_id: string;
+    tournament_slug: string | null;
     tournament_name: string;
     game: string;
     format: string;
@@ -74,15 +76,16 @@ function StatTile({ value, label }: { value: string | number; label: string }) {
 function HistoryRow({ entry }: { entry: TournamentEntry }) {
     const date = new Date(entry.start_date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
     const won = entry.placement === 1;
+    const to = entry.tournament_slug ? `/tournaments/${entry.tournament_slug}` : null;
 
-    return (
-        <div className="flex items-center gap-4 py-3 border-b border-white/5 last:border-0">
+    const inner = (
+        <>
             <div className="w-1.5 h-10 rounded-full shrink-0" style={{ background: won ? '#f59e0b' : 'rgba(255,255,255,0.08)' }} />
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-white truncate">{entry.tournament_name}</p>
                 <p className="text-xs text-zinc-500 mt-0.5">{entry.game} · {date}</p>
             </div>
-            <div className="shrink-0 text-right">
+            <div className="shrink-0 text-right flex items-center gap-2">
                 {entry.placement ? (
                     <span className={`text-sm font-bold tabular-nums ${won ? 'text-yellow-400' : 'text-zinc-300'}`}>
                         {placementLabel(entry.placement)}
@@ -90,9 +93,22 @@ function HistoryRow({ entry }: { entry: TournamentEntry }) {
                 ) : (
                     <span className="text-xs text-zinc-600">No placement</span>
                 )}
+                {to && <ChevronLeft className="w-3.5 h-3.5 text-zinc-600 rotate-180 shrink-0" />}
             </div>
-        </div>
+        </>
     );
+
+    const rowClass = 'flex items-center gap-4 py-3 border-b border-white/5 last:border-0 rounded-lg -mx-2 px-2';
+
+    if (to) {
+        return (
+            <Link to={to} className={`${rowClass} hover:bg-white/[0.04] transition-colors duration-150`}>
+                {inner}
+            </Link>
+        );
+    }
+
+    return <div className={rowClass}>{inner}</div>;
 }
 
 function Skeleton() {
@@ -240,12 +256,14 @@ export default function TeamProfilePage() {
                             {team.members.length > 0 ? (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 xl:max-w-[1400px]">
                                     {team.members.map(member => (
-                                        <PlayerCard
-                                            key={member.id}
-                                            member={memberToPlayerCardShape(member, team.owner_id, team.game)}
-                                            isOwner={member.id === team.owner_id}
-                                            className="transition-all duration-300 hover:scale-[1.03] hover:z-10"
-                                        />
+                                        <PlayerHandle key={member.id} userId={member.id}>
+                                            <PlayerCard
+                                                member={memberToPlayerCardShape(member, team.owner_id, team.game)}
+                                                isOwner={member.id === team.owner_id}
+                                                noHoverGlow
+                                                className="transition-all duration-300 hover:scale-[1.03] hover:z-10"
+                                            />
+                                        </PlayerHandle>
                                     ))}
                                 </div>
                             ) : (
