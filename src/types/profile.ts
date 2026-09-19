@@ -20,6 +20,7 @@ export interface PublicProfileDto {
   riot_tag: string | null;
   steam_tag: string | null;
   created_at: string;
+  banner_focal_y: number | null;
 }
 
 export interface UserStatsDto {

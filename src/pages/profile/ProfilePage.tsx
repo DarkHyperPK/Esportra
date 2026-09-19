@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
@@ -12,6 +12,7 @@ import type {
   TeamMembershipDto,
 } from '@/types/profile';
 import { useAccentColor } from '@/hooks/useAccentColor';
+import { useAuth } from '@/hooks/useAuth';
 import { ProfileHero } from '@/components/profile/hero/ProfileHero';
 import { ProfileSidebar } from '@/components/profile/sidebar/ProfileSidebar';
 import { ProfileTabBar, type ProfileTab } from '@/components/profile/tabs/ProfileTabBar';
@@ -31,6 +32,8 @@ export default function ProfilePage(): React.JSX.Element {
   const navigate = useNavigate();
   const reduced = useReducedMotion();
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
+  const { profile: authProfile } = useAuth();
+  const queryClient = useQueryClient();
 
   const profileQuery = useQuery({
     queryKey: ['public-profile-by-username', username],
@@ -174,6 +177,16 @@ export default function ProfilePage(): React.JSX.Element {
   }
 
   const profile = profileQuery.data!;
+  const isOwner = !!authProfile && authProfile.username === username;
+
+  const bannerPositionMutation = useMutation({
+    mutationFn: (focalY: number) =>
+      apiClient.put('/api/profiles/me/banner-position', { focal_y: focalY }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['public-profile-by-username', username] });
+    },
+  });
+
   const stats = statsQuery.data ?? { statistics: null, achievements: [], placement_achievements: [], verified_role: null, achievements_count: 0 };
   const linkedAccounts = linkedQuery.data ?? null;
   const recentTournaments = historyQuery.data?.items ?? [];
@@ -234,7 +247,12 @@ export default function ProfilePage(): React.JSX.Element {
       {/* Content */}
       <div className="relative z-10">
       {/* Hero section */}
-      <ProfileHero profile={profile} accentColor={accentColor} />
+      <ProfileHero
+            profile={profile}
+            accentColor={accentColor}
+            isOwner={isOwner}
+            onSaveFocalY={async (y) => { await bannerPositionMutation.mutateAsync(y); }}
+          />
 
       {/* Tab bar — becomes sticky once hero scrolls past */}
       <ProfileTabBar
