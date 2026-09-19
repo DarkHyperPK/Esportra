@@ -23,6 +23,7 @@ interface TeamMember {
 
 interface TeamDetail {
     id: string;
+    slug: string | null;
     name: string;
     tag: string | null;
     logo_url: string | null;
@@ -162,7 +163,7 @@ export function TeamDetailSheet({ teamId, onClose, game }: TeamDetailSheetProps)
 
     const handleViewProfile = () => {
         onClose();
-        navigate(`/teams/${teamId}`);
+        navigate(`/teams/${team?.slug ?? teamId}`);
     };
 
     return (

@@ -506,7 +506,7 @@ const AppContent = React.memo(() => {
                 <Route path="/tournaments" element={<BrowseTournaments />} />
                 {/* Public player profile — no auth required */}
                 <Route path="/profile/:username" element={<ProfilePage />} />
-                <Route path="/teams/:id" element={<TeamProfilePage />} />
+                <Route path="/teams/:slug" element={<TeamProfilePage />} />
                 <Route path="/org/:slug" element={<OrganizationPublicProfile />} />
                 <Route path="/invitations/redeem" element={<RedeemInvitePage />} />
                 <Route path="/tournaments/:slug" element={<TournamentDetailsUser />} />
