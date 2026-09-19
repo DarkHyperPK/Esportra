@@ -334,7 +334,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                         </p>
                                         <button type="button"
                                             onClick={handleScan}
-                                            className={cn(buttonVariants({ variant: 'outline' }), 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10 hover:border-rose-500/50 text-rose-400 h-10 px-8 font-black uppercase tracking-widest text-xs transition-all')}
+                                            className={cn(buttonVariants({ variant: 'outline' }), 'border-white/10 bg-rose-500/5 hover:bg-rose-500/10 hover:border-white/20 text-rose-400 h-10 px-8 font-black uppercase tracking-widest text-xs transition-all')}
                                         >
                                             <RefreshCcw className="w-3 h-3 mr-2" /> Try Again
                                         </button>

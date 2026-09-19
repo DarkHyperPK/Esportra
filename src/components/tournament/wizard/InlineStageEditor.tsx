@@ -438,7 +438,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                                 type="button"
                                 onClick={nextStep}
                                 disabled={step === 'format' && !form.format}
-                                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded hover:bg-rose-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-rose-500/20 text-rose-300 border border-white/10 rounded hover:bg-rose-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                                 Continue <ChevronRight className="w-3.5 h-3.5" />
                             </button>
@@ -446,7 +446,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                             <button
                                 type="button"
                                 onClick={commitForm}
-                                className="px-4 py-2 text-sm font-medium bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded hover:bg-rose-500/30 transition-colors"
+                                className="px-4 py-2 text-sm font-medium bg-rose-500/20 text-rose-300 border border-white/10 rounded hover:bg-rose-500/30 transition-colors"
                             >
                                 {editingIndex !== null ? 'Save Changes' : 'Add Stage'}
                             </button>

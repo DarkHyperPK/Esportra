@@ -449,7 +449,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
                                                 {onMapVeto && (
                                                     <button type="button"
-                                                        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 min-w-[80px] h-8 bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300')}
+                                                        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 min-w-[80px] h-8 bg-rose-500/10 border-white/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300')}
                                                         onClick={(e) => { e.stopPropagation(); onMapVeto(match); }}
                                                     >
                                                         <Swords className="w-3.5 h-3.5 mr-1.5" /> Veto
