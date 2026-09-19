@@ -37,7 +37,7 @@ export function ProfilePeekContent({
   const lastThreeTournaments = tournamentHistory.slice(0, 3);
   const activeTeams = teams.filter((t) => t.is_active).slice(0, 3);
 
-  const hasLinkedAccounts = !!linkedAccounts.riot || !!linkedAccounts.steam;
+  const hasLinkedAccounts = !!linkedAccounts.riot || !!linkedAccounts.steam || !!linkedAccounts.discord;
   const hasBio = !!profile.bio;
 
   const memberSince = (() => {
@@ -257,17 +257,29 @@ export function ProfilePeekContent({
 
         {/* Linked account badges */}
         {hasLinkedAccounts && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
             {linkedAccounts.riot?.game_name && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-                <span style={{ background: '#FF4655', borderRadius: 3, padding: '1px 5px', fontSize: 10, fontWeight: 700, color: 'white' }}>R</span>
-                {linkedAccounts.riot.game_name}#{linkedAccounts.riot.tag_line}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ background: '#FF4655', borderRadius: 3, padding: '1px 6px', fontSize: 10, fontWeight: 700, color: 'white', flexShrink: 0 }}>RIOT</span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {linkedAccounts.riot.game_name}#{linkedAccounts.riot.tag_line}
+                </span>
               </div>
             )}
             {linkedAccounts.steam?.steam_name && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-                <span style={{ background: '#1B2838', borderRadius: 3, padding: '1px 5px', fontSize: 10, fontWeight: 700, color: '#c6d4df' }}>ST</span>
-                {linkedAccounts.steam.steam_name}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ background: '#1B2838', borderRadius: 3, padding: '1px 6px', fontSize: 10, fontWeight: 700, color: '#c6d4df', flexShrink: 0 }}>STEAM</span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {linkedAccounts.steam.steam_name}
+                </span>
+              </div>
+            )}
+            {linkedAccounts.discord?.handle && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ background: '#5865F2', borderRadius: 3, padding: '1px 6px', fontSize: 10, fontWeight: 700, color: 'white', flexShrink: 0 }}>DC</span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {linkedAccounts.discord.handle}
+                </span>
               </div>
             )}
           </div>

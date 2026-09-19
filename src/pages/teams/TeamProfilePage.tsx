@@ -12,6 +12,7 @@ interface TeamMember {
     full_name: string | null;
     avatar_url: string | null;
     riot_tag: string | null;
+    discord_handle: string | null;
     role: string;
 }
 
@@ -47,15 +48,6 @@ function placementLabel(placement: number | null): string {
     return `${placement}th`;
 }
 
-function RoleBadge({ role }: { role: string }) {
-    if (role === 'captain' || role === 'owner') {
-        return <Crown className="w-3.5 h-3.5 text-yellow-400 shrink-0" aria-label="Captain" />;
-    }
-    if (role === 'co_captain') {
-        return <Shield className="w-3.5 h-3.5 text-blue-400 shrink-0" aria-label="Co-captain" />;
-    }
-    return null;
-}
 
 function StatTile({ value, label }: { value: string | number; label: string }) {
     return (
@@ -66,34 +58,64 @@ function StatTile({ value, label }: { value: string | number; label: string }) {
     );
 }
 
+function DiscordMark({ className }: { className?: string }) {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+            <path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028 14.09 14.09 0 001.226-1.994.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z" />
+        </svg>
+    );
+}
+
 function MemberCard({ member }: { member: TeamMember }) {
     const displayName = member.full_name || member.username;
-    const gameTag = member.riot_tag || `@${member.username}`;
-    const roleLabel = member.role === 'co_captain' ? 'co-captain' : member.role;
+    const showRiot = !!member.riot_tag;
+    const showDiscord = !!member.discord_handle;
 
     return (
         <PlayerHandle userId={member.id}>
-            <div className="group flex flex-col items-center gap-3 pt-6 pb-4 px-4 bg-white/[0.03] border border-white/[0.07] rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.05] hover:border-rose-500/25 hover:shadow-[0_0_20px_rgba(244,63,94,0.12)]">
-                <EntityAvatar
-                    type="user"
-                    src={member.avatar_url}
-                    name={member.username}
-                    entityId={member.id}
-                    size="w-16 h-16"
-                    shape="circle"
-                />
-                <div className="flex flex-col items-center gap-1 w-full min-w-0 text-center">
-                    <div className="flex items-center justify-center gap-1.5 w-full">
-                        <span className="text-sm font-semibold text-white truncate">
-                            {displayName}
+            <div className="group relative flex flex-col items-center gap-3 pt-6 pb-4 px-4 bg-white/[0.03] border border-white/[0.07] rounded-2xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.05] hover:border-rose-500/25 hover:shadow-[0_4px_20px_rgba(244,63,94,0.10)]">
+                <div className="relative">
+                    <EntityAvatar
+                        type="user"
+                        src={member.avatar_url}
+                        name={member.username}
+                        entityId={member.id}
+                        size="w-16 h-16"
+                        shape="circle"
+                    />
+                    {(member.role === 'captain' || member.role === 'owner') && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#09090b] border border-yellow-400/50 flex items-center justify-center">
+                            <Crown className="w-2.5 h-2.5 text-yellow-400" />
                         </span>
-                        <RoleBadge role={member.role} />
-                    </div>
-                    <p className="text-xs text-zinc-500 truncate w-full">{gameTag}</p>
+                    )}
+                    {member.role === 'co_captain' && (
+                        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#09090b] border border-zinc-500/50 flex items-center justify-center">
+                            <Shield className="w-2.5 h-2.5 text-zinc-400" />
+                        </span>
+                    )}
                 </div>
-                <span className="text-[10px] uppercase tracking-widest text-zinc-700">
-                    {roleLabel}
-                </span>
+                <div className="flex flex-col items-center gap-1.5 w-full min-w-0 text-center">
+                    <span className="text-sm font-semibold text-white truncate w-full">
+                        {displayName}
+                    </span>
+                    <div className="flex flex-col gap-0.5 items-center w-full">
+                        {showRiot && (
+                            <div className="flex items-center gap-1 justify-center">
+                                <span className="text-[9px] font-bold text-zinc-600 tracking-wider">R</span>
+                                <span className="text-xs text-zinc-500 truncate max-w-[120px]">{member.riot_tag}</span>
+                            </div>
+                        )}
+                        {showDiscord && (
+                            <div className="flex items-center gap-1 justify-center">
+                                <DiscordMark className="w-3 h-3 text-zinc-600 shrink-0" />
+                                <span className="text-xs text-zinc-500 truncate max-w-[120px]">{member.discord_handle}</span>
+                            </div>
+                        )}
+                        {!showRiot && !showDiscord && (
+                            <span className="text-xs text-zinc-600">@{member.username}</span>
+                        )}
+                    </div>
+                </div>
             </div>
         </PlayerHandle>
     );

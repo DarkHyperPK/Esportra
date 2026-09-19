@@ -47,6 +47,7 @@ export interface AchievementDto {
 export interface LinkedAccountsDto {
   riot: { game_name: string | null; tag_line: string | null; region: string | null } | null;
   steam: { steam_name: string | null; profile_url: string | null } | null;
+  discord: { handle: string } | null;
 }
 
 export interface TournamentHistoryEntryDto {
