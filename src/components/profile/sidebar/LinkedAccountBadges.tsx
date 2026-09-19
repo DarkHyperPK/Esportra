@@ -33,18 +33,7 @@ export function LinkedAccountBadges({ linkedAccounts }: LinkedAccountBadgesProps
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {hasRiot && linkedAccounts.riot && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Riot fist icon — inline SVG */}
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              aria-label="Riot Games"
-              style={{ flexShrink: 0 }}
-            >
-              <rect width="24" height="24" rx="4" fill="#FF4655" />
-              <text x="12" y="16" textAnchor="middle" fontSize="13" fill="white" fontWeight="bold">R</text>
-            </svg>
+            <img src="/Riot.png" alt="Riot Games" style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0, borderRadius: 3 }} />
             <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.8)' }}>
               {linkedAccounts.riot.game_name}
               {linkedAccounts.riot.tag_line ? `#${linkedAccounts.riot.tag_line}` : ''}

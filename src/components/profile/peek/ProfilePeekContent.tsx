@@ -274,7 +274,7 @@ export function ProfilePeekContent({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
             {linkedAccounts.riot?.game_name && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ background: '#FF4655', borderRadius: 3, padding: '1px 6px', fontSize: 10, fontWeight: 700, color: 'white', flexShrink: 0 }}>RIOT</span>
+                <img src="/Riot.png" alt="Riot Games" style={{ width: 18, height: 18, objectFit: 'contain', flexShrink: 0, borderRadius: 3 }} />
                 <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {linkedAccounts.riot.game_name}#{linkedAccounts.riot.tag_line}
                 </span>
