@@ -151,7 +151,7 @@ const VenueAnalytics = () => {
               <CardContent>
                 {dailyLoading ? (
                   <div className="h-80 flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
+                    <Loader2 className="w-8 h-8 animate-spin text-rose-400" />
                   </div>
                 ) : viewsData.length === 0 ? (
                   <div className="h-80 flex items-center justify-center text-gray-500 text-sm">
@@ -190,7 +190,7 @@ const VenueAnalytics = () => {
               <CardContent>
                 {dailyLoading ? (
                   <div className="h-80 flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
+                    <Loader2 className="w-8 h-8 animate-spin text-rose-400" />
                   </div>
                 ) : bookingsData.length === 0 ? (
                   <div className="h-80 flex items-center justify-center text-gray-500 text-sm">

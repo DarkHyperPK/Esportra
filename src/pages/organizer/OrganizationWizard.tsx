@@ -531,7 +531,7 @@ const StepAbout: React.FC<{
                     { key: 'twitter', icon: Twitter, placeholder: '@username', color: 'text-blue-400' },
                     { key: 'instagram', icon: Instagram, placeholder: '@username', color: 'text-pink-400' },
                     { key: 'youtube', icon: Youtube, placeholder: 'Channel URL', color: 'text-red-500' },
-                    { key: 'discord', icon: Link2, placeholder: 'Invite link', color: 'text-indigo-400' },
+                    { key: 'discord', icon: Link2, placeholder: 'Invite link', color: 'text-rose-400' },
                 ].map((item) => (
                     <div key={item.key} className="space-y-2">
                         <Label className={`flex items-center gap-2 text-gray-300`}>

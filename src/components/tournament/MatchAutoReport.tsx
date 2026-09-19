@@ -210,9 +210,9 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                     Auto-Fetch Game {gameNumber} Result
                 </button>
             ) : (
-                <div className="flex items-center gap-2 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg mb-4">
-                    <Info className="w-4 h-4 text-indigo-400" />
-                    <p className="text-sm text-indigo-300">
+                <div className="flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg mb-4">
+                    <Info className="w-4 h-4 text-rose-400" />
+                    <p className="text-sm text-rose-300">
                         Ask your team captain to auto-fetch the match result.
                     </p>
                 </div>
@@ -235,8 +235,8 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                     {/* Step: Idle */}
                     {scanStep === 'idle' && (
                         <div className="py-6 text-center space-y-4">
-                            <div className="w-16 h-16 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Clock className="w-8 h-8 text-indigo-400" />
+                            <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Clock className="w-8 h-8 text-rose-400" />
                             </div>
                             <p className="text-sm text-zinc-300">
                                 Make sure you have played the match on <strong>{mapName}</strong> and the game is finished.
@@ -247,7 +247,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                 </div>
                             )}
                             <div className="flex justify-center mt-6">
-                                <button type="button" onClick={handleScan} className={cn(buttonVariants(), 'w-full max-w-[280px] border-transparent bg-indigo-600 hover:bg-indigo-700')}>
+                                <button type="button" onClick={handleScan} className={cn(buttonVariants(), 'w-full max-w-[280px] border-transparent bg-rose-600 hover:bg-rose-700')}>
                                     <Search className="w-4 h-4 mr-2" />
                                     Scan Recent Matches
                                 </button>
@@ -305,7 +305,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                     <button type="button"
                                         onClick={handleScan}
                                         disabled={submitting}
-                                        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-6 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-indigo-400 hover:bg-indigo-500/10')}
+                                        className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-6 px-2 text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10')}
                                     >
                                         <RefreshCcw className="w-3 h-3 mr-1.5" />
                                         Refetch
@@ -322,7 +322,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                     animate={{ opacity: 1, scale: 1 }}
                                     className="text-center py-16 px-6 border border-zinc-800/50 rounded-3xl bg-zinc-950/50 backdrop-blur-sm relative overflow-hidden"
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/5 to-transparent pointer-events-none" />
+                                    <div className="absolute inset-0 bg-gradient-to-b from-rose-500/5 to-transparent pointer-events-none" />
                                     <div className="relative z-10">
                                         <div className="w-20 h-20 bg-zinc-900 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-zinc-800 shadow-2xl">
                                             <SearchX className="w-10 h-10 text-zinc-700" />
@@ -334,7 +334,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                         </p>
                                         <button type="button"
                                             onClick={handleScan}
-                                            className={cn(buttonVariants({ variant: 'outline' }), 'border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 hover:border-indigo-500/50 text-indigo-400 h-10 px-8 font-black uppercase tracking-widest text-xs transition-all')}
+                                            className={cn(buttonVariants({ variant: 'outline' }), 'border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10 hover:border-rose-500/50 text-rose-400 h-10 px-8 font-black uppercase tracking-widest text-xs transition-all')}
                                         >
                                             <RefreshCcw className="w-3 h-3 mr-2" /> Try Again
                                         </button>
@@ -357,7 +357,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                                         damping: 15
                                                     }}
                                                     onClick={() => !submitting && handleSelectMatch(match)}
-                                                    className={`group relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-950/40 backdrop-blur-md hover:border-indigo-500/40 transition-all duration-300 cursor-pointer shadow-xl hover:shadow-indigo-500/5 ${submitting ? 'opacity-50 pointer-events-none' : ''}`}
+                                                    className={`group relative overflow-hidden rounded-2xl border border-white/5 bg-zinc-950/40 backdrop-blur-md hover:border-rose-500/40 transition-all duration-300 cursor-pointer shadow-xl hover:shadow-rose-500/5 ${submitting ? 'opacity-50 pointer-events-none' : ''}`}
                                                 >
                                                     {/* Map Splash Background */}
                                                     <div className="absolute inset-0 opacity-[0.03] group-hover:opacity-10 transition-opacity duration-700 pointer-events-none">
@@ -366,7 +366,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                                             alt=""
                                                             className="w-full h-full object-cover grayscale brightness-200 scale-125 group-hover:scale-110 transition-transform duration-1000"
                                                         />
-                                                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                                     </div>
 
                                                     {/* Background Glow */}
@@ -375,7 +375,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
                                                     <div className="relative p-5 sm:p-7 grid grid-cols-[auto,minmax(80px,1fr),auto,auto,auto] items-center gap-3 sm:gap-6 min-h-[120px]">
                                                         {/* 1. Agent Display */}
                                                         <div className="relative flex-shrink-0">
-                                                            <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 group-hover:border-indigo-500/30 transition-all duration-500 shadow-2xl shadow-black`}>
+                                                            <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 group-hover:border-rose-500/30 transition-all duration-500 shadow-2xl shadow-black`}>
                                                                 {match.agent ? (
                                                                     <img src={getAgentIcon(match.agent)} loading="lazy" alt="Agent" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                                                 ) : (
@@ -425,7 +425,7 @@ export const MatchAutoReport: React.FC<MatchAutoReportProps> = ({
 
                                                         {/* 5. Select Action */}
                                                         <div className="flex-shrink-0 flex justify-end">
-                                                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center group-hover:bg-indigo-600 group-hover:border-indigo-400 transition-all duration-300 ring-4 ring-transparent group-hover:ring-indigo-500/10">
+                                                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center group-hover:bg-rose-600 group-hover:border-rose-400 transition-all duration-300 ring-4 ring-transparent group-hover:ring-rose-500/10">
                                                                 <Check className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-600 group-hover:text-white transition-colors" />
                                                             </div>
                                                         </div>

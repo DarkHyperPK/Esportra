@@ -97,7 +97,7 @@ const NotificationsPage = () => {
       case 'result_reported': return { icon: <Info className="h-4 w-4" />, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' };
       case 'match_schedule_changed': return { icon: <Calendar className="h-4 w-4" />, color: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20' };
       case 'br_game_schedule_changed':
-      case 'br_lobby_schedule_changed': return { icon: <Calendar className="h-4 w-4" />, color: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20' };
+      case 'br_lobby_schedule_changed': return { icon: <Calendar className="h-4 w-4" />, color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20' };
       case 'result_disputed': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
       case 'result_accepted': return { icon: <CheckCheck className="h-4 w-4" />, color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20' };
       case 'dispute_filed': return { icon: <ShieldAlert className="h-4 w-4" />, color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20' };

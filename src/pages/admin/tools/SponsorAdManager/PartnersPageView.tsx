@@ -85,7 +85,7 @@ export const PartnersPageView: React.FC<Props> = ({
          ) : (
           <button
            onClick={() => onAssignSlot(slotNumber)}
-           className="flex aspect-video w-full items-center justify-center gap-1.5 border border-dashed border-zinc-700 bg-zinc-950/50 text-xs text-zinc-500 transition-colors hover:border-violet-500/50 hover:text-zinc-400"
+           className="flex aspect-video w-full items-center justify-center gap-1.5 border border-dashed border-zinc-700 bg-zinc-950/50 text-xs text-zinc-500 transition-colors hover:border-rose-500/50 hover:text-zinc-400"
           >
            <Plus className="h-3.5 w-3.5" /> Assign sponsor
           </button>

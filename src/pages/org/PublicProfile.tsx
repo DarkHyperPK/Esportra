@@ -215,7 +215,7 @@ const OrganizationPublicProfile = () => {
                                     </a>
                                 )}
                                 {org.social_links?.discord && (
-                                    <a href={ensureHttps(org.social_links.discord)} target="_blank" rel="noreferrer" className="hover:text-indigo-400 transition-colors">
+                                    <a href={ensureHttps(org.social_links.discord)} target="_blank" rel="noreferrer" className="hover:text-rose-400 transition-colors">
                                         <Link2 className="w-4 h-4" />
                                     </a>
                                 )}
@@ -511,7 +511,7 @@ const OrganizationPublicProfile = () => {
                                         )}
                                         {org.social_links?.discord && (
                                             <a href={ensureHttps(org.social_links.discord)} target="_blank" rel="noreferrer" className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
-                                                <span className="flex items-center gap-3 text-gray-300"><Link2 className="w-4 h-4 text-indigo-400" /> Discord</span>
+                                                <span className="flex items-center gap-3 text-gray-300"><Link2 className="w-4 h-4 text-rose-400" /> Discord</span>
                                                 <ArrowRight className="w-4 h-4 text-gray-500" />
                                             </a>
                                         )}

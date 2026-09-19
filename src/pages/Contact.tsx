@@ -25,10 +25,10 @@ const ContactStandalone: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-purple-500/30 font-sans">
+    <div className="min-h-screen bg-[#0a0a0a] text-white selection:bg-rose-500/30 font-sans">
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-900/10 blur-[130px] rounded-full mix-blend-screen" />
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-900/10 blur-[130px] rounded-full mix-blend-screen" />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-rose-900/10 blur-[130px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-rose-900/10 blur-[130px] rounded-full mix-blend-screen" />
         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-20 brightness-100 contrast-150"></div>
       </div>
 
@@ -57,7 +57,7 @@ const ContactStandalone: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-bold font-heading mb-1">Email Support</h3>
                   <p className="text-gray-400 mb-2">For general inquiries and assistance.</p>
-                  <a href="mailto:operations@esportra.com" className="text-purple-400 hover:text-purple-300 font-medium transition-colors">operations@esportra.com</a>
+                  <a href="mailto:operations@esportra.com" className="text-rose-400 hover:text-rose-300 font-medium transition-colors">operations@esportra.com</a>
                 </div>
               </div>
 
@@ -68,7 +68,7 @@ const ContactStandalone: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-bold font-heading mb-1">Partnerships</h3>
                   <p className="text-gray-400 mb-2">For venue owners and sponsors.</p>
-                  <a href="mailto:operations@esportra.com" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">operations@esportra.com</a>
+                  <a href="mailto:operations@esportra.com" className="text-rose-400 hover:text-rose-300 font-medium transition-colors">operations@esportra.com</a>
                 </div>
               </div>
 
@@ -91,7 +91,7 @@ const ContactStandalone: React.FC = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="p-8 md:p-10 bg-[#0a0a0c]/90 border border-white/10 relative overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-[50px] rounded-full pointer-events-none" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/10 blur-[50px] rounded-full pointer-events-none" />
 
             <h2 className="text-2xl font-bold font-heading mb-6">Send a Message</h2>
 

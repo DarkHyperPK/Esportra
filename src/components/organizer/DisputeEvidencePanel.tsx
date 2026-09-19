@@ -193,7 +193,7 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
                 </Badge>
               )}
               {primaryReport.screenshot_urls?.length && !primaryReport.match_data && (
-                <Badge className="bg-indigo-500/20 text-indigo-400 border-indigo-500/30 text-[10px]">
+                <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30 text-[10px]">
                   Manual upload
                 </Badge>
               )}
@@ -226,7 +226,7 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
                 </Badge>
               )}
               {disputingEvidenceUrls.length > 0 && (
-                <Badge className="bg-indigo-500/20 text-indigo-400 border-indigo-500/30 text-[10px]">
+                <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30 text-[10px]">
                   {disputingEvidenceUrls.length} file{disputingEvidenceUrls.length === 1 ? '' : 's'}
                 </Badge>
               )}
@@ -310,7 +310,7 @@ const DisputeEvidencePanel: React.FC<DisputeEvidencePanelProps> = ({
                         </Badge>
                       )}
                       {hasScreenshots && !isAutoFetch && (
-                        <Badge className="bg-indigo-500/20 text-indigo-400 border-indigo-500/30 text-[10px]">
+                        <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30 text-[10px]">
                           Manual
                         </Badge>
                       )}

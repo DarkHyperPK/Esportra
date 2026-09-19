@@ -1163,27 +1163,27 @@ const TeamsPage = () => {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center overflow-hidden relative">
         {/* Background ambience */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/20 via-black to-black opacity-50" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-rose-900/20 via-black to-black opacity-50" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:30px_30px] opacity-20" />
 
         <div className="relative z-10 flex flex-col items-center">
           {/* Logo/Icon Pulse */}
           <div className="relative mb-8">
-            <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 animate-pulse" />
+            <div className="absolute inset-0 bg-rose-500 blur-2xl opacity-20 animate-pulse" />
             <div className="w-20 h-20 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center backdrop-blur-xl shadow-2xl relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-tr from-rose-500/10 to-transparent" />
               <Users className="w-8 h-8 text-white/80 animate-pulse" />
             </div>
             {/* Corner accents */}
-            <div className="absolute -top-1 -left-1 w-2 h-2 border-t border-l border-indigo-500/50" />
-            <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b border-r border-indigo-500/50" />
+            <div className="absolute -top-1 -left-1 w-2 h-2 border-t border-l border-rose-500/50" />
+            <div className="absolute -bottom-1 -right-1 w-2 h-2 border-b border-r border-rose-500/50" />
           </div>
 
           <div className="space-y-3 text-center">
             <h2 className="text-2xl font-heading font-light uppercase tracking-[0.2em] text-white flex items-center justify-center gap-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0s' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0.15s' }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0.3s' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '0s' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '0.15s' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-bounce" style={{ animationDelay: '0.3s' }} />
             </h2>
             <p className="text-white/30 text-xs font-mono tracking-widest uppercase animate-pulse">
               Synchronizing Roster Data
@@ -1241,7 +1241,7 @@ const TeamsPage = () => {
                           <span className="font-semibold">{inv.team_name || 'Unknown Team'}</span>
                           <span className="text-white/50 text-sm ml-2">invites you to join</span>
                           {inv.roster_name && (
-                            <span className="text-indigo-400 text-sm font-semibold ml-1">({inv.roster_name})</span>
+                            <span className="text-rose-400 text-sm font-semibold ml-1">({inv.roster_name})</span>
                           )}
                         </div>
                         <div className="flex gap-3">
@@ -1328,7 +1328,7 @@ const TeamsPage = () => {
         {/* Team Header */}
         <div className="w-full bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 mb-8 relative overflow-hidden group">
           {/* Subtle gradient glow */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/10 rounded-full blur-[100px] pointer-events-none" />
 
           <div className="relative z-10 flex items-center justify-between mb-8">
             <div className="flex items-center gap-8">
@@ -1385,7 +1385,7 @@ const TeamsPage = () => {
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Win Rate</span>
-                      <span className="text-xl font-mono text-indigo-400 font-medium">{teamStats.winRate}%</span>
+                      <span className="text-xl font-mono text-rose-400 font-medium">{teamStats.winRate}%</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase tracking-widest text-white/40 mb-1">Tournament Won</span>
@@ -1427,19 +1427,19 @@ const TeamsPage = () => {
 
         {/* Pending Invitations for current user */}
         {pendingInvites.length > 0 && (
-          <div className="w-full bg-[#121214]/60 backdrop-blur-xl border border-white/5 rounded-2xl p-6 mb-8 hover:border-indigo-500/30 transition-colors">
+          <div className="w-full bg-[#121214]/60 backdrop-blur-xl border border-white/5 rounded-2xl p-6 mb-8 hover:border-rose-500/30 transition-colors">
             <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
               Pending Invitations
             </h2>
             <div className="space-y-3">
               {pendingInvites.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-colors">
                   <div className="text-white font-medium">
-                    Team invite <span className="text-indigo-400">{inv.team_name || inv.team_id.slice(0, 8)}</span>
+                    Team invite <span className="text-rose-400">{inv.team_name || inv.team_id.slice(0, 8)}</span>
                     {inv.roster_name ? (
                       <span className="text-white/80 ml-2 italic">
-                        joining <span className="text-indigo-300 font-bold">{inv.roster_name}</span>
+                        joining <span className="text-rose-300 font-bold">{inv.roster_name}</span>
                       </span>
                     ) : (
                       <span className="text-white/60 ml-2">· General Invite</span>
@@ -1463,7 +1463,7 @@ const TeamsPage = () => {
                 <div className="flex items-center gap-4 mb-8">
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                   <h2 className="text-sm font-heading font-bold uppercase tracking-[0.3em] text-white/40 whitespace-nowrap bg-white/5 px-6 py-2 rounded-full border border-white/5 backdrop-blur-sm">
-                    CORE ROSTER ( <span className="text-indigo-400">{r.name}</span> : <span className="text-white/60">{r.game}</span> )
+                    CORE ROSTER ( <span className="text-rose-400">{r.name}</span> : <span className="text-white/60">{r.game}</span> )
                   </h2>
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                 </div>
@@ -1621,16 +1621,16 @@ const TeamsPage = () => {
                     setSelectedTournament(registration.tournaments);
                     setIsTournamentModalOpen(true);
                   }}
-                  className="group flex items-center justify-between p-6 bg-black/40 backdrop-blur-md border border-white/10 hover:border-indigo-500/50 hover:bg-black/60 rounded-2xl transition-all duration-500 cursor-pointer relative overflow-hidden"
+                  className="group flex items-center justify-between p-6 bg-black/40 backdrop-blur-md border border-white/10 hover:border-rose-500/50 hover:bg-black/60 rounded-2xl transition-all duration-500 cursor-pointer relative overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-rose-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
                   <div className="flex items-center gap-6 relative z-10">
-                    <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/5 group-hover:scale-110 group-hover:bg-indigo-500/10 group-hover:border-indigo-500/20 transition-all duration-500">
-                      <Trophy className="w-7 h-7 text-white/40 group-hover:text-indigo-400 transition-colors" />
+                    <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/5 group-hover:scale-110 group-hover:bg-rose-500/10 group-hover:border-rose-500/20 transition-all duration-500">
+                      <Trophy className="w-7 h-7 text-white/40 group-hover:text-rose-400 transition-colors" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-heading font-medium text-white tracking-wide group-hover:text-indigo-300 transition-colors">
+                      <h3 className="text-xl font-heading font-medium text-white tracking-wide group-hover:text-rose-300 transition-colors">
                         {registration.tournaments?.name || 'Tournament'}
                       </h3>
                       <div className="flex items-center gap-3 mt-2">
@@ -1644,7 +1644,7 @@ const TeamsPage = () => {
                   </div>
 
                   <div className="text-right relative z-10">
-                    <div className="text-white font-mono text-2xl group-hover:text-indigo-400 transition-colors">
+                    <div className="text-white font-mono text-2xl group-hover:text-rose-400 transition-colors">
                       {formatCurrency(parseFloat(String(registration.tournaments?.prize_pool || '0')), registration.tournaments?.currency)}
                     </div>
                     <div className="text-white/20 text-[10px] uppercase tracking-[0.2em] mt-1">Total Prize</div>
@@ -1720,7 +1720,7 @@ const TeamsPage = () => {
                             <Link
                               to={`/tournaments/${registration.tournaments.slug}`}
                               onClick={(e) => e.stopPropagation()}
-                              className="text-[10px] uppercase font-bold tracking-widest text-indigo-400 hover:text-indigo-300 border border-indigo-500/30 hover:border-indigo-500/60 bg-indigo-500/10 hover:bg-indigo-500/20 px-3 py-1.5 rounded-full transition-all"
+                              className="text-[10px] uppercase font-bold tracking-widest text-rose-400 hover:text-rose-300 border border-rose-500/30 hover:border-rose-500/60 bg-rose-500/10 hover:bg-rose-500/20 px-3 py-1.5 rounded-full transition-all"
                             >
                               View Brackets
                             </Link>
@@ -1780,7 +1780,7 @@ const TeamsPage = () => {
                   setSearchQuery(e.target.value);
                   searchUsers(e.target.value);
                 }}
-                className="bg-white/5 border-white/10 text-white focus:border-indigo-500/50 focus:bg-white/10 transition-all font-heading tracking-wide"
+                className="bg-white/5 border-white/10 text-white focus:border-rose-500/50 focus:bg-white/10 transition-all font-heading tracking-wide"
               />
             </div>
 
@@ -1794,10 +1794,10 @@ const TeamsPage = () => {
                     <div className="flex items-center space-x-3">
                       <Avatar className="w-8 h-8 border border-white/10">
                         <AvatarImage src={user.avatar_url} />
-                        <AvatarFallback className="bg-indigo-600 text-[10px] text-white">{user.username?.charAt(0) || 'U'}</AvatarFallback>
+                        <AvatarFallback className="bg-rose-600 text-[10px] text-white">{user.username?.charAt(0) || 'U'}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-bold text-white group-hover:text-indigo-400 transition-colors text-sm">{user.username}</p>
+                        <p className="font-bold text-white group-hover:text-rose-400 transition-colors text-sm">{user.username}</p>
                         <p className="text-white/30 text-xs">{user.email}</p>
                       </div>
                     </div>
@@ -1822,9 +1822,9 @@ const TeamsPage = () => {
                   {selectedUsers.map((user) => (
                     <div
                       key={user.id}
-                      className="flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-3 py-1 animate-in fade-in"
+                      className="flex items-center space-x-2 bg-rose-500/10 border border-rose-500/20 rounded-full px-3 py-1 animate-in fade-in"
                     >
-                      <span className="text-indigo-300 text-xs font-medium">{user.username}</span>
+                      <span className="text-rose-300 text-xs font-medium">{user.username}</span>
                       <GhostButton
                         size="sm"
                         variant="ghost"
@@ -1846,7 +1846,7 @@ const TeamsPage = () => {
                 placeholder="Add a personal message..."
                 value={inviteMessage}
                 onChange={(e) => setInviteMessage(e.target.value)}
-                className="bg-white/5 border-white/10 text-white focus:border-indigo-500/50"
+                className="bg-white/5 border-white/10 text-white focus:border-rose-500/50"
               />
             </div>
 
@@ -1885,7 +1885,7 @@ const TeamsPage = () => {
                   placeholder="member@example.com"
                   value={inviteSearch}
                   onChange={(e) => setInviteSearch(e.target.value)}
-                  className="bg-white/5 border-white/10 text-white flex-1 focus:border-indigo-500/50"
+                  className="bg-white/5 border-white/10 text-white flex-1 focus:border-rose-500/50"
                 />
                 <CtaButton onClick={async () => {
                   if (!inviteSearch || !inviteSearch.includes('@') || !currentTeam?.id) return;
@@ -1921,7 +1921,7 @@ const TeamsPage = () => {
                   {teamInvites.map(inv => (
                     <div key={inv.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/10">
                       <div className="text-white text-sm">
-                        <span className="text-indigo-300 font-mono">{inv.invited_email || inv.invited_user_id?.slice(0, 8)}</span>
+                        <span className="text-rose-300 font-mono">{inv.invited_email || inv.invited_user_id?.slice(0, 8)}</span>
                         <span className="text-white/30 text-xs ml-2">{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : ''}</span>
                       </div>
                       <DangerButton size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={async () => {
@@ -1944,7 +1944,7 @@ const TeamsPage = () => {
           <div className="pointer-events-none absolute inset-0 opacity-[0.05] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 to-transparent pointer-events-none" />
 
           <DialogHeader className="p-8 pb-4 relative z-10">
             <DialogTitle className="text-3xl font-heading font-light uppercase tracking-[0.15em] text-white">Create Roster</DialogTitle>
@@ -1958,7 +1958,7 @@ const TeamsPage = () => {
                 <Input
                   value={newRosterName}
                   onChange={(e) => setNewRosterName(e.target.value)}
-                  className="bg-white/[0.03] border-white/10 text-white focus:border-indigo-500/50 focus:bg-white/[0.06] transition-all h-12 rounded-xl px-4 font-heading tracking-wide placeholder:text-white/10"
+                  className="bg-white/[0.03] border-white/10 text-white focus:border-rose-500/50 focus:bg-white/[0.06] transition-all h-12 rounded-xl px-4 font-heading tracking-wide placeholder:text-white/10"
                   placeholder="e.g., VALORANT MAIN, CS2 ACADEMY"
                 />
               </div>
@@ -1988,7 +1988,7 @@ const TeamsPage = () => {
                           {getGameLogo(g.name) ? (
                             <img src={getGameLogo(g.name)} loading="lazy" alt="" className="w-5 h-5 rounded-sm object-cover opacity-80" />
                           ) : (
-                            <Gamepad2 className="w-4 h-4 text-indigo-400/60" />
+                            <Gamepad2 className="w-4 h-4 text-rose-400/60" />
                           )}
                           <span className="font-medium">{g.name}</span>
                         </div>
@@ -2079,7 +2079,7 @@ const TeamsPage = () => {
                   <Input
                     value={editRosterName}
                     onChange={(e) => setEditRosterName(e.target.value)}
-                    className="bg-white/5 border-white/10 text-white focus:border-indigo-500/50 focus:bg-white/10 transition-all font-heading tracking-wide"
+                    className="bg-white/5 border-white/10 text-white focus:border-rose-500/50 focus:bg-white/10 transition-all font-heading tracking-wide"
                     placeholder="e.g., Valorant Main, CS2 Academy"
                   />
                 </div>
@@ -2093,7 +2093,7 @@ const TeamsPage = () => {
                         className="w-4 h-4 rounded-sm object-cover opacity-80"
                       />
                     ) : (
-                      <Gamepad2 className="w-3.5 h-3.5 text-indigo-400" />
+                      <Gamepad2 className="w-3.5 h-3.5 text-rose-400" />
                     )}
                     <div className="flex flex-col">
                       <span className="text-[9px] uppercase tracking-widest text-white/30 leading-none mb-0.5">Game</span>
@@ -2153,15 +2153,15 @@ const TeamsPage = () => {
                       <div className="absolute inset-0 bg-rose-500/5" />
                       <div className="flex items-center gap-4 relative z-10 flex-1 min-w-0">
                         <div className="relative shrink-0">
-                          <Avatar className="w-10 h-10 border-2 border-indigo-500/50 shadow-xl">
+                          <Avatar className="w-10 h-10 border-2 border-rose-500/50 shadow-xl">
                             <AvatarImage src={captainData.avatar_url} />
-                            <AvatarFallback className="text-xs bg-indigo-900 text-indigo-200">{captainData.username?.charAt(0) || '?'}</AvatarFallback>
+                            <AvatarFallback className="text-xs bg-rose-900 text-rose-200">{captainData.username?.charAt(0) || '?'}</AvatarFallback>
                           </Avatar>
                           <Crown className="absolute -top-1 -right-1 w-4 h-4 text-yellow-500 bg-[#0a0a0a] rounded-full p-0.5 border border-white/10" />
                         </div>
                         <div className="min-w-0">
                           <span className="text-sm font-heading font-medium text-white block">{captainData.username || 'Captain'}</span>
-                          <span className="text-[10px] uppercase tracking-widest text-indigo-400 font-bold">Team Captain</span>
+                          <span className="text-[10px] uppercase tracking-widest text-rose-400 font-bold">Team Captain</span>
                           {captainId && renderRosterRolePills(captainId)}
                         </div>
                       </div>
@@ -2191,9 +2191,9 @@ const TeamsPage = () => {
                             <div className="absolute inset-0 bg-rose-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                             <div className="flex items-center gap-4 relative z-10">
                               <div className="relative">
-                                <Avatar className="w-10 h-10 border-2 border-white/10 shadow-xl group-hover:border-indigo-500/50 transition-colors">
+                                <Avatar className="w-10 h-10 border-2 border-white/10 shadow-xl group-hover:border-rose-500/50 transition-colors">
                                   <AvatarImage src={member.avatar_url} />
-                                  <AvatarFallback className="text-xs bg-indigo-900/50 text-indigo-200">{member.username?.charAt(0) || '?'}</AvatarFallback>
+                                  <AvatarFallback className="text-xs bg-rose-900/50 text-rose-200">{member.username?.charAt(0) || '?'}</AvatarFallback>
                                 </Avatar>
                                 <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0a0a0a]" />
                               </div>
@@ -2248,7 +2248,7 @@ const TeamsPage = () => {
                             <div className="flex items-center gap-3">
                               <Avatar className="w-8 h-8 border border-white/10">
                                 <AvatarImage src={member.avatar_url} />
-                                <AvatarFallback className="text-[10px] bg-indigo-900/50 text-indigo-300">{member.username?.charAt(0)}</AvatarFallback>
+                                <AvatarFallback className="text-[10px] bg-rose-900/50 text-rose-300">{member.username?.charAt(0)}</AvatarFallback>
                               </Avatar>
                               <span className="text-xs text-white/70">{member.username}</span>
                             </div>
@@ -2280,7 +2280,7 @@ const TeamsPage = () => {
                     placeholder="player@example.com"
                     value={inviteInput}
                     onChange={(e) => setInviteInput(e.target.value)}
-                    className="bg-white/[0.03] border-white/10 text-white flex-1 focus:border-indigo-500/50 h-12 rounded-xl px-4"
+                    className="bg-white/[0.03] border-white/10 text-white flex-1 focus:border-rose-500/50 h-12 rounded-xl px-4"
                   />
                   <CtaButton size="icon" onClick={addInviteeByEmail} className="w-12 h-12 rounded-xl">
                     <Plus className="w-6 h-6" />
@@ -2304,9 +2304,9 @@ const TeamsPage = () => {
                         <div className="flex items-center gap-3">
                           <Avatar className="w-8 h-8 border border-white/10">
                             <AvatarImage src={(u as any).avatar_url} />
-                            <AvatarFallback className="text-xs bg-indigo-900/50 text-indigo-300">{u.username?.charAt(0)}</AvatarFallback>
+                            <AvatarFallback className="text-xs bg-rose-900/50 text-rose-300">{u.username?.charAt(0)}</AvatarFallback>
                           </Avatar>
-                          <span className="group-hover:text-indigo-400 transition-colors font-medium text-sm">{u.username || u.email}</span>
+                          <span className="group-hover:text-rose-400 transition-colors font-medium text-sm">{u.username || u.email}</span>
                         </div>
                         <span className="text-[10px] text-white/20 tracking-tighter">{u.email}</span>
                       </button>
@@ -2321,10 +2321,10 @@ const TeamsPage = () => {
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         key={p.id}
-                        className="pl-3 pr-2 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-xs text-indigo-300 flex items-center gap-2 group hover:bg-indigo-500/20 transition-colors"
+                        className="pl-3 pr-2 py-1.5 bg-rose-500/10 border border-rose-500/20 rounded-full text-xs text-rose-300 flex items-center gap-2 group hover:bg-rose-500/20 transition-colors"
                       >
                         <span>{p.username || p.email}</span>
-                        <button onClick={() => setSelectedInvitees(prev => prev.filter(x => x.id !== p.id))} className="text-indigo-400 hover:text-white transition-colors">
+                        <button onClick={() => setSelectedInvitees(prev => prev.filter(x => x.id !== p.id))} className="text-rose-400 hover:text-white transition-colors">
                           <X className="w-3.5 h-3.5" />
                         </button>
                       </motion.div>
@@ -2334,7 +2334,7 @@ const TeamsPage = () => {
 
                 <div className="flex justify-between items-center bg-white/[0.02] border border-white/[0.05] p-4 rounded-xl">
                   <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-medium">
-                    Lineup Capacity: <span className="text-indigo-400">
+                    Lineup Capacity: <span className="text-rose-400">
                       {(() => {
                         const limits = getRosterCapacity(manageRoster);
                         return `${limits.starters} starters, ${limits.maxSubstitutes} subs${limits.allowsCoaches ? `, ${limits.maxCoaches} coaches` : ''}`;
@@ -2420,7 +2420,7 @@ const TeamsPage = () => {
           <AlertDialogHeader className="relative z-10">
             <AlertDialogTitle className="text-2xl font-heading font-light uppercase tracking-widest text-white">Transfer Captaincy</AlertDialogTitle>
             <AlertDialogDescription className="text-white/40 text-sm leading-relaxed mt-4">
-              Are you sure you want to transfer leadership to <span className="text-indigo-400 font-medium">{memberToRemove?.username}</span>? You will relinquish all captain permissions for this team.
+              Are you sure you want to transfer leadership to <span className="text-rose-400 font-medium">{memberToRemove?.username}</span>? You will relinquish all captain permissions for this team.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3">
@@ -2472,13 +2472,13 @@ const TeamsPage = () => {
           <div className="pointer-events-none absolute inset-0 opacity-[0.05] overflow-hidden"
             style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 to-transparent pointer-events-none" />
 
           {selectedTournament && (
             <div className="relative z-10">
-              <div className="h-48 bg-gradient-to-b from-indigo-900/20 to-transparent flex items-end p-8">
+              <div className="h-48 bg-gradient-to-b from-rose-900/20 to-transparent flex items-end p-8">
                 <div className="w-20 h-20 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl flex items-center justify-center mb-[-40px] shadow-2xl relative z-20">
-                  <Trophy className="w-10 h-10 text-indigo-400" />
+                  <Trophy className="w-10 h-10 text-rose-400" />
                 </div>
               </div>
 
@@ -2487,7 +2487,7 @@ const TeamsPage = () => {
                   <div>
                     <h2 className="text-3xl font-heading font-light uppercase tracking-widest text-white mb-2">{selectedTournament.name}</h2>
                     <div className="flex items-center gap-4">
-                      <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-300 border-indigo-500/20">
+                      <Badge variant="secondary" className="bg-rose-500/10 text-rose-300 border-rose-500/20">
                         {new Date(selectedTournament.start_date).toLocaleDateString()}
                       </Badge>
                       <Badge variant="outline" className="border-white/10 text-white/40">
@@ -2506,14 +2506,14 @@ const TeamsPage = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-8">
-                  <div className="p-6 bg-white/[0.02] border border-white/[0.05] rounded-2xl group hover:border-indigo-500/30 transition-colors">
+                  <div className="p-6 bg-white/[0.02] border border-white/[0.05] rounded-2xl group hover:border-rose-500/30 transition-colors">
                     <div className="text-[10px] uppercase tracking-widest text-white/20 mb-2">Tournament Status</div>
                     <div className="text-lg text-white font-medium flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                       Active Entry
                     </div>
                   </div>
-                  <div className="p-6 bg-white/[0.02] border border-white/[0.05] rounded-2xl group hover:border-indigo-500/30 transition-colors">
+                  <div className="p-6 bg-white/[0.02] border border-white/[0.05] rounded-2xl group hover:border-rose-500/30 transition-colors">
                     <div className="text-[10px] uppercase tracking-widest text-white/20 mb-2">Team Allocation</div>
                     <div className="text-lg text-white font-medium">Main Roster</div>
                   </div>

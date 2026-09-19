@@ -15,7 +15,7 @@ const promises = [
     {
         title: "A Verified Path",
         desc: "Your records are permanent. We turn your local wins into a global profile that sponsors and teams can trust.",
-        icon: <TrendingUp className="w-8 h-8 text-purple-400" />
+        icon: <TrendingUp className="w-8 h-8 text-rose-400" />
     },
 ];
 

@@ -667,7 +667,7 @@ const RiotTest = () => {
             <Card className="border-zinc-800 bg-zinc-900/50 backdrop-blur-xl">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg text-white">
-                        <MonitorUp className="h-5 w-5 text-violet-400" /> OBS Overlay Suite
+                        <MonitorUp className="h-5 w-5 text-rose-400" /> OBS Overlay Suite
                     </CardTitle>
                     <CardDescription className="text-zinc-500">
                         Generate match, player, and comparison overlay links for OBS.
@@ -971,7 +971,7 @@ const RiotTest = () => {
                                         key={theme.value}
                                         type="button"
                                         onClick={() => setOverlayTheme(theme.value)}
-                                        className={`space-y-1 border p-1 text-left transition ${overlayTheme === theme.value ? 'border-violet-400/70 bg-violet-400/10' : 'border-zinc-800 bg-black/35 hover:border-zinc-600'}`}
+                                        className={`space-y-1 border p-1 text-left transition ${overlayTheme === theme.value ? 'border-rose-400/70 bg-rose-400/10' : 'border-zinc-800 bg-black/35 hover:border-zinc-600'}`}
                                     >
                                         <div className="px-1 text-[9px] font-black uppercase tracking-[0.18em] text-zinc-400">{theme.label}</div>
                                         <OverlayPreviewFrame

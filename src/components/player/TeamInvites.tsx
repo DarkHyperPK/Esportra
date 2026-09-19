@@ -65,15 +65,15 @@ const TeamInvites = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {teamInvites.map((invite: TeamInvite) => (
-          <div key={invite.id} className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/25 group">
+          <div key={invite.id} className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 hover:bg-white/15 transition-all duration-300 hover:shadow-2xl hover:shadow-rose-500/25 group">
             {/* Header */}
             <div className="flex items-center gap-4 mb-6">
               <div className="relative">
-                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-white/20 flex items-center justify-center overflow-hidden">
+                <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-rose-500/20 to-blue-500/20 border border-white/20 flex items-center justify-center overflow-hidden">
                   {invite.team.logo_url ? (
                     <img src={invite.team.logo_url} loading="lazy" alt={invite.team.name} className="w-full h-full object-cover" />
                   ) : (
-                    <Users className="h-8 w-8 text-purple-400" />
+                    <Users className="h-8 w-8 text-rose-400" />
                   )}
                 </div>
                 <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center">

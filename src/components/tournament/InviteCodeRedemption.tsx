@@ -478,11 +478,11 @@ const InviteCodeRedemption: React.FC<InviteCodeRedemptionProps> = ({
   }
 
   return (
-    <Card className="mx-auto max-w-3xl border border-purple-500/20 bg-[#0d0d10] shadow-2xl shadow-purple-950/20">
+    <Card className="mx-auto max-w-3xl border border-rose-500/20 bg-[#0d0d10] shadow-2xl shadow-rose-950/20">
       {showTitle && (
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
-            <Mail className="h-5 w-5 text-purple-300" />
+            <Mail className="h-5 w-5 text-rose-300" />
             Redeem tournament invitation
           </CardTitle>
         </CardHeader>

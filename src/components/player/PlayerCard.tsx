@@ -57,7 +57,7 @@ const PlayerCard: React.FC<PlayerCardProps> = ({ member, isOwner, isCurrentUser:
 
                     {/* CINEMATIC OVERLAY LAYERS */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/30 via-transparent to-rose-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-rose-950/30 via-transparent to-rose-950/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                     {/* TOP EDGE HIGHLIGHT */}
                     <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />

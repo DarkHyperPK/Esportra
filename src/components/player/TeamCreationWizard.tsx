@@ -395,15 +395,15 @@ const TeamCreationWizard = ({ onClose }: TeamCreationWizardProps) => {
           </div>
 
           {/* Team Card */}
-          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-8 hover:bg-white/15 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/25">
+          <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-8 hover:bg-white/15 transition-all duration-300 hover:shadow-2xl hover:shadow-rose-500/25">
             {/* Team Header */}
             <div className="flex items-center gap-6 mb-8">
               <div className="relative">
-                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-white/20 flex items-center justify-center overflow-hidden">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-rose-500/20 to-blue-500/20 border border-white/20 flex items-center justify-center overflow-hidden">
                   {userTeam.logo_url ? (
                     <img src={userTeam.logo_url} loading="lazy" alt={userTeam.name} className="w-full h-full object-cover" />
                   ) : (
-                    <Gamepad2 className="h-12 w-12 text-purple-400" />
+                    <Gamepad2 className="h-12 w-12 text-rose-400" />
                   )}
                 </div>
                 <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center">

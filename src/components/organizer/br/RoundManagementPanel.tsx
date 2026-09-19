@@ -341,7 +341,7 @@ export const RoundManagementPanel: React.FC<RoundManagementPanelProps> = ({
                   ? 'bg-emerald-600 hover:bg-emerald-500'
                   : confirmAction?.action === 'reset'
                   ? 'bg-rose-600 hover:bg-rose-500'
-                  : 'bg-indigo-600 hover:bg-indigo-500'
+                  : 'bg-rose-600 hover:bg-rose-500'
               }
             >
               {confirmAction?.action === 'start' && (allowCreateLobby ? 'Start Lobby' : 'Start Round')}

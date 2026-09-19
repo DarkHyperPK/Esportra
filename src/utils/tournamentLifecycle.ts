@@ -204,7 +204,7 @@ export function getDerivedPhaseColorClass(phase: TournamentDerivedPhase): string
     case 'registration_closed':
       return 'text-amber-400';
     case 'check_in':
-      return 'text-violet-400';
+      return 'text-rose-400';
     case 'live':
       return 'text-red-400';
     case 'completed':

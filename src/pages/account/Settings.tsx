@@ -635,7 +635,7 @@ function LicensesTab({ userId }: { userId: string | undefined }) {
               <CopyButton text={lic.license_id} label="License ID" />
             </div>
             <div className="flex flex-wrap gap-2 text-xs">
-              <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
                 {LICENSE_TYPE_LABEL[lic.license_type] ?? lic.license_type}
               </span>
               <span className={`px-2 py-0.5 rounded-full border ${LICENSE_STATUS_CLASS[lic.status] ?? 'bg-white/5 text-white border-white/10'}`}>

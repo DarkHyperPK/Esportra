@@ -524,7 +524,7 @@ export const SwissView: React.FC<SwissViewProps> = ({
                             <button type="button"
                                 onClick={handleGenerateNextRound}
                                 disabled={!isRoundComplete || isGenerating}
-                                className={cn(buttonVariants(), 'border-transparent bg-indigo-600 hover:bg-indigo-500')}
+                                className={cn(buttonVariants(), 'border-transparent bg-rose-600 hover:bg-rose-500')}
                             >
                                 <RefreshCw className={`w-4 h-4 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
                                 Generate Round {currentRound + 1}

@@ -38,7 +38,7 @@ const CreateTournamentForm = () => {
 
           <button
             type="submit"
-            className="w-full bg-gaming-purple hover:bg-gaming-purple/80"
+            className="w-full bg-rose-600 hover:bg-rose-600/80"
             disabled={loading}
           >
             {loading ? (

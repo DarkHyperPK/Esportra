@@ -207,7 +207,7 @@ const TournamentCardInner: React.FC<TournamentCardProps> = ({
         <div className="flex gap-2">
           {getStatusBadge()}
           {!is_online && (
-            <Badge variant="outline" className="bg-black/70 border-white/10 text-purple-400">
+            <Badge variant="outline" className="bg-black/70 border-white/10 text-rose-400">
               LAN
             </Badge>
           )}

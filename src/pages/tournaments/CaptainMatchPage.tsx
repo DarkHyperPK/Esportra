@@ -1118,7 +1118,7 @@ const CaptainMatchPage = () => {
                                         )}
 
                                         {isVetoEnabled && isMatchLive && !mapVetoCompleted && activeMatch.status !== 'completed' && (
-                                            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-indigo-600/10 border border-indigo-500/20 text-xs text-indigo-300">
+                                            <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-rose-600/10 border border-rose-500/20 text-xs text-rose-300">
                                                 <Swords className="w-3.5 h-3.5 shrink-0" />
                                                 <span>Complete Map Veto to unlock result reporting</span>
                                             </div>

@@ -58,7 +58,7 @@ const ContactPage = () => {
                 <div>
                   <h3 className="text-lg font-bold font-heading mb-1">Email Support</h3>
                   <p className="text-gray-400 mb-2">For general inquiries and assistance.</p>
-                  <a href="mailto:support@esportra.com" className="text-purple-400 hover:text-purple-300 font-medium transition-colors">support@esportra.com</a>
+                  <a href="mailto:support@esportra.com" className="text-rose-400 hover:text-rose-300 font-medium transition-colors">support@esportra.com</a>
                 </div>
               </div>
 
@@ -69,7 +69,7 @@ const ContactPage = () => {
                 <div>
                   <h3 className="text-lg font-bold font-heading mb-1">Partnerships</h3>
                   <p className="text-gray-400 mb-2">For venue owners and sponsors.</p>
-                  <a href="mailto:partnerships@esportra.com" className="text-indigo-400 hover:text-indigo-300 font-medium transition-colors">business@esportra.com</a>
+                  <a href="mailto:partnerships@esportra.com" className="text-rose-400 hover:text-rose-300 font-medium transition-colors">business@esportra.com</a>
                 </div>
               </div>
 

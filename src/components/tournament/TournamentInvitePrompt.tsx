@@ -127,8 +127,8 @@ export function TournamentInvitePrompt() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-5 rounded-2xl border border-violet-500/30 bg-violet-500/10 px-4 py-4 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-200/80">
+          <div className="mt-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-4 text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-rose-200/80">
               Invite Code
             </p>
             <p className="mt-2 font-mono text-2xl font-black tracking-[0.35em] text-white">

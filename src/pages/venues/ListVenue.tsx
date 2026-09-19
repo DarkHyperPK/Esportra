@@ -279,7 +279,7 @@ const ListVenue = () => {
     <div className="min-h-screen bg-transparent text-white flex flex-col relative">
       {/* Background Decor */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px]" />
+        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-rose-900/20 rounded-full blur-[120px]" />
         <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-blue-900/10 rounded-full blur-[120px]" />
       </div>
 
@@ -313,13 +313,13 @@ const ListVenue = () => {
                 <div className={cn(
                   "w-10 h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 bg-[#0a0a0c]",
                   isActive ? "border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.3)] scale-110" :
-                    isCompleted ? "border-purple-500 text-purple-500" : "border-white/10 text-gray-600"
+                    isCompleted ? "border-rose-500 text-rose-500" : "border-white/10 text-gray-600"
                 )}>
                   {isCompleted ? <CheckCircle className="w-5 h-5 md:w-6 md:h-6" /> : <Icon className={cn("w-4 h-4 md:w-5 md:h-5", isActive && "text-cyan-400")} />}
                 </div>
                 <span className={cn(
                   "text-xs md:text-sm font-medium transition-colors hidden sm:block",
-                  isActive ? "text-cyan-400" : isCompleted ? "text-purple-400" : "text-gray-600"
+                  isActive ? "text-cyan-400" : isCompleted ? "text-rose-400" : "text-gray-600"
                 )}>
                   {step.title}
                 </span>

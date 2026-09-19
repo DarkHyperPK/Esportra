@@ -987,7 +987,7 @@ const OrganizationStaffManager: React.FC<OrganizationStaffManagerProps> = ({
                                                                                     <Trophy className="w-3 h-3" />
                                                                                     {(a.tournament as any)?.name || "Tournament"}
                                                                                     {hasCustom && (
-                                                                                        <Badge className="text-[9px] bg-violet-500/15 text-violet-300 border-violet-500/30">
+                                                                                        <Badge className="text-[9px] bg-rose-500/15 text-rose-300 border-rose-500/30">
                                                                                             custom
                                                                                         </Badge>
                                                                                     )}

@@ -183,7 +183,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                             className={cn(
                                 'flex items-center gap-3 rounded-none border px-4 py-3 transition-colors',
                                 editingIndex === i
-                                    ? 'border-indigo-500/40 bg-indigo-500/5'
+                                    ? 'border-rose-500/40 bg-rose-500/5'
                                     : 'border-white/10 bg-white/[0.02]'
                             )}
                         >
@@ -210,7 +210,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                                 <button
                                     type="button"
                                     onClick={() => openEdit(i)}
-                                    className="p-1 text-gray-500 hover:text-indigo-400 transition-colors"
+                                    className="p-1 text-gray-500 hover:text-rose-400 transition-colors"
                                     title="Edit stage"
                                 >
                                     <Pencil className="w-3.5 h-3.5" />
@@ -242,9 +242,9 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
 
             {/* Prompt-based add/edit form */}
             {isFormOpen && (
-                <div className="rounded-none border border-indigo-500/30 bg-indigo-500/5">
+                <div className="rounded-none border border-rose-500/30 bg-rose-500/5">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-indigo-500/20">
+                    <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-rose-500/20">
                         <div className="flex items-center gap-3">
                             {stepIndex > 0 && (
                                 <button
@@ -256,7 +256,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                                 </button>
                             )}
                             <div>
-                                <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">
+                                <span className="text-xs font-bold text-rose-400 uppercase tracking-widest">
                                     {editingIndex !== null ? `Edit Stage ${stageNumber}` : `New Stage ${stageNumber}`}
                                 </span>
                                 {isAdding && stages.length > 0 && (
@@ -273,7 +273,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                                     key={s}
                                     className={cn(
                                         'h-1 rounded-full transition-all',
-                                        i <= stepIndex ? 'bg-indigo-400 w-4' : 'bg-white/10 w-2'
+                                        i <= stepIndex ? 'bg-rose-400 w-4' : 'bg-white/10 w-2'
                                     )}
                                 />
                             ))}
@@ -307,7 +307,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                         {/* Step 2: Format */}
                         {step === 'format' && (
                             <div className="space-y-3">
-                                <p className="text-base font-semibold text-white">What format will <span className="text-indigo-300">{form.name}</span> use?</p>
+                                <p className="text-base font-semibold text-white">What format will <span className="text-rose-300">{form.name}</span> use?</p>
                                 <div className="grid grid-cols-2 gap-2">
                                     {FORMAT_OPTIONS.map(opt => (
                                         <button
@@ -325,7 +325,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                                             className={cn(
                                                 'rounded-none border p-3 text-left transition-colors',
                                                 form.format === opt.value
-                                                    ? 'border-indigo-500/60 bg-indigo-500/15'
+                                                    ? 'border-rose-500/60 bg-rose-500/15'
                                                     : 'border-white/10 bg-black/20 hover:border-white/20'
                                             )}
                                         >
@@ -340,7 +340,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                         {/* Step 3: Series format (BO + per-round config for elimination) */}
                         {step === 'best_of' && (
                             <div className="space-y-4">
-                                <p className="text-base font-semibold text-white">Series format for <span className="text-indigo-300">{form.name}</span>?</p>
+                                <p className="text-base font-semibold text-white">Series format for <span className="text-rose-300">{form.name}</span>?</p>
 
                                 {/* Global BO — hidden when per_round is active for elimination formats */}
                                 {(!isElimination || form.bo_mode !== 'per_round') && (
@@ -353,7 +353,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                                                 className={cn(
                                                     'flex-1 py-4 rounded-none border text-center transition-colors',
                                                     form.best_of === bo
-                                                        ? 'border-indigo-500/60 bg-indigo-500/20 text-white'
+                                                        ? 'border-rose-500/60 bg-rose-500/20 text-white'
                                                         : 'border-white/10 bg-black/20 text-gray-400 hover:border-white/20'
                                                 )}
                                             >
@@ -384,7 +384,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                         {step === 'advancement' && (
                             <div className="space-y-3">
                                 <p className="text-base font-semibold text-white">
-                                    How many teams advance from <span className="text-indigo-300">{form.name}</span>?
+                                    How many teams advance from <span className="text-rose-300">{form.name}</span>?
                                 </p>
                                 <p className="text-xs text-gray-500">
                                     Capacity: {formCapacity > 0 ? `${formCapacity} teams` : 'set by previous stage'}
@@ -396,7 +396,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                                         className={cn(
                                             'rounded-none border p-3 text-center transition-colors',
                                             form.advancement_count === null
-                                                ? 'border-indigo-500/60 bg-indigo-500/20 text-white'
+                                                ? 'border-rose-500/60 bg-rose-500/20 text-white'
                                                 : 'border-white/10 bg-black/20 text-gray-400 hover:border-white/20'
                                         )}
                                     >
@@ -411,7 +411,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                                             className={cn(
                                                 'rounded-none border p-3 text-center transition-colors',
                                                 form.advancement_count === n
-                                                    ? 'border-indigo-500/60 bg-indigo-500/20 text-white'
+                                                    ? 'border-rose-500/60 bg-rose-500/20 text-white'
                                                     : 'border-white/10 bg-black/20 text-gray-400 hover:border-white/20'
                                             )}
                                         >
@@ -438,7 +438,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                                 type="button"
                                 onClick={nextStep}
                                 disabled={step === 'format' && !form.format}
-                                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded hover:bg-indigo-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded hover:bg-rose-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                                 Continue <ChevronRight className="w-3.5 h-3.5" />
                             </button>
@@ -446,7 +446,7 @@ const InlineStageEditor: React.FC<InlineStageEditorProps> = ({ stages, maxTeams,
                             <button
                                 type="button"
                                 onClick={commitForm}
-                                className="px-4 py-2 text-sm font-medium bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded hover:bg-indigo-500/30 transition-colors"
+                                className="px-4 py-2 text-sm font-medium bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded hover:bg-rose-500/30 transition-colors"
                             >
                                 {editingIndex !== null ? 'Save Changes' : 'Add Stage'}
                             </button>

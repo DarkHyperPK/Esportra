@@ -1495,9 +1495,9 @@ const TournamentDashboard = () => {
                         onClick={() => requestPublish('private')}
                       >
                         {isPublishing ? (
-                          <Loader2 className="w-5 h-5 mr-3 shrink-0 animate-spin text-purple-400" />
+                          <Loader2 className="w-5 h-5 mr-3 shrink-0 animate-spin text-rose-400" />
                         ) : (
-                          <EyeOff className="w-5 h-5 mr-3 shrink-0 text-purple-400" />
+                          <EyeOff className="w-5 h-5 mr-3 shrink-0 text-rose-400" />
                         )}
                         <div className="text-left">
                           <div className="font-bold text-white">Publish privately</div>
@@ -2241,7 +2241,7 @@ const TournamentDashboard = () => {
                               type="button"
                               onClick={handleSendInviteEmails}
                               disabled={effectiveReservedInviteSlots <= 0 || draftInviteEmails.length === 0 || createInviteDrafts.isPending || sendInvites.isPending}
-                              className={cn(buttonVariants({ size: 'sm' }), 'border-transparent bg-purple-600 hover:bg-rose-500 text-white')}
+                              className={cn(buttonVariants({ size: 'sm' }), 'border-transparent bg-rose-600 hover:bg-rose-500 text-white')}
                             >
                               {(createInviteDrafts.isPending || sendInvites.isPending) ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -2315,7 +2315,7 @@ const TournamentDashboard = () => {
                                   });
                                 }}
                                 disabled={importCsv.isPending || !csvImportText.trim() || effectiveReservedInviteSlots <= 0 || remainingInviteSlots <= 0}
-                                className={cn(buttonVariants({ size: 'sm' }), 'border-transparent bg-purple-600 hover:bg-rose-500 text-white')}
+                                className={cn(buttonVariants({ size: 'sm' }), 'border-transparent bg-rose-600 hover:bg-rose-500 text-white')}
                               >
                                 {importCsv.isPending ? 'Importing...' : 'Import Emails'}
                               </button>
@@ -2673,7 +2673,7 @@ const TournamentDashboard = () => {
                                 type="button"
                                 onClick={handleSaveInviteSettings}
                                 disabled={savingInviteSettings}
-                                className={cn(buttonVariants(), 'border-transparent bg-purple-600 hover:bg-rose-500 text-white')}
+                                className={cn(buttonVariants(), 'border-transparent bg-rose-600 hover:bg-rose-500 text-white')}
                               >
                                 {savingInviteSettings ? 'Saving...' : 'Save Invite Settings'}
                               </button>
@@ -2726,7 +2726,7 @@ const TournamentDashboard = () => {
                       <Card className="relative bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden p-6 sm:p-8 mb-6 group">
                         <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4">
                           <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-                            <MessageSquare className="w-5 h-5 text-indigo-400" />
+                            <MessageSquare className="w-5 h-5 text-rose-400" />
                             Discord Account Requirement
                           </CardTitle>
                         </CardHeader>

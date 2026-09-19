@@ -102,7 +102,7 @@ const TournamentBasicInfoForm = ({
           >
             <div>
               <div className="text-xl font-bold mb-1">{selectedGame.name}</div>
-              <div className="text-sm text-gaming-purple font-semibold mb-1">
+              <div className="text-sm text-rose-500 font-semibold mb-1">
                 Available Formats: {selectedGame.formats.map(f => f.name).join(', ')}
               </div>
               <div className="text-xs text-gaming-gray-200">
@@ -179,7 +179,7 @@ const TournamentBasicInfoForm = ({
             name="isOnline"
             checked={formData.isOnline}
             onChange={onCheckboxChange}
-            className="rounded border-gray-300 text-gaming-purple focus:ring-gaming-purple mr-2"
+            className="rounded border-gray-300 text-rose-500 focus:ring-rose-500 mr-2"
           />
           <label htmlFor="isOnline" className="text-sm font-medium">
             This is an online tournament

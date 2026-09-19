@@ -348,8 +348,8 @@ const MatchVetoSummary: React.FC<{ matchId: string; expanded: boolean }> = ({ ma
     if (!isLoading && entries.length === 0) return null;
 
     return (
-        <div className="border border-indigo-500/20 bg-indigo-500/5 p-4">
-            <p className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-indigo-300">
+        <div className="border border-rose-500/20 bg-rose-500/5 p-4">
+            <p className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-rose-300">
                 <Swords className="h-3.5 w-3.5" />
                 Map veto timeline
             </p>

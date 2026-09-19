@@ -37,7 +37,7 @@ const AboutPage: React.FC = () => {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100px_100px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_70%)]" />
         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay"></div>
         <div className={`absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] ${theme.blob} blur-[150px] rounded-full mix-blend-screen transition-colors duration-700`} />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-600/10 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-rose-600/10 blur-[150px] rounded-full mix-blend-screen" />
       </div>
 
       <main className="relative z-10">

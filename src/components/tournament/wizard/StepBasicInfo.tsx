@@ -362,7 +362,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                                         ? accent === 'rose'
                                             ? 'border-rose-500 bg-rose-500/10'
                                             : accent === 'purple'
-                                                ? 'border-purple-500/60 bg-purple-500/10'
+                                                ? 'border-rose-500/60 bg-rose-500/10'
                                                 : 'border-emerald-500/60 bg-emerald-500/10'
                                         : 'border-white/10 bg-white/[0.02] hover:border-white/25',
                                 )}
@@ -370,7 +370,7 @@ const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, errors, is
                                 <Icon className={cn(
                                     'w-7 h-7 mb-3',
                                     selected
-                                        ? accent === 'rose' ? 'text-rose-400' : accent === 'purple' ? 'text-purple-400' : 'text-emerald-400'
+                                        ? accent === 'rose' ? 'text-rose-400' : accent === 'purple' ? 'text-rose-400' : 'text-emerald-400'
                                         : 'text-gray-500',
                                 )} />
                                 <div className="text-sm font-bold text-white uppercase tracking-tight">

@@ -36,7 +36,7 @@ const FALLBACK_TONES = [
     'bg-gradient-to-br from-rose-500/80 to-orange-500/70',
     'bg-gradient-to-br from-blue-500/80 to-cyan-500/70',
     'bg-gradient-to-br from-emerald-500/80 to-teal-500/70',
-    'bg-gradient-to-br from-fuchsia-500/80 to-violet-500/70',
+    'bg-gradient-to-br from-fuchsia-500/80 to-rose-500/70',
     'bg-gradient-to-br from-amber-500/80 to-yellow-500/70',
     'bg-gradient-to-br from-zinc-500/80 to-slate-500/70',
 ];

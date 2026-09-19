@@ -55,11 +55,11 @@ const ACCENTS: Record<Accent, {
     dotDone: 'bg-cyan-500/40',
   },
   violet: {
-    icon: 'text-violet-400',
-    iconBorder: 'border-violet-500/20',
-    iconBg: 'bg-violet-500/10',
-    dotActive: 'bg-violet-500',
-    dotDone: 'bg-violet-500/40',
+    icon: 'text-rose-400',
+    iconBorder: 'border-rose-500/20',
+    iconBg: 'bg-rose-500/10',
+    dotActive: 'bg-rose-500',
+    dotDone: 'bg-rose-500/40',
   },
 };
 

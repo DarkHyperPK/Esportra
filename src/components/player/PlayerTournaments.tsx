@@ -154,7 +154,7 @@ const PlayerTournaments = () => {
           <div className="flex gap-2">
             <Button
               onClick={handleFindTournaments}
-              className="bg-gaming-purple hover:bg-gaming-purple/80"
+              className="bg-rose-500 hover:bg-rose-500/80"
             >
               Find Tournaments
             </Button>
@@ -162,7 +162,7 @@ const PlayerTournaments = () => {
               variant="outline"
               size="sm"
               onClick={() => navigate('/tournament-history')}
-              className="border-gaming-purple text-gaming-purple hover:bg-gaming-purple/10"
+              className="border-rose-500 text-rose-500 hover:bg-rose-500/10"
             >
               Tournament History
             </Button>
@@ -184,7 +184,7 @@ const PlayerTournaments = () => {
             {tournaments.map((tournament) => (
               <div
                 key={tournament.id}
-                className="relative bg-zinc-800/10 p-4 rounded-lg border border-white/10/30 hover:border-gaming-purple/50 transition-colors cursor-pointer overflow-hidden"
+                className="relative bg-zinc-800/10 p-4 rounded-lg border border-white/10/30 hover:border-rose-500/50 transition-colors cursor-pointer overflow-hidden"
                 onClick={() => navigate(`/tournaments/${tournament.slug || tournament.id}`)}
               >
                 {/* Banner background */}

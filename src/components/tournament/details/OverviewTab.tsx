@@ -190,7 +190,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ tournament }) => {
                             {(tournament.settings?.discordUrl || tournament.settings?.twitterUrl || tournament.stream_url) && (
                                 <div className="mt-12 border-t border-white/10 pt-8">
                                     <h4 className="text-sm font-bold text-white uppercase tracking-widest mb-4 flex items-center gap-3">
-                                        <ExternalLink className="w-4 h-4 text-purple-500" /> Connect
+                                        <ExternalLink className="w-4 h-4 text-rose-500" /> Connect
                                     </h4>
                                     <div className="flex flex-wrap gap-4">
                                         {tournament.settings?.discordUrl && (

@@ -152,7 +152,7 @@ const StaffDashboard = () => {
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:80px_80px] [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_70%)]" />
         <div className="absolute top-[-30%] right-[-20%] w-[50vw] h-[50vw] bg-amber-600/5 blur-[150px] rounded-full" />
-        <div className="absolute bottom-[-20%] left-[-10%] w-[40vw] h-[40vw] bg-indigo-600/5 blur-[150px] rounded-full" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[40vw] h-[40vw] bg-rose-600/5 blur-[150px] rounded-full" />
       </div>
 
       <div className="relative z-10 flex-grow container mx-auto px-4 py-8">
@@ -288,7 +288,7 @@ const StaffDashboard = () => {
                                         className={cn(
                                           "flex flex-col items-center gap-2 px-4 py-3 rounded-xl bg-zinc-900/50 border border-zinc-800/50 transition-all group",
                                           a.color === 'emerald' && "hover:border-emerald-500/30 hover:bg-emerald-500/5",
-                                          a.color === 'purple' && "hover:border-purple-500/30 hover:bg-purple-500/5",
+                                          a.color === 'purple' && "hover:border-rose-500/30 hover:bg-rose-500/5",
                                           a.color === 'amber' && "hover:border-amber-500/30 hover:bg-amber-500/5",
                                           a.color === 'red' && "hover:border-red-500/30 hover:bg-red-500/5",
                                           a.color === 'cyan' && "hover:border-cyan-500/30 hover:bg-cyan-500/5",
@@ -297,7 +297,7 @@ const StaffDashboard = () => {
                                         <Icon className={cn(
                                           "h-5 w-5 text-zinc-500 transition-colors",
                                           a.color === 'emerald' && "group-hover:text-emerald-400",
-                                          a.color === 'purple' && "group-hover:text-purple-400",
+                                          a.color === 'purple' && "group-hover:text-rose-400",
                                           a.color === 'amber' && "group-hover:text-amber-400",
                                           a.color === 'red' && "group-hover:text-red-400",
                                           a.color === 'cyan' && "group-hover:text-cyan-400",

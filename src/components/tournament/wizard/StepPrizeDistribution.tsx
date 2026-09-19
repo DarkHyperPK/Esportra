@@ -116,7 +116,7 @@ const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, er
                     value={data.currency || 'USD'}
                     onChange={(e) => updateData({ currency: e.target.value })}
                     disabled={isEditMode}
-                    className="w-full md:w-48 h-10 rounded-md border border-white/10 bg-black/40 text-white px-3 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full md:w-48 h-10 rounded-md border border-white/10 bg-black/40 text-white px-3 text-sm focus:outline-none focus:border-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {CURRENCIES.map(c => (
                         <option key={c} value={c}>{c}</option>
@@ -191,7 +191,7 @@ const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, er
                         className={cn(
                             'flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors',
                             data.payoutMethod === 'manual' || !data.payoutMethod
-                                ? 'border-indigo-500/60 bg-indigo-500/10 text-white'
+                                ? 'border-rose-500/60 bg-rose-500/10 text-white'
                                 : 'border-white/10 bg-black/20 text-gray-400 hover:border-white/20',
                             isEditMode && 'opacity-50 cursor-not-allowed'
                         )}
@@ -220,7 +220,7 @@ const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, er
                         placeholder="Describe how winners will receive their prizes. E.g.: Bank transfer within 7 days of tournament completion. Contact us via Discord to provide bank details."
                         value={data.manualPayoutNotes || ''}
                         onChange={(e) => updateData({ manualPayoutNotes: e.target.value })}
-                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                        className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-rose-500/50"
                     />
                     <p className="text-xs text-gray-500">Shown to winning teams after the tournament</p>
                 </div>
@@ -352,7 +352,7 @@ const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, er
                                             <button
                                                 type="button"
                                                 onClick={() => addReward(idx)}
-                                                className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300"
+                                                className="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300"
                                             >
                                                 <Plus className="w-3 h-3" /> Add Reward
                                             </button>
@@ -362,7 +362,7 @@ const StepPrizeDistribution: React.FC<WizardStepProps> = ({ data, updateData, er
                                                 <select
                                                     value={reward.type}
                                                     onChange={e => updateReward(idx, ri, 'type', e.target.value)}
-                                                    className="h-8 rounded border border-white/10 bg-black/40 text-white px-2 text-xs focus:outline-none focus:border-indigo-500"
+                                                    className="h-8 rounded border border-white/10 bg-black/40 text-white px-2 text-xs focus:outline-none focus:border-rose-500"
                                                 >
                                                     {REWARD_TYPES.map(rt => <option key={rt.value} value={rt.value}>{rt.label}</option>)}
                                                 </select>

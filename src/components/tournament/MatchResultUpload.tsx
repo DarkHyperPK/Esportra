@@ -141,7 +141,7 @@ const MatchResultUpload: React.FC<Props> = ({
     <div className="bg-[#0a0a0c] border border-white/10/30 rounded-xl p-4">
       <h3 className="text-white font-semibold mb-1">Manual Result Report</h3>
       {mapName && (
-        <p className="text-sm text-gaming-purple mb-3">
+        <p className="text-sm text-rose-500 mb-3">
           Game {gameNumber} — {mapName}
         </p>
       )}
@@ -183,14 +183,14 @@ const MatchResultUpload: React.FC<Props> = ({
               "flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg bg-gray-900/50 transition-colors",
               files.length >= 5
                 ? "border-gray-600 cursor-not-allowed opacity-50"
-                : "border-gaming-purple/50 cursor-pointer hover:bg-gray-900/70 hover:border-gaming-purple"
+                : "border-rose-500/50 cursor-pointer hover:bg-gray-900/70 hover:border-rose-500"
             )}
           >
             <p className="text-sm text-gray-300">
               {files.length >= 5 ? (
                 <span className="text-gray-500">Maximum 5 images reached</span>
               ) : (
-                <><span className="font-semibold text-gaming-purple">Click to upload</span> or drag and drop</>
+                <><span className="font-semibold text-rose-500">Click to upload</span> or drag and drop</>
               )}
             </p>
             <p className="text-xs text-gray-400">PNG, JPG, WEBP</p>

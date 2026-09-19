@@ -189,7 +189,7 @@ export const BracketSidebarFilter: React.FC<BracketSidebarFilterProps> = ({
                                 nativeFilterBase,
                                 "justify-start pl-8 h-8 normal-case",
                                 activeFilter.type === 'final'
-                                    ? "bg-purple-500/10 text-purple-500 border-r-2 border-purple-500 rounded-r-none"
+                                    ? "bg-rose-500/10 text-rose-500 border-r-2 border-rose-500 rounded-r-none"
                                     : nativeFilterInactive
                             )}
                             onClick={() => onFilterChange({ type: 'final' })}

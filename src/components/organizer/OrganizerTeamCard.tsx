@@ -108,7 +108,7 @@ export const OrganizerTeamCard = React.forwardRef<HTMLDivElement, TeamCardProps>
                                         className={`w-full h-full object-contain filter drop-shadow-md ${isSolo ? 'rounded-full' : ''}`}
                                     />
                                 ) : (
-                                    isSolo ? <Users className="w-16 h-16 text-purple-600/50" /> : <Users className="w-16 h-16 text-gray-600" />
+                                    isSolo ? <Users className="w-16 h-16 text-rose-600/50" /> : <Users className="w-16 h-16 text-gray-600" />
                                 )}
                             </div>
 
@@ -136,7 +136,7 @@ export const OrganizerTeamCard = React.forwardRef<HTMLDivElement, TeamCardProps>
                             className="p-6 flex flex-col h-full bg-[#09090b]"
                         >
                             <div className="flex items-center justify-center gap-2 mb-6 pt-2">
-                                <Users className="w-5 h-5 text-purple-400" />
+                                <Users className="w-5 h-5 text-rose-400" />
                                 <h4 className="text-lg font-bold text-white tracking-wide uppercase">
                                     {isSolo ? 'Player Profile' : 'ROSTER'}
                                 </h4>

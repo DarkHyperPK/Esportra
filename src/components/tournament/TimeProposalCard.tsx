@@ -384,7 +384,7 @@ const TimeProposalCard: React.FC<TimeProposalCardProps> = ({
                                         <button type="button"
                                             onClick={handleCounter}
                                             disabled={counterProposal.isPending || Boolean(roundDeadline && new Date(`${proposedDate}T${proposedTime}`) > new Date(roundDeadline))}
-                                            className={cn(buttonVariants(), 'flex-1 border-transparent bg-purple-600 hover:bg-purple-700')}
+                                            className={cn(buttonVariants(), 'flex-1 border-transparent bg-rose-600 hover:bg-rose-700')}
                                         >
                                             Send Counter
                                         </button>

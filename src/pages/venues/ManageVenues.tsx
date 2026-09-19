@@ -121,7 +121,7 @@ const ManageVenues = () => {
     if (loading) {
         return (
             <div className="min-h-screen bg-transparent flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+                <Loader2 className="w-8 h-8 text-rose-500 animate-spin" />
             </div>
         );
     }
@@ -150,7 +150,7 @@ const ManageVenues = () => {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {venues.map((venue) => (
-                            <div key={venue.id} className="bg-[#0a0a0c] border border-white/5 rounded-xl overflow-hidden group hover:border-purple-500/30 transition-all">
+                            <div key={venue.id} className="bg-[#0a0a0c] border border-white/5 rounded-xl overflow-hidden group hover:border-rose-500/30 transition-all">
                                 <div className="h-48 bg-gray-900 relative">
                                     {venue.images && venue.images[0] ? (
                                         <img src={venue.images[0]} loading="lazy" alt={venue.name} className="w-full h-full object-cover" />

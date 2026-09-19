@@ -1052,13 +1052,13 @@ const TeamTournamentRegistration: React.FC<TeamTournamentRegistrationProps> = ({
 
         {/* Discord link requirement warning */}
         {requiresDiscordLink && hasDiscordLinked === false && (
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-sm">
-            <span className="text-indigo-400 mt-0.5 flex-shrink-0">⚠</span>
-            <p className="text-indigo-300">
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-sm">
+            <span className="text-rose-400 mt-0.5 flex-shrink-0">⚠</span>
+            <p className="text-rose-300">
               {discordLinkCount > 1
                 ? `This tournament requires at least ${discordLinkCount} players per team to have Discord linked. You (captain) must be one of them.`
                 : 'This tournament requires captains to have a linked Discord account.'}{' '}
-              <a href="/account/settings?tab=connected_accounts" className="underline text-indigo-200 hover:text-white">
+              <a href="/account/settings?tab=connected_accounts" className="underline text-rose-200 hover:text-white">
                 Connect Discord →
               </a>
             </p>

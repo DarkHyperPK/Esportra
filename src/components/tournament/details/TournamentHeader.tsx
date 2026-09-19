@@ -228,7 +228,7 @@ export const TournamentHeader: React.FC<TournamentHeaderProps> = ({
                                                 {showInviteRedemption && onRedeemInvite && (
                                                     <button type="button"
                                                         onClick={onRedeemInvite}
-                                                        className="h-14 md:h-16 px-8 md:px-12 border border-purple-500/40 bg-purple-600/20 hover:bg-purple-600/40 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none shadow-[0_0_30px_rgba(147,51,234,0.15)]"
+                                                        className="h-14 md:h-16 px-8 md:px-12 border border-rose-500/40 bg-rose-600/20 hover:bg-rose-600/40 text-white text-base md:text-lg font-bold font-mono tracking-wider rounded-none shadow-[0_0_30px_rgba(244,63,94,0.15)]"
                                                     >
                                                         <span className="flex items-center gap-2">HAVE INVITATION? <Mail className="w-5 h-5" /></span>
                                                     </button>

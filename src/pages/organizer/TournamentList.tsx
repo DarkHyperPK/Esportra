@@ -95,7 +95,7 @@ const TournamentList = () => {
             </div>
             <Button
               onClick={() => navigate('/tournaments/create')}
-              className="bg-gaming-purple hover:bg-gaming-purple/80"
+              className="bg-rose-600 hover:bg-rose-600/80"
             >
               <Plus className="mr-2 h-4 w-4" />
               Create Tournament
@@ -114,7 +114,7 @@ const TournamentList = () => {
             <p className="text-gray-400 mb-4">No tournaments found</p>
             <Button
               onClick={handleCreateTournament}
-              className="bg-gaming-purple hover:bg-gaming-purple/80"
+              className="bg-rose-600 hover:bg-rose-600/80"
             >
               Create Your First Tournament
             </Button>

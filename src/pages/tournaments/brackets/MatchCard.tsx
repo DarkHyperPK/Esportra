@@ -345,7 +345,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                         {canAct && (isLive || isEditing) && (
                             isEditing ? (
                             <button type="button"
-                                className={cn(buttonVariants({ size: 'sm' }), 'h-6 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded text-xs')}
+                                className={cn(buttonVariants({ size: 'sm' }), 'h-6 px-3 bg-rose-600 hover:bg-rose-500 text-white font-medium rounded text-xs')}
                                 onClick={async (e) => {
                                     e.stopPropagation();
                                     if (onSaveScore) await onSaveScore(match);
@@ -449,7 +449,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
 
                                                 {onMapVeto && (
                                                     <button type="button"
-                                                        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 min-w-[80px] h-8 bg-purple-500/10 border-purple-500/20 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300')}
+                                                        className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'flex-1 min-w-[80px] h-8 bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300')}
                                                         onClick={(e) => { e.stopPropagation(); onMapVeto(match); }}
                                                     >
                                                         <Swords className="w-3.5 h-3.5 mr-1.5" /> Veto
@@ -519,7 +519,7 @@ export const MatchCard: React.FC<MatchCardProps> = React.memo(({
                             {showProofs && proofs && proofs.length > 0 && (
                                 <div className="flex gap-2 overflow-x-auto pb-2 pt-1">
                                     {proofs.map((url, i) => (
-                                        <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block w-16 h-12 rounded-lg overflow-hidden border border-white/10 hover:border-purple-500/50 transition-colors shrink-0" onClick={(e) => e.stopPropagation()}>
+                                        <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block w-16 h-12 rounded-lg overflow-hidden border border-white/10 hover:border-rose-500/50 transition-colors shrink-0" onClick={(e) => e.stopPropagation()}>
                                             <img src={url} loading="lazy" alt="Proof" className="w-full h-full object-cover" />
                                         </a>
                                     ))}

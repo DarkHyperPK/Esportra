@@ -158,14 +158,14 @@ export const NotificationDropdown = () => {
             case 'dispute_resolved': return 'bg-green-500/10 border-green-500/20';
             case 'dispute_rejected': return 'bg-red-500/10 border-red-500/20';
             case 'tournament_announcement': return 'bg-rose-500/10 border-rose-500/20';
-            case 'tournament_invite': return 'bg-violet-500/10 border-violet-500/20';
+            case 'tournament_invite': return 'bg-rose-500/10 border-rose-500/20';
             case 'ban': return 'bg-red-500/10 border-red-500/20';
             case 'kick': return 'bg-orange-500/10 border-orange-500/20';
             case 'veto_your_turn':
             case 'match_ready': return 'bg-rose-500/10 border-rose-500/20';
             case 'match_schedule_changed': return 'bg-sky-500/10 border-sky-500/20';
             case 'br_game_schedule_changed':
-            case 'br_lobby_schedule_changed': return 'bg-violet-500/10 border-violet-500/20';
+            case 'br_lobby_schedule_changed': return 'bg-rose-500/10 border-rose-500/20';
             case 'veto_completed': return 'bg-blue-500/10 border-blue-500/20';
             case 'match_completed': return 'bg-amber-500/10 border-amber-500/20';
             default: return 'bg-zinc-500/10 border-zinc-500/20';
@@ -203,7 +203,7 @@ export const NotificationDropdown = () => {
             case 'tournament_announcement':
                 return <Bell className="h-4 w-4 text-rose-400" />;
             case 'tournament_invite':
-                return <Ticket className="h-4 w-4 text-violet-400" />;
+                return <Ticket className="h-4 w-4 text-rose-400" />;
             case 'ban':
                 return <ShieldAlert className="h-4 w-4 text-red-500" />;
             case 'kick':
@@ -215,7 +215,7 @@ export const NotificationDropdown = () => {
                 return <Calendar className="h-4 w-4 text-sky-400" />;
             case 'br_game_schedule_changed':
             case 'br_lobby_schedule_changed':
-                return <Calendar className="h-4 w-4 text-violet-400" />;
+                return <Calendar className="h-4 w-4 text-rose-400" />;
             case 'veto_completed':
                 return <Map className="h-4 w-4 text-blue-400" />;
             case 'match_completed':

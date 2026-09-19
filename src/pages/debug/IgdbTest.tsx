@@ -73,7 +73,7 @@ const IgdbTest = () => {
     <div className="container mx-auto py-10 space-y-8 max-w-5xl pb-40">
       <div className="space-y-2 text-center md:text-left">
         <h1 className="text-4xl font-bold tracking-tight text-white italic">
-          IGDB<span className="text-purple-500">DEBUG</span>
+          IGDB<span className="text-rose-500">DEBUG</span>
         </h1>
         <p className="text-zinc-400">Test IGDB integration — game search, assets, and banners.</p>
       </div>
@@ -82,7 +82,7 @@ const IgdbTest = () => {
       <Card className="bg-zinc-900/50 border-zinc-800 backdrop-blur-xl">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white text-lg">
-            <Gamepad2 className="w-5 h-5 text-purple-500" /> Game Search
+            <Gamepad2 className="w-5 h-5 text-rose-500" /> Game Search
           </CardTitle>
           <CardDescription className="text-zinc-500">Search games via /api/games/search</CardDescription>
         </CardHeader>
@@ -99,7 +99,7 @@ const IgdbTest = () => {
               />
             </div>
             <div className="flex items-end">
-              <Button onClick={searchGames} disabled={loading || !query.trim()} className="bg-purple-600 hover:bg-purple-700 text-white font-bold">
+              <Button onClick={searchGames} disabled={loading || !query.trim()} className="bg-rose-600 hover:bg-rose-700 text-white font-bold">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Search className="w-4 h-4 mr-2" />}
                 Search
               </Button>
@@ -122,7 +122,7 @@ const IgdbTest = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {searchResults.map((game: any, i: number) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-purple-500/30 transition-colors">
+                <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-rose-500/30 transition-colors">
                   {game.background_image || game.image_url ? (
                     <img src={game.background_image || game.image_url} alt={game.name} className="w-16 h-12 rounded object-cover" />
                   ) : (
@@ -160,7 +160,7 @@ const IgdbTest = () => {
           </CardHeader>
           <CardContent>
             {assetsLoading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 text-purple-500 animate-spin" /></div>
+              <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 text-rose-500 animate-spin" /></div>
             ) : assets ? (
               <div className="space-y-4">
                 {/* Screenshots */}
@@ -222,7 +222,7 @@ const IgdbTest = () => {
           </CardHeader>
           <CardContent>
             {bannerLoading ? (
-              <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 text-purple-500 animate-spin" /></div>
+              <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 text-rose-500 animate-spin" /></div>
             ) : banner ? (
               <div className="space-y-3">
                 {banner.url ? (

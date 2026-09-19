@@ -218,9 +218,9 @@ export const StagesTab: React.FC<StagesTabProps> = ({
     return (
         <div className="space-y-8 max-w-4xl mx-auto">
             <div className="pl-6 sm:pl-10 mb-8">
-                <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/10 flex items-center gap-4">
-                    <div className="p-2 bg-purple-500/10 rounded-full">
-                        <Trophy className="w-6 h-6 text-purple-400" />
+                <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/10 flex items-center gap-4">
+                    <div className="p-2 bg-rose-500/10 rounded-full">
+                        <Trophy className="w-6 h-6 text-rose-400" />
                     </div>
                     <div>
                         <h4 className="text-white font-semibold">Tournament Format</h4>
@@ -237,7 +237,7 @@ export const StagesTab: React.FC<StagesTabProps> = ({
                                 </>
                             )}
                         </p>
-                        <div className="text-xs font-mono text-purple-300/80 bg-purple-500/5 px-2 py-1 rounded border border-purple-500/10 inline-block">
+                        <div className="text-xs font-mono text-rose-300/80 bg-rose-500/5 px-2 py-1 rounded border border-rose-500/10 inline-block">
                             {getFlowDescription()}
                         </div>
                     </div>
@@ -314,7 +314,7 @@ export const StagesTab: React.FC<StagesTabProps> = ({
 
                                         <div className="flex items-center gap-3">
                                             <div className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-white/5 flex items-center gap-2">
-                                                <Trophy className="w-4 h-4 text-purple-400" />
+                                                <Trophy className="w-4 h-4 text-rose-400" />
                                                 <span className="text-zinc-300 text-sm font-medium">{getFormatDisplay(stage)}</span>
                                             </div>
                                             {stage.is_locked && (
@@ -480,7 +480,7 @@ export const StagesTab: React.FC<StagesTabProps> = ({
                                         {showCapacity && (
                                             <div className="p-3 rounded-lg bg-black/20 border border-white/5 flex items-start gap-3">
                                                 <div className="p-1.5 rounded bg-zinc-800/50">
-                                                    <Shield className="w-4 h-4 text-indigo-400" />
+                                                    <Shield className="w-4 h-4 text-rose-400" />
                                                 </div>
                                                 <div>
                                                     <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-0.5">{capacityLabel}</p>
@@ -493,14 +493,14 @@ export const StagesTab: React.FC<StagesTabProps> = ({
 
                                         {/* Self-Play Mode */}
                                         {stage.scheduling_config?.self_play_enabled && (
-                                            <div className="p-3 rounded-lg bg-violet-500/5 border border-violet-500/20 flex items-start gap-3 col-span-full">
-                                                <div className="p-1.5 rounded bg-violet-500/10 shrink-0">
-                                                    <Gamepad2 className="w-4 h-4 text-violet-400" />
+                                            <div className="p-3 rounded-lg bg-rose-500/5 border border-rose-500/20 flex items-start gap-3 col-span-full">
+                                                <div className="p-1.5 rounded bg-rose-500/10 shrink-0">
+                                                    <Gamepad2 className="w-4 h-4 text-rose-400" />
                                                 </div>
                                                 <div>
                                                     <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold mb-0.5">Self-Play Mode</p>
                                                     <p className="text-sm text-zinc-300">
-                                                        <span className="text-violet-400 font-semibold">Enabled</span>
+                                                        <span className="text-rose-400 font-semibold">Enabled</span>
                                                         {' '}— Players schedule and play matches independently.
                                                     </p>
                                                     <p className="text-xs text-zinc-500 mt-1">
@@ -528,7 +528,7 @@ export const StagesTab: React.FC<StagesTabProps> = ({
                 <DialogContent className="bg-[#09090b] border-white/10 text-white max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <Layers className="w-5 h-5 text-purple-400" />
+                            <Layers className="w-5 h-5 text-rose-400" />
                             {selectedStage?.name} Details
                         </DialogTitle>
                         <DialogDescription className="text-zinc-400">

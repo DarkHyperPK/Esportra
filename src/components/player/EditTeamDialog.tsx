@@ -193,7 +193,7 @@ const EditTeamDialog: React.FC<EditTeamDialogProps> = ({ team, open, onOpenChang
                         <Button
                             onClick={handleSave}
                             disabled={editTeam.isPending || !name.trim() || !tag.trim()}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[100px]"
+                            className="bg-rose-600 hover:bg-rose-700 text-white min-w-[100px]"
                         >
                             {editTeam.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
                             Save Changes

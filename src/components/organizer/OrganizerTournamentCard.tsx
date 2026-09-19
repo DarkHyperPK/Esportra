@@ -171,7 +171,7 @@ export const OrganizerTournamentCard = React.memo(function OrganizerTournamentCa
 
         {!is_online && (
           <div className="absolute right-3 top-3 z-10">
-            <Badge variant="outline" className="border-white/10 bg-black/70 text-purple-400">
+            <Badge variant="outline" className="border-white/10 bg-black/70 text-rose-400">
               LAN
             </Badge>
           </div>
