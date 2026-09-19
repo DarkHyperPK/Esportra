@@ -1,7 +1,9 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Edit2, Trophy, Target, Calendar, ChevronLeft } from 'lucide-react';
+import { Edit2, Trophy, Target, Calendar, ChevronLeft, Swords } from 'lucide-react';
+import { MatchHistoryItem } from '@/components/profile/history/MatchHistoryItem';
+import type { MatchHistoryEntryDto } from '@/types/profile';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
 import EntityAvatar from '@/components/ui/EntityAvatar';
@@ -157,6 +159,14 @@ export default function TeamProfilePage() {
         staleTime: 30_000,
     });
 
+    const [matchPage, setMatchPage] = useState(1);
+    const { data: matchHistoryData } = useQuery<{ items: MatchHistoryEntryDto[]; total: number; pageSize: number }>({
+        queryKey: ['team-match-history', team?.id, matchPage],
+        queryFn: () => apiClient.get(`/api/teams/${team!.id}/match-history?page=${matchPage}`),
+        enabled: !!team?.id,
+        staleTime: 30_000,
+    });
+
     useEffect(() => {
         if (team?.slug && slug && UUID_RE.test(slug) && team.slug !== slug) {
             navigate(`/teams/${team.slug}`, { replace: true });
@@ -289,6 +299,50 @@ export default function TeamProfilePage() {
                                     <p className="text-sm text-zinc-600">No tournament history yet.</p>
                                 </div>
                             )}
+                        </section>
+
+                        {/* Match Record */}
+                        <section>
+                            <h2 className="text-xs text-zinc-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <Swords className="w-3.5 h-3.5" />
+                                Match Record
+                            </h2>
+                            {(() => {
+                                const matchItems = matchHistoryData?.items ?? [];
+                                const matchTotal = matchHistoryData?.total ?? 0;
+                                const matchPageSize = matchHistoryData?.pageSize ?? 20;
+                                const hasMoreMatches = matchTotal > matchPage * matchPageSize;
+
+                                if (matchItems.length === 0) {
+                                    return (
+                                        <div className="flex items-center gap-3 py-8 text-center justify-center">
+                                            <Swords className="w-5 h-5 text-zinc-700" />
+                                            <p className="text-sm text-zinc-600">No completed matches yet.</p>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div className="bg-white/[0.02] border border-white/5 rounded-xl px-4 py-2">
+                                        {matchItems.slice(0, 10 * matchPage).map(entry => (
+                                            <MatchHistoryItem
+                                                key={entry.match_id}
+                                                entry={entry}
+                                                accentColor="#FF3F6C"
+                                            />
+                                        ))}
+                                        {hasMoreMatches && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setMatchPage(p => p + 1)}
+                                                className="w-full text-center text-xs text-zinc-500 hover:text-white py-3 transition-colors"
+                                            >
+                                                Load more
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                         </section>
 
                         {/* Member since */}

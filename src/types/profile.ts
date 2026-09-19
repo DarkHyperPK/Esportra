@@ -74,3 +74,22 @@ export interface TeamMembershipDto {
   team_logo_url: string | null;
   team_game: string | null;
 }
+
+export interface MatchHistoryEntryDto {
+  match_id: string;
+  round_index: number | null;
+  bracket_type: string | null;
+  result: 'win' | 'loss' | 'draw';
+  our_score: number | null;
+  opp_score: number | null;
+  opponent_name: string | null;
+  opponent_logo_url: string | null;
+  my_team_name?: string | null;
+  my_team_logo_url?: string | null;
+  tournament_id: string;
+  tournament_slug: string | null;
+  tournament_name: string;
+  game: string | null;
+  match_date: string | null;
+  is_walkover: boolean;
+}
