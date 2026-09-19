@@ -87,8 +87,8 @@ export default function ProfilePage(): React.JSX.Element {
   const isOwner = !!authProfile && authProfile.username === username;
 
   const bannerPositionMutation = useMutation({
-    mutationFn: (focalY: number) =>
-      apiClient.put('/api/profiles/me/banner-position', { focal_y: focalY }),
+    mutationFn: ({ focalY, zoom }: { focalY: number; zoom: number }) =>
+      apiClient.put('/api/profiles/me/banner-position', { focal_y: focalY, zoom }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['public-profile-by-username', username] });
     },
@@ -252,7 +252,7 @@ export default function ProfilePage(): React.JSX.Element {
             profile={profile}
             accentColor={accentColor}
             isOwner={isOwner}
-            onSaveFocalY={async (y) => { await bannerPositionMutation.mutateAsync(y); }}
+            onSaveAppearance={async (focalY, zoom) => { await bannerPositionMutation.mutateAsync({ focalY, zoom }); }}
           />
 
       {/* Tab bar — becomes sticky once hero scrolls past */}

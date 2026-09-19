@@ -9,10 +9,10 @@ interface ProfileHeroProps {
   profile: PublicProfileDto;
   accentColor: string;
   isOwner?: boolean;
-  onSaveFocalY?: (focalY: number) => Promise<void>;
+  onSaveAppearance?: (focalY: number, zoom: number) => Promise<void>;
 }
 
-export function ProfileHero({ profile, accentColor, isOwner, onSaveFocalY }: ProfileHeroProps): React.JSX.Element {
+export function ProfileHero({ profile, accentColor, isOwner, onSaveAppearance }: ProfileHeroProps): React.JSX.Element {
   const reduced = useReducedMotion();
   const bannerRef = useParallax(0.15, 30) as React.RefObject<HTMLDivElement>;
   const displayName = profile.full_name || profile.username;
@@ -20,13 +20,17 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveFocalY }: Pro
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [localFocalY, setLocalFocalY] = useState<number>(profile.banner_focal_y ?? 50);
+  const [localZoom, setLocalZoom] = useState<number>(profile.banner_zoom ?? 1);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<{ startY: number; startFocal: number } | null>(null);
 
   // Sync if profile changes from outside
   useEffect(() => {
-    if (!editing) setLocalFocalY(profile.banner_focal_y ?? 50);
-  }, [profile.banner_focal_y, editing]);
+    if (!editing) {
+      setLocalFocalY(profile.banner_focal_y ?? 50);
+      setLocalZoom(profile.banner_zoom ?? 1);
+    }
+  }, [profile.banner_focal_y, profile.banner_zoom, editing]);
 
   const onMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -101,10 +105,10 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveFocalY }: Pro
   }, [editing, onTouchMove, onTouchEnd]);
 
   const handleSave = async () => {
-    if (!onSaveFocalY) return;
+    if (!onSaveAppearance) return;
     setSaving(true);
     try {
-      await onSaveFocalY(localFocalY);
+      await onSaveAppearance(localFocalY, localZoom);
       setEditing(false);
     } finally {
       setSaving(false);
@@ -113,10 +117,12 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveFocalY }: Pro
 
   const handleCancel = () => {
     setLocalFocalY(profile.banner_focal_y ?? 50);
+    setLocalZoom(profile.banner_zoom ?? 1);
     setEditing(false);
   };
 
   const effectiveFocalY = editing ? localFocalY : (profile.banner_focal_y ?? 50);
+  const effectiveZoom = editing ? localZoom : (profile.banner_zoom ?? 1);
 
   return (
     <div style={{ position: 'relative' }}>
@@ -149,6 +155,8 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveFocalY }: Pro
                 height: '100%',
                 objectFit: 'cover',
                 objectPosition: `center ${effectiveFocalY}%`,
+                transform: `scale(${effectiveZoom})`,
+                transformOrigin: `center ${effectiveFocalY}%`,
                 userSelect: 'none',
                 pointerEvents: 'none',
               }}
@@ -238,12 +246,45 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveFocalY }: Pro
             style={{
               position: 'absolute',
               bottom: 10,
+              left: 12,
               right: 12,
               display: 'flex',
-              gap: 8,
+              alignItems: 'center',
+              gap: 12,
               pointerEvents: 'auto',
             }}
           >
+            {/* Zoom slider */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 220 }}>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+                Zoom
+              </span>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.05}
+                value={localZoom}
+                onChange={(e) => setLocalZoom(Number(e.target.value))}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                style={{
+                  flex: 1,
+                  height: 4,
+                  cursor: 'pointer',
+                  accentColor: 'rgba(255,255,255,0.85)',
+                }}
+              />
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif', width: 30 }}>
+                {localZoom.toFixed(1)}×
+              </span>
+            </div>
+
+            {/* Spacer */}
+            <div style={{ flex: 1 }} />
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: 8 }}>
             <button
               type="button"
               onClick={(e) => {
@@ -287,8 +328,9 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveFocalY }: Pro
                 transition: 'opacity 0.15s ease',
               }}
             >
-              {saving ? 'Saving…' : 'Save position'}
+              {saving ? 'Saving…' : 'Save'}
             </button>
+            </div>
           </div>
         )}
       </div>

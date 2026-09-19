@@ -21,6 +21,7 @@ export interface PublicProfileDto {
   steam_tag: string | null;
   created_at: string;
   banner_focal_y: number | null;
+  banner_zoom: number | null;
 }
 
 export interface UserStatsDto {
