@@ -21,6 +21,19 @@ export const useProfileManagement = () => {
         valid[key] = source[key];
     }
 
+    // Strip empty-string social link values — backend rejects them
+    if (valid.social_links && typeof valid.social_links === 'object') {
+      const cleaned = Object.fromEntries(
+        Object.entries(valid.social_links as Record<string, unknown>)
+          .filter(([, v]) => typeof v === 'string' && v.trim().length > 0)
+      );
+      if (Object.keys(cleaned).length > 0) {
+        valid.social_links = cleaned;
+      } else {
+        delete valid.social_links;
+      }
+    }
+
     if (Object.keys(valid).length === 0) {
       toast({ title: 'No changes', description: 'No valid fields to update.', variant: 'destructive' });
       throw new Error('No valid fields to update.');

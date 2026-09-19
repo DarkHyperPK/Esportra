@@ -3,6 +3,7 @@ import { motion, useReducedMotion, useInView } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 import type { TournamentHistoryEntryDto } from '@/types/profile';
 import { format, parseISO } from 'date-fns';
+import { GameLogoImage } from '@/components/games/GameLogoImage';
 
 interface TournamentTimelineItemProps {
   entry: TournamentHistoryEntryDto;
@@ -159,6 +160,9 @@ export function TournamentTimelineItem({
               {entry.game && (
                 <span
                   style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
                     fontSize: 11,
                     background: 'rgba(255,255,255,0.07)',
                     borderRadius: 4,
@@ -167,12 +171,20 @@ export function TournamentTimelineItem({
                     whiteSpace: 'nowrap',
                   }}
                 >
+                  <GameLogoImage
+                    gameName={entry.game}
+                    alt={entry.game}
+                    className="w-3.5 h-3.5 object-contain rounded-sm"
+                  />
                   {entry.game}
                 </span>
               )}
               {entry.team_name && !abbreviated && (
                 <span
                   style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
                     fontSize: 11,
                     background: 'rgba(255,255,255,0.05)',
                     borderRadius: 4,
@@ -181,6 +193,13 @@ export function TournamentTimelineItem({
                     whiteSpace: 'nowrap',
                   }}
                 >
+                  {entry.team_logo_url && (
+                    <img
+                      src={entry.team_logo_url}
+                      alt=""
+                      style={{ width: 14, height: 14, borderRadius: 2, objectFit: 'contain', opacity: 0.8 }}
+                    />
+                  )}
                   {entry.team_name}
                 </span>
               )}
@@ -188,11 +207,6 @@ export function TournamentTimelineItem({
             <div style={{ fontSize: 14, fontWeight: 500, color: '#FFFFFF' }}>
               {entry.tournament_name}
             </div>
-            {!abbreviated && entry.format && (
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
-                {entry.format}
-              </div>
-            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
