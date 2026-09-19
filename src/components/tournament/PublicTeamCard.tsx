@@ -77,9 +77,9 @@ function SoloPlayerAvatar({ src, name }: { src?: string | null; name: string }) 
 
 function HoverHint({ label }: { label: string }) {
     return (
-        <div className="absolute inset-x-0 bottom-0 h-11 flex items-center justify-center gap-1.5 bg-gradient-to-t from-violet-950/90 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-200 ease-out rounded-b-xl pointer-events-none">
-            <span className="text-xs font-medium text-violet-300">{label}</span>
-            <ChevronRight className="w-3.5 h-3.5 text-violet-300" />
+        <div className="absolute inset-x-0 bottom-0 h-11 flex items-center justify-center gap-1.5 bg-gradient-to-t from-rose-950/90 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-200 ease-out rounded-b-xl pointer-events-none">
+            <span className="text-xs font-medium text-rose-300">{label}</span>
+            <ChevronRight className="w-3.5 h-3.5 text-rose-300" />
         </div>
     );
 }
