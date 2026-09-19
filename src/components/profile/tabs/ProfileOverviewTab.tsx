@@ -3,6 +3,7 @@ import type { UserStatsDto, TournamentHistoryEntryDto, TeamMembershipDto } from 
 import { StatTilesRow, type StatTile } from '@/components/profile/stats/StatTilesRow';
 // hasFiredSetRef is stable across tab switches so count-up fires exactly once
 import { TournamentTimelineItem } from '@/components/profile/history/TournamentTimelineItem';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 interface ProfileOverviewTabProps {
   stats: UserStatsDto;
@@ -31,11 +32,16 @@ export function ProfileOverviewTab({
   // Persists fired labels across tab unmount/remount so animation never replays
   const hasFiredSetRef = React.useRef<Set<string>>(new Set());
 
+  const prizeDisplay = Object.entries(s?.prize_by_currency ?? {})
+    .filter(([, amount]) => (amount as number) > 0)
+    .map(([currency, amount]) => formatCurrency(Number(amount), currency))
+    .join(' · ') || '—';
+
   const tiles: StatTile[] = [
     { value: s?.tournaments_entered ?? 0, label: 'Tournaments Entered', format: 'integer' },
     { value: s?.tournaments_won ?? 0, label: 'Wins', format: 'integer' },
     { value: s?.best_placement ?? 0, label: 'Best Placement', format: 'ordinal' },
-    { value: s?.total_prize_cents ? Math.round(s.total_prize_cents / 100) : 0, label: 'Total Prize', format: 'currency' },
+    { value: prizeDisplay, label: 'Total Prize', format: 'preformatted' },
     { value: s?.games_played ?? 0, label: 'Games Played', format: 'integer' },
   ];
 

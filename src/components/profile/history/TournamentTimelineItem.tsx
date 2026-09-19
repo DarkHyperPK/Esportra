@@ -4,6 +4,7 @@ import { Trophy } from 'lucide-react';
 import type { TournamentHistoryEntryDto } from '@/types/profile';
 import { format, parseISO } from 'date-fns';
 import { GameLogoImage } from '@/components/games/GameLogoImage';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 interface TournamentTimelineItemProps {
   entry: TournamentHistoryEntryDto;
@@ -39,10 +40,6 @@ function formatPlacement(placement: number | null): {
   return { label, color, isOrdinal: true };
 }
 
-function formatPrize(amount: number | null): string {
-  if (!amount || amount === 0) return '';
-  return '$' + amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
 
 export function TournamentTimelineItem({
   entry,
@@ -65,7 +62,7 @@ export function TournamentTimelineItem({
       })()
     : '';
 
-  const showPrize = !entry.is_team_tournament && entry.prize_amount && entry.prize_amount > 0;
+  const showPrize = entry.prize_amount && entry.prize_amount > 0;
   const showTrophyOnly = entry.is_team_tournament && entry.placement === 1;
 
   const variants = {
@@ -226,7 +223,7 @@ export function TournamentTimelineItem({
             )}
             {showPrize && (
               <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
-                {formatPrize(entry.prize_amount)}
+                {formatCurrency(entry.prize_amount!, entry.currency ?? 'USD')}
               </span>
             )}
             {/* Date */}

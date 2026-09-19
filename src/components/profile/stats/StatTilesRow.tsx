@@ -1,9 +1,9 @@
 import React, { useRef } from 'react';
 
-type StatFormat = 'integer' | 'currency' | 'ordinal';
+type StatFormat = 'integer' | 'currency' | 'ordinal' | 'preformatted';
 
 export interface StatTile {
-  value: number;
+  value: number | string;
   label: string;
   format: StatFormat;
 }
@@ -102,7 +102,7 @@ function StatNumber({
   hasFiredSetRef,
   label,
 }: {
-  value: number;
+  value: number | string;
   format: StatFormat;
   parentRef: React.RefObject<HTMLDivElement>;
   hasFiredSetRef?: { current: Set<string> };
@@ -130,7 +130,7 @@ function StatNumber({
 // hasFiredSetRef (keyed by label) persists across tab unmounts so the
 // animation fires at most once per label per page load.
 function useStatCountUpWithRef(
-  finalValue: number,
+  finalValue: number | string,
   options: { format: StatFormat; duration?: number },
   elementRef: React.RefObject<HTMLDivElement>,
   hasFiredSetRef?: { current: Set<string> },
@@ -138,13 +138,20 @@ function useStatCountUpWithRef(
 ): string {
   const alreadyFired = label != null && (hasFiredSetRef?.current.has(label) ?? false);
   const [displayValue, setDisplayValue] = React.useState<string>(() =>
-    alreadyFired ? formatStatValue(finalValue, options.format) : formatStatValue(0, options.format),
+    options.format === 'preformatted'
+      ? String(finalValue)
+      : alreadyFired ? formatStatValue(finalValue, options.format) : formatStatValue(0, options.format),
   );
   // Local ref initialised from Set so re-mounts don't replay
   const hasFiredRef = React.useRef(alreadyFired);
   const prefersReduced = usePrefersReducedMotion();
 
   React.useEffect(() => {
+    if (options.format === 'preformatted') {
+      setDisplayValue(String(finalValue));
+      return;
+    }
+
     const el = elementRef.current;
     if (!el) return;
 
@@ -161,7 +168,7 @@ function useStatCountUpWithRef(
             hasFiredSetRef.current.add(label);
           }
           observer.disconnect();
-          runCountUp(finalValue, options.format, options.duration ?? 600, setDisplayValue);
+          runCountUp(finalValue as number, options.format, options.duration ?? 600, setDisplayValue);
         }
       },
       { threshold: 0.3 },
@@ -192,26 +199,28 @@ function runCountUp(
   requestAnimationFrame(tick);
 }
 
-function formatStatValue(value: number, format: StatFormat): string {
+function formatStatValue(value: number | string, format: StatFormat): string {
+  if (format === 'preformatted') return String(value);
+  const num = value as number;
   if (format === 'currency') {
-    if (value === 0) return '—';
-    return '$' + value.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    if (num === 0) return '—';
+    return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
   if (format === 'ordinal') {
-    if (value === 0) return '—';
+    if (num === 0) return '—';
     const suffix = (() => {
-      const mod100 = Math.abs(value) % 100;
+      const mod100 = Math.abs(num) % 100;
       if (mod100 >= 11 && mod100 <= 13) return 'th';
-      switch (Math.abs(value) % 10) {
+      switch (Math.abs(num) % 10) {
         case 1: return 'st';
         case 2: return 'nd';
         case 3: return 'rd';
         default: return 'th';
       }
     })();
-    return `${value}${suffix}`;
+    return `${num}${suffix}`;
   }
-  return value.toLocaleString('en-US');
+  return num.toLocaleString('en-US');
 }
 
 function usePrefersReducedMotion(): boolean {

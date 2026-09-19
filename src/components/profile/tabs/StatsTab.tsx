@@ -2,6 +2,7 @@ import React from 'react';
 import { BarChart2 } from 'lucide-react';
 import type { UserStatsDto } from '@/types/profile';
 import { StatTilesRow, type StatTile } from '@/components/profile/stats/StatTilesRow';
+import { formatCurrency } from '@/utils/formatCurrency';
 
 interface StatsTabProps {
   stats: UserStatsDto;
@@ -19,7 +20,7 @@ export function StatsTab({ stats }: StatsTabProps): React.JSX.Element {
     (s.tournaments_entered === 0 &&
       s.tournaments_won === 0 &&
       s.best_placement === null &&
-      s.total_prize_cents === 0 &&
+      Object.keys(s.prize_by_currency ?? {}).length === 0 &&
       s.games_played === 0);
 
   if (allZero) {
@@ -46,11 +47,16 @@ export function StatsTab({ stats }: StatsTabProps): React.JSX.Element {
     );
   }
 
+  const prizeDisplay = Object.entries(s?.prize_by_currency ?? {})
+    .filter(([, amount]) => (amount as number) > 0)
+    .map(([currency, amount]) => formatCurrency(Number(amount), currency))
+    .join(' · ') || '—';
+
   const tiles: StatTile[] = [
     { value: s?.tournaments_entered ?? 0, label: 'Tournaments Entered', format: 'integer' },
     { value: s?.tournaments_won ?? 0, label: 'Wins', format: 'integer' },
     { value: s?.best_placement ?? 0, label: 'Best Placement', format: 'ordinal' },
-    { value: s?.total_prize_cents ? Math.round(s.total_prize_cents / 100) : 0, label: 'Total Prize', format: 'currency' },
+    { value: prizeDisplay, label: 'Total Prize', format: 'preformatted' },
     { value: s?.games_played ?? 0, label: 'Games Played', format: 'integer' },
   ];
 

@@ -27,7 +27,7 @@ export interface UserStatsDto {
     tournaments_entered: number;
     tournaments_won: number;
     best_placement: number | null;
-    total_prize_cents: number;
+    prize_by_currency: Record<string, number>;
     games_played: number;
   } | null;
   achievements: AchievementDto[];
@@ -71,6 +71,7 @@ export interface TournamentHistoryEntryDto {
   tournament_status: string | null;
   placement: number | null;
   prize_amount: number | null;
+  currency: string | null;
   is_team_tournament: boolean;
   team_name: string | null;
   team_logo_url: string | null;

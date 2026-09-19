@@ -10,11 +10,13 @@ interface MatchHistoryItemProps {
 }
 
 function roundLabel(roundIndex: number | null, bracketType: string | null): string {
-  if (bracketType === 'final') return 'Grand Final';
-  if (bracketType === 'semifinal') return 'Semi-Final';
-  if (bracketType === 'quarterfinal') return 'Quarter-Final';
+  if (bracketType === 'final') return 'GF';
+  if (bracketType === 'semifinal') return 'SF';
+  if (bracketType === 'quarterfinal') return 'QF';
+  if (bracketType === 'winners') return `WB.R${(roundIndex ?? 0) + 1}`;
+  if (bracketType === 'losers') return `LB.R${(roundIndex ?? 0) + 1}`;
   if (roundIndex === null) return 'Match';
-  return `Round ${roundIndex + 1}`;
+  return `R${roundIndex + 1}`;
 }
 
 export function MatchHistoryItem({ entry, index: _index = 0 }: MatchHistoryItemProps): React.JSX.Element {
@@ -78,7 +80,7 @@ export function MatchHistoryItem({ entry, index: _index = 0 }: MatchHistoryItemP
             />
           )}
           <span style={{ fontSize: 14, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {entry.opponent_name ?? 'TBD'}
+            vs {entry.opponent_name ?? 'TBD'}
           </span>
           {scoreStr && (
             <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>

@@ -174,7 +174,7 @@ export default function ProfilePage(): React.JSX.Element {
   }
 
   const profile = profileQuery.data!;
-  const stats = statsQuery.data ?? { statistics: null, achievements: [], verified_role: null, achievements_count: 0 };
+  const stats = statsQuery.data ?? { statistics: null, achievements: [], placement_achievements: [], verified_role: null, achievements_count: 0 };
   const linkedAccounts = linkedQuery.data ?? null;
   const recentTournaments = historyQuery.data?.items ?? [];
   const teams = teamsQuery.data ?? [];
