@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { PublicProfileDto, LinkedAccountsDto } from '@/types/profile';
 import { countryAccentColors } from '@/data/countryAccentColors';
 
-const PLATFORM_NEUTRAL = '#7B61FF';
+const PLATFORM_NEUTRAL = '#FF3F6C';
 const RIOT_RED = '#FF4655';
 const STEAM_ACCENT = '#4A90D9';
 
