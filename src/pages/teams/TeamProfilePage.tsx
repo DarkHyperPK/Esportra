@@ -1,4 +1,5 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Edit2, Trophy, Target, Calendar, ChevronLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -116,8 +117,11 @@ function Skeleton() {
     );
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function TeamProfilePage() {
     const { slug } = useParams<{ slug: string }>();
+    const navigate = useNavigate();
     const { profile } = useAuth();
 
     const { data: team, isLoading: loadingTeam } = useQuery<TeamDetail>({
@@ -136,6 +140,12 @@ export default function TeamProfilePage() {
         enabled: !!team?.id,
         staleTime: 30_000,
     });
+
+    useEffect(() => {
+        if (team?.slug && slug && UUID_RE.test(slug) && team.slug !== slug) {
+            navigate(`/teams/${team.slug}`, { replace: true });
+        }
+    }, [team, slug, navigate]);
 
     const history = historyData?.items ?? [];
     const totalTournaments = history.length;
