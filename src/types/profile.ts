@@ -22,6 +22,7 @@ export interface PublicProfileDto {
   created_at: string;
   banner_focal_y: number | null;
   banner_zoom: number | null;
+  banner_height: number | null;
 }
 
 export interface UserStatsDto {

@@ -3,13 +3,17 @@ import { motion, useReducedMotion } from 'framer-motion';
 import type { PublicProfileDto } from '@/types/profile';
 import { useParallax } from '@/hooks/useParallax';
 import { getCountryFlagUrl } from '@/utils/countries';
-import { Move } from 'lucide-react';
+import { Move, GripHorizontal } from 'lucide-react';
+
+const MIN_HEIGHT = 80;
+const MAX_HEIGHT = 500;
+const DEFAULT_HEIGHT = 200;
 
 interface ProfileHeroProps {
   profile: PublicProfileDto;
   accentColor: string;
   isOwner?: boolean;
-  onSaveAppearance?: (focalY: number, zoom: number) => Promise<void>;
+  onSaveAppearance?: (focalY: number, zoom: number, height: number) => Promise<void>;
 }
 
 export function ProfileHero({ profile, accentColor, isOwner, onSaveAppearance }: ProfileHeroProps): React.JSX.Element {
@@ -21,94 +25,123 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveAppearance }:
   const [saving, setSaving] = useState(false);
   const [localFocalY, setLocalFocalY] = useState<number>(profile.banner_focal_y ?? 50);
   const [localZoom, setLocalZoom] = useState<number>(profile.banner_zoom ?? 1);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dragStateRef = useRef<{ startY: number; startFocal: number } | null>(null);
+  const [localHeight, setLocalHeight] = useState<number>(profile.banner_height ?? DEFAULT_HEIGHT);
 
-  // Sync if profile changes from outside
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Two independent drag refs — pan vs resize
+  const panRef = useRef<{ startY: number; startFocal: number } | null>(null);
+  const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
+
   useEffect(() => {
     if (!editing) {
       setLocalFocalY(profile.banner_focal_y ?? 50);
       setLocalZoom(profile.banner_zoom ?? 1);
+      setLocalHeight(profile.banner_height ?? DEFAULT_HEIGHT);
     }
-  }, [profile.banner_focal_y, profile.banner_zoom, editing]);
+  }, [profile.banner_focal_y, profile.banner_zoom, profile.banner_height, editing]);
 
-  const onMouseDown = useCallback(
+  // ── Pan (image reposition) ────────────────────────────────────────────────
+  const onBannerMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if (!editing) return;
+      if (!editing || resizeRef.current) return;
       e.preventDefault();
-      dragStateRef.current = { startY: e.clientY, startFocal: localFocalY };
+      panRef.current = { startY: e.clientY, startFocal: localFocalY };
     },
     [editing, localFocalY],
   );
 
-  const onMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!dragStateRef.current || !containerRef.current) return;
-      const containerH = containerRef.current.getBoundingClientRect().height;
-      const delta = e.clientY - dragStateRef.current.startY;
-      const pct = (delta / containerH) * 100;
-      const next = Math.min(100, Math.max(0, dragStateRef.current.startFocal + pct));
-      setLocalFocalY(next);
-    },
-    [],
-  );
-
-  const onMouseUp = useCallback(() => {
-    dragStateRef.current = null;
-  }, []);
-
-  useEffect(() => {
-    if (!editing) return;
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-  }, [editing, onMouseMove, onMouseUp]);
-
-  // Touch support
-  const onTouchStart = useCallback(
+  const onBannerTouchStart = useCallback(
     (e: React.TouchEvent) => {
-      if (!editing) return;
-      const touch = e.touches[0];
-      dragStateRef.current = { startY: touch.clientY, startFocal: localFocalY };
+      if (!editing || resizeRef.current) return;
+      const t = e.touches[0];
+      panRef.current = { startY: t.clientY, startFocal: localFocalY };
     },
     [editing, localFocalY],
   );
 
-  const onTouchMove = useCallback(
-    (e: TouchEvent) => {
-      if (!dragStateRef.current || !containerRef.current) return;
-      const touch = e.touches[0];
-      const containerH = containerRef.current.getBoundingClientRect().height;
-      const delta = touch.clientY - dragStateRef.current.startY;
-      const pct = (delta / containerH) * 100;
-      const next = Math.min(100, Math.max(0, dragStateRef.current.startFocal + pct));
-      setLocalFocalY(next);
+  // ── Resize (height) ───────────────────────────────────────────────────────
+  const onResizeMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resizeRef.current = { startY: e.clientY, startHeight: localHeight };
+    },
+    [localHeight],
+  );
+
+  const onResizeTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      e.stopPropagation();
+      const t = e.touches[0];
+      resizeRef.current = { startY: t.clientY, startHeight: localHeight };
+    },
+    [localHeight],
+  );
+
+  // ── Global move / up ──────────────────────────────────────────────────────
+  const onWindowMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (resizeRef.current) {
+        const delta = e.clientY - resizeRef.current.startY;
+        const next = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, resizeRef.current.startHeight + delta));
+        setLocalHeight(next);
+        return;
+      }
+      if (panRef.current && containerRef.current) {
+        const containerH = containerRef.current.getBoundingClientRect().height;
+        const delta = e.clientY - panRef.current.startY;
+        const pct = (delta / containerH) * 100;
+        setLocalFocalY(Math.min(100, Math.max(0, panRef.current.startFocal + pct)));
+      }
     },
     [],
   );
 
-  const onTouchEnd = useCallback(() => {
-    dragStateRef.current = null;
+  const onWindowTouchMove = useCallback(
+    (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (resizeRef.current) {
+        const delta = t.clientY - resizeRef.current.startY;
+        const next = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, resizeRef.current.startHeight + delta));
+        setLocalHeight(next);
+        return;
+      }
+      if (panRef.current && containerRef.current) {
+        const containerH = containerRef.current.getBoundingClientRect().height;
+        const delta = t.clientY - panRef.current.startY;
+        const pct = (delta / containerH) * 100;
+        setLocalFocalY(Math.min(100, Math.max(0, panRef.current.startFocal + pct)));
+      }
+    },
+    [],
+  );
+
+  const onWindowUp = useCallback(() => {
+    panRef.current = null;
+    resizeRef.current = null;
   }, []);
 
   useEffect(() => {
     if (!editing) return;
-    window.addEventListener('touchmove', onTouchMove, { passive: false });
-    window.addEventListener('touchend', onTouchEnd);
+    window.addEventListener('mousemove', onWindowMouseMove);
+    window.addEventListener('mouseup', onWindowUp);
+    window.addEventListener('touchmove', onWindowTouchMove, { passive: false });
+    window.addEventListener('touchend', onWindowUp);
     return () => {
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('mousemove', onWindowMouseMove);
+      window.removeEventListener('mouseup', onWindowUp);
+      window.removeEventListener('touchmove', onWindowTouchMove);
+      window.removeEventListener('touchend', onWindowUp);
     };
-  }, [editing, onTouchMove, onTouchEnd]);
+  }, [editing, onWindowMouseMove, onWindowTouchMove, onWindowUp]);
 
+  // ── Save / Cancel ─────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!onSaveAppearance) return;
     setSaving(true);
     try {
-      await onSaveAppearance(localFocalY, localZoom);
+      await onSaveAppearance(localFocalY, localZoom, localHeight);
       setEditing(false);
     } finally {
       setSaving(false);
@@ -118,32 +151,33 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveAppearance }:
   const handleCancel = () => {
     setLocalFocalY(profile.banner_focal_y ?? 50);
     setLocalZoom(profile.banner_zoom ?? 1);
+    setLocalHeight(profile.banner_height ?? DEFAULT_HEIGHT);
     setEditing(false);
   };
 
-  const effectiveFocalY = editing ? localFocalY : (profile.banner_focal_y ?? 50);
-  const effectiveZoom = editing ? localZoom : (profile.banner_zoom ?? 1);
+  const focalY = editing ? localFocalY : (profile.banner_focal_y ?? 50);
+  const zoom = editing ? localZoom : (profile.banner_zoom ?? 1);
+  const height = editing ? localHeight : (profile.banner_height ?? DEFAULT_HEIGHT);
 
   return (
     <div style={{ position: 'relative' }}>
-      {/* Banner */}
+      {/* Banner container — height is dynamic */}
       <div
         ref={containerRef}
         style={{
           position: 'relative',
-          height: 200,
+          height,
           overflow: 'hidden',
           cursor: editing ? 'grab' : 'default',
+          userSelect: 'none',
         }}
-        onMouseDown={onMouseDown}
-        onTouchStart={onTouchStart}
+        onMouseDown={onBannerMouseDown}
+        onTouchStart={onBannerTouchStart}
       >
+        {/* Image / gradient */}
         <div
           ref={editing ? undefined : bannerRef}
-          style={{
-            position: 'absolute',
-            inset: editing ? '0' : '-30px 0 -30px 0',
-          }}
+          style={{ position: 'absolute', inset: editing ? '0' : '-30px 0 -30px 0' }}
         >
           {profile.banner_url ? (
             <img
@@ -154,55 +188,40 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveAppearance }:
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
-                objectPosition: `center ${effectiveFocalY}%`,
-                transform: `scale(${effectiveZoom})`,
-                transformOrigin: `center ${effectiveFocalY}%`,
-                userSelect: 'none',
+                objectPosition: `center ${focalY}%`,
+                transform: `scale(${zoom})`,
+                transformOrigin: `center ${focalY}%`,
                 pointerEvents: 'none',
               }}
             />
           ) : (
-            <div
-              style={{
-                width: '100%',
-                height: '100%',
-                background: 'linear-gradient(135deg, #1a1a24 0%, #0E0E12 100%)',
-              }}
-            />
+            <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #1a1a24 0%, #0E0E12 100%)' }} />
           )}
         </div>
 
-        {/* Edit overlay */}
+        {/* Edit hint overlay */}
         {editing && (
           <div
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'rgba(0,0,0,0.35)',
+              background: 'rgba(0,0,0,0.32)',
+              backdropFilter: 'blur(1px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              backdropFilter: 'blur(1px)',
               pointerEvents: 'none',
             }}
           >
-            <Move size={18} color="rgba(255,255,255,0.75)" />
-            <span
-              style={{
-                fontFamily: 'Inter, sans-serif',
-                fontSize: 13,
-                fontWeight: 500,
-                color: 'rgba(255,255,255,0.75)',
-                letterSpacing: '0.01em',
-              }}
-            >
+            <Move size={18} color="rgba(255,255,255,0.7)" />
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.01em' }}>
               Drag to reposition
             </span>
           </div>
         )}
 
-        {/* Edit action buttons */}
+        {/* Adjust cover button (view mode) */}
         {isOwner && profile.banner_url && !editing && (
           <button
             type="button"
@@ -225,22 +244,16 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveAppearance }:
               cursor: 'pointer',
               backdropFilter: 'blur(8px)',
               letterSpacing: '0.01em',
-              transition: 'background 0.15s ease, border-color 0.15s ease',
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(0,0,0,0.75)';
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(0,0,0,0.55)';
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.75)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.28)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.55)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
           >
             <Move size={13} />
             Adjust cover
           </button>
         )}
 
+        {/* Edit controls bar */}
         {editing && (
           <div
             style={{
@@ -255,10 +268,8 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveAppearance }:
             }}
           >
             {/* Zoom slider */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 220 }}>
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
-                Zoom
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '0 0 auto', minWidth: 160, maxWidth: 220 }}>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>Zoom</span>
               <input
                 type="range"
                 min={1}
@@ -268,29 +279,24 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveAppearance }:
                 onChange={(e) => setLocalZoom(Number(e.target.value))}
                 onMouseDown={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
-                style={{
-                  flex: 1,
-                  height: 4,
-                  cursor: 'pointer',
-                  accentColor: 'rgba(255,255,255,0.85)',
-                }}
+                style={{ flex: 1, cursor: 'pointer', accentColor: 'rgba(255,255,255,0.85)' }}
               />
-              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif', width: 30 }}>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif', width: 32, textAlign: 'right' }}>
                 {localZoom.toFixed(1)}×
               </span>
             </div>
 
-            {/* Spacer */}
+            {/* Height readout */}
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+              {Math.round(localHeight)}px
+            </span>
+
             <div style={{ flex: 1 }} />
 
-            {/* Buttons */}
-            <div style={{ display: 'flex', gap: 8 }}>
+            {/* Cancel / Save */}
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCancel();
-              }}
+              onClick={(e) => { e.stopPropagation(); handleCancel(); }}
               style={{
                 padding: '6px 14px',
                 background: 'rgba(0,0,0,0.6)',
@@ -309,10 +315,7 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveAppearance }:
             <button
               type="button"
               disabled={saving}
-              onClick={(e) => {
-                e.stopPropagation();
-                void handleSave();
-              }}
+              onClick={(e) => { e.stopPropagation(); void handleSave(); }}
               style={{
                 padding: '6px 14px',
                 background: saving ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.92)',
@@ -323,34 +326,39 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveAppearance }:
                 fontFamily: 'Inter, sans-serif',
                 fontWeight: 600,
                 cursor: saving ? 'not-allowed' : 'pointer',
-                backdropFilter: 'blur(8px)',
                 opacity: saving ? 0.6 : 1,
-                transition: 'opacity 0.15s ease',
               }}
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
-            </div>
           </div>
         )}
       </div>
 
-      {/* Avatar — overlaps banner bottom by 40px */}
-      <div
-        style={{
-          position: 'relative',
-          maxWidth: 1200,
-          margin: '0 auto',
-          padding: '0 24px',
-        }}
-      >
+      {/* Resize handle — only in edit mode, sits below the banner */}
+      {editing && (
         <div
+          onMouseDown={onResizeMouseDown}
+          onTouchStart={onResizeTouchStart}
           style={{
-            position: 'absolute',
-            top: -40,
-            left: 24,
+            height: 16,
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderTop: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'ns-resize',
+            userSelect: 'none',
           }}
         >
+          <GripHorizontal size={14} color="rgba(255,255,255,0.3)" />
+        </div>
+      )}
+
+      {/* Avatar — overlaps banner bottom by 40px */}
+      <div style={{ position: 'relative', maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+        <div style={{ position: 'absolute', top: -40, left: 24 }}>
           <motion.div
             initial={reduced ? { scale: 1, opacity: 1 } : { scale: 0.92, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -367,11 +375,7 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveAppearance }:
             }}
           >
             {profile.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={displayName}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
+              <img src={profile.avatar_url} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               <div
                 style={{
@@ -392,42 +396,15 @@ export function ProfileHero({ profile, accentColor, isOwner, onSaveAppearance }:
           </motion.div>
         </div>
 
-        {/* Hero content — padding-top clears avatar overlap */}
         <div style={{ paddingTop: 88 }}>
-          <h1
-            style={{
-              fontFamily: 'Inter, sans-serif',
-              fontWeight: 700,
-              fontSize: 28,
-              color: '#FFFFFF',
-              margin: 0,
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
+          <h1 style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 28, color: '#FFFFFF', margin: 0, fontVariantNumeric: 'tabular-nums' }}>
             {displayName}
           </h1>
-          <div
-            style={{
-              fontFamily: 'Inter, sans-serif',
-              fontWeight: 400,
-              fontSize: 15,
-              color: 'rgba(255,255,255,0.5)',
-              marginTop: 4,
-            }}
-          >
+          <div style={{ fontFamily: 'Inter, sans-serif', fontWeight: 400, fontSize: 15, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
             @{profile.username}
           </div>
           {(profile.country_code || profile.location) && (
-            <div
-              style={{
-                fontSize: 13,
-                color: 'rgba(255,255,255,0.4)',
-                marginTop: 6,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
               {profile.country_code && (
                 <img
                   src={getCountryFlagUrl(profile.country_code)}
