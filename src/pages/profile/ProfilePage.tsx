@@ -224,12 +224,18 @@ export default function ProfilePage(): React.JSX.Element {
 
   return (
     <div
-      style={{
-        minHeight: '100vh',
-        background: '#0E0E12',
-        color: '#FFFFFF',
-      }}
+      style={{ minHeight: '100vh', background: '#0E0E12', color: '#FFFFFF', position: 'relative', overflowX: 'hidden' }}
     >
+      {/* Signature background — grid + noise + rose glow blobs */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:100px_100px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_70%)]" />
+        <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-15 brightness-100 contrast-150 mix-blend-overlay" />
+        <div className="absolute top-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-rose-600/10 blur-[150px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-rose-600/10 blur-[150px] rounded-full mix-blend-screen" />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10">
       {/* Hero section */}
       <ProfileHero profile={profile} accentColor={accentColor} />
 
@@ -269,6 +275,7 @@ export default function ProfilePage(): React.JSX.Element {
           </AnimatePresence>
         </div>
       </div>
+      </div>{/* end relative z-10 */}
     </div>
   );
 }
