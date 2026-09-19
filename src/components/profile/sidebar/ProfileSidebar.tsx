@@ -5,7 +5,7 @@ import type { PublicProfileDto, LinkedAccountsDto } from '@/types/profile';
 import { LinkedAccountBadges } from './LinkedAccountBadges';
 import { SocialLinks } from './SocialLinks';
 import { format, parseISO } from 'date-fns';
-import { getCountryFlag } from '@/utils/countries';
+import { getCountryFlagUrl } from '@/utils/countries';
 
 interface ProfileSidebarProps {
   profile: PublicProfileDto;
@@ -180,7 +180,13 @@ export function ProfileSidebar({ profile, linkedAccounts }: ProfileSidebarProps)
                 gap: 4,
               }}
             >
-              {profile.country_code && <span>{getCountryFlag(profile.country_code)}</span>}
+              {profile.country_code && (
+                <img
+                  src={getCountryFlagUrl(profile.country_code)}
+                  alt={profile.country_code}
+                  style={{ width: 16, height: 12, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }}
+                />
+              )}
               <span>{profile.location}</span>
             </div>
           )}
@@ -237,7 +243,13 @@ export function ProfileSidebar({ profile, linkedAccounts }: ProfileSidebarProps)
                   color: 'rgba(255,255,255,0.6)',
                 }}
               >
-                {profile.country_code && <span>{getCountryFlag(profile.country_code)}</span>}
+                {profile.country_code && (
+                <img
+                  src={getCountryFlagUrl(profile.country_code)}
+                  alt={profile.country_code}
+                  style={{ width: 16, height: 12, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }}
+                />
+              )}
                 {profile.location}
               </span>
             )}

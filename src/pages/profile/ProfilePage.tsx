@@ -19,7 +19,6 @@ import { ProfileOverviewTab } from '@/components/profile/tabs/ProfileOverviewTab
 import { TournamentHistoryTab } from '@/components/profile/tabs/TournamentHistoryTab';
 import { TeamsTab } from '@/components/profile/tabs/TeamsTab';
 import { AchievementsTab } from '@/components/profile/tabs/AchievementsTab';
-import { StatsTab } from '@/components/profile/tabs/StatsTab';
 import { MatchHistoryTab } from '@/components/profile/tabs/MatchHistoryTab';
 
 /**
@@ -215,8 +214,6 @@ export default function ProfilePage(): React.JSX.Element {
         return <TeamsTab profileId={profile.id} />;
       case 'achievements':
         return <AchievementsTab profileId={profile.id} accentColor={accentColor} />;
-      case 'stats':
-        return <StatsTab stats={stats} />;
       default:
         return <div />;
     }

@@ -7,7 +7,7 @@ import { TournamentTimelineItem } from '@/components/profile/history/TournamentT
 import { SocialLinks } from '@/components/profile/sidebar/SocialLinks';
 import { useAccentColor } from '@/hooks/useAccentColor';
 import { format, parseISO } from 'date-fns';
-import { getCountryFlag } from '@/utils/countries';
+import { getCountryFlagUrl } from '@/utils/countries';
 
 interface ProfilePeekContentProps {
   profile: PublicProfileDto;
@@ -176,7 +176,11 @@ export function ProfilePeekContent({
                   gap: 4,
                 }}
               >
-                {getCountryFlag(profile.country_code)}
+                <img
+                  src={getCountryFlagUrl(profile.country_code)}
+                  alt={profile.country_code}
+                  style={{ width: 16, height: 12, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }}
+                />
                 {profile.location ? ` · ${profile.location}` : ''}
               </div>
             )}

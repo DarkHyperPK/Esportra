@@ -31,8 +31,20 @@ export interface UserStatsDto {
     games_played: number;
   } | null;
   achievements: AchievementDto[];
+  placement_achievements: PlacementAchievementDto[];
   verified_role: string | null;
   achievements_count: number;
+}
+
+export interface PlacementAchievementDto {
+  tournament_id: string;
+  tournament_name: string;
+  tournament_slug: string | null;
+  game: string | null;
+  start_date: string | null;
+  placement: number;
+  team_name: string | null;
+  team_logo_url: string | null;
 }
 
 export interface AchievementDto {

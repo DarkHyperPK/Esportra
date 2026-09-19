@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { PublicProfileDto } from '@/types/profile';
 import { useParallax } from '@/hooks/useParallax';
-import { getCountryFlag } from '@/utils/countries';
+import { getCountryFlagUrl } from '@/utils/countries';
 
 interface ProfileHeroProps {
   profile: PublicProfileDto;
@@ -151,7 +151,13 @@ export function ProfileHero({ profile, accentColor }: ProfileHeroProps): React.J
                 gap: 6,
               }}
             >
-              {profile.country_code && <span>{getCountryFlag(profile.country_code)}</span>}
+              {profile.country_code && (
+                <img
+                  src={getCountryFlagUrl(profile.country_code)}
+                  alt={profile.country_code}
+                  style={{ width: 18, height: 13, objectFit: 'cover', borderRadius: 2, flexShrink: 0 }}
+                />
+              )}
               {profile.location && <span>{profile.location}</span>}
             </div>
           )}
