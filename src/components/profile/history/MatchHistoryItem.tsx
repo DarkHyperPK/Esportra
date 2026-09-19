@@ -17,7 +17,7 @@ function roundLabel(roundIndex: number | null, bracketType: string | null): stri
   return `Round ${roundIndex + 1}`;
 }
 
-export function MatchHistoryItem({ entry, index = 0 }: MatchHistoryItemProps): React.JSX.Element {
+export function MatchHistoryItem({ entry, index: _index = 0 }: MatchHistoryItemProps): React.JSX.Element {
   const dateStr = entry.match_date
     ? (() => {
         try {
