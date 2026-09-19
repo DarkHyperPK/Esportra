@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
-import { User, Share2, Loader2, Save, Edit, Globe, MapPin, ShieldCheck, Camera, Lock, ImageIcon, X } from "lucide-react";
+import { User, Share2, Loader2, Save, Edit, Globe, MapPin, ShieldCheck, Camera, Lock, ImageIcon, X, Move } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import AvatarUploader from "./AvatarUploader";
@@ -18,6 +18,7 @@ import { type AvatarPickerSelection, type AvatarStyleId, DEFAULT_STYLE } from ".
 import { getCountryFlag, detectUserCountry, getCountryName, countries, getCountryFlagUrl } from "@/utils/countries";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import EntityAvatar from "@/components/ui/EntityAvatar";
+import type { PublicProfileDto } from "@/types/profile";
 
 interface EditProfileDialogProps {
     open: boolean;
@@ -36,6 +37,9 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
     const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
     const [bannerUploading, setBannerUploading] = useState(false);
     const bannerInputRef = useRef<HTMLInputElement>(null);
+    const [bannerFocalY, setBannerFocalY] = useState(50);
+    const [bannerZoom, setBannerZoom] = useState(1);
+    const [bannerHeight, setBannerHeight] = useState(200);
 
     const [privacySettings, setPrivacySettings] = useState({
         show_riot_account: true,
@@ -51,6 +55,13 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
     });
     const teamName = teamQuery.data?.[0]?.name ?? null;
     const teamId = teamQuery.data?.[0]?.id ?? null;
+
+    const publicProfileQuery = useQuery({
+        queryKey: ['public-profile-by-username', profile?.username],
+        queryFn: () => apiClient.get<PublicProfileDto>(`/api/profiles/by-username/${profile!.username}`),
+        enabled: !!profile?.username && open,
+        staleTime: 5 * 60 * 1000,
+    });
 
 
     // Local State for Form Fields
@@ -130,7 +141,13 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
 
         if (!profile.country_code) handleAutodetect();
         if (autoOpenAvatarPicker) setAvatarPickerOpen(true);
-    }, [open, profile, handleAutodetect, autoOpenAvatarPicker]);
+
+        // Initialize banner appearance from cached public profile
+        const pub = publicProfileQuery.data;
+        setBannerFocalY(pub?.banner_focal_y ?? 50);
+        setBannerZoom(pub?.banner_zoom ?? 1);
+        setBannerHeight(pub?.banner_height ?? 200);
+    }, [open, profile, handleAutodetect, autoOpenAvatarPicker, publicProfileQuery.data]);
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -198,22 +215,34 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
     const handleSave = async () => {
         setLoading(true);
         try {
-            await updateProfile({
-                username: formData.username,
-                full_name: formData.full_name,
-                bio: formData.bio,
-                banner_url: formData.banner_url || null,
-                avatar_url: formData.avatar_url,
-                avatar_seed: formData.avatar_seed,
-                avatar_style: formData.avatar_style,
-                card_image_url: formData.card_image_url,
-                social_links: formData.social_links,
-                riot_tag: formData.riot_tag,
-                steam_tag: formData.steam_tag,
-                country_code: formData.country_code
-            });
-            // Invalidate all profile queries so the page reflects changes
+            const saves: Promise<unknown>[] = [
+                updateProfile({
+                    username: formData.username,
+                    full_name: formData.full_name,
+                    bio: formData.bio,
+                    banner_url: formData.banner_url || null,
+                    avatar_url: formData.avatar_url,
+                    avatar_seed: formData.avatar_seed,
+                    avatar_style: formData.avatar_style,
+                    card_image_url: formData.card_image_url,
+                    social_links: formData.social_links,
+                    riot_tag: formData.riot_tag,
+                    steam_tag: formData.steam_tag,
+                    country_code: formData.country_code
+                }),
+            ];
+            if (formData.banner_url) {
+                saves.push(
+                    apiClient.put('/api/profiles/me/banner-position', {
+                        focal_y: bannerFocalY,
+                        zoom: bannerZoom,
+                        height: bannerHeight,
+                    }),
+                );
+            }
+            await Promise.all(saves);
             queryClient.invalidateQueries({ queryKey: ['profile'] });
+            queryClient.invalidateQueries({ queryKey: ['public-profile-by-username', formData.username] });
             onOpenChange(false);
         } catch (error) {
             console.error("Failed to update profile", error);
@@ -255,9 +284,27 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
                                 {/* Banner upload */}
                                 <div className="space-y-2">
                                     <Label className="flex items-center gap-2"><ImageIcon className="w-4 h-4 text-rose-500" /> Profile Banner</Label>
-                                    <div className="relative rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900/40" style={{ height: 100 }}>
+
+                                    {/* Live preview */}
+                                    <div
+                                        className="relative rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900/40"
+                                        style={{ height: Math.min(bannerHeight, 160) }}
+                                    >
                                         {formData.banner_url ? (
-                                            <img src={formData.banner_url} alt="Banner" className="w-full h-full object-cover" />
+                                            <img
+                                                src={formData.banner_url}
+                                                alt="Banner"
+                                                style={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    objectFit: 'cover',
+                                                    objectPosition: `center ${bannerFocalY}%`,
+                                                    transform: `scale(${bannerZoom})`,
+                                                    transformOrigin: `center ${bannerFocalY}%`,
+                                                    pointerEvents: 'none',
+                                                    userSelect: 'none',
+                                                }}
+                                            />
                                         ) : (
                                             <div className="w-full h-full bg-gradient-to-br from-zinc-900 to-zinc-800 flex items-center justify-center">
                                                 <span className="text-xs text-zinc-600">No banner set</span>
@@ -291,6 +338,61 @@ const EditProfileDialog = ({ open, onOpenChange, autoOpenAvatarPicker }: EditPro
                                             onChange={handleBannerChange}
                                         />
                                     </div>
+
+                                    {/* Adjustment sliders — shown only when banner is set */}
+                                    {formData.banner_url && (
+                                        <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-3 space-y-3">
+                                            <p className="text-xs text-zinc-500 flex items-center gap-1.5">
+                                                <Move className="w-3 h-3" /> Adjust banner appearance
+                                            </p>
+                                            {/* Position */}
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs text-zinc-500 w-16 shrink-0">Position</span>
+                                                <input
+                                                    type="range"
+                                                    min={0}
+                                                    max={100}
+                                                    step={1}
+                                                    value={bannerFocalY}
+                                                    onChange={(e) => setBannerFocalY(Number(e.target.value))}
+                                                    className="flex-1"
+                                                    style={{ accentColor: '#f43f5e' }}
+                                                />
+                                                <span className="text-xs text-zinc-600 w-8 text-right">{Math.round(bannerFocalY)}%</span>
+                                            </div>
+                                            {/* Zoom */}
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs text-zinc-500 w-16 shrink-0">Zoom</span>
+                                                <input
+                                                    type="range"
+                                                    min={1}
+                                                    max={3}
+                                                    step={0.05}
+                                                    value={bannerZoom}
+                                                    onChange={(e) => setBannerZoom(Number(e.target.value))}
+                                                    className="flex-1"
+                                                    style={{ accentColor: '#f43f5e' }}
+                                                />
+                                                <span className="text-xs text-zinc-600 w-8 text-right">{bannerZoom.toFixed(1)}×</span>
+                                            </div>
+                                            {/* Height */}
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs text-zinc-500 w-16 shrink-0">Height</span>
+                                                <input
+                                                    type="range"
+                                                    min={80}
+                                                    max={500}
+                                                    step={10}
+                                                    value={bannerHeight}
+                                                    onChange={(e) => setBannerHeight(Number(e.target.value))}
+                                                    className="flex-1"
+                                                    style={{ accentColor: '#f43f5e' }}
+                                                />
+                                                <span className="text-xs text-zinc-600 w-8 text-right">{bannerHeight}px</span>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <p className="text-xs text-gray-500">Hover the banner to upload. Recommended: 1500×500px, JPEG/PNG.</p>
                                 </div>
 
