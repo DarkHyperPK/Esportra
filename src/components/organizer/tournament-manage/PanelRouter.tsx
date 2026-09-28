@@ -16,6 +16,7 @@ import {
 import { OverviewPanel } from './panels/OverviewPanel';
 import { ParticipantsPanel } from './panels/ParticipantsPanel';
 import { SchedulePanel } from './panels/SchedulePanel';
+import { InvitationsPanel } from './panels/InvitationsPanel';
 
 // Configuration panels
 import { BasicInfoPanel } from './panels/BasicInfoPanel';
@@ -204,6 +205,15 @@ export function PanelRouter({
           locked={tournament.status === 'completed' && !isSuperAdmin}
         />
       </>
+    );
+  }
+
+  if (activeTab === 'invitations') {
+    return (
+      <InvitationsPanel
+        tournament={tournament}
+        canActAsOwner={permissions.canActAsOwner}
+      />
     );
   }
 

@@ -1,10 +1,5 @@
-/**
- * OverviewPanel.tsx
- *
- * Tournament overview panel. Shows key stats and status information.
- */
-
-import { AlertTriangle } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { AlertTriangle, Copy, Check, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   CommandHeader,
@@ -39,10 +34,22 @@ export function OverviewPanel({
   isBattleRoyale,
 }: OverviewPanelProps) {
   const navigate = useNavigate();
+  const [copied, setCopied] = useState(false);
   const currentCount = tournament.current_participants ?? participants.length;
   const maxCount = tournament.max_participants ?? tournament.max_teams ?? 0;
   const prizePool = parseFloat(tournament.prize_pool || '0');
   const registration = registrationLabel(tournament);
+
+  const tournamentUrl = tournament.slug
+    ? `${window.location.origin}/tournaments/${tournament.slug}`
+    : null;
+
+  const handleCopyLink = async () => {
+    if (!tournamentUrl) return;
+    await navigator.clipboard.writeText(tournamentUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const toneClass = (tone: 'success' | 'warning' | 'neutral' | 'danger') => {
     if (tone === 'success') return 'text-emerald-300';
@@ -50,6 +57,28 @@ export function OverviewPanel({
     if (tone === 'danger') return 'text-red-300';
     return 'text-white';
   };
+
+  const activeParticipants = useMemo(
+    () => participants.filter((p) => p.status !== 'withdrawn' && p.status !== 'rejected' && p.status !== 'cancelled'),
+    [participants],
+  );
+
+  const recentlyRegistered = useMemo(
+    () =>
+      [...activeParticipants]
+        .sort((a, b) => new Date(b.registered_at).getTime() - new Date(a.registered_at).getTime())
+        .slice(0, 5),
+    [activeParticipants],
+  );
+
+  const recentlyCheckedIn = useMemo(
+    () =>
+      activeParticipants
+        .filter((p) => p.status === 'checked_in' && p.checked_in_at)
+        .sort((a, b) => new Date(b.checked_in_at!).getTime() - new Date(a.checked_in_at!).getTime())
+        .slice(0, 5),
+    [activeParticipants],
+  );
 
   return (
     <>
@@ -125,6 +154,29 @@ export function OverviewPanel({
         </div>
       </div>
 
+      {/* Quick actions */}
+      {tournamentUrl && (
+        <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5">
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="flex items-center gap-1.5 border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-white/15 hover:text-white"
+          >
+            {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+            {copied ? 'Copied!' : 'Copy Link'}
+          </button>
+          <a
+            href={tournamentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-white/15 hover:text-white"
+          >
+            <ExternalLink className="h-3 w-3" />
+            View Public Page
+          </a>
+        </div>
+      )}
+
       {/* Dates */}
       <CommandSection>
         <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
@@ -160,6 +212,49 @@ export function OverviewPanel({
           </div>
         </div>
       </CommandSection>
+
+      {/* Activity feeds */}
+      {(recentlyRegistered.length > 0 || recentlyCheckedIn.length > 0) && (
+        <div className="grid sm:grid-cols-2 sm:divide-x sm:divide-white/[0.06]">
+          {/* Recently Registered */}
+          {recentlyRegistered.length > 0 && (
+            <CommandSection>
+              <p className="mb-3 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-500">Recently Registered</p>
+              <ul className="space-y-2">
+                {recentlyRegistered.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm text-zinc-200">
+                      {p.team_name ?? p.gamer_tag ?? p.user?.username ?? '—'}
+                    </span>
+                    <span className="shrink-0 font-mono text-[10px] text-zinc-600">
+                      {new Date(p.registered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </CommandSection>
+          )}
+
+          {/* Recently Checked In */}
+          {recentlyCheckedIn.length > 0 && (
+            <CommandSection>
+              <p className="mb-3 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-500">Recently Checked In</p>
+              <ul className="space-y-2">
+                {recentlyCheckedIn.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm text-zinc-200">
+                      {p.team_name ?? p.gamer_tag ?? p.user?.username ?? '—'}
+                    </span>
+                    <span className="shrink-0 inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-emerald-400">
+                      In
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </CommandSection>
+          )}
+        </div>
+      )}
 
       {/* Description */}
       {tournament.description && (

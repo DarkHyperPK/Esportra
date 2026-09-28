@@ -107,13 +107,13 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
   // Current map pool for this tournament
   const { data: mapPoolData } = useQuery({
     queryKey: ['map-pool', tournament.id],
-    queryFn: () => apiClient.get<{ mapIds: string[] }>(`/api/tournaments/${tournament.id}/map-pool`),
+    queryFn: () => apiClient.get<{ id: string }[]>(`/api/tournaments/${tournament.id}/map-pool`),
     enabled: gameFeatures.mapVeto,
   });
 
   useEffect(() => {
-    if (mapPoolData?.mapIds) {
-      setSelectedMapIds(mapPoolData.mapIds);
+    if (Array.isArray(mapPoolData) && mapPoolData.length > 0) {
+      setSelectedMapIds(mapPoolData.map((m) => m.id));
     }
   }, [mapPoolData]);
 
@@ -169,7 +169,7 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
     if (savingMapPool) return;
     setSavingMapPool(true);
     try {
-      await apiClient.put(`/api/tournaments/${tournament.id}/map-pools`, {
+      await apiClient.put(`/api/tournaments/${tournament.id}/map-pool`, {
         mapIds: selectedMapIds,
       });
       toast({ title: 'Map pool saved' });

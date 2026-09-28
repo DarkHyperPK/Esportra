@@ -24,6 +24,7 @@ import {
   UserPlus,
   ShieldCheck,
   Settings,
+  Mail,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -55,6 +56,7 @@ const OPERATIONS_NAV = [
   { value: 'standings', label: 'Standings', icon: Trophy },
   { value: 'schedule', label: 'Schedule', icon: Calendar },
   { value: 'games', label: 'Games', icon: Gamepad2, brOnly: true },
+  { value: 'invitations', label: 'Invitations', icon: Mail },
   { value: 'announcements', label: 'Announcements', icon: Megaphone, permission: 'canSendAnnouncements' },
   { value: 'bans', label: 'Bans', icon: ShieldBan, permission: 'canManageTeams' },
   { value: 'disputes', label: 'Disputes', icon: Scale, external: true, permission: 'canAssistDisputes' },

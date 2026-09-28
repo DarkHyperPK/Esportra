@@ -16,6 +16,7 @@ import type { TournamentCardBadge } from '@/types/tournament';
 const REGION_LABELS: Record<string, string> = {
   'na-east': 'NA East', 'na-west': 'NA West', 'latam': 'LATAM',
   'eu': 'EU', 'me': 'ME', 'sea': 'SEA', 'oce': 'OCE',
+  'africa': 'Africa', 'global': 'Global',
 };
 
 interface TournamentCardProps {
