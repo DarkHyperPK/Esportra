@@ -59,7 +59,7 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
     const prizePool = parseFloat(tournament.prize_pool ?? '0') || 0;
     const currency = (tournament as any).currency ?? 'USD';
     const hasPrizePool = prizePool > 0;
-    const isGateway = payoutsData?.payment_method === 'gateway';
+    const isGateway = payoutsData?.payout_method === 'gateway';
 
     const handlePayoutStatus = async (payout: CashPayout, status: string) => {
         try {
@@ -94,10 +94,10 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                 </div>
 
                 {configLoading ? (
-                    <div className="text-sm text-gray-500">Loading...</div>
+                    <div className="text-base text-zinc-400">Loading...</div>
                 ) : config && config.placements.length > 0 ? (
                     <div className="rounded-none border border-white/10 overflow-hidden">
-                        <table className="w-full text-sm">
+                        <table className="w-full text-base">
                             <thead className="bg-white/[0.03]">
                                 <tr>
                                     <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Placement</th>
@@ -118,8 +118,8 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                                         )}
                                         <td className="px-4 py-3">
                                             {p.rewards && p.rewards.length > 0
-                                                ? p.rewards.map((r, i) => <span key={i} className="mr-1 text-xs text-gray-400">{r.title}</span>)
-                                                : <span className="text-xs text-gray-600">—</span>}
+                                                ? p.rewards.map((r, i) => <span key={i} className="mr-1 text-sm text-gray-400">{r.title}</span>)
+                                                : <span className="text-sm text-gray-600">—</span>}
                                         </td>
                                     </tr>
                                 ))}
@@ -127,14 +127,14 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                         </table>
                         {config.disclaimer && (
                             <div className="border-t border-white/5 px-4 py-3 bg-white/[0.01]">
-                                <p className="text-xs text-gray-500">{config.disclaimer}</p>
+                                <p className="text-sm text-gray-500">{config.disclaimer}</p>
                             </div>
                         )}
                     </div>
                 ) : (
                     <div className="rounded-none border border-dashed border-white/10 py-8 text-center">
                         <Trophy className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">No prize distribution configured</p>
+                        <p className="text-base text-zinc-400">No prize distribution configured</p>
                         <p className="text-xs text-gray-600 mt-1">Edit the tournament to configure prize distribution from the wizard.</p>
                     </div>
                 )}
@@ -147,7 +147,7 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
 
                     {!payoutsLoading && !isGateway && payoutsData?.manual_payout_notes && (
                         <div className="rounded-none border border-white/10 bg-white/[0.02] px-4 py-3 text-sm text-gray-300">
-                            <span className="font-medium text-white">Payment Instructions: </span>
+                            <span className="font-medium text-white">Prize Payout Method: </span>
                             {payoutsData.manual_payout_notes}
                         </div>
                     )}
@@ -158,14 +158,14 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                     )}
 
                     {payoutsLoading ? (
-                        <div className="text-sm text-gray-500">Loading payouts...</div>
+                        <div className="text-base text-zinc-400">Loading payouts...</div>
                     ) : (payoutsData?.payouts.length ?? 0) === 0 ? (
                         <div className="rounded-none border border-dashed border-white/10 py-6 text-center">
-                            <p className="text-sm text-gray-500">No payout rows yet — resolve placements first</p>
+                            <p className="text-base text-zinc-400">No payout rows yet — resolve placements first</p>
                         </div>
                     ) : (
                         <div className="rounded-none border border-white/10 overflow-hidden">
-                            <table className="w-full text-sm">
+                            <table className="w-full text-base">
                                 <thead className="bg-white/[0.03]">
                                     <tr>
                                         <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Team</th>
@@ -220,7 +220,7 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                 <section className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Non-Cash Rewards</h3>
                     <div className="rounded-none border border-white/10 overflow-hidden">
-                        <table className="w-full text-sm">
+                        <table className="w-full text-base">
                             <thead className="bg-white/[0.03]">
                                 <tr>
                                     <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Team</th>

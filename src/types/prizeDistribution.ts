@@ -91,7 +91,7 @@ export interface RewardDistribution {
 }
 
 export interface TournamentPayoutsResponse {
-    payment_method: 'manual' | 'gateway';
+    payout_method: 'manual' | 'gateway';
     manual_payout_notes?: string;
     gateway_available: boolean;
     payouts: CashPayout[];

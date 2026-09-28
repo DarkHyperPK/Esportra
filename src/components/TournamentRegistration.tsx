@@ -214,12 +214,12 @@ const TournamentRegistration: React.FC<TournamentRegistrationProps> = ({
         </div>
 
         {paymentInstructions && (
-          <div className="bg-[#0a0a0c] border border-white/10 p-4">
+          <div className="border border-amber-500/30 bg-amber-500/[0.06] p-4">
             <div className="flex items-center gap-2 mb-2">
-              <FileText className="w-4 h-4 text-zinc-400" />
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Payment Instructions</span>
+              <FileText className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Payment Instructions</span>
             </div>
-            <p className="text-sm text-zinc-300 whitespace-pre-wrap">{paymentInstructions}</p>
+            <p className="text-sm text-zinc-200 whitespace-pre-wrap">{paymentInstructions}</p>
           </div>
         )}
 
