@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Trophy, Settings, Building2, User } from 'lucide-react';
+import { Trophy, Building2, User } from 'lucide-react';
 import { deriveHasOrganization, fetchMeRoles } from '@/lib/meRoles';
 
 interface OrganizerLayoutProps {
