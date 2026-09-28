@@ -52,6 +52,7 @@ interface TournamentDashboardNavProps {
 const OPERATIONS_NAV = [
   { value: 'overview', label: 'Overview', icon: LayoutDashboard },
   { value: 'participants', label: 'Participants', icon: Users },
+  { value: 'format-stages', label: 'Format & Stages', icon: Layers },
   { value: 'brackets', label: 'Brackets', icon: GitBranch, external: true },
   { value: 'standings', label: 'Standings', icon: Trophy },
   { value: 'schedule', label: 'Schedule', icon: Calendar },
@@ -65,7 +66,6 @@ const OPERATIONS_NAV = [
 
 const CONFIGURATION_NAV = [
   { value: 'basic-info', label: 'Basic Info', icon: FileText },
-  { value: 'format-stages', label: 'Format & Stages', icon: Layers },
   { value: 'branding', label: 'Branding', icon: Palette },
   { value: 'prize-payouts', label: 'Prize & Payouts', icon: Banknote },
   { value: 'registration', label: 'Registration', icon: UserPlus },
