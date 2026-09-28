@@ -5,33 +5,45 @@
  * Replaces the monolithic TournamentManage.tsx.
  */
 
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
+import { useQueryClient } from '@tanstack/react-query';
 import { isSuperAdminUser } from '@/lib/adminAccess';
 import { useTournamentDashboard } from '@/hooks/useTournamentDashboard';
 import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { useCompletionState } from '@/hooks/useCompletionState';
 import { TournamentDashboardShell } from '@/components/organizer/tournament-manage/TournamentDashboardShell';
+import { PanelRouter } from '@/components/organizer/tournament-manage/PanelRouter';
 import { isBattleRoyaleTournament, getPersistedTournamentFormat } from '@/utils/gameFeatures';
-import { Loader2 } from 'lucide-react';
 
 const TournamentDashboard = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { profile } = useAuth();
   const { currentRole, isLoading: roleLoading } = useRole();
   const admin = useAdmin();
+  const queryClient = useQueryClient();
+
+  // Default to basic-info tab on first visit (post-Quick-Create user journey)
+  useEffect(() => {
+    if (!searchParams.get('tab')) {
+      setSearchParams({ tab: 'basic-info' }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Fetch tournament data
   const {
     data: dashboardData,
     isLoading: dashboardLoading,
     error: dashboardError,
+    refetch: refetchDashboard,
   } = useTournamentDashboard(slug);
 
   // Fetch access/permissions
@@ -42,6 +54,7 @@ const TournamentDashboard = () => {
 
   const tournament = dashboardData?.tournament;
   const stages = useMemo(() => dashboardData?.stages ?? [], [dashboardData?.stages]);
+  const participants = useMemo(() => dashboardData?.participants ?? [], [dashboardData?.participants]);
 
   const isOrganizer = tournamentAccess?.isOrganizer || dashboardData?.isOrganizer || false;
   const isPlatformAdmin = tournamentAccess?.isPlatformAdmin || false;
@@ -102,7 +115,7 @@ const TournamentDashboard = () => {
     const canEditBracket = staffPermissions.includes('bracket:edit') || canActAsOwner;
     const canSendAnnouncements = staffPermissions.includes('announcements:send') || canActAsOwner;
     const canAssistDisputes = staffPermissions.includes('disputes:assist') || canActAsOwner;
-    const canManageStaff = canActAsOwner; // Only owner can manage staff
+    const canManageStaff = canActAsOwner;
 
     return {
       canManageTeams,
@@ -113,6 +126,12 @@ const TournamentDashboard = () => {
       canActAsOwner,
     };
   }, [staffPermissions, canActAsOwner]);
+
+  // Handle update (invalidates queries)
+  const handleUpdate = () => {
+    void refetchDashboard();
+    queryClient.invalidateQueries({ queryKey: ['tournament-dashboard', slug] });
+  };
 
   // Loading state
   if (dashboardLoading || accessLoading || roleLoading || admin.loading) {
@@ -153,13 +172,16 @@ const TournamentDashboard = () => {
       permissions={permissions}
       isBattleRoyale={isBR}
     >
-      {/* Placeholder content for now — panels will be wired in Phase 2 */}
-      <div className="border border-white/10 bg-[#0a0a0c]/92 p-8 text-center">
-        <h2 className="text-xl font-bold text-white">Panel Content Coming Soon</h2>
-        <p className="mt-2 text-sm text-zinc-400">
-          Phase 1 shell is complete. Panels will be wired in Phase 2.
-        </p>
-      </div>
+      <PanelRouter
+        tournament={tournament}
+        participants={participants}
+        stages={stages}
+        completionSummary={completionSummary}
+        permissions={permissions}
+        isBattleRoyale={isBR}
+        isSuperAdmin={isSuperAdmin}
+        onUpdate={handleUpdate}
+      />
     </TournamentDashboardShell>
   );
 };
