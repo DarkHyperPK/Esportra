@@ -24,7 +24,6 @@ import {
   UserPlus,
   ShieldCheck,
   Settings,
-  Map,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -68,9 +67,8 @@ const CONFIGURATION_NAV = [
   { value: 'branding', label: 'Branding', icon: Palette },
   { value: 'prize-payouts', label: 'Prize & Payouts', icon: Banknote },
   { value: 'registration', label: 'Registration', icon: UserPlus },
-  { value: 'staff', label: 'Staff', icon: ShieldCheck, permission: 'canManageStaff' },
-  { value: 'advanced', label: 'Advanced Settings', icon: Settings },
-  { value: 'map-veto', label: 'Map Veto', icon: Map },
+{ value: 'staff', label: 'Staff', icon: ShieldCheck, permission: 'canManageStaff' },
+  { value: 'settings', label: 'Settings', icon: Settings },
 ];
 
 export function TournamentDashboardNav({
@@ -129,7 +127,7 @@ export function TournamentDashboardNav({
       if (item.value === 'brackets') {
         navigate(`/tournaments/${tournament.slug}/brackets`);
       } else if (item.value === 'disputes') {
-        navigate(`/organizer/disputes?tournament=${tournament.id}`);
+        navigate(`/organizer/tournament/${tournament.slug}/disputes`);
       }
     } else {
       onTabChange(item.value);
@@ -139,10 +137,10 @@ export function TournamentDashboardNav({
   const isPublished = tournament.status !== 'draft';
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {/* Tournament Identity Block */}
-      <div className="flex items-center gap-2.5 pb-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center border border-white/10 bg-black">
+      <div className="flex items-center gap-2 pb-2">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center border border-white/10 bg-black">
           {tournament.logo_url ? (
             <img src={tournament.logo_url} alt="" className="h-full w-full object-cover" />
           ) : (
@@ -155,9 +153,9 @@ export function TournamentDashboardNav({
         </div>
       </div>
 
-      <div className="border-t border-white/10 pt-3">
+      <div className="border-t border-white/10 pt-2">
         {/* Operations Section */}
-        <p className="mb-1.5 px-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">
+        <p className="mb-1 px-1 font-mono text-[8px] font-bold uppercase tracking-[0.3em] text-rose-500/50">
           OPERATIONS
         </p>
         <div role="navigation" aria-label="Operations navigation" className="grid gap-0.5">
@@ -181,12 +179,12 @@ export function TournamentDashboardNav({
         {/* Configuration Section */}
         {visibleConfiguration.length > 0 && (
           <>
-            <div className="mt-3 border-t border-white/10 pt-3">
-              <p className="mb-1.5 px-1 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">
+            <div className="mt-2 border-t border-white/10 pt-2">
+              <p className="mb-1 px-1 font-mono text-[8px] font-bold uppercase tracking-[0.3em] text-rose-500/50">
                 CONFIGURATION
               </p>
               <div role="navigation" aria-label="Configuration navigation" className="grid gap-0.5">
-                {visibleConfiguration.map((item) => {
+                {visibleConfiguration.map((item, index) => {
                   const panelState = completionSummary.panels[item.value];
                   return (
                     <TournamentNavItem
@@ -201,6 +199,7 @@ export function TournamentDashboardNav({
                             requiredMissing={panelState.requiredMissing.length}
                             recommendedMissing={panelState.recommendedMissing.length}
                             isPublished={isPublished}
+                            delay={index * 0.03}
                           />
                         ) : undefined
                       }
