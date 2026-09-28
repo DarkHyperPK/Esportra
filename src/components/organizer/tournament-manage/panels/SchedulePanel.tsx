@@ -2,13 +2,12 @@
  * SchedulePanel.tsx
  *
  * Schedule operations panel. Renders BRScheduleTab for BR tournaments
- * or StageSchedulingConfig + RoundSchedulingPanel for standard tournaments.
+ * or stage scheduling config for standard tournaments.
  */
 
 import { Calendar } from 'lucide-react';
 import {
   CommandHeader,
-  CommandSection,
   CommandEmptyState,
 } from '@/components/management/CommandSurface';
 import { BRScheduleTab } from '@/components/organizer/tabs/BRScheduleTab';
@@ -33,13 +32,11 @@ export function SchedulePanel({
   brRegisteredUnitCount = 0,
   onUpdate,
 }: SchedulePanelProps) {
+  const sortedStages = [...stages].sort((a, b) => (a.stage_order ?? 0) - (b.stage_order ?? 0));
+
   return (
     <>
-      <CommandHeader
-        eyebrow="OPERATIONS"
-        title="Schedule"
-        description="Configure match scheduling, check-in windows, and round deadlines."
-      />
+      <CommandHeader eyebrow="OPERATIONS" title="Schedule" />
 
       {isBattleRoyale ? (
         <BRScheduleTab
@@ -52,55 +49,58 @@ export function SchedulePanel({
           locked={tournament.status === 'completed' && !isSuperAdmin}
         />
       ) : stages.length === 0 ? (
-        <CommandEmptyState
-          icon={<Calendar className="h-5 w-5" />}
-          title="No stages configured"
-          description="Add a stage in Format & Stages before configuring match schedules."
-        />
+        <div className="px-4 py-8">
+          <CommandEmptyState
+            icon={<Calendar className="h-5 w-5" />}
+            title="No stages configured"
+            description="Add a stage in Format & Stages before configuring match schedules."
+          />
+        </div>
       ) : (
-        <div className="space-y-4">
-          {[...stages]
-            .sort((a, b) => (a.stage_order ?? 0) - (b.stage_order ?? 0))
-            .map((stage) => {
-              const schedulingConfig =
-                typeof stage.config === 'string'
-                  ? (() => {
-                      try {
-                        return JSON.parse(stage.config);
-                      } catch {
-                        return null;
-                      }
-                    })()
-                  : stage.config;
-              const selfPlayEnabled = Boolean(schedulingConfig?.self_play_enabled);
+        <div>
+          {sortedStages.map((stage, i) => {
+            const schedulingConfig =
+              typeof stage.config === 'string'
+                ? (() => { try { return JSON.parse(stage.config); } catch { return null; } })()
+                : stage.config;
+            const selfPlayEnabled = Boolean(schedulingConfig?.self_play_enabled);
+            const formatLabel = (stage.format || 'single_elimination')
+              .replace(/_/g, ' ')
+              .replace(/\b\w/g, (c) => c.toUpperCase());
 
-              return (
-                <CommandSection key={stage.id}>
-                  <div className="mb-4">
-                    <h3 className="text-sm font-bold text-white">{stage.name}</h3>
-                    <p className="text-xs text-zinc-500">
-                      {(stage.format || 'single_elimination').replace(/_/g, ' ')}
-                    </p>
+            return (
+              <div key={stage.id} className={i > 0 ? 'border-t border-white/[0.08]' : ''}>
+                {/* Stage header — only shown when multiple stages */}
+                {sortedStages.length > 1 && (
+                  <div className="flex items-center gap-3 border-b border-white/[0.08] bg-white/[0.025] px-4 py-2.5">
+                    <span className="flex h-4 w-4 shrink-0 items-center justify-center border border-rose-500/30 text-[9px] font-bold text-rose-400">
+                      {i + 1}
+                    </span>
+                    <p className="text-[11px] font-semibold text-white">{stage.name}</p>
+                    <span className="text-[10px] text-zinc-600">{formatLabel}</span>
                   </div>
-                  <div className="grid gap-5 xl:grid-cols-2">
-                    <StageSchedulingConfig
-                      stageId={stage.id}
-                      stageFormat={stage.format || 'single_elimination'}
-                      gameName={tournament.game || ''}
-                      onConfigChange={onUpdate}
-                    />
-                    <RoundSchedulingPanel
-                      stageId={stage.id}
-                      stageFormat={stage.format || 'single_elimination'}
-                      tournamentStartDate={tournament.start_date || null}
-                      tournamentEndDate={tournament.end_date || null}
-                      selfPlayEnabled={selfPlayEnabled}
-                      onScheduleApplied={onUpdate}
-                    />
-                  </div>
-                </CommandSection>
-              );
-            })}
+                )}
+
+                {/* Two-column config grid */}
+                <div className="grid xl:grid-cols-2 xl:items-start xl:divide-x xl:divide-white/[0.07]">
+                  <StageSchedulingConfig
+                    stageId={stage.id}
+                    stageFormat={stage.format || 'single_elimination'}
+                    gameName={tournament.game || ''}
+                    onConfigChange={onUpdate}
+                  />
+                  <RoundSchedulingPanel
+                    stageId={stage.id}
+                    stageFormat={stage.format || 'single_elimination'}
+                    tournamentStartDate={tournament.start_date || null}
+                    tournamentEndDate={tournament.end_date || null}
+                    selfPlayEnabled={selfPlayEnabled}
+                    onScheduleApplied={onUpdate}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </>
