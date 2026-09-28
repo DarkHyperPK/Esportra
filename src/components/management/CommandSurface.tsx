@@ -1,6 +1,14 @@
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 import { Slot, Slottable } from '@radix-ui/react-slot';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+
+// When true, CommandHeader / CommandSection / CommandActionBar render compact + flat.
+// Used by tournament dashboard panels — wrap panel content in DashboardPanelProvider.
+const DashboardPanelCtx = createContext(false);
+export function DashboardPanelProvider({ children }: { children: React.ReactNode }) {
+  return <DashboardPanelCtx.Provider value={true}>{children}</DashboardPanelCtx.Provider>;
+}
 
 type CommandButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success' | 'warning';
 type CommandButtonSize = 'icon' | 'sm' | 'md' | 'lg';
@@ -162,16 +170,16 @@ export function CommandPageGrid({
   className?: string;
 }) {
   return (
-    <div className={cn('relative z-10 grid gap-5 px-4 py-5 lg:grid-cols-[240px_minmax(0,1fr)] xl:px-6', className)}>
+    <div className={cn('relative z-10 grid gap-3 px-3 py-3 lg:grid-cols-[200px_minmax(0,1fr)] xl:px-4', className)}>
       {rail ? <aside className="relative z-30 space-y-4 overflow-visible">{rail}</aside> : null}
-      <div className="min-w-0 space-y-6">{children}</div>
+      <div className="min-w-0 space-y-2">{children}</div>
     </div>
   );
 }
 
 export function CommandRail({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('relative z-30 isolate overflow-visible border border-white/10 bg-[#08080a] p-3 shadow-[0_20px_60px_rgba(0,0,0,0.35)]', className)}>
+    <div className={cn('relative z-30 isolate overflow-visible border border-white/[0.07] bg-[#0e0f13] px-2 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.25)]', className)}>
       {children}
     </div>
   );
@@ -190,7 +198,22 @@ export function CommandHeader({
   actions?: React.ReactNode;
   className?: string;
 }) {
-  return (
+  const isDashboard = useContext(DashboardPanelCtx);
+  return isDashboard ? (
+    <header className={cn('border-b border-white/[0.08] bg-white/[0.025] px-4 pb-3 pt-3', className)}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          {eyebrow ? (
+            <div className="mb-1 font-mono text-[8px] font-bold uppercase tracking-[0.45em] text-rose-500/70">
+              {eyebrow}
+            </div>
+          ) : null}
+          <h2 className="font-heading text-xs font-bold uppercase tracking-tight text-white">{title}</h2>
+        </div>
+        {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      </div>
+    </header>
+  ) : (
     <header className={cn('border border-white/10 bg-[#0a0a0c]/92 p-5', className)}>
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
@@ -199,7 +222,7 @@ export function CommandHeader({
               {eyebrow}
             </div>
           ) : null}
-          <h1 className="font-heading text-2xl font-black uppercase tracking-tight text-white md:text-4xl">{title}</h1>
+          <h1 className="font-heading text-xl font-black uppercase tracking-tight text-white md:text-2xl">{title}</h1>
           {description ? <p className="mt-3 max-w-3xl text-sm leading-relaxed text-zinc-400">{description}</p> : null}
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-3">{actions}</div> : null}
@@ -217,8 +240,12 @@ export function CommandToolbar({ className, children }: React.HTMLAttributes<HTM
 }
 
 export function CommandSection({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
+  const isDashboard = useContext(DashboardPanelCtx);
   return (
-    <section className={cn('border border-white/10 bg-[#0a0a0c]/92 p-5', className)}>
+    <section className={cn(
+      isDashboard ? 'border-b border-white/[0.06] px-4 py-4 last:border-b-0' : 'border border-white/10 bg-[#0a0a0c]/92 p-5',
+      className
+    )}>
       {children}
     </section>
   );
@@ -233,8 +260,14 @@ export function CommandPanel({ className, children }: React.HTMLAttributes<HTMLD
 }
 
 export function CommandActionBar({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
+  const isDashboard = useContext(DashboardPanelCtx);
   return (
-    <div className={cn('flex flex-col gap-3 border border-white/10 bg-[#0a0a0c]/96 p-4 sm:flex-row sm:items-center sm:justify-between', className)}>
+    <div className={cn(
+      isDashboard
+        ? 'flex flex-col gap-2 border-t border-white/[0.08] bg-white/[0.02] px-4 py-3 sm:flex-row sm:items-center sm:justify-between'
+        : 'flex flex-col gap-3 border border-white/10 bg-[#0a0a0c]/96 p-4 sm:flex-row sm:items-center sm:justify-between',
+      className
+    )}>
       {children}
     </div>
   );
@@ -286,6 +319,23 @@ export function CommandTabs({
         </CommandTabButton>
       ))}
     </div>
+  );
+}
+
+/** Animated unsaved-changes dot for use in CommandActionBar. */
+export function DirtyIndicator({ isDirty }: { isDirty: boolean }) {
+  return (
+    <AnimatePresence>
+      {isDirty && (
+        <motion.span
+          initial={{ opacity: 0, scale: 0.4 }}
+          animate={{ opacity: 1, scale: 1, transition: { duration: 0.15, ease: [0, 0, 0.2, 1] } }}
+          exit={{ opacity: 0, scale: 0.4, transition: { duration: 0.1 } }}
+          className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500"
+          aria-label="Unsaved changes"
+        />
+      )}
+    </AnimatePresence>
   );
 }
 
