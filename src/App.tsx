@@ -114,7 +114,7 @@ const VenueOwnerDashboard = lazyWithRetry(() => import("./pages/venue-owner/Dash
 // Tournament Organizer
 const OrganizerDashboard = lazyWithRetry(() => import("./pages/organizer/Dashboard"));
 const ManageTournaments = lazyWithRetry(() => import("./pages/organizer/ManageTournaments"));
-const TournamentManage = lazyWithRetry(() => import("./pages/organizer/TournamentManage"));
+const TournamentDashboard = lazyWithRetry(() => import("./pages/organizer/TournamentDashboard"));
 const EditTournament = lazyWithRetry(() => import("./pages/tournaments/Edit"));
 const TournamentBrackets = lazyWithRetry(() => import("./pages/tournaments/Brackets"));
 const TournamentDetailsUser = lazyWithRetry(() => import("./pages/tournaments/Details"));
@@ -471,7 +471,7 @@ const AppContent = React.memo(() => {
                 } />
                 <Route path="/organizer/tournament/:slug" element={
                   <ProtectedRoute allowedRoles={['organizer']} allowStaffForTournamentParam="slug">
-                    <TournamentManage />
+                    <TournamentDashboard />
                   </ProtectedRoute>
                 } />
                 <Route path="/organizer/tournament/:slug/edit" element={
