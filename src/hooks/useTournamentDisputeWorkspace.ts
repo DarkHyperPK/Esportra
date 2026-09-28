@@ -158,7 +158,7 @@ export function useTournamentDisputeWorkspace({
         `/api/organizer/disputes?tournament_id=${tournamentId}`,
       );
       const rows = (disputesData || []).filter(
-        (d) => d.tournament_id === tournamentId && d.raised_by_user_id !== actorUserId,
+        (d) => d.raised_by_user_id !== actorUserId,
       );
       setDisputes(rows);
       loadedTournamentIdRef.current = tournamentId;
