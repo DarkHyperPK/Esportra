@@ -70,7 +70,7 @@ export function MobileDrawer({ open, onClose, children }: MobileDrawerProps) {
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center border border-white/10 bg-black text-white transition-colors hover:border-white/25 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70"
+              className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center border border-white/10 bg-black text-white transition-colors hover:border-white/25 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               aria-label="Close navigation"
             >
               <X className="h-5 w-5" />

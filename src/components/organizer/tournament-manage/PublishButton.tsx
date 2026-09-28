@@ -1,13 +1,3 @@
-/**
- * PublishButton.tsx
- *
- * Tournament publish action with:
- * - Full state machine: disabled → enabled → loading → success
- * - Publish dialog (public vs private visibility)
- * - Soft-gap dialog for amber-only missing sections
- * - Blocked when required sections are incomplete
- */
-
 import { useState } from 'react';
 import { Loader2, Globe, Lock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,6 +10,7 @@ import {
   AlertDialogFooter,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
+import { CommandButton } from '@/components/management/CommandSurface';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import type { CompletionSummary } from '@/hooks/useCompletionState';
@@ -34,6 +25,15 @@ interface PublishButtonProps {
 
 type DialogMode = 'none' | 'soft-gap' | 'confirm';
 
+const PANEL_LABELS: Record<string, string> = {
+  'basic-info': 'Basic Info',
+  'format-stages': 'Format & Stages',
+  'registration': 'Registration',
+  'prize-payouts': 'Prize & Payouts',
+  'branding': 'Branding',
+  'settings': 'Settings',
+};
+
 export function PublishButton({
   tournament,
   completionSummary,
@@ -46,7 +46,7 @@ export function PublishButton({
   const [publishing, setPublishing] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const { canPublish, totalRequiredMissing, totalRecommendedMissing } = completionSummary;
+  const { canPublish, totalRequiredMissing, totalRecommendedMissing, panels } = completionSummary;
   const isAlreadyPublished = tournament.status !== 'draft';
   const blocked = !canPublish || !canActAsOwner;
 
@@ -54,7 +54,6 @@ export function PublishButton({
 
   const handleClick = () => {
     if (blocked) return;
-    // If only recommended missing — show soft-gap dialog first
     if (totalRequiredMissing === 0 && totalRecommendedMissing > 0) {
       setDialog('soft-gap');
     } else {
@@ -84,9 +83,10 @@ export function PublishButton({
     }
   };
 
-  const buttonLabel = blocked
-    ? 'Complete required sections to publish'
-    : 'Publish Tournament';
+  // Collect recommended-missing sections for the soft-gap dialog
+  const missingRecommended = Object.entries(panels)
+    .filter(([, state]) => state.recommendedMissing.length > 0)
+    .map(([id, state]) => ({ id, fields: state.recommendedMissing }));
 
   return (
     <>
@@ -102,22 +102,25 @@ export function PublishButton({
             Published
           </motion.div>
         ) : (
-          <motion.button
+          <motion.div
             key="button"
-            type="button"
-            disabled={blocked || publishing}
-            onClick={handleClick}
-            title={buttonLabel}
-            className={[
-              'flex items-center gap-2 border px-4 py-2 text-sm font-bold uppercase tracking-wider transition-all',
-              blocked
-                ? 'cursor-not-allowed border-white/10 bg-white/[0.02] text-zinc-600'
-                : 'border-rose-500/60 bg-rose-500/[0.12] text-rose-300 hover:border-rose-500 hover:bg-rose-500/20 hover:text-white',
-            ].join(' ')}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.15 } }}
+            exit={{ opacity: 0, transition: { duration: 0.1 } }}
+            className="w-full"
           >
-            {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Publish
-          </motion.button>
+            <CommandButton
+              onClick={handleClick}
+              disabled={blocked || publishing}
+              variant={blocked ? 'ghost' : 'primary'}
+              size="sm"
+              slide={!blocked}
+              title={blocked ? 'Complete required sections to publish' : 'Publish Tournament'}
+              className="w-full"
+            >
+              {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Publish'}
+            </CommandButton>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -128,23 +131,41 @@ export function PublishButton({
             <div className="mb-2 flex h-10 w-10 items-center justify-center border border-amber-500/30 bg-amber-500/10">
               <AlertTriangle className="h-5 w-5 text-amber-400" />
             </div>
-            <AlertDialogTitle>Publish with incomplete sections?</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-400">
-              {totalRecommendedMissing} recommended{' '}
-              {totalRecommendedMissing === 1 ? 'section is' : 'sections are'} incomplete.
-              You can still publish — these sections improve the participant experience but are not required.
+            <AlertDialogTitle>Missing Recommended Fields</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-zinc-400">
+                <p>
+                  These fields are not required to publish, but improve the participant experience.
+                </p>
+                {missingRecommended.length > 0 && (
+                  <ul className="space-y-2">
+                    {missingRecommended.map(({ id, fields }) => (
+                      <li key={id}>
+                        <span className="text-xs font-semibold text-zinc-300">
+                          {PANEL_LABELS[id] ?? id}
+                        </span>
+                        <ul className="mt-0.5 list-disc pl-4">
+                          {fields.map((f) => (
+                            <li key={f} className="text-xs text-zinc-500">{f}</li>
+                          ))}
+                        </ul>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
             <AlertDialogCancel className="border-white/10 bg-transparent text-zinc-400 hover:border-white/20 hover:text-white">
-              Go back
+              Go Back
             </AlertDialogCancel>
             <button
               type="button"
               onClick={() => setDialog('confirm')}
               className="border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-bold uppercase tracking-wider text-amber-300 transition-colors hover:border-amber-500 hover:text-white"
             >
-              Continue anyway
+              Publish Anyway
             </button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -160,35 +181,39 @@ export function PublishButton({
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          {/* Visibility toggle */}
-          <div className="grid grid-cols-2 gap-3 py-2">
+          {/* Visibility selector — stacked */}
+          <div className="flex flex-col gap-2 py-2">
             <button
               type="button"
               onClick={() => setIsPublic(true)}
               className={[
-                'flex flex-col items-center gap-2 border p-4 text-center transition-colors',
+                'flex items-center gap-3 border p-4 text-left transition-colors',
                 isPublic
-                  ? 'border-rose-500/60 bg-rose-500/[0.10] text-white'
+                  ? 'border-white/40 bg-white/[0.06] text-white'
                   : 'border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20',
               ].join(' ')}
             >
-              <Globe className={`h-5 w-5 ${isPublic ? 'text-rose-400' : ''}`} />
-              <span className="text-sm font-bold uppercase tracking-wider">Public</span>
-              <span className="text-xs text-zinc-500">Discoverable by all players</span>
+              <Globe className={`h-5 w-5 shrink-0 ${isPublic ? 'text-rose-400' : ''}`} />
+              <div>
+                <p className="text-sm font-bold uppercase tracking-wider">Public</p>
+                <p className="text-xs text-zinc-500">Discoverable by all players</p>
+              </div>
             </button>
             <button
               type="button"
               onClick={() => setIsPublic(false)}
               className={[
-                'flex flex-col items-center gap-2 border p-4 text-center transition-colors',
+                'flex items-center gap-3 border p-4 text-left transition-colors',
                 !isPublic
-                  ? 'border-rose-500/60 bg-rose-500/[0.10] text-white'
+                  ? 'border-white/40 bg-white/[0.06] text-white'
                   : 'border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20',
               ].join(' ')}
             >
-              <Lock className={`h-5 w-5 ${!isPublic ? 'text-rose-400' : ''}`} />
-              <span className="text-sm font-bold uppercase tracking-wider">Private</span>
-              <span className="text-xs text-zinc-500">Invite-only via direct link</span>
+              <Lock className={`h-5 w-5 shrink-0 ${!isPublic ? 'text-rose-400' : ''}`} />
+              <div>
+                <p className="text-sm font-bold uppercase tracking-wider">Private</p>
+                <p className="text-xs text-zinc-500">Invite-only via direct link</p>
+              </div>
             </button>
           </div>
 
@@ -199,15 +224,17 @@ export function PublishButton({
             >
               Cancel
             </AlertDialogCancel>
-            <button
-              type="button"
-              disabled={publishing}
+            <CommandButton
               onClick={handlePublish}
-              className="flex items-center gap-2 border border-rose-500/60 bg-rose-500/[0.12] px-4 py-2 text-sm font-bold uppercase tracking-wider text-rose-300 transition-colors hover:border-rose-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={publishing}
+              variant="primary"
+              size="sm"
+              slide
+              className="gap-2"
             >
               {publishing && <Loader2 className="h-4 w-4 animate-spin" />}
               Publish
-            </button>
+            </CommandButton>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
