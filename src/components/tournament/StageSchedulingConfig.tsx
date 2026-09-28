@@ -1,11 +1,13 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Zap, MessageCircle, CheckCircle, Users, GitBranch } from 'lucide-react';
+import { Info } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 import { useTournamentAccess } from '@/hooks/useTournamentAccess';
 import { useParams } from 'react-router-dom';
@@ -13,291 +15,193 @@ import { getTimezoneAbbr } from '@/lib/timeUtils';
 import { isBattleRoyale } from '@/utils/gameFeatures';
 
 interface StageSchedulingConfigProps {
-    stageId: string;
-    stageFormat: string; // single_elimination, double_elimination, swiss, round_robin
-    gameName?: string;
-    onConfigChange?: (config: any) => void;
+  stageId: string;
+  stageFormat: string;
+  gameName?: string;
+  onConfigChange?: (config: any) => void;
 }
 
-// Format-specific info
-const formatInfo: Record<string, { label: string; description: string; roundsNote: string }> = {
-    single_elimination: {
-        label: 'Single Elimination',
-        description: 'One loss and you\'re out. Quick format, clear progression.',
-        roundsNote: 'Rounds halve each stage (8 teams → 4 → 2 → 1)',
-    },
-    double_elimination: {
-        label: 'Double Elimination',
-        description: 'Two bracket system - winners and losers. Teams get a second chance.',
-        roundsNote: 'Upper bracket + lower bracket rounds run in parallel',
-    },
-    swiss: {
-        label: 'Swiss',
-        description: 'Fixed rounds, teams with similar records play each other.',
-        roundsNote: 'All matches in each round happen simultaneously',
-    },
-    round_robin: {
-        label: 'Round Robin',
-        description: 'Everyone plays everyone. Most comprehensive but time-intensive.',
-        roundsNote: 'Multiple matchdays, each team plays once per round',
-    },
+const FORMAT_INFO: Record<string, { label: string; description: string; roundsNote: string }> = {
+  single_elimination: {
+    label: 'Single Elimination',
+    description: 'One loss and you\'re out.',
+    roundsNote: 'Rounds halve each stage — 8 teams → 4 → 2 → 1.',
+  },
+  double_elimination: {
+    label: 'Double Elimination',
+    description: 'Winners and losers brackets — teams get a second chance.',
+    roundsNote: 'Upper and lower bracket rounds run in parallel.',
+  },
+  swiss: {
+    label: 'Swiss',
+    description: 'Fixed rounds; teams with similar records play each other.',
+    roundsNote: 'All matches in each round happen simultaneously.',
+  },
+  round_robin: {
+    label: 'Round Robin',
+    description: 'Every team plays every other team.',
+    roundsNote: 'Multiple matchdays — each team plays once per round.',
+  },
 };
 
-const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({ stageId, stageFormat, gameName, onConfigChange }) => {
-    const { slug } = useParams<{ slug: string }>();
-    const { can, isLoading: accessLoading } = useTournamentAccess(slug);
-    const canEditSchedule = can('bracket:edit');
-    const { schedulingConfig, updateConfig, isLoading } = useMatchScheduling(stageId);
-    const formatData = formatInfo[stageFormat] || formatInfo.single_elimination;
-    const [optimisticSelfPlay, setOptimisticSelfPlay] = React.useState<boolean | null>(null);
-    const isBR = gameName ? isBattleRoyale(gameName) : false;
-    const isSelfPlayEnabled = optimisticSelfPlay !== null
-        ? optimisticSelfPlay
-        : Boolean(schedulingConfig?.self_play_enabled ?? schedulingConfig?.selfPlayEnabled);
+const SELF_PLAY_STEPS = [
+  'Set a deadline for each round.',
+  'Teams chat to agree on a time within the deadline.',
+  'Both teams check in when ready.',
+  'Team 1 generates a party code to start the match.',
+];
 
-    const handleUpdate = async (key: string, value: any) => {
-        if (!canEditSchedule) return;
+const ORGANIZER_STEPS = [
+  'Set specific start times for each round.',
+  'Teams check in at the scheduled time.',
+  'Organizer provides party codes to start matches.',
+];
 
-        if (key === 'self_play_enabled') {
-            setOptimisticSelfPlay(value);
-        }
+function InfoTip({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex cursor-default">
+          <Info className="h-3 w-3 text-zinc-600 hover:text-zinc-400 transition-colors" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[220px] border-white/10 bg-[#0d0d0f] text-[11px] text-zinc-300">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
-        const newConfig = {
-            ...schedulingConfig,
-            [key]: value,
-        };
+const StageSchedulingConfig: React.FC<StageSchedulingConfigProps> = ({
+  stageId,
+  stageFormat,
+  gameName,
+  onConfigChange,
+}) => {
+  const { slug } = useParams<{ slug: string }>();
+  const { can, isLoading: accessLoading } = useTournamentAccess(slug);
+  const canEdit = can('bracket:edit');
+  const { schedulingConfig, updateConfig, isLoading } = useMatchScheduling(stageId);
+  const formatData = FORMAT_INFO[stageFormat] || FORMAT_INFO.single_elimination;
+  const [optimisticSelfPlay, setOptimisticSelfPlay] = React.useState<boolean | null>(null);
+  const isBR = gameName ? isBattleRoyale(gameName) : false;
+  const isSelfPlayEnabled =
+    optimisticSelfPlay !== null
+      ? optimisticSelfPlay
+      : Boolean(schedulingConfig?.self_play_enabled ?? schedulingConfig?.selfPlayEnabled);
 
-        try {
-            await updateConfig.mutateAsync(newConfig);
-            onConfigChange?.(newConfig);
-        } catch (error) {
-            console.error('[StageSchedulingConfig] Update failed:', error);
-            if (key === 'self_play_enabled') {
-                setOptimisticSelfPlay(null); // Revert to backend state
-            }
-        }
-    };
-
-    if (isLoading || accessLoading || !schedulingConfig) {
-        return (
-            <Card className="bg-[#0a0a0c] border-white/5 rounded-3xl">
-                <CardContent className="p-8">
-                    <div className="animate-shimmer space-y-4">
-                        <div className="h-6 bg-white/5 rounded-lg w-1/2"></div>
-                        <div className="h-16 bg-white/5 rounded-2xl"></div>
-                        <div className="h-16 bg-white/5 rounded-2xl"></div>
-                    </div>
-                </CardContent>
-            </Card>
-        );
+  const handleUpdate = async (key: string, value: any) => {
+    if (!canEdit) return;
+    if (key === 'self_play_enabled') setOptimisticSelfPlay(value);
+    const newConfig = { ...schedulingConfig, [key]: value };
+    try {
+      await updateConfig.mutateAsync(newConfig);
+      onConfigChange?.(newConfig);
+    } catch {
+      if (key === 'self_play_enabled') setOptimisticSelfPlay(null);
     }
+  };
 
+  if (isLoading || accessLoading || !schedulingConfig) {
     return (
-        <Card className="bg-[#0a0a0c] border-white/5 rounded-3xl overflow-hidden">
-            <CardHeader className="pb-4 border-b border-white/5">
-                <CardTitle className="flex items-center gap-3 text-white font-heading text-xl">
-                    <div className="p-2 bg-rose-500/10 rounded-xl">
-                        <Zap className="w-5 h-5 text-rose-400" />
-                    </div>
-                    Match Settings
-                </CardTitle>
-                <p className="text-sm text-gray-400 mt-2">
-                    Configure how teams schedule and start their matches.
-                </p>
-            </CardHeader>
-
-            <CardContent className="p-6 space-y-4">
-                {/* Format Badge */}
-                <div className="flex items-center gap-3 p-4 bg-[#111111] rounded-2xl border border-white/5">
-                    <div className="p-2 bg-rose-500/10 rounded-xl">
-                        <GitBranch className="w-5 h-5 text-rose-400" />
-                    </div>
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                            <span className="text-white font-medium">{formatData.label}</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">{formatData.description}</p>
-                    </div>
-                </div>
-
-                {/* Self-Play Toggle — hidden for Battle Royale games */}
-                {!isBR && (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center justify-between p-5 bg-[#111111] rounded-2xl border border-white/5 hover:border-rose-500/30 transition-colors"
-                >
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-rose-500/10 rounded-xl">
-                            <Zap className="w-6 h-6 text-rose-400" />
-                        </div>
-                        <div>
-                            <Label className="text-white font-medium text-base">Self-Play Mode</Label>
-                            <p className="text-sm text-gray-500 mt-0.5">
-                                Teams coordinate & start matches themselves
-                            </p>
-                        </div>
-                    </div>
-                    <Switch
-                        checked={isSelfPlayEnabled}
-                        disabled={!canEditSchedule}
-                        onCheckedChange={(checked) => handleUpdate('self_play_enabled', checked)}
-                        className="data-[state=checked]:bg-rose-500"
-                    />
-                </motion.div>
-                )}
-
-                {/* Check-in Window (always enabled, tournament check-in is mandatory) */}
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.05 }}
-                    className="p-5 bg-[#111111] rounded-2xl border border-white/5"
-                >
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="p-3 bg-rose-500/10 rounded-xl">
-                            <CheckCircle className="w-6 h-6 text-rose-400" />
-                        </div>
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                                <Label className="text-white font-medium text-base">Match Check-in</Label>
-                                <Badge className="bg-rose-500/15 text-rose-300 border border-rose-500/20 text-xs">Required</Badge>
-                            </div>
-                            <p className="text-sm text-gray-500 mt-0.5">
-                                Teams must check in before their match starts
-                            </p>
-                        </div>
-                    </div>
-                    <div className="ml-16">
-                        <Label className="text-gray-400 text-sm">Check-in Window</Label>
-                        <div className="flex items-center gap-3 mt-2">
-                            <Input
-                                type="number"
-                                min={5}
-                                max={60}
-                                disabled={!canEditSchedule}
-                                value={schedulingConfig.checkin_window_minutes || 15}
-                                onChange={(e) => handleUpdate('checkin_window_minutes', parseInt(e.target.value) || 15)}
-                                className="w-24 bg-[#0a0a0c] border-white/10 text-white text-center rounded-xl focus:border-rose-500"
-                            />
-                            <span className="text-gray-500 text-sm">minutes before match time</span>
-                        </div>
-                    </div>
-                </motion.div>
-
-                {/* Daily Start Time Preset (Swiss & Round Robin only) */}
-                {(stageFormat === 'swiss' || stageFormat === 'round_robin') && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="p-5 bg-[#111111] rounded-2xl border border-white/5"
-                    >
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="p-3 bg-rose-500/10 rounded-xl">
-                                <Calendar className="w-6 h-6 text-rose-400" />
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <Label className="text-white font-medium text-base">Daily Start Time</Label>
-                                    <Badge className="bg-rose-500/15 text-rose-300 border border-rose-500/20 text-xs">1 Round = 1 Day</Badge>
-                                </div>
-                                <p className="text-sm text-gray-500 mt-0.5">
-                                    Default time each day's matches begin (auto-applied to new rounds)
-                                </p>
-                            </div>
-                        </div>
-                        <div className="ml-16">
-                            <Label className="text-gray-400 text-sm">
-                                Start Time <span className="text-gray-600">({getTimezoneAbbr()})</span>
-                            </Label>
-                            <div className="flex items-center gap-3 mt-2">
-                                <Input
-                                    type="time"
-                                    disabled={!canEditSchedule}
-                                    value={schedulingConfig.daily_start_time || '20:00'}
-                                    onChange={(e) => handleUpdate('daily_start_time', e.target.value)}
-                                    className="w-32 bg-[#0a0a0c] border-white/10 text-white text-center rounded-xl focus:border-rose-500"
-                                />
-                                <span className="text-gray-500 text-sm">every day</span>
-                            </div>
-                            <p className="text-xs text-gray-600 mt-2">
-                                Each round will auto-schedule to the next day at this time when generated.
-                            </p>
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* Self-Play Mode Info */}
-                {isSelfPlayEnabled && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="p-5 bg-rose-500/5 border border-rose-500/20 rounded-2xl"
-                    >
-                        <h4 className="text-sm font-medium text-rose-300 flex items-center gap-2 mb-3">
-                            <Users className="w-4 h-4" />
-                            How Self-Play Works
-                        </h4>
-                        <ul className="space-y-2 text-sm text-gray-400">
-                            <li className="flex items-start gap-2">
-                                <span className="text-rose-300 font-bold">1.</span>
-                                Set deadline for each round (1 round per day recommended)
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-rose-300 font-bold">2.</span>
-                                Teams chat and propose match times within deadline
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-rose-300 font-bold">3.</span>
-                                Both teams check in when ready
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-rose-300 font-bold">4.</span>
-                                Team 1 generates party code to start match
-                            </li>
-                        </ul>
-                    </motion.div>
-                )}
-
-                {/* Organizer-Controlled Info */}
-                {!isSelfPlayEnabled && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="p-5 bg-rose-500/5 border border-rose-500/20 rounded-2xl"
-                    >
-                        <h4 className="text-sm font-medium text-rose-300 flex items-center gap-2 mb-3">
-                            <Calendar className="w-4 h-4" />
-                            Organizer-Controlled Mode
-                        </h4>
-                        <ul className="space-y-2 text-sm text-gray-400">
-                            <li className="flex items-start gap-2">
-                                <span className="text-rose-300 font-bold">1.</span>
-                                Set specific start times for each round
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-rose-300 font-bold">2.</span>
-                                {formatData.roundsNote}
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <span className="text-rose-300 font-bold">3.</span>
-                                Teams check in and wait for organizer to provide party codes
-                            </li>
-                        </ul>
-                    </motion.div>
-                )}
-
-                {/* Info Box */}
-                <div className="flex items-start gap-3 p-4 bg-[#111111] rounded-2xl border border-white/5">
-                    <MessageCircle className="w-5 h-5 text-gray-500 mt-0.5" />
-                    <p className="text-sm text-gray-500">
-                        Match chat is always enabled for captains to coordinate and communicate.
-                    </p>
-                </div>
-            </CardContent>
-        </Card>
+      <div className="space-y-2 px-4 py-4">
+        <div className="animate-pulse space-y-3">
+          <div className="h-5 w-1/2 bg-white/[0.04]" />
+          <div className="h-10 bg-white/[0.04]" />
+          <div className="h-10 bg-white/[0.04]" />
+        </div>
+      </div>
     );
+  }
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <div>
+        {/* Header */}
+        <div className="border-b border-white/[0.08] bg-white/[0.025] px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-white">Match Settings</p>
+        </div>
+
+        <div className="divide-y divide-white/[0.06]">
+          {/* Format */}
+          <div className="flex items-center gap-2 px-4 py-2.5">
+            <span className="text-sm font-semibold text-zinc-300">{formatData.label}</span>
+            <InfoTip text={`${formatData.description} ${formatData.roundsNote}`} />
+          </div>
+
+          {/* Self-Play Mode */}
+          {!isBR && (
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-medium text-white">Self-Play Mode</span>
+                <InfoTip text="Teams coordinate and start matches themselves within a set deadline." />
+              </div>
+              <Switch
+                checked={isSelfPlayEnabled}
+                disabled={!canEdit}
+                onCheckedChange={(checked) => handleUpdate('self_play_enabled', checked)}
+                className="data-[state=checked]:bg-rose-500"
+              />
+            </div>
+          )}
+
+          {/* Match Check-In */}
+          <div className="px-4 py-2.5">
+            <div className="flex items-center gap-1.5 mb-2.5">
+              <span className="text-sm font-medium text-white">Match Check-In</span>
+              <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-rose-400/70">Required</span>
+              <InfoTip text="Teams must check in before their match starts. The window opens this many minutes before the scheduled time." />
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={5}
+                max={60}
+                disabled={!canEdit}
+                value={schedulingConfig.checkin_window_minutes || 15}
+                onChange={(e) => handleUpdate('checkin_window_minutes', parseInt(e.target.value) || 15)}
+                className="w-16 border-white/10 bg-transparent text-center text-white focus:border-rose-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-sm text-zinc-500">min before match</span>
+            </div>
+          </div>
+
+          {/* Daily Start Time (Swiss + Round Robin only) */}
+          {(stageFormat === 'swiss' || stageFormat === 'round_robin') && (
+            <div className="px-4 py-2.5">
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <span className="text-sm font-medium text-white">Daily Start Time</span>
+                <InfoTip text="Default time each day's round begins. Auto-applied when new rounds are generated — one round per day." />
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="time"
+                  disabled={!canEdit}
+                  value={schedulingConfig.daily_start_time || '20:00'}
+                  onChange={(e) => handleUpdate('daily_start_time', e.target.value)}
+                  className="w-28 border-white/10 bg-transparent text-center text-white focus:border-rose-500 [color-scheme:dark]"
+                />
+                <span className="text-xs text-zinc-500">{getTimezoneAbbr()}</span>
+              </div>
+            </div>
+          )}
+
+          {/* How it works — compact, only shown when relevant */}
+          <div className="px-4 py-2.5">
+            <p className="mb-1.5 text-[9px] font-bold uppercase tracking-[0.25em] text-rose-500/60">How It Works</p>
+            <ol className="space-y-1">
+              {(isSelfPlayEnabled ? SELF_PLAY_STEPS : ORGANIZER_STEPS).map((step, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs text-zinc-500">
+                  <span className="shrink-0 font-bold text-zinc-600">{i + 1}.</span>
+                  {step}
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </div>
+    </TooltipProvider>
+  );
 };
 
 export default StageSchedulingConfig;

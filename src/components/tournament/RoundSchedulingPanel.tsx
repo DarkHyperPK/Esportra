@@ -1,14 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CtaButton } from '@/components/ui/app-buttons';
 import { cn } from '@/lib/utils';
-import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Check, AlertCircle, ChevronDown, ChevronUp, Zap, GitBranch, Globe, Info } from 'lucide-react';
+import { Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useMatchScheduling } from '@/hooks/useMatchScheduling';
 import { format, addDays, isWithinInterval, parseISO } from 'date-fns';
 import { getTimezoneAbbr, utcToLocalInput, localInputToUTC, utcToLocalDate, utcToLocalTime, localDateTimeToUTC, dateInputToUTCEndOfDay, getTournamentScheduleDateBounds, isInvalidTournamentDateWindow, toUtcIsoString } from '@/lib/timeUtils';
@@ -35,31 +30,13 @@ interface RoundConfig {
 interface BracketSection {
     key: string;
     label: string;
-    headerClasses: string;
-    textClass: string;
-    badgeClass: string;
     rounds: Map<number, any[]>;
 }
 
-const BRACKET_SECTIONS: Record<string, { label: string; headerClasses: string; textClass: string; badgeClass: string }> = {
-    winners: {
-        label: 'Winners Bracket',
-        headerClasses: 'bg-white/[0.03] border-white/10',
-        textClass: 'text-white',
-        badgeClass: 'text-zinc-300 border-white/15',
-    },
-    losers: {
-        label: 'Losers Bracket',
-        headerClasses: 'bg-white/[0.03] border-white/10',
-        textClass: 'text-white',
-        badgeClass: 'text-zinc-300 border-white/15',
-    },
-    final: {
-        label: 'Grand Finals',
-        headerClasses: 'bg-rose-500/10 border-rose-500/20',
-        textClass: 'text-rose-300',
-        badgeClass: 'text-rose-300 border-rose-500/30',
-    },
+const BRACKET_SECTIONS: Record<string, { label: string }> = {
+    winners: { label: 'Winners Bracket' },
+    losers: { label: 'Losers Bracket' },
+    final: { label: 'Grand Finals' },
 };
 
 // Format-specific round naming
@@ -101,13 +78,6 @@ const getRoundNameForFormat = (
     }
 };
 
-// Format-specific descriptions
-const formatDescriptions: Record<string, string> = {
-    single_elimination: 'Set times/deadlines for each elimination round',
-    double_elimination: 'Configure winners and losers bracket rounds',
-    swiss: 'All matches in each round happen simultaneously',
-    round_robin: 'Schedule matchdays - teams play once per day',
-};
 
 const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
     stageId,
@@ -210,9 +180,6 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
             .map(key => ({
                 key,
                 label: BRACKET_SECTIONS[key]?.label || key,
-                headerClasses: BRACKET_SECTIONS[key]?.headerClasses || 'bg-white/[0.03] border-white/10',
-                textClass: BRACKET_SECTIONS[key]?.textClass || 'text-zinc-300',
-                badgeClass: BRACKET_SECTIONS[key]?.badgeClass || 'text-zinc-300 border-white/15',
                 rounds: sectionMap.get(key)!,
             }));
     }, [matches, stageFormat]);
@@ -405,27 +372,22 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
         };
 
         return (
-            <motion.div
+            <div
                 key={`${bracketKey || 'flat'}_${roundIndex}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: roundIndex * 0.05 }}
-                className="bg-[#111111] border border-white/5 rounded-2xl overflow-hidden hover:border-white/10 transition-colors"
+                className="border-b border-white/[0.06] last:border-b-0"
             >
                 {/* Round Header */}
                 <button
                     onClick={handleToggle}
-                    className="w-full p-4 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors"
+                    className="px-4 py-2.5 flex items-center justify-between w-full text-left hover:bg-white/[0.02] transition-colors"
                 >
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-300 font-bold">
-                            {roundIndex + 1}
-                        </div>
+                    <div className="flex items-center gap-3">
+                        <span className="w-5 text-center text-[10px] font-bold text-zinc-400 shrink-0">{roundIndex + 1}</span>
                         <div>
-                            <h4 className="font-medium text-white">
+                            <h4 className="text-sm font-medium text-white">
                                 {roundName}
                             </h4>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-zinc-500">
                                 {roundMatches.length} match{roundMatches.length !== 1 ? 'es' : ''}
                                 {stageFormat === 'swiss' && ' (simultaneous)'}
                             </p>
@@ -433,33 +395,23 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                     </div>
                     <div className="flex items-center gap-3">
                         {(config?.deadline || config?.startTime) && (
-                            <span className="text-xs text-rose-300 bg-rose-500/10 px-2 py-1 rounded-lg">
-                                Configured
-                            </span>
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500/80">Saved</span>
                         )}
                         {isExpanded ? (
-                            <ChevronUp className="w-5 h-5 text-gray-500" />
+                            <ChevronUp className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
                         ) : (
-                            <ChevronDown className="w-5 h-5 text-gray-500" />
+                            <ChevronDown className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
                         )}
                     </div>
                 </button>
 
                 {/* Round Config (Expanded) */}
                 {isExpanded && (
-                    <motion.div
-                        initial={{ opacity: 0, gridTemplateRows: '0fr' }}
-                        animate={{ opacity: 1, gridTemplateRows: '1fr' }}
-                        exit={{ opacity: 0, gridTemplateRows: '0fr' }}
-                        transition={{ duration: 0.2 }}
-                        style={{ display: 'grid', overflow: 'hidden' }}
-                        className="border-t border-white/5"
-                    >
-                    <div style={{ minHeight: 0, overflow: 'hidden' }} className="px-4 pb-4">
-                        <div className="pt-4 space-y-4">
+                    <div className="border-t border-white/[0.06] px-4 pb-3 pt-3">
+                        <div className="space-y-3">
                             {selfPlayEnabled ? (
                                 <div className="space-y-2">
-                                    <Label className="text-gray-400 text-sm">
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                                         Round Deadline (End of Day)
                                         <span className="ml-1 text-rose-300/70">({getTimezoneAbbr()})</span>
                                     </Label>
@@ -474,20 +426,20 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                 const utcValue = dateValue ? dateInputToUTCEndOfDay(dateValue) : '';
                                                 updateRoundConfig(cfgKey, roundIndex, 'deadline', utcValue);
                                             }}
-                                            className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
+                                            className="bg-transparent border-white/10 text-white focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
                                         />
                                         <CtaButton
                                             size="sm"
                                             onClick={() => handleSaveRound(cfgKey, roundIndex)}
                                             disabled={saving || !dirtyKeys.has(cfgKey) || !config?.deadline}
                                             className={!dirtyKeys.has(cfgKey) && (config?.deadline || serverDeadlines[cfgKey])
-                                                ? "bg-rose-500/5 text-rose-300/60 border border-rose-500/10 rounded-xl px-4 cursor-default"
-                                                : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-xl px-4"}
+                                                ? "bg-white/[0.04] text-zinc-500 border border-white/[0.06] px-4 cursor-default"
+                                                : "bg-rose-500 hover:bg-rose-500/90 text-white px-4"}
                                         >
                                             {saving ? '...' : (!dirtyKeys.has(cfgKey) && (config?.deadline || serverDeadlines[cfgKey])) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
                                         </CtaButton>
                                     </div>
-                                    <p className="text-xs text-gray-500">
+                                    <p className="text-xs text-zinc-500">
                                         Teams have until the end of this day to complete their match
                                     </p>
                                     {config?.deadline && !isValidDate(config.deadline) && (
@@ -498,7 +450,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                     )}
                                 </div>
                             ) : (
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     {/* Round Deadline (only shown in round-based mode to save space) */}
                                     {schedulingMode === 'round_based' && (
                                         <div className="space-y-2">
@@ -521,7 +473,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                         updateRoundConfig(cfgKey, roundIndex, 'startTime', localDateTimeToUTC(dateValue, existingTime));
                                                     }
                                                 }}
-                                                className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-rose-500 focus:ring-rose-500/20 [color-scheme:dark]"
+                                                className="bg-transparent border-white/10 text-white focus:border-rose-500 focus:ring-rose-500/20 [color-scheme:dark]"
                                             />
                                         </div>
                                     )}
@@ -530,7 +482,7 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                         /* Round-Based: single start time for all matches */
                                         <>
                                             <div className="space-y-2">
-                                                <Label className="text-gray-400 text-sm">
+                                                <Label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                                                     {stageFormat === 'swiss' ? 'Round Start Time' : 'Match Start Time'}
                                                     <span className="ml-1 text-rose-300/70">({getTimezoneAbbr()})</span>
                                                 </Label>
@@ -550,34 +502,34 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                                 : (defaultDeadline ? utcToLocalDate(defaultDeadline) : utcToLocalDate(new Date().toISOString()));
                                                             updateRoundConfig(cfgKey, roundIndex, 'startTime', localDateTimeToUTC(deadlineDate, timeVal));
                                                         }}
-                                                        className="bg-[#0a0a0c] border-white/10 text-white rounded-xl focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
+                                                        className="bg-transparent border-white/10 text-white focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
                                                     />
                                                     <CtaButton
                                                         size="sm"
                                                         onClick={() => handleSaveRound(cfgKey, roundIndex)}
                                                         disabled={saving || !dirtyKeys.has(cfgKey)}
                                                         className={!dirtyKeys.has(cfgKey) && config?.startTime
-                                                            ? "bg-rose-500/5 text-rose-300/60 border border-rose-500/10 rounded-xl px-4 cursor-default"
-                                                            : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-xl px-4"}
+                                                            ? "bg-white/[0.04] text-zinc-500 border border-white/[0.06] px-4 cursor-default"
+                                                            : "bg-rose-500 hover:bg-rose-500/90 text-white px-4"}
                                                     >
                                                         {saving ? '...' : (!dirtyKeys.has(cfgKey) && config?.startTime) ? <><Check className="w-3.5 h-3.5 mr-1 inline" />Saved</> : 'Save'}
                                                     </CtaButton>
                                                 </div>
                                             </div>
-                                            <p className="text-xs text-gray-500">
-                                                All {roundMatches.length} match{roundMatches.length !== 1 ? 'es' : ''} in this round will start at this time
+                                            <p className="text-xs text-zinc-500">
+                                                All {roundMatches.length} match{roundMatches.length !== 1 ? 'es' : ''} in this round start at this time
                                             </p>
                                         </>
                                     ) : (
                                         /* Granular: individual match time pickers */
                                         <div className="pt-2 space-y-3">
                                             <div className="flex items-center justify-between">
-                                                <Label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">
+                                                <Label className="text-xs font-bold uppercase tracking-wider text-zinc-500">
                                                     Individual Match Times
                                                 </Label>
-                                                <Badge variant="outline" className="text-[10px] border-rose-500/30 text-rose-300 bg-rose-500/5">
+                                                <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">
                                                     Match-by-Match
-                                                </Badge>
+                                                </span>
                                             </div>
 
                                             <div className="space-y-2.5">
@@ -593,18 +545,18 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                         : (match.scheduled_time ? utcToLocalInput(match.scheduled_time) : '');
 
                                                     return (
-                                                        <div key={matchId} className="p-3 bg-white/[0.02] border border-white/5 rounded-xl space-y-2">
+                                                        <div key={matchId} className="py-2.5 border-b border-white/[0.06] last:border-b-0 space-y-1">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="text-[10px] text-gray-600 font-bold bg-white/5 px-1.5 py-0.5 rounded">M{matchNum}</span>
-                                                                    <span className="text-xs text-gray-300 font-medium">
-                                                                        {team1} <span className="text-gray-600 mx-1">vs</span> {team2}
+                                                                    <span className="text-xs font-bold text-zinc-600">M{matchNum}</span>
+                                                                    <span className="text-sm font-medium text-white">
+                                                                        {team1} <span className="mx-1 text-zinc-600">vs</span> {team2}
                                                                     </span>
                                                                 </div>
                                                                 {match.scheduled_time && !editedTime && (
-                                                                    <Badge variant="outline" className="text-[10px] border-rose-500/20 text-rose-300 bg-rose-500/5">
+                                                                    <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-500/80">
                                                                         Scheduled
-                                                                    </Badge>
+                                                                    </span>
                                                                 )}
                                                             </div>
                                                             <div className="flex gap-2">
@@ -612,12 +564,12 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                                                                     type="datetime-local"
                                                                     value={displayTime ? displayTime.slice(0, 16) : ''}
                                                                     onChange={(e) => updateMatchEdit(matchId, e.target.value ? localInputToUTC(e.target.value) : '')}
-                                                                    className="h-8 bg-[#0a0a0c] border-white/5 text-[11px] text-white rounded-lg focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
+                                                                    className="h-8 bg-transparent border-white/5 text-[11px] text-white focus:border-rose-500 focus:ring-rose-500/20 flex-1 [color-scheme:dark]"
                                                                 />
                                                                 <button type="button"
                                                                     onClick={() => handleSaveMatch(matchId)}
                                                                     disabled={saving || !matchEdits.has(matchId)}
-                                                                    className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 px-3 hover:text-rose-300 text-[10px] rounded-lg transition-all')}
+                                                                    className={cn('h-8 px-3 text-[10px] font-bold transition-all disabled:opacity-40', matchEdits.has(matchId) ? 'bg-rose-500 hover:bg-rose-500/90 text-white' : 'bg-white/[0.03] text-zinc-600 cursor-default')}
                                                                 >
                                                                     {saving ? '...' : 'Set Time'}
                                                                 </button>
@@ -639,60 +591,39 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                             )}
                         </div>
                     </div>
-                    </motion.div>
                 )}
-            </motion.div>
+            </div>
         );
     };
 
     if (isLoading) {
         return (
-            <Card className="bg-[#0a0a0c] border-white/5 rounded-3xl">
-                <CardContent className="p-8">
-                    <div className="animate-shimmer flex flex-col gap-4">
-                        <div className="h-6 bg-white/5 rounded-lg w-3/4"></div>
-                        <div className="h-20 bg-white/5 rounded-2xl"></div>
-                        <div className="h-20 bg-white/5 rounded-2xl"></div>
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="px-4 py-4">
+                <div className="animate-pulse flex flex-col gap-3">
+                    <div className="h-6 bg-white/5 rounded-lg w-3/4"></div>
+                    <div className="h-20 bg-white/5 rounded-2xl"></div>
+                    <div className="h-20 bg-white/5 rounded-2xl"></div>
+                </div>
+            </div>
         );
     }
 
-    const formatLabel = stageFormat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-
     return (
-        <Card className="bg-[#0a0a0c] border-white/5 rounded-3xl overflow-hidden">
-            <CardHeader className="pb-4 border-b border-white/5">
-                <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-3 text-white font-heading text-xl">
-                        <div className="p-2 bg-rose-500/10 rounded-xl">
-                            <Calendar className="w-5 h-5 text-rose-400" />
-                        </div>
-                        Round Scheduling
-                    </CardTitle>
-                    <Badge className="bg-rose-500/10 text-rose-300 border-rose-500/20">
-                        <GitBranch className="w-3 h-3 mr-1" />
-                        {formatLabel}
-                    </Badge>
+        <div>
+            <div className="border-b border-white/[0.08] bg-white/[0.025] px-4 py-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-white">Round Scheduling</p>
+                  <p className="font-mono text-[9px] text-zinc-600">{getTimezoneAbbr()}</p>
                 </div>
-                <p className="text-sm text-gray-400 mt-2">
-                    {formatDescriptions[stageFormat] || formatDescriptions.single_elimination}
-                </p>
-                <div className="flex items-center gap-1.5 mt-2 text-xs text-rose-300/70">
-                    <Globe className="w-3 h-3" />
-                    <span>All times shown in your local timezone ({getTimezoneAbbr()})</span>
-                </div>
-            </CardHeader>
+            </div>
 
-            <CardContent className="p-6 space-y-4">
+            <div className="divide-y divide-white/[0.06]">
                 {/* Tournament Date Info */}
                 {(tournamentStartDate || tournamentEndDate) && (
-                    <div className={`flex items-center gap-3 p-4 border rounded-2xl ${invalidTournamentWindow ? 'bg-rose-500/10 border-rose-500/20' : 'bg-rose-500/5 border-rose-500/20'}`}>
-                        <Clock className={`w-5 h-5 ${invalidTournamentWindow ? 'text-rose-300' : 'text-rose-400'}`} />
+                    <div className="flex items-center gap-3 px-4 py-2.5">
                         <div className="text-sm">
-                            <span className="text-gray-400">Tournament Window: </span>
-                            <span className="text-white font-medium">
+                            <span className="text-xs text-zinc-500">Tournament Window: </span>
+                            <span className="text-sm font-medium text-white">
                                 {tournamentStartDate && format(parseISO(tournamentStartDate), 'MMM d')}
                                 {' — '}
                                 {tournamentEndDate && format(parseISO(tournamentEndDate), 'MMM d, yyyy')}
@@ -709,149 +640,111 @@ const RoundSchedulingPanel: React.FC<RoundSchedulingPanelProps> = ({
                 {/* Scheduling Mode Selector */}
                 {selfPlayEnabled ? (
                     /* Self-Play: auto round-based, info banner */
-                    <div className="flex items-center gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
-                        <Zap className="w-5 h-5 text-rose-400" />
-                        <div className="text-sm">
-                            <span className="text-rose-300 font-medium">Self-Play Mode</span>
-                            <span className="text-gray-400 ml-2">— Round-based deadlines. Teams propose times to each other and play within the deadline.</span>
+                    <div className="flex items-center gap-2 px-4 py-2.5 border-l-2 border-rose-500/30">
+                        <div>
+                            <span className="text-sm font-medium text-white">Self-Play Mode</span>
+                            <p className="text-xs text-zinc-400">Round-based deadlines. Teams propose times to each other and play within the deadline.</p>
                         </div>
                     </div>
                 ) : (
-                    /* Manual Mode: show mode selector cards */
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                            <Info className="w-4 h-4 text-gray-500" />
-                            <span className="text-xs text-gray-500">Choose how to schedule matches in this stage</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            {/* Round-Based Card */}
+                    /* Manual Mode: compact pill toggle */
+                    <div className="flex items-center gap-1 px-4 py-2.5">
+                        <span className="mr-2 text-[9px] font-bold uppercase tracking-widest text-rose-500/60">Mode</span>
+                        {(['round_based', 'granular'] as const).map((mode) => (
                             <button
-                                onClick={() => handleSetMode('round_based')}
-                                className={`relative p-4 rounded-2xl border-2 text-left transition-all duration-200 ${schedulingMode === 'round_based'
-                                    ? 'border-rose-500 bg-rose-500/5 shadow-[0_0_20px_rgba(244,63,94,0.08)]'
-                                    : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
-                                    }`}
+                                key={mode}
+                                type="button"
+                                onClick={() => handleSetMode(mode)}
+                                className={`px-3 py-1 text-xs font-bold uppercase tracking-widest transition-all ${
+                                    schedulingMode === mode
+                                        ? 'border border-rose-500/30 bg-rose-500/[0.08] text-rose-300'
+                                        : 'text-zinc-500 hover:text-zinc-300'
+                                }`}
                             >
-                                {schedulingMode === 'round_based' && (
-                                    <div className="absolute top-3 right-3">
-                                        <Check className="w-4 h-4 text-rose-400" />
-                                    </div>
-                                )}
-                                <Clock className={`w-6 h-6 mb-2 ${schedulingMode === 'round_based' ? 'text-rose-400' : 'text-gray-500'}`} />
-                                <h4 className={`text-sm font-semibold mb-1 ${schedulingMode === 'round_based' ? 'text-white' : 'text-gray-300'}`}>
-                                    Round-Based
-                                </h4>
-                                <p className="text-[11px] text-gray-500 leading-relaxed">
-                                    One start time per round. All matches in a round share the same schedule.
-                                </p>
+                                {mode === 'round_based' ? 'Round-Based' : 'Match-by-Match'}
                             </button>
-
-                            {/* Granular Card */}
-                            <button
-                                onClick={() => handleSetMode('granular')}
-                                className={`relative p-4 rounded-2xl border-2 text-left transition-all duration-200 ${schedulingMode === 'granular'
-                                    ? 'border-rose-500 bg-rose-500/5 shadow-[0_0_20px_rgba(244,63,94,0.08)]'
-                                    : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
-                                    }`}
-                            >
-                                {schedulingMode === 'granular' && (
-                                    <div className="absolute top-3 right-3">
-                                        <Check className="w-4 h-4 text-rose-400" />
-                                    </div>
-                                )}
-                                <GitBranch className={`w-6 h-6 mb-2 ${schedulingMode === 'granular' ? 'text-rose-400' : 'text-gray-500'}`} />
-                                <h4 className={`text-sm font-semibold mb-1 ${schedulingMode === 'granular' ? 'text-white' : 'text-gray-300'}`}>
-                                    Match-by-Match
-                                </h4>
-                                <p className="text-[11px] text-gray-500 leading-relaxed">
-                                    Individual time for every match. Perfect for streamed playoffs and finals.
-                                </p>
-                            </button>
-                        </div>
+                        ))}
                     </div>
                 )}
 
                 {/* Rounds List */}
-                <ScrollArea className="h-[400px] pr-2">
-                    <div className="space-y-3">
-                        {bracketSections ? (
-                            /* Double Elimination: render separate bracket sections */
-                            bracketSections.map(section => (
-                                <div key={section.key} className="space-y-2">
-                                    {/* Bracket Section Header */}
-                                    <div className={`flex items-center gap-3 px-4 py-3 ${section.headerClasses} border rounded-2xl`}>
-                                        <h3 className={`font-heading font-semibold ${section.textClass} text-sm uppercase tracking-wider`}>
-                                            {section.label}
-                                        </h3>
-                                        <Badge variant="outline" className={`ml-auto ${section.badgeClass} text-xs`}>
-                                            {section.rounds.size} round{section.rounds.size !== 1 ? 's' : ''}
-                                        </Badge>
-                                    </div>
-
-                                    {/* Rounds within this bracket section */}
-                                    {Array.from(section.rounds.entries())
-                                        .sort(([a], [b]) => a - b)
-                                        .map(([roundIndex, roundMatches]) => {
-                                            const cfgK = configKey(roundIndex, section.key);
-                                            const config = roundConfigs.get(cfgK);
-                                            const isExpanded = expandedRound === roundIndex && expandedBracket === section.key;
-                                            const defaultDeadline = getDefaultDeadline(roundIndex);
-                                            const isLosers = section.key === 'losers';
-                                            const sectionRoundCount = section.rounds.size;
-                                            const roundName = section.key === 'final'
-                                                ? 'Grand Finals'
-                                                : getRoundNameForFormat(stageFormat, roundIndex, sectionRoundCount, isLosers);
-
-                                            return renderRoundRow(
-                                                roundIndex,
-                                                roundMatches,
-                                                roundName,
-                                                config,
-                                                isExpanded,
-                                                defaultDeadline,
-                                                section.key,
-                                                cfgK
-                                            );
-                                        })}
+                <div>
+                    {bracketSections ? (
+                        /* Double Elimination: render separate bracket sections */
+                        bracketSections.map(section => (
+                            <div key={section.key}>
+                                {/* Bracket Section Header */}
+                                <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06]">
+                                    <p className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+                                        {section.label}
+                                    </p>
+                                    <span className="text-xs font-bold uppercase tracking-widest text-zinc-400">
+                                        {section.rounds.size} round{section.rounds.size !== 1 ? 's' : ''}
+                                    </span>
                                 </div>
-                            ))
-                        ) : (
-                            /* All other formats: flat round list */
-                            Array.from(matchesByRound.entries())
-                                .sort(([a], [b]) => a - b)
-                                .map(([roundIndex, roundMatches]) => {
-                                    const cfgK = configKey(roundIndex, null);
-                                    const config = roundConfigs.get(cfgK);
-                                    const isExpanded = expandedRound === roundIndex && expandedBracket === null;
-                                    const defaultDeadline = getDefaultDeadline(roundIndex);
-                                    const roundName = getRoundNameForFormat(stageFormat, roundIndex, totalRounds);
 
-                                    return renderRoundRow(
-                                        roundIndex,
-                                        roundMatches,
-                                        roundName,
-                                        config,
-                                        isExpanded,
-                                        defaultDeadline,
-                                        null,
-                                        cfgK
-                                    );
-                                })
-                        )}
-                    </div>
-                </ScrollArea>
+                                {/* Rounds within this bracket section */}
+                                {Array.from(section.rounds.entries())
+                                    .sort(([a], [b]) => a - b)
+                                    .map(([roundIndex, roundMatches]) => {
+                                        const cfgK = configKey(roundIndex, section.key);
+                                        const config = roundConfigs.get(cfgK);
+                                        const isExpanded = expandedRound === roundIndex && expandedBracket === section.key;
+                                        const defaultDeadline = getDefaultDeadline(roundIndex);
+                                        const isLosers = section.key === 'losers';
+                                        const sectionRoundCount = section.rounds.size;
+                                        const roundName = section.key === 'final'
+                                            ? 'Grand Finals'
+                                            : getRoundNameForFormat(stageFormat, roundIndex, sectionRoundCount, isLosers);
+
+                                        return renderRoundRow(
+                                            roundIndex,
+                                            roundMatches,
+                                            roundName,
+                                            config,
+                                            isExpanded,
+                                            defaultDeadline,
+                                            section.key,
+                                            cfgK
+                                        );
+                                    })}
+                            </div>
+                        ))
+                    ) : (
+                        /* All other formats: flat round list */
+                        Array.from(matchesByRound.entries())
+                            .sort(([a], [b]) => a - b)
+                            .map(([roundIndex, roundMatches]) => {
+                                const cfgK = configKey(roundIndex, null);
+                                const config = roundConfigs.get(cfgK);
+                                const isExpanded = expandedRound === roundIndex && expandedBracket === null;
+                                const defaultDeadline = getDefaultDeadline(roundIndex);
+                                const roundName = getRoundNameForFormat(stageFormat, roundIndex, totalRounds);
+
+                                return renderRoundRow(
+                                    roundIndex,
+                                    roundMatches,
+                                    roundName,
+                                    config,
+                                    isExpanded,
+                                    defaultDeadline,
+                                    null,
+                                    cfgK
+                                );
+                            })
+                    )}
+                </div>
 
                 {/* No Matches Warning */}
                 {matchesByConfigKey.size === 0 && (
-                    <div className="flex items-center gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
-                        <AlertCircle className="w-5 h-5 text-rose-400" />
-                        <p className="text-sm text-rose-300">
+                    <div className="px-4 py-2.5 border-l-2 border-rose-500/30">
+                        <p className="text-sm text-rose-400">
                             No matches found. Generate the bracket first.
                         </p>
                     </div>
                 )}
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     );
 };
 
