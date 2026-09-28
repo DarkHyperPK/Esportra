@@ -5,7 +5,6 @@ import type { PrizeDistributionConfig } from './prizeDistribution';
 
 export type BracketType = 'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin';
 export type TournamentType = 'bracket' | 'battle_royale';
-export type SeedingType = 'random' | 'manual' | 'skill_based';
 import type { LaunchState } from '@/utils/tournamentVisibilityUtils';
 
 /** @deprecated Use LaunchState — kept for localStorage draft migration only */
@@ -48,8 +47,6 @@ export interface TournamentWizardData {
     stages: TournamentStage[];
     maxTeams: number;
     teamSize: number;
-    seedingType: SeedingType;
-    thirdPlaceMatch: boolean;
     mapPoolIds: string[]; // Selected map IDs for tournament map pool
 
     // Battle Royale specific (Step 2)
@@ -65,8 +62,6 @@ export interface TournamentWizardData {
     bannerUrl: string | null;
     logoUrl: string | null;
     description: string;
-    discordUrl: string;
-    twitterUrl: string;
     streamUrl: string;
     rewards: string; // legacy field — no longer written to
 
@@ -95,6 +90,7 @@ export interface TournamentWizardData {
     assistedMatchReporting: boolean;
     mapVetoEnabled: boolean;
     discordLinkCount: number;
+    requiredAccountLinks: number;
 
     // Tournament metadata
     rules: string;
@@ -150,8 +146,6 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     stages: [], // No default stage - configure via Stage Setup Wizard
     maxTeams: 0,
     teamSize: 7,
-    seedingType: 'random',
-    thirdPlaceMatch: false,
     mapPoolIds: [],
 
     // Battle Royale
@@ -167,8 +161,6 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     bannerUrl: null,
     logoUrl: null,
     description: '',
-    discordUrl: '',
-    twitterUrl: '',
     streamUrl: '',
     rewards: '',
 
@@ -197,6 +189,7 @@ export const DEFAULT_WIZARD_DATA: TournamentWizardData = {
     assistedMatchReporting: false,
     mapVetoEnabled: true,
     discordLinkCount: 0,
+    requiredAccountLinks: 1,
 
     // Tournament metadata
     rules: '',

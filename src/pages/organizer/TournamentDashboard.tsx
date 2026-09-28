@@ -55,6 +55,7 @@ const TournamentDashboard = () => {
   const tournament = dashboardData?.tournament;
   const stages = useMemo(() => dashboardData?.stages ?? [], [dashboardData?.stages]);
   const participants = useMemo(() => dashboardData?.participants ?? [], [dashboardData?.participants]);
+  const mockCount = dashboardData?.mockCount ?? 0;
 
   const isOrganizer = tournamentAccess?.isOrganizer || dashboardData?.isOrganizer || false;
   const isPlatformAdmin = tournamentAccess?.isPlatformAdmin || false;
@@ -180,6 +181,7 @@ const TournamentDashboard = () => {
         permissions={permissions}
         isBattleRoyale={isBR}
         isSuperAdmin={isSuperAdmin}
+        mockCount={mockCount}
         onUpdate={handleUpdate}
       />
     </TournamentDashboardShell>

@@ -76,8 +76,8 @@ export function SchedulePanel({
                     <span className="flex h-4 w-4 shrink-0 items-center justify-center border border-rose-500/30 text-[9px] font-bold text-rose-400">
                       {i + 1}
                     </span>
-                    <p className="text-[11px] font-semibold text-white">{stage.name}</p>
-                    <span className="text-[10px] text-zinc-600">{formatLabel}</span>
+                    <p className="text-base font-semibold text-white">{stage.name}</p>
+                    <span className="text-sm text-zinc-500">{formatLabel}</span>
                   </div>
                 )}
 

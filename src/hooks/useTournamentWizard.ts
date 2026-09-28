@@ -284,6 +284,7 @@ export const useTournamentWizard = (
                     isPublic:             launchPayload.isPublic,
                     checkInRequired:      data.checkInRequired,
                     checkInDeadline:      data.checkInRequired ? startDateTime.toISOString() : undefined,
+                    autoRemoveUnchecked:  data.autoRemoveUnchecked,
                     streamUrl:            data.streamUrl || null,
                     rules:                data.rules || null,
                     paymentInstructions:  data.paymentInstructions || null,

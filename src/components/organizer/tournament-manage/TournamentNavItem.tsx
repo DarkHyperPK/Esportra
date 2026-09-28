@@ -32,10 +32,10 @@ export function TournamentNavItem({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'relative z-20 flex h-8 w-full items-center gap-2.5 border px-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70',
+        'relative z-20 flex h-8 w-full items-center gap-2 px-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/70',
         active
-          ? 'border-transparent bg-rose-500 text-white'
-          : 'border-white/15 bg-black text-zinc-200 hover:border-white/25 hover:bg-white/[0.06] hover:text-white',
+          ? 'bg-rose-500 text-white'
+          : 'text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200',
         disabled && 'pointer-events-none opacity-50'
       )}
       aria-current={active ? 'page' : undefined}

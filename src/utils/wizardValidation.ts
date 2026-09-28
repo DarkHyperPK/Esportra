@@ -16,8 +16,6 @@ export const WIZARD_FIELD_LABELS: Record<string, string> = {
   prizePool: 'Prize pool',
   entryFee: 'Entry fee',
   description: 'Description',
-  discordUrl: 'Discord URL',
-  twitterUrl: 'Twitter URL',
   streamUrl: 'Stream URL',
   rewards: 'Prize distribution',
   registrationOpens: 'Registration opens',
@@ -31,7 +29,7 @@ export const WIZARD_FIELD_LABELS: Record<string, string> = {
 const STEP_FIELD_MAP: Record<number, string[]> = {
   1: ['name', 'game', 'gameMode', 'venue', 'region', 'launchState', 'startDate', 'startTime', 'endDate', 'endTime'],
   2: ['maxTeams', 'teamSize', 'mapPoolIds', 'brScoringPreset', 'brKillCap', 'brTiebreaker'],
-  3: ['prizePool', 'entryFee', 'description', 'discordUrl', 'twitterUrl', 'streamUrl', 'rewards'],
+  3: ['prizePool', 'entryFee', 'description', 'streamUrl', 'rewards'],
   4: ['registrationOpens', 'registrationCloses', 'checkInWindowMinutes', 'reservedInviteSlots', 'inviteExpiryDays'],
 };
 

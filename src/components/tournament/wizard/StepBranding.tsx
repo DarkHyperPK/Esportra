@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { motion } from 'framer-motion';
-import { FileText, Link as LinkIcon, MessageCircle, Twitter } from 'lucide-react';
+import { FileText, Link as LinkIcon } from 'lucide-react';
 import { WizardStepProps } from '@/types/tournamentWizard';
 import ImageUploader from './ImageUploader';
 import ArtworkPicker from '@/components/tournament/ArtworkPicker';
@@ -114,52 +114,24 @@ const StepBranding: React.FC<WizardStepProps> = ({ data, updateData, errors }) =
                 </div>
             </div>
 
-            {/* Social Links */}
+            {/* Stream Link */}
             <div className="w-full h-px bg-white/5 my-6" />
             <div className="space-y-4">
                 <Label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
                     <LinkIcon className="w-4 h-4" />
-                    Social Links (optional)
+                    Stream Link (optional)
                 </Label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-2 md:border-r border-white/10 pr-4">
-                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <MessageCircle className="w-4 h-4" />
-                            Discord
-                        </div>
-                        <Input
-                            placeholder="https://discord.gg/..."
-                            value={data.discordUrl}
-                            onChange={(e) => updateData({ discordUrl: e.target.value })}
-                            className={cn(errors.discordUrl && 'border-red-500')}
-                        />
-                        {errors.discordUrl && <p className="text-xs text-red-500">{errors.discordUrl}</p>}
+                <div className="max-w-md space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                        📺 Stream URL
                     </div>
-                    <div className="space-y-2 md:border-r border-white/10 pr-4">
-                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <Twitter className="w-4 h-4" />
-                            Twitter/X
-                        </div>
-                        <Input
-                            placeholder="https://twitter.com/..."
-                            value={data.twitterUrl}
-                            onChange={(e) => updateData({ twitterUrl: e.target.value })}
-                            className={cn(errors.twitterUrl && 'border-red-500')}
-                        />
-                        {errors.twitterUrl && <p className="text-xs text-red-500">{errors.twitterUrl}</p>}
-                    </div>
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            📺 Stream
-                        </div>
-                        <Input
-                            placeholder="https://twitch.tv/..."
-                            value={data.streamUrl}
-                            onChange={(e) => updateData({ streamUrl: e.target.value })}
-                            className={cn(errors.streamUrl && 'border-red-500')}
-                        />
-                        {errors.streamUrl && <p className="text-xs text-red-500">{errors.streamUrl}</p>}
-                    </div>
+                    <Input
+                        placeholder="https://twitch.tv/..."
+                        value={data.streamUrl}
+                        onChange={(e) => updateData({ streamUrl: e.target.value })}
+                        className={cn(errors.streamUrl && 'border-red-500')}
+                    />
+                    {errors.streamUrl && <p className="text-xs text-red-500">{errors.streamUrl}</p>}
                 </div>
             </div>
         </motion.div>

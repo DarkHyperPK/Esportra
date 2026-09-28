@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -9,16 +9,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, ArrowRight, Building2, Loader2, Trophy } from 'lucide-react';
 import { WizardContainer } from '@/components/tournament/wizard';
 import { Button } from '@/components/ui/button';
+import { QuickCreateFlow } from '@/components/tournament/quick-create';
 
 const CreateTournament = () => {
   const { user } = useAuth();
   const { canCreateTournaments, currentRole } = useRole();
   const admin = useAdmin();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [hasOrganization, setHasOrganization] = useState(false);
 
   const canCreate = canCreateTournaments || admin.hasPermission('tournaments:create');
+  const mode = searchParams.get('mode');
 
   // Check if user has an organization
   useEffect(() => {
@@ -132,10 +135,23 @@ const CreateTournament = () => {
     );
   }
 
+  // ── Advanced mode → existing wizard (unchanged) ────────────────────────────
+  if (mode === 'advanced') {
+    return (
+      <div className="min-h-screen bg-transparent text-white flex flex-col">
+        <main className="flex-grow">
+          <WizardContainer />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // ── Quick Create flow (entry → game-select → quick-form) ──────────────────
   return (
     <div className="min-h-screen bg-transparent text-white flex flex-col">
-      <main className="flex-grow">
-        <WizardContainer />
+      <main className="flex-grow w-full">
+        <QuickCreateFlow />
       </main>
       <Footer />
     </div>

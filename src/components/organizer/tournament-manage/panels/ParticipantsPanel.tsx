@@ -21,8 +21,16 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Users, Search, LayoutGrid, List } from 'lucide-react';
+import { Users, Search, LayoutGrid, List, Settings2 } from 'lucide-react';
+import { apiClient } from '@/lib/apiClient';
+import { useToast } from '@/hooks/use-toast';
 import type { DashboardTournament, DashboardParticipant } from '@/hooks/useTournamentDashboard';
 
 const PAGE_SIZE = 24;
@@ -43,6 +51,9 @@ export function ParticipantsPanel({
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [managedParticipant, setManagedParticipant] = useState<DashboardParticipant | null>(null);
+  const [checkingIn, setCheckingIn] = useState(false);
+  const { toast } = useToast();
 
   const activeParticipants = useMemo(
     () =>
@@ -111,6 +122,28 @@ export function ParticipantsPanel({
     if (!paymentBadge) return checkInBadge;
     if (!checkInBadge) return paymentBadge;
     return <div className="flex flex-wrap gap-1">{checkInBadge}{paymentBadge}</div>;
+  };
+
+  const handleManualCheckIn = async () => {
+    if (!managedParticipant) return;
+    setCheckingIn(true);
+    try {
+      await apiClient.post(`/api/tournaments/${tournament.id}/participants/${managedParticipant.id}/check-in`, {});
+      toast({ title: 'Checked in', description: `${managedParticipant.team_name ?? managedParticipant.gamer_tag ?? 'Participant'} manually checked in.` });
+      setManagedParticipant((prev) => prev ? { ...prev, status: 'checked_in' } : null);
+    } catch (err: any) {
+      toast({ title: 'Check-in failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setCheckingIn(false);
+    }
+  };
+
+  const parsedMembers = (p: DashboardParticipant): string[] => {
+    if (!p.team_members) return [];
+    try {
+      const arr = JSON.parse(p.team_members);
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
   };
 
   const getMemberCount = (p: DashboardParticipant): string => {
@@ -236,7 +269,7 @@ export function ParticipantsPanel({
                   <OrganizerTeamCard
                     key={participant.id}
                     participant={participant}
-                    onManage={() => {}}
+                    onManage={(p) => setManagedParticipant(p)}
                     renderStatusBadge={renderStatusBadge}
                   />
                 ))}
@@ -253,6 +286,7 @@ export function ParticipantsPanel({
                         <th className="px-4 py-2 text-left font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-500">Payment</th>
                       )}
                       <th className="px-4 py-2 text-left font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-500">Registered</th>
+                      <th className="px-4 py-2" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/[0.04]">
@@ -299,6 +333,16 @@ export function ParticipantsPanel({
                         )}
                         <td className="px-4 text-zinc-400">
                           {new Date(p.registered_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-4">
+                          <button
+                            type="button"
+                            onClick={() => setManagedParticipant(p)}
+                            className="flex items-center gap-1 text-xs text-zinc-500 hover:text-white transition-colors"
+                          >
+                            <Settings2 className="h-3.5 w-3.5" />
+                            Manage
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -351,6 +395,59 @@ export function ParticipantsPanel({
           </div>
         )}
       </CommandSection>
+
+      {/* Participant detail dialog */}
+      <Dialog open={!!managedParticipant} onOpenChange={(open) => { if (!open) setManagedParticipant(null); }}>
+        <DialogContent className="max-w-md border-white/10 bg-[#0d0d0f] text-white">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-white">
+              {managedParticipant?.team_name ?? managedParticipant?.gamer_tag ?? 'Participant'}
+            </DialogTitle>
+          </DialogHeader>
+          {managedParticipant && (
+            <div className="space-y-4">
+              {/* Status badges */}
+              <div className="flex flex-wrap gap-2">
+                {renderStatusBadge(managedParticipant)}
+              </div>
+
+              {/* Members */}
+              {managedParticipant.participant_type !== 'solo' && (
+                <div className="space-y-1.5">
+                  <p className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-500">Members</p>
+                  {parsedMembers(managedParticipant).length > 0 ? (
+                    <ul className="space-y-1">
+                      {parsedMembers(managedParticipant).map((m, i) => (
+                        <li key={i} className="text-sm text-zinc-300">{m}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-zinc-600">No member data available.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Registered */}
+              <div className="space-y-0.5">
+                <p className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-500">Registered</p>
+                <p className="text-sm text-zinc-300">{new Date(managedParticipant.registered_at).toLocaleString()}</p>
+              </div>
+
+              {/* Manual check-in */}
+              {tournament.check_in_required && managedParticipant.status !== 'checked_in' && managedParticipant.status !== 'disqualified' && canActAsOwner && (
+                <button
+                  type="button"
+                  onClick={handleManualCheckIn}
+                  disabled={checkingIn}
+                  className="w-full border border-emerald-500/30 bg-emerald-500/[0.06] py-2 text-sm font-semibold text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+                >
+                  {checkingIn ? 'Checking in…' : 'Force Check-In'}
+                </button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

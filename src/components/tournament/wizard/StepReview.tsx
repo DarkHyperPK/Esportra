@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { GhostButton } from '@/components/ui/app-buttons';
 import { TournamentWizardData } from '@/types/tournamentWizard';
-import { BRACKET_TYPE_LABELS, SEEDING_TYPE_LABELS } from '@/schemas/tournamentSchema';
+import { BRACKET_TYPE_LABELS } from '@/schemas/tournamentSchema';
 import { LAUNCH_STATE_LABELS } from '@/utils/tournamentVisibilityUtils';
 import { getEffectiveGameFeatures, getParticipantMode, isBattleRoyale, getBRConfig } from '@/utils/gameFeatures';
 
@@ -96,9 +96,7 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
                     value: `${stage.name} (${BRACKET_TYPE_LABELS[stage.format]})`
                 })),
                 { label: 'Max Teams', value: 'Configured in Manage Stages' },
-                { label: 'Team Size', value: 'Configured in Manage Stages' },
-                { label: 'Seeding', value: SEEDING_TYPE_LABELS[data.seedingType] },
-                ...(data.thirdPlaceMatch ? [{ label: 'Third Place Match', value: 'Yes' }] : [])
+                { label: 'Team Size', value: 'Configured in Manage Stages' }
             ]
         },
         {

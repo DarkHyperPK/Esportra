@@ -25,7 +25,6 @@ import { PrizePayoutsPanel } from './panels/PrizePayoutsPanel';
 import { RegistrationPanel } from './panels/RegistrationPanel';
 import { StaffPanel } from './panels/StaffPanel';
 import { AdvancedSettingsPanel } from './panels/AdvancedSettingsPanel';
-import { MapVetoPanel } from './panels/MapVetoPanel';
 
 // Already-extracted tab components (used as-is)
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
@@ -58,6 +57,7 @@ interface PanelRouterProps {
   };
   isBattleRoyale: boolean;
   isSuperAdmin: boolean;
+  mockCount?: number;
   onUpdate: () => void;
 }
 
@@ -68,6 +68,7 @@ export function PanelRouter({
   permissions,
   isBattleRoyale,
   isSuperAdmin,
+  mockCount = 0,
   onUpdate,
 }: PanelRouterProps) {
   const [searchParams] = useSearchParams();
@@ -119,6 +120,7 @@ export function PanelRouter({
         tournament={tournament}
         participants={participants}
         canActAsOwner={permissions.canActAsOwner}
+        mockCount={mockCount}
       />
     );
   }
@@ -300,19 +302,9 @@ export function PanelRouter({
     );
   }
 
-  if (activeTab === 'advanced') {
+  if (activeTab === 'settings' || activeTab === 'advanced') {
     return (
       <AdvancedSettingsPanel
-        tournament={tournament}
-        editableFields={editableFields}
-        onSave={onUpdate}
-      />
-    );
-  }
-
-  if (activeTab === 'map-veto') {
-    return (
-      <MapVetoPanel
         tournament={tournament}
         editableFields={editableFields}
         onSave={onUpdate}

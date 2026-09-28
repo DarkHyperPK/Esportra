@@ -36,8 +36,6 @@ const formatRulesBase = z.object({
         .min(4, 'Minimum 4 teams')
         .max(1024, 'Maximum 1024 teams allowed'),
     teamSize: z.number().min(1).max(10),
-    seedingType: z.enum(['random', 'manual', 'skill_based']).optional().default('random'),
-    thirdPlaceMatch: z.boolean().optional().default(false),
 });
 
 export const formatRulesSchema = formatRulesBase.refine(
@@ -58,8 +56,6 @@ const brandingSchemaBase = z.object({
     description: z.string()
         .min(20, 'Description must be at least 20 characters')
         .max(5000, 'Description cannot exceed 5000 characters'),
-    discordUrl: z.string().url().optional().or(z.literal('')),
-    twitterUrl: z.string().url().optional().or(z.literal('')),
     streamUrl: z.string().url().optional().or(z.literal('')),
     rewards: z.string().optional().nullable(),
 });

@@ -29,7 +29,7 @@ interface PrizePayoutsPanelProps {
   onSave: () => void;
 }
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'SGD', 'AED'];
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'AED', 'SAR', 'PKR', 'INR', 'TRY', 'EGP', 'QAR', 'MYR', 'SGD', 'BRL', 'JPY', 'CAD', 'AUD'];
 
 const REWARD_TYPES = [
   { value: 'physical_product', label: 'Physical Product' },
@@ -106,8 +106,8 @@ export function PrizePayoutsPanel({ tournament, editableFields, onSave }: PrizeP
     try {
       await apiClient.put(`/api/tournaments/${tournament.id}`, {
         currency: form.currency,
-        prize_pool: form.prize_pool,
-        entry_fee: form.entry_fee,
+        prizePool: form.prize_pool,
+        entryFee: form.entry_fee,
         payoutMethod: form.payout_method,
         paymentInstructions: form.payment_instructions.trim() || null,
         manualPayoutNotes: form.manual_payout_notes.trim() || null,

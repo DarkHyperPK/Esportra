@@ -45,6 +45,14 @@ export interface DashboardTournament {
     currency?: string;
     winner_team_name?: string | null;
     format: 'single_elimination' | 'double_elimination' | 'swiss' | 'round_robin';
+    // Missing columns now surfaced
+    stream_url?: string | null;
+    rules?: string | null;
+    region?: string | null;
+    server_region?: string | null;
+    payment_instructions?: string | null;
+    manual_payout_notes?: string | null;
+    check_in_window_minutes?: number | null;
     // Legacy/Computed fields
     date?: string;
     time?: string;
@@ -157,7 +165,8 @@ export function useTournamentDashboard(slug: string | undefined) {
                 reserved_invite_slots: getReservedInviteSlotsFromTournament({ ...t, settings: parsedSettings }),
                 invite_expiry_days:    getInviteExpiryDaysFromTournament({ ...t, settings: parsedSettings }),
                 registration_type:     t.registration_type ?? t.registrationType ?? parsedSettings?.registrationType ?? null,
-                registration_open:     t.status === 'open',
+                registration_open:     t.status === 'open' ||
+                                       (t.status === 'published' && !!t.registration_deadline && new Date(t.registration_deadline) > new Date()),
                 current_participants:  t.current_participants ?? result.participants.length,
             };
 

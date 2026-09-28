@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { SuccessButton } from '@/components/ui/app-buttons';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Layers, Trophy, Lock, Shuffle, ArrowRight, ArrowUp, ArrowDown, Trash2, RefreshCw, Check, Globe, CheckCircle2, Loader2 } from 'lucide-react';
 import { apiClient, getApiErrorMessage } from '@/lib/apiClient';
@@ -667,12 +666,9 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
 
     return (
         <>
-            <Card className="relative bg-black/20 backdrop-blur-md border border-white/10 rounded-3xl overflow-hidden p-6 sm:p-8 mb-6 group">
-                <CardHeader className="p-0 pb-4 border-b border-white/5 mb-4 flex flex-row items-center justify-between space-y-0">
-                    <div>
-                        <CardTitle>Tournament Stages</CardTitle>
-                        <p className="text-sm text-gray-400 mt-1">Manage the different phases of your tournament.</p>
-                    </div>
+            <div>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+                    <p className="text-xs font-bold uppercase tracking-widest text-white">Stages</p>
                     <div className="flex gap-2 items-center">
                         {locked ? (
                             <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
@@ -710,15 +706,15 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                             </>
                         )}
                     </div>
-                </CardHeader>
-                <CardContent className="p-0">
+                </div>
+                <div>
                     {stages.length === 0 ? (
-                        <div className="text-center py-12 border-2 border-dashed border-white/10/20 rounded-xl">
+                        <div className="px-4 py-12 text-center border border-dashed border-white/[0.07]">
                             <Layers className="w-12 h-12 text-gaming-gray/40 mx-auto mb-4" />
                             <p className="text-gray-400">No stages defined yet. Add your first stage to get started.</p>
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="divide-y divide-white/[0.06]">
                             {stages.map((stage, index) => {
                                 const completion = completionByStageId.get(stage.id);
                                 const progressLabel = stage.progress_label
@@ -729,17 +725,17 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                 return (
                                 <div
                                     key={stage.id}
-                                    className="p-6 bg-zinc-800/10 border border-white/10/30 rounded-lg hover:border-emerald-400/30 transition-all"
+                                    className="px-4 py-3 hover:bg-white/[0.02] transition-colors"
                                 >
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-lg">
+                                            <div className="flex h-6 w-6 items-center justify-center bg-emerald-500/10 text-xs font-bold text-emerald-400">
                                                 {index + 1}
                                             </div>
                                             <div>
-                                                <h4 className="font-bold text-white text-lg">{stage.name}</h4>
+                                                <h4 className="text-sm font-bold text-white">{stage.name}</h4>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-xs text-gray-400 uppercase tracking-wider bg-gray-800 px-2 py-0.5 rounded">
+                                                    <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-zinc-500">
                                                         {stage.format?.replace('_', ' ') || 'N/A'}
                                                     </span>
                                                     <StageProgressChip progressLabel={progressLabel} />
@@ -787,7 +783,7 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                                     </div>
 
                                     {index < stages.length - 1 && (
-                                        <div className="mb-4 p-4 bg-black/20 rounded-lg border border-white/5">
+                                        <div className="mb-3 py-1.5">
                                             <div>
                                                 <label className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Advancement</label>
                                                 <div className="flex items-center gap-2">
@@ -975,8 +971,8 @@ export const StageManagementTab: React.FC<StageManagementTabProps> = ({ tourname
                             })}
                         </div>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             <Dialog open={addStageDialogOpen} onOpenChange={setAddStageDialogOpen}>
                 <DialogContent className="bg-[#0a0a0c] border border-white/10 sm:max-w-[425px]">

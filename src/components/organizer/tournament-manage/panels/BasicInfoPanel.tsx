@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronDown } from 'lucide-react';
 import {
   CommandHeader,
   CommandSection,
@@ -20,6 +20,19 @@ import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { useDirtyState } from '@/components/organizer/tournament-manage/TournamentDashboardShell';
 import type { DashboardTournament } from '@/hooks/useTournamentDashboard';
+
+const REGIONS = [
+  { value: '', label: 'Select region…' },
+  { value: 'na-east', label: 'NA East' },
+  { value: 'na-west', label: 'NA West' },
+  { value: 'latam', label: 'Latin America' },
+  { value: 'eu', label: 'Europe' },
+  { value: 'me', label: 'Middle East' },
+  { value: 'sea', label: 'Southeast Asia' },
+  { value: 'oce', label: 'Oceania' },
+  { value: 'africa', label: 'Africa' },
+  { value: 'global', label: 'Global / Online' },
+];
 
 interface BasicInfoPanelProps {
   tournament: DashboardTournament;
@@ -178,13 +191,19 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
             <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
               Region
             </Label>
-            <Input
-              value={form.region}
-              onChange={(e) => setForm((s) => ({ ...s, region: e.target.value }))}
-              disabled={isFieldLocked('region')}
-              placeholder="e.g. North America, Europe"
-              className="max-w-sm border-white/10 bg-black/30 text-white placeholder:text-zinc-600 disabled:opacity-50"
-            />
+            <div className="relative max-w-sm">
+              <select
+                value={form.region}
+                onChange={(e) => setForm((s) => ({ ...s, region: e.target.value }))}
+                disabled={isFieldLocked('region')}
+                className="w-full appearance-none border border-white/10 bg-black/30 px-3 py-2 pr-8 text-sm text-white focus:border-rose-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {REGIONS.map((r) => (
+                  <option key={r.value} value={r.value} className="bg-zinc-900">{r.label}</option>
+                ))}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            </div>
           </div>
 
           {/* Game (read-only after publish) */}

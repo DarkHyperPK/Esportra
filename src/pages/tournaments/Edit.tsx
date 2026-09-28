@@ -139,8 +139,6 @@ const EditTournament = () => {
         })),
         maxTeams: tournamentData.max_teams ?? DEFAULT_WIZARD_DATA.maxTeams,
         teamSize: tournamentData.team_size ?? DEFAULT_WIZARD_DATA.teamSize,
-        seedingType: 'random', // Default, as it's not strictly stored in tournament row usually
-        thirdPlaceMatch: false, // Default
         mapPoolIds: mapPoolIds,
 
         // Step 3: Branding
@@ -154,8 +152,6 @@ const EditTournament = () => {
         manualPayoutNotes: tournamentData.manual_payout_notes || '',
         prizeDistribution: tournamentData.prize_distribution ?? null,
         description: tournamentData.description || 'Tournament description goes here.',
-        discordUrl: '', // Not in DB schema shown
-        twitterUrl: '', // Not in DB schema shown
         streamUrl: tournamentData.stream_url || '',
         rewards: tournamentData.rewards || '',
         rules: tournamentData.rules || '',

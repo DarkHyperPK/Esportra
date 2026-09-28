@@ -252,7 +252,7 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
               <p className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-500/60">MAP POOL</p>
               <TournamentMapPoolSelector
                 game={tournament.game || ''}
-                requiredCount={0}
+                requiredCount={gameFeatures.mapPoolSize || 7}
                 availableMaps={availableMapsData ?? []}
                 selectedIds={selectedMapIds}
                 onChange={setSelectedMapIds}
@@ -329,24 +329,6 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
               className="border-white/10 bg-black/30 text-white placeholder:text-zinc-600 disabled:opacity-50"
             />
           </div>
-        </div>
-      </CommandSection>
-
-      {/* Infrastructure */}
-      <CommandSection>
-        <p className="mb-4 border-b border-white/[0.05] pb-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-500/60">INFRASTRUCTURE</p>
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-1.5">
-            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Server Region</Label>
-            <InfoTip text="The infrastructure region to route matches through." />
-          </div>
-          <Input
-            value={form.serverRegion}
-            onChange={(e) => setForm((s) => ({ ...s, serverRegion: e.target.value }))}
-            disabled={isFieldLocked('server_region')}
-            placeholder="e.g. eu-west, us-east"
-            className="max-w-[260px] border-white/10 bg-black/30 text-white placeholder:text-zinc-600 disabled:opacity-50"
-          />
         </div>
       </CommandSection>
 

@@ -1826,6 +1826,63 @@ const TournamentDashboard = () => {
               {activeTab === 'overview' && (
                 <TabsContent value="overview" forceMount key="overview">
                   <TabTransition direction={direction}>
+
+                    {/* ── Post-creation setup checklist ─────────────────────────────────── */}
+
+                    {/* Stage setup prompt — shown when draft tournament has no stages and isn't BR */}
+                    {canActAsOwner && !isBR && tournament.status !== 'completed' && stages.length === 0 && (
+                      <div className="mb-4 flex items-center justify-between border border-amber-500/20 bg-amber-500/[0.05] px-5 py-4 rounded-none">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-[10px] text-amber-400 uppercase tracking-widest font-bold">
+                            Setup
+                          </span>
+                          <span className="text-sm text-white font-medium">Add stage format</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleTabChange('stages')}
+                          className="font-mono text-[11px] text-rose-400 uppercase tracking-wider hover:text-rose-300 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                        >
+                          Add Stage →
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Stage configured CTA — shown when stages exist in draft tournament */}
+                    {canActAsOwner && !isBR && tournament.status === 'draft' && stages.length > 0 && (
+                      <div className="mb-4 flex items-center justify-between border border-white/10 bg-white/[0.02] px-5 py-4 rounded-none">
+                        <span className="text-sm text-gray-400">Stage configured</span>
+                        <button
+                          type="button"
+                          onClick={() => handleTabChange('stages')}
+                          className="font-mono text-[11px] text-white uppercase tracking-wider hover:text-rose-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                        >
+                          Configure Stage →
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Draft warning — shown for draft tournaments older than 48 hours */}
+                    {canActAsOwner &&
+                      tournament.status === 'draft' &&
+                      new Date().getTime() - new Date(tournament.created_at).getTime() > 48 * 60 * 60 * 1000 && (
+                      <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-amber-500/25 bg-amber-500/[0.05] px-5 py-4 rounded-none">
+                        <div className="flex items-center gap-3">
+                          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                          <span className="text-sm text-amber-200 font-medium">
+                            Your tournament isn't live
+                          </span>
+                        </div>
+                        <CommandButton
+                          variant="primary"
+                          size="sm"
+                          onClick={() => setPublishDialogOpen(true)}
+                        >
+                          Publish Now
+                        </CommandButton>
+                      </div>
+                    )}
+
                     <Card className="bg-[#0d0d10] border border-white/10 rounded-none overflow-hidden mb-6">
                       <CardHeader className="pb-4 border-b border-white/5">
                         <CardTitle className="text-lg font-bold text-white tracking-wide">Overview</CardTitle>
