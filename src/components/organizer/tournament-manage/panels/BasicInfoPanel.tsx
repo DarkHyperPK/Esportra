@@ -32,7 +32,7 @@ interface FormState {
   description: string;
   startDate: string;
   endDate: string;
-  registrationDeadline: string;
+  region: string;
 }
 
 function toDatetimeLocal(isoString: string | null | undefined): string {
@@ -56,7 +56,7 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
     description: tournament.description || '',
     startDate: toDatetimeLocal(tournament.start_date),
     endDate: toDatetimeLocal(tournament.end_date),
-    registrationDeadline: toDatetimeLocal(tournament.registration_deadline),
+    region: tournament.region || '',
   };
 
   const [form, setForm] = useState<FormState>(initialState);
@@ -68,8 +68,9 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
       description: tournament.description || '',
       startDate: toDatetimeLocal(tournament.start_date),
       endDate: toDatetimeLocal(tournament.end_date),
-      registrationDeadline: toDatetimeLocal(tournament.registration_deadline),
+      region: tournament.region || '',
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournament.id, tournament.updated_at]);
 
   const isDirty =
@@ -77,7 +78,7 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
     form.description !== (tournament.description || '') ||
     form.startDate !== toDatetimeLocal(tournament.start_date) ||
     form.endDate !== toDatetimeLocal(tournament.end_date) ||
-    form.registrationDeadline !== toDatetimeLocal(tournament.registration_deadline);
+    form.region !== (tournament.region || '');
 
   // Signal shell so the dirty-state guard can intercept nav changes
   useEffect(() => {
@@ -98,7 +99,7 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
         description: form.description.trim() || undefined,
         startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
         endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
-        registrationDeadline: form.registrationDeadline ? new Date(form.registrationDeadline).toISOString() : undefined,
+        region: form.region.trim() || undefined,
       });
       toast({ title: 'Basic info saved' });
       onSave();
@@ -114,9 +115,9 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
       <CommandHeader eyebrow="CONFIGURATION" title="Basic Info" description="Tournament name, description, and scheduling dates." />
 
       <CommandSection>
-        <div className="space-y-5">
+        <div className="space-y-4">
           {/* Name */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
               Tournament Name
             </Label>
@@ -130,7 +131,7 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
           </div>
 
           {/* Description */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
               Description
             </Label>
@@ -145,7 +146,7 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
           </div>
 
           {/* Dates */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
                 Start Date
@@ -170,26 +171,28 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
                 className="border-white/10 bg-black/30 text-white disabled:opacity-50"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                Registration Deadline
-              </Label>
-              <Input
-                type="datetime-local"
-                value={form.registrationDeadline}
-                onChange={(e) => setForm((s) => ({ ...s, registrationDeadline: e.target.value }))}
-                disabled={isFieldLocked('registration_deadline')}
-                className="border-white/10 bg-black/30 text-white disabled:opacity-50"
-              />
-            </div>
+          </div>
+
+          {/* Region */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+              Region
+            </Label>
+            <Input
+              value={form.region}
+              onChange={(e) => setForm((s) => ({ ...s, region: e.target.value }))}
+              disabled={isFieldLocked('region')}
+              placeholder="e.g. North America, Europe"
+              className="max-w-sm border-white/10 bg-black/30 text-white placeholder:text-zinc-600 disabled:opacity-50"
+            />
           </div>
 
           {/* Game (read-only after publish) */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
               Game
             </Label>
-            <div className="border border-white/10 bg-black/20 px-3 py-2 text-sm text-zinc-400">
+            <div className="px-0 py-1.5 font-mono text-sm text-zinc-400">
               {tournament.game || 'Not set'}
               {isFieldLocked('game') && (
                 <span className="ml-2 font-mono text-[10px] uppercase tracking-wider text-zinc-600">

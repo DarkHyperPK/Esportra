@@ -5,7 +5,7 @@
  * Uses TournamentMapPoolSelector for map pool, and informs about veto config.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Loader2, Map } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -35,7 +35,7 @@ export function MapVetoPanel({ tournament, editableFields, onSave }: MapVetoPane
   const [saving, setSaving] = useState(false);
   const gameFeatures = getEffectiveGameFeatures(tournament.game || '', tournament.game_mode);
 
-  const settings = tournament.settings ?? {};
+  const settings = useMemo(() => tournament.settings ?? {}, [tournament.settings]);
   const mapVetoEnabled = settings.mapVetoEnabled ?? gameFeatures.mapVeto ?? false;
 
   // Fetch available maps for this game
@@ -50,6 +50,7 @@ export function MapVetoPanel({ tournament, editableFields, onSave }: MapVetoPane
 
   useEffect(() => {
     setSelectedMapIds(settings.mapPoolIds ?? []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournament.id, tournament.updated_at]);
 
   const originalMapIds = JSON.stringify(settings.mapPoolIds ?? []);

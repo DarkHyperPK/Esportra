@@ -25,6 +25,7 @@ import {
   CommandShell,
   CommandPageGrid,
   CommandRail,
+  DashboardPanelProvider,
 } from '@/components/management/CommandSurface';
 import type { DashboardTournament } from '@/hooks/useTournamentDashboard';
 import type { CompletionSummary } from '@/hooks/useCompletionState';
@@ -43,7 +44,7 @@ interface DirtyStateContextValue {
 
 const DirtyStateContext = createContext<DirtyStateContextValue>({ setDirty: () => {} });
 
-/** Hook for config panels to signal their dirty state to the shell. */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useDirtyState() {
   return useContext(DirtyStateContext);
 }
@@ -123,10 +124,10 @@ export function TournamentDashboardShell({
     [isDirty, activeTab, commitTabChange]
   );
 
-  // Redirect legacy ?tab=settings to ?tab=advanced
+  // Redirect legacy ?tab=advanced to ?tab=settings
   useEffect(() => {
-    if (searchParams.get('tab') === 'settings') {
-      setSearchParams({ tab: 'advanced' }, { replace: true });
+    if (searchParams.get('tab') === 'advanced') {
+      setSearchParams({ tab: 'settings' }, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
@@ -134,10 +135,11 @@ export function TournamentDashboardShell({
     <DirtyStateContext.Provider value={{ setDirty }}>
       <CommandShell>
         <CommandPageGrid
+          className="gap-3 py-3 pl-0 xl:pl-0"
           rail={
             <>
               {/* Desktop Rail */}
-              <CommandRail className="hidden max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-none md:block lg:sticky lg:top-20">
+              <CommandRail className="hidden md:block lg:sticky lg:top-20">
                 <TournamentDashboardNav
                   tournament={tournament}
                   activeTab={activeTab}
@@ -146,6 +148,20 @@ export function TournamentDashboardShell({
                   permissions={permissions}
                   isBattleRoyale={isBattleRoyale}
                 />
+                {/* Publish button lives in the rail — only for draft tournaments */}
+                {tournament.status === 'draft' && permissions.canActAsOwner && (
+                  <div className="mt-3 border-t border-white/[0.07] pt-3">
+                    <p className="mb-2 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-500">
+                      DRAFT
+                    </p>
+                    <PublishButton
+                      tournament={tournament}
+                      completionSummary={completionSummary}
+                      canActAsOwner={permissions.canActAsOwner}
+                      onPublished={() => setSearchParams({ tab: activeTab }, { replace: true })}
+                    />
+                  </div>
+                )}
               </CommandRail>
 
               {/* Mobile Drawer */}
@@ -183,21 +199,6 @@ export function TournamentDashboardShell({
             />
           </div>
 
-          {/* Desktop publish bar (only visible when draft) */}
-          {tournament.status === 'draft' && (
-            <div className="hidden items-center justify-between border border-white/10 bg-[#0a0a0c]/92 px-4 py-2.5 md:flex">
-              <p className="text-xs text-zinc-500">
-                Draft — not visible to participants
-              </p>
-              <PublishButton
-                tournament={tournament}
-                completionSummary={completionSummary}
-                canActAsOwner={permissions.canActAsOwner}
-                onPublished={() => setSearchParams({ tab: activeTab }, { replace: true })}
-              />
-            </div>
-          )}
-
           {/* Completion Banner */}
           <CompletionBanner
             completionSummary={completionSummary}
@@ -205,18 +206,20 @@ export function TournamentDashboardShell({
           />
 
           {/* Content Area with Panel Transition */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              variants={shouldReduceMotion ? undefined : panelVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="min-h-[400px] space-y-6 pb-16 md:pb-0"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          <DashboardPanelProvider>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                variants={shouldReduceMotion ? undefined : panelVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="overflow-hidden border border-white/[0.07] bg-[#0d0e12] pb-16 md:pb-0"
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
+          </DashboardPanelProvider>
 
           {/* Mobile sticky publish bar */}
           {tournament.status === 'draft' && (

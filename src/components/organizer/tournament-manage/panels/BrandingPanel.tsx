@@ -13,6 +13,7 @@ import {
   CommandActionBar,
   CommandButton,
 } from '@/components/management/CommandSurface';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,6 +31,7 @@ interface BrandingPanelProps {
 interface FormState {
   bannerUrl: string | null;
   logoUrl: string | null;
+  streamUrl: string;
 }
 
 export function BrandingPanel({ tournament, editableFields, onSave }: BrandingPanelProps) {
@@ -51,18 +53,22 @@ export function BrandingPanel({ tournament, editableFields, onSave }: BrandingPa
   const [form, setForm] = useState<FormState>({
     bannerUrl: tournament.banner_url ?? null,
     logoUrl: tournament.logo_url ?? null,
+    streamUrl: tournament.stream_url || '',
   });
 
   useEffect(() => {
     setForm({
       bannerUrl: tournament.banner_url ?? null,
       logoUrl: tournament.logo_url ?? null,
+      streamUrl: tournament.stream_url || '',
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournament.id, tournament.updated_at]);
 
   const isDirty =
     (form.bannerUrl || null) !== (tournament.banner_url || null) ||
-    (form.logoUrl || null) !== (tournament.logo_url || null);
+    (form.logoUrl || null) !== (tournament.logo_url || null) ||
+    form.streamUrl !== (tournament.stream_url || '');
 
   useEffect(() => {
     setDirty(isDirty);
@@ -78,6 +84,7 @@ export function BrandingPanel({ tournament, editableFields, onSave }: BrandingPa
       await apiClient.put(`/api/tournaments/${tournament.id}`, {
         bannerUrl: form.bannerUrl || null,
         logoUrl: form.logoUrl || null,
+        streamUrl: form.streamUrl.trim() || undefined,
       });
       toast({ title: 'Branding saved' });
       onSave();
@@ -97,16 +104,12 @@ export function BrandingPanel({ tournament, editableFields, onSave }: BrandingPa
       />
 
       <CommandSection>
-        <div className="space-y-8">
-          {/* Banner */}
-          <div className="space-y-3">
-            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-              Banner Image
-            </Label>
-            <p className="text-xs text-zinc-500">
-              Displayed as the background of your tournament card and page header. Recommended 1920×480px.
-            </p>
-            <div className={isFieldLocked('banner_url') ? 'pointer-events-none opacity-50' : ''}>
+        <div className="space-y-6">
+          {/* Banner — constrained so it doesn't dominate the panel */}
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Banner Image</Label>
+            <p className="text-xs text-zinc-500">Recommended 1920×480px.</p>
+            <div className={`max-w-lg ${isFieldLocked('banner_url') ? 'pointer-events-none opacity-50' : ''}`}>
               <ImageUploader
                 value={form.bannerUrl ?? ''}
                 onChange={(url) => setForm((s) => ({ ...s, bannerUrl: url || null }))}
@@ -122,13 +125,9 @@ export function BrandingPanel({ tournament, editableFields, onSave }: BrandingPa
           </div>
 
           {/* Logo */}
-          <div className="space-y-3">
-            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-              Tournament Logo / Thumbnail
-            </Label>
-            <p className="text-xs text-zinc-500">
-              Square image shown in tournament listings. Recommended 256×256px.
-            </p>
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Logo / Thumbnail</Label>
+            <p className="text-xs text-zinc-500">Recommended 256×256px.</p>
             <div className={isFieldLocked('logo_url') ? 'pointer-events-none opacity-50' : ''}>
               <ImageUploader
                 value={form.logoUrl ?? ''}
@@ -142,6 +141,19 @@ export function BrandingPanel({ tournament, editableFields, onSave }: BrandingPa
                 useTimestamp={false}
               />
             </div>
+          </div>
+
+          {/* Stream URL */}
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Stream URL</Label>
+            <p className="text-xs text-zinc-500">Official broadcast link shown on the tournament page.</p>
+            <Input
+              value={form.streamUrl}
+              onChange={(e) => setForm((s) => ({ ...s, streamUrl: e.target.value }))}
+              disabled={isFieldLocked('stream_url')}
+              placeholder="https://twitch.tv/..."
+              className="max-w-md border-white/10 bg-black/30 text-white placeholder:text-zinc-600 disabled:opacity-50"
+            />
           </div>
         </div>
       </CommandSection>
