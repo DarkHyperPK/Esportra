@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/pagination';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
-import { resolvePaymentReceiptUrl } from '@/lib/storage';
 import type { DashboardParticipant } from '@/hooks/useTournamentDashboard';
 
 interface PaymentManagementProps {
@@ -145,8 +144,7 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
   };
 
   const viewReceipt = (participant: DashboardParticipant) => {
-    const url = resolvePaymentReceiptUrl(participant.payment_receipt_url);
-    if (!url) {
+    if (!participant.payment_receipt_url) {
       toast({ title: 'No receipt available', variant: 'destructive' });
       return;
     }
@@ -154,13 +152,14 @@ const PaymentManagement: React.FC<PaymentManagementProps> = ({ tournamentId, par
       URL.revokeObjectURL(receiptBlobUrlRef.current);
       receiptBlobUrlRef.current = null;
     }
-    receiptFallbackAttemptedRef.current = false;
+    receiptFallbackAttemptedRef.current = true;
     setReceiptParticipant(participant);
-    setReceiptMimeType(url.toLowerCase().includes('.pdf') ? 'application/pdf' : null);
     setReceiptLoading(true);
-    setReceiptViewUrl(url);
+    setReceiptViewUrl(null);
+    void loadReceiptViaApi(participant);
   };
 
+  // Kept for img/iframe onError wiring — no-ops now that viewReceipt goes direct to API proxy
   const handleReceiptLoadError = () => {
     if (receiptFallbackAttemptedRef.current || !receiptParticipant) {
       setReceiptLoading(false);
