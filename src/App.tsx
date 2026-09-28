@@ -175,7 +175,6 @@ const TournamentHistoryPage = lazyWithRetry(() => import('./pages/TournamentHist
 const Leaderboards = lazyWithRetry(() => import('./pages/Leaderboards'));
 const PlayerHistory = lazyWithRetry(() => import('./pages/player/History'));
 const VerificationStatus = lazyWithRetry(() => import('./pages/VerificationStatus'));
-const OrganizerDisputesPage = lazyWithRetry(() => import('./pages/organizer/Disputes'));
 const TournamentDisputesPage = lazyWithRetry(() => import('./pages/organizer/TournamentDisputesPage'));
 const MapVetoToken = lazyWithRetry(() => import('./pages/tournaments/MapVetoToken'));
 const PublicBracketList = lazyWithRetry(() => import('./pages/tools/PublicBracketList'));
@@ -498,11 +497,7 @@ const AppContent = React.memo(() => {
                     <TournamentDisputesPage />
                   </ProtectedRoute>
                 } />
-                <Route path="/organizer/disputes" element={
-                  <ProtectedRoute allowedRoles={['organizer']}>
-                    <OrganizerDisputesPage />
-                  </ProtectedRoute>
-                } />
+                <Route path="/organizer/disputes" element={<Navigate to="/organizer/tournaments" replace />} />
                 <Route path="/tournaments" element={<BrowseTournaments />} />
                 {/* Public player profile — no auth required */}
                 <Route path="/profile/:username" element={<ProfilePage />} />
