@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Trophy, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { Loader2, Trophy, Plus, Trash2, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   CommandHeader,
   CommandSection,
@@ -20,7 +20,7 @@ import {
   useSavePrizeDistribution,
 } from '@/hooks/usePrizeDistribution';
 import type { DashboardTournament } from '@/hooks/useTournamentDashboard';
-import type { PrizeDistributionEntry } from '@/types/prizeDistribution';
+import type { PrizeDistributionEntry, PrizeReward } from '@/types/prizeDistribution';
 import { cn } from '@/lib/utils';
 
 interface PrizePayoutsPanelProps {
@@ -30,6 +30,15 @@ interface PrizePayoutsPanelProps {
 }
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'SGD', 'AED'];
+
+const REWARD_TYPES = [
+  { value: 'physical_product', label: 'Physical Product' },
+  { value: 'digital_product', label: 'Digital Product' },
+  { value: 'in_game_currency', label: 'In-Game Currency' },
+  { value: 'service', label: 'Service' },
+  { value: 'trophy', label: 'Trophy / Medal' },
+  { value: 'other', label: 'Other' },
+];
 
 const PAYOUT_METHODS = [
   { value: 'manual', label: 'Manual', description: 'Distribute winnings yourself outside the platform' },
@@ -123,6 +132,7 @@ export function PrizePayoutsPanel({ tournament, editableFields, onSave }: PrizeP
 
   const [placements, setPlacements] = useState<PrizeDistributionEntry[]>([]);
   const [savingDistribution, setSavingDistribution] = useState(false);
+  const [expandedRewards, setExpandedRewards] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     if (existingDistribution?.placements) {
@@ -155,6 +165,21 @@ export function PrizePayoutsPanel({ tournament, editableFields, onSave }: PrizeP
 
   const updatePlacement = (idx: number, patch: Partial<PrizeDistributionEntry>) => {
     setPlacements((prev) => prev.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
+  };
+
+  const handleAddReward = (placementIdx: number) => {
+    const rewards: PrizeReward[] = [...(placements[placementIdx].rewards ?? []), { type: 'other', title: '', quantity: 1 }];
+    updatePlacement(placementIdx, { rewards });
+  };
+
+  const handleUpdateReward = (placementIdx: number, rewardIdx: number, field: keyof PrizeReward, value: unknown) => {
+    const rewards = (placements[placementIdx].rewards ?? []).map((r, i) => i === rewardIdx ? { ...r, [field]: value } : r);
+    updatePlacement(placementIdx, { rewards });
+  };
+
+  const handleRemoveReward = (placementIdx: number, rewardIdx: number) => {
+    const rewards = (placements[placementIdx].rewards ?? []).filter((_, i) => i !== rewardIdx);
+    updatePlacement(placementIdx, { rewards });
   };
 
   const handleSaveDistribution = useCallback(async () => {
@@ -352,33 +377,89 @@ export function PrizePayoutsPanel({ tournament, editableFields, onSave }: PrizeP
           ) : (
             <div className="space-y-1.5">
               {/* Header */}
-              <div className="grid grid-cols-[1fr_100px_32px] gap-2 px-3">
+              <div className="grid grid-cols-[1fr_100px_32px_32px] gap-2 px-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">Placement</span>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">% Share</span>
                 <span />
+                <span />
               </div>
               {placements.map((p, idx) => (
-                <div key={idx} className="grid grid-cols-[1fr_100px_32px] items-center gap-2 border border-white/[0.06] bg-white/[0.01] px-3 py-2">
-                  <span className="text-sm font-medium text-white">{p.label || `${placementLabel(p.position)} Place`}</span>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      value={p.percentage}
-                      onChange={(e) => updatePlacement(idx, { percentage: parseFloat(e.target.value) || 0 })}
-                      className="h-7 border-white/10 bg-transparent pr-5 text-right text-sm text-white"
-                    />
-                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-500">%</span>
+                <div key={idx} className="border border-white/[0.06] bg-white/[0.01]">
+                  <div className="grid grid-cols-[1fr_100px_32px_32px] items-center gap-2 px-3 py-2">
+                    <span className="text-sm font-medium text-white">{p.label || `${placementLabel(p.position)} Place`}</span>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={p.percentage}
+                        onChange={(e) => updatePlacement(idx, { percentage: parseFloat(e.target.value) || 0 })}
+                        className="h-7 border-white/10 bg-transparent pr-5 text-right text-sm text-white"
+                      />
+                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-500">%</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedRewards((prev) => ({ ...prev, [idx]: !prev[idx] }))}
+                      title="Add non-cash rewards"
+                      className="flex h-7 w-7 items-center justify-center text-zinc-500 hover:text-white transition-colors"
+                    >
+                      {expandedRewards[idx] ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePlacement(idx)}
+                      className="flex h-7 w-7 items-center justify-center text-zinc-600 hover:text-rose-400 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemovePlacement(idx)}
-                    className="flex h-7 w-7 items-center justify-center text-zinc-600 hover:text-rose-400 transition-colors"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+
+                  {expandedRewards[idx] && (
+                    <div className="border-t border-white/[0.05] bg-black/20 px-3 py-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Non-Cash Rewards</span>
+                        <button
+                          type="button"
+                          onClick={() => handleAddReward(idx)}
+                          className="flex items-center gap-1 text-xs text-rose-400 hover:text-rose-300 transition-colors"
+                        >
+                          <Plus className="h-3 w-3" /> Add Reward
+                        </button>
+                      </div>
+                      {(p.rewards ?? []).length === 0 ? (
+                        <p className="text-xs text-zinc-600">No non-cash rewards. Add trophies, peripherals, in-game items, services, etc.</p>
+                      ) : (
+                        (p.rewards ?? []).map((reward, ri) => (
+                          <div key={ri} className="flex items-center gap-2">
+                            <select
+                              value={reward.type}
+                              onChange={(e) => handleUpdateReward(idx, ri, 'type', e.target.value)}
+                              className="h-8 shrink-0 border border-white/10 bg-black/40 px-2 text-xs text-white focus:outline-none focus:border-rose-500"
+                            >
+                              {REWARD_TYPES.map((rt) => (
+                                <option key={rt.value} value={rt.value}>{rt.label}</option>
+                              ))}
+                            </select>
+                            <Input
+                              value={reward.title}
+                              onChange={(e) => handleUpdateReward(idx, ri, 'title', e.target.value)}
+                              placeholder="Reward title"
+                              className="h-8 flex-1 border-white/10 bg-transparent text-xs text-white placeholder:text-zinc-600"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveReward(idx, ri)}
+                              className="flex h-7 w-7 items-center justify-center text-zinc-600 hover:text-rose-400 transition-colors"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

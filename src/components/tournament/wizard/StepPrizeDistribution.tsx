@@ -12,8 +12,9 @@ const CURRENCIES = ['USD', 'EUR', 'GBP', 'AED', 'SAR', 'PKR', 'INR', 'TRY', 'EGP
 
 const REWARD_TYPES = [
     { value: 'physical_product', label: 'Physical Product' },
-    { value: 'in_game_currency', label: 'In-Game Currency' },
     { value: 'digital_product', label: 'Digital Product' },
+    { value: 'in_game_currency', label: 'In-Game Currency' },
+    { value: 'service', label: 'Service' },
     { value: 'trophy', label: 'Trophy / Medal' },
     { value: 'other', label: 'Other' },
 ];
