@@ -6,52 +6,23 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, Info } from 'lucide-react';
-import {
-  CommandHeader,
-  CommandSection,
-  CommandActionBar,
-  CommandButton,
-} from '@/components/management/CommandSurface';
+import { CommandHeader, CommandSection } from '@/components/management/CommandSurface';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { ChoiceCard, ChoiceGroup, CONTROL_CLASS, Field, FormSection, FORM_MEASURE_CLASS, ToggleRow } from '@/components/ui/kit';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
+import { cn } from '@/lib/utils';
 import { useDirtyState } from '@/components/organizer/tournament-manage/TournamentDashboardShell';
 import type { DashboardTournament } from '@/hooks/useTournamentDashboard';
-
-function InfoTip({ text }: { text: string }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="inline-flex cursor-default">
-          <Info className="h-3 w-3 text-zinc-600 hover:text-zinc-400 transition-colors" />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="max-w-[200px] border-white/10 bg-[#0d0d0f] text-[11px] text-zinc-300"
-      >
-        {text}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
+import { PanelSaveBar } from '../PanelSaveBar';
 
 type CheckInLevel = 'none' | 'tournament' | 'match' | 'both';
 
 const CHECK_IN_OPTIONS: { value: CheckInLevel; label: string; description: string }[] = [
-  { value: 'none', label: 'None', description: 'No check-in required' },
-  { value: 'tournament', label: 'Tournament', description: 'Players check in once before tournament starts' },
-  { value: 'match', label: 'Match', description: 'Players check in before each individual match' },
-  { value: 'both', label: 'Both', description: 'Tournament-level and per-match check-in required' },
+  { value: 'none', label: 'No check-in', description: 'Everyone registered is expected to show up.' },
+  { value: 'tournament', label: 'Once, before start', description: 'Teams confirm once. No-shows are caught before seeding.' },
+  { value: 'match', label: 'Before every match', description: 'Both teams confirm before each match can begin.' },
+  { value: 'both', label: 'Both', description: 'Once before start, and again before every match.' },
 ];
 
 interface RegistrationPanelProps {
@@ -108,8 +79,10 @@ export function RegistrationPanel({ tournament, editableFields, onSave }: Regist
 
   const [form, setForm] = useState<FormState>(() => getInitial(tournament));
 
+  const resetForm = () => setForm(getInitial(tournament));
+
   useEffect(() => {
-    setForm(getInitial(tournament));
+    resetForm();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournament.id, tournament.updated_at]);
 
@@ -157,221 +130,99 @@ export function RegistrationPanel({ tournament, editableFields, onSave }: Regist
           invitedTeamsEnabled: form.invitedTeamsEnabled,
         },
       });
-      toast({ title: 'Registration settings saved' });
+      toast({ title: 'Saved', description: 'Registration rules updated.' });
       onSave();
     } catch (err: any) {
-      toast({ title: 'Save failed', description: err.message || 'Please try again.', variant: 'destructive' });
+      toast({ title: "Couldn't save", description: err.message || 'Please try again.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   }, [isDirty, saving, form, checkInEnabled, tournament, toast, onSave]);
 
+  const lockNote = 'Locked once the tournament is live.';
+  const openSpots = form.maxTeams > 0 ? Math.max(form.maxTeams - (form.invitedTeamsEnabled ? form.reservedInviteSlots : 0), 0) : null;
+
   return (
-    <TooltipProvider delayDuration={300}>
+    <>
       <CommandHeader
-        eyebrow="CONFIGURATION"
+        eyebrow="Configure"
         title="Registration"
+        description="How many can sign up, until when, whether they confirm before playing, and spots held for invites."
       />
 
       <CommandSection>
-        <div className="space-y-5">
-          {/* Capacity */}
-          <div className="space-y-4">
-            <p className="border-b border-white/[0.05] pb-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-500/60">CAPACITY</p>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                  Max Participants
-                </Label>
-                <InfoTip text="Set to 0 for unlimited participants." />
-              </div>
-              <Input
-                type="number"
-                min={0}
-                value={form.maxTeams === 0 ? '' : form.maxTeams}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, maxTeams: parseInt(e.target.value, 10) || 0 }))
-                }
-                disabled={isFieldLocked('max_teams')}
-                placeholder="No limit"
-                className="max-w-[200px] border-white/10 bg-black/30 text-white placeholder:text-zinc-600 disabled:opacity-50"
-              />
+        <div className={cn(FORM_MEASURE_CLASS)}>
+          <FormSection title="Capacity and deadline">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Maximum teams" htmlFor="rg-max" hint="Leave empty for no limit." lockedReason={isFieldLocked('max_teams') ? lockNote : undefined}>
+                <Input id="rg-max" type="number" min={0} value={form.maxTeams === 0 ? '' : form.maxTeams} placeholder="No limit"
+                  onChange={(e) => setForm((s) => ({ ...s, maxTeams: parseInt(e.target.value, 10) || 0 }))}
+                  disabled={isFieldLocked('max_teams')} className={CONTROL_CLASS} />
+              </Field>
+              <Field label="Registration closes" htmlFor="rg-deadline" hint="Leave time to seed the bracket before the start." lockedReason={isFieldLocked('registration_deadline') ? lockNote : undefined}>
+                <Input id="rg-deadline" type="datetime-local" value={form.registrationDeadline}
+                  onChange={(e) => setForm((s) => ({ ...s, registrationDeadline: e.target.value }))}
+                  disabled={isFieldLocked('registration_deadline')} className={CONTROL_CLASS} />
+              </Field>
             </div>
+          </FormSection>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                Registration Deadline
-              </Label>
-              <Input
-                type="datetime-local"
-                value={form.registrationDeadline}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, registrationDeadline: e.target.value }))
-                }
-                disabled={isFieldLocked('registration_deadline')}
-                className="max-w-[280px] border-white/10 bg-black/30 text-white disabled:opacity-50"
-              />
-            </div>
-          </div>
-
-          {/* Check-In */}
-          <div className="space-y-3">
-            <p className="border-b border-white/[0.05] pb-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-500/60">CHECK-IN</p>
-
-            <div>
-              <p className="mb-2 text-[11px] font-semibold text-zinc-300">Check-In Level</p>
-              <div className="grid gap-1.5 sm:grid-cols-2">
-                {CHECK_IN_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setForm((s) => ({ ...s, checkInLevel: opt.value }))}
-                    disabled={isFieldLocked('check_in_required')}
-                    className={`flex items-center gap-2 border px-3 py-2.5 text-left transition-all disabled:pointer-events-none disabled:opacity-50 ${
-                      form.checkInLevel === opt.value
-                        ? 'border-rose-500/40 bg-rose-500/[0.06] text-white'
-                        : 'border-white/[0.07] bg-white/[0.02] text-zinc-400 hover:border-white/15 hover:bg-white/[0.04] hover:text-white'
-                    }`}
-                  >
-                    <span className="text-sm font-semibold">{opt.label}</span>
-                    <InfoTip text={opt.description} />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className={`space-y-3 ${!checkInEnabled ? 'opacity-40 pointer-events-none' : ''}`}>
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-1.5">
-                  <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                    Check-In Window
-                  </Label>
-                  <InfoTip text="Minutes before match start that check-in opens." />
+          <FormSection title="Check-in" description="Catch no-shows before they leave holes in the bracket.">
+            <ChoiceGroup label="Check-in" columns={2}>
+              {CHECK_IN_OPTIONS.map((opt) => (
+                <ChoiceCard key={opt.value} selected={form.checkInLevel === opt.value} disabled={isFieldLocked('check_in_required')}
+                  onSelect={() => setForm((s) => ({ ...s, checkInLevel: opt.value }))} title={opt.label} description={opt.description} />
+              ))}
+            </ChoiceGroup>
+            {checkInEnabled && (
+              <>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Field label="Check-in opens" htmlFor="rg-window" hint="Minutes before the start (or each match). 5 to 120.">
+                    <Input id="rg-window" type="number" min={5} max={120} value={form.checkInWindowMinutes}
+                      onChange={(e) => setForm((s) => ({ ...s, checkInWindowMinutes: parseInt(e.target.value, 10) || 30 }))}
+                      className={cn(CONTROL_CLASS, 'w-32')} />
+                  </Field>
+                  <Field label="Check-in closes" htmlFor="rg-ci-deadline" optional hint="Defaults to the start time." lockedReason={isFieldLocked('check_in_deadline') ? lockNote : undefined}>
+                    <Input id="rg-ci-deadline" type="datetime-local" value={form.checkInDeadline}
+                      onChange={(e) => setForm((s) => ({ ...s, checkInDeadline: e.target.value }))}
+                      disabled={isFieldLocked('check_in_deadline')} className={CONTROL_CLASS} />
+                  </Field>
                 </div>
-                <Input
-                  type="number"
-                  min={5}
-                  max={120}
-                  value={form.checkInWindowMinutes}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, checkInWindowMinutes: parseInt(e.target.value, 10) || 30 }))
-                  }
-                  className="max-w-[120px] border-white/10 bg-black/30 text-white disabled:opacity-50"
-                />
-                <p className="text-[10px] text-zinc-600">minutes before match</p>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                  Check-In Deadline
-                </Label>
-                <Input
-                  type="datetime-local"
-                  value={form.checkInDeadline}
-                  onChange={(e) =>
-                    setForm((s) => ({ ...s, checkInDeadline: e.target.value }))
-                  }
-                  disabled={isFieldLocked('check_in_deadline')}
-                  className="max-w-[280px] border-white/10 bg-black/30 text-white disabled:opacity-50"
-                />
-              </div>
-
-              <div className="border border-white/[0.06] bg-white/[0.01]">
-                <div className="flex items-center justify-between px-3 py-3">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-sm font-medium text-white">Auto-Remove Unchecked</p>
-                    <InfoTip text="Automatically remove participants who miss the check-in deadline." />
-                  </div>
-                  <Switch
-                    checked={form.autoRemoveUnchecked}
-                    onCheckedChange={(checked) =>
-                      setForm((s) => ({ ...s, autoRemoveUnchecked: checked }))
-                    }
-                    disabled={isFieldLocked('auto_remove_unchecked')}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Invites */}
-          <div className="space-y-3">
-            <p className="border-b border-white/[0.05] pb-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-500/60">INVITES</p>
-
-            <div className="border border-white/[0.06] bg-white/[0.01]">
-              <div className="flex items-center justify-between px-3 py-3">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-medium text-white">Invited Teams</p>
-                  <InfoTip text="Reserve slots for teams invited directly by the organizer." />
-                </div>
-                <Switch
-                  checked={form.invitedTeamsEnabled}
-                  onCheckedChange={(checked) =>
-                    setForm((s) => ({ ...s, invitedTeamsEnabled: checked }))
-                  }
-                />
-              </div>
-            </div>
-
-            {form.invitedTeamsEnabled && (
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                      Reserved Invite Slots
-                    </Label>
-                    <InfoTip text="Number of slots reserved exclusively for invited teams." />
-                  </div>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={1024}
-                    value={form.reservedInviteSlots}
-                    onChange={(e) =>
-                      setForm((s) => ({ ...s, reservedInviteSlots: parseInt(e.target.value, 10) || 0 }))
-                    }
-                    className="max-w-[140px] border-white/10 bg-black/30 text-white disabled:opacity-50"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                      Invite Expiry Days
-                    </Label>
-                    <InfoTip text="Days before an invitation expires." />
-                  </div>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={365}
-                    value={form.inviteExpiryDays}
-                    onChange={(e) =>
-                      setForm((s) => ({ ...s, inviteExpiryDays: parseInt(e.target.value, 10) || 7 }))
-                    }
-                    className="max-w-[140px] border-white/10 bg-black/30 text-white disabled:opacity-50"
-                  />
-                </div>
-              </div>
+                <ToggleRow id="rg-auto-remove" title="Remove no-shows automatically"
+                  description="Teams that haven't checked in when it closes are dropped from the bracket."
+                  checked={form.autoRemoveUnchecked} disabled={isFieldLocked('auto_remove_unchecked')}
+                  onCheckedChange={(checked) => setForm((s) => ({ ...s, autoRemoveUnchecked: checked }))} />
+              </>
             )}
-          </div>
+          </FormSection>
+
+          <FormSection title="Invited teams">
+            <ToggleRow id="rg-invites" title="Hold spots for invited teams"
+              description="Guaranteed places you fill by emailing invite codes from Invitations."
+              checked={form.invitedTeamsEnabled} onCheckedChange={(checked) => setForm((s) => ({ ...s, invitedTeamsEnabled: checked }))}>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="Spots held" htmlFor="rg-reserved">
+                  <Input id="rg-reserved" type="number" min={0} max={1024} value={form.reservedInviteSlots}
+                    onChange={(e) => setForm((s) => ({ ...s, reservedInviteSlots: parseInt(e.target.value, 10) || 0 }))}
+                    className={cn(CONTROL_CLASS, 'w-32')} />
+                </Field>
+                <Field label="Codes expire after" htmlFor="rg-expiry" hint="Days. 1 to 365.">
+                  <Input id="rg-expiry" type="number" min={1} max={365} value={form.inviteExpiryDays}
+                    onChange={(e) => setForm((s) => ({ ...s, inviteExpiryDays: parseInt(e.target.value, 10) || 7 }))}
+                    className={cn(CONTROL_CLASS, 'w-32')} />
+                </Field>
+              </div>
+              {openSpots !== null && (
+                <p className="text-[13px] text-zinc-400">
+                  <span className="font-semibold text-white">{form.reservedInviteSlots}</span> held for invites, <span className="font-semibold text-white">{openSpots}</span> open to everyone.
+                </p>
+              )}
+            </ToggleRow>
+          </FormSection>
         </div>
       </CommandSection>
 
-      <CommandActionBar>
-        <div className="flex items-center gap-3">
-          {isDirty && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />}
-          <CommandButton
-            onClick={handleSave}
-            disabled={!isDirty || saving}
-            variant="primary"
-            size="sm"
-            slide
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
-          </CommandButton>
-        </div>
-      </CommandActionBar>
-    </TooltipProvider>
+      <PanelSaveBar isDirty={isDirty} saving={saving} onSave={handleSave} onDiscard={resetForm} />
+    </>
   );
 }

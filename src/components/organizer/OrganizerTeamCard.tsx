@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { Settings, User, Users } from 'lucide-react';
 import { resolveSoloParticipantDisplayName } from '@/utils/gameFeatures';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Settings } from 'lucide-react';
-import { GhostButton } from '@/components/ui/app-buttons';
+import { EYEBROW_CLASS } from '@/components/ui/kit';
 
 interface TeamCardProps {
     participant: any;
@@ -10,162 +9,96 @@ interface TeamCardProps {
     renderStatusBadge: (participant: any) => React.ReactNode;
 }
 
+const ROSTER_PREVIEW = 5;
+
+/** Members arrive as an array, a JSON array string, or a comma list. */
+function getMembers(membersInput: unknown): string[] {
+    if (!membersInput) return [];
+    const toName = (m: unknown) =>
+        typeof m === 'string' ? m : String((m as { username?: string; name?: string })?.username || (m as { name?: string })?.name || '');
+    if (Array.isArray(membersInput)) return membersInput.map(toName).filter(Boolean);
+    if (typeof membersInput !== 'string') return [];
+    const trimmed = membersInput.trim();
+    if (trimmed.startsWith('[')) {
+        try {
+            const parsed: unknown = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) return parsed.map(toName).filter(Boolean);
+        } catch { /* fall through to comma split */ }
+    }
+    return trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+/**
+ * One registration in the participants grid. Identity first (logo, name),
+ * then status, then the roster — all visible at once, no hover-to-reveal,
+ * so it reads the same on touch screens.
+ */
 export const OrganizerTeamCard = React.forwardRef<HTMLDivElement, TeamCardProps>(function OrganizerTeamCard(
     { participant, onManage, renderStatusBadge },
     ref
 ) {
-    const [isHovered, setIsHovered] = useState(false);
-
-    // Parse members from multiple formats (JSON array string, comma-separated, or actual array)
-    const getMembers = (membersInput: any): string[] => {
-        if (!membersInput) return [];
-
-        // If it's already an array, extract string values
-        if (Array.isArray(membersInput)) {
-            return membersInput.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || String(m))).filter(Boolean);
-        }
-
-        // If it's a string, try JSON parse first (JSONB column returns '["a","b"]')
-        if (typeof membersInput === 'string') {
-            const trimmed = membersInput.trim();
-            if (trimmed.startsWith('[')) {
-                try {
-                    const parsed = JSON.parse(trimmed);
-                    if (Array.isArray(parsed)) return parsed.map((m: any) => typeof m === 'string' ? m : (m?.username || m?.name || '')).filter(Boolean);
-                } catch { /* fall through to comma split */ }
-            }
-            return trimmed.split(',').map(s => s.trim()).filter(Boolean);
-        }
-
-        return [];
-    };
-
     const isSolo = participant.entry_kind === 'solo_player' || participant.participant_type === 'solo';
     const tournamentGame = participant.tournament?.game || '';
     const tournamentMode = participant.tournament?.game_mode ?? participant.tournament?.gameMode;
-    const displayName = isSolo
+    const displayName: string = isSolo
         ? resolveSoloParticipantDisplayName(participant, tournamentGame, tournamentMode)
-        : (participant.display_name || participant.team_name || 'Unknown Team');
-    const displayLogo = isSolo
+        : (participant.display_name || participant.team_name || 'Unnamed team');
+    const displayLogo: string | undefined = isSolo
         ? (participant.display_logo_url || participant.user?.avatar_url)
         : (participant.display_logo_url || participant.team_logo);
-    const members = isSolo ? [displayName] : getMembers(participant.team_members);
+    const members = isSolo ? [] : getMembers(participant.team_members);
+    const joined = participant.registered_at ? new Date(participant.registered_at).toLocaleDateString() : null;
+    const FallbackIcon = isSolo ? User : Users;
 
     return (
-        // Layout Placeholder - Keeps the grid cell stable
-        <div ref={ref} className="relative w-full h-[320px] z-0">
-            {/* Animated Floating Card */}
-            <motion.div
-                className="absolute top-0 left-0 w-full min-h-[320px] bg-[#09090b] border border-white/5 rounded-xl shadow-2xl flex flex-col overflow-hidden group"
-                style={{ fontFamily: "'Poppins', sans-serif" }}
-                initial={false}
-                animate={{
-                    height: isHovered ? "auto" : "320px",
-                    zIndex: isHovered ? 50 : 1,
-                    borderColor: isHovered ? "rgba(124, 58, 237, 0.5)" : "rgba(255, 255, 255, 0.1)",
-                }}
-                transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-            >
-                {/* Manage Button (Always visible) */}
-                <GhostButton
-                    size="icon"
-                    className="absolute top-2 right-2 h-8 w-8 z-30 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onManage(participant);
-                    }}
-                >
-                    <Settings className="w-5 h-5" />
-                </GhostButton>
-
-                <AnimatePresence mode="wait">
-                    {!isHovered ? (
-                        /* FRONT FACE: Logo & Info */
-                        <motion.div
-                            key="front"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="p-6 flex flex-col items-center justify-center h-[320px] gap-3 relative"
-                        >
-                            {/* Status Badge */}
-                            <div className="absolute top-3 left-3 z-10 scale-90 origin-top-left flex gap-1">
-                                {renderStatusBadge(participant)}
-                            </div>
-
-                            {/* Logo */}
-                            <div className="relative w-24 h-24 flex items-center justify-center mb-2">
-                                {displayLogo ? (
-                                    <img
-                                        src={displayLogo}
-                                        alt={displayName}
-                                        loading="lazy"
-                                        decoding="async"
-                                        fetchPriority="low"
-                                        className={`w-full h-full object-contain filter drop-shadow-md ${isSolo ? 'rounded-full' : ''}`}
-                                    />
-                                ) : (
-                                    isSolo ? <Users className="w-16 h-16 text-rose-600/50" /> : <Users className="w-16 h-16 text-gray-600" />
-                                )}
-                            </div>
-
-                            {/* Name */}
-                            <div className="text-center w-full relative z-10">
-                                <h3 className="text-xl font-bold text-white truncate px-2">
-                                    {displayName}
-                                </h3>
-                                <p className="text-sm text-gray-400 mt-1 uppercase tracking-tighter font-medium opacity-50">
-                                    {isSolo ? 'Solo Participant' : 'Team Registration'}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Joined {participant.registered_at ? new Date(participant.registered_at).toLocaleDateString() : 'Unknown Date'}
-                                </p>
-                            </div>
-                        </motion.div>
+        <div
+            ref={ref}
+            className="group relative flex h-full flex-col bg-card shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)] transition-shadow hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]"
+        >
+            <div className="flex items-start gap-4 p-5">
+                <span className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden bg-white/[0.04] ${isSolo ? 'rounded-full' : ''}`}>
+                    {displayLogo ? (
+                        <img src={displayLogo} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain" />
                     ) : (
-                        /* BACK FACE: Simple Roster List */
-                        <motion.div
-                            key="back"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="p-6 flex flex-col h-full bg-[#09090b]"
-                        >
-                            <div className="flex items-center justify-center gap-2 mb-6 pt-2">
-                                <Users className="w-5 h-5 text-rose-400" />
-                                <h4 className="text-lg font-bold text-white tracking-wide uppercase">
-                                    {isSolo ? 'Player Profile' : 'ROSTER'}
-                                </h4>
-                            </div>
-
-                            <div className="flex flex-col gap-3 px-2 pb-6">
-                                {members.length > 0 ? (
-                                    members.slice(0, 5).map((member, idx) => (
-                                        <div key={idx} className="flex items-baseline gap-3 text-white font-medium text-lg">
-                                            <span className="text-gray-500 text-sm font-normal w-4 text-right">{idx + 1}.</span>
-                                            <span className="truncate">{member}</span>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-sm text-gray-500 italic text-center py-4">No members listed</p>
-                                )}
-                                {members.length > 5 && (
-                                    <p className="text-xs text-gray-500 text-center italic mt-1">
-                                        + {members.length - 5} more
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Purple Bottom Border Accent */}
-                            <div className="absolute bottom-0 left-0 w-full h-1 bg-rose-500" />
-                        </motion.div>
+                        <FallbackIcon className="h-6 w-6 text-zinc-600" aria-hidden />
                     )}
-                </AnimatePresence>
-            </motion.div>
+                </span>
+                <div className="min-w-0 flex-1">
+                    <p className={EYEBROW_CLASS}>{isSolo ? 'Solo player' : 'Team'}</p>
+                    <h3 className="mt-1 truncate font-heading text-base font-bold text-white">{displayName}</h3>
+                    {joined && <p className="mt-0.5 text-xs text-zinc-500">Joined {joined}</p>}
+                </div>
+                <button
+                    type="button"
+                    onClick={() => onManage(participant)}
+                    aria-label={`Manage ${displayName}`}
+                    className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center text-zinc-500 transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                >
+                    <Settings className="h-4 w-4" aria-hidden />
+                </button>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 px-5">{renderStatusBadge(participant)}</div>
+
+            {!isSolo && (
+                <div className="mt-4 border-t border-white/[0.06] px-5 py-4">
+                    {members.length > 0 ? (
+                        <ol className="space-y-1.5 text-sm">
+                            {members.slice(0, ROSTER_PREVIEW).map((member, idx) => (
+                                <li key={`${member}-${idx}`} className="flex items-baseline gap-3">
+                                    <span className="w-4 text-right font-mono text-[11px] text-zinc-600">{idx + 1}</span>
+                                    <span className="truncate text-zinc-300">{member}</span>
+                                </li>
+                            ))}
+                            {members.length > ROSTER_PREVIEW && (
+                                <li className="pl-7 text-xs text-zinc-500">and {members.length - ROSTER_PREVIEW} more</li>
+                            )}
+                        </ol>
+                    ) : (
+                        <p className="text-sm text-zinc-500">No roster added yet.</p>
+                    )}
+                </div>
+            )}
         </div>
     );
 });

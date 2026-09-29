@@ -200,15 +200,16 @@ export function CommandHeader({
 }) {
   const isDashboard = useContext(DashboardPanelCtx);
   return isDashboard ? (
-    <header className={cn('border-b border-white/[0.08] bg-white/[0.025] px-4 pb-3 pt-3', className)}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
+    <header className={cn('border-b border-white/[0.07] px-5 pb-5 pt-6 sm:px-6', className)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
           {eyebrow ? (
-            <div className="mb-1 font-mono text-[8px] font-bold uppercase tracking-[0.45em] text-rose-500/70">
+            <div className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.28em] text-zinc-500">
               {eyebrow}
             </div>
           ) : null}
-          <h2 className="font-heading text-xs font-bold uppercase tracking-tight text-white">{title}</h2>
+          <h2 className="font-heading text-xl font-bold tracking-tight text-white">{title}</h2>
+          {description ? <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-zinc-400">{description}</p> : null}
         </div>
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
@@ -243,7 +244,7 @@ export function CommandSection({ className, children }: React.HTMLAttributes<HTM
   const isDashboard = useContext(DashboardPanelCtx);
   return (
     <section className={cn(
-      isDashboard ? 'border-b border-white/[0.06] px-4 py-4 last:border-b-0' : 'border border-white/10 bg-[#0a0a0c]/92 p-5',
+      isDashboard ? 'border-b border-white/[0.06] px-5 py-6 last:border-b-0 sm:px-6' : 'border border-white/10 bg-[#0a0a0c]/92 p-5',
       className
     )}>
       {children}
@@ -264,7 +265,7 @@ export function CommandActionBar({ className, children }: React.HTMLAttributes<H
   return (
     <div className={cn(
       isDashboard
-        ? 'flex flex-col gap-2 border-t border-white/[0.08] bg-white/[0.02] px-4 py-3 sm:flex-row sm:items-center sm:justify-between'
+        ? 'sticky bottom-0 z-20 flex flex-col gap-2 border-t border-white/10 bg-background/90 px-5 py-3 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:px-6'
         : 'flex flex-col gap-3 border border-white/10 bg-[#0a0a0c]/96 p-4 sm:flex-row sm:items-center sm:justify-between',
       className
     )}>

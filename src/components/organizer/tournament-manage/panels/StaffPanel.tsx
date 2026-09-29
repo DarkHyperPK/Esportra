@@ -26,32 +26,26 @@ export function StaffPanel({ tournament: _tournament, editableFields: _editableF
   return (
     <>
       <CommandHeader
-        eyebrow="CONFIGURATION"
+        eyebrow="Configure"
         title="Staff"
-        description="Tournament staff access and permission management."
+        description="Staff belong to your organization and can help run every tournament you host."
       />
 
       <CommandSection>
-        <div className="flex flex-col items-center gap-5 py-6 text-center">
-          <div className="flex h-12 w-12 items-center justify-center border border-white/10 text-rose-400">
-            <ShieldCheck className="h-6 w-6" />
+        <div className="flex max-w-xl items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center bg-white/[0.04] text-zinc-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
+            <ShieldCheck className="h-5 w-5" aria-hidden />
           </div>
-          <div className="max-w-sm space-y-2">
-            <h3 className="text-base font-bold text-white">Staff Managed at Organization Level</h3>
-            <p className="text-sm text-zinc-400">
-              Staff members are managed through your organization settings.
-              Staff added to your organization automatically gain access to all your tournaments.
+          <div className="space-y-3">
+            <p className="text-sm leading-relaxed text-zinc-300">
+              Add or remove staff, and choose what each person can do (scores, teams, brackets, announcements, disputes), from your organization settings.
+              Changes apply to this tournament straight away.
             </p>
+            <CommandButton variant="secondary" size="sm" onClick={() => navigate('/organizer/settings?tab=staff')}>
+              Manage staff
+              <ExternalLink className="h-4 w-4" aria-hidden />
+            </CommandButton>
           </div>
-          <CommandButton
-            variant="secondary"
-            size="sm"
-            slide
-            onClick={() => navigate('/organizer/settings?tab=staff')}
-          >
-            <ExternalLink className="h-4 w-4" />
-            Go to Organization Settings
-          </CommandButton>
         </div>
       </CommandSection>
     </>

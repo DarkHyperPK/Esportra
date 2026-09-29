@@ -107,7 +107,7 @@ function buildConfigureGroup(ctx: DashboardNavContext): DashboardNavItem[] {
     tab('prize-payouts', 'Prize & payouts'),
     tab('registration', 'Registration'),
     ctx.canManageStaff ? tab('staff', 'Staff') : null,
-    tab('settings', 'Settings'),
+    tab('settings', 'Match settings'),
   ]);
 }
 
