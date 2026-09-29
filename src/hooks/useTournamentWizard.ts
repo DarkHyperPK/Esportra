@@ -347,7 +347,7 @@ export const useTournamentWizard = (
 
                 // Map pool — single PUT replaces delete + re-insert
                 if (data.mapPoolIds) {
-                    await apiClient.put(`/api/tournaments/${tournamentId}/map-pools`, {
+                    await apiClient.put(`/api/tournaments/${tournamentId}/map-pool`, {
                         mapIds: data.mapPoolIds,
                     });
                 }
