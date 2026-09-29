@@ -8,10 +8,11 @@ import { BurgerMenu } from "./ui/BurgerMenu";
 import { AnimatePresence } from "framer-motion";
 import { getWebsiteAssetUrl } from "@/lib/storage";
 import { cn } from "@/lib/utils";
+import { NotificationSidebar } from "./notifications/NotificationSidebar";
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,7 +52,8 @@ const Navbar = () => {
           />
         </Link>
 
-        <div className="lg:hidden">
+        <div className="flex items-center gap-2 lg:hidden">
+          {user && <NotificationSidebar />}
           <BurgerMenu
             isOpen={mobileMenuOpen}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

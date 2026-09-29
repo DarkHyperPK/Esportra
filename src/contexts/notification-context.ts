@@ -17,6 +17,10 @@ export interface Notification {
 export interface NotificationContextType {
   notifications: Notification[];
   unreadCount: number;
+  /** True until the first fetch for the signed-in user settles. */
+  isLoading: boolean;
+  /** The last fetch failed; the list may be stale or empty. */
+  hasError: boolean;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   refreshNotifications: () => Promise<void>;

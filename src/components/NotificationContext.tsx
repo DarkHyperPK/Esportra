@@ -18,6 +18,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const hub = useHub(HubPaths.Notification, { autoStart: !!user && !authLoading && !profile?.is_suspended });
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const listenersAttached = useRef(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -52,10 +54,14 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       );
       setNotifications(merged);
       setUnreadCount(merged.filter(n => !n.is_read).length);
+      setHasError(false);
     } catch (error) {
+      setHasError(true);
       if (import.meta.env.DEV) {
         console.warn('[Notifications] Fetch failed:', error);
       }
+    } finally {
+      setIsLoading(false);
     }
   }, [userId]);
 
@@ -224,7 +230,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <NotificationContext.Provider value={{ notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications: fetchNotifications }}>
+    <NotificationContext.Provider value={{ notifications, unreadCount, isLoading, hasError, markAsRead, markAllAsRead, refreshNotifications: fetchNotifications }}>
       {children}
     </NotificationContext.Provider>
   );

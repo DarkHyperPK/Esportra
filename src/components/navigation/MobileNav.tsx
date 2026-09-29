@@ -255,8 +255,8 @@ const MobileNav = ({
                       Notifications
                     </span>
                     {unreadCount > 0 && (
-                      <span className="rounded-full bg-rose-500 px-2 py-0.5 text-xs font-semibold text-white">
-                        {unreadCount > 9 ? "9+" : unreadCount}
+                      <span className="min-w-[20px] bg-rose-500 px-1.5 py-0.5 text-center font-mono text-[11px] font-bold tabular-nums text-white">
+                        {unreadCount > 99 ? "99+" : unreadCount}
                       </span>
                     )}
                   </Link>

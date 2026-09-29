@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, Loader2, Ticket } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useToast } from '@/hooks/use-toast';
-import { CtaButton, OutlineButton, GhostButton } from '@/components/ui/app-buttons';
+import { CommandButton } from '@/components/management/CommandSurface';
+import { EYEBROW_CLASS } from '@/components/ui/kit';
 import {
   Dialog,
   DialogContent,
@@ -21,12 +22,32 @@ import {
   getTournamentInviteFromNotification,
 } from '@/utils/tournamentInviteNotification';
 
+const DISMISSED_KEY = 'esportra:dismissed-tournament-invites';
+
+/** Invites dismissed with "Not now" stay unread in the inbox but don't pop up again this session. */
+function readDismissed(): Set<string> {
+  try {
+    const raw = sessionStorage.getItem(DISMISSED_KEY);
+    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeDismissed(ids: Set<string>) {
+  try {
+    sessionStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Storage unavailable (private mode): the in-memory set still hides it for this page.
+  }
+}
+
 export function TournamentInvitePrompt() {
   const { user, loading: authLoading } = useAuth();
   const { notifications, markAsRead } = useNotifications();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(readDismissed);
   const [copying, setCopying] = useState(false);
 
   const activeNotification = useMemo(
@@ -58,12 +79,14 @@ export function TournamentInvitePrompt() {
 
   const inviteCode = inviteDetails?.data.code ?? '';
 
-  const handleDismiss = useCallback(async () => {
+  const handleDismiss = useCallback(() => {
     if (!activeNotification) return;
-
-    setDismissedIds((current) => new Set(current).add(activeNotification.id));
-    await markAsRead(activeNotification.id);
-  }, [activeNotification, markAsRead]);
+    setDismissedIds((current) => {
+      const next = new Set(current).add(activeNotification.id);
+      writeDismissed(next);
+      return next;
+    });
+  }, [activeNotification]);
 
   const handleCopyCode = useCallback(async () => {
     if (!inviteCode) return;
@@ -72,13 +95,13 @@ export function TournamentInvitePrompt() {
     try {
       await navigator.clipboard.writeText(inviteCode);
       toast({
-        title: 'Invite code copied',
-        description: 'Paste it on the redemption page when you are ready.',
+        title: 'Code copied',
+        description: 'Paste it on the redeem page when you’re ready.',
       });
     } catch {
       toast({
-        title: 'Copy failed',
-        description: 'Select the code manually and copy it.',
+        title: 'Couldn’t copy the code',
+        description: 'Select it and copy it manually.',
         variant: 'destructive',
       });
     } finally {
@@ -90,9 +113,10 @@ export function TournamentInvitePrompt() {
     if (!inviteCode) return;
 
     const destination = buildRedeemInvitePath(inviteCode, tournamentKey);
-    await handleDismiss();
+    handleDismiss();
+    if (activeNotification) await markAsRead(activeNotification.id);
     navigate(destination);
-  }, [handleDismiss, inviteCode, navigate, tournamentKey]);
+  }, [activeNotification, handleDismiss, inviteCode, markAsRead, navigate, tournamentKey]);
 
   useEffect(() => {
     if (!shouldShow) return;
@@ -100,66 +124,40 @@ export function TournamentInvitePrompt() {
   }, [shouldShow, activeNotification?.id]);
 
   return (
-    <Dialog open={shouldShow} onOpenChange={(open) => { if (!open) void handleDismiss(); }}>
-      <DialogContent className="max-w-md gap-0 overflow-hidden border-white/10 bg-[#0a0a0c] p-0 sm:max-w-md [&>button]:z-20 [&>button]:border-white/20 [&>button]:bg-black/50 [&>button]:text-white [&>button]:backdrop-blur-sm">
+    <Dialog open={shouldShow} onOpenChange={(open) => { if (!open) handleDismiss(); }}>
+      <DialogContent className="max-w-md gap-0 overflow-hidden p-0 sm:max-w-md [&>button]:z-20 [&>button]:bg-black/50 [&>button]:backdrop-blur-sm">
         {bannerUrl ? (
           <div className="relative aspect-[16/9] w-full overflow-hidden bg-black">
-            <img
-              src={bannerUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover object-top"
-            />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/30 to-black/10" />
+            <img src={bannerUrl} alt="" className="absolute inset-0 h-full w-full object-cover object-top" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/40 to-transparent" />
           </div>
         ) : null}
 
-        <div className={bannerUrl ? 'px-6 pb-6 pt-4' : 'px-6 pb-6 pt-5'}>
-          <DialogHeader className="space-y-3 text-left">
-            <div className="flex items-center gap-2 text-rose-400">
-              <Ticket className="h-4 w-4" />
-              <span className="text-xs font-semibold uppercase tracking-[0.2em]">Tournament Invite</span>
-            </div>
-            <DialogTitle className="text-xl text-white">
-              You&apos;re invited to {tournamentName}
+        <div className={bannerUrl ? 'px-6 pb-6 pt-2' : 'px-6 pb-6 pt-6'}>
+          <DialogHeader className="space-y-2 text-left">
+            <p className={EYEBROW_CLASS}>Tournament invite</p>
+            <DialogTitle className="font-heading text-2xl font-bold tracking-tight text-white">
+              You’re invited to {tournamentName}
             </DialogTitle>
-            <DialogDescription className="text-sm leading-relaxed text-gray-400">
-              You have a reserved slot waiting. Use the invite code below to redeem your guaranteed team place.
+            <DialogDescription className="text-sm leading-relaxed text-zinc-400">
+              A team slot is reserved for you. Redeem the code to claim it.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mt-5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-4 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-rose-200/80">
-              Invite Code
-            </p>
-            <p className="mt-2 font-mono text-2xl font-black tracking-[0.35em] text-white">
-              {inviteCode}
-            </p>
+          <div className="mt-5 border border-white/10 bg-black/30 px-4 py-4">
+            <p className={EYEBROW_CLASS}>Invite code</p>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <p className="select-all font-mono text-2xl font-bold tracking-[0.3em] text-white">{inviteCode}</p>
+              <CommandButton variant="ghost" size="sm" onClick={() => void handleCopyCode()} disabled={copying} aria-label="Copy invite code">
+                <Copy className="h-3.5 w-3.5" aria-hidden />
+                Copy
+              </CommandButton>
+            </div>
           </div>
 
-          <DialogFooter className="mt-6 flex-col gap-2 sm:flex-col sm:space-x-0">
-            <CtaButton
-              type="button"
-              className="w-full"
-              onClick={() => void handleRedeem()}
-            >
-              Redeem Invite
-            </CtaButton>
-            <OutlineButton
-              type="button"
-              className="w-full"
-              onClick={() => void handleCopyCode()}
-              disabled={copying}
-            >
-              {copying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
-              Copy Code
-            </OutlineButton>
-            <GhostButton
-              type="button"
-              className="w-full"
-              onClick={() => void handleDismiss()}
-            >
-              Dismiss
-            </GhostButton>
+          <DialogFooter className="mt-6 flex-col gap-2 sm:flex-row sm:justify-between sm:space-x-0">
+            <CommandButton variant="ghost" onClick={handleDismiss}>Not now</CommandButton>
+            <CommandButton variant="primary" slide onClick={() => void handleRedeem()}>Redeem invite</CommandButton>
           </DialogFooter>
         </div>
       </DialogContent>
