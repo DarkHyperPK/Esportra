@@ -1,3 +1,4 @@
+<!-- esportra-canonical: company-v2 -->
 # Company operating standard
 
 Every agent in the company follows this standard. Role files add to it; they never contradict it.
@@ -84,3 +85,90 @@ The Skill Integration Map in `company/SKILL.md` names skills. Some ship in this 
 ## 8. Escalation
 
 Escalate (write to `escalations.md`, return `BLOCKED` or `NEEDS_CLARIFICATION`) when: two roles disagree and no rule decides; a requirement conflicts with security, brand invariants or the budget; the brief is broken after two question rounds; or finishing the task would require doing something irreversible that was not approved.
+
+---
+
+## 9. Canonical sources (so nothing overrides the company's rules)
+
+These repo files are the source of truth. Claude Code resolves same-named skills with **personal (`~/.claude/skills`) over project**, so a personal copy can shadow ours. Every canonical file starts with `<!-- esportra-canonical: company-v2 -->`.
+
+| Canonical file | Authority over |
+|---|---|
+| `.claude/skills/discovery-first/SKILL.md` | How every agent understands and asks |
+| `.claude/skills/esportra-brand/SKILL.md` | Brand, tokens, voice (over `brand-guidelines`, `theme-factory` presets) |
+| `.claude/skills/design-recipe/SKILL.md` | Creative method and direction choice (over `frontend-design` defaults) |
+| `.claude/skills/company/SKILL.md` + this file | Pipeline, statuses, hand-offs |
+| `.claude/agents/*.md` | Role definitions (project agents beat user agents) |
+| `DESIGN.md`, `PRODUCT.md` (repo root) | Anchors for `impeccable`, derived from the brand skill |
+
+**Rule:** when you load one of these skills and the marker is missing, or its content contradicts this table, read the repo file by path and follow it. Report the shadowing in your hand-off so the CEO can remove the duplicate.
+
+**Order of authority** when sources disagree: CEO answers in `clarifications.md` → `CLAUDE.md` (security and layer rules are blocking) → `esportra-brand` invariants → the project's Direction Contract → `design-recipe` → role file → generic vendored skills (`impeccable`, `frontend-design`, `theme-factory`, …) → personal taste.
+
+## 10. A filled hand-off (example)
+
+```markdown
+# TASK-004 - Captain check-in page
+**Owner:** senior-frontend-engineer   **Status:** HANDOFF   **Date:** 2026-10-02
+
+## Understanding
+Goal: captains stop missing check-in. For: captains on phones in Discord calls, 30 min before start.
+Success: check-in completed in one tap; roster presence visible; works at 390 px.
+Scope in: /t/:slug/check-in page, reminder deep link. Out: SMS.
+Constraints: Broadcast direction (contract CL-003), kit components only, check-in RPC exists.
+
+## Answers that shaped this work
+- clarifications.md #2: captain checks in the whole team (not per player)
+- clarifications.md #5: show online teammates (read-only)
+- Assumption standing: presence via existing SignalR `JoinMatch` group (default; not contradicted)
+
+## What I did
+- `useCaptainCheckIn` hook (RPC + invalidates match-checkins, match-room-state)
+- `checkInRules.ts` (pure: window open/closed, time left) + 9 tests
+- `CheckInPage` composes `PageIntro`, stat tile, roster grid (`StatusPill`), sticky `ActionBar`
+- Rejected: countdown animation (contract WILL NOT); per-player check-in (answer #2)
+
+## Output
+Files: src/hooks/useCaptainCheckIn.ts, src/services/checkIn/checkInRules.ts (+test), src/pages/tournaments/CheckIn.tsx, src/components/tournament/checkin/*.tsx
+Screenshots: .claude/company/projects/PROJ-041/evidence/checkin-{390,1440}-{open,closed,done,error}.png
+
+## Verification
+- AC1 one-tap check-in → test `checks in team` + checkin-390-open.png
+- AC2 closed window explains why → checkin-390-closed.png
+- AC3 error recovery → checkin-390-error.png
+- lint 0 warnings · 312 tests pass · build (check:buttons, chunks) pass
+- Creative Lead review: APPROVED (CREATIVE-LEAD-REVIEW.md)
+
+## Open questions / risks / follow-ups
+- Presence can lag ~5 s on poor mobile data; acceptable per CPO, noted.
+```
+
+## 11. A clarification round (example)
+
+Three agents returned `NEEDS_CLARIFICATION`. The orchestrator merged five questions into three decisions and asked:
+
+```
+AskUserQuestion:
+1. [BLOCKING] Who checks in? header "Check-in"
+   - Captain checks in the team (Recommended) - matches current rules; one tap
+   - Every player checks in - fairer for rosters, slower on game day
+2. [BLOCKING] Reminder channels? header "Channels" (multiSelect)
+   - Push at T-30 and T-10 (Recommended)
+   - Email at T-30 (Recommended)
+   - SMS (≈ PKR 4 each)
+3. [SHAPING] Show teammates' presence? header "Presence"
+   - Yes, read-only (Recommended) - reassures captains; uses existing SignalR group
+   - No
+```
+
+Answers recorded:
+
+```markdown
+| # | Question | Answer | Asked by | Date | Affects |
+|---|---|---|---|---|---|
+| 2 | Who checks in? | Captain for the team | CPO, Creative Lead | 2026-09-30 | AC1, UX spec, RPC |
+| 3 | Reminder channels | Push T-30/T-10 + email T-30 | CMO, CTO | 2026-09-30 | Notifications task |
+| 5 | Presence | Yes, read-only | Creative Lead | 2026-09-30 | UX spec, frontend |
+```
+
+Only the CPO and Creative Lead were re-dispatched (their analyses changed); the CFO's was unaffected.

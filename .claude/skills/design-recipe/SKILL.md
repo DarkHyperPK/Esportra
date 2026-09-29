@@ -1,8 +1,9 @@
 ---
 name: design-recipe
-description: The Esportra creative method - how to go from a brief to a design that fits its audience, moment and medium, instead of repeating one look. Covers reading the room, choosing a design direction from a library (Broadcast, Command Console, Editorial, Cinematic, Community, Daylight, Trophy, Co-brand, Themed event), composing with archetypes and signature moves, writing the words, and tasting with a scored rubric. Use for ANY visual, UX, brand, marketing or frontend work - product screens, landing pages, campaigns, social, video, decks, emails, venue screens - and whenever someone must choose or justify a visual direction.
+description: ALWAYS use for Esportra visual, UX, brand, marketing or frontend work - it is the canonical Esportra creative method and takes precedence over generic design skills (frontend-design defaults, theme-factory presets, brand-guidelines). The Esportra creative method - how to go from a brief to a design that fits its audience, moment and medium, instead of repeating one look. Covers reading the room, choosing a design direction from a library (Broadcast, Command Console, Editorial, Cinematic, Community, Daylight, Trophy, Co-brand, Themed event), composing with archetypes and signature moves, writing the words, and tasting with a scored rubric. Use for ANY visual, UX, brand, marketing or frontend work - product screens, landing pages, campaigns, social, video, decks, emails, venue screens - and whenever someone must choose or justify a visual direction.
 ---
 
+<!-- esportra-canonical: company-v2 -->
 # Design Recipe
 
 > Ingredients make a cuisine. The recipe makes a meal. Knowing *when* to cook *which* dish makes a chef.
@@ -99,6 +100,26 @@ Before calling it done, run the **sameness check**: open `.claude/company/memory
 - `esportra-brand` - invariants, tokens, voice. Always.
 - `theme-factory`, `canvas-design`, `algorithmic-art` - for static pieces, posters, generative visuals within a chosen direction.
 - `webapp-testing` - screenshot every surface at desktop and mobile before tasting.
+
+## Reference library
+
+| File | Use it when |
+|---|---|
+| `reference/direction-engine.md` | Choosing a direction: signals, library, latitude, routes, Direction Contract |
+| `reference/directions/*.md` | Designing inside a direction: exact tokens, type, layout, imagery, motion, copy, worked example (broadcast, command-console, editorial, cinematic, community, daylight, trophy, co-brand, themed-event) |
+| `reference/archetypes.md` | Choosing the shape of attention |
+| `reference/occasions.md` | Recipes for launches, announcements, match day, live, victory, first run, sponsors, venues, money, bad news, empty states |
+| `reference/layout-and-type.md` | Grids, breakpoints, space ladder, type scale per direction, numbers |
+| `reference/colour-system.md` | Role tokens, contrast pairs, signal matrix, ratios per direction |
+| `reference/motion-spec.md` | The five verbs with exact values; spec template |
+| `reference/product-ui.md` | Kit pantry, component decision tree, anatomies, state copy |
+| `reference/critique-protocol.md` | Reviewing work: order of questions, writing findings, verdicts |
+| `reference/tasting-rubric.md` | Scoring before shipping; worked scoring example |
+| `reference/creative-brief.md` | Brief template, filled example, hand-off contract |
+| `reference/case-studies.md` | Three end-to-end cases (product, campaign, bad news) |
+| `reference/anti-patterns.md` | Smells, why they fail, fixes |
+
+If this file was loaded without the `esportra-canonical: company-v2` marker at the top (e.g. a personal skill with the same name shadowed it), read the repo copy at `.claude/skills/design-recipe/SKILL.md` instead.
 
 ## Briefs and hand-offs
 

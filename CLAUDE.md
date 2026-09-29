@@ -116,6 +116,35 @@ No generic template-looking UI. Output must look intentional and product-specifi
 
 **Required (at least 4):** Clear hierarchy through scale contrast, intentional rhythm, depth/layering, typography with character, semantic color, designed interaction states, grid-breaking composition, motion that clarifies.
 
+## Company Agents & Design Authority
+
+The company hierarchy (agents in `.claude/agents/`, skills in `.claude/skills/`) is canonical and versioned in this repo. Canonical files carry `<!-- esportra-canonical: company-v2 -->`.
+
+**Canonical skills (repo paths):**
+- `.claude/skills/company/`: orchestration and `reference/operating-standard.md`
+- `.claude/skills/discovery-first/`: understand before building; ask BLOCKING and SHAPING questions
+- `.claude/skills/design-recipe/`: choose the design direction per surface (nine directions, signals, Direction Contract, tasting rubric)
+- `.claude/skills/esportra-brand/`: brand invariants, tokens, voice, imagery
+- Root `PRODUCT.md` and `DESIGN.md`: summaries for design tools; they defer to the skills above
+
+**Order of authority** (highest first):
+1. CEO answers (`clarifications.md`)
+2. This `CLAUDE.md`
+3. Brand invariants (`esportra-brand`)
+4. The surface's Direction Contract
+5. `design-recipe`
+6. The role file in `.claude/agents/`
+7. Vendored generic skills (`frontend-design`, `impeccable`, `theme-factory`, …)
+8. Personal taste
+
+**Rules:**
+- **Never** use `brand-guidelines` for Esportra. It is Anthropic's brand.
+- `theme-factory` presets only as a Themed-event direction chosen via `design-recipe`.
+- `frontend-design` and `impeccable` work *inside* the chosen direction. Esportra's pinned signatures (stage black, rose cue, Poppins, square corners) are brand commitments, not "defaults" to replace.
+- Do not regenerate `PRODUCT.md` or `DESIGN.md` with `impeccable init` or `impeccable document`. Edit them deliberately.
+- If a loaded skill or agent lacks the canonical marker, a personal (`~/.claude/skills`) or plugin copy is shadowing it. Read the repo file by path and follow that.
+- Changes to company agents and skills go through a PR to `staging`, like code.
+
 ## Testing
 
 - **Vitest** for unit tests

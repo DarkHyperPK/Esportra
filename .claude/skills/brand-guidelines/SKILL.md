@@ -1,8 +1,11 @@
 ---
 name: brand-guidelines
-description: Applies Anthropic's official brand colors and typography to any sort of artifact that may benefit from having Anthropic's look-and-feel. Use it when brand colors or style guidelines, visual formatting, or company design standards apply.
+description: Anthropic brand only — never for Esportra (use esportra-brand). Applies Anthropic's official brand colors and typography to any sort of artifact that may benefit from having Anthropic's look-and-feel. Use it when brand colors or style guidelines, visual formatting, or company design standards apply.
 license: Complete terms in LICENSE.txt
+disable-model-invocation: true
 ---
+
+> **Esportra guard:** This is Anthropic's brand, not Esportra's. Never apply it to Esportra product, marketing or design work. For Esportra use `.claude/skills/esportra-brand/` and `.claude/skills/design-recipe/` (see `CLAUDE.md` → Company Agents & Design Authority).
 
 # Anthropic Brand Styling
 

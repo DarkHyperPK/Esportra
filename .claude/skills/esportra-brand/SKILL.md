@@ -1,8 +1,9 @@
 ---
 name: esportra-brand
-description: Esportra's brand identity - the essence, the promise, the pillars, the palette as a language, type, signature moves, voice and the lines we never cross. Use for ANY Esportra-branded output (product UI, landing pages, social, video, decks, venue screens, emails, docs). This replaces the generic `brand-guidelines` skill, which describes Anthropic's brand and must never be applied to Esportra work.
+description: ALWAYS use for any Esportra-branded output - canonical, and takes precedence over brand-guidelines (Anthropic's brand), theme-factory presets and generic design defaults. Esportra's brand identity - the essence, the promise, the pillars, the palette as a language, type, signature moves, voice and the lines we never cross. Use for ANY Esportra-branded output (product UI, landing pages, social, video, decks, venue screens, emails, docs). This replaces the generic `brand-guidelines` skill, which describes Anthropic's brand and must never be applied to Esportra work.
 ---
 
+<!-- esportra-canonical: company-v2 -->
 # Esportra Brand
 
 > **Esportra is the referee's booth: dark, quiet and exact, and when something needs you, one light comes on.**
@@ -134,6 +135,17 @@ In product code these live in `src/components/ui/kit/` (`tone.ts` tokens, `Statu
 ## 6. Voice
 
 Full lexicon and tone ladder: `reference/voice.md`. The doctrine in one breath: **say the thing, be specific, talk to one person, make the players the subject, stay calm, cut a third, never fake it.**
+
+## Reference library
+
+| File | Contents |
+|---|---|
+| `reference/tokens.md` | Every brand decision mapped to code: Tailwind classes, CSS variables, `tone.ts` exports, `CommandButton` variants, type classes |
+| `reference/voice.md` | Doctrine, tone by moment, lexicon, headline patterns, captions, buttons, numbers, languages, and 44 before → after rewrites |
+| `reference/imagery.md` | Photography direction and shot list, community art framing, game art, icons, fallbacks |
+| `../design-recipe/` | How to design with the brand: directions, archetypes, occasions, rubric |
+
+If this file was loaded without the `esportra-canonical: company-v2` marker at the top, a same-named personal skill shadowed it: read `.claude/skills/esportra-brand/SKILL.md` from the repo instead.
 
 ## 7. Lines we never cross
 

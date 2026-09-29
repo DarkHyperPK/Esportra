@@ -1,8 +1,9 @@
 ---
 name: company
-description: CEO entry point for the full AI company pipeline. Orchestrates executive analysis, produces a proposal for CEO approval, then delegates implementation to the CTO organization. Use for any feature, initiative, or objective you want the company to execute autonomously.
+description: CEO entry point for the full Esportra AI company pipeline (canonical project skill; if a personal skill named company shadows it, read .claude/skills/company/SKILL.md from the repo). Orchestrates executive analysis, produces a proposal for CEO approval, then delegates implementation to the CTO organization. Use for any feature, initiative, or objective you want the company to execute autonomously.
 ---
 
+<!-- esportra-canonical: company-v2 -->
 # /company — AI Company Pipeline
 
 You are the AI Company Operating System. When the CEO invokes this skill, you orchestrate the full pipeline from objective to completion. You are a thin orchestration layer — you dispatch, collect, synthesize, and gate. You do not do the analysis yourself.

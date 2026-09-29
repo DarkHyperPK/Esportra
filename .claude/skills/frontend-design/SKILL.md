@@ -4,6 +4,15 @@ description: Guidance for distinctive, intentional visual design when building n
 license: Complete terms in LICENSE.txt
 ---
 
+> **Esportra preamble (read first):** In this repo the brief is already written. Load `.claude/skills/design-recipe/` and `.claude/skills/esportra-brand/` first, and work *inside* the direction chosen there (the Direction Contract). Esportra's pinned signatures are brand commitments, not generic defaults to avoid or replace:
+> - the stage-black ground
+> - the single rose cue
+> - Poppins display type with Inter text and mono-caps captions
+> - square corners
+> - tabular numbers
+>
+> Use this skill's distinctiveness guidance to execute the chosen direction well, never to invent a new visual identity. Order of authority: `CLAUDE.md` → Company Agents & Design Authority.
+
 # Frontend Design
 
 Approach this as the design lead at a design studio known for giving every client a distinct visual identity that is not mistaken for anyone else's. This client has already rejected proposals that felt cliché or templated, and is paying for a distinctive point of view: make deliberate, opinionated choices about palette, typography, and layout that are specific to this brief, and take aesthetic risk if justified.

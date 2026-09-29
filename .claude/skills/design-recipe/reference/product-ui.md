@@ -76,3 +76,57 @@ Rules about what to show (nav by permission, "needs you" items, validity) live i
 ## Verification
 
 Screenshots at 1440 px and 390 px with realistic data (long names, zero, many, a failure) · the tasting rubric with the product-UI additions · `npm run lint`, `npm run test`, `npm run build` (including `check:buttons` and the JSX symbol audit).
+
+---
+
+## Component decision tree
+
+Use this before reaching for any component. Walk top to bottom; the first match wins.
+
+```
+Is the user choosing between options?
+├─ Yes → How many options?
+│   ├─ 2, on/off with a consequence ............ ToggleRow
+│   ├─ 2-4, consequences need a sentence ....... ChoiceCard / ChoiceGroup (mode 'radio')
+│   ├─ 2-4, choosing navigates somewhere ....... ChoiceCard (mode 'action', layout 'stack')
+│   ├─ 3-8 short self-explanatory values ....... ChipGroup
+│   └─ 5+ or varies per game ................... Select with CONTROL_CLASS
+├─ Is the user entering a value? ............... Field + Input/Textarea with CONTROL_CLASS
+├─ Is it the state of a thing in a list? ....... StatusPill
+├─ Must they know something before acting here?  InlineNotice (tone by meaning)
+├─ Did an action just succeed or fail? ......... Toast (plain title: "Saved" / "Couldn't save")
+├─ Is it a sequence of dates to one moment? .... Timeline
+├─ Is it a review of choices before committing?  SummaryCard (with Edit per row)
+├─ Is it a linear flow of 5+ steps? ............ StepProgress (fewer: eyebrow "Step 2 of 3")
+├─ Is there a long form with explicit save? .... PanelSaveBar / ActionBar (sticky)
+└─ Is it 3-4 headline numbers? ................. gap-px stat strip (caption over number)
+```
+
+If nothing fits, ask the Creative Lead before inventing. A new component needs: the need it serves, why no kit component fits, its states, its a11y behaviour, and a plan to add it to the kit.
+
+## State copy examples
+
+| State | Surface | Copy |
+|---|---|---|
+| Empty (first use) | Participants | "No teams yet. Share the tournament link or invite teams directly." [Invite teams] |
+| Empty (filtered) | Participants | "No teams match "owls". Clear the search to see all 32." |
+| Loading | Any | (skeleton in the real layout; no copy) |
+| Error (load) | Bracket | "Couldn't load the bracket. Check your connection and try again." [Try again] |
+| Error (save) | Settings panel | Toast: "Couldn't save" + the server's reason if it helps the user act |
+| Locked | Team cap | Lock icon + "Locked after registration opens, so the bracket stays fair." |
+| Permission-limited | Payouts | (hidden in nav); by direct link: "Only the organizer can change payouts." |
+| Unsaved | Settings panel | Save bar: "Unsaved changes" · [Discard] [Save changes] |
+| Saved | Settings panel | Save bar: "Everything is saved" |
+| Success (commit) | Check-in | "You're checked in. First match 8:30 PM, Station 4." |
+| Destructive confirm | Remove team | "Remove Night Owls? They lose their slot and are told by email." [Remove team] [Cancel] |
+
+## Anatomy of a great product view (checklist)
+
+- [ ] The view's one question is written as its description.
+- [ ] Eyebrow names the area (nav group); title names the thing.
+- [ ] Decision order, not data order.
+- [ ] Rare items cut from the default view; role-inaccessible items hidden.
+- [ ] One primary action; its position is predictable (header on desktop, sticky bottom on phone for long flows).
+- [ ] Every state from the table above exists.
+- [ ] Words written before layout; each hint explains *why*.
+- [ ] Logic (what to show, validity) lives in a tested service; the component only renders.

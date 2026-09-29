@@ -107,6 +107,10 @@ Thumbs.db
 supabase/dumps/
 supabase/storage/
 
-# AI tooling — local only, not for repo
-.claude/
+# AI tooling — local settings stay local; the company agents and skills are canonical and tracked
+.claude/*
+!.claude/agents/
+!.claude/skills/
+!.claude/company/
+.claude/company/projects/
 docs/

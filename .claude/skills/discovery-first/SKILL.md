@@ -1,8 +1,9 @@
 ---
 name: discovery-first
-description: The company-wide "understand first, then build" protocol. Every agent runs it before analysis, design or implementation - restate the job, separate facts from assumptions, ask the few questions whose answers change the work, confirm, and only then plan and build. Use at the start of any task, whenever a brief is thin or ambiguous, when two readings of a requirement lead to different work, and before any irreversible or expensive step.
+description: ALWAYS run first for every Esportra company agent and task (canonical; takes precedence over any same-named personal skill). The company-wide "understand first, then build" protocol. Every agent runs it before analysis, design or implementation - restate the job, separate facts from assumptions, ask the few questions whose answers change the work, confirm, and only then plan and build. Use at the start of any task, whenever a brief is thin or ambiguous, when two readings of a requirement lead to different work, and before any irreversible or expensive step.
 ---
 
+<!-- esportra-canonical: company-v2 -->
 # Discovery First
 
 > Nothing good is built on a guess. Understand the job completely, ask what you cannot find out, confirm, and only then make something.
@@ -154,6 +155,16 @@ Your plan must say which facts and answers shaped it. A plan that could have bee
 At the end, re-read your Understanding block and your recorded answers. For each line, point to the evidence in your output that satisfies it. Anything unmet is either fixed or reported, never glossed over.
 
 ---
+
+## Reference library
+
+| File | Use it for |
+|---|---|
+| `reference/question-craft.md` | Whether to ask at all (decision tree), anatomy of a good question, 30 bad → good rewrites, `AskUserQuestion` packaging with previews, writing defaults |
+| `reference/interview-scripts.md` | Per-role scripts: what to explore first, question themes, BLOCKING vs SHAPING, filled examples |
+| `reference/question-banks.md` | Discipline checklists for finding unknowns |
+
+If this file was loaded without the `esportra-canonical: company-v2` marker at the top, a same-named personal skill shadowed it: read `.claude/skills/discovery-first/SKILL.md` from the repo instead.
 
 ## Anti-patterns
 

@@ -4,6 +4,8 @@ description: Toolkit for styling artifacts with a theme. These artifacts can be 
 license: Complete terms in LICENSE.txt
 ---
 
+> **Esportra preamble (read first):** Never reskin Esportra product surfaces with these presets. Use a theme only when `.claude/skills/design-recipe/` has chosen the **Themed event** direction for a bounded surface (a seasonal or IP-themed tournament), and only within its Direction Contract. The Esportra invariants still hold: logo, cue discipline, square corners, type families, voice. For non-Esportra artifacts (for example an external slide deck), use this skill freely.
+
 
 # Theme Factory Skill
 
