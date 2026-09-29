@@ -27,18 +27,18 @@ const isFree = (fee: string) => !fee || fee.toLowerCase() === 'free' || fee === 
 
 function ReviewSection({ title, step, rows, onEdit }: { title: string; step: number; rows: Row[]; onEdit: (step: number) => void }) {
     return (
-        <section className="border-t border-white/[0.07] py-5 first:border-t-0 first:pt-0">
-            <div className="mb-3 flex items-center justify-between">
-                <h3 className="font-heading text-base font-bold text-white">{title}</h3>
-                <button type="button" onClick={() => onEdit(step)} className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 transition-colors hover:text-white">
-                    <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit
+        <section className={cn(PANEL_CLASS, 'overflow-hidden')}>
+            <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-3">
+                <h3 className="font-heading text-sm font-bold text-white">{title}</h3>
+                <button type="button" onClick={() => onEdit(step)} className="inline-flex items-center gap-1.5 rounded border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:border-white/20 hover:text-white">
+                    <Pencil className="h-3 w-3" aria-hidden /> Edit
                 </button>
             </div>
-            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+            <dl className="grid gap-x-8 gap-y-4 px-5 py-4 sm:grid-cols-2 lg:grid-cols-3">
                 {rows.map((row) => (
                     <div key={row.label} className="min-w-0">
-                        <dt className="text-xs text-zinc-500">{row.label}</dt>
-                        <dd className={cn('mt-0.5 truncate text-sm', row.muted ? 'text-zinc-500' : 'text-zinc-100')} title={row.value}>{row.value}</dd>
+                        <dt className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">{row.label}</dt>
+                        <dd className={cn('mt-1 truncate text-sm font-medium', row.muted ? 'text-zinc-500' : 'text-zinc-100')} title={row.value}>{row.value}</dd>
                     </div>
                 ))}
             </dl>
@@ -117,18 +117,18 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
             description="Everything in one place. Anything that looks wrong is one click from being fixed."
             errorSummary={errorList}
         >
-            <div className={cn(PANEL_CLASS, 'mb-8 overflow-hidden')}>
-                <div className="relative h-36 bg-black/40">
+            <div className={cn(PANEL_CLASS, 'mb-6 overflow-hidden')}>
+                <div className="relative h-40 bg-black/40">
                     {data.bannerUrl && <img src={data.bannerUrl} alt="" className="h-full w-full object-cover" />}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-                    <div className="absolute inset-x-5 bottom-4">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+                    <div className="absolute inset-x-5 bottom-5">
                         <p className={EYEBROW_CLASS}>{data.game || 'Game not chosen'}</p>
-                        <p className="mt-1 truncate font-heading text-2xl font-black tracking-tight text-white">{data.name || 'Untitled tournament'}</p>
+                        <p className="mt-1.5 truncate font-heading text-2xl font-black tracking-tight text-white">{data.name || 'Untitled tournament'}</p>
                     </div>
                 </div>
             </div>
 
-            <div>
+            <div className="grid gap-4">
                 {sections.map((section) => <ReviewSection key={section.step} {...section} onEdit={onEdit} />)}
             </div>
 

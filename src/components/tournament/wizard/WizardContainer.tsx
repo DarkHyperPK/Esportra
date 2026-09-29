@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Loader2, RotateCcw } from 'lucide-react';
 import { useTournamentWizard } from '@/hooks/useTournamentWizard';
@@ -69,6 +69,11 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
     const isLastStep = currentStep === WIZARD_STEPS.length;
     const isFirstStep = currentStep === 1;
     const nextTitle = WIZARD_STEPS[currentStep]?.title;
+    const stepAreaRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        stepAreaRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    }, [currentStep]);
 
     const renderStep = () => {
         switch (currentStep) {
@@ -110,7 +115,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
                     <WizardProgress currentStep={currentStep} stepValidation={stepValidation} onStepClick={goToStep} steps={WIZARD_STEPS} />
                 </div>
 
-                <div className="mt-10 max-w-4xl">
+                <div ref={stepAreaRef} className="mt-10 max-w-4xl scroll-mt-6">
                     <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
                 </div>
 
