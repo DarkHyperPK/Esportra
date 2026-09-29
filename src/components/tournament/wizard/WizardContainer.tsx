@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Loader2, RotateCcw } from 'lucide-react';
+import { scrollToSmooth } from '@/hooks/useGlobalSmoothScroll';
 import { useTournamentWizard } from '@/hooks/useTournamentWizard';
 import { useGameCatalog } from '@/hooks/useGameCatalog';
 import { useAdmin } from '@/hooks/useAdmin';
@@ -71,7 +72,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
     const nextTitle = WIZARD_STEPS[currentStep]?.title;
 
     useEffect(() => {
-        window.scrollTo({ top: 0, behavior: 'instant' });
+        scrollToSmooth(0, { immediate: true });
     }, [currentStep]);
 
     const renderStep = () => {
