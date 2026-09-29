@@ -45,9 +45,9 @@ export function FormatStagesPanel({
   return (
     <>
       <CommandHeader
-        eyebrow="CONFIGURATION"
-        title="Format & Stages"
-        description="Configure tournament format, stages, and bracket structure."
+        eyebrow="Run"
+        title="Format and stages"
+        description="Build the event from stages (groups, Swiss, brackets), set who advances, and seed teams."
       />
 
       {isBattleRoyale ? (

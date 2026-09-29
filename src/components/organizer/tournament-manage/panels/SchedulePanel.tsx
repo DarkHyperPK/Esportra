@@ -36,7 +36,7 @@ export function SchedulePanel({
 
   return (
     <>
-      <CommandHeader eyebrow="OPERATIONS" title="Schedule" />
+      <CommandHeader eyebrow="Run" title="Schedule" description="When each round is played, how long teams have, and whether they can pick their own match times." />
 
       {isBattleRoyale ? (
         <BRScheduleTab
@@ -52,8 +52,8 @@ export function SchedulePanel({
         <div className="px-4 py-8">
           <CommandEmptyState
             icon={<Calendar className="h-5 w-5" />}
-            title="No stages configured"
-            description="Add a stage in Format & Stages before configuring match schedules."
+            title="Nothing to schedule yet"
+            description="Rounds come from your stages. Add a stage in Format and stages, then set times here."
           />
         </div>
       ) : (
@@ -72,11 +72,11 @@ export function SchedulePanel({
               <div key={stage.id} className={i > 0 ? 'border-t border-white/[0.08]' : ''}>
                 {/* Stage header — only shown when multiple stages */}
                 {sortedStages.length > 1 && (
-                  <div className="flex items-center gap-3 border-b border-white/[0.08] bg-white/[0.025] px-4 py-2.5">
-                    <span className="flex h-4 w-4 shrink-0 items-center justify-center border border-rose-500/30 text-[9px] font-bold text-rose-400">
+                  <div className="flex items-center gap-3 border-b border-white/[0.07] px-5 py-3 sm:px-6">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center bg-white/[0.06] font-mono text-xs font-bold text-zinc-300">
                       {i + 1}
                     </span>
-                    <p className="text-base font-semibold text-white">{stage.name}</p>
+                    <p className="font-heading text-base font-bold text-white">{stage.name}</p>
                     <span className="text-sm text-zinc-500">{formatLabel}</span>
                   </div>
                 )}

@@ -1,22 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Loader2, Info } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  CommandHeader,
-  CommandSection,
-  CommandActionBar,
-  CommandButton,
-  DirtyIndicator,
-} from '@/components/management/CommandSurface';
+import { CommandButton, CommandHeader, CommandSection } from '@/components/management/CommandSurface';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { ChoiceCard, ChoiceGroup, CONTROL_CLASS, Field, FormSection, FORM_MEASURE_CLASS, ToggleRow } from '@/components/ui/kit';
+import { cn } from '@/lib/utils';
+import { PanelSaveBar } from '../PanelSaveBar';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { getEffectiveGameFeatures } from '@/utils/gameFeatures';
@@ -43,27 +32,9 @@ interface FormState {
 }
 
 const SCORE_OPTIONS: { value: ScoreReportedBy; label: string; description: string }[] = [
-  { value: 'players', label: 'Players', description: 'Match captains submit their own scores' },
-  { value: 'admins', label: 'Admins', description: 'Only admins can confirm match results' },
+  { value: 'players', label: 'Captains report', description: 'Both captains submit the score. Disagreements become disputes.' },
+  { value: 'admins', label: 'Staff report', description: 'Only you and your staff enter results. Slower, but fully controlled.' },
 ];
-
-function InfoTip({ text }: { text: string }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="inline-flex cursor-default">
-          <Info className="h-3 w-3 text-zinc-600 hover:text-zinc-400 transition-colors" />
-        </span>
-      </TooltipTrigger>
-      <TooltipContent
-        side="top"
-        className="max-w-[200px] border-white/10 bg-[#0d0d0f] text-[11px] text-zinc-300"
-      >
-        {text}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
 
 export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: AdvancedSettingsPanelProps) {
   const { toast } = useToast();
@@ -90,7 +61,7 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
     discordLinkCount: settings.discordLinkCount ?? 0,
   });
 
-  useEffect(() => {
+  const resetForm = () => {
     const s = tournament.settings ?? {};
     setForm({
       discordWebhookUrl: s.discordWebhookUrl || '',
@@ -101,6 +72,10 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
       requiredAccountLinks: s.requiredAccountLinks ?? 1,
       discordLinkCount: s.discordLinkCount ?? 0,
     });
+  };
+
+  useEffect(() => {
+    resetForm();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournament.id, tournament.updated_at]);
 
@@ -156,10 +131,10 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
           scoreReportedBy: form.scoreReportedBy,
         },
       });
-      toast({ title: 'Settings saved' });
+      toast({ title: 'Saved', description: 'Match settings updated.' });
       onSave();
     } catch (err: any) {
-      toast({ title: 'Save failed', description: err.message || 'Please try again.', variant: 'destructive' });
+      toast({ title: "Couldn't save", description: err.message || 'Please try again.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -172,180 +147,90 @@ export function AdvancedSettingsPanel({ tournament, editableFields, onSave }: Ad
       await apiClient.put(`/api/tournaments/${tournament.id}/map-pool`, {
         mapIds: selectedMapIds,
       });
-      toast({ title: 'Map pool saved' });
+      toast({ title: 'Map pool saved', description: 'Captains will veto from these maps.' });
     } catch (err: any) {
-      toast({ title: 'Map pool save failed', description: err.message || 'Please try again.', variant: 'destructive' });
+      toast({ title: "Couldn't save the map pool", description: err.message || 'Please try again.', variant: 'destructive' });
     } finally {
       setSavingMapPool(false);
     }
   }, [savingMapPool, selectedMapIds, tournament.id, toast]);
 
+  const lockNote = 'Locked once the tournament is live.';
+
   return (
-    <TooltipProvider delayDuration={300}>
-      <CommandHeader eyebrow="CONFIGURATION" title="Settings" />
+    <>
+      <CommandHeader
+        eyebrow="Configure"
+        title="Match settings"
+        description="Who reports results, how maps are chosen, which accounts players need, and where notifications go."
+      />
 
-      {/* Match Rules */}
       <CommandSection>
-        <p className="mb-4 border-b border-white/[0.05] pb-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-500/60">MATCH RULES</p>
-        <div className="space-y-4">
-          {/* Score Reported By */}
-          <div>
-            <p className="mb-2 text-sm font-semibold text-zinc-300">Score Reported By</p>
-            <div className="grid gap-1.5 sm:grid-cols-2">
+        <div className={FORM_MEASURE_CLASS}>
+          <FormSection title="Results">
+            <ChoiceGroup label="Who reports results" columns={2}>
               {SCORE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setForm((s) => ({ ...s, scoreReportedBy: opt.value }))}
-                  disabled={isFieldLocked('score_reported_by')}
-                  className={`flex items-center gap-2 border px-3 py-2.5 text-left transition-all disabled:pointer-events-none disabled:opacity-50 ${
-                    form.scoreReportedBy === opt.value
-                      ? 'border-rose-500/40 bg-rose-500/[0.06] text-white'
-                      : 'border-white/[0.07] bg-white/[0.02] text-zinc-400 hover:border-white/15 hover:bg-white/[0.04] hover:text-white'
-                  }`}
-                >
-                  <span className="text-sm font-semibold capitalize">{opt.label}</span>
-                  <InfoTip text={opt.description} />
-                </button>
+                <ChoiceCard key={opt.value} selected={form.scoreReportedBy === opt.value} disabled={isFieldLocked('score_reported_by')}
+                  onSelect={() => setForm((s) => ({ ...s, scoreReportedBy: opt.value }))} title={opt.label} description={opt.description} />
               ))}
-            </div>
-          </div>
-        </div>
-      </CommandSection>
-
-      {/* Game Features */}
-      {(gameFeatures.mapVeto || gameFeatures.assistedReporting) && (
-        <CommandSection>
-          <p className="mb-4 border-b border-white/[0.05] pb-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-500/60">GAME FEATURES</p>
-          <div className="border border-white/[0.06] bg-white/[0.01]">
-            {gameFeatures.mapVeto && (
-              <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-3">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-medium text-white">Map Veto</p>
-                  <InfoTip text="Teams ban/pick maps before each match." />
-                </div>
-                <Switch
-                  checked={form.mapVetoEnabled}
-                  onCheckedChange={(checked) => setForm((s) => ({ ...s, mapVetoEnabled: checked }))}
-                  disabled={isFieldLocked('map_pool')}
-                />
-              </div>
-            )}
-
+            </ChoiceGroup>
             {gameFeatures.assistedReporting && (
-              <div className="flex items-center justify-between px-3 py-3">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-sm font-medium text-white">Assisted Reporting</p>
-                  <InfoTip text="Auto-detect results from the game's API." />
-                </div>
-                <Switch
-                  checked={form.assistedReportingEnabled}
-                  onCheckedChange={(checked) => setForm((s) => ({ ...s, assistedReportingEnabled: checked }))}
-                />
-              </div>
+              <ToggleRow id="st-assisted" title="Pull results from Riot"
+                description="Captains pick the finished match from their history instead of typing scores."
+                checked={form.assistedReportingEnabled} onCheckedChange={(checked) => setForm((s) => ({ ...s, assistedReportingEnabled: checked }))}>
+                <Field label="Riot accounts required per team" htmlFor="st-riot" hint="Teams can't register until this many players have linked Riot. 0 to 5."
+                  lockedReason={isFieldLocked('required_account_links') ? lockNote : undefined}>
+                  <Input id="st-riot" type="number" min={0} max={5} value={form.requiredAccountLinks}
+                    onChange={(e) => setForm((s) => ({ ...s, requiredAccountLinks: parseInt(e.target.value, 10) || 0 }))}
+                    disabled={isFieldLocked('required_account_links')} className={cn(CONTROL_CLASS, 'w-28')} />
+                </Field>
+              </ToggleRow>
             )}
-          </div>
+          </FormSection>
 
-          {/* Map Pool — inline when veto enabled */}
-          {gameFeatures.mapVeto && form.mapVetoEnabled && (
-            <div className="mt-4 space-y-3">
-              <p className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-500/60">MAP POOL</p>
-              <TournamentMapPoolSelector
-                game={tournament.game || ''}
-                requiredCount={gameFeatures.mapPoolSize || 7}
-                availableMaps={availableMapsData ?? []}
-                selectedIds={selectedMapIds}
-                onChange={setSelectedMapIds}
-                mapVetoEnabled={form.mapVetoEnabled}
-                loading={mapsLoading}
-              />
-              <div className="flex justify-end">
-                <CommandButton
-                  onClick={handleSaveMapPool}
-                  disabled={savingMapPool}
-                  variant="primary"
-                  size="sm"
-                >
-                  {savingMapPool ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Map Pool'}
-                </CommandButton>
-              </div>
-            </div>
+          {gameFeatures.mapVeto && (
+            <FormSection title="Maps">
+              <ToggleRow id="st-veto" title="Map veto before each match"
+                description="Captains take turns banning and picking from your map pool."
+                checked={form.mapVetoEnabled} disabled={isFieldLocked('map_pool')}
+                onCheckedChange={(checked) => setForm((s) => ({ ...s, mapVetoEnabled: checked }))}>
+                <TournamentMapPoolSelector
+                  game={tournament.game || ''}
+                  requiredCount={gameFeatures.mapPoolSize || 7}
+                  availableMaps={availableMapsData ?? []}
+                  selectedIds={selectedMapIds}
+                  onChange={setSelectedMapIds}
+                  mapVetoEnabled={form.mapVetoEnabled}
+                  loading={mapsLoading}
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-zinc-500">The map pool saves separately from the settings below.</p>
+                  <CommandButton onClick={handleSaveMapPool} disabled={savingMapPool} variant="secondary" size="sm">
+                    {savingMapPool ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Saving" /> : 'Save map pool'}
+                  </CommandButton>
+                </div>
+              </ToggleRow>
+            </FormSection>
           )}
-        </CommandSection>
-      )}
 
-      {/* Account Links */}
-      <CommandSection>
-        <p className="mb-4 border-b border-white/[0.05] pb-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-500/60">ACCOUNT LINKS</p>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Required Account Links</Label>
-              <InfoTip text="Number of linked accounts (Steam, Riot, etc.) required to register." />
-            </div>
-            <Input
-              type="number"
-              min={0}
-              max={5}
-              value={form.requiredAccountLinks}
-              onChange={(e) => setForm((s) => ({ ...s, requiredAccountLinks: parseInt(e.target.value, 10) || 0 }))}
-              disabled={isFieldLocked('required_account_links')}
-              className="max-w-[120px] border-white/10 bg-black/30 text-white disabled:opacity-50"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Discord Link Count</Label>
-              <InfoTip text="Number of Discord accounts participants can link." />
-            </div>
-            <Input
-              type="number"
-              min={0}
-              max={4}
-              value={form.discordLinkCount}
-              onChange={(e) => setForm((s) => ({ ...s, discordLinkCount: parseInt(e.target.value, 10) || 0 }))}
-              disabled={isFieldLocked('discord_link_count')}
-              className="max-w-[120px] border-white/10 bg-black/30 text-white disabled:opacity-50"
-            />
-          </div>
+          <FormSection title="Accounts and notifications">
+            <Field label="Discord accounts required per team" htmlFor="st-discord" hint="0 means Discord isn't required. 1 is the captain only."
+              lockedReason={isFieldLocked('discord_link_count') ? lockNote : undefined}>
+              <Input id="st-discord" type="number" min={0} max={4} value={form.discordLinkCount}
+                onChange={(e) => setForm((s) => ({ ...s, discordLinkCount: parseInt(e.target.value, 10) || 0 }))}
+                disabled={isFieldLocked('discord_link_count')} className={cn(CONTROL_CLASS, 'w-28')} />
+            </Field>
+            <Field label="Discord webhook" htmlFor="st-webhook" optional hint="Posts registrations, results and disputes into a channel on your server."
+              lockedReason={isFieldLocked('discord_webhook_url') ? lockNote : undefined}>
+              <Input id="st-webhook" value={form.discordWebhookUrl} placeholder="https://discord.com/api/webhooks/…"
+                onChange={(e) => setForm((s) => ({ ...s, discordWebhookUrl: e.target.value }))}
+                disabled={isFieldLocked('discord_webhook_url')} className={CONTROL_CLASS} />
+            </Field>
+          </FormSection>
         </div>
       </CommandSection>
 
-      {/* Integrations */}
-      <CommandSection>
-        <p className="mb-4 border-b border-white/[0.05] pb-2.5 font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-rose-500/60">INTEGRATIONS</p>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Discord Webhook</Label>
-              <InfoTip text="Receive automated notifications in your Discord server." />
-            </div>
-            <Input
-              value={form.discordWebhookUrl}
-              onChange={(e) => setForm((s) => ({ ...s, discordWebhookUrl: e.target.value }))}
-              disabled={isFieldLocked('discord_webhook_url')}
-              placeholder="https://discord.com/api/webhooks/..."
-              className="border-white/10 bg-black/30 text-white placeholder:text-zinc-600 disabled:opacity-50"
-            />
-          </div>
-        </div>
-      </CommandSection>
-
-      <CommandActionBar>
-        <div className="flex items-center gap-3">
-          <DirtyIndicator isDirty={isDirty} />
-          <CommandButton
-            onClick={handleSave}
-            disabled={!isDirty || saving}
-            variant="primary"
-            size="sm"
-            slide
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
-          </CommandButton>
-        </div>
-      </CommandActionBar>
-    </TooltipProvider>
+      <PanelSaveBar isDirty={isDirty} saving={saving} onSave={handleSave} onDiscard={resetForm} />
+    </>
   );
 }

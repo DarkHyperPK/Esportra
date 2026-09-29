@@ -135,7 +135,7 @@ export const PrizeDistributionTab: React.FC<PrizeDistributionTabProps> = ({ tour
                     <div className="rounded-none border border-dashed border-white/10 py-8 text-center">
                         <Trophy className="w-8 h-8 text-gray-600 mx-auto mb-2" />
                         <p className="text-base text-zinc-400">No prize distribution configured</p>
-                        <p className="text-xs text-gray-600 mt-1">Edit the tournament to configure prize distribution from the wizard.</p>
+                        <p className="text-xs text-gray-600 mt-1">Set the prize split under Configure → Prize &amp; payouts.</p>
                     </div>
                 )}
             </section>

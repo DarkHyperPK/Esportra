@@ -6,15 +6,11 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
-import {
-  CommandHeader,
-  CommandSection,
-  CommandActionBar,
-  CommandButton,
-} from '@/components/management/CommandSurface';
+import { CommandHeader, CommandSection } from '@/components/management/CommandSurface';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { CONTROL_CLASS, Field, FORM_MEASURE_CLASS } from '@/components/ui/kit';
+import { cn } from '@/lib/utils';
+import { PanelSaveBar } from '../PanelSaveBar';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/lib/apiClient';
@@ -56,12 +52,14 @@ export function BrandingPanel({ tournament, editableFields, onSave }: BrandingPa
     streamUrl: tournament.stream_url || '',
   });
 
+  const resetForm = () => setForm({
+    bannerUrl: tournament.banner_url ?? null,
+    logoUrl: tournament.logo_url ?? null,
+    streamUrl: tournament.stream_url || '',
+  });
+
   useEffect(() => {
-    setForm({
-      bannerUrl: tournament.banner_url ?? null,
-      logoUrl: tournament.logo_url ?? null,
-      streamUrl: tournament.stream_url || '',
-    });
+    resetForm();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournament.id, tournament.updated_at]);
 
@@ -86,35 +84,34 @@ export function BrandingPanel({ tournament, editableFields, onSave }: BrandingPa
         logoUrl: form.logoUrl || null,
         streamUrl: form.streamUrl.trim() || undefined,
       });
-      toast({ title: 'Branding saved' });
+      toast({ title: 'Saved', description: 'The new look is live on your tournament page.' });
       onSave();
     } catch (err: any) {
-      toast({ title: 'Save failed', description: err.message || 'Please try again.', variant: 'destructive' });
+      toast({ title: "Couldn't save", description: err.message || 'Please try again.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   }, [isDirty, saving, form, tournament.id, toast, onSave]);
 
+  const lockNote = 'Locked once the tournament is live.';
+
   return (
     <>
       <CommandHeader
-        eyebrow="CONFIGURATION"
+        eyebrow="Configure"
         title="Branding"
-        description="Tournament banner image and logo for listings and pages."
+        description="The banner and logo players see in listings and on your tournament page, plus your stream."
       />
 
       <CommandSection>
-        <div className="space-y-6">
-          {/* Banner — constrained so it doesn't dominate the panel */}
-          <div className="space-y-2">
-            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Banner Image</Label>
-            <p className="text-xs text-zinc-500">Recommended 1920×480px.</p>
-            <div className={`max-w-lg ${isFieldLocked('banner_url') ? 'pointer-events-none opacity-50' : ''}`}>
+        <div className={cn(FORM_MEASURE_CLASS, 'space-y-8')}>
+          <Field label="Banner" hint="1920 × 480 px works best. Keep text away from the edges; phones crop them." lockedReason={isFieldLocked('banner_url') ? lockNote : undefined}>
+            <div className={cn('max-w-lg', isFieldLocked('banner_url') && 'pointer-events-none opacity-50')}>
               <ImageUploader
                 value={form.bannerUrl ?? ''}
                 onChange={(url) => setForm((s) => ({ ...s, bannerUrl: url || null }))}
                 aspectRatio="banner"
-                label="Tournament Banner"
+                label="Tournament banner"
                 helperText=""
                 bucket="system.assets.website"
                 folder={`Tournament-card-banners/${organizerName}`}
@@ -122,18 +119,15 @@ export function BrandingPanel({ tournament, editableFields, onSave }: BrandingPa
                 useTimestamp={false}
               />
             </div>
-          </div>
+          </Field>
 
-          {/* Logo */}
-          <div className="space-y-2">
-            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Logo / Thumbnail</Label>
-            <p className="text-xs text-zinc-500">Recommended 256×256px.</p>
+          <Field label="Logo" hint="Square, 256 × 256 px. Used in the dashboard header and small listings." lockedReason={isFieldLocked('logo_url') ? lockNote : undefined}>
             <div className={isFieldLocked('logo_url') ? 'pointer-events-none opacity-50' : ''}>
               <ImageUploader
                 value={form.logoUrl ?? ''}
                 onChange={(url) => setForm((s) => ({ ...s, logoUrl: url || null }))}
                 aspectRatio="logo"
-                label="Tournament Logo"
+                label="Tournament logo"
                 helperText=""
                 bucket="system.assets.website"
                 folder={`Tournament-logos/${organizerName}`}
@@ -141,37 +135,16 @@ export function BrandingPanel({ tournament, editableFields, onSave }: BrandingPa
                 useTimestamp={false}
               />
             </div>
-          </div>
+          </Field>
 
-          {/* Stream URL */}
-          <div className="space-y-2">
-            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">Stream URL</Label>
-            <p className="text-xs text-zinc-500">Official broadcast link shown on the tournament page.</p>
-            <Input
-              value={form.streamUrl}
-              onChange={(e) => setForm((s) => ({ ...s, streamUrl: e.target.value }))}
-              disabled={isFieldLocked('stream_url')}
-              placeholder="https://twitch.tv/..."
-              className="max-w-md border-white/10 bg-black/30 text-white placeholder:text-zinc-600 disabled:opacity-50"
-            />
-          </div>
+          <Field label="Stream link" htmlFor="br-stream" optional hint="Twitch, YouTube or Kick. Shown on the tournament page while matches are live." lockedReason={isFieldLocked('stream_url') ? lockNote : undefined}>
+            <Input id="br-stream" value={form.streamUrl} onChange={(e) => setForm((s) => ({ ...s, streamUrl: e.target.value }))}
+              disabled={isFieldLocked('stream_url')} placeholder="https://twitch.tv/yourchannel" className={cn(CONTROL_CLASS, 'max-w-md')} />
+          </Field>
         </div>
       </CommandSection>
 
-      <CommandActionBar>
-        <div className="flex items-center gap-3">
-          {isDirty && <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />}
-          <CommandButton
-            onClick={handleSave}
-            disabled={!isDirty || saving}
-            variant="primary"
-            size="sm"
-            slide
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
-          </CommandButton>
-        </div>
-      </CommandActionBar>
+      <PanelSaveBar isDirty={isDirty} saving={saving} onSave={handleSave} onDiscard={resetForm} />
     </>
   );
 }

@@ -6,25 +6,22 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, ChevronDown } from 'lucide-react';
-import {
-  CommandHeader,
-  CommandSection,
-  CommandActionBar,
-  CommandButton,
-} from '@/components/management/CommandSurface';
+import { ChevronDown } from 'lucide-react';
+import { CommandHeader, CommandSection } from '@/components/management/CommandSurface';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { CONTROL_CLASS, Field, FORM_MEASURE_CLASS } from '@/components/ui/kit';
+import { cn } from '@/lib/utils';
+import { PanelSaveBar } from '../PanelSaveBar';
 import { useToast } from '@/hooks/use-toast';
 import { apiClient } from '@/lib/apiClient';
 import { useDirtyState } from '@/components/organizer/tournament-manage/TournamentDashboardShell';
 import type { DashboardTournament } from '@/hooks/useTournamentDashboard';
 
 const REGIONS = [
-  { value: '', label: 'Select region…' },
-  { value: 'na-east', label: 'NA East' },
-  { value: 'na-west', label: 'NA West' },
+  { value: '', label: 'Choose a region' },
+  { value: 'na-east', label: 'North America East' },
+  { value: 'na-west', label: 'North America West' },
   { value: 'latam', label: 'Latin America' },
   { value: 'eu', label: 'Europe' },
   { value: 'me', label: 'Middle East' },
@@ -73,16 +70,17 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
   };
 
   const [form, setForm] = useState<FormState>(initialState);
+  const resetForm = () => setForm({
+    name: tournament.name || '',
+    description: tournament.description || '',
+    startDate: toDatetimeLocal(tournament.start_date),
+    endDate: toDatetimeLocal(tournament.end_date),
+    region: tournament.region || '',
+  });
 
   // Reset form when tournament changes
   useEffect(() => {
-    setForm({
-      name: tournament.name || '',
-      description: tournament.description || '',
-      startDate: toDatetimeLocal(tournament.start_date),
-      endDate: toDatetimeLocal(tournament.end_date),
-      region: tournament.region || '',
-    });
+    resetForm();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournament.id, tournament.updated_at]);
 
@@ -114,131 +112,62 @@ export function BasicInfoPanel({ tournament, editableFields, onSave }: BasicInfo
         endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
         region: form.region.trim() || undefined,
       });
-      toast({ title: 'Basic info saved' });
+      toast({ title: 'Saved', description: 'Players see the new details straight away.' });
       onSave();
     } catch (err: any) {
-      toast({ title: 'Save failed', description: err.message || 'Please try again.', variant: 'destructive' });
+      toast({ title: "Couldn't save", description: err.message || 'Please try again.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   }, [isDirty, saving, form, tournament.id, toast, onSave]);
 
+  const lockNote = 'Locked once the tournament is live.';
+
   return (
     <>
-      <CommandHeader eyebrow="CONFIGURATION" title="Basic Info" description="Tournament name, description, and scheduling dates." />
+      <CommandHeader eyebrow="Configure" title="Basic info" description="The name, description, dates and region players see on the listing and tournament page." />
 
       <CommandSection>
-        <div className="space-y-4">
-          {/* Name */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-              Tournament Name
-            </Label>
-            <Input
-              value={form.name}
-              onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
-              disabled={isFieldLocked('name')}
-              placeholder="Enter tournament name"
-              className="border-white/10 bg-black/30 text-white placeholder:text-zinc-600 disabled:opacity-50"
-            />
+        <div className={cn(FORM_MEASURE_CLASS, 'space-y-5')}>
+          <Field label="Tournament name" htmlFor="bi-name" hint="Shown on the listing, the bracket and every match page." lockedReason={isFieldLocked('name') ? lockNote : undefined}>
+            <Input id="bi-name" value={form.name} onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
+              disabled={isFieldLocked('name')} placeholder="e.g. Karachi Winter Cup" className={CONTROL_CLASS} />
+          </Field>
+
+          <Field label="Description" htmlFor="bi-description" hint="What's at stake, who it's for and anything players must know before signing up." lockedReason={isFieldLocked('description') ? lockNote : undefined}>
+            <Textarea id="bi-description" value={form.description} onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
+              disabled={isFieldLocked('description')} placeholder="Five-stack cup for teams across Pakistan…" rows={5}
+              className={cn(CONTROL_CLASS, 'h-auto resize-y py-3 text-sm leading-relaxed')} />
+          </Field>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Starts" htmlFor="bi-start" hint="Your local time." lockedReason={isFieldLocked('start_date') ? lockNote : undefined}>
+              <Input id="bi-start" type="datetime-local" value={form.startDate} onChange={(e) => setForm((s) => ({ ...s, startDate: e.target.value }))}
+                disabled={isFieldLocked('start_date')} className={CONTROL_CLASS} />
+            </Field>
+            <Field label="Ends" htmlFor="bi-end" optional lockedReason={isFieldLocked('end_date') ? lockNote : undefined}>
+              <Input id="bi-end" type="datetime-local" value={form.endDate} onChange={(e) => setForm((s) => ({ ...s, endDate: e.target.value }))}
+                disabled={isFieldLocked('end_date')} className={CONTROL_CLASS} />
+            </Field>
           </div>
 
-          {/* Description */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-              Description
-            </Label>
-            <Textarea
-              value={form.description}
-              onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
-              disabled={isFieldLocked('description')}
-              placeholder="Describe your tournament..."
-              rows={4}
-              className="border-white/10 bg-black/30 text-white placeholder:text-zinc-600 disabled:opacity-50"
-            />
-          </div>
-
-          {/* Dates */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                Start Date
-              </Label>
-              <Input
-                type="datetime-local"
-                value={form.startDate}
-                onChange={(e) => setForm((s) => ({ ...s, startDate: e.target.value }))}
-                disabled={isFieldLocked('start_date')}
-                className="border-white/10 bg-black/30 text-white disabled:opacity-50"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                End Date
-              </Label>
-              <Input
-                type="datetime-local"
-                value={form.endDate}
-                onChange={(e) => setForm((s) => ({ ...s, endDate: e.target.value }))}
-                disabled={isFieldLocked('end_date')}
-                className="border-white/10 bg-black/30 text-white disabled:opacity-50"
-              />
-            </div>
-          </div>
-
-          {/* Region */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-              Region
-            </Label>
+          <Field label="Region" htmlFor="bi-region" hint="The server region players connect to, or where the event takes place." lockedReason={isFieldLocked('region') ? lockNote : undefined}>
             <div className="relative max-w-sm">
-              <select
-                value={form.region}
-                onChange={(e) => setForm((s) => ({ ...s, region: e.target.value }))}
-                disabled={isFieldLocked('region')}
-                className="w-full appearance-none border border-white/10 bg-black/30 px-3 py-2 pr-8 text-sm text-white focus:border-rose-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {REGIONS.map((r) => (
-                  <option key={r.value} value={r.value} className="bg-zinc-900">{r.label}</option>
-                ))}
+              <select id="bi-region" value={form.region} onChange={(e) => setForm((s) => ({ ...s, region: e.target.value }))} disabled={isFieldLocked('region')}
+                className={cn(CONTROL_CLASS, 'w-full appearance-none border px-3 pr-8 text-sm')}>
+                {REGIONS.map((r) => <option key={r.value} value={r.value} className="bg-zinc-900">{r.label}</option>)}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" aria-hidden />
             </div>
-          </div>
+          </Field>
 
-          {/* Game (read-only after publish) */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-              Game
-            </Label>
-            <div className="px-0 py-1.5 font-mono text-sm text-zinc-400">
-              {tournament.game || 'Not set'}
-              {isFieldLocked('game') && (
-                <span className="ml-2 font-mono text-[10px] uppercase tracking-wider text-zinc-600">
-                  — Locked after publish
-                </span>
-              )}
-            </div>
-          </div>
+          <Field label="Game" lockedReason={isFieldLocked('game') ? 'The game can’t change once players have registered.' : undefined}>
+            <p className="text-sm text-zinc-200">{tournament.game || 'Not set'}</p>
+          </Field>
         </div>
       </CommandSection>
 
-      <CommandActionBar>
-        <div className="flex items-center gap-3">
-          {isDirty && (
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-label="Unsaved changes" />
-          )}
-          <CommandButton
-            onClick={handleSave}
-            disabled={!isDirty || saving}
-            variant="primary"
-            size="sm"
-            slide
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Changes'}
-          </CommandButton>
-        </div>
-      </CommandActionBar>
+      <PanelSaveBar isDirty={isDirty} saving={saving} onSave={handleSave} onDiscard={resetForm} />
     </>
   );
 }

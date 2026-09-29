@@ -125,6 +125,7 @@ export function PanelRouter({
         participants={participants}
         canActAsOwner={permissions.canActAsOwner}
         mockCount={mockCount}
+        onUpdate={onUpdate}
       />
     );
   }
@@ -132,7 +133,7 @@ export function PanelRouter({
   if (activeTab === 'stages') {
     return (
       <>
-        <CommandHeader eyebrow="OPERATIONS" title="Stages" description="Manage tournament stage structure and brackets." />
+        <CommandHeader eyebrow="Run" title="Stages" description="The structure of your event: each stage, its format and who advances." />
         {isBattleRoyale ? (
           <BRStageManagementTab
             tournamentId={tournament.id}
@@ -167,7 +168,7 @@ export function PanelRouter({
   if (activeTab === 'standings') {
     return (
       <>
-        <CommandHeader eyebrow="OPERATIONS" title="Standings" />
+        <CommandHeader eyebrow="Run" title="Standings" description="Final placings and how the prize pool is paid out to them." />
         <OrganizerStandingsTab
           tournament={{ id: tournament.id, prize_pool: tournament.prize_pool, currency: tournament.currency ?? 'USD' }}
           locked={tournament.status === 'completed' && !isSuperAdmin}
@@ -192,7 +193,7 @@ export function PanelRouter({
   if (activeTab === 'games' && isBattleRoyale) {
     return (
       <>
-        <CommandHeader eyebrow="OPERATIONS" title="Games" />
+        <CommandHeader eyebrow="Run" title="Games" description="Lobbies, results and points for every game in each stage." />
         <BRGamesTab
           tournamentId={tournament.id}
           tournamentStartDate={tournament.start_date || null}
@@ -223,7 +224,7 @@ export function PanelRouter({
   if (activeTab === 'announcements') {
     return (
       <>
-        <CommandHeader eyebrow="OPERATIONS" title="Announcements" />
+        <CommandHeader eyebrow="Community" title="Announcements" description="Messages to every registered team, shown on the tournament page and sent as notifications." />
         <TournamentAnnouncementPanel tournamentId={tournament.id} />
       </>
     );
@@ -232,7 +233,7 @@ export function PanelRouter({
   if (activeTab === 'bans') {
     return (
       <>
-        <CommandHeader eyebrow="OPERATIONS" title="Bans" />
+        <CommandHeader eyebrow="Community" title="Bans" description="Players and teams blocked from this tournament, and why." />
         <BanManagement tournamentId={tournament.id} />
       </>
     );
@@ -241,7 +242,7 @@ export function PanelRouter({
   if (activeTab === 'payments') {
     return (
       <>
-        <CommandHeader eyebrow="OPERATIONS" title="Payments" />
+        <CommandHeader eyebrow="Run" title="Payments" description="Entry-fee receipts waiting for you to approve or reject." />
         <PaymentManagement
           tournamentId={tournament.id}
           participants={participants}
@@ -329,8 +330,8 @@ export function PanelRouter({
   return (
     <CommandEmptyState
       icon={<LayoutDashboard className="h-5 w-5" />}
-      title="Panel not found"
-      description={`Unknown tab: ${activeTab}`}
+      title="This section doesn't exist"
+      description="It may have moved. Pick a section from the menu."
     />
   );
 }
