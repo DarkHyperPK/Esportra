@@ -171,7 +171,7 @@ export function CommandPageGrid({
 }) {
   return (
     <div className={cn('relative z-10 grid gap-3 px-3 py-3 lg:grid-cols-[200px_minmax(0,1fr)] xl:px-4', className)}>
-      {rail ? <aside className="relative z-30 space-y-4 overflow-visible">{rail}</aside> : null}
+      {rail ? <aside className="relative z-30 self-start space-y-4 overflow-visible lg:sticky lg:top-3">{rail}</aside> : null}
       <div className="min-w-0 space-y-2">{children}</div>
     </div>
   );

@@ -161,7 +161,7 @@ export function TournamentDashboardShell({
           rail={
             <>
               {/* Desktop Rail */}
-              <CommandRail className="hidden bg-card/80 md:block lg:sticky lg:top-20">{nav}</CommandRail>
+              <CommandRail className="hidden bg-card/80 md:block">{nav}</CommandRail>
 
               {/* Mobile Drawer */}
               <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>{nav}</MobileDrawer>
