@@ -13,6 +13,8 @@ Read from `.claude/company/projects/`:
 - Each `PROJ-XXX/proposal.md` — project name, status, CEO objective
 - Each `PROJ-XXX/tasks.md` — task states, owners, blockers
 - Each `PROJ-XXX/escalations.md` — open escalations
+- Each `PROJ-XXX/clarifications.md` — answered questions; any agent hand-off with status `NEEDS_CLARIFICATION` — questions still waiting for the CEO
+- `.claude/company/memory/design-log.md` — recent creative directions (to spot sameness)
 - `.claude/company/memory/INDEX.md` — recently completed projects (if exists)
 
 ## Output Format
@@ -37,6 +39,7 @@ Tasks:
   ⏳ TASK-005  QA                   (QA Lead)                     PLANNED
 
 Escalations: None
+Pending CEO questions: None   (or: 2 BLOCKING from Creative Lead, CPO - see handoffs)
 Pending CEO decisions: None
 
 ---
