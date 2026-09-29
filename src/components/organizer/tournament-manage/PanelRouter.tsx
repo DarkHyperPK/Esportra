@@ -16,6 +16,7 @@ import { OverviewPanel } from './panels/OverviewPanel';
 import { ParticipantsPanel } from './panels/ParticipantsPanel';
 import { SchedulePanel } from './panels/SchedulePanel';
 import { InvitationsPanel } from './panels/InvitationsPanel';
+import { StandingsPanel } from './panels/StandingsPanel';
 
 // Configuration panels
 import { BasicInfoPanel } from './panels/BasicInfoPanel';
@@ -30,7 +31,6 @@ import { AdvancedSettingsPanel } from './panels/AdvancedSettingsPanel';
 import { StageManagementTab } from '@/components/organizer/tabs/StageManagementTab';
 import { BRStageManagementTab } from '@/components/organizer/tabs/BRStageManagementTab';
 import { BRGamesTab } from '@/components/organizer/tabs/BRGamesTab';
-import { OrganizerStandingsTab } from '@/components/organizer/OrganizerStandingsTab';
 import BanManagement from '@/components/organizer/BanManagement';
 import TournamentAnnouncementPanel from '@/components/organizer/TournamentAnnouncementPanel';
 import PaymentManagement from '@/components/organizer/PaymentManagement';
@@ -167,13 +167,10 @@ export function PanelRouter({
 
   if (activeTab === 'standings') {
     return (
-      <>
-        <CommandHeader eyebrow="Run" title="Standings" description="Final placings and how the prize pool is paid out to them." />
-        <OrganizerStandingsTab
-          tournament={{ id: tournament.id, prize_pool: tournament.prize_pool, currency: tournament.currency ?? 'USD' }}
-          locked={tournament.status === 'completed' && !isSuperAdmin}
-        />
-      </>
+      <StandingsPanel
+        tournament={{ id: tournament.id, prize_pool: tournament.prize_pool, currency: tournament.currency ?? 'USD' }}
+        locked={tournament.status === 'completed' && !isSuperAdmin}
+      />
     );
   }
 

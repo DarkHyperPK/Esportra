@@ -13,7 +13,19 @@ import {
 import { BRScheduleTab } from '@/components/organizer/tabs/BRScheduleTab';
 import StageSchedulingConfig from '@/components/tournament/StageSchedulingConfig';
 import RoundSchedulingPanel from '@/components/tournament/RoundSchedulingPanel';
+import { FORMAT_LABELS } from '@/components/tournament/schedule/roundNaming';
 import type { DashboardTournament, DashboardStage } from '@/hooks/useTournamentDashboard';
+
+function readSelfPlay(config: unknown): boolean {
+  if (typeof config === 'string') {
+    try {
+      return Boolean((JSON.parse(config) as { self_play_enabled?: boolean })?.self_play_enabled);
+    } catch {
+      return false;
+    }
+  }
+  return Boolean((config as { self_play_enabled?: boolean } | null)?.self_play_enabled);
+}
 
 interface SchedulePanelProps {
   tournament: DashboardTournament;
@@ -36,7 +48,7 @@ export function SchedulePanel({
 
   return (
     <>
-      <CommandHeader eyebrow="Run" title="Schedule" description="When each round is played, how long teams have, and whether they can pick their own match times." />
+      <CommandHeader eyebrow="Run" title="Schedule" description="For each stage: who sets match times, how early check-in opens, and when every round is played." />
 
       {isBattleRoyale ? (
         <BRScheduleTab
@@ -59,46 +71,35 @@ export function SchedulePanel({
       ) : (
         <div>
           {sortedStages.map((stage, i) => {
-            const schedulingConfig =
-              typeof stage.config === 'string'
-                ? (() => { try { return JSON.parse(stage.config); } catch { return null; } })()
-                : stage.config;
-            const selfPlayEnabled = Boolean(schedulingConfig?.self_play_enabled);
-            const formatLabel = (stage.format || 'single_elimination')
-              .replace(/_/g, ' ')
-              .replace(/\b\w/g, (c) => c.toUpperCase());
-
+            const formatLabel = FORMAT_LABELS[stage.format || 'single_elimination'] ?? (stage.format || '').replace(/_/g, ' ');
             return (
-              <div key={stage.id} className={i > 0 ? 'border-t border-white/[0.08]' : ''}>
-                {/* Stage header — only shown when multiple stages */}
-                {sortedStages.length > 1 && (
-                  <div className="flex items-center gap-3 border-b border-white/[0.07] px-5 py-3 sm:px-6">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center bg-white/[0.06] font-mono text-xs font-bold text-zinc-300">
-                      {i + 1}
-                    </span>
-                    <p className="font-heading text-base font-bold text-white">{stage.name}</p>
-                    <span className="text-sm text-zinc-500">{formatLabel}</span>
-                  </div>
-                )}
-
-                {/* Two-column config grid */}
-                <div className="grid xl:grid-cols-2 xl:items-start xl:divide-x xl:divide-white/[0.07]">
-                  <StageSchedulingConfig
-                    stageId={stage.id}
-                    stageFormat={stage.format || 'single_elimination'}
-                    gameName={tournament.game || ''}
-                    onConfigChange={onUpdate}
-                  />
-                  <RoundSchedulingPanel
-                    stageId={stage.id}
-                    stageFormat={stage.format || 'single_elimination'}
-                    tournamentStartDate={tournament.start_date || null}
-                    tournamentEndDate={tournament.end_date || null}
-                    selfPlayEnabled={selfPlayEnabled}
-                    onScheduleApplied={onUpdate}
-                  />
+              <section
+                key={stage.id}
+                aria-labelledby={`stage-${stage.id}-title`}
+                className="border-b border-white/[0.07] last:border-b-0"
+              >
+                <div className="flex items-center gap-3 px-5 pt-6 sm:px-6">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center bg-white/[0.06] font-heading text-xs font-black tabular-nums text-zinc-300">
+                    {i + 1}
+                  </span>
+                  <h3 id={`stage-${stage.id}-title`} className="font-heading text-lg font-bold tracking-tight text-white">{stage.name}</h3>
+                  <span className="text-sm text-zinc-500">{formatLabel}</span>
                 </div>
-              </div>
+                <StageSchedulingConfig
+                  stageId={stage.id}
+                  stageFormat={stage.format || 'single_elimination'}
+                  gameName={tournament.game || ''}
+                  onConfigChange={onUpdate}
+                />
+                <RoundSchedulingPanel
+                  stageId={stage.id}
+                  stageFormat={stage.format || 'single_elimination'}
+                  tournamentStartDate={tournament.start_date || null}
+                  tournamentEndDate={tournament.end_date || null}
+                  selfPlayEnabled={readSelfPlay(stage.config)}
+                  onScheduleApplied={onUpdate}
+                />
+              </section>
             );
           })}
         </div>
