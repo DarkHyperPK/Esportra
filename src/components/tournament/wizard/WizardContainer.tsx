@@ -97,7 +97,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
 
     return (
         <CommandShell>
-            <div className="mx-auto max-w-4xl px-4 pb-6 pt-8 sm:px-6 md:pt-12">
+            <div className="px-4 pb-6 pt-8 sm:px-6 md:px-10 md:pt-12">
                 <PageIntro
                     eyebrow={isEditing ? 'Edit tournament' : 'Full setup'}
                     title={isEditing ? (data.name || 'Edit tournament') : 'Create a tournament'}
@@ -110,7 +110,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
                     <WizardProgress currentStep={currentStep} stepValidation={stepValidation} onStepClick={goToStep} steps={WIZARD_STEPS} />
                 </div>
 
-                <div className="mt-10 max-w-2xl">
+                <div className="mt-10 max-w-4xl">
                     <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
                 </div>
 

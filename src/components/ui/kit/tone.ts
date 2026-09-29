@@ -62,5 +62,5 @@ export const CONTROL_CLASS =
 
 export const CONTROL_ERROR_CLASS = 'border-red-500/70 hover:border-red-500/70';
 
-/** Readable measure for forms: fields never stretch wider than this. */
-export const FORM_MEASURE_CLASS = 'max-w-2xl';
+/** Readable measure for forms: wide enough to use the viewport on data-dense screens. */
+export const FORM_MEASURE_CLASS = 'max-w-4xl';
