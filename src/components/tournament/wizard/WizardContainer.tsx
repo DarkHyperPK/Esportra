@@ -102,7 +102,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
 
     return (
         <CommandShell>
-            <div className="px-4 pb-6 pt-8 sm:px-6 md:px-10 md:pt-12">
+            <div className="mx-auto max-w-6xl px-4 pb-6 pt-6 sm:px-6 md:px-10 md:pt-8">
                 <PageIntro
                     eyebrow={isEditing ? 'Edit tournament' : 'Full setup'}
                     title={isEditing ? (data.name || 'Edit tournament') : 'Create a tournament'}
@@ -111,17 +111,17 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
                         : 'Seven short steps. Your progress saves on this device, so you can leave and come back.'}
                 />
 
-                <div className="mt-10">
+                <div className="mt-6">
                     <WizardProgress currentStep={currentStep} stepValidation={stepValidation} onStepClick={goToStep} steps={WIZARD_STEPS} />
                 </div>
 
-                <div ref={stepAreaRef} className="mt-10 max-w-4xl scroll-mt-6">
+                <div ref={stepAreaRef} className="mt-6 scroll-mt-4">
                     <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
                 </div>
 
                 <ActionBar
                     sticky
-                    className="mt-10"
+                    className="mt-6"
                     start={
                         <>
                             {!isFirstStep && (
