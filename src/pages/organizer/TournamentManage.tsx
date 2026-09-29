@@ -442,7 +442,7 @@ const TournamentDashboard = () => {
   } = useTournamentAccess(slug);
 
   const tournament = dashboardData?.tournament;
-  useStageRealtime({ tournamentId: tournament?.id });
+  useStageRealtime({ tournamentId: tournament?.id, dashboardSlug: slug, dashboardUserId: user?.id });
   const tournamentModeFeatures = getEffectiveGameFeatures(tournament?.game || '', tournament?.game_mode);
   const registrationParticipantMode = getParticipantMode(tournament?.game || '', tournament?.game_mode);
   const participants = useMemo(

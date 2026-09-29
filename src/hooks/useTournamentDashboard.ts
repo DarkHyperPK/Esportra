@@ -222,8 +222,8 @@ export function useTournamentDashboard(slug: string | undefined) {
             };
         },
         enabled:              !!slug,
-        staleTime:            1000 * 60 * 5,
-        refetchOnWindowFocus: false,
-        refetchOnReconnect:   false,
+        staleTime:            1000 * 60,
+        refetchOnWindowFocus: true,
+        refetchOnReconnect:   true,
     });
 }

@@ -10,6 +10,11 @@ import { useHub } from '@/hooks/useSignalR';
 import { HubPaths } from '@/lib/signalrClient';
 import { stageSchedulingConfigQueryKey } from '@/hooks/useMatchScheduling';
 
+type TournamentStatusChangedPayload = {
+  tournamentId?: string;
+  status?: string;
+};
+
 export type StageUpdatedPayload = {
   stageId?: string;
   tournamentId?: string;
@@ -22,6 +27,9 @@ type Options = {
   enabled?: boolean;
   onStageUpdated?: (payload: StageUpdatedPayload) => void;
   onVersionCreated?: (payload: { versionId?: string; tournamentId?: string }) => void;
+  /** When provided, invalidates the tournament-dashboard query on TournamentStatusChanged. */
+  dashboardSlug?: string;
+  dashboardUserId?: string;
 };
 
 const tournamentJoinCounts = new Map<string, number>();
@@ -68,8 +76,11 @@ export function useStageRealtime({
   enabled = true,
   onStageUpdated,
   onVersionCreated,
+  dashboardSlug,
+  dashboardUserId,
 }: Options) {
   const conn = useHub(HubPaths.Bracket);
+  const notifConn = useHub(HubPaths.Notification);
   const queryClient = useQueryClient();
   const isEnabled = enabled && !!tournamentId;
 
@@ -125,6 +136,22 @@ export function useStageRealtime({
       void leaveTournamentGroup(conn, tournamentId);
     };
   }, [conn, isEnabled, onStageUpdated, onVersionCreated, queryClient, tournamentId]);
+
+  // Invalidate the tournament dashboard when the tournament status changes (e.g. → ongoing).
+  // The NotificationHub is already connected at app level via NotificationProvider.
+  useEffect(() => {
+    if (!tournamentId || !dashboardSlug || !dashboardUserId) return;
+
+    const handleTournamentStatusChanged = (payload: TournamentStatusChangedPayload) => {
+      if (String(payload?.tournamentId) !== tournamentId) return;
+      queryClient.invalidateQueries({ queryKey: ['tournament-dashboard', dashboardSlug, dashboardUserId] });
+    };
+
+    notifConn.on('TournamentStatusChanged', handleTournamentStatusChanged);
+    return () => {
+      notifConn.off('TournamentStatusChanged', handleTournamentStatusChanged);
+    };
+  }, [notifConn, tournamentId, dashboardSlug, dashboardUserId, queryClient]);
 }
 
 export default useStageRealtime;
