@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { EYEBROW_CLASS, HINT_CLASS, LABEL_CLASS } from '@/components/ui/kit';
 import { cn } from '@/lib/utils';
 import type { RoundInfo, BoMode } from '@/types/stage';
 
@@ -64,7 +65,7 @@ export function RoundBoConfigSection({
           onOverridesChange(newOverrides);
         }
       } catch (err) {
-        setError('Failed to load round structure');
+        setError('Couldn’t load this stage’s rounds. Close and reopen to try again.');
         console.error('Failed to fetch round structure:', err);
       } finally {
         setLoading(false);
@@ -90,23 +91,18 @@ export function RoundBoConfigSection({
     <div className="space-y-4">
       <div
         className={cn(
-          "flex items-center justify-between p-3 rounded-lg transition-colors",
+          "flex items-center justify-between gap-4 p-4 transition-colors",
           boMode === 'per_round'
-            ? "bg-emerald-500/10 border border-emerald-500/30"
-            : "bg-black/20 border border-white/5"
+            ? "bg-white/[0.04] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)]"
+            : "bg-white/[0.02] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.07)]"
         )}
       >
         <div className="space-y-0.5">
-          <Label className={cn(
-            "font-medium",
-            boMode === 'per_round' ? "text-emerald-400" : "text-gray-300"
-          )}>
-            {boMode === 'per_round' ? 'Per-Round Series Format (Active)' : 'Enable Per-Round Series Format'}
-          </Label>
-          <p className="text-xs text-gray-500">
+          <Label className={LABEL_CLASS}>Different length per round</Label>
+          <p className={HINT_CLASS}>
             {boMode === 'per_round'
-              ? 'Configure BO format individually for each round below'
-              : 'Set different BO formats for different rounds (e.g., BO1 early, BO5 finals)'
+              ? 'Set each round below. Rounds you leave alone use the stage default.'
+              : 'For example, best of 1 early on and best of 5 in the final.'
             }
           </p>
         </div>
@@ -121,22 +117,22 @@ export function RoundBoConfigSection({
         <div className="mt-4">
           <div className="space-y-4">
             {loading ? (
-              <div className="flex items-center gap-2 text-gray-400 py-2 pl-4">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Loading rounds...</span>
+              <div className="flex items-center gap-2 py-2 text-zinc-400">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                <span className="text-sm">Loading rounds…</span>
               </div>
             ) : error ? (
-              <p className="text-sm text-red-400 pl-4">{error}</p>
+              <p className="text-sm text-red-300">{error}</p>
             ) : rounds.length === 0 ? (
-              <p className="text-sm text-gray-500 pl-4">
-                Set bracket size to configure rounds
+              <p className={HINT_CLASS}>
+                Set how many teams play in this stage to see its rounds.
               </p>
             ) : (
               <>
                 {format === 'double_elimination' && (
                   <>
                     <RoundGroup
-                      title="Winners Bracket"
+                      title="Upper bracket"
                       rounds={rounds.filter(r => r.bracketType === 'winners')}
                       overrides={roundBoOverrides}
                       defaultBestOf={defaultBestOf}
@@ -145,7 +141,7 @@ export function RoundBoConfigSection({
                       disabled={disabled}
                     />
                     <RoundGroup
-                      title="Losers Bracket"
+                      title="Lower bracket"
                       rounds={rounds.filter(r => r.bracketType === 'losers')}
                       overrides={roundBoOverrides}
                       defaultBestOf={defaultBestOf}
@@ -154,7 +150,7 @@ export function RoundBoConfigSection({
                       disabled={disabled}
                     />
                     <RoundGroup
-                      title="Grand Final"
+                      title="Grand final"
                       rounds={rounds.filter(r => r.bracketType === 'final')}
                       overrides={roundBoOverrides}
                       defaultBestOf={defaultBestOf}
@@ -206,26 +202,25 @@ function RoundGroup({
   if (rounds.length === 0) return null;
 
   return (
-    <div className="space-y-2 pl-3 border-l-2 border-l-white/10">
-      <h5 className="text-xs font-medium uppercase tracking-wider text-gray-400">
+    <div className="space-y-2">
+      <h5 className={EYEBROW_CLASS}>
         {title}
       </h5>
-      <div className="grid gap-2">
+      <div className="grid gap-px bg-white/[0.06]">
         {rounds.map((round) => (
           <div
             key={round.key}
             className={cn(
-              "flex items-center justify-between py-2 px-3 rounded-md",
-              "bg-black/20 border border-white/5"
+              "flex items-center justify-between bg-card px-4 py-2"
             )}
           >
-            <span className="text-sm text-gray-300">{round.label}</span>
+            <span className="text-sm text-zinc-200">{round.label}</span>
             <Select
               value={String(overrides[round.key] ?? defaultBestOf)}
               onValueChange={(val) => onRoundBoChange(round.key, Number(val))}
               disabled={disabled}
             >
-              <SelectTrigger className="w-32 h-8 bg-black/30 border-white/10 text-sm">
+              <SelectTrigger className="h-9 w-36 rounded-none border-white/10 bg-black/30 text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
