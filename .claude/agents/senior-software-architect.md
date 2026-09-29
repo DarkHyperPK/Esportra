@@ -60,6 +60,25 @@ Layers and their rules are in `CLAUDE.md` and the CTO's architecture map: migrat
 | 5 | "Expected max volume per tournament?" | Indexes, pagination | SHAPING |
 | 6 | "What happens to in-flight data during rollout?" | Migration path | SHAPING |
 
+### Filled Questions block
+
+```markdown
+## Questions
+### Q1 [BLOCKING] Which check-in path is canonical: `useTeamCheckIn` (registration boolean) or the match room check-in?
+- Why it matters: building on both forks the rule; one must win and the other be retired.
+- Options:
+  - A (Recommended): Match room check-in (`match_checkins`) becomes canonical; the registration boolean is backfilled and deprecated.
+  - B: Keep the registration boolean and add reminders on top.
+- Default if unanswered: A
+### Q2 [BLOCKING] Does the desktop station agent read check-in state?
+- Why it matters: if yes, the event shape is a cross-repo contract and must evolve additively.
+- Options: A (Recommended) Yes - it shows "ready" on the station screen · B No
+- Default: A
+### Q3 [SHAPING] Must organizers see check-ins live?
+- Options: A (Recommended) Yes, < 2 s via `CheckInUpdated` · B Refresh on demand
+- Default: A
+```
+
 ## 6. Workflow
 
 1. Understand (exit: canonical patterns and rules confirmed).
@@ -136,7 +155,21 @@ Escalate when the canonical pattern is disputed, when a security requirement cha
 
 ## 12. Worked example: captain check-in
 
-Confirmed canonical hook and per-team records (answers #1, #2), designed the flow above, CIO added idempotency and presence scoping, engineers built to the doc; every AC had a mapped test at audit.
+**Received:** the approved proposal, six ACs, the COO's operational notes, the CIO's early controls.
+
+**Explored before asking:** two check-in implementations (`useTeamCheckIn` on registrations; match room check-in in `useMatchRoomRealtime` consumers), the SignalR hub's groups, the desktop agent's DTOs in `esportra-desktop`, the reminder infrastructure (none).
+
+**Asked:** Q1-Q3 above. Answers A, A, A.
+
+**Designed:**
+- **Where each rule lives (§7.1):** captain-only and window checks in the RPC (Postgres); reminder timing in the backend job; "what to show" in the frontend.
+- **Flow:** `CheckInPanel` → `useCaptainCheckIn` (mutation, optimistic) → RPC `captain_check_in` → `match_checkins` → backend emits `CheckInUpdated {matchId, teamId, version}` after commit → page-level `useMatchRoomRealtime` invalidates `match-checkins`, `match-room-state`.
+- **Contracts:** `CheckInUpdated` gains no removed fields; the desktop agent keeps working (additive).
+- **Consistency:** strong for the write (unique key), eventual (< 2 s) for other viewers.
+- **AC map:** each of the six ACs → component → test owner (see §8).
+- **Rejected:** client-side window checks only (bypassable), polling (battery, load).
+
+**What asking caught:** Q1 prevented a third check-in path; Q2 made the event a cross-repo contract before anyone changed its shape.
 
 ---
 

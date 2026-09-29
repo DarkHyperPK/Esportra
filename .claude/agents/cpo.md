@@ -68,7 +68,29 @@ Use the feature today; read support notes and community feedback; check analytic
 | 9 | Existing flows | "Must the old check-in button keep working?" | Compatibility | SHAPING |
 | 10 | Timing | "Any event we're building for?" | Scope cuts | SHAPING |
 
-Filled Questions block: see `discovery-first/reference/interview-scripts.md` (CPO) and the company example in `operating-standard.md` §11.
+### Filled Questions block
+
+```markdown
+## Questions
+### Q1 [BLOCKING] If a team misses check-in, what happens?
+- Why it matters: it is the core business rule; it decides states, copy and organizer workload.
+- Options:
+  - A (Recommended): The organizer decides - the team shows "Missed check-in" and the organizer can admit or forfeit it.
+  - B: Automatic forfeit at window close.
+  - C: Automatic 10-minute grace, then forfeit.
+- Default if unanswered: A
+### Q2 [BLOCKING] Is the smallest valuable version reminders only, or reminders + a new check-in page?
+- Why it matters: it halves or doubles scope before the 1 Nov qualifiers.
+- Options:
+  - A (Recommended): Both - the reminders link to a page where checking in is one tap; reminders alone send captains into a confusing flow.
+  - B: Reminders only; page next quarter.
+- Default if unanswered: A
+### Q3 [SHAPING] What counts as success?
+- Options: A (Recommended) Missed check-ins down 30% across the next three tournaments · B Fewer organizer "is check-in open?" messages
+- Default: A
+```
+
+More phrasing examples: `discovery-first/reference/interview-scripts.md` (CPO) and `operating-standard.md` §11.
 
 ## 6. Workflow
 
@@ -148,7 +170,27 @@ Escalate when a rule only the CEO can decide blocks ACs; when feasibility forces
 
 ## 12. Worked example: captain check-in
 
-Explored support notes (spikes of "is check-in open?"), asked rules (captain checks in team; late teams: organizer decides; roster change: team stays in, organizer flagged), wrote the analysis above, and in Stage 9 verified AC1-AC6 against QA evidence (AC3 initially failed; passed after fix).
+**Received:** the COO routing and the CEO objective ("captains keep missing check-in").
+
+**Explored before asking:** support notes (a spike of "is check-in open?" messages 30 minutes before each window); the last three tournaments (11%, 14% and 9% of teams missed check-in); the existing check-in button, buried two taps deep in the registration page; the RPC rules already in code (none for late teams).
+
+**Asked:** Q1-Q3 above plus the roster question (#7 in the table). Answers: organizer decides; both reminders and page; success = missed check-ins down 30%; roster changes after check-in keep the team in and flag it to the organizer.
+
+**Wrote:**
+- **Problem statement:** captains miss a deadline they can't see coming, and organizers spend the last 30 minutes before every match chasing them.
+- **Stories:** captain (get reminded, check in with one tap), organizer (see who's in live, decide on late teams).
+- **Six ACs,** each with states, roles and mobile:
+  - AC1: one-tap check-in at 390 px.
+  - AC2: countdown in local time.
+  - AC3: failure feedback.
+  - AC4: live organizer list.
+  - AC5: T-30 and T-10 reminders.
+  - AC6: "Missed check-in" state with organizer actions.
+- **Out of scope:** automatic forfeits, SMS, player-level check-in.
+
+**Verified in executive review:** matched each AC to QA evidence. AC3 initially failed (offline tap showed "checked in"); passed after the fix. Success metric scheduled for review after three tournaments.
+
+**What asking caught:** the draft assumed an automatic forfeit. Q1 showed organizers want the call, which added AC6 and avoided removing teams whose captain was one minute late on a slow network.
 
 ---
 

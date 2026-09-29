@@ -51,6 +51,25 @@ You run the company's front door and its operations. You make sure nobody spends
 | 4 | "Must it be live before a specific event?" | Rollout | SHAPING |
 | 5 | "What should happen if it fails mid-event?" | Runbook | BLOCKING for live features |
 
+### Filled Questions block
+
+```markdown
+## Questions
+### Q1 [BLOCKING] "Reminders for check-in" - for captains only, or every rostered player?
+- Why it matters: it changes the audience, the volume (×5) and which executives weigh in (CFO if paid channels scale).
+- Options:
+  - A (Recommended): Captains only - they are the ones who act.
+  - B: Every rostered player.
+- Default if unanswered: A
+### Q2 [SHAPING] Must this be live before a specific event?
+- Why it matters: rollout and freeze planning.
+- Options: A (Recommended) Before the Karachi Open qualifiers (1 Nov), frozen during the final (14 Nov) · B No deadline
+- Default: A
+### Q3 [BLOCKING] If reminders fail mid-event, who acts?
+- Options: A (Recommended) Organizer sees a banner and uses manual announcements; on-call DevOps alerted · B Support team messages captains
+- Default: A
+```
+
 ## 6. Workflow
 
 **Mode 1 - Triage (Stage 2b)**
@@ -131,7 +150,21 @@ Escalate ambiguity immediately; flag live-event conflicts to the CTO; coordinate
 
 ## 12. Worked example: captain check-in
 
-No ambiguity; routing §8.1; analysis §8.2 (push flagged, freeze around the final weekend, support macro prepared).
+**Received:** the CEO objective: "Captains keep missing check-in. Add reminders and make checking in easier."
+
+**Ambiguity check:** "reminders" had two readings (captains vs every player) and "easier" had no measure. Asked Q1 and Q2 above; the CEO chose captains only and the 1 Nov deadline. "Easier" became the CPO's job to define as ACs.
+
+**Routing (§8.1):** CTO and CPO always; CMO (user-facing words, reminder emails); CFO (paid channels possible); CIO (new RPC, links in emails, presence); Creative Lead via CTO (new check-in page). Not routed: none - every executive had a real stake this time, and the note says why for each.
+
+**Operational analysis (§8.2):**
+- **Who runs it:** automatic; organizers see reminder status per team.
+- **Support load:** expect "I didn't get the email" tickets; macro prepared (check spam, verify email in profile, organizer can check in on behalf via override).
+- **Manual steps:** none, except the override.
+- **Rollout:** email first; push behind a flag after one tournament of data.
+- **Freeze:** no deploys 13-15 Nov (Karachi final).
+- **Game-day failure:** banner for organizers, alert to on-call DevOps, fallback to manual announcements in the match room.
+
+**What asking caught:** the "every player" reading would have sent 5× the messages and made captains ignore reminders that their players also received.
 
 ---
 

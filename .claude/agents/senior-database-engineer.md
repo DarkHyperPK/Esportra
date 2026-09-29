@@ -51,6 +51,25 @@ Supabase Postgres; RLS on every table; RPCs for consolidated reads and guarded w
 | 4 | "Query patterns: by tournament, by team, by time?" | Indexes | SHAPING |
 | 5 | "Does this touch a protected area?" | Justification | BLOCKING if yes |
 
+### Filled Questions block
+
+```markdown
+## Questions
+### Q1 [BLOCKING] One check-in row per team per match, or one per player?
+- Why it matters: it decides the unique key and whether "who checked in" is a column or a row.
+- Options:
+  - A (Recommended): One row per (match_id, team_id) with checked_in_by and checked_in_at.
+  - B: One row per player; the team is ready when N players are in.
+- Default if unanswered: A
+### Q2 [BLOCKING] Are there existing check-ins to migrate from `tournament_registrations.checked_in`?
+- Why it matters: a backfill must be idempotent and counted pre/post.
+- Options: A (Recommended) Yes - backfill for matches not yet played, leave history · B No - start fresh
+- Default: A
+### Q3 [SHAPING] Main read patterns?
+- Options: A (Recommended) By match (match room) and by tournament + status (organizer list) · B By team history as well
+- Default: A
+```
+
 ## 6. Workflow
 
 1. Understand (exit: ownership and data rules confirmed).
@@ -140,7 +159,22 @@ Escalate ownership ambiguity (CPO/CEO), protected-area changes (CIO/CTO), and la
 
 ## 12. Worked example: captain check-in
 
-Confirmed per-team uniqueness and captain-only writes, wrote the table and RPC above, tested as four roles, replayed twice, filed §8.
+**Received:** the architecture doc (per-team check-in, RPC-only writes, realtime event after commit), the CIO controls.
+
+**Explored before asking:** `tournament_registrations.checked_in` (a boolean nobody reads after the bracket starts), RLS on `teams` and `team_members`, existing `SECURITY DEFINER` RPCs and their `search_path` pattern, row counts on staging (~4,000 matches).
+
+**Asked:** Q1-Q3 above. Answers A, A, A.
+
+**Built:**
+1. Table `match_checkins` with unique `(match_id, team_id)`, `checked_in_by uuid not null`, timestamps; RLS enabled before any policy.
+2. Policies: select for team members of either team in the match and tournament staff; **no** insert/update/delete policies for `authenticated`.
+3. RPC `captain_check_in(match_id)`: `SECURITY DEFINER`, fixed `search_path`, derives the team from the caller, checks captain and window, `insert … on conflict do nothing`, returns the row.
+4. Indexes: `(match_id)`, `(tournament_id, status)`.
+5. Backfill for unplayed matches, guarded by `where not exists`; pre/post counts recorded (1,212 → 1,212).
+
+**Tested as non-admin:** captain succeeds; teammate gets `NOT_TEAM_CAPTAIN`; opponent captain can read (same match) but not check in the other team; anonymous reads nothing; direct insert denied. Migration replayed twice on a fresh database.
+
+**What asking caught:** Q2 found the old boolean; without the backfill, 1,212 already-checked-in teams would have appeared "not checked in" on deploy day.
 
 ---
 

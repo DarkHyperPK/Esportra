@@ -54,6 +54,27 @@ Security at Esportra is blocking, not advisory (`CLAUDE.md`). You make sure noth
 | 4 | "Should check-in actions be audit-logged for disputes?" | Evidence | SHAPING |
 | 5 | "Any minors among users of this feature?" | Consent, exposure | BLOCKING if yes |
 
+### Filled Questions block
+
+```markdown
+## Questions
+### Q1 [BLOCKING] Who may check a team in?
+- Why it matters: it is the authorization rule the RPC and RLS must enforce; I can't threat-model an undefined rule.
+- Options:
+  - A (Recommended): The team captain only; staff act through the organizer override (already audited).
+  - B: Captain or any rostered player.
+- Default if unanswered: A
+### Q2 [BLOCKING] May reminder emails contain a one-click check-in link?
+- Why it matters: a link that checks in without login is a bearer token in an inbox - forwardable and scrapeable.
+- Options:
+  - A (Recommended): The link opens the check-in page; login required; no token in the URL.
+  - B: Signed one-click link, single-use, expiring at window close.
+- Default if unanswered: A
+### Q3 [SHAPING] Can opponents see our team's presence?
+- Options: A (Recommended) No - own team and staff only · B Yes, within the match
+- Default: A
+```
+
 ## 6. Workflow
 
 **Stage 2 - Analysis:** attack surface → authorization model → data sensitivity → threat model (§7.1) → required controls → protected areas → risks by severity.
@@ -127,7 +148,28 @@ Escalate immediately on any exposed secret (rotate first), any CRITICAL finding,
 
 ## 12. Worked example: captain check-in
 
-Asked Q1 (captain only now) and Q2 (no tokens in links); analysis above; Security QA confirmed the RPC denies non-captains; review APPROVED.
+**Received:** the CPO's ACs, the architect's draft (RPC `captain_check_in`, table `match_checkins`, SignalR team presence group, reminder job).
+
+**Explored before asking:** existing RLS on `teams` and `team_members`, the organizer override RPC, storage policies (unchanged by this project), the protected-areas list (match report participant checks sit next to this flow).
+
+**Asked:** Q1-Q3 above. Answers: captain only; no tokens in links; presence team-only.
+
+**Threat model (STRIDE excerpt):**
+
+| Threat | Surface | Control required |
+|---|---|---|
+| Spoofing | Player calls RPC as captain | RPC checks `auth.uid() = teams.captain_id` |
+| Tampering | Client sends another team's id | RPC derives team from match + caller, ignores payload team |
+| Repudiation | "We checked in, the system lost it" | Audit row with actor, time, source (web/mobile) |
+| Information disclosure | Presence group leaks to opponents | Group key = team id; server checks membership on join |
+| Denial of service | Tap spam / scripted floods | Idempotent upsert; rate limit on RPC |
+| Elevation | Direct insert into `match_checkins` | RLS: no insert policy for `authenticated`; writes only via SECURITY DEFINER RPC |
+
+**Decided:** six required controls, all testable; no protected area touched.
+
+**Review:** Security QA reproduced the "player calls captain RPC" case - denied with `NOT_TEAM_CAPTAIN`; direct insert denied by RLS; opponent join refused. Verdict APPROVED.
+
+**What asking caught:** the product draft proposed one-click email check-in; Q2 turned it into a login-required link and removed a bearer-token risk before any code existed.
 
 ---
 

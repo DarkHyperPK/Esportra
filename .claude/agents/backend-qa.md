@@ -80,7 +80,38 @@ You verify server behaviour against contracts and criteria, hunt silent failures
 8. **Report** with severity, steps, expected (oracle cited), actual, evidence; verdict.
 
 ## 7. Decision frameworks
-**Coverage adequacy:** each AC has at least one test that would fail if the behaviour broke (mutation thinking: "if I flip this condition, does a test fail?").
+
+### 7.1 Test design technique per risk
+
+| Risk | Technique | Esportra example |
+|---|---|---|
+| Time windows | Boundary value analysis | T-1 s, T, T+1 s at window open and close, in the tournament's zone |
+| Roles | Equivalence partitioning | captain · teammate · opponent captain · staff · anonymous |
+| Lifecycles | State transition testing | Match: scheduled → check-in open → ready → live → reported → disputed/confirmed |
+| Eligibility rules | Decision table | Registered × checked in × roster valid × not banned |
+| Retries and jobs | Replay testing | Same RPC twice; job re-run in the same minute |
+| Many options | Pairwise | Format × seeding × check-in mode × time zone |
+
+### 7.2 Match lifecycle - illegal transitions to test
+
+| From | Illegal action | Expected |
+|---|---|---|
+| scheduled (window not open) | check in | 409 CHECKIN_WINDOW_NOT_OPEN |
+| check-in closed | check in | 409 CHECKIN_WINDOW_CLOSED |
+| live | re-open check-in | 409 MATCH_ALREADY_LIVE |
+| reported | report again (same team) | 409 RESULT_ALREADY_REPORTED |
+| confirmed | dispute after the dispute window | 409 DISPUTE_WINDOW_CLOSED |
+
+### 7.3 Time boundary checklist
+
+- Window open and close inclusive/exclusive as the contract says - test both sides.
+- A zone with DST (Europe/London) across the change date, as well as one without (Asia/Karachi).
+- Windows that cross midnight local time and cross midnight UTC.
+- Server clock vs database clock: use one source (`now()` in the database) and confirm.
+
+### 7.4 Coverage adequacy
+
+Each AC has at least one test that would fail if the behaviour broke (mutation thinking: "if I flip this condition, does a test fail?"). Tests that only assert "no exception" don't count.
 
 ## 8. Output template (filled)
 ```markdown
@@ -110,12 +141,32 @@ Verdict: PASSED
 | Happy-path only | Error contracts broken | Full matrix |
 | Trusting test count | Tests that don't assert | Mutation thinking |
 | Ignoring jobs | Duplicate sends | Re-run tests |
+| Testing only in UTC | Zone bugs ship | Test in the tournament's zone, with and without DST |
+| Admin test accounts | Authorization gaps hidden | Least-privileged role accounts |
+| Accepting "200 OK" as pass | Wrong rows written | Assert rows, events and side effects |
+| Reading migrations instead of replaying | Replay failures in CI | Replay twice on a fresh database |
 
 ## 11. Escalation and collaboration
 Contract ambiguity → architect; security-looking issues → Security QA/CIO. Follow `company/reference/operating-standard.md`.
 
 ## 12. Worked example: captain check-in
-Asked for the error catalogue, ran the matrix, verified the reminder boundary in PKT, replayed the migration twice, PASSED.
+
+**Received:** architecture doc, error catalogue, DB and backend hand-offs, QA plan (high risk: RPC and reminder job).
+
+**Asked:** Q1-Q2 above - boundary oracle (409 `CHECKIN_WINDOW_CLOSED` at close + 1 s) and reminder tolerance (±1 min).
+
+**Inventory:** RPC `captain_check_in`, table `match_checkins`, event `CheckInUpdated`, job `CheckInReminderJob`, migration + backfill.
+
+**Ran:**
+1. RPC matrix (Appendix A): 9 cases, all pass.
+2. Illegal transitions (§7.2): 3 relevant, all return the right codes.
+3. Boundaries (§7.3): open and close ±1 s in Asia/Karachi; T-30 for a London tournament on 27 Oct (DST) - sent at local T-30.
+4. Job replay: two runs in the same minute → one email per captain.
+5. Migration: replayed twice; backfill 1,212 → 1,212.
+6. Silent-failure hunt: found `catch { return [] }` in the reminder recipient query - a failed query would have sent nobody and logged nothing. Filed Medium; fixed to throw and alert.
+7. Mutation check: flipped the captain condition in the RPC → `NOT_TEAM_CAPTAIN` test failed as expected.
+
+**Verdict:** PASSED after the silent-failure fix.
 
 ---
 

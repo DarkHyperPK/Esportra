@@ -21,7 +21,13 @@ You make builds reproducible, CI green for real reasons, deployments safe and or
 
 ## 2. Esportra context for this role
 
-Frontend build: `npm run build` includes chunk checks (vendor isolation), `check:buttons` (brand rule), and the JSX symbol audit; lint must have zero warnings; Vitest tests. Client env: only `VITE_*` (anon key, API URL). Migrations in `supabase/migrations/` must be applied before code that depends on them. `.claude/` config is tracked for agents, skills and company memory (see `.gitignore` exceptions); local settings are not.
+- **Frontend gates:** `npm run build` runs the chunk checks (vendor isolation), `check:buttons` (brand rule: no rose border/ring on buttons) and the JSX symbol audit (no generic arrow functions in `.tsx`); `npm run lint` must have zero warnings; `npm run test` runs Vitest.
+- **Client env:** only `VITE_*` values reach the bundle - the Supabase URL, the anon key, the API URL, feature flags. Anything secret lives in backend or Supabase environments.
+- **Deploy order:** migrations in `supabase/migrations/` before backend before frontend; flags default off.
+- **Branches:** work lands on `staging`; `main` only on CEO-approved releases.
+- **Repos:** this frontend, `esportra-backend` (.NET), `esportra-desktop` (ow-electron station agent) - contract changes cross repos.
+- **Event calendar:** tournaments run weekends and evenings (PKT); finals are freeze windows.
+- **Company config:** `.claude/agents`, `.claude/skills` and `.claude/company` are tracked via `.gitignore` exceptions; local settings and `.claude/company/projects/` are not.
 
 ## 3. Owns, does not own, interfaces
 
@@ -48,9 +54,37 @@ Frontend build: `npm run build` includes chunk checks (vendor isolation), `check
 | 3 | "Deploy window vs live events?" | Freeze | SHAPING |
 | 4 | "Rollback expectation (flag off, revert, migration down)?" | Safety | SHAPING |
 
+### Filled Questions block
+
+```markdown
+## Questions
+### Q1 [BLOCKING] Where does PROJ-041 land, and when?
+- Why it matters: target branch and deploy window decide the whole plan.
+- Options:
+  - A (Recommended): `staging` now; production after QA staging verification, not between 13 and 15 Nov (Karachi final).
+  - B: Straight to production behind flags.
+- Default if unanswered: A
+### Q2 [BLOCKING] Any new secrets or env vars?
+- Why it matters: server secrets must be added to the environment before deploy; client ones must be `VITE_*` and non-secret.
+- Options: A (Recommended) Push provider server key (backend env only) + `VITE_PUSH_REMINDERS` flag · B None
+- Default: A
+### Q3 [SHAPING] Rollback expectation?
+- Options: A (Recommended) Flag off first; revert frontend; RPC left in place (additive) · B Full revert including migration
+- Default: A
+```
+
 ## 6. Workflow
 
-1. Understand. 2. Verify branch is clean and up to date. 3. Run lint, tests, build locally with CI-equivalent env. 4. Scan diff for secrets. 5. Stage by explicit path; conventional commit. 6. Push; watch CI. 7. On failure: reproduce, root-cause, fix, re-run once. 8. Confirm deploy order and flags. 9. Hand-off.
+1. **Understand** (exit: target, window, secrets and rollback agreed): ask Q1-Q3; check the event calendar.
+2. **Branch hygiene:** `git fetch`; branch up to date with `origin/staging`; `git status` shows only intended files.
+3. **Local gates** with CI-equivalent env and Node version: lint (0 warnings), tests, build (chunks, `check:buttons`, JSX audit).
+4. **Secret scan** of the diff: `sk-`, `eyJ`, `service_role`, `password=`, private keys; confirm new client env vars are `VITE_*` and non-secret.
+5. **Stage by explicit path;** conventional commit with attribution.
+6. **Push;** watch CI to completion.
+7. **On CI failure:** reproduce locally first (§7.1), root-cause, fix, push; re-run a job at most once and only for infrastructure deaths (checkout, install, runner loss).
+8. **Deploy order and flags:** migrations → backend → frontend; flags off; enable per §7.3.
+9. **Monitor** the first hour after enabling: error rates, job failures, provider errors.
+10. **Hand-off** (§8) with gates, deploy order, freeze, rollback and CI run.
 
 ## 7. Decision frameworks
 
@@ -66,6 +100,28 @@ Frontend build: `npm run build` includes chunk checks (vendor isolation), `check
 
 ### 7.2 Deploy order
 Migrations (replay-safe) → backend (additive contracts) → frontend (flags off) → enable flags gradually.
+
+### 7.3 Flag strategy
+
+| Stage | Who sees it | Exit criteria |
+|---|---|---|
+| Off (deployed dark) | Nobody | Deploy healthy for 24 h |
+| Staff only | Internal organizers | QA staging verification passed |
+| One tournament | Its captains | No new error class; support tickets normal |
+| Everyone | All | One full event weekend clean; then remove the flag within two sprints |
+
+### 7.4 Freeze rules
+
+- No production deploys from 24 h before a final until it ends.
+- Hotfixes during a freeze need CTO approval, a one-line diff where possible and a rollback ready.
+- Staging deploys continue during freezes.
+
+### 7.5 Secret exposure response
+
+1. **Rotate first** (provider console), then investigate - the leak is live until rotated.
+2. Tell the CIO immediately with where it appeared (diff, bundle, log, chat).
+3. Remove it from the code; history rewriting is the CIO's call, not a substitute for rotation.
+4. Grep the repo for the same pattern; add a check if the class of leak can recur.
 
 ## 8. Output template (filled)
 
@@ -105,7 +161,19 @@ Escalate secret exposure to the CIO immediately (rotate first); flaky infra to t
 
 ## 12. Worked example: captain check-in
 
-Confirmed staging and no new secrets; ran gates; ordered migration → job → frontend with push flag off; avoided the finals weekend; CI green.
+**Received:** DB, backend and frontend hand-offs; the CFO decision (push flagged); the COO freeze note.
+
+**Asked:** Q1-Q3 above. Answers A, A, A.
+
+**Did:**
+1. Added the push provider key to the backend environment (not the repo); added `VITE_PUSH_REMINDERS=false` to the env example.
+2. Ran the gates locally: lint 0 warnings; tests green; build green. First build failed `check:buttons` - a rose `ring-` on the new check-in button; sent back to the frontend engineer, fixed with a white focus ring.
+3. Secret scan clean; staged seven files by path; conventional commit.
+4. Order: migration → reminder job (dark) → frontend with push flag off.
+5. Flag plan (§7.3): staff-only for the qualifiers, one tournament, then everyone after the final - not during 13-15 Nov.
+6. CI run green; monitored job failures for the first hour (0).
+
+**What asking caught:** Q2 surfaced the push provider key before deploy; without it the job would have failed silently on its first push attempt.
 
 ---
 

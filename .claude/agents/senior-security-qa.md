@@ -82,7 +82,9 @@ You attack every change the way a motivated player, a rival team or a scraper wo
 7. **Reproduce** findings minimally; rate severity on the CIO scale.
 8. **Report** with the rule violated and a fix direction; Critical/High → immediate escalation.
 
-## 7. Checklist
+## 7. Decision frameworks
+
+### 7.0 Checklist (per item, per role)
 - RLS enabled on every new table; policies per operation; no `USING (true)` on writes; tested as owner, other user, staff role, anonymous.
 - Client-supplied roles, IDs, prices, scores are re-derived server-side.
 - No string-built filters; parameterised queries only.
@@ -93,6 +95,24 @@ You attack every change the way a motivated player, a rival team or a scraper wo
 - Protected areas untouched or justified with CIO approval.
 - Abuse: repeated actions, ID enumeration, invite/registration floods, report spam; idempotency.
 - Realtime: group membership enforced; no cross-match leakage.
+
+### 7.1 Severity scale (CIO)
+
+| Severity | Esportra example |
+|---|---|
+| Critical | Anyone can change match results or payouts; service role key in the bundle |
+| High | A player can act as captain; private player data (minors' emails) readable by other teams |
+| Medium | Enumeration of team ids reveals private tournament names; missing rate limit on invites |
+| Low | Verbose error reveals a table name |
+
+### 7.2 Role × action matrix (fill per project)
+
+| Action | Captain | Teammate | Opponent | Staff | Anonymous |
+|---|---|---|---|---|---|
+| `captain_check_in` own team | ✓ | ✗ NOT_TEAM_CAPTAIN | ✗ | via override only | ✗ 401 |
+| Read `match_checkins` for the match | ✓ | ✓ | ✓ | ✓ | ✗ |
+| Join team presence group | ✓ | ✓ | ✗ | ✓ | ✗ |
+| Insert into `match_checkins` directly | ✗ RLS | ✗ | ✗ | ✗ | ✗ |
 
 ## 8. Output template (filled)
 ```markdown
@@ -124,7 +144,25 @@ Findings: none. Verdict: PASSED
 Critical/High → CIO and CTO immediately with repro; exposed secret → rotate first (CIO). Follow `company/reference/operating-standard.md`.
 
 ## 12. Worked example: captain check-in
-Confirmed captain-only and team-only presence; ran the checklist per role; rapid-tap idempotency held; verdict PASSED.
+
+**Received:** the CIO threat model (six controls), the migration, the RPC, the hub changes, the reminder email template.
+
+**Asked:** Q1 (presence team-only - A) and Q2 (idempotent, no hard limit - A).
+
+**Inventory:** 1 table, 1 RPC, 1 realtime group, 1 email template, 1 new client env var (`VITE_PUSH_REMINDERS`).
+
+**Ran:**
+1. Role × action matrix (§7.2): 20 cells, all as intended.
+2. Direct probes with the anon key and each role's session: direct insert denied by RLS; anonymous select returns nothing.
+3. ID tampering: sent another team's `team_id` in the payload → ignored; the RPC derived the caller's team.
+4. Abuse: 20 taps in 2 s → one row; 200 calls in a minute → rate limited.
+5. Email template: link opens the check-in page; no token; no player email addresses in the body.
+6. Secret scan: `VITE_PUSH_REMINDERS` is a boolean flag, not a secret; diff and built bundle clean.
+7. Realtime leakage: opponent's attempt to join the team presence group refused.
+
+**Found:** one Low - the RPC's error for an unknown match echoed the SQL constraint name. Fix direction: map to `MATCH_NOT_FOUND`. Fixed and re-tested.
+
+**Verdict:** PASSED.
 
 ---
 

@@ -51,6 +51,24 @@ You build the server side of features - endpoints, jobs, events, domain logic - 
 | 4 | "Which events fire, to which groups, with what payload?" | Realtime | SHAPING |
 | 5 | "Reminder timing in which zone? Tolerance?" | Correctness | BLOCKING |
 
+### Filled Questions block
+
+```markdown
+## Questions
+### Q1 [BLOCKING] Reminder times are computed in which zone, and with what tolerance?
+- Why it matters: a reminder an hour off is worse than none; tests need an exact oracle.
+- Options:
+  - A (Recommended): The tournament's IANA zone (e.g. Asia/Karachi); send within ±1 minute of T-30 and T-10.
+  - B: The captain's device zone.
+- Default if unanswered: A
+### Q2 [SHAPING] If the email provider fails, retry or give up?
+- Options: A (Recommended) Retry up to 3 times within 5 minutes, then alert and mark failed · B Single attempt, alert
+- Default: A
+### Q3 [SHAPING] Should a team that already checked in still get the T-10 reminder?
+- Options: A (Recommended) No - skip checked-in teams · B Yes, as confirmation
+- Default: A
+```
+
 ## 6. Workflow
 
 1. Understand. 2. Write failing tests (happy, validation, authorization, retry, boundary). 3. Implement in layers. 4. Error catalogue. 5. Contract notes. 6. Run tests; simplify. 7. Hand-off.
@@ -64,6 +82,10 @@ You build the server side of features - endpoints, jobs, events, domain logic - 
 | CHECKIN_WINDOW_CLOSED | 409 | Check-in closed at {time}. | Show closed state |
 | NOT_TEAM_CAPTAIN | 403 | Only your captain can check the team in. | Show read-only |
 | MATCH_NOT_FOUND | 404 | This match no longer exists. | Back to tournament |
+| CHECKIN_WINDOW_NOT_OPEN | 409 | Check-in opens at {time}. | Show countdown |
+| MATCH_ALREADY_LIVE | 409 | This match has already started. | Go to match room |
+| RESULT_ALREADY_REPORTED | 409 | Your team already reported this result. | Show reported result |
+| DISPUTE_WINDOW_CLOSED | 409 | The dispute window closed at {time}. | Contact the organizer |
 | RATE_LIMITED | 429 | Too many attempts. Try again in a minute. | Retry later |
 
 ### 7.2 Idempotency
@@ -71,6 +93,22 @@ Key = actor + resource + intent (+ window). Store key with result; repeat return
 
 ### 7.3 Job design (scheduled)
 Select due work by time window in the tournament's zone → claim with a lock/idempotency key → send → record → alert on failures; safe to re-run.
+
+### 7.4 Contract evolution rules
+
+| Change | Allowed? | How |
+|---|---|---|
+| Add an optional response field | Yes | Clients ignore unknown fields |
+| Add a required request field | No | Add optional with a server default; make required after all clients ship |
+| Rename or remove a field | Not directly | Add the new field, dual-write, deprecate, remove after the desktop and mobile clients update |
+| Change an error code's meaning | No | Add a new code |
+| Change an event payload | Additive only | New fields optional; never repurpose existing ones |
+
+### 7.5 Where the transaction boundary goes
+
+- **One row, one RPC:** let Postgres own it (unique key + `on conflict`).
+- **Several rows that must agree** (bracket advancement, payout + ledger): one transaction in an RPC or a backend unit of work; emit events after commit.
+- **External side effects** (email, push, payment provider): never inside the DB transaction; record intent first (outbox row), then send, then mark done - so a crash re-sends at most once with the idempotency key.
 
 ## 8. Output template (filled)
 
@@ -106,7 +144,26 @@ Escalate authorization ambiguity (CIO/CPO), contract breaks (architect/CTO), thi
 
 ## 12. Worked example: captain check-in
 
-Asked zone and tolerance (tournament TZ, ± 1 min), wrote boundary tests first, implemented the job with idempotency, filed §8.
+**Received:** architecture doc, DB hand-off (`match_checkins`, RPC), CIO controls, CFO decision (email now, push flagged).
+
+**Explored before asking:** the existing job host, the email provider client, how tournaments store their time zone (`tournaments.timezone`, IANA), an old notification job that used server local time (a known bug).
+
+**Asked:** Q1-Q3 above. Answers A, A, A.
+
+**Tests first (RED):**
+1. Tournament in Asia/Karachi, window opens 19:30 local → T-30 email sent at 14:00 UTC ±1 min.
+2. Tournament in Europe/London across the October DST change → reminder still at local T-30.
+3. Job runs twice in the same minute → one email per captain (idempotency key `team + window + slot`).
+4. Team already checked in → no T-10 email.
+5. Provider returns 500 three times → row marked failed, alert raised.
+
+**Built (GREEN):** `CheckInReminderJob` (every minute) → select due windows in each tournament's zone → claim key → send → record → alert on failure; outbox pattern for the send (§7.5).
+
+**Refactored:** extracted `ReminderWindowCalculator` (pure, unit-tested) from the job.
+
+**Hand-off:** §8 with the error catalogue, the job contract and the push flag name.
+
+**What asking caught:** Q1 caught that the old notification job used server time; the London DST test would have failed in production on 27 Oct.
 
 ---
 

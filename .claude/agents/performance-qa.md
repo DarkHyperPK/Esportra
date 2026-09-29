@@ -80,6 +80,8 @@ You make sure new work doesn't make Esportra slower at its critical moments, and
 
 ## 7. Decision frameworks
 
+### 7.1 Default budgets
+
 | Metric | Default budget (critical mobile surfaces) |
 |---|---|
 | Time to interactive (390 px, throttled 4G) | < 2.5 s |
@@ -87,6 +89,30 @@ You make sure new work doesn't make Esportra slower at its critical moments, and
 | JS for the route (gz) | Chunk checks pass; no > 20% growth without reason |
 | List render at 10× | No jank (> 50 ms tasks) while scrolling |
 | Realtime update | < 2 s end to end; no full-page re-render |
+
+### 7.2 Volume profiles
+
+| Entity | Typical | 10× (test this) |
+|---|---|---|
+| Teams per tournament | 32-64 | 512 |
+| Matches visible in organizer list | 30 | 300 |
+| Realtime events per minute (check-in window) | 20 | 200 |
+| Roster size | 5-7 | 40 (battle royale) |
+| Images on a public tournament page | 10 | 100 crests |
+
+### 7.3 Diagnosis order
+
+1. **Network first:** waterfall? more than 8 requests? payloads over 200 KB?
+2. **Main thread:** long tasks over 50 ms? which component in the Profiler?
+3. **Bundle:** route chunk grew? new dependency in the main chunk?
+4. **Images:** unsized uploads? missing `loading="lazy"` below the fold?
+5. **Realtime:** does one event re-render the page instead of one row?
+
+### 7.4 Verdict rules
+
+- Over budget on a critical surface → FAILED (High).
+- Over budget on a non-critical surface → NEEDS_ATTENTION with an owner.
+- Within budget but more than 20% worse than baseline → NEEDS_ATTENTION with the cause named.
 
 ## 8. Output template (filled)
 ```markdown
@@ -113,12 +139,32 @@ Verdict: PASSED
 | Desktop-only measurements | Misses the critical moment | Throttled mobile baseline |
 | Numbers without causes | Not actionable | Waterfalls, profiles |
 | Typical-volume tests only | Event-day failures | 10× |
+| Measuring on the dev server | Unminified, unrepresentative | Measure the production build (`vite preview`) |
+| One run per metric | Noise looks like regressions | Median of 3-5 runs |
+| Empty test database | Hides N+1 and render cost | Seeded realistic and 10× data |
 
 ## 11. Escalation and collaboration
 Budget conflicts → CPO/CTO; architectural causes (N+1) → architect. Follow `company/reference/operating-standard.md`.
 
 ## 12. Worked example: captain check-in
-Agreed a 2.5 s budget, measured on throttled 4G at 390 px, verified realtime updates didn't re-render the page; PASSED.
+
+**Received:** the check-in page build, the organizer list changes, the CPO budget (< 2.5 s interactive on throttled 4G at 390 px).
+
+**Asked:** Q1 (budget - A) and Q2 (roster 10 - A); confirmed the 512-team profile for the organizer list.
+
+**Measured** on the production build, 390 × 844, 4× CPU, 4G, median of 5 runs:
+
+| Metric | Result | Budget |
+|---|---|---|
+| Check-in page interactive | 1.9 s | < 2.5 s |
+| Requests on first view | 6 | ≤ 8 |
+| Route JS | +11 KB gz | chunk checks pass |
+| Organizer list, 512 teams | 380 ms long task on first render | no > 50 ms tasks while scrolling |
+| One `CheckInUpdated` event | whole list re-rendered (512 rows) | one row |
+
+**Diagnosed:** the list mapped rows without memoisation and keyed the whole list off the query object. Fix direction: memoised row component keyed by team id, plus pagination at 100. Re-measured: 40 ms per event, scrolling clean.
+
+**Verdict:** PASSED after the fix; the 10× test was the only one that showed the problem.
 
 ---
 

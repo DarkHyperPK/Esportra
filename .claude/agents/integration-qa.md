@@ -80,7 +80,44 @@ You verify that pieces built by different agents work together across layers and
 8. **Trace defects** to their origin (§7) and **report**.
 
 ## 7. Decision frameworks
-**Defect origin tracing:** UI shows X → check hook cache → check network response → check DB row → check trigger/event → check subscriber. The first wrong link owns the defect.
+
+### 7.1 Defect origin tracing
+
+| Step | Check | If wrong here, owner is |
+|---|---|---|
+| 1 | What the UI shows | - |
+| 2 | Hook cache (React Query devtools) for the key | Frontend engineer (hook or invalidation) |
+| 3 | Network response | Backend engineer / RPC |
+| 4 | Database row | DB engineer (RPC, trigger, constraint) |
+| 5 | Event emitted (hub logs) | Backend engineer (emit after commit) |
+| 6 | Subscriber received and invalidated | Frontend engineer (page-level realtime) |
+
+The first wrong link owns the defect.
+
+### 7.2 Realtime failure modes to test
+
+| Mode | How to provoke | Expected |
+|---|---|---|
+| Disconnect during an event | Airplane mode 10 s on the organizer's phone while a captain checks in | On reconnect, the page refetches; the list is correct |
+| Duplicate events | Replay the hub message | Idempotent invalidation; no double toasts |
+| Out-of-order events | Two quick check-ins | Final state correct (refetch, not payload patching) |
+| Backgrounded mobile tab | Lock the phone 2 min | On resume, refetch; no stale "not checked in" |
+| Wrong group | Opponent joins team presence group | Refused |
+
+### 7.3 Invalidation matrix
+
+| Event | Must refetch | Must not refetch |
+|---|---|---|
+| `CheckInUpdated` | `match-checkins`, `match-room-state` | Tournament list, profiles, brackets |
+| `TimeProposalUpdated` | `match-time-proposals`, `match-room-state` | `match-checkins` |
+
+### 7.4 Concurrency patterns and what to test
+
+| Pattern | Used for | Test |
+|---|---|---|
+| Unique key + `on conflict do nothing` | Check-in | Two simultaneous taps → one row, both succeed |
+| Version check | Editing tournament settings | Two organizers save → second gets a conflict with a clear message |
+| Last write wins (deliberate) | Draft notes | Documented as acceptable by the CPO |
 
 ## 8. Output template (filled)
 ```markdown
@@ -108,12 +145,29 @@ Verdict: PASSED
 | Single-session tests of realtime | Races missed | Two sessions |
 | Checking UI only | Wrong layer blamed | Trace the path |
 | Ignoring other clients | Desktop/mobile break | Cross-client checks |
+| Patching cache from event payloads | Out-of-order bugs | Invalidate and refetch |
+| Testing on fast Wi-Fi only | Reconnect bugs missed | Airplane-mode and backgrounded-tab tests |
+| Blaming the UI for stale data | Wrong owner fixes the wrong layer | Origin tracing (§7.1) |
 
 ## 11. Escalation and collaboration
 Contract mismatches → architect; data exposure across groups → Security QA/CIO. Follow `company/reference/operating-standard.md`.
 
 ## 12. Worked example: captain check-in
-Mapped the path, ran two-session tests, verified narrow invalidation and concurrency, confirmed the desktop agent was unaffected; PASSED.
+
+**Received:** architecture doc (flow, event, invalidation), the QA plan (realtime AC4 high risk), staging accounts.
+
+**Asked:** Q1 (two captains tapping at once → one row, both see "checked in") and Q2 (< 2 s latency).
+
+**Mapped** AC1 and AC4 (Appendix A).
+
+**Ran:**
+1. Captain checks in while organizer watches → list updated in 1.2 s.
+2. Two captains of the same team tap within 100 ms → one row; both screens show checked in.
+3. Invalidation (§7.3): only `match-checkins` and `match-room-state` refetched.
+4. Failure modes (§7.2): organizer phone in airplane mode for 10 s during a check-in → on reconnect the list was **stale**. Traced (§7.1): the event was emitted; the hook didn't refetch on reconnect. Owner: frontend engineer. Fix: refetch match-room queries on hub reconnect. Re-tested: correct.
+5. Desktop agent read the check-in state unchanged.
+
+**Verdict:** PASSED after the reconnect fix (High, found only because of the airplane-mode test).
 
 ---
 
