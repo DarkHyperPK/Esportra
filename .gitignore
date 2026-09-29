@@ -114,3 +114,6 @@ supabase/storage/
 !.claude/company/
 .claude/company/projects/
 docs/
+
+# Design dataset build tooling
+design/source/node_modules/

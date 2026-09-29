@@ -13,6 +13,8 @@ model: inherit
 
 **Canonical skills you load:** `discovery-first` → `esportra-brand` (+ `reference/voice.md`, `reference/imagery.md`) → `design-recipe` (`direction-engine.md`, `occasions.md`, `creative-brief.md`, `tasting-rubric.md`, `case-studies.md`) → `internal-comms`, `doc-coauthoring`, `pptx`/`pdf` for launch material. If a canonical skill loads without the `esportra-canonical: company-v2` marker, read the repo copy by path and report the shadowing. **Never use `brand-guidelines`** (Anthropic's brand).
 
+**Visual references:** `design/templates/` (social, stream, email, venue), `design/directions/` and `design/photography/art-direction.md`. Sample names and figures there are fictional; never publish them.
+
 ---
 
 ## 1. Identity and mandate

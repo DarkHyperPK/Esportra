@@ -1,0 +1,52 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>directions/cinematic</title>
+<style>
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-800-normal.woff2') format('woff2');font-weight:800;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-900-normal.woff2') format('woff2');font-weight:900;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-400-normal.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-600-normal.woff2') format('woff2');font-weight:600;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../fonts/jetbrains-mono-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%}
+body{background:#09090B;color:#FAFAFA;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+.h{font-family:Poppins,sans-serif;letter-spacing:-0.02em;line-height:1}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.28em;color:#71717A}
+.num{font-family:Poppins,sans-serif;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+.hair{border-color:rgba(255,255,255,.07)}
+.panel{background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.cue{background:#F43F5E}
+.grid-px{display:grid;gap:1px;background:rgba(255,255,255,.06)}
+.grid-px>*{background:#111114}
+.logo-slot{display:inline-flex;align-items:center;justify-content:center;padding:0 12px;border:1px dashed;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.3em}
+.pill{display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
+.dot{width:6px;height:6px;border-radius:999px;display:inline-block}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;border:1px solid}
+.btn-primary{background:#FAFAFA;color:#09090B;border-color:#FAFAFA}
+.btn-secondary{background:#09090B;color:#FAFAFA;border-color:rgba(255,255,255,.15)}
+.btn-ghost{background:rgba(255,255,255,.03);color:#FAFAFA;border-color:rgba(255,255,255,.10)}
+.btn-danger{background:rgba(69,10,10,.2);color:#FEE2E2;border-color:rgba(239,68,68,.35)}
+body{background:#09090B}.board{display:flex;width:1600px;height:1000px}.canvas{position:relative;flex:1;overflow:hidden}</style></head><body><main class="board"><section class="canvas"><div style="position:absolute;inset:0;background:#09090B">
+<svg width="1148" height="1000" style="position:absolute;inset:0"><defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e1e4f0" stop-opacity=".17"/><stop offset=".9" stop-color="#e1e4f0" stop-opacity=".02"/></linearGradient><filter id="s" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="40"/></filter><radialGradient id="p"><stop offset="0" stop-color="#e1e4f0" stop-opacity=".12"/><stop offset="1" stop-color="#e1e4f0" stop-opacity="0"/></radialGradient></defs>
+<polygon points="820,-20 900,-20 1140,820 560,820" fill="url(#b)" filter="url(#s)"/><ellipse cx="850" cy="830" rx="330" ry="60" fill="url(#p)"/></svg>
+<div style="position:absolute;left:84px;top:84px" class="mono"><span style="font-size:12px;font-weight:700;letter-spacing:.5em;color:#A1A1AA">FOR ORGANIZERS · FREE TO START</span></div>
+<div class="h" style="position:absolute;left:70px;top:250px;font-weight:900;font-size:260px;letter-spacing:-0.05em;line-height:.85">final.</div>
+<p style="position:absolute;left:84px;top:540px;font-size:22px;color:#E4E4E7;max-width:520px;line-height:1.4">Run your cup like a final. Brackets, check-in, disputes and payouts in one place.</p>
+<div style="position:absolute;left:84px;top:650px;display:flex;gap:14px"><span class="btn btn-primary" style="height:52px;padding:0 28px">Host a cup</span><span class="btn btn-ghost" style="height:52px">See how it works</span></div>
+<div style="position:absolute;left:84px;bottom:90px;display:flex;align-items:center;gap:18px"><span class="logo-slot" style="height:20px;border-color:rgba(255,255,255,.28);color:rgba(255,255,255,.28)">LOGO</span></div>
+<div class="eyebrow" style="position:absolute;left:48px;bottom:26px">ORGANIZER LANDING HERO · ONE LIGHT, ONE LINE</div></div></section><aside style="width:452px;flex:none;padding:44px 40px;border-left:1px solid rgba(255,255,255,.07);color:#FAFAFA;display:flex;flex-direction:column">
+<div class="eyebrow"><span style="display:inline-block;width:18px;height:2px;background:#F43F5E;vertical-align:middle;margin-right:10px"></span>DIRECTION 04 / 09</div>
+<h1 class="h" style="font-weight:900;font-size:46px;margin-top:14px">Cinematic</h1>
+<p style="font-size:15px;color:#A1A1AA;margin-top:12px;line-height:1.5">The trailer. Stillness, one light, one decisive line, a long hold.</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px">
+<div><div class="eyebrow" style="font-size:9.5px;color:#34D399">FITS</div><p style="font-size:12.5px;color:#A1A1AA;margin-top:6px;line-height:1.45">Launches, landing heroes, finals hype, event trailers. Persuade mode, high latitude.</p></div>
+<div><div class="eyebrow" style="font-size:9.5px;color:#FCA5A5">NOT FOR</div><p style="font-size:12.5px;color:#A1A1AA;margin-top:6px;line-height:1.45">Product surfaces people operate; anything read twice a day.</p></div></div>
+<div style="margin-top:20px"><div style="display:grid;grid-template-columns:92px 1fr;gap:12px;padding:9px 0;border-top:1px solid rgba(255,255,255,.07)"><span class="eyebrow" style="font-size:9.5px;padding-top:3px">LIGHT</span><span style="font-size:12.5px;color:#A1A1AA;line-height:1.45">Stage black with one light source and one soft falloff. No multicolour gradients, flares, particles.</span></div><div style="display:grid;grid-template-columns:92px 1fr;gap:12px;padding:9px 0;border-top:1px solid rgba(255,255,255,.07)"><span class="eyebrow" style="font-size:9.5px;padding-top:3px">TYPE</span><span style="font-size:12.5px;color:#A1A1AA;line-height:1.45">Poppins 900 96–200 px, -3%, leading 0.9 (56–72 on phones). One Inter sentence.</span></div><div style="display:grid;grid-template-columns:92px 1fr;gap:12px;padding:9px 0;border-top:1px solid rgba(255,255,255,.07)"><span class="eyebrow" style="font-size:9.5px;padding-top:3px">CUE</span><span style="font-size:12.5px;color:#A1A1AA;line-height:1.45">White speaks; rose confirms on the action only.</span></div><div style="display:grid;grid-template-columns:92px 1fr;gap:12px;padding:9px 0;border-top:1px solid rgba(255,255,255,.07)"><span class="eyebrow" style="font-size:9.5px;padding-top:3px">MOTION</span><span style="font-size:12.5px;color:#A1A1AA;line-height:1.45">Mask wipe 500 ms cubic-bezier(0.7,0,0.2,1); push-in 1.0→1.04 over 8 s, once.</span></div><div style="display:grid;grid-template-columns:92px 1fr;gap:12px;padding:9px 0;border-top:1px solid rgba(255,255,255,.07)"><span class="eyebrow" style="font-size:9.5px;padding-top:3px">TEST</span><span style="font-size:12.5px;color:#A1A1AA;line-height:1.45">Three seconds on a phone: can you say what it is?</span></div></div>
+<div style="margin-top:auto;display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-top:18px;border-top:1px solid rgba(255,255,255,.07)">
+<div><div class="eyebrow" style="font-size:9.5px">DO</div><p style="font-size:12px;color:#A1A1AA;margin-top:6px">✓ One word can carry the page</p><p style="font-size:12px;color:#A1A1AA;margin-top:6px">✓ Cut the music before the reveal</p></div>
+<div><div class="eyebrow" style="font-size:9.5px">DON'T</div><p style="font-size:12px;color:#A1A1AA;margin-top:6px">✕ Neon rims and glows</p><p style="font-size:12px;color:#A1A1AA;margin-top:6px">✕ Designing for 1440 only</p></div></div>
+<div class="eyebrow" style="font-size:9px;margin-top:18px">SPEC · .claude/skills/design-recipe/reference/directions/</div>
+</aside></main></body></html>

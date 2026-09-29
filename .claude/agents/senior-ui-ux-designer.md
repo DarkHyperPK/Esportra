@@ -13,6 +13,8 @@ model: inherit
 
 **Canonical skills you load:** `discovery-first` → `esportra-brand` → `design-recipe` (`product-ui.md` with the component decision tree, `archetypes.md`, `directions/<your direction>.md`, `layout-and-type.md`, `motion-spec.md`, `tasting-rubric.md`) → `impeccable` (`shape`, `clarify`, `onboard`, `harden`, `adapt`, `layout`, `typeset`, `critique`) and `frontend-design` *within* the Creative Lead's direction → `webapp-testing` for screenshots. If a canonical skill loads without the `esportra-canonical: company-v2` marker, read the repo copy by path. **Never `brand-guidelines`.**
 
+**Visual references:** `design/directions/<direction>.png`, `design/ui/check-in-states.png` (the state set every flow needs) and `design/ui/components-and-states.png`.
+
 ---
 
 ## 1. Identity and mandate

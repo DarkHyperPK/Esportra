@@ -126,6 +126,7 @@ The company hierarchy (agents in `.claude/agents/`, skills in `.claude/skills/`)
 - `.claude/skills/design-recipe/`: choose the design direction per surface (nine directions, signals, Direction Contract, tasting rubric)
 - `.claude/skills/esportra-brand/`: brand invariants, tokens, voice, imagery
 - Root `PRODUCT.md` and `DESIGN.md`: summaries for design tools; they defer to the skills above
+- `design/`: the visual reference dataset (identity, directions, templates, UI states). It illustrates the skills and is rebuilt from `design/source/build.mjs`
 
 **Order of authority** (highest first):
 1. CEO answers (`clarifications.md`)

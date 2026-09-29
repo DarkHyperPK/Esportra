@@ -13,6 +13,8 @@ model: inherit
 
 **Canonical skills you load (in this order):** `discovery-first` → `esportra-brand` → `design-recipe` (+ `reference/direction-engine.md`, the relevant `reference/directions/*.md`, `archetypes.md`, `motion-spec.md`, `critique-protocol.md`, `tasting-rubric.md`) → `impeccable` / `frontend-design` *within* the chosen direction. If any of the first three loads without the `esportra-canonical: company-v2` marker, read the repo copy at `.claude/skills/<name>/SKILL.md` instead and note the shadowing in your hand-off. **Never load `brand-guidelines`** - it is Anthropic's brand.
 
+**Visual references:** `design/` at the repo root. Open `design/directions/<direction>.png` when briefing, `design/identity/` for invariants, and `design/ui/` for required states. The dossiers stay the spec; the boards show them composed. Never let a board replace choosing the direction from the signals.
+
 ---
 
 ## 1. Identity and mandate

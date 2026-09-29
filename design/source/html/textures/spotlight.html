@@ -1,0 +1,44 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>textures/spotlight</title>
+<style>
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-800-normal.woff2') format('woff2');font-weight:800;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../fonts/poppins-latin-900-normal.woff2') format('woff2');font-weight:900;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-400-normal.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-600-normal.woff2') format('woff2');font-weight:600;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../fonts/inter-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../fonts/jetbrains-mono-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%}
+body{background:#09090B;color:#FAFAFA;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+.h{font-family:Poppins,sans-serif;letter-spacing:-0.02em;line-height:1}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.28em;color:#71717A}
+.num{font-family:Poppins,sans-serif;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+.hair{border-color:rgba(255,255,255,.07)}
+.panel{background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.cue{background:#F43F5E}
+.grid-px{display:grid;gap:1px;background:rgba(255,255,255,.06)}
+.grid-px>*{background:#111114}
+.logo-slot{display:inline-flex;align-items:center;justify-content:center;padding:0 12px;border:1px dashed;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.3em}
+.pill{display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
+.dot{width:6px;height:6px;border-radius:999px;display:inline-block}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;border:1px solid}
+.btn-primary{background:#FAFAFA;color:#09090B;border-color:#FAFAFA}
+.btn-secondary{background:#09090B;color:#FAFAFA;border-color:rgba(255,255,255,.15)}
+.btn-ghost{background:rgba(255,255,255,.03);color:#FAFAFA;border-color:rgba(255,255,255,.10)}
+.btn-danger{background:rgba(69,10,10,.2);color:#FEE2E2;border-color:rgba(239,68,68,.35)}
+body{width:1920px;height:1080px} svg{display:block}</style></head><body><svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<defs>
+<linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgb(225,228,240)" stop-opacity="0.16"/><stop offset="0.85" stop-color="rgb(225,228,240)" stop-opacity="0.025"/></linearGradient>
+<radialGradient id="pool" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="rgb(225,228,240)" stop-opacity="0.12"/><stop offset="1" stop-color="rgb(225,228,240)" stop-opacity="0"/></radialGradient>
+<radialGradient id="src" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="rgb(225,228,240)" stop-opacity="0.35"/><stop offset="1" stop-color="rgb(225,228,240)" stop-opacity="0"/></radialGradient>
+<filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="38"/></filter>
+<linearGradient id="vig" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.55"/><stop offset="0.3" stop-color="#000" stop-opacity="0"/><stop offset="0.7" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.55"/></linearGradient>
+</defs>
+<rect width="1920" height="1080" fill="#09090B"/>
+<polygon points="890,-20 1030,-20 1420.8,864 499.20000000000005,864" fill="url(#beam)" filter="url(#soft)"/>
+<ellipse cx="960" cy="864" rx="576" ry="81" fill="url(#pool)"/>
+<ellipse cx="960" cy="-10" rx="220" ry="90" fill="url(#src)"/>
+<rect width="1920" height="1080" fill="url(#vig)"/></svg></body></html>

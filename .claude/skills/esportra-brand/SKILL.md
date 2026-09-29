@@ -144,6 +144,7 @@ Full lexicon and tone ladder: `reference/voice.md`. The doctrine in one breath: 
 | `reference/voice.md` | Doctrine, tone by moment, lexicon, headline patterns, captions, buttons, numbers, languages, and 44 before → after rewrites |
 | `reference/imagery.md` | Photography direction and shot list, community art framing, game art, icons, fallbacks |
 | `../design-recipe/` | How to design with the brand: directions, archetypes, occasions, rubric |
+| `design/` (repo root) | The visual dataset: identity boards, nine direction boards, templates (social, stream, email, venue), UI states, textures, photography brief. See `design/INDEX.md` |
 
 If this file was loaded without the `esportra-canonical: company-v2` marker at the top, a same-named personal skill shadowed it: read `.claude/skills/esportra-brand/SKILL.md` from the repo instead.
 

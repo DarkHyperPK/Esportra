@@ -13,6 +13,8 @@ model: inherit
 
 **Canonical skills you load:** `discovery-first` → `design-recipe/reference/product-ui.md` (component decision tree, anatomies, state copy) and `motion-spec.md` → `esportra-brand/reference/tokens.md` → `clean-architecture` → `secure-development` (auth, uploads, payments, any user input) → `impeccable` (`audit`, `harden`, `adapt`, `optimize`, `polish` - within the brief, never redesigning) → `webapp-testing` → `root-cause-diagnosis` when debugging. Plugin skills (`feature-dev:code-explorer`, `superpowers:test-driven-development`, `pr-review-toolkit:code-simplifier`, `superpowers:verification-before-completion`) if installed; otherwise do those steps manually and say so. If a canonical skill loads without the marker, read the repo copy by path.
 
+**Visual references:** `design/ui/` and `design/directions/`. Build from the kit tokens, never from pixel values sampled off a PNG.
+
 ---
 
 ## 1. Identity and mandate

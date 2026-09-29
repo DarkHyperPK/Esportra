@@ -107,6 +107,7 @@ Before calling it done, run the **sameness check**: open `.claude/company/memory
 |---|---|
 | `reference/direction-engine.md` | Choosing a direction: signals, library, latitude, routes, Direction Contract |
 | `reference/directions/*.md` | Designing inside a direction: exact tokens, type, layout, imagery, motion, copy, worked example (broadcast, command-console, editorial, cinematic, community, daylight, trophy, co-brand, themed-event) |
+| `design/directions/*.png` (repo root) | The same nine directions as composed visual boards, plus templates and UI states in `design/` - see `design/INDEX.md`. Illustrations only; the dossiers are the spec |
 | `reference/archetypes.md` | Choosing the shape of attention |
 | `reference/occasions.md` | Recipes for launches, announcements, match day, live, victory, first run, sponsors, venues, money, bad news, empty states |
 | `reference/layout-and-type.md` | Grids, breakpoints, space ladder, type scale per direction, numbers |

@@ -1,0 +1,796 @@
+{
+  "name": "Esportra design dataset",
+  "generated": "2026-09-29",
+  "source": "design/source/build.mjs",
+  "canonical": [
+    ".claude/skills/esportra-brand/",
+    ".claude/skills/design-recipe/",
+    "DESIGN.md"
+  ],
+  "logo": "missing - export the mark from Supabase storage into design/identity/logo/ and rebuild",
+  "sampleData": "Team names, players, crests, amounts and dates are fictional samples for layout reference. Never publish them as real.",
+  "assets": [
+    {
+      "id": "identity/colour/palette",
+      "group": "identity",
+      "file": "identity/colour/palette.png",
+      "source": "source/html/identity/colour/palette.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "description": "Ground ladder, text ladder, the rose cue and semantic tones with hex, Tailwind class and use.",
+      "tags": [
+        "colour",
+        "tokens"
+      ],
+      "bytes": 119371
+    },
+    {
+      "id": "identity/colour/contrast-pairs",
+      "group": "identity",
+      "file": "identity/colour/contrast-pairs.png",
+      "source": "source/html/identity/colour/contrast-pairs.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "description": "WCAG contrast ratios computed from the tokens, dark and paper grounds.",
+      "tags": [
+        "colour",
+        "accessibility"
+      ],
+      "bytes": 125520
+    },
+    {
+      "id": "identity/colour/daylight",
+      "group": "identity",
+      "file": "identity/colour/daylight.png",
+      "source": "source/html/identity/colour/daylight.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "description": "Daylight (paper) palette with darker signal variants and a payout example.",
+      "tags": [
+        "colour",
+        "daylight",
+        "print"
+      ],
+      "bytes": 89918
+    },
+    {
+      "id": "identity/type/specimen",
+      "group": "identity",
+      "file": "identity/type/specimen.png",
+      "source": "source/html/identity/type/specimen.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "description": "Poppins display and numbers, Inter body and labels, mono captions and button labels.",
+      "tags": [
+        "type"
+      ],
+      "bytes": 113790
+    },
+    {
+      "id": "identity/type/scale-by-direction",
+      "group": "identity",
+      "file": "identity/type/scale-by-direction.png",
+      "source": "source/html/identity/type/scale-by-direction.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "description": "How the type scale changes per design direction.",
+      "tags": [
+        "type",
+        "directions"
+      ],
+      "bytes": 116168
+    },
+    {
+      "id": "identity/signature-moves",
+      "group": "identity",
+      "file": "identity/signature-moves.png",
+      "source": "source/html/identity/signature-moves.html",
+      "size": [
+        1600,
+        1060
+      ],
+      "description": "The eight signature moves, each drawn with its rule.",
+      "tags": [
+        "identity",
+        "moves"
+      ],
+      "bytes": 98343
+    },
+    {
+      "id": "identity/motion/verbs",
+      "group": "identity",
+      "file": "identity/motion/verbs.png",
+      "source": "source/html/identity/motion/verbs.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "description": "Motion verbs with durations and plotted easing curves.",
+      "tags": [
+        "motion"
+      ],
+      "bytes": 104776
+    },
+    {
+      "id": "identity/space-and-shape",
+      "group": "identity",
+      "file": "identity/space-and-shape.png",
+      "source": "source/html/identity/space-and-shape.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "description": "Space ladder, card outline states, shape rules and tonal depth.",
+      "tags": [
+        "layout",
+        "shape"
+      ],
+      "bytes": 67727
+    },
+    {
+      "id": "identity/logo/usage",
+      "group": "identity",
+      "file": "identity/logo/usage.png",
+      "source": "source/html/identity/logo/usage.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "description": "Logo clear space, minimum size, allowed grounds and misuse. Uses the real mark once exported into design/identity/logo/.",
+      "tags": [
+        "logo"
+      ],
+      "bytes": 102524
+    },
+    {
+      "id": "textures/streak-shards",
+      "group": "textures",
+      "file": "textures/streak-shards.png",
+      "svg": "textures/streak-shards.svg",
+      "source": "source/html/textures/streak-shards.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "direction": "broadcast",
+      "use": "Landing and event backgrounds behind a hero. Keep text on the dark gaps.",
+      "description": "Vector streak shards on stage black - the brand background, regenerable at any size.",
+      "tags": [
+        "texture",
+        "background"
+      ],
+      "bytes": 49718
+    },
+    {
+      "id": "textures/streak-shards-cue",
+      "group": "textures",
+      "file": "textures/streak-shards-cue.png",
+      "svg": "textures/streak-shards-cue.svg",
+      "source": "source/html/textures/streak-shards-cue.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "direction": "broadcast",
+      "use": "Announcement key art where nothing else on the frame uses rose.",
+      "description": "Streak shards with one rose-edged shard - the cue light as texture.",
+      "tags": [
+        "texture",
+        "background",
+        "cue"
+      ],
+      "bytes": 52686
+    },
+    {
+      "id": "textures/streak-shards-portrait",
+      "group": "textures",
+      "file": "textures/streak-shards-portrait.png",
+      "svg": "textures/streak-shards-portrait.svg",
+      "source": "source/html/textures/streak-shards-portrait.html",
+      "size": [
+        1080,
+        1920
+      ],
+      "direction": "broadcast",
+      "description": "Portrait streak shards for stories and phone wallpapers.",
+      "tags": [
+        "texture",
+        "background",
+        "portrait"
+      ],
+      "bytes": 43953
+    },
+    {
+      "id": "textures/spotlight",
+      "group": "textures",
+      "file": "textures/spotlight.png",
+      "svg": "textures/spotlight.svg",
+      "source": "source/html/textures/spotlight.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "direction": "cinematic",
+      "use": "Cinematic heroes: one light source, never multicolour gradients.",
+      "description": "One cool stage light with a soft falloff and a darkened floor.",
+      "tags": [
+        "texture",
+        "background",
+        "light"
+      ],
+      "bytes": 283003
+    },
+    {
+      "id": "textures/trophy-light",
+      "group": "textures",
+      "file": "textures/trophy-light.png",
+      "svg": "textures/trophy-light.svg",
+      "source": "source/html/textures/trophy-light.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "direction": "trophy",
+      "use": "Behind a champion crest or name. Pair with the team colour glow only on the champion card.",
+      "description": "Warm key light for champion moments.",
+      "tags": [
+        "texture",
+        "background",
+        "light"
+      ],
+      "bytes": 289065
+    },
+    {
+      "id": "textures/hairline-grid",
+      "group": "textures",
+      "file": "textures/hairline-grid.png",
+      "svg": "textures/hairline-grid.svg",
+      "source": "source/html/textures/hairline-grid.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "direction": "command-console",
+      "use": "Technical and product-launch backdrops; UI screenshots float on it.",
+      "description": "96 px hairline field with crosshair registration marks and a rose tick.",
+      "tags": [
+        "texture",
+        "background",
+        "grid"
+      ],
+      "bytes": 9809
+    },
+    {
+      "id": "textures/scoreboard-field",
+      "group": "textures",
+      "file": "textures/scoreboard-field.png",
+      "svg": "textures/scoreboard-field.svg",
+      "source": "source/html/textures/scoreboard-field.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "direction": "broadcast",
+      "use": "Stats and schedule graphics; fill tiles with numbers.",
+      "description": "The gap-px scoreboard grid as a full-bleed field.",
+      "tags": [
+        "texture",
+        "background",
+        "grid"
+      ],
+      "bytes": 8805
+    },
+    {
+      "id": "textures/grain",
+      "group": "textures",
+      "file": "textures/grain.png",
+      "svg": "textures/grain.svg",
+      "source": "source/html/textures/grain.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "transparent": true,
+      "use": "Overlay at 50-100% on key art only, never on product UI.",
+      "description": "Transparent film grain (noise-driven white, up to ~18% alpha) to lay over flat grounds.",
+      "tags": [
+        "texture",
+        "overlay"
+      ],
+      "bytes": 2817455
+    },
+    {
+      "id": "textures/cut-edge-frame",
+      "group": "textures",
+      "file": "textures/cut-edge-frame.png",
+      "svg": "textures/cut-edge-frame.svg",
+      "source": "source/html/textures/cut-edge-frame.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "transparent": true,
+      "direction": "trophy",
+      "use": "Frame a champion photo or stream scene. Once per composition.",
+      "description": "Transparent 16:9 frame with the 45° notch and rose cut line.",
+      "tags": [
+        "texture",
+        "overlay",
+        "frame"
+      ],
+      "bytes": 11090
+    },
+    {
+      "id": "textures/daylight-paper",
+      "group": "textures",
+      "file": "textures/daylight-paper.png",
+      "svg": "textures/daylight-paper.svg",
+      "source": "source/html/textures/daylight-paper.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "direction": "daylight",
+      "use": "Printed schedules, rulebooks, statements.",
+      "description": "Paper ground with hairline rules and a rose-600 cue tick.",
+      "tags": [
+        "texture",
+        "background",
+        "print"
+      ],
+      "bytes": 8891
+    },
+    {
+      "id": "directions/broadcast",
+      "group": "directions",
+      "file": "directions/broadcast.png",
+      "source": "source/html/directions/broadcast.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "broadcast",
+      "description": "Broadcast: captain check-in on a phone and a 4:5 announcement, with the direction spec.",
+      "tags": [
+        "direction",
+        "broadcast"
+      ],
+      "bytes": 136003
+    },
+    {
+      "id": "directions/command-console",
+      "group": "directions",
+      "file": "directions/command-console.png",
+      "source": "source/html/directions/command-console.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "command-console",
+      "description": "Command Console: organizer payments review queue with summary strip, filters, bulk actions and a focused row.",
+      "tags": [
+        "direction",
+        "command-console"
+      ],
+      "bytes": 159956
+    },
+    {
+      "id": "directions/editorial",
+      "group": "directions",
+      "file": "directions/editorial.png",
+      "source": "source/html/directions/editorial.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "editorial",
+      "description": "Editorial: season recap with dateline, standfirst, full-bleed image slot and pull quote.",
+      "tags": [
+        "direction",
+        "editorial"
+      ],
+      "bytes": 169758
+    },
+    {
+      "id": "directions/cinematic",
+      "group": "directions",
+      "file": "directions/cinematic.png",
+      "source": "source/html/directions/cinematic.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "cinematic",
+      "description": "Cinematic: organizer landing hero, one light, one word.",
+      "tags": [
+        "direction",
+        "cinematic"
+      ],
+      "bytes": 168738
+    },
+    {
+      "id": "directions/community",
+      "group": "directions",
+      "file": "directions/community.png",
+      "source": "source/html/directions/community.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "community",
+      "description": "Community: first-run welcome on a phone and a team page card with avatars, warm greys.",
+      "tags": [
+        "direction",
+        "community"
+      ],
+      "bytes": 152567
+    },
+    {
+      "id": "directions/daylight",
+      "group": "directions",
+      "file": "directions/daylight.png",
+      "source": "source/html/directions/daylight.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "daylight",
+      "description": "Daylight: payout statement on paper with darker signals and complete money lines.",
+      "tags": [
+        "direction",
+        "daylight"
+      ],
+      "bytes": 123039
+    },
+    {
+      "id": "directions/trophy",
+      "group": "directions",
+      "file": "directions/trophy.png",
+      "source": "source/html/directions/trophy.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "trophy",
+      "description": "Trophy: 4:5 champion card with warm light, team glow, notch and resolved versus lockup.",
+      "tags": [
+        "direction",
+        "trophy"
+      ],
+      "bytes": 241117
+    },
+    {
+      "id": "directions/co-brand",
+      "group": "directions",
+      "file": "directions/co-brand.png",
+      "source": "source/html/directions/co-brand.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "co-brand",
+      "description": "Co-brand: presented-by tournament header with a monochrome partner well and prize scoreboard.",
+      "tags": [
+        "direction",
+        "co-brand"
+      ],
+      "bytes": 127311
+    },
+    {
+      "id": "directions/themed-event",
+      "group": "directions",
+      "file": "directions/themed-event.png",
+      "source": "source/html/directions/themed-event.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "themed-event",
+      "description": "Themed event: charity cup poster, mini style sheet and how the theme appears in the product.",
+      "tags": [
+        "direction",
+        "themed-event"
+      ],
+      "bytes": 141979
+    },
+    {
+      "id": "templates/social/fixture-1x1",
+      "group": "templates",
+      "file": "templates/social/fixture-1x1.png",
+      "source": "source/html/templates/social/fixture-1x1.html",
+      "size": [
+        1080,
+        1080
+      ],
+      "direction": "broadcast",
+      "use": "Instagram/X feed, WhatsApp communities.",
+      "description": "Match-day fixture post: versus lockup, time in PKT, station.",
+      "tags": [
+        "template",
+        "social"
+      ],
+      "bytes": 71261
+    },
+    {
+      "id": "templates/social/result-1x1",
+      "group": "templates",
+      "file": "templates/social/result-1x1.png",
+      "source": "source/html/templates/social/result-1x1.html",
+      "size": [
+        1080,
+        1080
+      ],
+      "direction": "broadcast",
+      "use": "Feed post right after full time.",
+      "description": "Result post: winner white, loser grey, map-by-map scoreboard.",
+      "tags": [
+        "template",
+        "social"
+      ],
+      "bytes": 43882
+    },
+    {
+      "id": "templates/social/champion-4x5",
+      "group": "templates",
+      "file": "templates/social/champion-4x5.png",
+      "source": "source/html/templates/social/champion-4x5.html",
+      "size": [
+        1080,
+        1350
+      ],
+      "direction": "trophy",
+      "use": "The one celebratory post per event.",
+      "description": "Champion card 4:5 with warm light, team glow, notch and resolved lockup.",
+      "tags": [
+        "template",
+        "social"
+      ],
+      "bytes": 484221
+    },
+    {
+      "id": "templates/social/registration-open-4x5",
+      "group": "templates",
+      "file": "templates/social/registration-open-4x5.png",
+      "source": "source/html/templates/social/registration-open-4x5.html",
+      "size": [
+        1080,
+        1350
+      ],
+      "direction": "broadcast",
+      "use": "Launch post for an event.",
+      "description": "Registration announcement 4:5 with scoreboard facts and a dated action.",
+      "tags": [
+        "template",
+        "social"
+      ],
+      "bytes": 74140
+    },
+    {
+      "id": "templates/social/check-in-story-9x16",
+      "group": "templates",
+      "file": "templates/social/check-in-story-9x16.png",
+      "source": "source/html/templates/social/check-in-story-9x16.html",
+      "size": [
+        1080,
+        1920
+      ],
+      "direction": "broadcast",
+      "use": "Instagram/WhatsApp story 30 minutes before a window.",
+      "description": "Check-in story with countdown hero and one action.",
+      "tags": [
+        "template",
+        "social"
+      ],
+      "bytes": 120521
+    },
+    {
+      "id": "templates/web/og-image",
+      "group": "templates",
+      "file": "templates/web/og-image.png",
+      "source": "source/html/templates/web/og-image.html",
+      "size": [
+        1200,
+        630
+      ],
+      "direction": "broadcast",
+      "use": "og:image / twitter:image.",
+      "description": "Open Graph share image for a tournament page.",
+      "tags": [
+        "template",
+        "web"
+      ],
+      "bytes": 51881
+    },
+    {
+      "id": "templates/web/channel-banner",
+      "group": "templates",
+      "file": "templates/web/channel-banner.png",
+      "source": "source/html/templates/web/channel-banner.html",
+      "size": [
+        1500,
+        500
+      ],
+      "direction": "cinematic",
+      "use": "X header, YouTube/Twitch banner (crop-safe centre).",
+      "description": "Channel header with the organizer promise; safe area on the right two-thirds.",
+      "tags": [
+        "template",
+        "web"
+      ],
+      "bytes": 43445
+    },
+    {
+      "id": "templates/web/video-thumbnail",
+      "group": "templates",
+      "file": "templates/web/video-thumbnail.png",
+      "source": "source/html/templates/web/video-thumbnail.html",
+      "size": [
+        1280,
+        720
+      ],
+      "direction": "trophy",
+      "use": "YouTube thumbnails.",
+      "description": "VOD thumbnail: result as the hero, champion crest at scale.",
+      "tags": [
+        "template",
+        "web"
+      ],
+      "bytes": 244065
+    },
+    {
+      "id": "templates/email/check-in-reminder",
+      "group": "templates",
+      "file": "templates/email/check-in-reminder.png",
+      "source": "source/html/templates/email/check-in-reminder.html",
+      "size": [
+        640,
+        860
+      ],
+      "direction": "daylight",
+      "use": "T-30 and T-10 captain reminders.",
+      "description": "Transactional reminder email in Daylight: facts table, one action, no sign-in links.",
+      "tags": [
+        "template",
+        "email"
+      ],
+      "bytes": 62386
+    },
+    {
+      "id": "templates/stream/scorebug",
+      "group": "templates",
+      "file": "templates/stream/scorebug.png",
+      "source": "source/html/templates/stream/scorebug.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "transparent": true,
+      "direction": "broadcast",
+      "use": "OBS overlay above gameplay.",
+      "description": "Transparent broadcast scorebug with series score, map and live tag.",
+      "tags": [
+        "template",
+        "stream"
+      ],
+      "bytes": 28081
+    },
+    {
+      "id": "templates/stream/lower-third",
+      "group": "templates",
+      "file": "templates/stream/lower-third.png",
+      "source": "source/html/templates/stream/lower-third.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "transparent": true,
+      "direction": "broadcast",
+      "use": "Caster desk and player interviews.",
+      "description": "Transparent lower-third: rose tick, role caption, name, crest.",
+      "tags": [
+        "template",
+        "stream"
+      ],
+      "bytes": 28419
+    },
+    {
+      "id": "templates/stream/starting-soon",
+      "group": "templates",
+      "file": "templates/stream/starting-soon.png",
+      "source": "source/html/templates/stream/starting-soon.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "direction": "cinematic",
+      "use": "Stream holding screen.",
+      "description": "Starting-soon screen with the final’s matchup and time.",
+      "tags": [
+        "template",
+        "stream"
+      ],
+      "bytes": 108212
+    },
+    {
+      "id": "templates/venue/station-board",
+      "group": "templates",
+      "file": "templates/venue/station-board.png",
+      "source": "source/html/templates/venue/station-board.html",
+      "size": [
+        1920,
+        1080
+      ],
+      "direction": "command-console",
+      "use": "Venue screens driven by the station agent.",
+      "description": "Venue TV board: six stations with live state, readable across a room.",
+      "tags": [
+        "template",
+        "venue"
+      ],
+      "bytes": 85906
+    },
+    {
+      "id": "ui/components-and-states",
+      "group": "ui",
+      "file": "ui/components-and-states.png",
+      "source": "source/html/ui/components-and-states.html",
+      "size": [
+        1600,
+        900
+      ],
+      "direction": "broadcast",
+      "description": "CommandButton variants × states, field states, status pill tones, choice card states and inline notices.",
+      "tags": [
+        "ui",
+        "states",
+        "components"
+      ],
+      "bytes": 125495
+    },
+    {
+      "id": "ui/check-in-states",
+      "group": "ui",
+      "file": "ui/check-in-states.png",
+      "source": "source/html/ui/check-in-states.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "broadcast",
+      "description": "Captain check-in screen across six states: waiting, open, checking in, checked in, offline, missed.",
+      "tags": [
+        "ui",
+        "states",
+        "flow"
+      ],
+      "bytes": 132377
+    },
+    {
+      "id": "ui/empty-error-loading",
+      "group": "ui",
+      "file": "ui/empty-error-loading.png",
+      "source": "source/html/ui/empty-error-loading.html",
+      "size": [
+        1600,
+        1000
+      ],
+      "direction": "broadcast",
+      "description": "Skeleton in the real layout, an empty state that says when it fills, an error that keeps work.",
+      "tags": [
+        "ui",
+        "states"
+      ],
+      "bytes": 76719
+    }
+  ]
+}

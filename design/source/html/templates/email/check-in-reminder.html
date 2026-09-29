@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>templates/email/check-in-reminder</title>
+<style>
+@font-face{font-family:'Poppins';src:url('../../../fonts/poppins-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../../fonts/poppins-latin-800-normal.woff2') format('woff2');font-weight:800;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../../fonts/poppins-latin-900-normal.woff2') format('woff2');font-weight:900;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../../fonts/inter-latin-400-normal.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../../fonts/inter-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../../fonts/inter-latin-600-normal.woff2') format('woff2');font-weight:600;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../../fonts/inter-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../../fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../../fonts/jetbrains-mono-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%}
+body{background:#09090B;color:#FAFAFA;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+.h{font-family:Poppins,sans-serif;letter-spacing:-0.02em;line-height:1}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.28em;color:#71717A}
+.num{font-family:Poppins,sans-serif;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+.hair{border-color:rgba(255,255,255,.07)}
+.panel{background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.cue{background:#F43F5E}
+.grid-px{display:grid;gap:1px;background:rgba(255,255,255,.06)}
+.grid-px>*{background:#111114}
+.logo-slot{display:inline-flex;align-items:center;justify-content:center;padding:0 12px;border:1px dashed;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.3em}
+.pill{display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
+.dot{width:6px;height:6px;border-radius:999px;display:inline-block}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;border:1px solid}
+.btn-primary{background:#FAFAFA;color:#09090B;border-color:#FAFAFA}
+.btn-secondary{background:#09090B;color:#FAFAFA;border-color:rgba(255,255,255,.15)}
+.btn-ghost{background:rgba(255,255,255,.03);color:#FAFAFA;border-color:rgba(255,255,255,.10)}
+.btn-danger{background:rgba(69,10,10,.2);color:#FEE2E2;border-color:rgba(239,68,68,.35)}
+body{background:#F4F4F5}.f{position:relative;width:640px;height:860px;overflow:hidden}</style></head><body><main class="f">
+<div style="margin:32px auto 0;width:560px;background:#fff;box-shadow:0 0 0 1px #E4E4E7;color:#09090B">
+<div style="background:#09090B;padding:22px 32px;display:flex;justify-content:space-between;align-items:center"><span class="logo-slot" style="height:20px;border-color:rgba(255,255,255,.28);color:rgba(255,255,255,.28)">LOGO</span><span class="eyebrow" style="font-size:10px">KVO 2026</span></div>
+<div style="padding:36px 32px">
+<div class="eyebrow" style="color:#71717A;font-size:10px">CHECK-IN REMINDER · QUARTER-FINAL</div>
+<div class="h" style="font-weight:800;font-size:34px;margin-top:14px;line-height:1.1">Check-in closes at 7:59 PM.</div>
+<p style="font-size:16px;line-height:1.6;color:#52525B;margin-top:16px">Hi Hamza, your match against Crimson Five starts at 8:00 PM PKT on Saturday 16 Nov. Check Night Owls in before 7:59 PM so the room opens on time.</p>
+<div style="margin-top:26px;border:1px solid #E4E4E7">
+<div style="display:flex;justify-content:space-between;padding:12px 16px;;font-size:14px"><span style="color:#52525B">Match</span><b style="font-weight:600">Night Owls vs Crimson Five</b></div><div style="display:flex;justify-content:space-between;padding:12px 16px;border-top:1px solid #E4E4E7;font-size:14px"><span style="color:#52525B">Starts</span><b style="font-weight:600">Sat 16 Nov, 8:00 PM PKT</b></div><div style="display:flex;justify-content:space-between;padding:12px 16px;border-top:1px solid #E4E4E7;font-size:14px"><span style="color:#52525B">Check-in</span><b style="font-weight:600">7:30–7:59 PM PKT</b></div><div style="display:flex;justify-content:space-between;padding:12px 16px;border-top:1px solid #E4E4E7;font-size:14px"><span style="color:#52525B">Format</span><b style="font-weight:600">Best of 3 · Station 4</b></div></div>
+<div style="margin-top:28px;display:inline-flex;height:52px;align-items:center;padding:0 28px;background:#09090B;color:#fff;font-family:'JetBrains Mono';font-weight:700;font-size:13px;letter-spacing:.18em">CHECK IN YOUR TEAM</div>
+<p style="font-size:13px;line-height:1.6;color:#71717A;margin-top:22px">The button opens the check-in page; you’ll sign in first. We never put sign-in links in email.</p></div>
+<div style="border-top:1px solid #E4E4E7;padding:20px 32px;font-size:12px;line-height:1.6;color:#71717A">You’re getting this because you captain Night Owls in Karachi Valorant Open. Reminder settings are in your profile.</div></div></main></body></html>

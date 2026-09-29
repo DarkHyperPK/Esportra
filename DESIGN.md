@@ -98,6 +98,8 @@ Esportra's resting look is **Broadcast**: a stage-black ground, precise hairline
 
 The invariants (logo, cue colour discipline, square corners, type families, tabular numbers, voice) hold in every direction.
 
+Visual references for every direction, the identity, templates and UI states live in `design/` (see `design/INDEX.md`).
+
 ## Colors
 
 - **Stage black** is the ground; **panel** lifts content one layer. Inset, hover and pressed states use white at 2%, 4% and 6%. Hairlines are white at 7%.

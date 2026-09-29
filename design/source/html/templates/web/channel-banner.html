@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>templates/web/channel-banner</title>
+<style>
+@font-face{font-family:'Poppins';src:url('../../../fonts/poppins-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../../fonts/poppins-latin-800-normal.woff2') format('woff2');font-weight:800;font-style:normal;font-display:block}
+@font-face{font-family:'Poppins';src:url('../../../fonts/poppins-latin-900-normal.woff2') format('woff2');font-weight:900;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../../fonts/inter-latin-400-normal.woff2') format('woff2');font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../../fonts/inter-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../../fonts/inter-latin-600-normal.woff2') format('woff2');font-weight:600;font-style:normal;font-display:block}
+@font-face{font-family:'Inter';src:url('../../../fonts/inter-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../../fonts/jetbrains-mono-latin-500-normal.woff2') format('woff2');font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:'JetBrains Mono';src:url('../../../fonts/jetbrains-mono-latin-700-normal.woff2') format('woff2');font-weight:700;font-style:normal;font-display:block}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%}
+body{background:#09090B;color:#FAFAFA;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+.h{font-family:Poppins,sans-serif;letter-spacing:-0.02em;line-height:1}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.28em;color:#71717A}
+.num{font-family:Poppins,sans-serif;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+.hair{border-color:rgba(255,255,255,.07)}
+.panel{background:#111114;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.cue{background:#F43F5E}
+.grid-px{display:grid;gap:1px;background:rgba(255,255,255,.06)}
+.grid-px>*{background:#111114}
+.logo-slot{display:inline-flex;align-items:center;justify-content:center;padding:0 12px;border:1px dashed;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.3em}
+.pill{display:inline-flex;align-items:center;gap:8px;height:24px;padding:0 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
+.dot{width:6px;height:6px;border-radius:999px;display:inline-block}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;border:1px solid}
+.btn-primary{background:#FAFAFA;color:#09090B;border-color:#FAFAFA}
+.btn-secondary{background:#09090B;color:#FAFAFA;border-color:rgba(255,255,255,.15)}
+.btn-ghost{background:rgba(255,255,255,.03);color:#FAFAFA;border-color:rgba(255,255,255,.10)}
+.btn-danger{background:rgba(69,10,10,.2);color:#FEE2E2;border-color:rgba(239,68,68,.35)}
+.f{position:relative;width:1500px;height:500px;overflow:hidden}</style></head><body><main class="f"><div style="position:absolute;inset:0"><svg xmlns="http://www.w3.org/2000/svg" width="1500" height="500" viewBox="0 0 1500 500" preserveAspectRatio="xMidYMid slice"><rect width="1500" height="500" fill="#09090B"/><path d="M46.8 -10.0 L15.9 71.4 L56.1 142.9 L51.1 214.3 L84.7 285.7 L58.6 357.1 L74.6 428.6 L138.5 510.0 L190.9 510.0 L213.1 428.6 L177.5 357.1 L224.8 285.7 L128.8 214.3 L105.6 142.9 L133.1 71.4 L184.1 -10.0 Z" fill="#141416" opacity="1"/><path d="M454.0 -10.0 L490.7 83.3 L395.4 166.7 L369.9 250.0 L469.1 333.3 L482.8 416.7 L462.8 510.0 L584.6 510.0 L621.8 416.7 L558.3 333.3 L503.8 250.0 L555.8 166.7 L542.6 83.3 L579.4 -10.0 Z" fill="#141416" opacity="1"/><path d="M622.0 -10.0 L620.3 71.4 L696.8 142.9 L704.9 214.3 L822.1 285.7 L811.3 357.1 L721.7 428.6 L781.0 510.0 L931.5 510.0 L868.2 428.6 L943.3 357.1 L892.4 285.7 L845.1 214.3 L828.1 142.9 L737.4 71.4 L768.2 -10.0 Z" fill="#141416" opacity="1"/><path d="M991.5 -10.0 L970.2 100.0 L993.0 200.0 L1022.8 300.0 L1095.1 400.0 L1162.5 510.0 L1224.8 510.0 L1176.4 400.0 L1117.5 300.0 L1115.9 200.0 L1035.9 100.0 L1074.6 -10.0 Z" fill="#141416" opacity="1"/><path d="M1450.0 -10.0 L1435.7 83.3 L1386.9 166.7 L1401.1 250.0 L1456.8 333.3 L1457.8 416.7 L1522.0 510.0 L1618.1 510.0 L1571.3 416.7 L1611.8 333.3 L1556.0 250.0 L1492.1 166.7 L1518.2 83.3 L1532.5 -10.0 Z" fill="#141416" opacity="1"/></svg></div>
+<div class="h" style="position:absolute;left:520px;top:150px;font-weight:900;font-size:92px;letter-spacing:-0.04em;line-height:.9">Run your cup<br>like a final.</div>
+<div style="position:absolute;left:526px;top:340px;width:64px;height:3px;background:#F43F5E"></div>
+<div class="mono" style="position:absolute;left:526px;top:372px;font-size:15px;font-weight:700;letter-spacing:.3em;color:#A1A1AA">TOURNAMENTS · VENUES · PAKISTAN</div>
+<div style="position:absolute;right:64px;bottom:48px"><span class="logo-slot" style="height:26px;border-color:rgba(255,255,255,.28);color:rgba(255,255,255,.28)">LOGO</span></div></main></body></html>

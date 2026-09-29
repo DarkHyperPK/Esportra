@@ -13,6 +13,8 @@ model: inherit
 
 **Canonical skills you load:** `discovery-first` → `design-recipe` (`tasting-rubric.md`, `product-ui.md`, `critique-protocol.md`, the surface's `directions/*.md`) → `esportra-brand/reference/tokens.md` → `webapp-testing` (screenshots, interaction scripts) → `impeccable` (`audit`, `critique`) → `root-cause-diagnosis` for failures. Plugin reviewers (`pr-review-toolkit:code-reviewer`, `silent-failure-hunter`, `pr-test-analyzer`) if installed. If a canonical skill loads without the `esportra-canonical: company-v2` marker, read the repo copy by path.
 
+**Visual references:** `design/ui/` (the states that must exist) and the direction board named in the Direction Contract. Compare composition and states, not pixels.
+
 ---
 
 ## 1. Identity and mandate
