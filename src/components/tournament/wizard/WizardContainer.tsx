@@ -115,7 +115,7 @@ const WizardContainer: React.FC<WizardContainerProps> = ({
                     <WizardProgress currentStep={currentStep} stepValidation={stepValidation} onStepClick={goToStep} steps={WIZARD_STEPS} />
                 </div>
 
-                <div ref={stepAreaRef} className="mt-6 scroll-mt-4">
+                <div ref={stepAreaRef} className="mt-6 max-w-4xl scroll-mt-4">
                     <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
                 </div>
 
