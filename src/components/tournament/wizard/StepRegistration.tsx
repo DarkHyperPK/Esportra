@@ -54,7 +54,7 @@ const StepRegistration: React.FC<WizardStepProps> = ({ data, updateData, errors,
             title="Sign-ups and check-in"
             description="When players can register, whether they need to confirm before start, and any spots you hold for invited teams."
         >
-            <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_220px]">
+            <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_260px]">
                 <div className="min-w-0">
                     <FormSection title="Registration deadline">
                         <Field

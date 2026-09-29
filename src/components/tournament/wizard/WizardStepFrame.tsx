@@ -14,6 +14,7 @@ interface WizardStepFrameProps {
 export function WizardStepFrame({ title, description, errorSummary, children }: WizardStepFrameProps) {
     return (
         <motion.div
+            className="mx-auto max-w-4xl"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}

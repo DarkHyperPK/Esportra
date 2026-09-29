@@ -6,6 +6,7 @@ import { TournamentWizardData } from '@/types/tournamentWizard';
 import { BRACKET_TYPE_LABELS } from '@/schemas/tournamentSchema';
 import { LAUNCH_STATE_LABELS } from '@/utils/tournamentVisibilityUtils';
 import { getBRConfig, getEffectiveGameFeatures, getParticipantMode, isBattleRoyale } from '@/utils/gameFeatures';
+import { getManifestGameAssets } from '@/hooks/useRawgGame';
 import { cn } from '@/lib/utils';
 import { WizardStepFrame } from './WizardStepFrame';
 
@@ -48,6 +49,8 @@ function ReviewSection({ title, step, rows, onEdit }: { title: string; step: num
 
 const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
     const errorList = Object.values(errors).filter(Boolean);
+    const gameAssets = getManifestGameAssets(data.game || '');
+    const heroBanner = data.bannerUrl || gameAssets.banner;
     const features = getEffectiveGameFeatures(data.game || '', data.gameMode);
     const solo = getParticipantMode(data.game || '', data.gameMode) === 'solo';
     const isBR = isBattleRoyale(data.game || '');
@@ -119,7 +122,7 @@ const StepReview: React.FC<StepReviewProps> = ({ data, onEdit, errors }) => {
         >
             <div className={cn(PANEL_CLASS, 'mb-6 overflow-hidden')}>
                 <div className="relative h-40 bg-black/40">
-                    {data.bannerUrl && <img src={data.bannerUrl} alt="" className="h-full w-full object-cover" />}
+                    {heroBanner && <img src={heroBanner} alt="" className="h-full w-full object-cover" />}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                     <div className="absolute inset-x-5 bottom-5">
                         <p className={EYEBROW_CLASS}>{data.game || 'Game not chosen'}</p>
