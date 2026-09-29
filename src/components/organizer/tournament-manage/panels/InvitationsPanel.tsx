@@ -347,7 +347,7 @@ export function InvitationsPanel({ tournament, canActAsOwner }: InvitationsPanel
                 type="button"
                 onClick={handleSendCodes}
                 disabled={stagedEmails.length === 0 || isSending}
-                className="flex items-center gap-1.5 border border-rose-500/30 bg-rose-500/[0.06] px-4 py-1.5 text-xs font-semibold text-rose-400 transition-colors hover:bg-rose-500/10 disabled:pointer-events-none disabled:opacity-50"
+                className="flex items-center gap-1.5 border border-white/15 bg-rose-500/[0.06] px-4 py-1.5 text-xs font-semibold text-rose-400 transition-colors hover:bg-rose-500/10 disabled:pointer-events-none disabled:opacity-50"
               >
                 {isSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                 Send {stagedEmails.length > 0 ? `${stagedEmails.length} Code${stagedEmails.length > 1 ? 's' : ''}` : 'Codes'}
