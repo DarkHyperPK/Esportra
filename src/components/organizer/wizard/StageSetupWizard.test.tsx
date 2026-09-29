@@ -30,7 +30,7 @@ describe('StageSetupWizard', () => {
     vi.clearAllMocks();
   });
 
-  it('stays on manual setup after clicking Manual Setup', async () => {
+  it('stays on manual setup after choosing to build it yourself', async () => {
     render(
       <StageSetupWizard
         open
@@ -42,17 +42,17 @@ describe('StageSetupWizard', () => {
       />,
     );
 
-    expect(await screen.findByText('Manual Setup')).toBeInTheDocument();
+    expect(await screen.findByText('Build it yourself')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Manual Setup'));
+    fireEvent.click(screen.getByText('Build it yourself'));
 
     await waitFor(() => {
-      expect(screen.queryByText('Advanced Templates')).not.toBeInTheDocument();
+      expect(screen.queryByText('Start from a template')).not.toBeInTheDocument();
     });
-    expect(screen.getByText(/Finish & Review/i)).toBeInTheDocument();
+    expect(screen.getByText(/Review stages/i)).toBeInTheDocument();
   });
 
-  it('advances to template selection after clicking Advanced Templates', async () => {
+  it('advances to template selection after choosing a template start', async () => {
     render(
       <StageSetupWizard
         open
@@ -64,10 +64,33 @@ describe('StageSetupWizard', () => {
       />,
     );
 
-    fireEvent.click(await screen.findByText('Advanced Templates'));
+    fireEvent.click(await screen.findByText('Start from a template'));
 
     await waitFor(() => {
-      expect(screen.getByText('Select a Template')).toBeInTheDocument();
+      expect(screen.getByText('Pick a template')).toBeInTheDocument();
     });
+  });
+
+  it('lets you save after removing every existing stage', async () => {
+    render(
+      <StageSetupWizard
+        open
+        onOpenChange={vi.fn()}
+        tournamentId="tournament-1"
+        game="Valorant"
+        existingStages={[{ id: 'stage-1', name: 'Main bracket', format: 'single_elimination', capacity: 16 }]}
+        onComplete={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove Main bracket' }));
+
+    const review = screen.getByRole('button', { name: /Review stages/i });
+    expect(review).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /Back/i })).not.toBeInTheDocument();
+
+    fireEvent.click(review);
+    expect(await screen.findByText(/Saving will remove every stage/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save stages' })).toBeEnabled();
   });
 });

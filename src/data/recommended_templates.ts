@@ -19,7 +19,7 @@ export const RECOMMENDED_TEMPLATES: StageTemplate[] = [
     {
         id: 'single_elim_cup',
         name: 'Standard Cup',
-        description: 'Classic Single Elimination bracket. Simple and fast.',
+        description: 'One single-elimination bracket. Lose once and you’re out, so it runs quickly.',
         category: 'standard',
         stages: [
             {
@@ -33,7 +33,7 @@ export const RECOMMENDED_TEMPLATES: StageTemplate[] = [
     {
         id: 'double_elim_cup',
         name: 'Pro Cup',
-        description: 'Double Elimination bracket with escalating series formats.',
+        description: 'Double elimination: everyone gets a second chance, and series get longer as the stakes rise.',
         category: 'standard',
         stages: [
             {
@@ -56,7 +56,7 @@ export const RECOMMENDED_TEMPLATES: StageTemplate[] = [
     {
         id: 'groups_to_playoffs',
         name: 'World Cup Style',
-        description: 'Group Stage (Round Robin) followed by Single Elimination Playoffs.',
+        description: 'Round-robin groups where everyone plays everyone, then a single-elimination playoff.',
         category: 'standard',
         stages: [
             {
@@ -78,7 +78,7 @@ export const RECOMMENDED_TEMPLATES: StageTemplate[] = [
     {
         id: 'swiss_to_playoffs',
         name: 'Major Format',
-        description: 'Swiss System followed by Single Elimination Playoffs. Used in major esports events.',
+        description: 'Swiss rounds that pair teams on similar records, then a single-elimination playoff. The format majors use.',
         category: 'standard',
         stages: [
             {
